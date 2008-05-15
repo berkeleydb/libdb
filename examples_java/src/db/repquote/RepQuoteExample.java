@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: RepQuoteExample.java,v 1.17 2007/05/17 18:17:19 bostic Exp $
+ * $Id: RepQuoteExample.java,v 1.20 2008/02/15 18:47:11 alanb Exp $
  */
 
 package db.repquote;
@@ -143,7 +143,7 @@ public class RepQuoteExample
                 config.totalSites = Integer.parseInt(argv[i]);
             } else if (argv[i].compareTo("-f") == 0 ||
                        argv[i].compareTo("-o") == 0) {
-                if (argv[i] == "-f")
+                if (argv[i].equals("-f"))
                     isPeer = true;
                 i++;
                 String[] words = argv[i].split(":");
@@ -213,12 +213,11 @@ public class RepQuoteExample
         envConfig.setErrorPrefix(RepConfig.progname);
 
         envConfig.setReplicationManagerLocalSite(appConfig.getThisHost());
-        for (ReplicationHostAddress host = appConfig.getFirstOtherHost();
-            host != null; host = appConfig.getNextOtherHost())
-        {
-            envConfig.replicationManagerAddRemoteSite(host);
-        }
-
+	for (RepRemoteHost host = appConfig.getFirstOtherHost();
+	     host != null; host = appConfig.getNextOtherHost()){
+	    envConfig.replicationManagerAddRemoteSite(
+	        host.getAddress(), host.isPeer());
+	}
         if (appConfig.totalSites > 0)
             envConfig.setReplicationNumSites(appConfig.totalSites);
         envConfig.setReplicationPriority(appConfig.priority);
@@ -246,10 +245,11 @@ public class RepQuoteExample
                 "Ensure that the environment directory is pre-created.");
             ret = 1;
         }
-
+	
         // start replication manager
         dbenv.replicationManagerStart(3, appConfig.startPolicy);
-        return ret;
+        
+	return ret;
     }
 
     public int doloop()
@@ -327,8 +327,8 @@ public class RepQuoteExample
             if (words.length == 1 &&
                 (words[0].compareToIgnoreCase("quit") == 0 ||
                 words[0].compareToIgnoreCase("exit") == 0)) {
-                break;
-            } else if (words.length != 2) {
+		    break;
+	    } else if (words.length != 2) {
                 System.err.println("Format: TICKER VALUE");
                 continue;
             }
@@ -351,6 +351,17 @@ public class RepQuoteExample
     public void terminate()
         throws DatabaseException
     {
+        /*
+         * We have used the DB_TXN_NOSYNC environment flag for improved
+         * performance without the usual sacrifice of transactional durability,
+         * as discussed in the "Transactional guarantees" page of the Reference
+         * Guide: if one replication site crashes, we can expect the data to
+         * exist at another site.  However, in case we shut down all sites
+         * gracefully, we push out the end of the log here so that the most
+         * recent transactions don't mysteriously disappear.
+         */
+        dbenv.logFlush(null);
+        
         dbenv.close();
     }
 

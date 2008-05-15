@@ -1,5 +1,5 @@
 <!--$Id: db_upgrade.so,v 10.37 2004/08/13 03:38:56 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db::upgrade</h3>
+<b>Db::upgrade</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 Db::upgrade(const char *file, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db::upgrade</h3>
+<b>Description: Db::upgrade</b>
 <p>The Db::upgrade method upgrades all of the databases included in the
 file <b>file</b>, if necessary.  If no upgrade is necessary,
 Db::upgrade always returns success.</p>
@@ -41,14 +41,13 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>file</b><dd>The <b>file</b> parameter is the physical file containing the databases
-to be upgraded.
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or
+<b>Parameters</b> <br>
+ <b>file</b><ul compact><li>The <b>file</b> parameter is the physical file containing the databases
+to be upgraded.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or
 the following value:
-<dl compact>
-<dt><a name="DB_DUPSORT">DB_DUPSORT</a><dd><b>This flag is only meaningful when upgrading databases from
+<br>
+<b><a name="DB_DUPSORT">DB_DUPSORT</a></b><ul compact><li><b>This flag is only meaningful when upgrading databases from
 releases before the Berkeley DB 3.1 release.</b>
 <p>As part of the upgrade from the Berkeley DB 3.0 release to the 3.1 release,
 the on-disk format of duplicate data items changed.  To correctly
@@ -68,38 +67,38 @@ support the same style of duplicates (either sorted or unsorted),
 Db::upgrade will work correctly as long as the
 DB_DUPSORT flag is correctly specified.  Otherwise, the file
 cannot be upgraded using Db::upgrade; it must be upgraded
-manually by dumping and reloading the databases.</p>
-</dl>
-</dl>
-<h3>Environment Variables</h3>
+manually by dumping and reloading the databases.</p></ul>
+<br></ul>
+<br>
+<br><b>Environment Variables</b>
 <p>If the database was opened within a database environment, the
 environment variable <b>DB_HOME</b> may be used as the path of the
 database environment home.</p>
 <p>Db::upgrade is affected by any database directory specified using
 the <a href="../api_cxx/env_set_data_dir.html">DbEnv::set_data_dir</a> method, or by setting the "set_data_dir" string
-in the environment's <b>DB_CONFIG</b> file.</p>
-<h3>Errors</h3>
+in the environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.</p>
+<br><b>Errors</b>
 <p>The Db::upgrade method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt><a name="DB_OLD_VERSION">DB_OLD_VERSION</a><dd>The database cannot be upgraded by this version of the Berkeley DB software.
-</dl>
-<dl compact>
-<dt>EINVAL<dd>If the database is not in the same byte-order as the system; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b><a name="DB_OLD_VERSION">DB_OLD_VERSION</a></b><ul compact><li>The database cannot be upgraded by this version of the Berkeley DB software.</ul>
+<br>
+<br>
+<b>EINVAL</b><ul compact><li>If the database is not in the same byte-order as the system; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/db_class.html">Db</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

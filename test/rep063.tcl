@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep063.tcl,v 1.12 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep063.tcl,v 1.15 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep063
 # TEST	Replication election test with simulated different versions
@@ -62,10 +62,11 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	source ./include.tcl
 	global electable_pri
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set niter 80
@@ -173,7 +174,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 		#
 		if { $rep_verbose == 1 } {
 			error_check_good pfx [$clientenv($i) errpfx CLIENT$i] 0
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT$i $verbargs "]
 		}
@@ -204,7 +205,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set elector 2
 	setpriority pri $nclients $winner 0 1
 	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner
+	    $qdir $m $elector $nsites $nvotes $nclients $winner 0 test.db
 	#
 	# In all of the checks of the Election Priority stat field,
 	# we use clientenv(2).  The reason is that we never expect
@@ -231,8 +232,8 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set winner 0
 	setpriority pri $nclients $winner 0 1
 	set pri(1) 0
-	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner
+	run_election env_cmd envlist err_cmd pri crash $qdir \
+	    $m $elector $nsites $nvotes $nclients $winner 0 test.db
 	error_check_bad old_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
 	rep063_movelsn_reopen $method envlist $env_cmd($winner) $winner $largs
@@ -250,8 +251,8 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set winner 1
 	setpriority pri $nclients $winner 0 1
 	set pri(2) [expr $pri(1) / 2]
-	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner
+	run_election env_cmd envlist err_cmd pri crash $qdir \
+	    $m $elector $nsites $nvotes $nclients $winner 0 test.db
 	error_check_bad old_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
 	rep063_movelsn_reopen $method envlist $env_cmd($winner) $winner $largs
@@ -279,8 +280,8 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	#
 	# Winner should be zero priority.
 	#
-	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner
+	run_election env_cmd envlist err_cmd pri crash $qdir \
+	    $m $elector $nsites $nvotes $nclients $winner 0 test.db
 	error_check_good elect_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
 	rep063_movelsn_reopen $method envlist $env_cmd($winner) $winner $largs
@@ -306,8 +307,8 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	# Client 4 has biggest LSN and should now win, but winner should
 	# be zero priority.
 	#
-	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner
+	run_election env_cmd envlist err_cmd pri crash $qdir \
+	    $m $elector $nsites $nvotes $nclients $winner 0 test.db
 	error_check_good elect_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
 

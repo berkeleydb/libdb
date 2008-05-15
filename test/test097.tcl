@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: test097.tcl,v 12.6 2007/05/17 15:15:56 bostic Exp $
+# $Id: test097.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	test097
 # TEST	Open up a large set of database files simultaneously.

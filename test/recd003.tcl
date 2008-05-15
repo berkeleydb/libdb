@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd003.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd003.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd003
 # TEST	Duplicate recovery tests.  For every known duplicate log message,
@@ -15,6 +15,13 @@ proc recd003 { method {select 0} args } {
 	source ./include.tcl
 	global rand_init
 
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
+
 	set largs [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -22,7 +29,7 @@ proc recd003 { method {select 0} args } {
 		puts "Recd003 skipping for method $method"
 		return
 	}
-	puts "Recd003: $method duplicate recovery tests"
+	puts "Recd003: $method duplicate recovery tests ($envargs)"
 
 	berkdb srand $rand_init
 
@@ -30,7 +37,7 @@ proc recd003 { method {select 0} args } {
 	# See comment in recd001.tcl for why there are two database files...
 	set testfile recd003.db
 	set testfile2 recd003-2.db
-	set eflags "-create -txn -home $testdir"
+	set eflags "-create -txn -home $testdir $envargs"
 
 	puts "\tRecd003.a: creating environment"
 	set env_cmd "berkdb_env $eflags"

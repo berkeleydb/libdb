@@ -1,4 +1,4 @@
-# $Id: Makefile,v 10.105 2006/05/26 20:14:59 bostic Exp $
+# $Id: Makefile,v 10.106 2008/01/12 13:42:40 bostic Exp $
 
 COMMON=	api_core.html \
 	env_class.html \
@@ -24,9 +24,10 @@ COMMON=	api_core.html \
 	env_set_isalive.html \
 	env_set_msgcall.html \
 	env_set_rpc_server.html \
+	env_set_intermediate_dir_mode.html \
 	env_set_shm_key.html \
-	env_set_thread_id.html \
 	env_set_thread_count.html \
+	env_set_thread_id.html \
 	env_set_thread_id_string.html \
 	env_set_timeout.html \
 	env_set_tmp_dir.html \

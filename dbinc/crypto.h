@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: crypto.h,v 12.7 2007/05/17 15:15:05 bostic Exp $
+ * $Id: crypto.h,v 12.9 2008/01/08 20:58:17 bostic Exp $
  */
 
 #ifndef	_DB_CRYPTO_H_
@@ -37,10 +37,10 @@ extern "C" {
  */
 struct __db_cipher {
 	u_int	(*adj_size) __P((size_t));
-	int	(*close) __P((DB_ENV *, void *));
-	int	(*decrypt) __P((DB_ENV *, void *, void *, u_int8_t *, size_t));
-	int	(*encrypt) __P((DB_ENV *, void *, void *, u_int8_t *, size_t));
-	int	(*init) __P((DB_ENV *, DB_CIPHER *));
+	int	(*close) __P((ENV *, void *));
+	int	(*decrypt) __P((ENV *, void *, void *, u_int8_t *, size_t));
+	int	(*encrypt) __P((ENV *, void *, void *, u_int8_t *, size_t));
+	int	(*init) __P((ENV *, DB_CIPHER *));
 
 	u_int8_t mac_key[DB_MAC_KEY];	/* MAC key. */
 	void	*data;			/* Algorithm-specific information */

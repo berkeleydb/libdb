@@ -209,7 +209,7 @@ main(void)
       <pre class="programlisting">
         <b class="userinput">
           <tt>    /* Specify in-memory logging */
-    ret = envp-&gt;set_flags(envp, DB_LOG_INMEMORY, 1);
+    ret = envp-&gt;log_set_config(envp, DB_LOG_IN_MEMORY, 1);
     if (ret != 0) {
         fprintf(stderr, "Error setting log subsystem to in-memory: %s\n",
             db_strerror(ret));

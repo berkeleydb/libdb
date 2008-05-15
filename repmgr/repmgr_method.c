@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_method.c,v 1.38 2007/06/11 18:29:34 alanb Exp $
+ * $Id: repmgr_method.c,v 1.48 2008/04/25 19:02:47 alanb Exp $
  */
 
 #include "db_config.h"
@@ -11,7 +11,7 @@
 #define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
-static int __repmgr_await_threads __P((DB_ENV *));
+static int __repmgr_await_threads __P((ENV *));
 
 /*
  * PUBLIC: int __repmgr_start __P((DB_ENV *, int, u_int32_t));
@@ -22,22 +22,30 @@ __repmgr_start(dbenv, nthreads, flags)
 	int nthreads;
 	u_int32_t flags;
 {
-	DB_REP *db_rep;
 	DBT my_addr;
+	DB_REP *db_rep;
+	ENV *env;
 	REPMGR_RUNNABLE *selector, *messenger;
 	int ret, i;
 
-	db_rep = dbenv->rep_handle;
+	env = dbenv->env;
+	db_rep = env->rep_handle;
+
+	if (!F_ISSET(env, ENV_THREAD)) {
+		__db_errx(env,
+		    "Replication Manager needs an environment with DB_THREAD");
+		return (EINVAL);
+	}
 
 	/* Check that the required initialization has been done. */
 	if (db_rep->my_addr.port == 0) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "repmgr_set_local_site must be called before repmgr_start");
 		return (EINVAL);
 	}
 
 	if (db_rep->selector != NULL || db_rep->finished) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "DB_ENV->repmgr_start may not be called more than once");
 		return (EINVAL);
 	}
@@ -48,25 +56,24 @@ __repmgr_start(dbenv, nthreads, flags)
 	case DB_REP_MASTER:
 		break;
 	default:
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "repmgr_start: unrecognized flags parameter value");
 		return (EINVAL);
 	}
 
 	if (nthreads <= 0) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "repmgr_start: nthreads parameter must be >= 1");
 		return (EINVAL);
 	}
 
-	if ((ret =
-	   __os_calloc(dbenv, (u_int)nthreads, sizeof(REPMGR_RUNNABLE *),
-	    &db_rep->messengers)) != 0)
+	if ((ret = __os_calloc(env, (u_int)nthreads,
+	   sizeof(REPMGR_RUNNABLE *), &db_rep->messengers)) != 0)
 		return (ret);
 	db_rep->nthreads = nthreads;
 
-	if ((ret = __repmgr_net_init(dbenv, db_rep)) != 0 ||
-	    (ret = __repmgr_init_sync(dbenv, db_rep)) != 0 ||
+	if ((ret = __repmgr_net_init(env, db_rep)) != 0 ||
+	    (ret = __repmgr_init_sync(env, db_rep)) != 0 ||
 	    (ret = __rep_set_transport(dbenv, SELF_EID, __repmgr_send)) != 0)
 		return (ret);
 
@@ -76,42 +83,42 @@ __repmgr_start(dbenv, nthreads, flags)
 	 * context properly configured.
 	 */
 	if ((db_rep->init_policy = flags) == DB_REP_MASTER)
-		ret = __repmgr_become_master(dbenv);
+		ret = __repmgr_become_master(env);
 	else {
-		if ((ret = __repmgr_prepare_my_addr(dbenv, &my_addr)) != 0)
+		if ((ret = __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 			return (ret);
 		ret = __rep_start(dbenv, &my_addr, DB_REP_CLIENT);
-		__os_free(dbenv, my_addr.data);
+		__os_free(env, my_addr.data);
 		if (ret == 0) {
 			LOCK_MUTEX(db_rep->mutex);
-			ret = __repmgr_init_election(dbenv, ELECT_SEEK_MASTER);
+			ret = __repmgr_init_election(env, ELECT_SEEK_MASTER);
 			UNLOCK_MUTEX(db_rep->mutex);
 		}
 	}
 	if (ret != 0)
 		return (ret);
 
-	if ((ret = __os_calloc(dbenv, 1, sizeof(REPMGR_RUNNABLE), &selector))
+	if ((ret = __os_calloc(env, 1, sizeof(REPMGR_RUNNABLE), &selector))
 	    != 0)
 		return (ret);
-	selector->dbenv = dbenv;
+	selector->env = env;
 	selector->run = __repmgr_select_thread;
-	if ((ret = __repmgr_thread_start(dbenv, selector)) != 0) {
-		__db_err(dbenv, ret, "can't start selector thread");
-		__os_free(dbenv, selector);
+	if ((ret = __repmgr_thread_start(env, selector)) != 0) {
+		__db_err(env, ret, "can't start selector thread");
+		__os_free(env, selector);
 		return (ret);
-	} else
-		db_rep->selector = selector;
+	}
+	db_rep->selector = selector;
 
 	for (i=0; i<nthreads; i++) {
-		if ((ret = __os_calloc(dbenv, 1, sizeof(REPMGR_RUNNABLE),
+		if ((ret = __os_calloc(env, 1, sizeof(REPMGR_RUNNABLE),
 		    &messenger)) != 0)
 			return (ret);
 
-		messenger->dbenv = dbenv;
+		messenger->env = env;
 		messenger->run = __repmgr_msg_thread;
-		if ((ret = __repmgr_thread_start(dbenv, messenger)) != 0) {
-			__os_free(dbenv, messenger);
+		if ((ret = __repmgr_thread_start(env, messenger)) != 0) {
+			__os_free(env, messenger);
 			return (ret);
 		}
 		db_rep->messengers[i] = messenger;
@@ -121,29 +128,31 @@ __repmgr_start(dbenv, nthreads, flags)
 }
 
 /*
- * PUBLIC: int __repmgr_close __P((DB_ENV *));
+ * PUBLIC: int __repmgr_close __P((ENV *));
  */
 int
-__repmgr_close(dbenv)
-	DB_ENV *dbenv;
+__repmgr_close(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	int ret, t_ret;
 
 	ret = 0;
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	if (db_rep->selector != NULL) {
-		RPRINT(dbenv, (dbenv, "Stopping repmgr threads"));
-		ret = __repmgr_stop_threads(dbenv);
-		if ((t_ret = __repmgr_await_threads(dbenv)) != 0 && ret == 0)
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "Stopping repmgr threads"));
+		ret = __repmgr_stop_threads(env);
+		if ((t_ret = __repmgr_await_threads(env)) != 0 && ret == 0)
 			ret = t_ret;
-		RPRINT(dbenv, (dbenv, "Repmgr threads are finished"));
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "Repmgr threads are finished"));
 	}
 
-	if ((t_ret = __repmgr_net_close(dbenv)) != 0 && ret == 0)
+	if ((t_ret = __repmgr_net_close(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-	if ((t_ret = __repmgr_close_sync(dbenv)) != 0 && ret == 0)
+	if ((t_ret = __repmgr_close_sync(env)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -157,6 +166,10 @@ __repmgr_set_ack_policy(dbenv, policy)
 	DB_ENV *dbenv;
 	int policy;
 {
+	ENV *env;
+
+	env = dbenv->env;
+
 	switch (policy) {
 	case DB_REPMGR_ACKS_ALL: /* FALLTHROUGH */
 	case DB_REPMGR_ACKS_ALL_PEERS: /* FALLTHROUGH */
@@ -164,11 +177,11 @@ __repmgr_set_ack_policy(dbenv, policy)
 	case DB_REPMGR_ACKS_ONE: /* FALLTHROUGH */
 	case DB_REPMGR_ACKS_ONE_PEER: /* FALLTHROUGH */
 	case DB_REPMGR_ACKS_QUORUM:
-		dbenv->rep_handle->perm_policy = policy;
+		env->rep_handle->perm_policy = policy;
 		return (0);
 	default:
-		__db_errx(dbenv,
-		    "Unknown ack_policy in DB_ENV->repmgr_set_ack_policy");
+		__db_errx(env,
+		    "unknown ack_policy in DB_ENV->repmgr_set_ack_policy");
 		return (EINVAL);
 	}
 }
@@ -181,16 +194,19 @@ __repmgr_get_ack_policy(dbenv, policy)
 	DB_ENV *dbenv;
 	int *policy;
 {
-	*policy = dbenv->rep_handle->perm_policy;
+	ENV *env;
+
+	env = dbenv->env;
+	*policy = env->rep_handle->perm_policy;
 	return (0);
 }
 
 /*
- * PUBLIC: int __repmgr_env_create __P((DB_ENV *, DB_REP *));
+ * PUBLIC: int __repmgr_env_create __P((ENV *, DB_REP *));
  */
 int
-__repmgr_env_create(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_env_create(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
 	int ret;
@@ -208,40 +224,40 @@ __repmgr_env_create(dbenv, db_rep)
 #else
 	db_rep->read_pipe = db_rep->write_pipe = -1;
 #endif
-	if ((ret = __repmgr_net_create(dbenv, db_rep)) == 0)
-		ret = __repmgr_queue_create(dbenv, db_rep);
+	if ((ret = __repmgr_net_create(db_rep)) == 0)
+		ret = __repmgr_queue_create(env, db_rep);
 
 	return (ret);
 }
 
 /*
- * PUBLIC: void __repmgr_env_destroy __P((DB_ENV *, DB_REP *));
+ * PUBLIC: void __repmgr_env_destroy __P((ENV *, DB_REP *));
  */
 void
-__repmgr_env_destroy(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_env_destroy(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
-	__repmgr_queue_destroy(dbenv);
-	__repmgr_net_destroy(dbenv, db_rep);
+	__repmgr_queue_destroy(env);
+	__repmgr_net_destroy(env, db_rep);
 	if (db_rep->messengers != NULL) {
-		__os_free(dbenv, db_rep->messengers);
+		__os_free(env, db_rep->messengers);
 		db_rep->messengers = NULL;
 	}
 }
 
 /*
- * PUBLIC: int __repmgr_stop_threads __P((DB_ENV *));
+ * PUBLIC: int __repmgr_stop_threads __P((ENV *));
  */
 int
-__repmgr_stop_threads(dbenv)
-	DB_ENV *dbenv;
+__repmgr_stop_threads(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REPMGR_CONNECTION *conn;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	/*
 	 * Hold mutex for the purpose of waking up threads, but then get out of
@@ -263,7 +279,7 @@ __repmgr_stop_threads(dbenv)
 	}
 	UNLOCK_MUTEX(db_rep->mutex);
 
-	return (__repmgr_wake_main_thread(dbenv));
+	return (__repmgr_wake_main_thread(env));
 
 unlock:
 	UNLOCK_MUTEX(db_rep->mutex);
@@ -271,18 +287,18 @@ unlock:
 }
 
 static int
-__repmgr_await_threads(dbenv)
-	DB_ENV *dbenv;
+__repmgr_await_threads(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REPMGR_RUNNABLE *messenger;
 	int ret, t_ret, i;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	ret = 0;
 	if (db_rep->elect_thread != NULL) {
 		ret = __repmgr_thread_join(db_rep->elect_thread);
-		__os_free(dbenv, db_rep->elect_thread);
+		__os_free(env, db_rep->elect_thread);
 		db_rep->elect_thread = NULL;
 	}
 
@@ -290,17 +306,17 @@ __repmgr_await_threads(dbenv)
 		messenger = db_rep->messengers[i];
 		if ((t_ret = __repmgr_thread_join(messenger)) != 0 && ret == 0)
 			ret = t_ret;
-		__os_free(dbenv, messenger);
+		__os_free(env, messenger);
 		db_rep->messengers[i] = NULL; /* necessary? */
 	}
-	__os_free(dbenv, db_rep->messengers);
+	__os_free(env, db_rep->messengers);
 	db_rep->messengers = NULL;
 
 	if (db_rep->selector != NULL) {
 		if ((t_ret = __repmgr_thread_join(db_rep->selector)) != 0 &&
 		    ret == 0)
 			ret = t_ret;
-		__os_free(dbenv, db_rep->selector);
+		__os_free(env, db_rep->selector);
 		db_rep->selector = NULL;
 	}
 
@@ -320,44 +336,34 @@ __repmgr_set_local_site(dbenv, host, port, flags)
 {
 	ADDRINFO *address_list;
 	DB_REP *db_rep;
+	ENV *env;
 	repmgr_netaddr_t addr;
 	int locked, ret;
-	const char *sharable_host;
-	char buffer[MAXHOSTNAMELEN];
+
+	env = dbenv->env;
 
 	if (flags != 0)
-		return (__db_ferr(dbenv, "DB_ENV->repmgr_set_local_site", 0));
+		return (__db_ferr(env, "DB_ENV->repmgr_set_local_site", 0));
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	if (db_rep->my_addr.port != 0) {
-		__db_errx(dbenv, "Listen address already set");
+		__db_errx(env, "Listen address already set");
 		return (EINVAL);
 	}
 
-	/*
-	 * If we haven't been given a sharable local host name, we must get one
-	 * for the purpose of sharing with our friends, but it's ok to use for
-	 * the address look-up.  "Helpfully" converting special names such as
-	 * "localhost" in this same way is tempting, but in practice turns out
-	 * to be too tricky.
-	 */
 	if (host == NULL) {
-		if ((ret = gethostname(buffer, sizeof(buffer))) != 0)
-			return (net_errno);
+		__db_errx(env,
+		    "repmgr_set_local_site: host name is required");
+		return (EINVAL);
+	}
 
-		/* In case truncation leaves no terminating NUL byte: */
-		buffer[sizeof(buffer) - 1] = '\0';
-		sharable_host = buffer;
-	} else
-		sharable_host = host;
-
-	if ((ret = __repmgr_getaddr(dbenv,
-	    host, port, AI_PASSIVE, &address_list)) != 0)
+	if ((ret = __repmgr_getaddr(
+	    env, host, port, AI_PASSIVE, &address_list)) != 0)
 		return (ret);
 
-	if ((ret = __repmgr_pack_netaddr(dbenv,
-	     sharable_host, port, address_list, &addr)) != 0) {
-		__db_freeaddrinfo(dbenv, address_list);
+	if ((ret = __repmgr_pack_netaddr(env,
+	     host, port, address_list, &addr)) != 0) {
+		__os_freeaddrinfo(env, address_list);
 		return (ret);
 	}
 
@@ -392,20 +398,23 @@ __repmgr_add_remote_site(dbenv, host, port, eidp, flags)
 	u_int32_t flags;
 {
 	DB_REP *db_rep;
+	ENV *env;
 	REPMGR_SITE *site;
 	int eid, locked, ret;
 
-	if ((ret = __db_fchk(dbenv,
+	env = dbenv->env;
+
+	if ((ret = __db_fchk(env,
 	    "DB_ENV->repmgr_add_remote_site", flags, DB_REPMGR_PEER)) != 0)
 		return (ret);
 
 	if (host == NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "repmgr_add_remote_site: host name is required");
 		return (EINVAL);
 	}
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	if (REPMGR_SYNC_INITED(db_rep)) {
 		LOCK_MUTEX(db_rep->mutex);
@@ -413,8 +422,14 @@ __repmgr_add_remote_site(dbenv, host, port, eidp, flags)
 	} else
 		locked = FALSE;
 
-	if ((ret = __repmgr_add_site(dbenv, host, port, &site)) != 0)
+	switch (ret = __repmgr_add_site(env, host, port, &site)) {
+	case 0:
+	case EEXIST:
+		ret = 0;
+		break;
+	default:
 		goto unlock;
+	}
 	eid = EID_FROM_SITE(site);
 
 	if (LF_ISSET(DB_REPMGR_PEER))

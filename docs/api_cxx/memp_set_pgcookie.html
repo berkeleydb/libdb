@@ -1,5 +1,5 @@
 <!--$Id: memp_set_pgcookie.so,v 10.17 2005/11/30 19:46:21 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbMpoolFile::set_pgcookie</h3>
+<b>DbMpoolFile::set_pgcookie</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DbMpoolFile::set(DBT *pgcookie);
 <p>
 int
 DbMpoolFile::get_pgcookie(DBT *dbt);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::set_pgcookie</h3>
+<b>Description: DbMpoolFile::set_pgcookie</b>
 <p>The DbMpoolFile::set_pgcookie method specifies a byte string that is provided
 to the functions registered to do input or output processing of the
 file's pages as they are read from or written to, the backing filesystem
@@ -46,14 +46,13 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>pgcookie</b><dd>The <b>pgcookie</b> parameter is a byte string provided to the
+<b>Parameters</b> <br>
+ <b>pgcookie</b><ul compact><li>The <b>pgcookie</b> parameter is a byte string provided to the
 functions registered to do input or output processing of the file's
-pages.
-</dl>
+pages.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::get_pgcookie</h3>
+<b>Description: DbMpoolFile::get_pgcookie</b>
 <p>The DbMpoolFile::get_pgcookie method returns the byte string.</p>
 <p>The DbMpoolFile::get_pgcookie method may be called at any time during the life of the
 application.</p>
@@ -62,20 +61,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>dbt</b><dd>The DbMpoolFile::get_pgcookie method returns a reference to the
-byte string in <b>dbt</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>dbt</b><ul compact><li>The DbMpoolFile::get_pgcookie method returns a reference to the
+byte string in <b>dbt</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

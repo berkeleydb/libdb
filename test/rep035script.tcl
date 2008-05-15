@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep035script.tcl,v 12.9 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep035script.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
 #
 # Rep035 script - continually calls lock_detect, txn_checkpoint,
 # or mpool_trickle.

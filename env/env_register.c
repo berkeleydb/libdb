@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  *
- * $Id: env_register.c,v 1.35 2007/05/17 15:15:11 bostic Exp $
+ * $Id: env_register.c,v 1.42 2008/05/07 12:27:33 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -18,16 +18,16 @@
 #define	PID_ISEMPTY(p)	(memcmp(p, PID_EMPTY, PID_LEN) == 0)
 #define	PID_LEN		(25)				/* PID entry length */
 
-#define	REGISTRY_LOCK(dbenv, pos, nowait)				\
-	__os_fdlock(dbenv, (dbenv)->registry, (off_t)(pos), 1, nowait)
-#define	REGISTRY_UNLOCK(dbenv, pos)					\
-	__os_fdlock(dbenv, (dbenv)->registry, (off_t)(pos), 0, 0)
-#define	REGISTRY_EXCL_LOCK(dbenv, nowait)				\
-	REGISTRY_LOCK(dbenv, 1, nowait)
-#define	REGISTRY_EXCL_UNLOCK(dbenv)					\
-	REGISTRY_UNLOCK(dbenv, 1)
+#define	REGISTRY_LOCK(env, pos, nowait)					\
+	__os_fdlock(env, (env)->dbenv->registry, (off_t)(pos), 1, nowait)
+#define	REGISTRY_UNLOCK(env, pos)					\
+	__os_fdlock(env, (env)->dbenv->registry, (off_t)(pos), 0, 0)
+#define	REGISTRY_EXCL_LOCK(env, nowait)					\
+	REGISTRY_LOCK(env, 1, nowait)
+#define	REGISTRY_EXCL_UNLOCK(env)					\
+	REGISTRY_UNLOCK(env, 1)
 
-static  int __envreg_add __P((DB_ENV *, int *));
+static  int __envreg_add __P((ENV *, int *));
 
 /*
  * Support for portable, multi-process database environment locking, based on
@@ -93,36 +93,54 @@ static  int __envreg_add __P((DB_ENV *, int *));
  * write continues.  That's very, very unlikely to happen.  This vulnerability
  * already exists in Berkeley DB, too, the registry code doesn't make it any
  * worse than it already is.
+ *
+ * The only way to avoid that window entirely is to ensure that all processes
+ * in the Berkeley DB environment exit before we run recovery.   Applications
+ * can do that if they maintain their own process registry outside of Berkeley
+ * DB, but it's a little more difficult to do here.   The obvious approach is
+ * to send signals to any process using the database environment as soon as we
+ * decide to run recovery, but there are problems with that approach: we might
+ * not have permission to send signals to the process, the process might have
+ * signal handlers installed, the cookie stored might not be the same as kill's
+ * argument, we may not be able to reliably tell if the process died, and there
+ * are probably other problems.  However, if we can send a signal, it reduces
+ * the window, and so we include the code here.  To configure it, turn on the
+ * DB_ENVREG_KILL_ALL #define.
  */
+#define	DB_ENVREG_KILL_ALL	0
+
 /*
  * __envreg_register --
- *	Register a DB_ENV handle.
+ *	Register a ENV handle.
  *
- * PUBLIC: int __envreg_register __P((DB_ENV *, int *));
+ * PUBLIC: int __envreg_register __P((ENV *, int *));
  */
 int
-__envreg_register(dbenv, need_recoveryp)
-	DB_ENV *dbenv;
+__envreg_register(env, need_recoveryp)
+	ENV *env;
 	int *need_recoveryp;
 {
+	DB_ENV *dbenv;
 	pid_t pid;
 	u_int32_t bytes, mbytes;
 	int ret;
 	char *pp;
 
 	*need_recoveryp = 0;
+
+	dbenv = env->dbenv;
 	dbenv->thread_id(dbenv, &pid, NULL);
 	pp = NULL;
 
 	if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-		__db_msg(dbenv, "%lu: register environment", (u_long)pid);
+		__db_msg(env, "%lu: register environment", (u_long)pid);
 
 	/* Build the path name and open the registry file. */
 	if ((ret =
-	    __db_appname(dbenv, DB_APP_NONE, REGISTER_FILE, 0, NULL, &pp)) != 0)
+	    __db_appname(env, DB_APP_NONE, REGISTER_FILE, 0, NULL, &pp)) != 0)
 		goto err;
-	if ((ret = __os_open(dbenv, pp, 0,
-	    DB_OSO_CREATE, __db_omode("rw-rw----"), &dbenv->registry)) != 0)
+	if ((ret = __os_open(env, pp, 0,
+	    DB_OSO_CREATE, DB_MODE_660, &dbenv->registry)) != 0)
 		goto err;
 
 	/*
@@ -132,7 +150,7 @@ __envreg_register(dbenv, need_recoveryp)
 	 * We're locking bytes that don't yet exist, but that's OK as far as
 	 * I know.
 	 */
-	if ((ret = REGISTRY_EXCL_LOCK(dbenv, 0)) != 0)
+	if ((ret = REGISTRY_EXCL_LOCK(env, 0)) != 0)
 		goto err;
 
 	/*
@@ -142,24 +160,24 @@ __envreg_register(dbenv, need_recoveryp)
 	 * system by removing the registry file and restarting the application.
 	 */
 	if ((ret = __os_ioinfo(
-	    dbenv, pp, dbenv->registry, &mbytes, &bytes, NULL)) != 0)
+	    env, pp, dbenv->registry, &mbytes, &bytes, NULL)) != 0)
 		goto err;
 	if (mbytes == 0 && bytes == 0) {
 		if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-			__db_msg(dbenv, "%lu: creating %s", (u_long)pid, pp);
+			__db_msg(env, "%lu: creating %s", (u_long)pid, pp);
 		*need_recoveryp = 1;
 	}
 
 	/* Register this process. */
-	if ((ret = __envreg_add(dbenv, need_recoveryp)) != 0)
+	if ((ret = __envreg_add(env, need_recoveryp)) != 0)
 		goto err;
 
 	/*
 	 * Release our exclusive lock if we don't need to run recovery.  If
-	 * we need to run recovery, DB_ENV->open will call back into register
+	 * we need to run recovery, ENV->open will call back into register
 	 * code once recovery has completed.
 	 */
-	if (*need_recoveryp == 0 && (ret = REGISTRY_EXCL_UNLOCK(dbenv)) != 0)
+	if (*need_recoveryp == 0 && (ret = REGISTRY_EXCL_UNLOCK(env)) != 0)
 		goto err;
 
 	if (0) {
@@ -170,12 +188,12 @@ err:		*need_recoveryp = 0;
 		 * Closing the file handle must release all of our locks.
 		 */
 		if (dbenv->registry != NULL)
-			(void)__os_closehandle(dbenv, dbenv->registry);
+			(void)__os_closehandle(env, dbenv->registry);
 		dbenv->registry = NULL;
 	}
 
 	if (pp != NULL)
-		__os_free(dbenv, pp);
+		__os_free(env, pp);
 
 	return (ret);
 }
@@ -185,10 +203,11 @@ err:		*need_recoveryp = 0;
  *	Add the process' pid to the register.
  */
 static int
-__envreg_add(dbenv, need_recoveryp)
-	DB_ENV *dbenv;
+__envreg_add(env, need_recoveryp)
+	ENV *env;
 	int *need_recoveryp;
 {
+	DB_ENV *dbenv;
 	pid_t pid;
 	off_t end, pos;
 	size_t nr, nw;
@@ -197,6 +216,7 @@ __envreg_add(dbenv, need_recoveryp)
 	int need_recovery, ret;
 	char *p, buf[PID_LEN + 10], pid_buf[PID_LEN + 10];
 
+	dbenv = env->dbenv;
 	need_recovery = 0;
 	COMPQUIET(p, NULL);
 
@@ -205,7 +225,18 @@ __envreg_add(dbenv, need_recoveryp)
 	snprintf(pid_buf, sizeof(pid_buf), PID_FMT, (u_long)pid);
 
 	if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-		__db_msg(dbenv, "%lu: adding self to registry", (u_long)pid);
+		__db_msg(env, "%lu: adding self to registry", (u_long)pid);
+
+#if DB_ENVREG_KILL_ALL
+	if (0) {
+kill_all:	/*
+		 * A second pass through the file, this time killing any
+		 * processes still running.
+		 */
+		if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
+			return (ret);
+	}
+#endif
 
 	/*
 	 * Read the file.  Skip empty slots, and check that a lock is held
@@ -215,7 +246,7 @@ __envreg_add(dbenv, need_recoveryp)
 	 */
 	for (lcnt = 0;; ++lcnt) {
 		if ((ret = __os_read(
-		    dbenv, dbenv->registry, buf, PID_LEN, &nr)) != 0)
+		    env, dbenv->registry, buf, PID_LEN, &nr)) != 0)
 			return (ret);
 		if (nr == 0)
 			break;
@@ -232,18 +263,18 @@ __envreg_add(dbenv, need_recoveryp)
 
 		if (PID_ISEMPTY(buf)) {
 			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-				__db_msg(dbenv, "%02u: EMPTY", lcnt);
+				__db_msg(env, "%02u: EMPTY", lcnt);
 			continue;
 		}
 
 		/*
 		 * !!!
 		 * DB_REGISTER is implemented using per-process locking, only
-		 * a single DB_ENV handle may be open per process.  Enforce
+		 * a single ENV handle may be open per process.  Enforce
 		 * that restriction.
 		 */
 		if (memcmp(buf, pid_buf, PID_LEN) == 0) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "DB_REGISTER limits processes to one open DB_ENV handle per environment");
 			return (EINVAL);
 		}
@@ -254,19 +285,33 @@ __envreg_add(dbenv, need_recoveryp)
 			buf[nr - 1] = '\0';
 		}
 
+#if DB_ENVREG_KILL_ALL
+		if (need_recovery) {
+			pid = (pid_t)strtoul(buf, NULL, 10);
+			(void)kill(pid, SIGKILL);
+
+			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
+				__db_msg(env, "%02u: %s: KILLED", lcnt, p);
+			continue;
+		}
+#endif
 		pos = (off_t)lcnt * PID_LEN;
-		if (REGISTRY_LOCK(dbenv, pos, 1) == 0) {
-			if ((ret = REGISTRY_UNLOCK(dbenv, pos)) != 0)
+		if (REGISTRY_LOCK(env, pos, 1) == 0) {
+			if ((ret = REGISTRY_UNLOCK(env, pos)) != 0)
 				return (ret);
 
 			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-				__db_msg(dbenv, "%02u: %s: FAILED", lcnt, p);
+				__db_msg(env, "%02u: %s: FAILED", lcnt, p);
 
 			need_recovery = 1;
+#if DB_ENVREG_KILL_ALL
+			goto kill_all;
+#else
 			break;
+#endif
 		} else
 			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-				__db_msg(dbenv, "%02u: %s: LOCKED", lcnt, p);
+				__db_msg(env, "%02u: %s: LOCKED", lcnt, p);
 	}
 
 	/*
@@ -278,11 +323,11 @@ __envreg_add(dbenv, need_recoveryp)
 	 */
 	if (need_recovery) {
 		if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-			__db_msg(dbenv, "%lu: recovery required", (u_long)pid);
+			__db_msg(env, "%lu: recovery required", (u_long)pid);
 
 		/* Figure out how big the file is. */
 		if ((ret = __os_ioinfo(
-		    dbenv, NULL, dbenv->registry, &mbytes, &bytes, NULL)) != 0)
+		    env, NULL, dbenv->registry, &mbytes, &bytes, NULL)) != 0)
 			return (ret);
 		end = (off_t)mbytes * MEGABYTE + bytes;
 
@@ -294,11 +339,11 @@ __envreg_add(dbenv, need_recoveryp)
 		 * the file if a process died when trying to register.  If so,
 		 * correct for it and overwrite it as well.
 		 */
-		if ((ret = __os_seek(dbenv, dbenv->registry, 0, 0, 0)) != 0)
+		if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
 			return (ret);
 		for (lcnt = (u_int)end / PID_LEN +
 		    ((u_int)end % PID_LEN == 0 ? 0 : 1); lcnt > 0; --lcnt)
-			if ((ret = __os_write(dbenv,
+			if ((ret = __os_write(env,
 			    dbenv->registry, PID_EMPTY, PID_LEN, &nw)) != 0)
 				return (ret);
 	}
@@ -307,24 +352,24 @@ __envreg_add(dbenv, need_recoveryp)
 	 * Seek to the first process slot and add ourselves to the first empty
 	 * slot we can lock.
 	 */
-	if ((ret = __os_seek(dbenv, dbenv->registry, 0, 0, 0)) != 0)
+	if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
 		return (ret);
 	for (lcnt = 0;; ++lcnt) {
 		if ((ret = __os_read(
-		    dbenv, dbenv->registry, buf, PID_LEN, &nr)) != 0)
+		    env, dbenv->registry, buf, PID_LEN, &nr)) != 0)
 			return (ret);
 		if (nr == PID_LEN && !PID_ISEMPTY(buf))
 			continue;
 		pos = (off_t)lcnt * PID_LEN;
-		if (REGISTRY_LOCK(dbenv, pos, 1) == 0) {
+		if (REGISTRY_LOCK(env, pos, 1) == 0) {
 			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-				__db_msg(dbenv,
+				__db_msg(env,
 				    "%lu: locking slot %02u at offset %lu",
 				    (u_long)pid, lcnt, (u_long)pos);
 
-			if ((ret = __os_seek(dbenv,
+			if ((ret = __os_seek(env,
 			    dbenv->registry, 0, 0, (u_int32_t)pos)) != 0 ||
-			    (ret = __os_write(dbenv,
+			    (ret = __os_write(env,
 			    dbenv->registry, pid_buf, PID_LEN, &nw)) != 0)
 				return (ret);
 			dbenv->registry_off = (u_int32_t)pos;
@@ -340,18 +385,20 @@ __envreg_add(dbenv, need_recoveryp)
 
 /*
  * __envreg_unregister --
- *	Unregister a DB_ENV handle.
+ *	Unregister a ENV handle.
  *
- * PUBLIC: int __envreg_unregister __P((DB_ENV *, int));
+ * PUBLIC: int __envreg_unregister __P((ENV *, int));
  */
 int
-__envreg_unregister(dbenv, recovery_failed)
-	DB_ENV *dbenv;
+__envreg_unregister(env, recovery_failed)
+	ENV *env;
 	int recovery_failed;
 {
+	DB_ENV *dbenv;
 	size_t nw;
 	int ret, t_ret;
 
+	dbenv = env->dbenv;
 	ret = 0;
 
 	/*
@@ -364,16 +411,16 @@ __envreg_unregister(dbenv, recovery_failed)
 		goto err;
 
 	/*
-	 * Why isn't an exclusive lock necessary to discard a DB_ENV handle?
+	 * Why isn't an exclusive lock necessary to discard a ENV handle?
 	 *
 	 * We mark our process ID slot empty before we discard the process slot
 	 * lock, and threads of control reviewing the register file ignore any
 	 * slots which they can't lock.
 	 */
-	if ((ret = __os_seek(dbenv,
+	if ((ret = __os_seek(env,
 	    dbenv->registry, 0, 0, dbenv->registry_off)) != 0 ||
 	    (ret = __os_write(
-	    dbenv, dbenv->registry, PID_EMPTY, PID_LEN, &nw)) != 0)
+	    env, dbenv->registry, PID_EMPTY, PID_LEN, &nw)) != 0)
 		goto err;
 
 	/*
@@ -390,7 +437,7 @@ __envreg_unregister(dbenv, recovery_failed)
 	 * don't think.
 	 */
 err:	if ((t_ret =
-	    __os_closehandle(dbenv, dbenv->registry)) != 0 && ret == 0)
+	    __os_closehandle(env, dbenv->registry)) != 0 && ret == 0)
 		ret = t_ret;
 
 	dbenv->registry = NULL;
@@ -399,26 +446,29 @@ err:	if ((t_ret =
 
 /*
  * __envreg_xunlock --
- *	Discard the exclusive lock held by the DB_ENV handle.
+ *	Discard the exclusive lock held by the ENV handle.
  *
- * PUBLIC: int __envreg_xunlock __P((DB_ENV *));
+ * PUBLIC: int __envreg_xunlock __P((ENV *));
  */
 int
-__envreg_xunlock(dbenv)
-	DB_ENV *dbenv;
+__envreg_xunlock(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
 	pid_t pid;
 	int ret;
+
+	dbenv = env->dbenv;
 
 	dbenv->thread_id(dbenv, &pid, NULL);
 
 	if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "%lu: recovery completed, unlocking", (u_long)pid);
 
-	if ((ret = REGISTRY_EXCL_UNLOCK(dbenv)) == 0)
+	if ((ret = REGISTRY_EXCL_UNLOCK(env)) == 0)
 		return (ret);
 
-	__db_err(dbenv, ret, "%s: exclusive file unlock", REGISTER_FILE);
-	return (__db_panic(dbenv, ret));
+	__db_err(env, ret, "%s: exclusive file unlock", REGISTER_FILE);
+	return (__env_panic(env, ret));
 }

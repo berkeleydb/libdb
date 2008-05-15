@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: txn_method.c,v 12.9 2007/05/17 15:16:00 bostic Exp $
+ * $Id: txn_method.c,v 12.11 2008/01/08 20:59:00 bostic Exp $
  */
 
 #include "db_config.h"
@@ -53,13 +53,17 @@ __txn_get_tx_max(dbenv, tx_maxp)
 	DB_ENV *dbenv;
 	u_int32_t *tx_maxp;
 {
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->tx_handle, "DB_ENV->get_tx_max", DB_INIT_TXN);
+	ENV *env;
 
-	if (TXN_ON(dbenv)) {
+	env = dbenv->env;
+
+	ENV_NOT_CONFIGURED(env,
+	    env->tx_handle, "DB_ENV->get_tx_max", DB_INIT_TXN);
+
+	if (TXN_ON(env)) {
 		/* Cannot be set after open, no lock required to read. */
 		*tx_maxp = ((DB_TXNREGION *)
-		    dbenv->tx_handle->reginfo.primary)->maxtxns;
+		    env->tx_handle->reginfo.primary)->maxtxns;
 	} else
 		*tx_maxp = dbenv->tx_max;
 	return (0);
@@ -76,7 +80,11 @@ __txn_set_tx_max(dbenv, tx_max)
 	DB_ENV *dbenv;
 	u_int32_t tx_max;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_tx_max");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_tx_max");
 
 	dbenv->tx_max = tx_max;
 	return (0);
@@ -105,7 +113,11 @@ __txn_set_tx_timestamp(dbenv, timestamp)
 	DB_ENV *dbenv;
 	time_t *timestamp;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_tx_timestamp");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_tx_timestamp");
 
 	dbenv->tx_timestamp = *timestamp;
 	return (0);

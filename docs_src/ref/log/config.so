@@ -1,4 +1,4 @@
-m4_comment([$Id: config.so,v 10.20 2006/08/30 10:08:16 bostic Exp $])
+m4_comment([$Id: config.so,v 10.22 2008/04/29 22:35:23 mbrey Exp $])
 
 m4_ref_title(Logging Subsystem,
     Configuring logging, @logging configuration, log/intro, log/limits)
@@ -32,5 +32,20 @@ Larger buffer sizes can significantly increase throughput in the
 presence of long-running transactions, highly concurrent applications,
 or transactions producing large amounts of data.  By default, the buffer
 is approximately 32KB.])
+
+m4_p([dnl
+The m4_refT(dbenv_set_lg_dir) specifies the directory in which
+log files will be placed.  By default, log files are placed in
+the environment home directory.])
+
+m4_p([dnl
+The m4_refT(dbenv_set_lg_filemode) specifies the absolute file mode for
+created log files.  This method is only useful for the rare m4_db
+application that does not control its umask value.])
+
+m4_p([dnl
+The m4_refT(dbenv_log_set_config) configures several boolean parameters
+that control the use of file system controls such as O_DIRECT and O_DSYNC,
+automatic removal of log files, in-memory logging, and pre-zeroing of logfiles.])
 
 m4_page_footer

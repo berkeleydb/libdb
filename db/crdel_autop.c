@@ -11,12 +11,12 @@
 #include "dbinc/txn.h"
 
 /*
- * PUBLIC: int __crdel_metasub_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __crdel_metasub_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__crdel_metasub_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -30,7 +30,8 @@ __crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __crdel_metasub_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __crdel_metasub_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__crdel_metasub%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -50,17 +51,17 @@ __crdel_metasub_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tlsn: [%lu][%lu]\n",
 	    (u_long)argp->lsn.file, (u_long)argp->lsn.offset);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __crdel_inmem_create_print __P((DB_ENV *, DBT *,
+ * PUBLIC: int __crdel_inmem_create_print __P((ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_create_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__crdel_inmem_create_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -74,7 +75,7 @@ __crdel_inmem_create_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __crdel_inmem_create_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __crdel_inmem_create_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__crdel_inmem_create%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -98,17 +99,17 @@ __crdel_inmem_create_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\tpgsize: %lu\n", (u_long)argp->pgsize);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __crdel_inmem_rename_print __P((DB_ENV *, DBT *,
+ * PUBLIC: int __crdel_inmem_rename_print __P((ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__crdel_inmem_rename_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -122,7 +123,7 @@ __crdel_inmem_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __crdel_inmem_rename_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __crdel_inmem_rename_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__crdel_inmem_rename%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -150,17 +151,17 @@ __crdel_inmem_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	}
 	(void)printf("\n");
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __crdel_inmem_remove_print __P((DB_ENV *, DBT *,
+ * PUBLIC: int __crdel_inmem_remove_print __P((ENV *, DBT *,
  * PUBLIC:     DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__crdel_inmem_remove_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -174,7 +175,7 @@ __crdel_inmem_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __crdel_inmem_remove_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __crdel_inmem_remove_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__crdel_inmem_remove%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -196,32 +197,30 @@ __crdel_inmem_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	}
 	(void)printf("\n");
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __crdel_init_print __P((DB_ENV *, int (***)(DB_ENV *,
- * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
+ * PUBLIC: int __crdel_init_print __P((ENV *, DB_DISTAB *));
  */
 int
-__crdel_init_print(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__crdel_init_print(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
 	int ret;
 
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __crdel_metasub_print, DB___crdel_metasub)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __crdel_inmem_create_print, DB___crdel_inmem_create)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __crdel_inmem_rename_print, DB___crdel_inmem_rename)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __crdel_inmem_remove_print, DB___crdel_inmem_remove)) != 0)
 		return (ret);
 	return (0);

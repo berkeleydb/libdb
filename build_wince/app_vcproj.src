@@ -77,7 +77,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/ALIGN:4096 /subsystem:$(CESubsystem) /MACHINE:ARM "
-				AdditionalDependencies="libdb46sd.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
+ 				AdditionalDependencies="libdb@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
 				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/@project_name@.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
@@ -177,7 +177,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/ALIGN:4096 /subsystem:$(CESubsystem) /MACHINE:ARM "
-				AdditionalDependencies="libdb46sd.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
+ 				AdditionalDependencies="libdb@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
 				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/@project_name@.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
@@ -279,7 +279,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/ALIGN:4096 /subsystem:$(CESubsystem) /MACHINE:ARM "
-				AdditionalDependencies="libdb46s.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
+ 				AdditionalDependencies="libdb@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
 				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/@project_name@.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -380,7 +380,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/ALIGN:4096 /subsystem:$(CESubsystem) /MACHINE:ARM "
-				AdditionalDependencies="libdb46s.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
+ 				AdditionalDependencies="libdb@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib commctrl.lib coredll.lib secchk.lib ccrtrtti.lib"
 				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/@project_name@.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"

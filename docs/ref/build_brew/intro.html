@@ -1,5 +1,5 @@
 <!--$Id: intro.so,v 1.7 2007/07/10 16:54:16 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,14 +10,13 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for BREW</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for BREW</dl></b></td>
 <td align=right><a href="../debug/printlog.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_s60/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Building for BREW</h3>
+<p align=center><b>Building for BREW</b></p>
 <p>This page has general instructions for building the Berkeley DB library
 and applets for the BREW platform.</p>
-<h3>Building Berkeley DB for the BREW simulator</h3>
+<b>Building Berkeley DB for the BREW simulator</b>
 <p>The <b>build_brew</b> directory in the Berkeley DB distribution contains
 project files for Microsoft Visual C++:</p>
 <table border=1 align=center>
@@ -61,7 +60,7 @@ Multithreaded DLL" compile option. You will also need to add the
 <b>build_brew</b> directory to the list of include directories of your
 application's project, or copy the Berkeley DB include files to another
 location.</p>
-<h3>Building a BREW applet with Berkeley DB library</h3>
+<b>Building a BREW applet with Berkeley DB library</b>
 <p>Building a Berkeley DB application in the BREW environment is similar to
 building in a Windows environment.  Ensure that <b>db.h</b> is in the
 build include path and <b>bdb_brew.lib</b> is in the build library
@@ -82,7 +81,7 @@ requirement, use the following code instead:
 if (pMe-&gt;db_global_values != NULL)
 	FREE(pMe-&gt;db_global_values);</pre></blockquote>
 </ol>
-<h3>Building a BREW applet for the physical device</h3>
+<b>Building a BREW applet for the physical device</b>
 <p>The binaries linked with the Berkeley DB library for the BREW simulator are
 not target files that can run on the physical device.  In order to build
 for the physical device, an ARM compiler is needed: the recommended ARM
@@ -103,6 +102,6 @@ example.
 is the file which should be uploaded to the physical device.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../debug/printlog.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_s60/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

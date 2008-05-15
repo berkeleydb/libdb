@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: ExceptionWrapperTest.java,v 12.6 2007/05/04 00:28:30 mark Exp $
+ * $Id: ExceptionWrapperTest.java,v 12.8 2008/02/07 17:12:33 mark Exp $
  */
 
 package com.sleepycat.util.test;
@@ -16,10 +16,10 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import com.sleepycat.collections.test.DbTestUtil;
 import com.sleepycat.util.ExceptionUnwrapper;
 import com.sleepycat.util.IOExceptionWrapper;
 import com.sleepycat.util.RuntimeExceptionWrapper;
+import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
@@ -53,7 +53,7 @@ public class ExceptionWrapperTest extends TestCase {
 
     public void setUp() {
 
-        DbTestUtil.printTestName("ExceptionWrapperTest." + getName());
+        SharedTestUtils.printTestName("ExceptionWrapperTest." + getName());
     }
 
     public void testIOWrapper()

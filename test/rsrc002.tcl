@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: rsrc002.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: rsrc002.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rsrc002
 # TEST	Recno backing file test #2: test of set_re_delim.  Specify a backing

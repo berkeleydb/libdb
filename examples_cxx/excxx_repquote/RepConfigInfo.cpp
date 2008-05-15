@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: RepConfigInfo.cpp,v 1.6 2007/05/17 15:15:31 bostic Exp $
+ * $Id: RepConfigInfo.cpp,v 1.7 2008/01/08 20:58:27 bostic Exp $
  */
 
 #include "RepConfigInfo.h"

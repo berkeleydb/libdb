@@ -1,0 +1,57 @@
+m4_comment([$Id: env_set_lk_partitions.so,v 10.2 2008/04/29 22:45:33 mbrey Exp $])
+
+define(M4PAGELOCAL, [dbenv_set_lk_partitions, dbenv_get_lk_partitions])
+include(m4/m4.seealso)
+
+m4_pf_header(m4_ref(dbenv_set_lk_partitions),
+ifelse(M4API, C_API, [dnl
+int
+DB_ENV-__GT__set_lk_partitions(DB_ENV *dbenv, u_int32_t partitions);
+m4_blank
+int
+DB_ENV-__GT__get_lk_partitions(DB_ENV *dbenv, u_int32_t *lk_partitions);
+])
+ifelse(M4API, CXX_API, [dnl
+int
+DbEnv::set_lk_partitions(u_int32_t partitions);
+m4_blank
+int
+DbEnv::get_lk_partitions(u_int32_t *lk_partitions);
+]))
+
+m4_p([dnl
+Set the number of lock table partitions in the m4_db
+environment.
+The default value is 10 times the number of CPUs on the system if there
+is more than one CPU.
+Increasing the number of partitions can provide for greater throughput on
+a system with multiple CPUs and more than one thread contending for the
+lock manager.
+On single processor systems more than one partition may increase the overhead
+of the lock manager.  Systems often report threading contexts as CPUs this
+may require setting the number of partitions to 1 to get optimal performance.
+])
+
+m4_env_config(dbenv_set_lk_partitions,
+[number of partitions], set_lk_partitions, [the number of partitions])
+
+m4_scope_env(dbenv_set_lk_partitions)
+
+m4_when_envopen(dbenv_set_lk_partitions, ignored)
+
+m4_return(dbenv_set_lk_partitions, std)
+
+m4_parambegin
+m4_param(partitions, [dnl
+The m4_arg(partitions) parameter is the number of partitions
+to be configured in the m4_db environment.])
+m4_paramend
+
+m4_err(dbenv_set_lk_partitions,
+einval, [the method was called after m4_ref(dbenv_open) was called])
+
+m4_pf_getter(dbenv_get_lk_partitions,
+number of partitions,, lk_partitions)
+
+m4_seealso(DbLock)
+m4_page_footer

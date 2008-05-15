@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: crdel_rec.c,v 12.21 2007/06/13 18:21:30 ubell Exp $
+ * $Id: crdel_rec.c,v 12.28 2008/02/18 04:46:42 mjc Exp $
  */
 
 #include "db_config.h"
@@ -21,32 +21,34 @@
  *	Recovery function for metasub.
  *
  * PUBLIC: int __crdel_metasub_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_metasub_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
 	__crdel_metasub_args *argp;
+	DB_THREAD_INFO *ip;
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_p, ret, t_ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
 	REC_PRINT(__crdel_metasub_print);
-	REC_INTRO(__crdel_metasub_read, 0, 0);
+	REC_INTRO(__crdel_metasub_read, ip, 0);
 
-	if ((ret = __memp_fget(mpf, &argp->pgno, NULL,
-	    0, &pagep)) != 0) {
+	if ((ret = __memp_fget(mpf, &argp->pgno,
+	    ip, NULL, 0, &pagep)) != 0) {
 		/* If this is an in-memory file, this might be OK. */
 		if (F_ISSET(file_dbp, DB_AM_INMEM) &&
-		    (ret = __memp_fget(mpf, &argp->pgno, NULL,
+		    (ret = __memp_fget(mpf, &argp->pgno, ip, NULL,
 		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &pagep)) == 0) {
 			LSN_NOT_LOGGED(LSN(pagep));
 		} else {
@@ -57,10 +59,10 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	}
 
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
-	CHECK_LSN(dbenv, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn);
 
 	if (cmp_p == 0 && DB_REDO(op)) {
-		REC_DIRTY(mpf, file_dbp->priority, &pagep);
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		memcpy(pagep, argp->page.data, argp->page.size);
 		LSN(pagep) = *lsnp;
 
@@ -71,7 +73,7 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		if (F_ISSET(file_dbp, DB_AM_INMEM) &&
 		    argp->pgno == PGNO_BASE_MD &&
-		    (ret = __db_meta_setup(file_dbp->dbenv, file_dbp,
+		    (ret = __db_meta_setup(file_dbp->env, file_dbp,
 		    file_dbp->dname, (DBMETA *)pagep, 0, DB_CHK_META)) != 0)
 			goto out;
 	} else if (DB_UNDO(op)) {
@@ -87,15 +89,15 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 		 * freed.  Opening the subdb will have reinitialized the
 		 * page, but not the lsn.
 		 */
-		REC_DIRTY(mpf, file_dbp->priority, &pagep);
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		LSN(pagep) = argp->lsn;
 	}
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	if (pagep != NULL &&
-	     (t_ret = __memp_fput(mpf, pagep, file_dbp->priority)) != 0 &&
+out:	if (pagep != NULL && (t_ret = __memp_fput(mpf,
+	     ip, pagep, file_dbp->priority)) != 0 &&
 	    ret == 0)
 		ret = t_ret;
 
@@ -107,21 +109,22 @@ out:	if (pagep != NULL &&
  *	Recovery function for inmem_create.
  *
  * PUBLIC: int __crdel_inmem_create_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_create_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
-	DB *dbp;
 	__crdel_inmem_create_args *argp;
+	DB *dbp;
 	int do_close, ret, t_ret;
 
 	COMPQUIET(info, NULL);
+
 	dbp = NULL;
 	do_close = 0;
 	REC_PRINT(__crdel_inmem_create_print);
@@ -134,8 +137,7 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 		else
 			ret = 0;
 	} else
-		ret = __dbreg_id_to_db_int(dbenv,
-		    argp->txnp, &dbp, argp->fileid, 0, 0);
+		ret = __dbreg_id_to_db(env, argp->txnp, &dbp, argp->fileid, 0);
 
 	if (DB_REDO(op)) {
 		/*
@@ -143,12 +145,12 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 		 * tmp file.
 		 */
 		if (ret != 0) {
-			if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+			if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 				goto out;
 
 			F_SET(dbp, DB_AM_RECOVER | DB_AM_INMEM);
 			memcpy(dbp->fileid, argp->fid.data, DB_FILE_ID_LEN);
-			if (((ret = __os_strdup(dbenv,
+			if (((ret = __os_strdup(env,
 			    argp->name.data, &dbp->dname)) != 0))
 				goto out;
 
@@ -166,14 +168,14 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 			goto out;
 		dbp->preserve_fid = 1;
 		MAKE_INMEM(dbp);
-		if ((ret = __db_env_setup(dbp,
+		if ((ret = __env_setup(dbp,
 		    NULL, NULL, argp->name.data, TXN_INVALID, 0)) != 0)
 			goto out;
-		ret = __db_env_mpool(dbp, argp->name.data, 0);
+		ret = __env_mpool(dbp, argp->name.data, 0);
 
 		if (ret == ENOENT) {
 			dbp->pgsize = argp->pgsize;
-			if ((ret = __db_env_mpool(dbp,
+			if ((ret = __env_mpool(dbp,
 			    argp->name.data, DB_CREATE)) != 0)
 				goto out;
 		} else if (ret != 0)
@@ -182,7 +184,7 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 
 	if (DB_UNDO(op)) {
 		if (ret == 0)
-			ret = __memp_nameop(dbenv, argp->fid.data, NULL,
+			ret = __memp_nameop(env, argp->fid.data, NULL,
 			    (const char *)argp->name.data,  NULL, 1);
 
 		if (ret == ENOENT || ret == DB_DELETED)
@@ -209,11 +211,11 @@ out:	if (dbp != NULL) {
  *	Recovery function for inmem_rename.
  *
  * PUBLIC: int __crdel_inmem_rename_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_rename_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_rename_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -224,19 +226,20 @@ __crdel_inmem_rename_recover(dbenv, dbtp, lsnp, op, info)
 	int ret;
 
 	COMPQUIET(info, NULL);
+
 	REC_PRINT(__crdel_inmem_rename_print);
 	REC_NOOP_INTRO(__crdel_inmem_rename_read);
 	fileid = argp->fid.data;
 
 	/* Void out errors because the files may or may not still exist. */
 	if (DB_REDO(op))
-		(void)__memp_nameop(dbenv, fileid,
+		(void)__memp_nameop(env, fileid,
 		    (const char *)argp->newname.data,
 		    (const char *)argp->oldname.data,
 		    (const char *)argp->newname.data, 1);
 
 	if (DB_UNDO(op))
-		(void)__memp_nameop(dbenv, fileid,
+		(void)__memp_nameop(env, fileid,
 		    (const char *)argp->oldname.data,
 		    (const char *)argp->newname.data,
 		    (const char *)argp->oldname.data, 1);
@@ -252,11 +255,11 @@ __crdel_inmem_rename_recover(dbenv, dbtp, lsnp, op, info)
  *	Recovery function for inmem_remove.
  *
  * PUBLIC: int __crdel_inmem_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_remove_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -266,6 +269,7 @@ __crdel_inmem_remove_recover(dbenv, dbtp, lsnp, op, info)
 	int ret;
 
 	COMPQUIET(info, NULL);
+
 	REC_PRINT(__crdel_inmem_remove_print);
 	REC_NOOP_INTRO(__crdel_inmem_remove_read);
 
@@ -274,7 +278,7 @@ __crdel_inmem_remove_recover(dbenv, dbtp, lsnp, op, info)
 	 * The remove may fail, which is OK.
 	 */
 	if (DB_REDO(op)) {
-		(void)__memp_nameop(dbenv,
+		(void)__memp_nameop(env,
 		    argp->fid.data, NULL, argp->name.data, NULL, 1);
 	}
 

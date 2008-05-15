@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_msg.c,v 12.15 2007/05/17 17:29:27 bostic Exp $
+ * $Id: rep_msg.c,v 12.16 2008/01/08 20:58:24 bostic Exp $
  */
 
 #include <sys/types.h>

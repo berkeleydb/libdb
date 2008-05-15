@@ -6,7 +6,7 @@
 #define	JDBENV (arg1 ? (jobject)DB_ENV_INTERNAL(arg1) : NULL)
 #define	DB2JDBENV ((jobject)DB_ENV_INTERNAL(arg1->dbenv))
 #define	DBC2JDBENV ((jobject)DB_ENV_INTERNAL(arg1->dbp->dbenv))
-#define	TXN2JDBENV ((jobject)DB_ENV_INTERNAL(arg1->mgrp->dbenv))
+#define	TXN2JDBENV ((jobject)DB_ENV_INTERNAL(arg1->mgrp->env->dbenv))
 %}
 
 /* Common case exception handling */

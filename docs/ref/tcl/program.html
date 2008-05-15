@@ -1,5 +1,5 @@
-<!--$Id: program.so,v 11.15 2006/07/24 17:46:17 sue Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: program.so,v 11.16 2007/07/30 19:26:29 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,17 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Tcl API</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Tcl API</dl></b></td>
 <td align=right><a href="../tcl/using.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../tcl/error.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Tcl API programming notes</h3>
+<p align=center><b>Tcl API programming notes</b></p>
+<p>The Berkeley DB Tcl API does not attempt to avoid evaluating input as Tcl
+commands.  For this reason, it may be dangerous to pass unreviewed user
+input through the Berkeley DB Tcl API, as the input may subsequently be
+evaluated as a Tcl command.  Additionally, the Berkeley DB Tcl API
+initialization routine resets process' effective user and group IDs to
+the real user and group IDs, to minimize the effectiveness of a Tcl
+injection attack.</p>
 <p>The Tcl API closely parallels the Berkeley DB programmatic interfaces.  If you
 are already familiar with one of those interfaces, there will not be many
 surprises in the Tcl API.</p>
@@ -29,6 +35,6 @@ supported via the Tcl API. For example, there is no equivalent to the
 methods.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../tcl/using.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../tcl/error.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

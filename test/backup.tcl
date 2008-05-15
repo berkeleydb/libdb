@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information. 
 #
-# Copyright (c) 2007 Oracle.  All rights reserved.
+# Copyright (c) 2007,2008 Oracle.  All rights reserved.
 # 
-# $Id: backup.tcl,v 1.4 2007/06/11 19:20:09 carol Exp $
+# $Id: backup.tcl,v 1.5 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	backup
 # TEST 	Test of hotbackup functionality. 

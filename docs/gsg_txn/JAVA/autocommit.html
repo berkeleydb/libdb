@@ -36,8 +36,16 @@
       </div>
       <p>
             While transactions are frequently used to provide atomicity to
-            multiple database operations, it is sometimes necessary to perform
-            a single database operation under the control of a transaction.
+            multiple database 
+            <span>
+                    or store
+            </span>
+            operations, it is sometimes necessary to perform
+            a single database 
+            <span>
+                    or store
+            </span>
+            operation under the control of a transaction.
             Rather than force you to obtain a transaction, perform the single 
             write operation, and then either commit or abort the transaction,
             you can automatically group this sequence of events using
@@ -50,7 +58,11 @@
         <ol type="1">
           <li>
             <p>
-                    Open your environment and your databases so that they support
+                        Open your environment and your databases 
+                        <span>
+                            or store
+                        </span>
+                        so that they support
                     transactions.  See <a href="enabletxn.html">Enabling Transactions</a> 
                     for details.
                 </p>
@@ -58,7 +70,11 @@
           <li>
             <p>
                     Do not provide a transactional handle to the method that is
-                    performing the database write operation.
+                    performing the database 
+                        <span>
+                            or store
+                        </span>
+                    write operation.
                 </p>
           </li>
         </ol>

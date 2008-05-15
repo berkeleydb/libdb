@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: bt_reclaim.c,v 12.9 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_reclaim.c,v 12.12 2008/01/31 14:58:41 bostic Exp $
  */
 
 #include "db_config.h"
@@ -17,11 +17,12 @@
  * __bam_reclaim --
  *	Free a database.
  *
- * PUBLIC: int __bam_reclaim __P((DB *, DB_TXN *));
+ * PUBLIC: int __bam_reclaim __P((DB *, DB_THREAD_INFO *, DB_TXN *));
  */
 int
-__bam_reclaim(dbp, txn)
+__bam_reclaim(dbp, ip, txn)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 {
 	DBC *dbc;
@@ -29,7 +30,7 @@ __bam_reclaim(dbp, txn)
 	int ret, t_ret;
 
 	/* Acquire a cursor. */
-	if ((ret = __db_cursor(dbp, txn, &dbc, 0)) != 0)
+	if ((ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
 		return (ret);
 
 	/* Write lock the metapage for deallocations. */
@@ -42,9 +43,11 @@ __bam_reclaim(dbp, txn)
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc,
-	    DB_LOCK_WRITE, dbc->internal->root, __db_reclaim_callback, dbc);
+	    DB_LOCK_WRITE, dbc->internal->root, __db_reclaim_callback, NULL);
 
-	__TLPUT(dbc, meta_lock);
+	if ((t_ret = __TLPUT(dbc, meta_lock)) != 0 && ret == 0)
+		ret = t_ret;
+
 	/* Discard the cursor. */
 err:	if ((t_ret = __dbc_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -63,18 +66,17 @@ __bam_truncate(dbc, countp)
 	DBC *dbc;
 	u_int32_t *countp;
 {
-	db_trunc_param trunc;
+	u_int32_t count;
 	int ret;
 
-	trunc.count = 0;
-	trunc.dbc = dbc;
+	count = 0;
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc,
-	    DB_LOCK_WRITE, dbc->internal->root, __db_truncate_callback, &trunc);
+	    DB_LOCK_WRITE, dbc->internal->root, __db_truncate_callback, &count);
 
 	if (countp != NULL)
-		*countp = trunc.count;
+		*countp = count;
 
 	return (ret);
 }

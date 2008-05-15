@@ -1,6 +1,6 @@
 <!--$Id: db_set_alloc.so,v 10.3 2002/08/18 21:15:51 bostic Exp $-->
-<!--$Id: env_set_alloc.so,v 1.22 2004/08/13 03:38:57 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: env_set_alloc.so,v 1.24 2008/01/19 14:12:57 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db::set_alloc</h3>
+<b>Db::set_alloc</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,7 +19,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 extern "C" {
@@ -32,9 +32,9 @@ int
 Db::set_alloc(db_malloc_fcn_type app_malloc,
     db_realloc_fcn_type app_realloc,
     db_free_fcn_type app_free);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db::set_alloc</h3>
+<b>Description: Db::set_alloc</b>
 <p>Set the allocation functions used by the <a href="../api_cxx/env_class.html">DbEnv</a> and <a href="../api_cxx/db_class.html">Db</a>
 methods to allocate or free memory owned by the application.</p>
 <p>There are a number of interfaces in Berkeley DB where memory is allocated by
@@ -71,26 +71,26 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The Db::set_alloc method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If Called in a database environment.
-<p>Called after <a href="../api_cxx/db_open.html">Db::open</a> was called.</p>; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If called in a database environment, or called after <a href="../api_cxx/db_open.html">Db::open</a> was
+called; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/db_class.html">Db</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

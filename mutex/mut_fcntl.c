@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_fcntl.c,v 12.23 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_fcntl.c,v 12.28 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,15 +15,15 @@
  * __db_fcntl_mutex_init --
  *	Initialize a fcntl mutex.
  *
- * PUBLIC: int __db_fcntl_mutex_init __P((DB_ENV *, db_mutex_t, u_int32_t));
+ * PUBLIC: int __db_fcntl_mutex_init __P((ENV *, db_mutex_t, u_int32_t));
  */
 int
-__db_fcntl_mutex_init(dbenv, mutex, flags)
-	DB_ENV *dbenv;
+__db_fcntl_mutex_init(env, mutex, flags)
+	ENV *env;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 	COMPQUIET(flags, 0);
 
@@ -34,25 +34,30 @@ __db_fcntl_mutex_init(dbenv, mutex, flags)
  * __db_fcntl_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_fcntl_mutex_lock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_fcntl_mutex_lock __P((ENV *, db_mutex_t));
  */
 int
-__db_fcntl_mutex_lock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_fcntl_mutex_lock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	struct flock k_lock;
 	int locked, ms, ret;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
+
+	CHECK_MTX_THREAD(env, mutexp);
 
 #ifdef HAVE_STATISTICS
 	if (F_ISSET(mutexp, DB_MUTEX_LOCKED))
@@ -72,14 +77,14 @@ __db_fcntl_mutex_lock(dbenv, mutex)
 		 * up to 1 second.
 		 */
 		for (ms = 1; F_ISSET(mutexp, DB_MUTEX_LOCKED);) {
-			__os_sleep(NULL, 0, ms * US_PER_MS);
+			__os_yield(NULL, 0, ms * US_PER_MS);
 			if ((ms <<= 1) > MS_PER_SEC)
 				ms = MS_PER_SEC;
 		}
 
 		/* Acquire an exclusive kernel lock. */
 		k_lock.l_type = F_WRLCK;
-		if (fcntl(dbenv->lockfhp->fd, F_SETLKW, &k_lock))
+		if (fcntl(env->lockfhp->fd, F_SETLKW, &k_lock))
 			goto err;
 
 		/* If the resource is still available, it's ours. */
@@ -88,12 +93,11 @@ __db_fcntl_mutex_lock(dbenv, mutex)
 
 			F_SET(mutexp, DB_MUTEX_LOCKED);
 			dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-			CHECK_MTX_THREAD(dbenv, mutexp);
 		}
 
 		/* Release the kernel lock. */
 		k_lock.l_type = F_UNLCK;
-		if (fcntl(dbenv->lockfhp->fd, F_SETLK, &k_lock))
+		if (fcntl(env->lockfhp->fd, F_SETLK, &k_lock))
 			goto err;
 
 		/*
@@ -115,41 +119,44 @@ __db_fcntl_mutex_lock(dbenv, mutex)
 	 * we get a mutex to ensure contention.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-		__os_yield(dbenv);
+		__os_yield(env, 0, 0);
 #endif
 	return (0);
 
 err:	ret = __os_get_syserr();
-	__db_syserr(dbenv, ret, "fcntl lock failed");
-	return (__db_panic(dbenv, __os_posix_err(ret)));
+	__db_syserr(env, ret, "fcntl lock failed");
+	return (__env_panic(env, __os_posix_err(ret)));
 }
 
 /*
  * __db_fcntl_mutex_unlock --
  *	Release a mutex.
  *
- * PUBLIC: int __db_fcntl_mutex_unlock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_fcntl_mutex_unlock __P((ENV *, db_mutex_t));
  */
 int
-__db_fcntl_mutex_unlock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_fcntl_mutex_unlock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_errx(dbenv, "fcntl unlock failed: lock already unlocked");
-		return (__db_panic(dbenv, EACCES));
+		__db_errx(env, "fcntl unlock failed: lock already unlocked");
+		return (__env_panic(env, EACCES));
 	}
 #endif
 
@@ -168,14 +175,14 @@ __db_fcntl_mutex_unlock(dbenv, mutex)
  * __db_fcntl_mutex_destroy --
  *	Destroy a mutex.
  *
- * PUBLIC: int __db_fcntl_mutex_destroy __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_fcntl_mutex_destroy __P((ENV *, db_mutex_t));
  */
 int
-__db_fcntl_mutex_destroy(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_fcntl_mutex_destroy(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 
 	return (0);

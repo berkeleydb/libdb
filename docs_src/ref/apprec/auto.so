@@ -1,4 +1,4 @@
-m4_comment([$Id: auto.so,v 10.4 2006/09/13 16:21:43 sue Exp $])
+m4_comment([$Id: auto.so,v 10.6 2008/01/19 14:12:58 bostic Exp $])
 
 m4_ref_title(Application Specific Logging and Recovery,
     Automatically generated functions,,
@@ -13,13 +13,16 @@ m4_indent([dnl
 awk -f gen_rec.awk \
 	-v source_file=m4_italic(C_FILE) \
 	-v header_file=m4_italic(H_FILE) \
+	-v print_file=m4_italic(P_FILE) \
 	-v template_file=m4_italic(TMP_FILE) __LT__ XXX.src])
 
 m4_p([dnl
 where m4_italic(C_FILE) is the name of the file into which to place the
 automatically generated C code, m4_italic(H_FILE) is the name of the
 file into which to place the automatically generated data structures
-and declarations, and m4_italic(TMP_FILE) is the name of the file into
+and declarations, m4_italic(P_FILE) is the name of the file into which to
+place the automatically generated C code that prints log records,
+and m4_italic(TMP_FILE) is the name of the file into
 which to place a template for the recovery routines.])
 
 m4_p([dnl
@@ -88,13 +91,10 @@ recovery function is called on each record read from the log during
 system recovery, transaction abort, or the application of log records
 on a replication client, and is expected to redo or undo the operations
 described by that record.  The details of the recovery function will be
-specific to the record being logged and need to be written manually,
-but the template provides a good starting point.  (Note that the
-template assumes that the record is manipulating the internals of a
-m4_db database and sets up database handles, page structures, and such
-for convenience.  Many application-specific log records will not need
-these, and may simply delete much of the template.  See
-ex_apprec_template and ex_apprec_rec.c for an example.)])
+specific to the record being logged and need to be written manually, but
+the template provides a good starting point.  (See ex_apprec_template
+and ex_apprec_rec.c for an example of both the template produced and the
+resulting recovery function.)])
 
 m4_p([dnl
 The template file should be copied to a source file in the application
@@ -118,11 +118,6 @@ m4_tag(op, [dnl
 A parameter of type db_recops, which indicates what operation is being
 run (m4_ref(DB_TXN_ABORT), m4_ref(DB_TXN_APPLY), m4_ref(DB_TXN_BACKWARD_ROLL),
 m4_ref(DB_TXN_FORWARD_ROLL) or m4_ref(DB_TXN_PRINT)).])
-m4_tag(info, [dnl
-A structure passed by the dispatch function.  It is used to contain a
-list of committed transactions and information about files that may have
-been deleted.  Application-specific log records can usually simply
-ignore this field.])
 
 m4_tagend])
 
@@ -186,7 +181,6 @@ m4_tag(dbenv, [The environment in which recovery is running.])
 m4_tag(rec, [The record being recovered.])
 m4_tag(lsn, [The log sequence number of the record being recovered.])
 m4_tag(op, Unused.)
-m4_tag(info, Unused.)
 
 m4_tagend])
 

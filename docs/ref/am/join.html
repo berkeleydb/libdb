@@ -1,5 +1,5 @@
 <!--$Id: join.so,v 10.31 2004/01/21 20:39:56 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a><a name="4"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am/curdup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/count.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Equality Join</h3>
+<p align=center><b>Equality Join</b></p>
 <p>Berkeley DB supports "equality" (also known as "natural"), joins on secondary
 indices.  An equality join is a method of retrieving data from a primary
 database using criteria stored in a set of secondary indices.  It
@@ -94,22 +93,22 @@ red and expensive in a single operation.  If the same fruit appeared as
 a data item in both the color and expense indices, then that fruit name
 would be used as the key for retrieval from the primary index, and would
 then return the store where expensive, red fruit could be purchased.</p>
-<h3>Example</h3>
+<b>Example</b>
 <p>Consider the following three databases:</p>
-<dl compact>
-<dt>personnel<dd><p><ul type=disc>
+<br>
+<b>personnel</b><ul compact><li><p><ul type=disc>
 <li>key = SSN
 <li>data = record containing name, address, phone number, job title
-</ul>
-<dt>lastname<dd><p><ul type=disc>
+</ul></ul>
+<b>lastname</b><ul compact><li><p><ul type=disc>
 <li>key = lastname
 <li>data = SSN
-</ul>
-<dt>jobs<dd><p><ul type=disc>
+</ul></ul>
+<b>jobs</b><ul compact><li><p><ul type=disc>
 <li>key = job title
 <li>data = SSN
-</ul>
-</dl>
+</ul></ul>
+<br>
 <p>Consider the following query:</p>
 <blockquote><pre>Return the personnel records of all people named smith with the job
 title manager.</pre></blockquote>
@@ -185,6 +184,6 @@ from the join method.  This code then loops over the join cursor getting
 the personnel records of each one until there are no more.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am/curdup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/count.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

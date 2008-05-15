@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep005.tcl,v 12.19 2007/06/15 14:39:51 carol Exp $
+# $Id: rep005.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep005
 # TEST	Replication election test with error handling.
@@ -58,10 +58,11 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

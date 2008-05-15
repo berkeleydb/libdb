@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: crypto_stub.c,v 12.7 2007/05/17 15:14:55 bostic Exp $
+ * $Id: crypto_stub.c,v 12.9 2008/01/08 20:58:08 bostic Exp $
  */
 
 #include "db_config.h"
@@ -19,26 +19,26 @@
  * We don't put this stub file in the crypto/ directory of the distribution
  * because that entire directory is removed for non-crypto distributions.
  *
- * PUBLIC: int __crypto_region_init __P((DB_ENV *));
+ * PUBLIC: int __crypto_region_init __P((ENV *));
  */
 int
-__crypto_region_init(dbenv)
-	DB_ENV *dbenv;
+__crypto_region_init(env)
+	ENV *env;
 {
 	REGENV *renv;
 	REGINFO *infop;
 	int ret;
 
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	renv = infop->primary;
-	MUTEX_LOCK(dbenv, renv->mtx_regenv);
+	MUTEX_LOCK(env, renv->mtx_regenv);
 	ret = !(renv->cipher_off == INVALID_ROFF);
-	MUTEX_UNLOCK(dbenv, renv->mtx_regenv);
+	MUTEX_UNLOCK(env, renv->mtx_regenv);
 
 	if (ret == 0)
 		return (0);
 
-	__db_errx(dbenv,
+	__db_errx(env,
 "Encrypted environment: library build did not include cryptography support");
 	return (DB_OPNOTSUP);
 }

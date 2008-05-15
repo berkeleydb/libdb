@@ -1,5 +1,5 @@
 <!--$Id: create.so,v 10.30 2005/09/23 16:22:42 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></b></td>
 <td align=right><a href="../env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Creating a database environment</h3>
+<p align=center><b>Creating a database environment</b></p>
 <p>The Berkeley DB environment is created and described by the <a href="../../api_c/env_class.html">db_env_create</a>
 and <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> interfaces.  In situations where customization is
 desired, such as storing log files on a separate disk drive or selection
@@ -31,8 +30,8 @@ in a different directory or on a different system.</p>
 or joins the database environment.  There are a number of options you
 can set to customize <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> for your environment.  These
 options fall into four broad categories:</p>
-<dl compact>
-<dt>Subsystem Initialization:<dd>These flags indicate which Berkeley DB subsystems will be initialized for the
+<br>
+<b>Subsystem Initialization:</b><ul compact><li>These flags indicate which Berkeley DB subsystems will be initialized for the
 environment, and what operations will happen automatically when
 databases are accessed within the environment.  The flags include
 <a href="../../api_c/env_open.html#DB_INIT_CDB">DB_INIT_CDB</a>, <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a>,
@@ -42,18 +41,18 @@ flag does initialization for Berkeley DB Concurrent Data Store applications.  (S
 information.)  The rest of the flags initialize a single subsystem; that
 is, when <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a> is specified, applications reading and
 writing databases opened in this environment will be using locking to
-ensure that they do not overwrite each other's changes.
-<dt>Recovery options:<dd>These flags, which include <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> and
+ensure that they do not overwrite each other's changes.</ul>
+<b>Recovery options:</b><ul compact><li>These flags, which include <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> and
 <a href="../../api_c/env_open.html#DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>, indicate what recovery is to be performed on
-the environment before it is opened for normal use.
-<dt>Naming options:<dd>These flags, which include <a href="../../api_c/env_open.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> and
+the environment before it is opened for normal use.</ul>
+<b>Naming options:</b><ul compact><li>These flags, which include <a href="../../api_c/env_open.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> and
 <a href="../../api_c/env_open.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a>, modify how file naming happens in the
-environment.
-<dt>Miscellaneous:<dd>Finally, there are a number of miscellaneous flags, for example,
+environment.</ul>
+<b>Miscellaneous:</b><ul compact><li>Finally, there are a number of miscellaneous flags, for example,
 <a href="../../api_c/env_open.html#DB_CREATE">DB_CREATE</a> which causes underlying files to be created as
 necessary.  See the <a href="../../api_c/env_open.html">DB_ENV-&gt;open</a> manual pages for further
-information.
-</dl>
+information.</ul>
+<br>
 <p>Most applications either specify only the <a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a> flag or
 they specify all four subsystem initialization flags
 (<a href="../../api_c/env_open.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>, <a href="../../api_c/env_open.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../../api_c/env_open.html#DB_INIT_LOG">DB_INIT_LOG</a>, and
@@ -123,6 +122,6 @@ err:	(void)dbenv-&gt;close(dbenv, 0);
 }</pre></blockquote>
 <table width="100%"><tr><td><br></td><td align=right><a href="../env/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

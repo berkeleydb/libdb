@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mutex.h,v 12.28 2007/05/17 15:15:05 bostic Exp $
+ * $Id: mutex.h,v 12.31 2008/01/08 20:58:18 bostic Exp $
  */
 
 #ifndef _DB_MUTEX_H_
@@ -12,6 +12,12 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+/*
+ * By default, spin 50 times per processor if fail to acquire a test-and-set
+ * mutex, we have anecdotal evidence it's a reasonable value.
+ */
+#define	MUTEX_SPINS_PER_PROCESSOR	50
 
 /*
  * Mutexes are represented by unsigned, 32-bit integral values.  As the
@@ -43,7 +49,7 @@ extern "C" {
 #define	MTX_MPOOL_REGION	18
 #define	MTX_MUTEX_REGION	19
 #define	MTX_MUTEX_TEST		20
-#define	MTX_REP_CKP		21
+#define	MTX_REP_CHKPT		21
 #define	MTX_REP_DATABASE	22
 #define	MTX_REP_EVENT		23
 #define	MTX_REP_REGION		24

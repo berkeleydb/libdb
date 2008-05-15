@@ -1,0 +1,17 @@
+m4_comment([$Id: toc.so,v 1.6 2008/01/23 21:15:45 sarette Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Upgrading m4_db 4.6 applications to m4_db 4.7,
+    Upgrading to release 4.7,,)
+
+m4_nlistbegin
+m4_nlistns([m4_link(intro, [Release 4.7: introduction])])
+m4_nlistns([m4_link(rtc, [Release 4.7: Run-time configuration])])
+m4_nlistns([m4_link(repapi, [Release 4.7: Replication API])])
+m4_nlistns([m4_link(tcl, [Release 4.7: Tcl API])])
+m4_nlistns([m4_link(interdir, [Release 4.7: DB_ENV-__GT__set_intermediate_dir])])
+m4_nlistns([m4_link(log, [Release 4.7: DB_ENV-__GT__log_set_config])])
+m4_nlistns([m4_link(disk, [Release 4.7: upgrade requirements])])
+m4_nlistend
+
+m4_page_footer

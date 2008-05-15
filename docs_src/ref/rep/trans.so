@@ -1,7 +1,7 @@
-m4_comment([$Id: trans.so,v 1.18 2006/08/24 17:58:53 bostic Exp $])
+m4_comment([$Id: trans.so,v 1.19 2007/09/21 15:41:26 sue Exp $])
 
 m4_ref_title(m4_db Replication,
-    Transactional guarantees,, rep/bulk, rep/partition)
+    Transactional guarantees,, rep/bulk, rep/lease)
 
 m4_p([dnl
 It is important to consider replication in the context of the overall

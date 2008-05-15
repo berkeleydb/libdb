@@ -1,4 +1,4 @@
-dnl $Id: m4.err,v 10.145 2006/09/13 14:30:52 mjc Exp $
+dnl $Id: m4.err,v 10.146 2007/10/24 16:06:07 bostic Exp $
 dnl
 dnl ###################################################################
 dnl m4_err_mem_insufficient --
@@ -192,14 +192,32 @@ __m4_errloop(shift(shift($@)))],
 dnl ###################################################################
 dnl DB_REP_HANDLE_DEAD -- replication rolled back a commit record.
 dnl ###################################################################
-[$1], repinval, [dnl
+[$1], rephandle, [dnl
 __m4_errheader
 m4_tagbegin
 m4_tag(DB_REP_HANDLE_DEAD, [dnl
 The database handle has been invalidated because a replication election
 unrolled a committed transaction.])
+m4_tagend
+__m4_errloop(shift($@))],
+dnl ###################################################################
+dnl DB_REP_LOCKOUT -- replication blocked by client/master sync-up.
+dnl ###################################################################
+[$1], replockout, [dnl
+__m4_errheader
+m4_tagbegin
 m4_tag(DB_REP_LOCKOUT, [dnl
 The operation was blocked by client/master synchronization.])
+m4_tagend
+__m4_errloop(shift($@))],
+dnl ###################################################################
+dnl DB_REP_LEASE_EXPIRED -- replication lease expired
+dnl ###################################################################
+[$1], replease, [dnl
+__m4_errheader
+m4_tagbegin
+m4_tag(DB_REP_LEASE_EXPIRED, [dnl
+The operation failed because the site's replication master lease has expired.])
 m4_tagend
 __m4_errloop(shift($@))],
 dnl ###################################################################

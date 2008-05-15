@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: util_log.c,v 12.13 2007/05/17 15:14:55 bostic Exp $
+ * $Id: util_log.c,v 12.15 2008/01/08 20:58:08 bostic Exp $
  */
 
 #include "db_config.h"
@@ -33,7 +33,7 @@ __db_util_logset(progname, fname)
 
 	__os_id(NULL, &pid, NULL);
 	fprintf(fp,
-	    "%s: %lu %s", progname, (u_long)pid, __db_ctime(&now, time_buf));
+	    "%s: %lu %s", progname, (u_long)pid, __os_ctime(&now, time_buf));
 
 	if (fclose(fp) == EOF)
 		goto err;

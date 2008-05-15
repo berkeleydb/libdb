@@ -9,7 +9,7 @@
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="perftune-intro.html" title="Performance Tuning" />
-    <link rel="next" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;        " />
+    <link rel="next" href="envopen.html" title="Opening a Transactional Environment and&#10;            &#10;            Store or Database&#10;            &#10;        " />
   </head>
   <body>
     <div class="navheader">
@@ -71,7 +71,8 @@
           <dt>
             <span class="sect1">
               <a href="envopen.html">Opening a Transactional Environment and
-            Database
+            
+            Store or Database
             
         </a>
             </span>
@@ -145,7 +146,20 @@
           </li>
           <li>
             <p>
-            Transaction-enable your databases. You do this by
+                If you are using the DPL, transaction-enable your stores.
+                You do this by using the 
+                <tt class="methodname">StoreConfig.setTransactional() method.</tt>
+            </p>
+          </li>
+          <li>
+            <p>
+            <span>
+                    Transaction-enable your databases. 
+            </span>
+            <span>
+                    If you are using the base API, transaction-enable your databases. 
+            </span>
+            You do this by
             <span>
                 using the
                 <tt class="methodname">DatabaseConfig.setTransactional()</tt>
@@ -202,7 +216,7 @@
         application requires it. For an example of an application that
         manages all environment files in-memory, see
             
-            <span><a href="inmem_txnexample_java.html">In-Memory Transaction Example</a>.</span>
+            <span><a href="inmem_txnexample_java.html">Base API In-Memory Transaction Example</a>.</span>
             
             
     </p>
@@ -636,7 +650,7 @@
             application, see
                 
                 <span>
-                <a href="inmem_txnexample_java.html">In-Memory Transaction Example</a>.)
+                <a href="inmem_txnexample_java.html">Base API In-Memory Transaction Example</a>.)
                 </span>
                 
                 
@@ -867,7 +881,8 @@
             <a accesskey="h" href="index.html">Home</a>
           </td>
           <td width="40%" align="right" valign="top"> Opening a Transactional Environment and
-            Database
+            
+            Store or Database
             
         </td>
         </tr>

@@ -1,4 +1,4 @@
-dnl $Id: m4.html,v 10.113 2007/07/06 18:24:52 bostic Exp $
+dnl $Id: m4.html,v 10.117 2008/01/08 20:58:21 bostic Exp $
 
 dnl ###################################################################
 dnl	Fonts.
@@ -63,11 +63,11 @@ define(m4_comment, <!--$1-->)
 
 dnl Copyright strings.
 define(m4_copyright_source, [dnl
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->])
 
 define(m4_copyright_footer, [dnl
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>])
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>])
 
 dnl M4_meta definition moved to html.sed to prevent line breaks
 define(m4_meta, __M4_META__)
@@ -79,10 +79,10 @@ dnl ###################################################################
 dnl	Layout: basic.
 dnl ###################################################################
 dnl Header
-define(m4_header, <h3>$1</h3>)
+define(m4_header, <br><b>$1</b>)
 
 dnl Section
-define(m4_section, <h3>$1</h3>)
+define(m4_section, <b>$1</b>)
 
 dnl Subsection
 define(m4_subsection, <h4>$1</h4>)
@@ -135,7 +135,7 @@ m4_meta
 <body bgcolor=white>
 m4_idefz($3)
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>ifelse(M4PRODUCT, XML, m4_xml, m4_db) Reference Guide:<dd>$1</dl></h3></td>
+<td><b><dl><dt>ifelse(M4PRODUCT, XML, m4_xml, m4_db) Reference Guide:<dd>$1</dl></b></td>
 <td align=right>dnl
 ifelse($4,,,
 <a href="../$4.html"><img src="M4RELDIR/images/prev.gif" alt="Prev"></a>)dnl
@@ -144,8 +144,7 @@ ifelse($4,,,
 ifelse($5,,,
 <a href="../$5.html"><img src="M4RELDIR/images/next.gif" alt="Next"></a>)
 </td></tr></table>
-<p>
-<h3 align=center>$2</h3>
+<p align=center><b>$2</b></p>
 define(m4_page_footer, [dnl
 <table width="100%"><tr><td><br></td><td align=right>dnl
 ifelse($4,,,
@@ -169,7 +168,7 @@ m4_copyright_source
 m4_meta
 </head>
 <body bgcolor=white>
-<h3 align=center>$1</h3>
+<p align=center><b>$1</b></p>
 define(m4_page_footer, [dnl
 m4_copyright_footer
 </body>
@@ -191,7 +190,7 @@ m4_meta
 ifelse([$2],,, [dnl
 <table width="100%"><tr valign=top>
 <td>
-<h3>[$2]</h3>
+<b>[$2]</b>
 </td>
 ifelse([$3],,, [dnl
 <td align=right>
@@ -216,7 +215,7 @@ m4_copyright_footer
 dnl Description header for C/C++ API manual pages.
 define(m4_pf_description, [dnl
 m4_hl
-<h3>Description: [$1]</h3>])
+<b>Description: [$1]</b>])
 
 dnl Page header for C/C++ API manual pages.
 dnl	#1: function name
@@ -224,12 +223,12 @@ dnl	#2: function declaration
 dnl	#3: extra stuff
 define(m4_pf_header, [dnl
 m4_page_header([$1], [$1], yes)
-<h3><pre>
+<b><pre>
 m4_incextra([$3])
 ifelse([$2],,, [dnl
 <p>
 $2])
-</pre></h3>
+</pre></b>
 m4_pf_description([$1])])
 
 dnl Page header for Tcl manual pages.
@@ -238,16 +237,16 @@ dnl	#2: tcl command name (correctly formatted)
 dnl	#3: utility Synopsis line
 define(m4_tcl_header, [dnl
 m4_page_header([$1], [$2], yes)
-<h3><pre>$3</pre></h3>
-<h3>Description($1)</h3>])
+<b><pre>$3</pre></b>
+<b>Description($1)</b>])
 
 dnl Page header for utilities.
 dnl	#1: utility name
 dnl	#2: utility Synopsis line
 define(m4_util_header, [dnl
 m4_page_header([$1], [$1])
-<h3><pre>$2</pre></h3>
-<h3>Description</h3>])
+<b><pre>$2</pre></b>
+<b>Description</b>])
 
 dnl ###################################################################
 dnl	HTML links
@@ -289,25 +288,17 @@ dnl	- numbered
 dnl	- bullet item
 dnl ###################################################################
 dnl m4_tagbegin
-define(m4_tagbegin, <dl compact>)
+define(m4_tagbegin, <br>)
 dnl m4_tag: standard tag list
 dnl	#1: tag
 dnl	#2: definition
-define(m4_tag, <dt>$1<dd>$2)
-dnl m4_tagns: standard tag list, no space
-dnl	#1: tag
-dnl	#2: definition
-define(m4_tagns, <dt>$1<dd>$2)
+define(m4_tag, <b>$1</b><ul compact><li>$2</ul>)
 dnl m4_tagopt: option tag list
 dnl	#1: option
 dnl	#2: definition
-define(m4_tagopt, <dt>m4_option($1)<dd>$2)
-dnl m4_tagoptns: option tag list, no space
-dnl	#1: option
-dnl	#2: definition
-define(m4_tagoptns, <dt>m4_option($1)<dd>$2)
+define(m4_tagopt, m4_option($1)<ul compact><li>$2</ul>)
 dnl m4_tagend
-define(m4_tagend, </dl>)
+define(m4_tagend, <br>)
 
 define(m4_nlistbegin, <ol>)
 define(m4_nlist, <p><li>$1)

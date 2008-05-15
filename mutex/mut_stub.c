@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_stub.c,v 12.4 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_stub.c,v 12.6 2008/01/08 20:58:43 bostic Exp $
  */
 
 #ifndef HAVE_MUTEX_SUPPORT
@@ -17,18 +17,17 @@
  * If the library wasn't compiled with mutex support, various routines
  * aren't available.  Stub them here, returning an appropriate error.
  */
-static int __db_nomutex __P((DB_ENV *));
+static int __db_nomutex __P((ENV *));
 
 /*
  * __db_nomutex --
  *	Error when a Berkeley DB build doesn't include mutexes.
  */
 static int
-__db_nomutex(dbenv)
-	DB_ENV *dbenv;
+__db_nomutex(env)
+	ENV *env;
 {
-	__db_errx(dbenv,
-	    "library build did not include support for mutexes");
+	__db_errx(env, "library build did not include support for mutexes");
 	return (DB_OPNOTSUP);
 }
 
@@ -40,17 +39,17 @@ __mutex_alloc_pp(dbenv, flags, indxp)
 {
 	COMPQUIET(flags, 0);
 	COMPQUIET(indxp, NULL);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
-__mutex_alloc(dbenv, alloc_id, flags, indxp)
-	DB_ENV *dbenv;
+__mutex_alloc(env, alloc_id, flags, indxp)
+	ENV *env;
 	int alloc_id;
 	u_int32_t flags;
 	db_mutex_t *indxp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(alloc_id, 0);
 	COMPQUIET(flags, 0);
 	*indxp = MUTEX_INVALID;
@@ -58,11 +57,11 @@ __mutex_alloc(dbenv, alloc_id, flags, indxp)
 }
 
 void
-__mutex_clear(dbenv, mutex)
-	DB_ENV *dbenv;
+__mutex_clear(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 }
 
@@ -72,15 +71,15 @@ __mutex_free_pp(dbenv, indx)
 	db_mutex_t indx;
 {
 	COMPQUIET(indx, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
-__mutex_free(dbenv, indxp)
-	DB_ENV *dbenv;
+__mutex_free(env, indxp)
+	ENV *env;
 	db_mutex_t *indxp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	*indxp = MUTEX_INVALID;
 	return (0);
 }
@@ -91,7 +90,7 @@ __mutex_get_align(dbenv, alignp)
 	u_int32_t *alignp;
 {
 	COMPQUIET(alignp, NULL);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -100,7 +99,7 @@ __mutex_get_increment(dbenv, incrementp)
 	u_int32_t *incrementp;
 {
 	COMPQUIET(incrementp, NULL);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -109,7 +108,7 @@ __mutex_get_max(dbenv, maxp)
 	u_int32_t *maxp;
 {
 	COMPQUIET(maxp, NULL);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -118,7 +117,7 @@ __mutex_get_tas_spins(dbenv, tas_spinsp)
 	u_int32_t *tas_spinsp;
 {
 	COMPQUIET(tas_spinsp, NULL);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -127,30 +126,30 @@ __mutex_lock_pp(dbenv, indx)
 	db_mutex_t indx;
 {
 	COMPQUIET(indx, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 void
-__mutex_print_debug_single(dbenv, tag, mutex, flags)
-	DB_ENV *dbenv;
+__mutex_print_debug_single(env, tag, mutex, flags)
+	ENV *env;
 	const char *tag;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(tag, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 	COMPQUIET(flags, 0);
 }
 
 void
-__mutex_print_debug_stats(dbenv, mbp, mutex, flags)
-	DB_ENV *dbenv;
+__mutex_print_debug_stats(env, mbp, mutex, flags)
+	ENV *env;
 	DB_MSGBUF *mbp;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(mbp, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 	COMPQUIET(flags, 0);
@@ -162,7 +161,7 @@ __mutex_set_align(dbenv, align)
 	u_int32_t align;
 {
 	COMPQUIET(align, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -171,7 +170,7 @@ __mutex_set_increment(dbenv, increment)
 	u_int32_t increment;
 {
 	COMPQUIET(increment, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -180,7 +179,7 @@ __mutex_set_max(dbenv, max)
 	u_int32_t max;
 {
 	COMPQUIET(max, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -189,16 +188,16 @@ __mutex_set_tas_spins(dbenv, tas_spins)
 	u_int32_t tas_spins;
 {
 	COMPQUIET(tas_spins, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 void
-__mutex_set_wait_info(dbenv, mutex, waitp, nowaitp)
-	DB_ENV *dbenv;
+__mutex_set_wait_info(env, mutex, waitp, nowaitp)
+	ENV *env;
 	db_mutex_t mutex;
 	u_int32_t *waitp, *nowaitp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);
 	*waitp = *nowaitp = 0;
 }
@@ -211,7 +210,7 @@ __mutex_stat_pp(dbenv, statp, flags)
 {
 	COMPQUIET(statp, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -220,7 +219,7 @@ __mutex_stat_print_pp(dbenv, flags)
 	u_int32_t flags;
 {
 	COMPQUIET(flags, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 
 int
@@ -229,6 +228,6 @@ __mutex_unlock_pp(dbenv, indx)
 	db_mutex_t indx;
 {
 	COMPQUIET(indx, 0);
-	return (__db_nomutex(dbenv));
+	return (__db_nomutex(dbenv->env));
 }
 #endif /* !HAVE_MUTEX_SUPPORT */

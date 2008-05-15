@@ -2,9 +2,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_int.in,v 12.58 2007/05/30 14:06:39 bostic Exp $
+ * $Id: db_int.in,v 12.76 2008/05/07 12:34:15 bschmeck Exp $
  */
 
 #ifndef _DB_INT_H_
@@ -89,7 +89,7 @@
 #  include <ndir.h>
 # endif
 #endif
-#endif /* __INCLUDE_DIRECTORY_READ */
+#endif /* __INCLUDE_DIRECTORY */
 
 #endif /* !HAVE_SYSTEM_INCLUDE_FILES */
 
@@ -108,6 +108,18 @@ extern "C" {
 #endif
 
 /*******************************************************
+ * Forward structure declarations.
+ *******************************************************/
+struct __db_reginfo_t;	typedef struct __db_reginfo_t REGINFO;
+struct __db_txnhead;	typedef struct __db_txnhead DB_TXNHEAD;
+struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
+struct __vrfy_childinfo;typedef struct __vrfy_childinfo VRFY_CHILDINFO;
+struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
+struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
+
+typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
+
+/*******************************************************
  * General purpose constants and macros.
  *******************************************************/
 #undef	FALSE
@@ -123,7 +135,6 @@ extern "C" {
 #define	NS_PER_SEC	1000000000	/* Nanoseconds in a second */
 #define	US_PER_MS	1000		/* Microseconds in a millisecond */
 #define	US_PER_SEC	1000000		/* Microseconds in a second */
-#define	MS_PER_NS	1000000		/* Milliseconds in a nanosecond */
 #define	MS_PER_SEC	1000		/* Milliseconds in a second */
 
 #define	RECNO_OOB	0		/* Illegal record number. */
@@ -249,38 +260,38 @@ typedef struct __db_msgbuf {
 	(a)->buf = (a)->cur = NULL;					\
 	(a)->len = 0;							\
 } while (0)
-#define	DB_MSGBUF_FLUSH(dbenv, a) do {					\
+#define	DB_MSGBUF_FLUSH(env, a) do {					\
 	if ((a)->buf != NULL) {						\
 		if ((a)->cur != (a)->buf)				\
-			__db_msg(dbenv, "%s", (a)->buf);		\
-		__os_free(dbenv, (a)->buf);				\
+			__db_msg(env, "%s", (a)->buf);		\
+		__os_free(env, (a)->buf);				\
 		DB_MSGBUF_INIT(a);					\
 	}								\
 } while (0)
 #define	STAT_FMT(msg, fmt, type, v) do {				\
 	DB_MSGBUF __mb;							\
 	DB_MSGBUF_INIT(&__mb);						\
-	__db_msgadd(dbenv, &__mb, fmt, (type)(v));			\
-	__db_msgadd(dbenv, &__mb, "\t%s", msg);				\
-	DB_MSGBUF_FLUSH(dbenv, &__mb);					\
+	__db_msgadd(env, &__mb, fmt, (type)(v));			\
+	__db_msgadd(env, &__mb, "\t%s", msg);				\
+	DB_MSGBUF_FLUSH(env, &__mb);					\
 } while (0)
 #define	STAT_HEX(msg, v)						\
-	__db_msg(dbenv, "%#lx\t%s", (u_long)(v), msg)
+	__db_msg(env, "%#lx\t%s", (u_long)(v), msg)
 #define	STAT_ISSET(msg, p)						\
-	__db_msg(dbenv, "%sSet\t%s", (p) == NULL ? "!" : " ", msg)
+	__db_msg(env, "%sSet\t%s", (p) == NULL ? "!" : " ", msg)
 #define	STAT_LONG(msg, v)						\
-	__db_msg(dbenv, "%ld\t%s", (long)(v), msg)
+	__db_msg(env, "%ld\t%s", (long)(v), msg)
 #define	STAT_LSN(msg, lsnp)						\
-	__db_msg(dbenv, "%lu/%lu\t%s",					\
+	__db_msg(env, "%lu/%lu\t%s",					\
 	    (u_long)(lsnp)->file, (u_long)(lsnp)->offset, msg)
 #define	STAT_POINTER(msg, v)						\
-	__db_msg(dbenv, "%#lx\t%s", P_TO_ULONG(v), msg)
+	__db_msg(env, "%#lx\t%s", P_TO_ULONG(v), msg)
 #define	STAT_STRING(msg, p) do {					\
 	const char *__p = p;	/* p may be a function call. */		\
-	__db_msg(dbenv, "%s\t%s", __p == NULL ? "!Set" : __p, msg);	\
+	__db_msg(env, "%s\t%s", __p == NULL ? "!Set" : __p, msg);	\
 } while (0)
 #define	STAT_ULONG(msg, v)						\
-	__db_msg(dbenv, "%lu\t%s", (u_long)(v), msg)
+	__db_msg(env, "%lu\t%s", (u_long)(v), msg)
 
 /*
  * There are quite a few places in Berkeley DB where we want to initialize
@@ -376,21 +387,21 @@ typedef enum {
  * TXN_ON	Transactions have been configured.
  *
  * REP_ON is more complex than most: if the BDB library was compiled without
- * replication support, dbenv->rep_handle will be NULL; if the BDB library
- * has replication support, but it was not configured, the region reference
- * will be NULL.
+ * replication support, ENV->rep_handle will be NULL; if the BDB library has
+ * replication support, but it was not configured, the region reference will
+ * be NULL.
  */
-#define	ALIVE_ON(dbenv)		((dbenv)->is_alive != NULL)
-#define	CDB_LOCKING(dbenv)	F_ISSET(dbenv, DB_ENV_CDB)
-#define	CRYPTO_ON(dbenv)	((dbenv)->crypto_handle != NULL)
-#define	LOCKING_ON(dbenv)	((dbenv)->lk_handle != NULL)
-#define	LOGGING_ON(dbenv)	((dbenv)->lg_handle != NULL)
-#define	MPOOL_ON(dbenv)		((dbenv)->mp_handle != NULL)
-#define	MUTEX_ON(dbenv)		((dbenv)->mutex_handle != NULL)
-#define	REP_ON(dbenv)							\
-	((dbenv)->rep_handle != NULL && (dbenv)->rep_handle->region != NULL)
+#define	ALIVE_ON(env)		((env)->dbenv->is_alive != NULL)
+#define	CDB_LOCKING(env)	F_ISSET(env, ENV_CDB)
+#define	CRYPTO_ON(env)		((env)->crypto_handle != NULL)
+#define	LOCKING_ON(env)		((env)->lk_handle != NULL)
+#define	LOGGING_ON(env)		((env)->lg_handle != NULL)
+#define	MPOOL_ON(env)		((env)->mp_handle != NULL)
+#define	MUTEX_ON(env)		((env)->mutex_handle != NULL)
+#define	REP_ON(env)							\
+	((env)->rep_handle != NULL && (env)->rep_handle->region != NULL)
 #define	RPC_ON(dbenv)		((dbenv)->cl_handle != NULL)
-#define	TXN_ON(dbenv)		((dbenv)->tx_handle != NULL)
+#define	TXN_ON(env)		((env)->tx_handle != NULL)
 
 /*
  * STD_LOCKING	Standard locking, that is, locking was configured and CDB
@@ -399,97 +410,111 @@ typedef enum {
  */
 #define	STD_LOCKING(dbc)						\
 	(!F_ISSET(dbc, DBC_OPD) &&					\
-	    !CDB_LOCKING((dbc)->dbp->dbenv) && LOCKING_ON((dbc)->dbp->dbenv))
+	    !CDB_LOCKING((dbc)->env) && LOCKING_ON((dbc)->env))
 
 /*
  * IS_RECOVERING: The system is running recovery.
  */
-#define	IS_RECOVERING(dbenv)						\
-	(LOGGING_ON(dbenv) && F_ISSET((dbenv)->lg_handle, DBLOG_RECOVER))
+#define	IS_RECOVERING(env)						\
+	(LOGGING_ON(env) && F_ISSET((env)->lg_handle, DBLOG_RECOVER))
 
 /* Initialization methods are often illegal before/after open is called. */
-#define	ENV_ILLEGAL_AFTER_OPEN(dbenv, name)				\
-	if (F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
-		return (__db_mi_open(dbenv, name, 1));
-#define	ENV_ILLEGAL_BEFORE_OPEN(dbenv, name)				\
-	if (!F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
-		return (__db_mi_open(dbenv, name, 0));
+#define	ENV_ILLEGAL_AFTER_OPEN(env, name)				\
+	if (F_ISSET((env), ENV_OPEN_CALLED))				\
+		return (__db_mi_open(env, name, 1));
+#define	ENV_ILLEGAL_BEFORE_OPEN(env, name)				\
+	if (!F_ISSET((env), ENV_OPEN_CALLED))				\
+		return (__db_mi_open(env, name, 0));
 
 /* We're not actually user hostile, honest. */
-#define	ENV_REQUIRES_CONFIG(dbenv, handle, i, flags)			\
+#define	ENV_REQUIRES_CONFIG(env, handle, i, flags)			\
 	if (handle == NULL)						\
-		return (__db_env_config(dbenv, i, flags));
-#define	ENV_REQUIRES_CONFIG_XX(dbenv, handle, i, flags)			\
-	if ((dbenv)->handle->region == NULL)				\
-		return (__db_env_config(dbenv, i, flags));
-#define	ENV_NOT_CONFIGURED(dbenv, handle, i, flags)			\
-	if (F_ISSET((dbenv), DB_ENV_OPEN_CALLED))			\
-		ENV_REQUIRES_CONFIG(dbenv, handle, i, flags)
+		return (__env_not_config(env, i, flags));
+#define	ENV_REQUIRES_CONFIG_XX(env, handle, i, flags)			\
+	if ((env)->handle->region == NULL)				\
+		return (__env_not_config(env, i, flags));
+#define	ENV_NOT_CONFIGURED(env, handle, i, flags)			\
+	if (F_ISSET((env), ENV_OPEN_CALLED))				\
+		ENV_REQUIRES_CONFIG(env, handle, i, flags)
 
-#define	ENV_ENTER(dbenv, ip) do {					\
+#define	ENV_ENTER(env, ip) do {						\
 	int __ret;							\
-	if ((dbenv)->thr_hashtab == NULL)				\
+	PANIC_CHECK(env);						\
+	if ((env)->thr_hashtab == NULL)					\
 		ip = NULL;						\
 	else {								\
 		if ((__ret =						\
-		    __env_set_state(dbenv, &(ip), THREAD_ACTIVE)) != 0)	\
+		    __env_set_state(env, &(ip), THREAD_ACTIVE)) != 0)	\
 			return (__ret);					\
 	}								\
 } while (0)
 
+#define ENV_GET_THREAD_INFO(env, ip) ENV_ENTER(env, ip)
+
 #ifdef DIAGNOSTIC
-#define	ENV_LEAVE(dbenv, ip) do {					\
+#define	ENV_LEAVE(env, ip) do {						\
 	if ((ip) != NULL) {						\
-		DB_ASSERT(dbenv, (ip)->dbth_state == THREAD_ACTIVE);	\
+		DB_ASSERT(env, (ip)->dbth_state == THREAD_ACTIVE);	\
 		(ip)->dbth_state = THREAD_OUT;				\
 	}								\
 } while (0)
 #else
-#define	ENV_LEAVE(dbenv, ip) do {					\
+#define	ENV_LEAVE(env, ip) do {						\
 	if ((ip) != NULL)						\
 		(ip)->dbth_state = THREAD_OUT;				\
 } while (0)
 #endif
 #ifdef DIAGNOSTIC
-#define	CHECK_THREAD(dbenv) do {					\
-	DB_THREAD_INFO *__ip;						\
-	if ((dbenv)->thr_hashtab != NULL) {				\
-		(void)__env_set_state(dbenv, &__ip, THREAD_DIAGNOSTIC);	\
-		DB_ASSERT(dbenv,					\
-		    __ip != NULL && __ip->dbth_state != THREAD_OUT);	\
-	}								\
+#define	CHECK_THREAD(env) do {						\
+	if ((env)->thr_hashtab != NULL)					\
+		(void)__env_set_state(env, NULL, THREAD_VERIFY);	\
 } while (0)
 #ifdef HAVE_STATISTICS
-#define	CHECK_MTX_THREAD(dbenv, mtx) do {				\
+#define	CHECK_MTX_THREAD(env, mtx) do {					\
 	if (mtx->alloc_id != MTX_MUTEX_REGION &&			\
 	    mtx->alloc_id != MTX_ENV_REGION &&				\
 	    mtx->alloc_id != MTX_APPLICATION)				\
-		CHECK_THREAD(dbenv);					\
+		CHECK_THREAD(env);					\
 } while (0)
 #else
-#define	CHECK_MTX_THREAD(dbenv, mtx)
+#define	CHECK_MTX_THREAD(env, mtx)
 #endif
 #else
-#define	CHECK_THREAD(dbenv)
-#define	CHECK_MTX_THREAD(dbenv, mtx)
+#define	CHECK_THREAD(env)
+#define	CHECK_MTX_THREAD(env, mtx)
 #endif
 
 typedef enum {
 	THREAD_SLOT_NOT_IN_USE=0,
 	THREAD_OUT,
 	THREAD_ACTIVE,
-	THREAD_BLOCKED
+	THREAD_BLOCKED,
+	THREAD_BLOCKED_DEAD
 #ifdef DIAGNOSTIC
-	, THREAD_DIAGNOSTIC
+	, THREAD_VERIFY
 #endif
 } DB_THREAD_STATE;
 
-typedef struct __db_thread_info {
+typedef struct __pin_list {
+	roff_t b_ref;		/* offset to buffer. */
+	int region;		/* region containing buffer. */
+} PIN_LIST;
+#define PINMAX 4
+
+struct __db_thread_info {
 	pid_t		dbth_pid;
 	db_threadid_t	dbth_tid;
 	DB_THREAD_STATE	dbth_state;
 	SH_TAILQ_ENTRY	dbth_links;
-} DB_THREAD_INFO;
+	/*
+	 * The following fields track which buffers this thread of 
+	 * control has pinned in the mpool buffer cache.
+	 */
+	u_int16_t	dbth_pincount;	/* Number of pins for this thread. */
+	u_int16_t	dbth_pinmax;	/* Number of slots allocated. */
+	roff_t		dbth_pinlist;	/* List of pins. */
+	PIN_LIST	dbth_pinarray[PINMAX];	/* Initial array of slots. */
+};
 
 typedef struct __env_thread_info {
 	u_int32_t	thr_count;
@@ -498,10 +523,137 @@ typedef struct __env_thread_info {
 	roff_t		thr_hashoff;
 } THREAD_INFO;
 
-#define	DB_EVENT(dbenv, e, einfo) do {					\
-	if ((dbenv)->db_event_func != NULL)				\
-		(dbenv)->db_event_func(dbenv, e, einfo);		\
+#define	DB_EVENT(env, e, einfo) do {					\
+	DB_ENV *__dbenv = (env)->dbenv;					\
+	if (__dbenv->db_event_func != NULL)				\
+		__dbenv->db_event_func(__dbenv, e, einfo);		\
 } while (0)
+
+typedef struct __flag_map {
+	u_int32_t inflag, outflag;
+} FLAG_MAP;
+
+/*
+ * Internal database environment structure.
+ *
+ * This is the private database environment handle.  The public environment
+ * handle is the DB_ENV structure.   The library owns this structure, the user
+ * owns the DB_ENV structure.  The reason there are two structures is because
+ * the user's configuration outlives any particular DB_ENV->open call, and
+ * separate structures allows us to easily discard internal information without
+ * discarding the user's configuration.
+ */
+struct __env {
+	DB_ENV *dbenv;			/* Linked DB_ENV structure */
+
+	/*
+	 * The ENV structure can be used concurrently, so field access is
+	 * protected.
+	 */
+	db_mutex_t mtx_env;		/* ENV structure mutex */
+
+	/*
+	 * Some fields are included in the ENV structure rather than in the
+	 * DB_ENV structure because they are only set as arguments to the
+	 * DB_ENV->open method.  In other words, because of the historic API,
+	 * not for any rational reason.
+	 *
+	 * Arguments to DB_ENV->open.
+	 */
+	char	 *db_home;		/* Database home */
+	u_int32_t open_flags;		/* Flags */
+	int	  db_mode;		/* Default open permissions */
+
+	pid_t	pid_cache;		/* Cached process ID */
+
+	DB_FH	*lockfhp;		/* fcntl(2) locking file handle */
+
+	DB_LOCKER *env_lref;		/* Locker in non-threaded handles */
+
+	DB_DISTAB   recover_dtab;	/* Dispatch table for recover funcs */
+
+	int dir_mode;			/* Intermediate directory perms. */
+
+	/* Thread tracking */
+	u_int32_t	 thr_nbucket;	/* Number of hash buckets */
+	DB_HASHTAB	*thr_hashtab;	/* Hash table of DB_THREAD_INFO */
+
+	/* Mutex allocation */
+	struct {
+		int	  alloc_id;	/* Allocation ID argument */
+		u_int32_t flags;	/* Flags argument */
+	} *mutex_iq;			/* Initial mutexes queue */
+	u_int		mutex_iq_next;	/* Count of initial mutexes */
+	u_int		mutex_iq_max;	/* Maximum initial mutexes */
+
+	/*
+	 * List of open DB handles for this ENV, used for cursor
+	 * adjustment.  Must be protected for multi-threaded support.
+	 */
+	db_mutex_t mtx_dblist;
+	int	   db_ref;		/* DB handle reference count */
+	TAILQ_HEAD(__dblist, __db) dblist;
+
+	/*
+	 * XA support.
+	 */
+	int		 xa_rmid;		/* XA Resource Manager ID */
+	TAILQ_ENTRY(__env) links;		/* XA environments */
+	TAILQ_HEAD(__xa_txn, __db_txn) xa_txn;	/* XA active transactions */
+
+	/*
+	 * List of open file handles for this ENV.  Must be protected
+	 * for multi-threaded support.
+	 */
+	TAILQ_HEAD(__fdlist, __fh_t) fdlist;
+
+	db_mutex_t	 mtx_mt;	/* Mersenne Twister mutex */
+	int		 mti;		/* Mersenne Twister index */
+	u_long		*mt;		/* Mersenne Twister state vector */
+
+	DB_CIPHER	*crypto_handle;	/* Crypto handle */
+	DB_LOCKTAB	*lk_handle;	/* Lock handle */
+	DB_LOG		*lg_handle;	/* Log handle */
+	DB_MPOOL	*mp_handle;	/* Mpool handle */
+	DB_MUTEXMGR	*mutex_handle;	/* Mutex handle */
+	DB_REP		*rep_handle;	/* Replication handle */
+	DB_TXNMGR	*tx_handle;	/* Txn handle */
+
+	/* Application callback to copy data to/from a custom data source */
+#define	DB_USERCOPY_GETDATA	0x0001
+#define	DB_USERCOPY_SETDATA	0x0002
+	int (*dbt_usercopy)
+	    __P((DBT *, u_int32_t, void *, u_int32_t, u_int32_t));
+
+	REGINFO	*reginfo;		/* REGINFO structure reference */
+
+#define	DB_TEST_ELECTINIT	 1	/* after __rep_elect_init */
+#define	DB_TEST_ELECTVOTE1	 2	/* after sending VOTE1 */
+#define	DB_TEST_POSTDESTROY	 3	/* after destroy op */
+#define	DB_TEST_POSTLOG		 4	/* after logging all pages */
+#define	DB_TEST_POSTLOGMETA	 5	/* after logging meta in btree */
+#define	DB_TEST_POSTOPEN	 6	/* after __os_open */
+#define	DB_TEST_POSTSYNC	 7	/* after syncing the log */
+#define	DB_TEST_PREDESTROY	 8	/* before destroy op */
+#define	DB_TEST_PREOPEN		 9	/* before __os_open */
+#define	DB_TEST_SUBDB_LOCKS	 10	/* subdb locking tests */
+	int	test_abort;		/* Abort value for testing */
+	int	test_check;		/* Checkpoint value for testing */
+	int	test_copy;		/* Copy value for testing */
+
+#define	ENV_CDB			0x00000001 /* DB_INIT_CDB */
+#define	ENV_DBLOCAL		0x00000002 /* Environment for a private DB */
+#define	ENV_LITTLEENDIAN	0x00000004 /* Little endian system. */
+#define	ENV_LOCKDOWN		0x00000008 /* DB_LOCKDOWN set */
+#define	ENV_NO_OUTPUT_SET	0x00000010 /* No output channel set */
+#define	ENV_OPEN_CALLED		0x00000020 /* DB_ENV->open called */
+#define	ENV_PRIVATE		0x00000040 /* DB_PRIVATE set */
+#define	ENV_RECOVER_FATAL	0x00000080 /* Doing fatal recovery in env */
+#define	ENV_REF_COUNTED		0x00000100 /* Region references this handle */
+#define	ENV_SYSTEM_MEM		0x00000200 /* DB_SYSTEM_MEM set */
+#define	ENV_THREAD		0x00000400 /* DB_THREAD set */
+	u_int32_t flags;
+};
 
 /*******************************************************
  * Database Access Methods.
@@ -516,14 +668,14 @@ typedef struct __env_thread_info {
 /* Initialization methods are often illegal before/after open is called. */
 #define	DB_ILLEGAL_AFTER_OPEN(dbp, name)				\
 	if (F_ISSET((dbp), DB_AM_OPEN_CALLED))				\
-		return (__db_mi_open((dbp)->dbenv, name, 1));
+		return (__db_mi_open((dbp)->env, name, 1));
 #define	DB_ILLEGAL_BEFORE_OPEN(dbp, name)				\
 	if (!F_ISSET((dbp), DB_AM_OPEN_CALLED))				\
-		return (__db_mi_open((dbp)->dbenv, name, 0));
+		return (__db_mi_open((dbp)->env, name, 0));
 /* Some initialization methods are illegal if environment isn't local. */
 #define	DB_ILLEGAL_IN_ENV(dbp, name)					\
-	if (!F_ISSET((dbp)->dbenv, DB_ENV_DBLOCAL))			\
-		return (__db_mi_env((dbp)->dbenv, name));
+	if (!F_ISSET((dbp)->env, ENV_DBLOCAL))				\
+		return (__db_mi_env((dbp)->env, name));
 #define	DB_ILLEGAL_METHOD(dbp, flags) {					\
 	int __ret;							\
 	if ((__ret = __dbh_am_chk(dbp, flags)) != 0)			\
@@ -559,9 +711,9 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
 #define	IS_INITIALIZED(dbc)	((dbc)->internal->pgno != PGNO_INVALID)
 
 /* Free the callback-allocated buffer, if necessary, hanging off of a DBT. */
-#define	FREE_IF_NEEDED(dbenv, dbt)					\
+#define	FREE_IF_NEEDED(env, dbt)					\
 	if (F_ISSET((dbt), DB_DBT_APPMALLOC)) {				\
-		__os_ufree((dbenv), (dbt)->data);			\
+		__os_ufree((env), (dbt)->data);				\
 		F_CLR((dbt), DB_DBT_APPMALLOC);				\
 	}
 
@@ -695,18 +847,6 @@ typedef struct __dbpginfo {
 #define	DB_RPC2ND_GETNAME	0x00900000 /* sj_getname */
 #endif
 
-/*******************************************************
- * Forward structure declarations.
- *******************************************************/
-struct __db_reginfo_t;	typedef struct __db_reginfo_t REGINFO;
-struct __db_txnhead;	typedef struct __db_txnhead DB_TXNHEAD;
-struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
-struct __vrfy_childinfo;typedef struct __vrfy_childinfo VRFY_CHILDINFO;
-struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
-struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
-
-typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
-
 #if defined(__cplusplus)
 }
 #endif
@@ -722,11 +862,11 @@ typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 #include "dbinc/region.h"
 #include "dbinc_auto/env_ext.h"
 #include "dbinc/mutex.h"
-#include "dbinc/os.h"
 #ifdef HAVE_REPLICATION_THREADS
 #include "dbinc/repmgr.h"
 #endif
 #include "dbinc/rep.h"
+#include "dbinc/os.h"
 #include "dbinc_auto/clib_ext.h"
 #include "dbinc_auto/common_ext.h"
 
@@ -740,9 +880,8 @@ typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
  * or we're a replication client, we don't need to log changes because they're
  * already in the log, even though we have a fully functional log system.
  */
-#define	DBENV_LOGGING(dbenv)						\
-	(LOGGING_ON(dbenv) && !IS_REP_CLIENT(dbenv) &&			\
-	    (!IS_RECOVERING(dbenv)))
+#define	DBENV_LOGGING(env)						\
+	(LOGGING_ON(env) && !IS_REP_CLIENT(env) && (!IS_RECOVERING(env)))
 
 /*
  * Test if we need to log a change.  By default, we don't log operations without
@@ -767,8 +906,8 @@ typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 #define	DBC_LOGGING(dbc)	__dbc_logging(dbc)
 #else
 #define	DBC_LOGGING(dbc)						\
-	((dbc)->txn != NULL && LOGGING_ON((dbc)->dbp->dbenv) &&		\
-	    !F_ISSET((dbc), DBC_RECOVER) && !IS_REP_CLIENT((dbc)->dbp->dbenv))
+	((dbc)->txn != NULL && LOGGING_ON((dbc)->env) &&		\
+	    !F_ISSET((dbc), DBC_RECOVER) && !IS_REP_CLIENT((dbc)->env))
 #endif
 
 #endif /* !_DB_INT_H_ */

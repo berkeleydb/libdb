@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_search.c,v 12.30 2007/05/17 17:17:40 bostic Exp $
+ * $Id: bt_search.c,v 12.40 2008/05/07 12:27:31 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -93,7 +93,8 @@ try_again:
 		lock_mode = DB_LOCK_WRITE;
 	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0) {
+	if ((ret = __memp_fget(mpf, &pg,
+	     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
@@ -113,7 +114,7 @@ try_again:
 	    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
 		if (!STD_LOCKING(dbc))
 			goto no_relock;
-		ret = __memp_fput(mpf, h, dbc->priority);
+		ret = __memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
@@ -121,7 +122,8 @@ try_again:
 		lock_mode = DB_LOCK_WRITE;
 		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			return (ret);
-		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0) {
+		if ((ret = __memp_fget(mpf, &pg,
+		     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
 			/* Did not read it, so we can release the lock */
 			(void)__LPUT(dbc, lock);
 			return (ret);
@@ -131,7 +133,8 @@ try_again:
 		    (LF_ISSET(SR_WRITE) && LEVEL(h) == LEAFLEVEL) ||
 		    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
 			/* Someone else split the root, start over. */
-			ret = __memp_fput(mpf, h, dbc->priority);
+			ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority);
 			if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 				ret = t_ret;
 			if (ret != 0)
@@ -140,7 +143,7 @@ try_again:
 		}
 no_relock:	*stack = 1;
 	}
-	BT_STK_ENTER(dbp->dbenv, cp, h, 0, lock, lock_mode, ret);
+	BT_STK_ENTER(dbp->env, cp, h, 0, lock, lock_mode, ret);
 
 	return (ret);
 }
@@ -164,24 +167,25 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	db_indx_t base, i, indx, *inp, lim;
 	db_lockmode_t lock_mode;
 	db_pgno_t pg;
 	db_recno_t recno;
-	int adjust, cmp, deloffset, ret, stack, t_ret;
+	int adjust, cmp, deloffset, ret, set_stack, stack, t_ret;
 	int (*func) __P((DB *, const DBT *, const DBT *));
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	h = NULL;
 	t = dbp->bt_internal;
 	recno = 0;
+	set_stack = 0;
 
 	BT_STK_CLR(cp);
 
@@ -237,8 +241,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 		 */
 		DB_BINARY_SEARCH_FOR(base, lim, h, adjust) {
 			DB_BINARY_SEARCH_INCR(indx, base, lim, adjust);
-			if ((ret = __bam_cmp(dbp, dbc->txn, key,
-			     h, indx, func, &cmp)) != 0)
+			if ((ret = __bam_cmp(dbp, dbc->thread_info,
+			     dbc->txn, key, h, indx, func, &cmp)) != 0)
 				goto err;
 			if (cmp == 0) {
 				if (LEVEL(h) == LEAFLEVEL ||
@@ -273,11 +277,11 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 			}
 
 			if (LF_ISSET(SR_STK_ONLY)) {
-				BT_STK_NUM(dbenv, cp, h, base, ret);
+				BT_STK_NUM(env, cp, h, base, ret);
 				if ((t_ret =
 				    __LPUT(dbc, lock)) != 0 && ret == 0)
 					ret = t_ret;
-				if ((t_ret = __memp_fput(mpf,
+				if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 				     h, dbc->priority)) != 0 && ret == 0)
 					ret = t_ret;
 				return (ret);
@@ -299,8 +303,8 @@ get_next:			/*
 				 */
 				if ((ret = __LPUT(dbc, lock)) != 0)
 					goto err;
-				if ((ret =
-				    __memp_fput(mpf, h, dbc->priority)) != 0)
+				if ((ret = __memp_fput(mpf,
+				    dbc->thread_info, h, dbc->priority)) != 0)
 					goto err;
 				h = NULL;
 				LF_SET(SR_MIN);
@@ -331,7 +335,7 @@ get_next:			/*
 			 */
 			if (LF_ISSET(SR_DEL) && cp->csp == cp->sp)
 				cp->csp++;
-			BT_STK_ENTER(dbenv, cp, h, base, lock, lock_mode, ret);
+			BT_STK_ENTER(env, cp, h, base, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 			return (0);
@@ -361,17 +365,18 @@ next:		if (recnop != NULL)
 
 		if (LF_ISSET(SR_STK_ONLY)) {
 			if (slevel == LEVEL(h)) {
-				BT_STK_NUM(dbenv, cp, h, indx, ret);
+				BT_STK_NUM(env, cp, h, indx, ret);
 				if ((t_ret =
 				    __LPUT(dbc, lock)) != 0 && ret == 0)
 					ret = t_ret;
-				if ((t_ret = __memp_fput(mpf,
+				if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 				    h, dbc->priority)) != 0 && ret == 0)
 					ret = t_ret;
 				return (ret);
 			}
-			BT_STK_NUMPUSH(dbenv, cp, h, indx, ret);
-			(void)__memp_fput(mpf, h, dbc->priority);
+			BT_STK_NUMPUSH(env, cp, h, indx, ret);
+			(void)__memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority);
 			h = NULL;
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
@@ -386,7 +391,7 @@ next:		if (recnop != NULL)
 		} else if (stack) {
 			/* Return if this is the lowest page wanted. */
 			if (LF_ISSET(SR_PARENT) && slevel == LEVEL(h)) {
-				BT_STK_ENTER(dbenv,
+				BT_STK_ENTER(env,
 				    cp, h, indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
@@ -400,10 +405,10 @@ next:		if (recnop != NULL)
 				cp->csp--;
 				if ((ret = __bam_stkrel(dbc, STK_NOLOCK)) != 0)
 					goto err;
-				stack = 0;
+				set_stack = stack = 0;
 				goto do_del;
 			}
-			BT_STK_PUSH(dbenv,
+			BT_STK_PUSH(env,
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
@@ -417,12 +422,14 @@ next:		if (recnop != NULL)
 			/*
 			 * Decide if we want to return a reference to the next
 			 * page in the return stack.  If so, lock it and never
-			 * unlock it.
+			 * unlock it.  We will want to stack things on the
+			 * next iteration.  The stack variable cannot be
+			 * set until we leave this clause.
 			 */
 			if ((LF_ISSET(SR_PARENT) &&
 			    (u_int8_t)(slevel + 1) >= (LEVEL(h) - 1)) ||
 			    (LEVEL(h) - 1) == LEAFLEVEL)
-				stack = 1;
+				set_stack = 1;
 
 			/*
 			 * Returning a subtree.  See if we have hit the start
@@ -437,19 +444,24 @@ next:		if (recnop != NULL)
 			 * edge, then drop the subtree.
 			 */
 			if (!LF_ISSET(SR_DEL | SR_NEXT)) {
-				if ((ret =
-				    __memp_fput(mpf, h, dbc->priority)) != 0)
+				if ((ret = __memp_fput(mpf,
+				    dbc->thread_info, h, dbc->priority)) != 0)
 					goto err;
 				goto lock_next;
 			}
 
 			if ((LF_ISSET(SR_DEL) && NUM_ENT(h) == 1)) {
-				stack = 1;
+				/*
+				 * We are pushing the things on the stack,
+				 * set the stack variable now to indicate this
+				 * has happened.
+				 */
+				stack = set_stack = 1;
 				LF_SET(SR_WRITE);
 				/* Push the parent. */
 				cp->csp++;
 				/* Push this node. */
-				BT_STK_PUSH(dbenv, cp, h,
+				BT_STK_PUSH(env, cp, h,
 				     indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
@@ -473,7 +485,7 @@ do_del:				if (cp->csp->page != NULL) {
 						goto err;
 				}
 				/* Save this node. */
-				BT_STK_ENTER(dbenv, cp,
+				BT_STK_ENTER(env, cp,
 				    h, indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
@@ -482,7 +494,7 @@ do_del:				if (cp->csp->page != NULL) {
 
 lock_next:		h = NULL;
 
-			if (stack && LF_ISSET(SR_WRITE))
+			if (set_stack && LF_ISSET(SR_WRITE))
 				lock_mode = DB_LOCK_WRITE;
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
@@ -492,12 +504,14 @@ lock_next:		h = NULL;
 				 * descending the tree holding read-locks.
 				 */
 				(void)__LPUT(dbc, lock);
-				if (LF_ISSET(SR_DEL | SR_NEXT))
+				if (LF_ISSET(SR_DEL | SR_NEXT) && !stack)
 					cp->csp++;
 				goto err;
 			}
+			stack = set_stack;
 		}
-		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pg,
+		     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
@@ -531,7 +545,7 @@ found:	*exactp = 1;
 	 * not move from the original found key on the basis of the SR_DELNO
 	 * flag.)
 	 */
-	DB_ASSERT(dbenv, recnop == NULL || LF_ISSET(SR_DELNO));
+	DB_ASSERT(env, recnop == NULL || LF_ISSET(SR_DELNO));
 	if (LF_ISSET(SR_DELNO)) {
 		deloffset = TYPE(h) == P_LBTREE ? O_INDX : 0;
 		if (LF_ISSET(SR_DUPLAST))
@@ -562,7 +576,7 @@ found:	*exactp = 1;
 		 * duplicates and record numbers in the same tree.
 		 */
 		if (recnop != NULL) {
-			DB_ASSERT(dbenv, TYPE(h) == P_LBTREE);
+			DB_ASSERT(env, TYPE(h) == P_LBTREE);
 
 			for (i = 0; i < indx; i += P_INDX)
 				if (!B_DISSET(
@@ -575,24 +589,24 @@ found:	*exactp = 1;
 	}
 
 	if (LF_ISSET(SR_STK_ONLY)) {
-		BT_STK_NUM(dbenv, cp, h, indx, ret);
+		BT_STK_NUM(env, cp, h, indx, ret);
 		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 			ret = t_ret;
-		if ((t_ret =
-		     __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+		if ((t_ret = __memp_fput(mpf,
+		     dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
 	} else {
 		if (LF_ISSET(SR_DEL) && cp->csp == cp->sp)
 			cp->csp++;
-		BT_STK_ENTER(dbenv, cp, h, indx, lock, lock_mode, ret);
+		BT_STK_ENTER(env, cp, h, indx, lock, lock_mode, ret);
 	}
 	if (ret != 0)
 		goto err;
 
 	return (0);
 
-err:	if (h != NULL && (t_ret =
-	    __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+err:	if (h != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Keep any not-found page locked for serializability. */
@@ -638,7 +652,7 @@ __bam_stkrel(dbc, flags)
 				cp->page = NULL;
 				LOCK_INIT(cp->lock);
 			}
-			if ((t_ret = __memp_fput(mpf,
+			if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 			     epg->page, dbc->priority)) != 0 && ret == 0)
 				ret = t_ret;
 			/*
@@ -676,11 +690,11 @@ __bam_stkrel(dbc, flags)
  * __bam_stkgrow --
  *	Grow the stack.
  *
- * PUBLIC: int __bam_stkgrow __P((DB_ENV *, BTREE_CURSOR *));
+ * PUBLIC: int __bam_stkgrow __P((ENV *, BTREE_CURSOR *));
  */
 int
-__bam_stkgrow(dbenv, cp)
-	DB_ENV *dbenv;
+__bam_stkgrow(env, cp)
+	ENV *env;
 	BTREE_CURSOR *cp;
 {
 	EPG *p;
@@ -689,11 +703,11 @@ __bam_stkgrow(dbenv, cp)
 
 	entries = cp->esp - cp->sp;
 
-	if ((ret = __os_calloc(dbenv, entries * 2, sizeof(EPG), &p)) != 0)
+	if ((ret = __os_calloc(env, entries * 2, sizeof(EPG), &p)) != 0)
 		return (ret);
 	memcpy(p, cp->sp, entries * sizeof(EPG));
 	if (cp->sp != cp->stack)
-		__os_free(dbenv, cp->sp);
+		__os_free(env, cp->sp);
 	cp->sp = p;
 	cp->csp = p + entries;
 	cp->esp = p + entries * 2;

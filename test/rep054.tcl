@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep054.tcl,v 1.16 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep054.tcl,v 1.19 2008/02/08 19:06:04 sue Exp $
 #
 # TEST	rep054
 # TEST	Test of internal initialization where a far-behind
@@ -64,10 +64,11 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	global util_path
 	global errorInfo
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -235,15 +236,16 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	set newmasterenv [eval $cl_envcmd $recargs -rep_master]
 	error_check_good newmasterenv [is_valid_env $newmasterenv] TRUE
 
+	# Force something into the log
+	$newmasterenv txn_checkpoint -force
+
 	puts "\tRep$tnum.i: Reopen master as client."
 	set oldmasterenv [eval $ma_envcmd $recargs -rep_client]
 	error_check_good oldmasterenv [is_valid_env $oldmasterenv] TRUE
 	set envlist "{$oldmasterenv 1} {$newmasterenv 2} {$clientenv2 3}"
+	process_msgs $envlist
 
-	puts "\tRep$tnum.j: Verify error."
-	process_msgs $envlist 0 NONE err
-	error_check_bad err $err 0
-	error_check_good errchk [is_substr $err "Client too far ahead"] 1
+	rep_verify $clientdir $newmasterenv $masterdir $oldmasterenv 1
 
 	error_check_good newmasterenv_close [$newmasterenv close] 0
 	error_check_good oldmasterenv_close [$oldmasterenv close] 0

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_stat.c,v 12.36 2007/06/22 17:41:29 bostic Exp $
+ * $Id: mp_stat.c,v 12.43 2008/01/08 20:58:42 bostic Exp $
  */
 
 #include "db_config.h"
@@ -16,23 +16,23 @@
 #include "dbinc/txn.h"
 
 #ifdef HAVE_STATISTICS
-static void __memp_print_bh __P((DB_ENV *,
+static void __memp_print_bh __P((ENV *,
 		DB_MPOOL *, const char *, BH *, roff_t *));
-static int  __memp_print_all __P((DB_ENV *, u_int32_t));
-static int  __memp_print_stats __P((DB_ENV *, u_int32_t));
-static int __memp_print_hash __P((DB_ENV *,
+static int  __memp_print_all __P((ENV *, u_int32_t));
+static int  __memp_print_stats __P((ENV *, u_int32_t));
+static int __memp_print_hash __P((ENV *,
 		DB_MPOOL *, REGINFO *, roff_t *, u_int32_t));
-static int  __memp_stat __P((DB_ENV *,
+static int  __memp_stat __P((ENV *,
 		DB_MPOOL_STAT **, DB_MPOOL_FSTAT ***, u_int32_t));
-static void __memp_stat_wait __P((
-		DB_ENV *, REGINFO *, MPOOL *, DB_MPOOL_STAT *, u_int32_t));
-static int __memp_file_stats __P((DB_ENV *,
+static void __memp_stat_wait
+		__P((ENV *, REGINFO *, MPOOL *, DB_MPOOL_STAT *, u_int32_t));
+static int __memp_file_stats __P((ENV *,
 		MPOOLFILE *, void *, u_int32_t *, u_int32_t));
-static int __memp_count_files __P((DB_ENV *,
+static int __memp_count_files __P((ENV *,
 		MPOOLFILE *, void *, u_int32_t *, u_int32_t));
-static int __memp_get_files __P((DB_ENV *,
+static int __memp_get_files __P((ENV *,
 		MPOOLFILE *, void *, u_int32_t *, u_int32_t));
-static int __memp_print_files __P((DB_ENV *,
+static int __memp_print_files __P((ENV *,
 		MPOOLFILE *, void *, u_int32_t *, u_int32_t));
 
 /*
@@ -50,29 +50,31 @@ __memp_stat_pp(dbenv, gspp, fspp, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "DB_ENV->memp_stat", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if ((ret = __db_fchk(dbenv,
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "DB_ENV->memp_stat", DB_INIT_MPOOL);
+
+	if ((ret = __db_fchk(env,
 	    "DB_ENV->memp_stat", flags, DB_STAT_CLEAR)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv, (__memp_stat(dbenv, gspp, fspp, flags)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__memp_stat(env, gspp, fspp, flags)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __memp_stat --
- *	DB_ENV->memp_stat
+ *	ENV->memp_stat
  */
 static int
-__memp_stat(dbenv, gspp, fspp, flags)
-	DB_ENV *dbenv;
+__memp_stat(env, gspp, fspp, flags)
+	ENV *env;
 	DB_MPOOL_STAT **gspp;
 	DB_MPOOL_FSTAT ***fspp;
 	u_int32_t flags;
@@ -86,14 +88,14 @@ __memp_stat(dbenv, gspp, fspp, flags)
 	u_int32_t tmp_wait, tmp_nowait;
 	int ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 
 	/* Global statistics. */
 	if (gspp != NULL) {
 		*gspp = NULL;
 
-		if ((ret = __os_umalloc(dbenv, sizeof(**gspp), gspp)) != 0)
+		if ((ret = __os_umalloc(env, sizeof(**gspp), gspp)) != 0)
 			return (ret);
 		memset(*gspp, 0, sizeof(**gspp));
 		sp = *gspp;
@@ -109,12 +111,12 @@ __memp_stat(dbenv, gspp, fspp, flags)
 		sp->st_max_ncache = mp->max_nreg;
 		sp->st_regsize = dbmp->reginfo[0].rp->size;
 
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MPOOL_SYSTEM_LOCK(env);
 		sp->st_mmapsize = mp->mp_mmapsize;
 		sp->st_maxopenfd = mp->mp_maxopenfd;
 		sp->st_maxwrite = mp->mp_maxwrite;
 		sp->st_maxwrite_sleep = mp->mp_maxwrite_sleep;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
 
 		/* Walk the cache list and accumulate the global information. */
 		for (i = 0; i < mp->nreg; ++i) {
@@ -146,8 +148,8 @@ __memp_stat(dbenv, gspp, fspp, flags)
 			 * st_hash_wait
 			 */
 			__memp_stat_wait(
-			    dbenv, &dbmp->reginfo[i], c_mp, sp, flags);
-			__mutex_set_wait_info(dbenv,
+			    env, &dbmp->reginfo[i], c_mp, sp, flags);
+			__mutex_set_wait_info(env,
 			    c_mp->mtx_region, &tmp_wait, &tmp_nowait);
 			sp->st_region_nowait += tmp_nowait;
 			sp->st_region_wait += tmp_wait;
@@ -165,9 +167,9 @@ __memp_stat(dbenv, gspp, fspp, flags)
 
 			if (LF_ISSET(DB_STAT_CLEAR)) {
 				if (!LF_ISSET(DB_STAT_SUBSYSTEM))
-					__mutex_clear(dbenv, c_mp->mtx_region);
+					__mutex_clear(env, c_mp->mtx_region);
 
-				MPOOL_SYSTEM_LOCK(dbenv);
+				MPOOL_SYSTEM_LOCK(env);
 				st_bytes = c_mp->stat.st_bytes;
 				st_gbytes = c_mp->stat.st_gbytes;
 				st_hash_buckets = c_mp->stat.st_hash_buckets;
@@ -177,7 +179,7 @@ __memp_stat(dbenv, gspp, fspp, flags)
 				c_mp->stat.st_gbytes = st_gbytes;
 				c_mp->stat.st_hash_buckets = st_hash_buckets;
 				c_mp->stat.st_pages = st_pages;
-				MPOOL_SYSTEM_UNLOCK(dbenv);
+				MPOOL_SYSTEM_UNLOCK(env);
 			}
 		}
 
@@ -189,7 +191,7 @@ __memp_stat(dbenv, gspp, fspp, flags)
 		 * statistics.  We added the cache information above, now we
 		 * add the per-file information.
 		 */
-		if ((ret = __memp_walk_files(dbenv, mp, __memp_file_stats,
+		if ((ret = __memp_walk_files(env, mp, __memp_file_stats,
 		    sp, NULL, fspp == NULL ? LF_ISSET(DB_STAT_CLEAR) : 0)) != 0)
 			return (ret);
 	}
@@ -201,7 +203,7 @@ __memp_stat(dbenv, gspp, fspp, flags)
 		/* Count the MPOOLFILE structures. */
 		i = 0;
 		len = 0;
-		if ((ret = __memp_walk_files(dbenv,
+		if ((ret = __memp_walk_files(env,
 		     mp, __memp_count_files, &len, &i, flags)) != 0)
 			return (ret);
 
@@ -210,7 +212,7 @@ __memp_stat(dbenv, gspp, fspp, flags)
 		len += sizeof(DB_MPOOL_FSTAT *);	/* Trailing NULL */
 
 		/* Allocate space */
-		if ((ret = __os_umalloc(dbenv, len, fspp)) != 0)
+		if ((ret = __os_umalloc(env, len, fspp)) != 0)
 			return (ret);
 
 		tfsp = *fspp;
@@ -220,7 +222,7 @@ __memp_stat(dbenv, gspp, fspp, flags)
 		 * Files may have been opened since we counted, don't walk
 		 * off the end of the allocated space.
 		 */
-		if ((ret = __memp_walk_files(dbenv,
+		if ((ret = __memp_walk_files(env,
 		    mp, __memp_get_files, &tfsp, &i, flags)) != 0)
 			return (ret);
 
@@ -231,8 +233,8 @@ __memp_stat(dbenv, gspp, fspp, flags)
 }
 
 static int
-__memp_file_stats(dbenv, mfp, argp, countp, flags)
-	DB_ENV *dbenv;
+__memp_file_stats(env, mfp, argp, countp, flags)
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *argp;
 	u_int32_t *countp;
@@ -241,7 +243,7 @@ __memp_file_stats(dbenv, mfp, argp, countp, flags)
 	DB_MPOOL_STAT *sp;
 	u_int32_t pagesize;
 
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(countp, NULL);
 
 	sp = argp;
@@ -261,8 +263,8 @@ __memp_file_stats(dbenv, mfp, argp, countp, flags)
 }
 
 static int
-__memp_count_files(dbenv, mfp, argp, countp, flags)
-	DB_ENV *dbenv;
+__memp_count_files(env, mfp, argp, countp, flags)
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *argp;
 	u_int32_t *countp;
@@ -272,7 +274,7 @@ __memp_count_files(dbenv, mfp, argp, countp, flags)
 	size_t len;
 
 	COMPQUIET(flags, 0);
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	len = *(size_t *)argp;
 
 	(*countp)++;
@@ -294,8 +296,8 @@ __memp_count_files(dbenv, mfp, argp, countp, flags)
  * for the text file names.
  */
 static int
-__memp_get_files(dbenv, mfp, argp, countp, flags)
-	DB_ENV *dbenv;
+__memp_get_files(env, mfp, argp, countp, flags)
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *argp;
 	u_int32_t *countp;
@@ -310,7 +312,7 @@ __memp_get_files(dbenv, mfp, argp, countp, flags)
 	if (*countp == 0)
 		return (0);
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	tfsp = *(DB_MPOOL_FSTAT ***)argp;
 
 	if (*tfsp == NULL) {
@@ -343,7 +345,7 @@ __memp_get_files(dbenv, mfp, argp, countp, flags)
 
 /*
  * __memp_stat_print_pp --
- *	DB_ENV->memp_stat_print pre/post processing.
+ *	ENV->memp_stat_print pre/post processing.
  *
  * PUBLIC: int __memp_stat_print_pp __P((DB_ENV *, u_int32_t));
  */
@@ -353,21 +355,23 @@ __memp_stat_print_pp(dbenv, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "DB_ENV->memp_stat_print", DB_INIT_MPOOL);
+	env = dbenv->env;
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "DB_ENV->memp_stat_print", DB_INIT_MPOOL);
 
 #define	DB_STAT_MEMP_FLAGS						\
 	(DB_STAT_ALL | DB_STAT_CLEAR | DB_STAT_MEMP_HASH)
-	if ((ret = __db_fchk(dbenv,
+	if ((ret = __db_fchk(env,
 	    "DB_ENV->memp_stat_print", flags, DB_STAT_MEMP_FLAGS)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv, (__memp_stat_print(dbenv, flags)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__memp_stat_print(env, flags)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -375,13 +379,13 @@ __memp_stat_print_pp(dbenv, flags)
 
 /*
  * __memp_stat_print --
- *	DB_ENV->memp_stat_print method.
+ *	ENV->memp_stat_print method.
  *
- * PUBLIC: int  __memp_stat_print __P((DB_ENV *, u_int32_t));
+ * PUBLIC: int  __memp_stat_print __P((ENV *, u_int32_t));
  */
 int
-__memp_stat_print(dbenv, flags)
-	DB_ENV *dbenv;
+__memp_stat_print(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	u_int32_t orig_flags;
@@ -390,14 +394,14 @@ __memp_stat_print(dbenv, flags)
 	orig_flags = flags;
 	LF_CLR(DB_STAT_CLEAR | DB_STAT_SUBSYSTEM);
 	if (flags == 0 || LF_ISSET(DB_STAT_ALL)) {
-		ret = __memp_print_stats(dbenv,
+		ret = __memp_print_stats(env,
 		    LF_ISSET(DB_STAT_ALL) ? flags : orig_flags);
 		if (flags == 0 || ret != 0)
 			return (ret);
 	}
 
 	if (LF_ISSET(DB_STAT_ALL | DB_STAT_MEMP_HASH) &&
-	    (ret = __memp_print_all(dbenv, orig_flags)) != 0)
+	    (ret = __memp_print_all(env, orig_flags)) != 0)
 		return (ret);
 
 	return (0);
@@ -408,121 +412,121 @@ __memp_stat_print(dbenv, flags)
  *	Display default mpool region statistics.
  */
 static int
-__memp_print_stats(dbenv, flags)
-	DB_ENV *dbenv;
+__memp_print_stats(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	DB_MPOOL_FSTAT **fsp, **tfsp;
 	DB_MPOOL_STAT *gsp;
 	int ret;
 
-	if ((ret = __memp_stat(dbenv, &gsp, &fsp, flags)) != 0)
+	if ((ret = __memp_stat(env, &gsp, &fsp, flags)) != 0)
 		return (ret);
 
 	if (LF_ISSET(DB_STAT_ALL))
-		__db_msg(dbenv, "Default cache region information:");
-	__db_dlbytes(dbenv, "Total cache size",
+		__db_msg(env, "Default cache region information:");
+	__db_dlbytes(env, "Total cache size",
 	    (u_long)gsp->st_gbytes, (u_long)0, (u_long)gsp->st_bytes);
-	__db_dl(dbenv, "Number of caches", (u_long)gsp->st_ncache);
-	__db_dl(dbenv, "Maximum number of caches", (u_long)gsp->st_max_ncache);
-	__db_dlbytes(dbenv, "Pool individual cache size",
+	__db_dl(env, "Number of caches", (u_long)gsp->st_ncache);
+	__db_dl(env, "Maximum number of caches", (u_long)gsp->st_max_ncache);
+	__db_dlbytes(env, "Pool individual cache size",
 	    (u_long)0, (u_long)0, (u_long)gsp->st_regsize);
-	__db_dlbytes(dbenv, "Maximum memory-mapped file size",
+	__db_dlbytes(env, "Maximum memory-mapped file size",
 	    (u_long)0, (u_long)0, (u_long)gsp->st_mmapsize);
 	STAT_LONG("Maximum open file descriptors", gsp->st_maxopenfd);
 	STAT_LONG("Maximum sequential buffer writes", gsp->st_maxwrite);
 	STAT_LONG("Sleep after writing maximum sequential buffers",
 	    gsp->st_maxwrite_sleep);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Requested pages mapped into the process' address space",
 	    (u_long)gsp->st_map);
-	__db_dl_pct(dbenv, "Requested pages found in the cache",
+	__db_dl_pct(env, "Requested pages found in the cache",
 	    (u_long)gsp->st_cache_hit, DB_PCT(
 	    gsp->st_cache_hit, gsp->st_cache_hit + gsp->st_cache_miss), NULL);
-	__db_dl(dbenv, "Requested pages not found in the cache",
+	__db_dl(env, "Requested pages not found in the cache",
 	    (u_long)gsp->st_cache_miss);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Pages created in the cache", (u_long)gsp->st_page_create);
-	__db_dl(dbenv, "Pages read into the cache", (u_long)gsp->st_page_in);
-	__db_dl(dbenv, "Pages written from the cache to the backing file",
+	__db_dl(env, "Pages read into the cache", (u_long)gsp->st_page_in);
+	__db_dl(env, "Pages written from the cache to the backing file",
 	    (u_long)gsp->st_page_out);
-	__db_dl(dbenv, "Clean pages forced from the cache",
+	__db_dl(env, "Clean pages forced from the cache",
 	    (u_long)gsp->st_ro_evict);
-	__db_dl(dbenv, "Dirty pages forced from the cache",
+	__db_dl(env, "Dirty pages forced from the cache",
 	    (u_long)gsp->st_rw_evict);
-	__db_dl(dbenv, "Dirty pages written by trickle-sync thread",
+	__db_dl(env, "Dirty pages written by trickle-sync thread",
 	    (u_long)gsp->st_page_trickle);
-	__db_dl(dbenv, "Current total page count",
+	__db_dl(env, "Current total page count",
 	    (u_long)gsp->st_pages);
-	__db_dl(dbenv, "Current clean page count",
+	__db_dl(env, "Current clean page count",
 	    (u_long)gsp->st_page_clean);
-	__db_dl(dbenv, "Current dirty page count",
+	__db_dl(env, "Current dirty page count",
 	    (u_long)gsp->st_page_dirty);
-	__db_dl(dbenv, "Number of hash buckets used for page location",
+	__db_dl(env, "Number of hash buckets used for page location",
 	    (u_long)gsp->st_hash_buckets);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Total number of times hash chains searched for a page",
 	    (u_long)gsp->st_hash_searches);
-	__db_dl(dbenv, "The longest hash chain searched for a page",
+	__db_dl(env, "The longest hash chain searched for a page",
 	    (u_long)gsp->st_hash_longest);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Total number of hash chain entries checked for page",
 	    (u_long)gsp->st_hash_examined);
-	__db_dl_pct(dbenv,
+	__db_dl_pct(env,
 	    "The number of hash bucket locks that required waiting",
 	    (u_long)gsp->st_hash_wait, DB_PCT(
 	    gsp->st_hash_wait, gsp->st_hash_wait + gsp->st_hash_nowait), NULL);
-	__db_dl_pct(dbenv,
+	__db_dl_pct(env,
     "The maximum number of times any hash bucket lock was waited for",
 	    (u_long)gsp->st_hash_max_wait, DB_PCT(gsp->st_hash_max_wait,
 	    gsp->st_hash_max_wait + gsp->st_hash_max_nowait), NULL);
-	__db_dl_pct(dbenv,
+	__db_dl_pct(env,
 	    "The number of region locks that required waiting",
 	    (u_long)gsp->st_region_wait, DB_PCT(gsp->st_region_wait,
 	    gsp->st_region_wait + gsp->st_region_nowait), NULL);
-	__db_dl(dbenv, "The number of buffers frozen",
+	__db_dl(env, "The number of buffers frozen",
 	    (u_long)gsp->st_mvcc_frozen);
-	__db_dl(dbenv, "The number of buffers thawed",
+	__db_dl(env, "The number of buffers thawed",
 	    (u_long)gsp->st_mvcc_thawed);
-	__db_dl(dbenv, "The number of frozen buffers freed",
+	__db_dl(env, "The number of frozen buffers freed",
 	    (u_long)gsp->st_mvcc_freed);
-	__db_dl(dbenv, "The number of page allocations", (u_long)gsp->st_alloc);
-	__db_dl(dbenv,
+	__db_dl(env, "The number of page allocations", (u_long)gsp->st_alloc);
+	__db_dl(env,
 	    "The number of hash buckets examined during allocations",
 	    (u_long)gsp->st_alloc_buckets);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "The maximum number of hash buckets examined for an allocation",
 	    (u_long)gsp->st_alloc_max_buckets);
-	__db_dl(dbenv, "The number of pages examined during allocations",
+	__db_dl(env, "The number of pages examined during allocations",
 	    (u_long)gsp->st_alloc_pages);
-	__db_dl(dbenv, "The max number of pages examined for an allocation",
+	__db_dl(env, "The max number of pages examined for an allocation",
 	    (u_long)gsp->st_alloc_max_pages);
-	__db_dl(dbenv, "Threads waited on page I/O", (u_long)gsp->st_io_wait);
+	__db_dl(env, "Threads waited on page I/O", (u_long)gsp->st_io_wait);
 
 	for (tfsp = fsp; fsp != NULL && *tfsp != NULL; ++tfsp) {
 		if (LF_ISSET(DB_STAT_ALL))
-			__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-		__db_msg(dbenv, "Pool File: %s", (*tfsp)->file_name);
-		__db_dl(dbenv, "Page size", (u_long)(*tfsp)->st_pagesize);
-		__db_dl(dbenv,
+			__db_msg(env, "%s", DB_GLOBAL(db_line));
+		__db_msg(env, "Pool File: %s", (*tfsp)->file_name);
+		__db_dl(env, "Page size", (u_long)(*tfsp)->st_pagesize);
+		__db_dl(env,
 		    "Requested pages mapped into the process' address space",
 		    (u_long)(*tfsp)->st_map);
-		__db_dl_pct(dbenv, "Requested pages found in the cache",
+		__db_dl_pct(env, "Requested pages found in the cache",
 		    (u_long)(*tfsp)->st_cache_hit, DB_PCT((*tfsp)->st_cache_hit,
 		    (*tfsp)->st_cache_hit + (*tfsp)->st_cache_miss), NULL);
-		__db_dl(dbenv, "Requested pages not found in the cache",
+		__db_dl(env, "Requested pages not found in the cache",
 		    (u_long)(*tfsp)->st_cache_miss);
-		__db_dl(dbenv, "Pages created in the cache",
+		__db_dl(env, "Pages created in the cache",
 		    (u_long)(*tfsp)->st_page_create);
-		__db_dl(dbenv, "Pages read into the cache",
+		__db_dl(env, "Pages read into the cache",
 		    (u_long)(*tfsp)->st_page_in);
-		__db_dl(dbenv,
+		__db_dl(env,
 		    "Pages written from the cache to the backing file",
 		    (u_long)(*tfsp)->st_page_out);
 	}
 
-	__os_ufree(dbenv, fsp);
-	__os_ufree(dbenv, gsp);
+	__os_ufree(env, fsp);
+	__os_ufree(env, gsp);
 	return (0);
 }
 
@@ -531,8 +535,8 @@ __memp_print_stats(dbenv, flags)
  *	Display debugging mpool region statistics.
  */
 static int
-__memp_print_all(dbenv, flags)
-	DB_ENV *dbenv;
+__memp_print_all(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	static const FN cfn[] = {
@@ -547,41 +551,41 @@ __memp_print_all(dbenv, flags)
 	u_int32_t i, cnt;
 	int ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	ret = 0;
 
-	MPOOL_SYSTEM_LOCK(dbenv);
+	MPOOL_SYSTEM_LOCK(env);
 
-	__db_print_reginfo(dbenv, dbmp->reginfo, "Mpool", flags);
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
+	__db_print_reginfo(env, dbmp->reginfo, "Mpool", flags);
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
 
-	__db_msg(dbenv, "MPOOL structure:");
+	__db_msg(env, "MPOOL structure:");
 	__mutex_print_debug_single(
-	    dbenv, "MPOOL region mutex", mp->mtx_region, flags);
+	    env, "MPOOL region mutex", mp->mtx_region, flags);
 	STAT_LSN("Maximum checkpoint LSN", &mp->lsn);
 	STAT_ULONG("Hash table entries", mp->htab_buckets);
 	STAT_ULONG("Hash table last-checked", mp->last_checked);
 	STAT_ULONG("Hash table LRU count", mp->lru_count);
 	STAT_ULONG("Put counter", mp->put_counter);
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "DB_MPOOL handle information:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "DB_MPOOL handle information:");
 	__mutex_print_debug_single(
-	    dbenv, "DB_MPOOL handle mutex", dbmp->mutex, flags);
+	    env, "DB_MPOOL handle mutex", dbmp->mutex, flags);
 	STAT_ULONG("Underlying cache regions", mp->nreg);
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "DB_MPOOLFILE structures:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "DB_MPOOLFILE structures:");
 	for (cnt = 0, dbmfp = TAILQ_FIRST(&dbmp->dbmfq);
 	    dbmfp != NULL; dbmfp = TAILQ_NEXT(dbmfp, q), ++cnt) {
-		__db_msg(dbenv, "File #%lu: %s: per-process, %s",
+		__db_msg(env, "File #%lu: %s: per-process, %s",
 		    (u_long)cnt + 1, __memp_fn(dbmfp),
 		    F_ISSET(dbmfp, MP_READONLY) ? "readonly" : "read/write");
 		STAT_ULONG("Reference count", dbmfp->ref);
 		STAT_ULONG("Pinned block reference count", dbmfp->ref);
 		STAT_ULONG("Clear length", dbmfp->clear_len);
-		__db_print_fileid(dbenv, dbmfp->fileid, "\tID");
+		__db_print_fileid(env, dbmfp->fileid, "\tID");
 		STAT_ULONG("File type", dbmfp->ftype);
 		STAT_ULONG("LSN offset", dbmfp->lsn_offset);
 		STAT_ULONG("Max gbytes", dbmfp->gbytes);
@@ -589,17 +593,17 @@ __memp_print_all(dbenv, flags)
 		STAT_ULONG("Cache priority", dbmfp->priority);
 		STAT_POINTER("mmap address", dbmfp->addr);
 		STAT_ULONG("mmap length", dbmfp->len);
-		__db_prflags(dbenv, NULL, dbmfp->flags, cfn, NULL, "\tFlags");
-		__db_print_fh(dbenv, "File handle", dbmfp->fhp, flags);
+		__db_prflags(env, NULL, dbmfp->flags, cfn, NULL, "\tFlags");
+		__db_print_fh(env, "File handle", dbmfp->fhp, flags);
 	}
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "MPOOLFILE structures:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "MPOOLFILE structures:");
 	cnt = 0;
-	if ((ret = __memp_walk_files(dbenv,
+	if ((ret = __memp_walk_files(env,
 	     mp, __memp_print_files, fmap, &cnt, flags)) != 0)
 		return (ret);
-	MPOOL_SYSTEM_UNLOCK(dbenv);
+	MPOOL_SYSTEM_UNLOCK(env);
 
 	if (cnt < FMAP_ENTRIES)
 		fmap[cnt] = INVALID_ROFF;
@@ -608,10 +612,10 @@ __memp_print_all(dbenv, flags)
 
 	/* Dump the individual caches. */
 	for (i = 0; i < mp->nreg; ++i) {
-		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-		__db_msg(dbenv, "Cache #%d:", i + 1);
+		__db_msg(env, "%s", DB_GLOBAL(db_line));
+		__db_msg(env, "Cache #%d:", i + 1);
 		if ((ret = __memp_print_hash(
-		    dbenv, dbmp, &dbmp->reginfo[i], fmap, flags)) != 0)
+		    env, dbmp, &dbmp->reginfo[i], fmap, flags)) != 0)
 			break;
 	}
 
@@ -619,8 +623,8 @@ __memp_print_all(dbenv, flags)
 }
 
 static int
-__memp_print_files(dbenv, mfp, argp, countp, flags)
-	DB_ENV *dbenv;
+__memp_print_files(env, mfp, argp, countp, flags)
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *argp;
 	u_int32_t *countp;
@@ -642,13 +646,13 @@ __memp_print_files(dbenv, mfp, argp, countp, flags)
 		{ 0,			NULL }
 	};
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	fmap = argp;
 
-	__db_msg(dbenv, "File #%d: %s", *countp + 1, __memp_fns(dbmp, mfp));
-	__mutex_print_debug_single(dbenv, "Mutex", mfp->mutex, flags);
+	__db_msg(env, "File #%d: %s", *countp + 1, __memp_fns(dbmp, mfp));
+	__mutex_print_debug_single(env, "Mutex", mfp->mutex, flags);
 
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	MUTEX_LOCK(env, mfp->mutex);
 	STAT_ULONG("Reference count", mfp->mpf_cnt);
 	STAT_ULONG("Block count", mfp->block_cnt);
 	STAT_ULONG("Last page number", mfp->last_pgno);
@@ -659,7 +663,7 @@ __memp_print_files(dbenv, mfp, argp, countp, flags)
 	STAT_LONG("Page's LSN offset", mfp->lsn_off);
 	STAT_LONG("Page's clear length", mfp->clear_len);
 
-	__db_print_fileid(dbenv,
+	__db_print_fileid(env,
 	    R_ADDR(dbmp->reginfo, mfp->fileid_off), "\tID");
 
 	mfp_flags = 0;
@@ -671,12 +675,12 @@ __memp_print_files(dbenv, mfp, argp, countp, flags)
 		FLD_SET(mfp_flags, MP_FAKE_NB);
 	if (mfp->unlink_on_close)
 		FLD_SET(mfp_flags, MP_FAKE_UOC);
-	__db_prflags(dbenv, NULL, mfp_flags, fn, NULL, "\tFlags");
+	__db_prflags(env, NULL, mfp_flags, fn, NULL, "\tFlags");
 
 	if (*countp < FMAP_ENTRIES)
 		fmap[*countp] = R_OFFSET(dbmp->reginfo, mfp);
 	(*countp)++;
-	MUTEX_UNLOCK(dbenv, mfp->mutex);
+	MUTEX_UNLOCK(env, mfp->mutex);
 	return (0);
 }
 
@@ -685,8 +689,8 @@ __memp_print_files(dbenv, mfp, argp, countp, flags)
  *	Display hash bucket statistics for a cache.
  */
 static int
-__memp_print_hash(dbenv, dbmp, reginfo, fmap, flags)
-	DB_ENV *dbenv;
+__memp_print_hash(env, dbmp, reginfo, fmap, flags)
+	ENV *env;
 	DB_MPOOL *dbmp;
 	REGINFO *reginfo;
 	roff_t *fmap;
@@ -702,41 +706,40 @@ __memp_print_hash(dbenv, dbmp, reginfo, fmap, flags)
 	DB_MSGBUF_INIT(&mb);
 
 	/* Display the hash table list of BH's. */
-	__db_msg(dbenv,
+	__db_msg(env,
 	    "BH hash table (%lu hash slots)", (u_long)c_mp->htab_buckets);
-	__db_msg(dbenv, "bucket #: priority, I/O wait, [mutex]");
-	__db_msg(dbenv, "\tpageno, file, ref, LSN, address, priority, flags");
+	__db_msg(env, "bucket #: priority, I/O wait, [mutex]");
+	__db_msg(env, "\tpageno, file, ref, LSN, address, priority, flags");
 
 	for (hp = R_ADDR(reginfo, c_mp->htab),
 	    bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {
-		MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MUTEX_LOCK(env, hp->mtx_hash);
 		if ((bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) != NULL) {
-			__db_msgadd(dbenv, &mb,
-			    "bucket %lu: %lu, %lu (%lu dirty)",
+			__db_msgadd(env, &mb,
+			    "bucket %lu: %lu (%lu dirty)",
 			    (u_long)bucket, (u_long)hp->hash_io_wait,
-			    (u_long)hp->hash_priority,
 			    (u_long)hp->hash_page_dirty);
 			if (hp->hash_frozen != 0)
-				__db_msgadd(dbenv, &mb, "(MVCC %lu/%lu/%lu) ",
+				__db_msgadd(env, &mb, "(MVCC %lu/%lu/%lu) ",
 				    (u_long)hp->hash_frozen,
 				    (u_long)hp->hash_thawed,
 				    (u_long)hp->hash_frozen_freed);
 			__mutex_print_debug_stats(
-			    dbenv, &mb, hp->mtx_hash, flags);
-			DB_MSGBUF_FLUSH(dbenv, &mb);
+			    env, &mb, hp->mtx_hash, flags);
+			DB_MSGBUF_FLUSH(env, &mb);
 		}
 		for (; bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh)) {
-			__memp_print_bh(dbenv, dbmp, NULL, bhp, fmap);
+			__memp_print_bh(env, dbmp, NULL, bhp, fmap);
 
 			/* Print the version chain, if it exists. */
 			for (vbhp = SH_CHAIN_PREV(bhp, vc, __bh);
 			    vbhp != NULL;
 			    vbhp = SH_CHAIN_PREV(vbhp, vc, __bh)) {
-				__memp_print_bh(dbenv, dbmp,
+				__memp_print_bh(env, dbmp,
 				    " next:\t", vbhp, fmap);
 			}
 		}
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 	}
 
 	return (0);
@@ -747,8 +750,8 @@ __memp_print_hash(dbenv, dbmp, reginfo, fmap, flags)
  *	Display a BH structure.
  */
 static void
-__memp_print_bh(dbenv, dbmp, prefix, bhp, fmap)
-	DB_ENV *dbenv;
+__memp_print_bh(env, dbmp, prefix, bhp, fmap)
+	ENV *env;
 	DB_MPOOL *dbmp;
 	const char *prefix;
 	BH *bhp;
@@ -771,33 +774,33 @@ __memp_print_bh(dbenv, dbmp, prefix, bhp, fmap)
 	DB_MSGBUF_INIT(&mb);
 
 	if (prefix != NULL)
-		__db_msgadd(dbenv, &mb, "%s", prefix);
+		__db_msgadd(env, &mb, "%s", prefix);
 	else
-		__db_msgadd(dbenv, &mb, "\t");
+		__db_msgadd(env, &mb, "\t");
 
 	for (i = 0; i < FMAP_ENTRIES; ++i)
 		if (fmap[i] == INVALID_ROFF || fmap[i] == bhp->mf_offset)
 			break;
 
 	if (fmap[i] == INVALID_ROFF)
-		__db_msgadd(dbenv, &mb, "%5lu, %lu, ",
+		__db_msgadd(env, &mb, "%5lu, %lu, ",
 		    (u_long)bhp->pgno, (u_long)bhp->mf_offset);
 	else
 		__db_msgadd(
-		    dbenv, &mb, "%5lu, #%d, ", (u_long)bhp->pgno, i + 1);
+		    env, &mb, "%5lu, #%d, ", (u_long)bhp->pgno, i + 1);
 
-	__db_msgadd(dbenv, &mb, "%2lu%s, %lu/%lu", (u_long)bhp->ref,
+	__db_msgadd(env, &mb, "%2lu%s, %lu/%lu", (u_long)bhp->ref,
 	    bhp->ref_sync == 0 ? "" : " (sync-lock)",
 	    F_ISSET(bhp, BH_FROZEN) ? 0 : (u_long)LSN(bhp->buf).file,
 	    F_ISSET(bhp, BH_FROZEN) ? 0 : (u_long)LSN(bhp->buf).offset);
 	if (bhp->td_off != INVALID_ROFF)
-		__db_msgadd(dbenv, &mb, " (@%lu/%lu)",
-		    (u_long)VISIBLE_LSN(dbenv, bhp)->file,
-		    (u_long)VISIBLE_LSN(dbenv, bhp)->offset);
-	__db_msgadd(dbenv, &mb, ", %#08lx, %lu",
+		__db_msgadd(env, &mb, " (@%lu/%lu)",
+		    (u_long)VISIBLE_LSN(env, bhp)->file,
+		    (u_long)VISIBLE_LSN(env, bhp)->offset);
+	__db_msgadd(env, &mb, ", %#08lx, %lu",
 	    (u_long)R_OFFSET(dbmp->reginfo, bhp), (u_long)bhp->priority);
-	__db_prflags(dbenv, &mb, bhp->flags, fn, " (", ")");
-	DB_MSGBUF_FLUSH(dbenv, &mb);
+	__db_prflags(env, &mb, bhp->flags, fn, " (", ")");
+	DB_MSGBUF_FLUSH(env, &mb);
 }
 
 /*
@@ -805,8 +808,8 @@ __memp_print_bh(dbenv, dbmp, prefix, bhp, fmap)
  *	Total hash bucket wait stats into the region.
  */
 static void
-__memp_stat_wait(dbenv, reginfo, mp, mstat, flags)
-	DB_ENV *dbenv;
+__memp_stat_wait(env, reginfo, mp, mstat, flags)
+	ENV *env;
 	REGINFO *reginfo;
 	MPOOL *mp;
 	DB_MPOOL_STAT *mstat;
@@ -819,7 +822,7 @@ __memp_stat_wait(dbenv, reginfo, mp, mstat, flags)
 	hp = R_ADDR(reginfo, mp->htab);
 	for (i = 0; i < mp->htab_buckets; i++, hp++) {
 		__mutex_set_wait_info(
-		    dbenv, hp->mtx_hash, &tmp_wait, &tmp_nowait);
+		    env, hp->mtx_hash, &tmp_wait, &tmp_nowait);
 		mstat->st_hash_nowait += tmp_nowait;
 		mstat->st_hash_wait += tmp_wait;
 		if (tmp_wait > mstat->st_hash_max_wait) {
@@ -828,7 +831,7 @@ __memp_stat_wait(dbenv, reginfo, mp, mstat, flags)
 		}
 		if (LF_ISSET(DB_STAT_CLEAR |
 		    DB_STAT_SUBSYSTEM) == DB_STAT_CLEAR)
-			__mutex_clear(dbenv, hp->mtx_hash);
+			__mutex_clear(env, hp->mtx_hash);
 
 		mstat->st_io_wait += hp->hash_io_wait;
 		mstat->st_mvcc_frozen += hp->hash_frozen;
@@ -856,7 +859,7 @@ __memp_stat_pp(dbenv, gspp, fspp, flags)
 	COMPQUIET(fspp, NULL);
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbenv));
+	return (__db_stat_not_built(dbenv->env));
 }
 
 int
@@ -866,7 +869,7 @@ __memp_stat_print_pp(dbenv, flags)
 {
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbenv));
+	return (__db_stat_not_built(dbenv->env));
 }
 #endif
 

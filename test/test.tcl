@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: test.tcl,v 12.42 2007/06/28 14:26:02 bostic Exp $
+# $Id: test.tcl,v 12.54 2008/05/13 18:32:51 carol Exp $
 
 source ./include.tcl
 
@@ -115,7 +115,8 @@ set is_windows_test [string match Win* $tcl_platform(os)]
 set is_windows9x_test [string match "Windows 95" $tcl_platform(osVersion)]
 set is_je_test 0
 set upgrade_be [big_endian]
-
+global is_fat32
+set is_fat32 [string match FAT32 [lindex [file system check] 1]]
 global EXE BAT
 if { $is_windows_test == 1 } {
 	set EXE ".exe"
@@ -383,7 +384,7 @@ proc check_output { file } {
 		^r\sndbm\s*|
 		^r\srpc\s*|
 		^run_recd:\s.*|
-		^run_reptest:\s.*|
+		^run_reptest\s.*|
 		^run_rpcmethod:\s.*|
 		^run_secenv:\s.*|
 		^All\sprocesses\shave\sexited.$|
@@ -399,6 +400,8 @@ proc check_output { file } {
 		^Method:\s.*|
 		^Repl:\stest\d\d\d:.*|
 		^Repl:\ssdb\d\d\d:.*|
+		^Running\stest\ssdb.*|
+		^Running\stest\stest.*|
 		^Script\swatcher\sprocess\s.*|
 		^Secondary\sindex\sjoin\s.*|
 		^\sBerkeley\sDB\s.*|
@@ -538,10 +541,10 @@ proc r { args } {
 			ndbm -
 			shelltest {
 				if { $one_test == "ALL" } {
-					if { $display } { puts "r $sub" }
+					if { $display } { puts "eval $sub" }
 					if { $run } {
 						check_handles
-						$sub
+						eval $sub
 					}
 				}
 			}
@@ -563,10 +566,10 @@ proc r { args } {
 				eval r $saveflags join6
 			}
 			join1 {
-				if { $display } { puts jointest }
+				if { $display } { puts "eval jointest" }
 				if { $run } {
 					check_handles
-					jointest
+					eval jointest
 				}
 			}
 			joinbench {
@@ -576,40 +579,40 @@ proc r { args } {
 				puts "[timestamp]"
 			}
 			join2 {
-				if { $display } { puts "jointest 512" }
+				if { $display } { puts "eval jointest 512" }
 				if { $run } {
 					check_handles
-					jointest 512
+					eval jointest 512
 				}
 			}
 			join3 {
 				if { $display } {
-					puts "jointest 8192 0 -join_item"
+					puts "eval jointest 8192 0 -join_item"
 				}
 				if { $run } {
 					check_handles
-					jointest 8192 0 -join_item
+					eval jointest 8192 0 -join_item
 				}
 			}
 			join4 {
-				if { $display } { puts "jointest 8192 2" }
+				if { $display } { puts "eval jointest 8192 2" }
 				if { $run } {
 					check_handles
-					jointest 8192 2
+					eval jointest 8192 2
 				}
 			}
 			join5 {
-				if { $display } { puts "jointest 8192 3" }
+				if { $display } { puts "eval jointest 8192 3" }
 				if { $run } {
 					check_handles
-					jointest 8192 3
+					eval jointest 8192 3
 				}
 			}
 			join6 {
-				if { $display } { puts "jointest 512 3" }
+				if { $display } { puts "eval jointest 512 3" }
 				if { $run } {
 					check_handles
-					jointest 512 3
+					eval jointest 512 3
 				}
 			}
 			recd {
@@ -904,7 +907,7 @@ proc run_rpcmethod { method {largs ""} } {
 	global rpc_svc
 	source ./include.tcl
 
-	puts "run_rpcmethod: $method $largs"
+	puts "run_rpcmethod: $method $largs using $rpc_svc"
 
 	set save_largs $largs
 	set dpid [rpc_server_start]
@@ -952,6 +955,8 @@ proc run_rpcmethod { method {largs ""} } {
 				append largs " -env $env "
 
 				puts "[timestamp]"
+				puts "Running test $test with RPC service $rpc_svc"
+				puts "eval $test $method $parms($test) $largs"
 				eval $test $method $parms($test) $largs
 				if { $__debug_print != 0 } {
 					puts ""
@@ -1190,7 +1195,7 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 	global passwd
 	global has_crypto
 
-	puts "run_reptest: \
+	puts "run_reptest \
 	    $method $test $droppct $nclients $do_del $do_sec $do_oob $largs"
 
 	env_cleanup $testdir
@@ -1308,6 +1313,14 @@ proc run_repmethod { method test {numcl 0} {display 0} {run 1} \
 	}
 	set drindex [berkdb random_int 0 $drop_len]
 	set droppct [lindex $drop_list $drindex]
+
+	# Do not drop messages on Windows.  Since we can't set 
+	# re-request times with less than millisecond precision, 
+	# dropping messages will cause test failures. 
+	if { $is_windows_test == 1 } {
+		set droppct 0
+	}
+
  	set do_sec [berkdb random_int 0 1]
 	set do_oob [berkdb random_int 0 1]
 	set do_del [berkdb random_int 0 1]
@@ -1338,6 +1351,11 @@ proc run_envmethod { method test {display 0} {run 1} {outfile stdout} \
 
 	set save_largs $largs
 	set envargs ""
+
+	# Enlarge the logging region by default - sdb004 needs this because
+	# it uses very long subdb names, and the names are stored in the 
+	# env region.
+	set logargs " -log_regionmax 2057152 "
 
 	# Enlarge the cache by default - some compaction tests need it.
 	set cacheargs "-cachesize {0 4194304 1}"
@@ -1385,7 +1403,7 @@ proc run_envmethod { method test {display 0} {run 1} {outfile stdout} \
 		set stat [catch {
 			check_handles
 			set env [eval {berkdb_env -create -txn -mode 0644 \
-			    -home $testdir} $cacheargs $lockargs $envargs]
+			    -home $testdir} $logargs $cacheargs $lockargs $envargs]
 			error_check_good env_open [is_valid_env $env] TRUE
 			append largs " -env $env "
 
@@ -1508,6 +1526,10 @@ proc run_recds { {run 1} {display 0} args } {
 	set log_log_record_types 1
 	logtrack_init
 
+	# Define a small set of tests to run with log file zeroing.
+	set zero_log_tests \
+	    {recd001 recd002 recd003 recd004 recd005 recd006 recd007}
+
 	foreach method $valid_methods {
 		check_handles
 #set test_names(recd) "recd005 recd017"
@@ -1524,16 +1546,27 @@ proc run_recds { {run 1} {display 0} args } {
 				puts "Skipping $test for crypto run."
 				continue
 			}
-			if { [catch {eval \
-			    run_recd $method $test $run $display \
-			    $args} ret ] != 0 } {
+			if { [catch {eval run_recd $method $test $run \
+			    $display $args} ret ] != 0 } {
 				puts $ret
 			}
+	
+			# If it's one of the chosen tests, and btree, run with 
+			# log file zeroing.
+			set zlog_idx [lsearch -exact $zero_log_tests $test]
+			if { $method == "btree" && $zlog_idx > -1 } {
+				if { [catch {eval run_recd $method $test \
+				    $run $display -zero_log $args} ret ] != 0 } { 
+					puts $ret
+				}	
+			}
+
 			if { $gen_upgrade_log == 1 } {
 				save_upgrade_files $testdir
 			}
 		}
 	}
+
 	# We can skip logtrack_summary during the crypto upgrade run -
 	# it doesn't introduce any new log types.
 	if { $run } {
@@ -2085,4 +2118,46 @@ proc get_test_pagesizes { } {
 		default { return {512 8192 65536} }
 	}
 	error_check_good NOTREACHED 0 1
+}
+
+proc run_timed_once { timedtest args } {
+	set start [timestamp -r]
+	set ret [catch {
+		eval $timedtest $args
+		flush stdout
+		flush stderr
+	} res]
+	set stop [timestamp -r]
+	if { $ret != 0 } {
+		global errorInfo
+
+		set fnl [string first "\n" $errorInfo]
+		set theError [string range $errorInfo 0 [expr $fnl - 1]]
+		if {[string first FAIL $errorInfo] == -1} {
+			error "FAIL:[timestamp]\
+			    run_timed: $timedtest: $theError"
+		} else {
+			error $theError;
+		}
+	}
+	return [expr $stop - $start]
+}
+
+proc run_timed { niter timedtest args } {
+	if { $niter < 1 } {
+		error "run_timed: Invalid number of iterations $niter"
+	}
+	set sum 0
+	set e {}
+	for { set i 1 } { $i <= $niter } { incr i } {
+		set elapsed [eval run_timed_once $timedtest $args]
+		lappend e $elapsed
+		set sum [expr $sum + $elapsed]
+		puts "Test $timedtest run $i completed: $elapsed seconds"
+	}
+	if { $niter > 1 } {
+		set avg [expr $sum / $niter]
+		puts "Average $timedtest time: $avg"
+		puts "Raw $timedtest data: $e"
+	}
 }

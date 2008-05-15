@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: fop_rec.c,v 12.18 2007/05/17 15:15:37 bostic Exp $
+ * $Id: fop_rec.c,v 12.27 2008/01/31 18:40:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -16,7 +16,7 @@
 #include "dbinc/txn.h"
 
 static int __fop_rename_recover_int
-    __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *, int));
+    __P((ENV *, DBT *, DB_LSN *, db_recops, void *, int));
 
 /*
  * The transactional guarantees Berkeley DB provides for file
@@ -53,36 +53,55 @@ static int __fop_rename_recover_int
  *	Recovery function for create.
  *
  * PUBLIC: int __fop_create_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_create_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_create_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
-	DB_FH *fhp;
 	__fop_create_args *argp;
-	char *real_name;
+	DB_FH *fhp;
+	DBMETA *meta;
+	u_int8_t mbuf[DBMETASIZE];
 	int ret;
+	char *real_name;
 
 	COMPQUIET(info, NULL);
+
 	real_name = NULL;
 	REC_PRINT(__fop_create_print);
 	REC_NOOP_INTRO(__fop_create_read);
+	meta = (DBMETA *)mbuf;
 
-	if ((ret = __db_appname(dbenv, (APPNAME)argp->appname,
+	if ((ret = __db_appname(env, (APPNAME)argp->appname,
 	    (const char *)argp->name.data, 0, NULL, &real_name)) != 0)
 		goto out;
 
-	if (DB_UNDO(op))
-		(void)__os_unlink(dbenv, real_name);
-	else if (DB_REDO(op)) {
-		if ((ret = __os_open(dbenv, real_name, 0,
+	if (DB_UNDO(op)) {
+		/*
+		 * If the file was opened in mpool, we must mark it as
+		 * dead via nameop which will also unlink the file.
+		 */
+		if (__os_open(env, real_name, 0, 0, 0, &fhp) == 0) {
+			if (__fop_read_meta(env,
+			    real_name, mbuf, DBMETASIZE, fhp, 1, NULL) == 0 &&
+			    __db_chk_meta(env, NULL, meta, 1) == 0) {
+				if ((ret = __memp_nameop(env,
+				    meta->uid, NULL, real_name, NULL, 0)) != 0)
+					goto out;
+			} else
+				goto do_unlink;
+			(void)__os_closehandle(env, fhp);
+		} else
+do_unlink:		(void)__os_unlink(env, real_name, 0);
+	} else if (DB_REDO(op)) {
+		if ((ret = __os_open(env, real_name, 0,
 		    DB_OSO_CREATE, (int)argp->mode, &fhp)) == 0)
-			(void)__os_closehandle(dbenv, fhp);
+			(void)__os_closehandle(env, fhp);
 		else
 			goto out;
 	}
@@ -90,7 +109,7 @@ __fop_create_recover(dbenv, dbtp, lsnp, op, info)
 	*lsnp = argp->prev_lsn;
 
 out: if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 
 	REC_NOOP_CLOSE;
 }
@@ -100,37 +119,38 @@ out: if (real_name != NULL)
  *	Recovery function for remove.
  *
  * PUBLIC: int __fop_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_remove_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
 	__fop_remove_args *argp;
-	char *real_name;
 	int ret;
+	char *real_name;
 
 	COMPQUIET(info, NULL);
+
 	real_name = NULL;
 	REC_PRINT(__fop_remove_print);
 	REC_NOOP_INTRO(__fop_remove_read);
 
-	if ((ret = __db_appname(dbenv, (APPNAME)argp->appname,
+	if ((ret = __db_appname(env, (APPNAME)argp->appname,
 	    (const char *)argp->name.data, 0, NULL, &real_name)) != 0)
 		goto out;
 
 	/* Its ok if the file is not there. */
 	if (DB_REDO(op))
-		(void)__memp_nameop(dbenv,
+		(void)__memp_nameop(env,
 		    (u_int8_t *)argp->fid.data, NULL, real_name, NULL, 0);
 
 	*lsnp = argp->prev_lsn;
 out:	if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 	REC_NOOP_CLOSE;
 }
 
@@ -139,11 +159,11 @@ out:	if (real_name != NULL)
  *	Recovery function for writechunk.
  *
  * PUBLIC: int __fop_write_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_write_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_write_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -153,14 +173,15 @@ __fop_write_recover(dbenv, dbtp, lsnp, op, info)
 	int ret;
 
 	COMPQUIET(info, NULL);
+
 	REC_PRINT(__fop_write_print);
 	REC_NOOP_INTRO(__fop_write_read);
 
 	ret = 0;
 	if (DB_UNDO(op))
-		DB_ASSERT(dbenv, argp->flag != 0);
+		DB_ASSERT(env, argp->flag != 0);
 	else if (DB_REDO(op))
-		ret = __fop_write(dbenv,
+		ret = __fop_write(env,
 		    argp->txnp, argp->name.data, (APPNAME)argp->appname,
 		    NULL, argp->pgsize, argp->pageno, argp->offset,
 		    argp->page.data, argp->page.size, argp->flag, 0);
@@ -179,36 +200,36 @@ __fop_write_recover(dbenv, dbtp, lsnp, op, info)
  * wrapping the two seems like the right solution.
  *
  * PUBLIC: int __fop_rename_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  *
  * PUBLIC: int __fop_rename_noundo_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_rename_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_rename_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
-	return (__fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, 1));
+	return (__fop_rename_recover_int(env, dbtp, lsnp, op, info, 1));
 }
 
 int
-__fop_rename_noundo_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_rename_noundo_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
-	return (__fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, 0));
+	return (__fop_rename_recover_int(env, dbtp, lsnp, op, info, 0));
 }
 
-int
-__fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, undo)
-	DB_ENV *dbenv;
+static int
+__fop_rename_recover_int(env, dbtp, lsnp, op, info, undo)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -218,25 +239,25 @@ __fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, undo)
 	__fop_rename_args *argp;
 	DB_FH *fhp;
 	DBMETA *meta;
-	char *real_new, *real_old, *src;
-	int ret;
 	u_int8_t *fileid, mbuf[DBMETASIZE];
-
-	real_new = NULL;
-	real_old = NULL;
-	ret = 0;
-	fhp = NULL;
-	meta = (DBMETA *)&mbuf[0];
+	int ret;
+	char *real_new, *real_old, *src;
 
 	COMPQUIET(info, NULL);
+
+	fhp = NULL;
+	meta = (DBMETA *)&mbuf[0];
+	ret = 0;
+	real_new = real_old = NULL;
+
 	REC_PRINT(__fop_rename_print);
 	REC_NOOP_INTRO(__fop_rename_read);
 	fileid = argp->fileid.data;
 
-	if ((ret = __db_appname(dbenv, (APPNAME)argp->appname,
+	if ((ret = __db_appname(env, (APPNAME)argp->appname,
 	    (const char *)argp->newname.data, 0, NULL, &real_new)) != 0)
 		goto out;
-	if ((ret = __db_appname(dbenv, (APPNAME)argp->appname,
+	if ((ret = __db_appname(env, (APPNAME)argp->appname,
 	    (const char *)argp->oldname.data, 0, NULL, &real_old)) != 0)
 		goto out;
 
@@ -253,16 +274,16 @@ __fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, undo)
 		 * way, shape or form, incorrect, so that we should not restore
 		 * it.
 		 */
-		if (__os_open(dbenv, src, 0, 0, 0, &fhp) != 0)
+		if (__os_open(env, src, 0, 0, 0, &fhp) != 0)
 			goto done;
-		if (__fop_read_meta(dbenv,
+		if (__fop_read_meta(env,
 		    src, mbuf, DBMETASIZE, fhp, 1, NULL) != 0)
 			goto done;
-		if (__db_chk_meta(dbenv, NULL, meta, 1) != 0)
+		if (__db_chk_meta(env, NULL, meta, 1) != 0)
 			goto done;
 		if (memcmp(argp->fileid.data, meta->uid, DB_FILE_ID_LEN) != 0)
 			goto done;
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 		fhp = NULL;
 		if (DB_REDO(op)) {
 			/*
@@ -272,13 +293,13 @@ __fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, undo)
 			 * file since the state of the world is beyond this
 			 * point.
 			 */
-			if (__os_open(dbenv, real_new, 0, 0, 0, &fhp) == 0 &&
-			    __fop_read_meta(dbenv, src, mbuf,
+			if (__os_open(env, real_new, 0, 0, 0, &fhp) == 0 &&
+			    __fop_read_meta(env, src, mbuf,
 			    DBMETASIZE, fhp, 1, NULL) == 0 &&
-			    __db_chk_meta(dbenv, NULL, meta, 1) == 0 &&
+			    __db_chk_meta(env, NULL, meta, 1) == 0 &&
 			    memcmp(argp->fileid.data,
 			    meta->uid, DB_FILE_ID_LEN) != 0) {
-				(void)__memp_nameop(dbenv,
+				(void)__memp_nameop(env,
 				    fileid, NULL, real_old, NULL, 0);
 				goto done;
 			}
@@ -286,19 +307,19 @@ __fop_rename_recover_int(dbenv, dbtp, lsnp, op, info, undo)
 	}
 
 	if (undo && DB_UNDO(op))
-		(void)__memp_nameop(dbenv, fileid,
+		(void)__memp_nameop(env, fileid,
 		    (const char *)argp->oldname.data, real_new, real_old, 0);
 	if (DB_REDO(op))
-		(void)__memp_nameop(dbenv, fileid,
+		(void)__memp_nameop(env, fileid,
 		    (const char *)argp->newname.data, real_old, real_new, 0);
 
 done:	*lsnp = argp->prev_lsn;
 out:	if (real_new != NULL)
-		__os_free(dbenv, real_new);
+		__os_free(env, real_new);
 	if (real_old != NULL)
-		__os_free(dbenv, real_old);
+		__os_free(env, real_old);
 	if (fhp != NULL)
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 
 	REC_NOOP_CLOSE;
 }
@@ -312,11 +333,11 @@ out:	if (real_new != NULL)
  * what we find out.
  *
  * PUBLIC: int __fop_file_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_file_remove_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -325,16 +346,16 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 	__fop_file_remove_args *argp;
 	DBMETA *meta;
 	DB_FH *fhp;
-	char *real_name;
-	int is_real, is_tmp, ret;
 	size_t len;
 	u_int8_t mbuf[DBMETASIZE];
 	u_int32_t cstat, ret_stat;
+	int is_real, is_tmp, ret;
+	char *real_name;
 
 	fhp = NULL;
+	meta = (DBMETA *)&mbuf[0];
 	is_real = is_tmp = 0;
 	real_name = NULL;
-	meta = (DBMETA *)&mbuf[0];
 	REC_PRINT(__fop_file_remove_print);
 	REC_NOOP_INTRO(__fop_file_remove_read);
 
@@ -346,14 +367,14 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 	    op != DB_TXN_FORWARD_ROLL && op != DB_TXN_APPLY)
 		goto done;
 
-	if ((ret = __db_appname(dbenv,
+	if ((ret = __db_appname(env,
 	    (APPNAME)argp->appname, argp->name.data, 0, NULL, &real_name)) != 0)
 		goto out;
 
 	/* Verify that we are manipulating the correct file.  */
 	len = 0;
-	if (__os_open(dbenv, real_name, 0, 0, 0, &fhp) != 0 ||
-	    (ret = __fop_read_meta(dbenv, real_name,
+	if (__os_open(env, real_name, 0, 0, 0, &fhp) != 0 ||
+	    (ret = __fop_read_meta(env, real_name,
 	    mbuf, DBMETASIZE, fhp, 1, &len)) != 0) {
 		/*
 		 * If len is non-zero, then the file exists and has something
@@ -370,7 +391,7 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 		 * We can ignore errors here since we'll simply fail the
 		 * checks below and assume this is the wrong file.
 		 */
-		(void)__db_chk_meta(dbenv, NULL, meta, 1);
+		(void)__db_chk_meta(env, NULL, meta, 1);
 		is_real =
 		    memcmp(argp->real_fid.data, meta->uid, DB_FILE_ID_LEN) == 0;
 		is_tmp =
@@ -384,13 +405,13 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 			cstat = TXN_COMMIT;
 	}
 	if (fhp != NULL) {
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 		fhp = NULL;
 	}
 
 	if (DB_UNDO(op)) {
 		/* On the backward pass, we leave a note for the child txn. */
-		if ((ret = __db_txnlist_update(dbenv,
+		if ((ret = __db_txnlist_update(env,
 		    info, argp->child, cstat, NULL, &ret_stat, 1)) != 0)
 			goto out;
 	} else if (DB_REDO(op)) {
@@ -399,7 +420,7 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 		 * file while we weren't looking.
 		 */
 		if (cstat == TXN_COMMIT)
-			(void)__memp_nameop(dbenv,
+			(void)__memp_nameop(env,
 			    is_real ? argp->real_fid.data : argp->tmp_fid.data,
 			    NULL, real_name, NULL, 0);
 	}
@@ -408,8 +429,8 @@ done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
 out:	if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 	if (fhp != NULL)
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 	REC_NOOP_CLOSE;
 }

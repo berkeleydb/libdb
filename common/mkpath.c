@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: mkpath.c,v 12.18 2007/05/17 15:14:55 bostic Exp $
+ * $Id: mkpath.c,v 12.21 2008/01/12 13:42:35 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,11 +14,11 @@
  * __db_mkpath -- --
  *	Create intermediate directories.
  *
- * PUBLIC: int __db_mkpath __P((DB_ENV *, const char *));
+ * PUBLIC: int __db_mkpath __P((ENV *, const char *));
  */
 int
-__db_mkpath(dbenv, name)
-	DB_ENV *dbenv;
+__db_mkpath(env, name)
+	ENV *env;
 	const char *name;
 {
 	size_t len;
@@ -30,7 +30,7 @@ __db_mkpath(dbenv, name)
 	 * quite long, so don't allocate the space on the stack.
 	 */
 	len = strlen(name) + 1;
-	if ((ret = __os_malloc(dbenv, len, &t)) != 0)
+	if ((ret = __os_malloc(env, len, &t)) != 0)
 		return (ret);
 	memcpy(t, name, len);
 
@@ -45,9 +45,9 @@ __db_mkpath(dbenv, name)
 			if (p[0] == PATH_SEPARATOR[0]) {
 				savech = *p;
 				*p = '\0';
-				if (__os_exists(dbenv, t, NULL) &&
+				if (__os_exists(env, t, NULL) &&
 				    (ret = __os_mkdir(
-					dbenv, t, dbenv->dir_mode)) != 0)
+					env, t, env->dir_mode)) != 0)
 					break;
 				*p = savech;
 			}
@@ -56,13 +56,13 @@ __db_mkpath(dbenv, name)
 			if (strchr(PATH_SEPARATOR, p[0]) != NULL) {
 				savech = *p;
 				*p = '\0';
-				if (__os_exists(dbenv, t, NULL) &&
+				if (__os_exists(env, t, NULL) &&
 				    (ret = __os_mkdir(
-					dbenv, t, dbenv->dir_mode)) != 0)
+					env, t, env->dir_mode)) != 0)
 					break;
 				*p = savech;
 			}
 
-	__os_free(dbenv, t);
+	__os_free(env, t);
 	return (ret);
 }

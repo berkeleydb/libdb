@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: test093.tcl,v 12.8 2007/05/17 18:17:21 bostic Exp $
+# $Id: test093.tcl,v 12.10 2008/01/23 15:14:55 carol Exp $
 #
 # TEST	test093
 # TEST	Test set_bt_compare (btree key comparison function) and
@@ -36,6 +36,16 @@ proc test093 { method {nentries 10000} {tnum "093"} args} {
 	if { $eindex != -1 } {
 		incr eindex
 		set env [lindex $dbargs $eindex]
+		set envflags [$env get_open_flags]
+
+		# We can't run this test for the -thread option because
+		# the comparison function requires the ability to allocate
+		# memory at the DBT level and our Tcl interface does not
+		# offer that.
+		if { [lsearch -exact $envflags "-thread"] != -1 } {
+			puts "Skipping Test$tnum for threaded env"
+			return
+		}
 		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"

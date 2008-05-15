@@ -1,5 +1,5 @@
-<!--$Id: db_deadlock.so,v 10.32 2006/10/05 01:06:08 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: db_deadlock.so,v 10.33 2007/10/26 15:02:55 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,14 +10,14 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>db_deadlock</h3>
+<b>db_deadlock</b>
 </td>
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db_deadlock [<b>-Vv</b>]
-    [<b>-a e | m | n | o | W | w | y</b>] [<b>-h home</b>] [<b>-L file</b>] [<b>-t sec.usec</b>]</pre></h3>
-<h3>Description</h3>
+<b><pre>db_deadlock [<b>-Vv</b>]
+    [<b>-a e | m | n | o | W | w | y</b>] [<b>-h home</b>] [<b>-L file</b>] [<b>-t sec.usec</b>]</pre></b>
+<b>Description</b>
 <a name="2"><!--meow--></a>
 <p>The db_deadlock utility traverses the database environment lock
 region, and aborts a lock request each time it detects a deadlock or a
@@ -28,34 +28,34 @@ Berkeley DB deadlock detection interfaces should be called in some other way,
 whenever there are multiple threads or processes accessing a database
 and at least one of them is modifying it.</p>
 <p>The options are as follows:</p>
-<dl compact>
-<dt><b>-a</b><dd>When a deadlock is detected, abort the locker:
-<dl compact>
-<dt>m<dd>with the most locks
-<dt>n<dd>with the fewest locks
-<dt>o<dd>with the oldest lock
-<dt>W<dd>with the most write locks
-<dt>w<dd>with the fewest write locks
-<dt>y<dd>with the youngest lock
-</dl>
+<br>
+<b>-a</b><ul compact><li>When a deadlock is detected, abort the locker:
+<br>
+<b>m</b><ul compact><li>with the most locks</ul>
+<b>n</b><ul compact><li>with the fewest locks</ul>
+<b>o</b><ul compact><li>with the oldest lock</ul>
+<b>W</b><ul compact><li>with the most write locks</ul>
+<b>w</b><ul compact><li>with the fewest write locks</ul>
+<b>y</b><ul compact><li>with the youngest lock</ul>
+<br></ul>
 <p>When lock or transaction timeouts have been specified:
-<dl compact>
-<dt>e<dd>abort any lock request that has timed out
-</dl></p>
-<dt><b>-h</b><dd>Specify a home directory for the database environment; by
-default, the current working directory is used.
-<dt><b>-L</b><dd>Log the execution of the db_deadlock utility to the specified file in the
+<br>
+<b>e</b><ul compact><li>abort any lock request that has timed out</ul>
+<br></p>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment; by
+default, the current working directory is used.</ul>
+<b>-L</b><ul compact><li>Log the execution of the db_deadlock utility to the specified file in the
 following format, where <i>###</i> is the process ID, and the date
 is the time the utility was started.
 <blockquote><pre>db_deadlock: ### Wed Jun 15 01:23:45 EDT 1995</pre></blockquote>
-This file will be removed if the db_deadlock utility exits gracefully.
-<dt><b>-t</b><dd>Check the database environment every <b>sec</b> seconds plus
+This file will be removed if the db_deadlock utility exits gracefully.</ul>
+<b>-t</b><ul compact><li>Check the database environment every <b>sec</b> seconds plus
 <b>usec</b> microseconds to see if a process has been forced to wait
 for a lock; if one has, review the database environment lock
-structures.
-<dt><b>-V</b><dd>Write the library version number to the standard output, and exit.
-<dt><b>-v</b><dd>Run in verbose mode, generating messages each time the detector runs.
-</dl>
+structures.</ul>
+<b>-V</b><ul compact><li>Write the library version number to the standard output, and exit.</ul>
+<b>-v</b><ul compact><li>Run in verbose mode, generating messages each time the detector runs.</ul>
+<br>
 <p>If the <b>-t</b> option is not specified, db_deadlock will
 run once and exit.</p>
 <p>The db_deadlock utility uses a Berkeley DB environment (as described for the
@@ -74,13 +74,13 @@ region is created, the db_deadlock utility should be started.</p>
 See the db_deadlock utility source code for an example of using <a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a>
 in a IEEE/ANSI Std 1003.1 (POSIX) environment.</p>
 <p>The db_deadlock utility exits 0 on success, and &gt;0 if an error occurs.</p>
-<h3>Environment Variables</h3>
-<dl compact>
-<dt>DB_HOME<dd>If the <b>-h</b> option is not specified and the environment variable
+<br><b>Environment Variables</b>
+<br>
+<b>DB_HOME</b><ul compact><li>If the <b>-h</b> option is not specified and the environment variable
 DB_HOME is set, it is used as the path of the database home, as described
-in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.
-</dl>
+in <a href="../api_c/env_open.html">DB_ENV-&gt;open</a>.</ul>
+<br>
 </tt>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

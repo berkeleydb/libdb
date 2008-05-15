@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_mkdir.c,v 12.20 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_mkdir.c,v 12.24 2008/01/11 20:50:01 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,25 +14,27 @@
  * __os_mkdir --
  *	Create a directory.
  *
- * PUBLIC: int __os_mkdir __P((DB_ENV *, const char *, int));
+ * PUBLIC: int __os_mkdir __P((ENV *, const char *, int));
  */
 int
-__os_mkdir(dbenv, name, mode)
-	DB_ENV *dbenv;
+__os_mkdir(env, name, mode)
+	ENV *env;
 	const char *name;
 	int mode;
 {
+	DB_ENV *dbenv;
 	int ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: mkdir %s", name);
+		__db_msg(env, "fileops: mkdir %s", name);
 
 	/* Make the directory, with paranoid permissions. */
 #if defined(HAVE_VXWORKS)
-	RETRY_CHK((mkdir((char *)name)), ret);
+	RETRY_CHK((mkdir(CHAR_STAR_CAST name)), ret);
 #else
-	RETRY_CHK((mkdir(name, __db_omode("rwx------"))), ret);
+	RETRY_CHK((mkdir(name, DB_MODE_700)), ret);
 #endif
 	if (ret != 0)
 		return (__os_posix_err(ret));

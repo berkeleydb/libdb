@@ -1,4 +1,4 @@
-m4_comment([$Id: read.so,v 1.14 2006/09/13 14:30:56 mjc Exp $])
+m4_comment([$Id: read.so,v 1.15 2008/01/17 07:58:08 mjc Exp $])
 
 m4_ref_title(m4_tam Applications,
     Degrees of isolation,, transapp/inc, transapp/cursor)
@@ -103,7 +103,9 @@ needs to include all transactions executed concurrently by the
 application plus all cursors configured for snapshot isolation.
 Further, the transactions are retained until the last page they created
 is evicted from cache, so in the extreme case, an additional transaction
-may be needed for each page in the cache.])
+may be needed for each page in the cache.  Note that cache sizes under
+500MB are increased by 25%, so the calculation of number of pages needs
+to take this into account.])
 
 m4_p([dnl
 So when m4_italic(should) applications use snapshot isolation?

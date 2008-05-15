@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_sequence.c,v 12.7 2007/05/17 15:15:12 bostic Exp $
+ * $Id: ex_sequence.c,v 12.9 2008/04/17 01:35:27 alexg Exp $
  */
 
 #include <sys/types.h>
@@ -98,7 +98,7 @@ main(argc, argv)
 
 		/* There's no portable way to print 64-bit numbers. */
 #ifdef _WIN32
-		printf("Got sequence number %l64d\n", (int64_t)seqnum);
+		printf("Got sequence number %I64d\n", (int64_t)seqnum);
 #else
 		printf(
 		    "Got sequence number %llu\n", (unsigned long long)seqnum);

@@ -59,6 +59,7 @@ import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.Transaction;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 ...
 
@@ -104,6 +105,88 @@ try {
 } catch (DatabaseException de) {
     // Exception handling goes here
 } </pre>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="dplcursors"></a>Using Transactional DPL Cursors</h3>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+            When using the DPL, you create the cursor using the entity
+            class's primary or secondary index (see the
+            
+            <i class="citetitle">Getting Started with Berkeley DB for Java</i>
+            guide for details). At the time that you create the cursor, you
+            pass a transaction handle to the <tt class="methodname">entities()</tt>
+            method, and this causes all subsequent operations performed
+            using that cursor to be performed within the scope of the
+            transaction.
+        </p>
+        <p>
+                Note that if you are using a transaction-enabled store,
+                then you must provide a transaction handle when you open
+                your cursor.
+        </p>
+        <p>
+                For example:
+        </p>
+        <pre class="programlisting">package persist.txn;
+
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.Transaction;
+
+import com.sleepycat.persist.EntityCursor;
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.PrimaryIndex;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+
+...
+
+Environment myEnv = null;
+EntityStore store = null;
+
+...
+
+
+    // Store and environment open omitted, as is the DataAccessor
+    // instantiation.
+
+...
+
+    Transaction txn = myEnv.beginTransaction(null, null);
+    PrimaryIndex&lt;String,Inventory&gt; pi =
+        store.getPrimaryIndex(String.class, Inventory.class);
+    EntityCursor&lt;Inventory&gt; pi_cursor = pi.entities(txn, null);
+
+    try {
+        for (Inventory ii : pi_cursor) {
+            // do something with each object "ii"
+            // A transactional handle is not required for any write operations.
+            // All operations performed using this cursor will be done within
+            // the scope of the transaction, txn.
+        }
+        pi_cursor.close();
+        pi_cursor = null;
+        txn.commit();
+        txn = null;
+    // Always make sure the cursor is closed when we are done with it.
+    } catch (Exception e) {
+        if (pi_cursor != null) {
+            pi_cursor.close();
+        }
+        if (txn != null) {
+            txn.abort();
+            txn = null;
+        }
+    } </pre>
+      </div>
     </div>
     <div class="navfooter">
       <hr />

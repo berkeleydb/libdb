@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: rep062.tcl,v 1.13 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep062.tcl,v 1.15 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep062
 # TEST	Test of internal initialization where client has a different
@@ -71,10 +71,11 @@ proc rep062_sub { method tnum logset recargs largs } {
 	global has_crypto
 	global encrypt
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set masterdir $testdir/MASTERDIR

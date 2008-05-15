@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_util.c,v 1.34 2007/06/11 18:29:34 alanb Exp $
+ * $Id: repmgr_util.c,v 1.45 2008/04/30 02:33:34 alexg Exp $
  */
 
 #include "db_config.h"
@@ -19,7 +19,7 @@
  * the property that the queue stays in time order simply by appending to the
  * end.
  *
- * PUBLIC: int __repmgr_schedule_connection_attempt __P((DB_ENV *, u_int, int));
+ * PUBLIC: int __repmgr_schedule_connection_attempt __P((ENV *, u_int, int));
  *
  * !!!
  * Caller should hold mutex.
@@ -28,27 +28,26 @@
  * __repmgr_bust_connection relies on this behavior.
  */
 int
-__repmgr_schedule_connection_attempt(dbenv, eid, immediate)
-	DB_ENV *dbenv;
+__repmgr_schedule_connection_attempt(env, eid, immediate)
+	ENV *env;
 	u_int eid;
 	int immediate;
 {
 	DB_REP *db_rep;
-	REPMGR_SITE *site;
 	REPMGR_RETRY *retry;
-	db_timespec t, v;
+	REPMGR_SITE *site;
+	db_timespec t;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
-	if ((ret = __os_malloc(dbenv, sizeof(*retry), &retry)) != 0)
+	db_rep = env->rep_handle;
+	if ((ret = __os_malloc(env, sizeof(*retry), &retry)) != 0)
 		return (ret);
 
-	__os_gettime(dbenv, &t);
+	__os_gettime(env, &t, 1);
 	if (immediate)
 		TAILQ_INSERT_HEAD(&db_rep->retries, retry, entries);
 	else {
-		DB_TIMEOUT_TO_TIMESPEC(db_rep->connection_retry_wait, &v);
-		timespecadd(&t, &v);
+		TIMESPEC_ADD_DB_TIMEOUT(&t, db_rep->connection_retry_wait);
 		TAILQ_INSERT_TAIL(&db_rep->retries, retry, entries);
 	}
 	retry->eid = eid;
@@ -58,7 +57,7 @@ __repmgr_schedule_connection_attempt(dbenv, eid, immediate)
 	site->state = SITE_IDLE;
 	site->ref.retry = retry;
 
-	return (__repmgr_wake_main_thread(dbenv));
+	return (__repmgr_wake_main_thread(env));
 }
 
 /*
@@ -86,31 +85,31 @@ __repmgr_reset_for_reading(con)
  * connections.  It does not initialize eid, since that isn't needed and/or
  * immediately known in all cases.
  *
- * PUBLIC:  int __repmgr_new_connection __P((DB_ENV *, REPMGR_CONNECTION **,
- * PUBLIC:				   socket_t, u_int32_t));
+ * PUBLIC:  int __repmgr_new_connection __P((ENV *, REPMGR_CONNECTION **,
+ * PUBLIC:				   socket_t, int));
  */
 int
-__repmgr_new_connection(dbenv, connp, s, flags)
-	DB_ENV *dbenv;
+__repmgr_new_connection(env, connp, s, state)
+	ENV *env;
 	REPMGR_CONNECTION **connp;
 	socket_t s;
-	u_int32_t flags;
+	int state;
 {
 	DB_REP *db_rep;
 	REPMGR_CONNECTION *c;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
-	if ((ret = __os_malloc(dbenv, sizeof(REPMGR_CONNECTION), &c)) != 0)
+	db_rep = env->rep_handle;
+	if ((ret = __os_calloc(env, 1, sizeof(REPMGR_CONNECTION), &c)) != 0)
 		return (ret);
 	if ((ret = __repmgr_alloc_cond(&c->drained)) != 0) {
-		__os_free(dbenv, c);
+		__os_free(env, c);
 		return (ret);
 	}
 	c->blockers = 0;
 
 	c->fd = s;
-	c->flags = flags;
+	c->state = state;
 
 	STAILQ_INIT(&c->outbound_queue);
 	c->out_queue_length = 0;
@@ -123,15 +122,15 @@ __repmgr_new_connection(dbenv, connp, s, flags)
 }
 
 /*
- * PUBLIC: int __repmgr_new_site __P((DB_ENV *, REPMGR_SITE**,
+ * PUBLIC: int __repmgr_new_site __P((ENV *, REPMGR_SITE**,
  * PUBLIC:     const repmgr_netaddr_t *, int));
  *
  * !!!
  * Caller must hold mutex.
  */
 int
-__repmgr_new_site(dbenv, sitep, addr, state)
-	DB_ENV *dbenv;
+__repmgr_new_site(env, sitep, addr, state)
+	ENV *env;
 	REPMGR_SITE **sitep;
 	const repmgr_netaddr_t *addr;
 	int state;
@@ -142,12 +141,12 @@ __repmgr_new_site(dbenv, sitep, addr, state)
 	u_int new_site_max, eid;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	if (db_rep->site_cnt >= db_rep->site_max) {
 #define	INITIAL_SITES_ALLOCATION	10		/* Arbitrary guess. */
 		new_site_max = db_rep->site_max == 0 ?
 		    INITIAL_SITES_ALLOCATION : db_rep->site_max * 2;
-		if ((ret = __os_realloc(dbenv,
+		if ((ret = __os_realloc(env,
 		     sizeof(REPMGR_SITE) * new_site_max, &db_rep->sites)) != 0)
 			 return (ret);
 		db_rep->site_max = new_site_max;
@@ -158,10 +157,12 @@ __repmgr_new_site(dbenv, sitep, addr, state)
 
 	memcpy(&site->net_addr, addr, sizeof(*addr));
 	ZERO_LSN(site->max_ack);
-	site->priority = -1;	/* OOB value indicates we don't yet know. */
+	site->flags = 0;
+	timespecclear(&site->last_rcvd_timestamp);
 	site->state = state;
 
-	RPRINT(dbenv, (dbenv, "EID %u is assigned for %s", eid,
+	RPRINT(env, DB_VERB_REPMGR_MISC,
+	    (env, "EID %u is assigned for %s", eid,
 	    __repmgr_format_site_loc(site, buffer)));
 	*sitep = site;
 	return (0);
@@ -171,19 +172,19 @@ __repmgr_new_site(dbenv, sitep, addr, state)
  * Destructor for a repmgr_netaddr_t, cleans up any allocated memory pointed to
  * by the addr.
  *
- * PUBLIC: void __repmgr_cleanup_netaddr __P((DB_ENV *, repmgr_netaddr_t *));
+ * PUBLIC: void __repmgr_cleanup_netaddr __P((ENV *, repmgr_netaddr_t *));
  */
 void
-__repmgr_cleanup_netaddr(dbenv, addr)
-	DB_ENV *dbenv;
+__repmgr_cleanup_netaddr(env, addr)
+	ENV *env;
 	repmgr_netaddr_t *addr;
 {
 	if (addr->address_list != NULL) {
-		__db_freeaddrinfo(dbenv, addr->address_list);
+		__os_freeaddrinfo(env, addr->address_list);
 		addr->address_list = addr->current = NULL;
 	}
 	if (addr->host != NULL) {
-		__os_free(dbenv, addr->host);
+		__os_free(env, addr->host);
 		addr->host = NULL;
 	}
 }
@@ -256,8 +257,12 @@ __repmgr_update_consumed(v, byte_count)
 			 */
 			byte_count -= iov->iov_len;
 		} else {
-			/* Adjust length of remaining portion of vector. */
-			iov->iov_len -= byte_count;
+			/* 
+			 * Adjust length of remaining portion of vector. 
+			 * byte_count can never be greater than iov_len, or we
+			 * would not be in this section of the if clause.
+			 */
+			iov->iov_len -= (u_int32_t)byte_count;
 			if (iov->iov_len > 0) {
 				/*
 				 * Still some left in this vector.  Adjust base
@@ -288,11 +293,11 @@ __repmgr_update_consumed(v, byte_count)
  * point to it.  The buffer is dynamically allocated memory, and the caller must
  * assume responsibility for it.
  *
- * PUBLIC: int __repmgr_prepare_my_addr __P((DB_ENV *, DBT *));
+ * PUBLIC: int __repmgr_prepare_my_addr __P((ENV *, DBT *));
  */
 int
-__repmgr_prepare_my_addr(dbenv, dbt)
-	DB_ENV *dbenv;
+__repmgr_prepare_my_addr(env, dbt)
+	ENV *env;
 	DBT *dbt;
 {
 	DB_REP *db_rep;
@@ -301,7 +306,7 @@ __repmgr_prepare_my_addr(dbenv, dbt)
 	u_int8_t *ptr;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	/*
 	 * The cdata message consists of the 2-byte port number, in network byte
@@ -310,7 +315,7 @@ __repmgr_prepare_my_addr(dbenv, dbt)
 	port_buffer = htons(db_rep->my_addr.port);
 	size = sizeof(port_buffer) +
 	    (hlen = strlen(db_rep->my_addr.host) + 1);
-	if ((ret = __os_malloc(dbenv, size, &ptr)) != 0)
+	if ((ret = __os_malloc(env, size, &ptr)) != 0)
 		return (ret);
 
 	DB_INIT_DBT(*dbt, ptr, size);
@@ -327,14 +332,22 @@ __repmgr_prepare_my_addr(dbenv, dbt)
  * replication group.  If the application has specified a value, use that.
  * Otherwise, just use the number of sites we know of.
  *
+ * !!!
+ * This may only be called after the environment has been opened, because we
+ * assume we have a rep region.  That should be OK, because we only need this
+ * for starting an election, or counting acks after sending a PERM message.
+ *
  * PUBLIC: u_int __repmgr_get_nsites __P((DB_REP *));
  */
 u_int
 __repmgr_get_nsites(db_rep)
 	DB_REP *db_rep;
 {
-	if (db_rep->config_nsites > 0)
-		return ((u_int)db_rep->config_nsites);
+	REP *rep;
+
+	rep = db_rep->region;
+	if (rep->config_nsites > 0)
+		return ((u_int)rep->config_nsites);
 
 	/*
 	 * The number of other sites in our table, plus 1 to count ourself.
@@ -343,15 +356,15 @@ __repmgr_get_nsites(db_rep)
 }
 
 /*
- * PUBLIC: void __repmgr_thread_failure __P((DB_ENV *, int));
+ * PUBLIC: void __repmgr_thread_failure __P((ENV *, int));
  */
 void
-__repmgr_thread_failure(dbenv, why)
-	DB_ENV *dbenv;
+__repmgr_thread_failure(env, why)
+	ENV *env;
 	int why;
 {
-	(void)__repmgr_stop_threads(dbenv);
-	(void)__db_panic(dbenv, why);
+	(void)__repmgr_stop_threads(env);
+	(void)__env_panic(env, why);
 }
 
 /*
@@ -388,44 +401,21 @@ __repmgr_format_site_loc(site, buffer)
 }
 
 /*
- * __repmgr_timespec_diff_now --
- *	Calculate the time duration from now til "when".
- *
- * PUBLIC: void __repmgr_timespec_diff_now
- * PUBLIC:    __P((DB_ENV *, db_timespec *, db_timespec *));
- */
-void
-__repmgr_timespec_diff_now(dbenv, when, result)
-	DB_ENV *dbenv;
-	db_timespec *when, *result;
-{
-	db_timespec now;
-
-	__os_gettime(dbenv, &now);
-	if (timespeccmp(&now, when, >=))
-		timespecclear(result);
-	else {
-		*result = *when;
-		timespecsub(result, &now);
-	}
-}
-
-/*
- * PUBLIC: int __repmgr_repstart __P((DB_ENV *, u_int32_t));
+ * PUBLIC: int __repmgr_repstart __P((ENV *, u_int32_t));
  */
 int
-__repmgr_repstart(dbenv, flags)
-	DB_ENV *dbenv;
+__repmgr_repstart(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	DBT my_addr;
 	int ret;
 
-	if ((ret = __repmgr_prepare_my_addr(dbenv, &my_addr)) != 0)
+	if ((ret = __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 		return (ret);
-	ret = __rep_start(dbenv, &my_addr, flags);
-	__os_free(dbenv, my_addr.data);
+	ret = __rep_start(env->dbenv, &my_addr, flags);
+	__os_free(env, my_addr.data);
 	if (ret != 0)
-		__db_err(dbenv, ret, "rep_start");
+		__db_err(env, ret, "rep_start");
 	return (ret);
 }

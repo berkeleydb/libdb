@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_recover.c,v 12.14 2007/05/17 15:15:03 bostic Exp $
+ * $Id: db_recover.c,v 12.16 2008/01/08 20:58:16 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,14 +12,14 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 void db_recover_feedback __P((DB_ENV *, int, int));
-int db_recover_main __P((int, char *[]));
-int db_recover_read_timestamp __P((char *, time_t *));
-int db_recover_usage __P((void));
-int db_recover_version_check __P((void));
+int  db_recover_main __P((int, char *[]));
+int  db_recover_read_timestamp __P((char *, time_t *));
+int  db_recover_usage __P((void));
+int  db_recover_version_check __P((void));
 
 const char *progname;
 int newline_needed;
@@ -182,8 +182,8 @@ shutdown:	exitval = 1;
 }
 
 /*
- * feedback --
- *	provide feedback on recovery progress.
+ * db_recover_feedback --
+ *	Provide feedback on recovery progress.
  */
 void
 db_recover_feedback(dbenv, opcode, percent)

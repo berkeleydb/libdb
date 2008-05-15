@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_register.c,v 12.13 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mp_register.c,v 12.16 2008/01/08 20:58:42 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,7 +14,7 @@
 
 /*
  * memp_register_pp --
- *	DB_ENV->memp_register pre/post processing.
+ *	ENV->memp_register pre/post processing.
  *
  * PUBLIC: int __memp_register_pp __P((DB_ENV *, int,
  * PUBLIC:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *),
@@ -28,30 +28,32 @@ __memp_register_pp(dbenv, ftype, pgin, pgout)
 	int (*pgout) __P((DB_ENV *, db_pgno_t, void *, DBT *));
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "DB_ENV->memp_register", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv,
-	    (__memp_register(dbenv, ftype, pgin, pgout)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "DB_ENV->memp_register", DB_INIT_MPOOL);
+
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__memp_register(env, ftype, pgin, pgout)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * memp_register --
- *	DB_ENV->memp_register.
+ *	ENV->memp_register.
  *
- * PUBLIC: int __memp_register __P((DB_ENV *, int,
+ * PUBLIC: int __memp_register __P((ENV *, int,
  * PUBLIC:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *),
  * PUBLIC:     int (*)(DB_ENV *, db_pgno_t, void *, DBT *)));
  */
 int
-__memp_register(dbenv, ftype, pgin, pgout)
-	DB_ENV *dbenv;
+__memp_register(env, ftype, pgin, pgout)
+	ENV *env;
 	int ftype;
 	int (*pgin) __P((DB_ENV *, db_pgno_t, void *, DBT *));
 	int (*pgout) __P((DB_ENV *, db_pgno_t, void *, DBT *));
@@ -60,7 +62,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 	DB_MPREG *mpreg;
 	int ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 
 	/*
 	 * We keep the DB pgin/pgout functions outside of the linked list
@@ -73,7 +75,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 		if (dbmp->pg_inout != NULL)
 			return (0);
 		if ((ret =
-		    __os_malloc(dbenv, sizeof(DB_MPREG), &dbmp->pg_inout)) != 0)
+		    __os_malloc(env, sizeof(DB_MPREG), &dbmp->pg_inout)) != 0)
 			return (ret);
 		dbmp->pg_inout->ftype = ftype;
 		dbmp->pg_inout->pgin = pgin;
@@ -85,7 +87,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 	 * The item may already have been registered.  If already registered,
 	 * just update the entry, although it's probably unchanged.
 	 */
-	MUTEX_LOCK(dbenv, dbmp->mutex);
+	MUTEX_LOCK(env, dbmp->mutex);
 	LIST_FOREACH(mpreg, &dbmp->dbregq, q)
 		if (mpreg->ftype == ftype) {
 			mpreg->pgin = pgin;
@@ -94,7 +96,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 		}
 
 	if (mpreg == NULL) {			/* New entry. */
-		if ((ret = __os_malloc(dbenv, sizeof(DB_MPREG), &mpreg)) != 0)
+		if ((ret = __os_malloc(env, sizeof(DB_MPREG), &mpreg)) != 0)
 			return (ret);
 		mpreg->ftype = ftype;
 		mpreg->pgin = pgin;
@@ -102,7 +104,7 @@ __memp_register(dbenv, ftype, pgin, pgout)
 
 		LIST_INSERT_HEAD(&dbmp->dbregq, mpreg, q);
 	}
-	MUTEX_UNLOCK(dbenv, dbmp->mutex);
+	MUTEX_UNLOCK(env, dbmp->mutex);
 
 	return (0);
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc001.tcl,v 12.6 2007/05/17 15:15:55 bostic Exp $
+# $Id: rpc001.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rpc001
 # TEST	Test RPC server timeouts for cursor, txn and env handles.
@@ -20,6 +20,7 @@ proc rpc001 { } {
 	set ttime 5
 	set itime 10
 	puts "Rpc001: Server timeouts: resource $ttime sec, idle $itime sec"
+	puts "Rpc001: Using $rpc_svc"
 	set dpid [rpc_server_start 0 30 -t $ttime -I $itime]
 	puts "\tRpc001.a: Started server, pid $dpid"
 

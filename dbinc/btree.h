@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: btree.h,v 12.14 2007/05/17 15:15:05 bostic Exp $
+ * $Id: btree.h,v 12.17 2008/01/08 20:58:17 bostic Exp $
  */
 #ifndef	_DB_BTREE_H_
 #define	_DB_BTREE_H_
@@ -51,7 +51,6 @@ extern "C" {
 struct __btree;		typedef struct __btree BTREE;
 struct __cursor;	typedef struct __cursor BTREE_CURSOR;
 struct __epg;		typedef struct __epg EPG;
-struct __recno;		typedef struct __recno RECNO;
 
 #define	DEFMINKEYPAGE	 (2)
 
@@ -159,9 +158,9 @@ struct __epg {
 	LOCK_INIT((c)->csp->lock);					\
 } while (0)
 
-#define	BT_STK_ENTER(dbenv, c, pagep, page_indx, l, mode, ret) do {	\
+#define	BT_STK_ENTER(env, c, pagep, page_indx, l, mode, ret) do {	\
 	if ((ret = ((c)->csp == (c)->esp ?				\
-	    __bam_stkgrow(dbenv, c) : 0)) == 0) {			\
+	    __bam_stkgrow(env, c) : 0)) == 0) {			\
 		(c)->csp->page = pagep;					\
 		(c)->csp->indx = (page_indx);				\
 		(c)->csp->entries = NUM_ENT(pagep);			\
@@ -170,14 +169,14 @@ struct __epg {
 	}								\
 } while (0)
 
-#define	BT_STK_PUSH(dbenv, c, pagep, page_indx, lock, mode, ret) do {	\
-	BT_STK_ENTER(dbenv, c, pagep, page_indx, lock, mode, ret);	\
+#define	BT_STK_PUSH(env, c, pagep, page_indx, lock, mode, ret) do {	\
+	BT_STK_ENTER(env, c, pagep, page_indx, lock, mode, ret);	\
 	++(c)->csp;							\
 } while (0)
 
-#define	BT_STK_NUM(dbenv, c, pagep, page_indx, ret) do {		\
+#define	BT_STK_NUM(env, c, pagep, page_indx, ret) do {		\
 	if ((ret = ((c)->csp ==						\
-	    (c)->esp ? __bam_stkgrow(dbenv, c) : 0)) == 0) {		\
+	    (c)->esp ? __bam_stkgrow(env, c) : 0)) == 0) {		\
 		(c)->csp->page = NULL;					\
 		(c)->csp->indx = (page_indx);				\
 		(c)->csp->entries = NUM_ENT(pagep);			\
@@ -186,8 +185,8 @@ struct __epg {
 	}								\
 } while (0)
 
-#define	BT_STK_NUMPUSH(dbenv, c, pagep, page_indx, ret) do {		\
-	BT_STK_NUM(dbenv, cp, pagep, page_indx, ret);			\
+#define	BT_STK_NUMPUSH(env, c, pagep, page_indx, ret) do {		\
+	BT_STK_NUM(env, cp, pagep, page_indx, ret);			\
 	++(c)->csp;							\
 } while (0)
 

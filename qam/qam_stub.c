@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: qam_stub.c,v 12.8 2007/05/17 15:15:50 bostic Exp $
+ * $Id: qam_stub.c,v 12.14 2008/01/30 12:18:23 mjc Exp $
  */
 
 #ifndef	HAVE_QUEUE
@@ -23,13 +23,13 @@
  * __db_no_queue_am --
  *	Error when a Berkeley DB build doesn't include the access method.
  *
- * PUBLIC: int __db_no_queue_am __P((DB_ENV *));
+ * PUBLIC: int __db_no_queue_am __P((ENV *));
  */
 int
-__db_no_queue_am(dbenv)
-	DB_ENV *dbenv;
+__db_no_queue_am(env)
+	ENV *env;
 {
-	__db_errx(dbenv,
+	__db_errx(env,
     "library build did not include support for the Queue access method");
 	return (DB_OPNOTSUP);
 }
@@ -40,7 +40,7 @@ __db_prqueue(dbp, flags)
 	u_int32_t flags;
 {
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -51,7 +51,7 @@ __qam_31_qammeta(dbp, real_name, buf)
 {
 	COMPQUIET(real_name, NULL);
 	COMPQUIET(buf, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -62,7 +62,7 @@ __qam_32_qammeta(dbp, real_name, buf)
 {
 	COMPQUIET(real_name, NULL);
 	COMPQUIET(buf, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -72,7 +72,7 @@ __qam_append(dbc, key, data)
 {
 	COMPQUIET(key, NULL);
 	COMPQUIET(data, NULL);
-	return (__db_no_queue_am(dbc->dbp->dbenv));
+	return (__db_no_queue_am(dbc->env));
 }
 
 int
@@ -80,14 +80,14 @@ __qamc_dup(orig_dbc, new_dbc)
 	DBC *orig_dbc, *new_dbc;
 {
 	COMPQUIET(new_dbc, NULL);
-	return (__db_no_queue_am(orig_dbc->dbp->dbenv));
+	return (__db_no_queue_am(orig_dbc->env));
 }
 
 int
 __qamc_init(dbc)
 	DBC *dbc;
 {
-	return (__db_no_queue_am(dbc->dbp->dbenv));
+	return (__db_no_queue_am(dbc->env));
 }
 
 int
@@ -109,46 +109,44 @@ __qam_db_create(dbp)
 }
 
 int
-__qam_extent_names(dbenv, name, namelistp)
-	DB_ENV *dbenv;
+__qam_extent_names(env, name, namelistp)
+	ENV *env;
 	char *name;
 	char ***namelistp;
 {
 	COMPQUIET(name, NULL);
 	COMPQUIET(namelistp, NULL);
-	return (__db_no_queue_am(dbenv));
+	return (__db_no_queue_am(env));
 }
 
 int
-__qam_gen_filelist(dbp, filelistp)
+__qam_gen_filelist(dbp, ip, filelistp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	QUEUE_FILELIST **filelistp;
 {
+	COMPQUIET(ip, NULL);
 	COMPQUIET(filelistp, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
-__qam_init_print(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__qam_init_print(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(dtabp, NULL);
-	COMPQUIET(dtabsizep, NULL);
 	return (0);
 }
 
 int
-__qam_init_recover(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__qam_init_recover(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(dtabp, NULL);
-	COMPQUIET(dtabsizep, NULL);
 	return (0);
 }
 
@@ -160,42 +158,55 @@ __qam_metachk(dbp, name, qmeta)
 {
 	COMPQUIET(name, NULL);
 	COMPQUIET(qmeta, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
-__qam_new_file(dbp, txn, fhp, name)
+__qam_mswap(env, pg)
+	ENV *env;
+	PAGE *pg;
+{
+	COMPQUIET(pg, NULL);
+	return (__db_no_queue_am(env));
+}
+
+int
+__qam_new_file(dbp, ip, txn, fhp, name)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DB_FH *fhp;
 	const char *name;
 {
+	COMPQUIET(ip, NULL);
 	COMPQUIET(txn, NULL);
 	COMPQUIET(fhp, NULL);
 	COMPQUIET(name, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
-__qam_open(dbp, txn, name, base_pgno, mode, flags)
+__qam_open(dbp, ip, txn, name, base_pgno, mode, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name;
 	db_pgno_t base_pgno;
 	int mode;
 	u_int32_t flags;
 {
+	COMPQUIET(ip, NULL);
 	COMPQUIET(txn, NULL);
 	COMPQUIET(name, NULL);
 	COMPQUIET(base_pgno, 0);
 	COMPQUIET(mode, 0);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
-__qam_pgin_out(dbenv, pg, pp, cookie)
-	DB_ENV *dbenv;
+__qam_pgin_out(env, pg, pp, cookie)
+	ENV *env;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -203,7 +214,7 @@ __qam_pgin_out(dbenv, pg, pp, cookie)
 	COMPQUIET(pg, 0);
 	COMPQUIET(pp, NULL);
 	COMPQUIET(cookie, NULL);
-	return (__db_no_queue_am(dbenv));
+	return (__db_no_queue_am(env));
 }
 
 int
@@ -222,7 +233,7 @@ __qam_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 	COMPQUIET(handle, NULL);
 	COMPQUIET(callback, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -231,7 +242,7 @@ __qam_set_ext_data(dbp, name)
 	const char *name;
 {
 	COMPQUIET(name, NULL);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -242,7 +253,7 @@ __qam_stat(dbc, spp, flags)
 {
 	COMPQUIET(spp, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbc->dbp->dbenv));
+	return (__db_no_queue_am(dbc->env));
 }
 
 int
@@ -251,14 +262,14 @@ __qam_stat_print(dbc, flags)
 	u_int32_t flags;
 {
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbc->dbp->dbenv));
+	return (__db_no_queue_am(dbc->env));
 }
 
 int
 __qam_sync(dbp)
 	DB *dbp;
 {
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -268,7 +279,7 @@ __qam_truncate(dbc, countp)
 {
 	COMPQUIET(dbc, NULL);
 	COMPQUIET(countp, NULL);
-	return (__db_no_queue_am(dbc->dbp->dbenv));
+	return (__db_no_queue_am(dbc->env));
 }
 
 int
@@ -283,7 +294,7 @@ __qam_vrfy_data(dbp, vdp, h, pgno, flags)
 	COMPQUIET(h, NULL);
 	COMPQUIET(pgno, 0);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -298,7 +309,7 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	COMPQUIET(meta, NULL);
 	COMPQUIET(pgno, 0);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -309,7 +320,7 @@ __qam_vrfy_structure(dbp, vdp, flags)
 {
 	COMPQUIET(vdp, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 
 int
@@ -324,6 +335,6 @@ __qam_vrfy_walkqueue(dbp, vdp, handle, callback, flags)
 	COMPQUIET(handle, NULL);
 	COMPQUIET(callback, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_no_queue_am(dbp->dbenv));
+	return (__db_no_queue_am(dbp->env));
 }
 #endif	/* !HAVE_QUEUE */

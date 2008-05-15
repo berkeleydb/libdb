@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: lock.h,v 12.18 2007/05/17 18:46:15 bostic Exp $
+ * $Id: lock.h,v 12.23 2008/05/07 12:27:33 bschmeck Exp $
  */
 
 #ifndef	_DB_LOCK_H_
@@ -40,46 +40,29 @@ extern "C" {
 	    (m) == DB_LOCK_IWRITE || (m) == DB_LOCK_IWR)
 
 /*
- * Macros to lock/unlock the lock region as a whole.
- * IF we are using multiple mutexes in the lock region these are a noop.
+ * Macros to lock/unlock the lock region as a whole. Mostly used for
+ * initialization.
  */
-#ifdef HAVE_FINE_GRAINED_LOCK_MANAGER
-#define	LOCK_SYSTEM_LOCK(dbenv)
-#define	LOCK_SYSTEM_UNLOCK(dbenv)
-#else
-#define	LOCK_SYSTEM_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, ((DB_LOCKREGION *)				\
-	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
-#define	LOCK_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((DB_LOCKREGION *)				\
-	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
-#endif
-#define	LOCK_REGION_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, ((DB_LOCKREGION *)				\
-	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
-#define	LOCK_REGION_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((DB_LOCKREGION *)				\
-	    (dbenv)->lk_handle->reginfo.primary)->mtx_region)
+#define	LOCK_REGION_LOCK(env)						\
+	MUTEX_LOCK(env, ((DB_LOCKREGION *)				\
+	    (env)->lk_handle->reginfo.primary)->mtx_region)
+#define	LOCK_REGION_UNLOCK(env)						\
+	MUTEX_UNLOCK(env, ((DB_LOCKREGION *)				\
+	    (env)->lk_handle->reginfo.primary)->mtx_region)
 
 /*
  * DB_LOCKREGION --
  *	The lock shared region.
  */
+
 typedef struct __db_lockregion {
 	db_mutex_t	mtx_region;	/* Region mutex. */
 
 	u_int32_t	need_dd;	/* flag for deadlock detector */
 	u_int32_t	detect;		/* run dd on every conflict */
 	db_timespec	next_timeout;	/* next time to expire a lock */
-#ifdef HAVE_FINE_GRAINED_LOCK_MANAGER
-	db_mutex_t	mtx_locks;	/* mutex for lock allocation. */
-	db_mutex_t	mtx_objs;	/* mutex for lock object allocation. */
+	db_mutex_t	mtx_dd;		/* mutex for lock object dd list. */
 	db_mutex_t	mtx_lockers;	/* mutex for locker allocation. */
-#endif
-					/* free lock header */
-	SH_TAILQ_HEAD(__flock) free_locks;
-					/* free obj header */
-	SH_TAILQ_HEAD(__fobj) free_objs;
 	SH_TAILQ_HEAD(__dobj) dd_objs;	/* objects with waiters */
 					/* free locker header */
 	SH_TAILQ_HEAD(__flocker) free_lockers;
@@ -90,12 +73,11 @@ typedef struct __db_lockregion {
 
 	u_int32_t	locker_t_size;	/* size of locker hash table */
 	u_int32_t	object_t_size;	/* size of object hash table */
+	u_int32_t	part_t_size;	/* number of partitions */
 
 	roff_t		conf_off;	/* offset of conflicts array */
 	roff_t		obj_off;	/* offset of object hash table */
-#ifdef HAVE_FINE_GRAINED_LOCK_MANAGER
-	roff_t		mtx_off;	/* offset of object mutex table */
-#endif
+	roff_t		part_off;	/* offset of partition array */
 	roff_t		stat_off;	/* offset to object hash stats */
 	roff_t		locker_off;	/* offset of locker hash table */
 
@@ -160,12 +142,33 @@ struct __db_locker {
 	db_timespec	tx_expire;	/* When this txn expires. */
 	db_timeout_t	lk_timeout;	/* How long do we let locks live. */
 
-#define	DB_LOCKER_DELETED	0x0001
-#define	DB_LOCKER_DIRTY		0x0002
-#define	DB_LOCKER_INABORT	0x0004
-#define	DB_LOCKER_TIMEOUT	0x0008
+#define	DB_LOCKER_DIRTY		0x0001
+#define	DB_LOCKER_INABORT	0x0002
+#define	DB_LOCKER_TIMEOUT	0x0004
 	u_int32_t flags;
 };
+
+/*
+ * Map a hash index into a partition.
+ */
+#define LOCK_PART(reg, ndx)  (ndx % (reg)->part_t_size)
+
+/*
+ * Structure that contains information about a lock table partition.
+ */
+typedef struct __db_lockpart{
+	db_mutex_t	mtx_part;	/* mutex for partition*/
+					/* free lock header */
+	SH_TAILQ_HEAD(__flock) free_locks;
+					/* free obj header */
+	SH_TAILQ_HEAD(__fobj) free_objs;
+#ifdef HAVE_STATISTICS
+	DB_LOCK_PSTAT	part_stat;	/* Partition stats. */
+#endif
+} DB_LOCKPART;
+
+#define FREE_LOCKS(lt, part)	((lt)->part_array[part].free_locks)
+#define FREE_OBJS(lt, part)	((lt)->part_array[part].free_objs)
 
 /*
  * DB_LOCKTAB --
@@ -173,14 +176,14 @@ struct __db_locker {
  * by the environment, as opposed to the internal one laid out in the region.)
  */
 struct __db_locktab {
-	DB_ENV		*dbenv;		/* Environment. */
+	ENV		*env;		/* Environment. */
 	REGINFO		 reginfo;	/* Region information. */
 	u_int8_t	*conflicts;	/* Pointer to conflict matrix. */
-	DB_HASHTAB	*obj_tab;	/* Beginning of object hash table. */
-#ifdef HAVE_FINE_GRAINED_LOCK_MANAGER
-	db_mutex_t	*obj_mtx;	/* Object mutex array. */
-#endif
+	DB_LOCKPART	*part_array;	/* Beginning of partition array. */
+#ifdef HAVE_STATISTICS
 	DB_LOCK_HSTAT	*obj_stat;	/* Object hash stats array. */
+#endif
+	DB_HASHTAB	*obj_tab;	/* Beginning of object hash table. */
 	DB_HASHTAB	*locker_tab;	/* Beginning of locker hash table. */
 };
 
@@ -231,54 +234,59 @@ struct __db_lock {
 /*
  * Macros to get/release different types of mutexes.
  */
-#ifdef HAVE_FINE_GRAINED_LOCK_MANAGER
 /*
- * All operations on a lock object are preceded by getting a lock on
- * the mutex for its hash bucket.  Lock structures associated with
- * an object are protected by this mutex as well.  If holding a hash bucket
- * we may call LOCK_OBJECTS to allocate a new object.
+ * Operations on lock objects must be protected by a mutex, either on their
+ * partition or on the lock region.  Lock structures associated with that
+ * object are protected as well.  Each partition has a free list of objects
+ * and lock structures protected by that mutex.  We want to avoid getting
+ * multiple mutexes, particularly in __lock_vec, when there is only a
+ * single partition.  If there is only one partition, then all the calls
+ * to LOCK_SYSTEM_LOCK(UNLOCK) actually acquire(release) a lock system
+ * wide mutex and MUTEX_LOCK(UNLOCK)_PARTITION are no-ops.  If the number
+ * of partitions is greater than one, then LOCK_SYSTEM_LOCK(UNLOCK) is a
+ * no-op, and MUTEX_LOCK(UNLOCK)_PARTITION acquire a mutex on a particular
+ * partition of the lock table.
  */
+#define LOCK_SYSTEM_LOCK(lt, reg) do {					\
+	if ((reg)->part_t_size == 1)					\
+		MUTEX_LOCK((lt)->env, (reg)->mtx_region);		\
+} while (0)
+#define LOCK_SYSTEM_UNLOCK(lt, reg) do {				\
+	if ((reg)->part_t_size == 1)					\
+		MUTEX_UNLOCK((lt)->env, (reg)->mtx_region);		\
+} while (0)
+#define MUTEX_LOCK_PARTITION(lt, reg, p) do {				\
+	if ((reg)->part_t_size != 1)					\
+		MUTEX_LOCK((lt)->env, (lt)->part_array[p].mtx_part);	\
+} while (0)
+#define MUTEX_UNLOCK_PARTITION(lt, reg, p) do {				\
+	if ((reg)->part_t_size != 1)					\
+		MUTEX_UNLOCK((lt)->env, (lt)->part_array[p].mtx_part);	\
+} while (0)
+
 #define	OBJECT_LOCK(lt, reg, obj, ndx) do {				\
 	ndx = __lock_ohash(obj) % (reg)->object_t_size;			\
-	MUTEX_LOCK((lt)->dbenv, (lt)->obj_mtx[ndx]);			\
+	MUTEX_LOCK_PARTITION(lt, reg, LOCK_PART(reg, ndx));		\
 } while (0)
-#define	OBJECT_LOCK_NDX(lt, ndx)					\
-	MUTEX_LOCK((lt)->dbenv, (lt)->obj_mtx[ndx])
-#define	OBJECT_UNLOCK(lt, ndx)						\
-	MUTEX_UNLOCK((lt)->dbenv, (lt)->obj_mtx[ndx])
+
+#define	OBJECT_LOCK_NDX(lt, reg, ndx)					\
+	MUTEX_LOCK_PARTITION(lt, reg, LOCK_PART(reg, ndx));
+
+#define	OBJECT_UNLOCK(lt, reg, ndx)					\
+	MUTEX_UNLOCK_PARTITION(lt, reg, LOCK_PART(reg, ndx));			
 
 /*
- * These mutexes protect the allocation/deallocation and the queues
- * of the lock objects, lock structures and locks.
- * It is assumed that all accesses to a locker are single threaded
- * since transactions are single threaded.  The exception is in the
- * deadlock detector where we look at the last lock held by the locker
- * with some care.
+ * Protect the object deadlock detector queue and the locker allocation
+ * and active queues
  */
-#define	LOCK_OBJECTS(dbenv, region)					\
-	MUTEX_LOCK(dbenv, (region)->mtx_objs)
-#define	UNLOCK_OBJECTS(dbenv, region)					\
-	MUTEX_UNLOCK(dbenv, (region)->mtx_objs)
-#define	LOCK_LOCKS(dbenv, region)					\
-	MUTEX_LOCK(dbenv, (region)->mtx_locks)
-#define	UNLOCK_LOCKS(dbenv, region)					\
-	MUTEX_UNLOCK(dbenv, (region)->mtx_locks)
-#define	LOCK_LOCKERS(dbenv, region)					\
-	MUTEX_LOCK(dbenv, (region)->mtx_lockers)
-#define	UNLOCK_LOCKERS(dbenv, region)					\
-	MUTEX_UNLOCK(dbenv, (region)->mtx_lockers)
-#else
-#define	OBJECT_LOCK(lt, reg, obj, ndx)					\
-	ndx = __lock_ohash(obj) % (reg)->object_t_size
-#define	OBJECT_LOCK_NDX(lt, ndx)
-#define	OBJECT_UNLOCK(lt, ndx)
-#define	LOCK_OBJECTS(dbenv, region)
-#define	UNLOCK_OBJECTS(dbenv, region)
-#define	LOCK_LOCKS(dbenv, region)
-#define	UNLOCK_LOCKS(dbenv, region)
-#define	LOCK_LOCKERS(dbenv, region)
-#define	UNLOCK_LOCKERS(dbenv, region)
-#endif
+#define	LOCK_DD(env, region)						\
+	MUTEX_LOCK(env, (region)->mtx_dd)
+#define	UNLOCK_DD(env, region)						\
+	MUTEX_UNLOCK(env, (region)->mtx_dd)
+#define	LOCK_LOCKERS(env, region)					\
+	MUTEX_LOCK(env, (region)->mtx_lockers)
+#define	UNLOCK_LOCKERS(env, region)					\
+	MUTEX_UNLOCK(env, (region)->mtx_lockers)
 
 /*
  * __lock_locker_hash --

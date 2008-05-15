@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep018.tcl,v 12.14 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep018.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep018
 # TEST	Replication with dbremove.
@@ -47,10 +47,11 @@ proc rep018 { method { niter 10 } { tnum "018" } args } {
 proc rep018_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -100,7 +101,7 @@ proc rep018_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.b: Open database on master, propagate to client."
 	set dbname rep$tnum.db
-	set db [eval "berkdb_open -create $omethod -auto_commit \
+	set db [eval "berkdb_open_noerr -create $omethod -auto_commit \
 	    -env $masterenv $largs $dbname"]
 	set t [$masterenv txn]
 	for { set i 1 } { $i <= $niter } { incr i } {
@@ -112,8 +113,8 @@ proc rep018_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.c: Spawn a child tclsh to do client work."
 	set pid [exec $tclsh_path $test_path/wrap.tcl \
-	    rep018script.tcl $testdir/rep018script.log \
-		   $clientdir $niter $dbname $method &]
+	    rep018script.tcl $testdir/rep018script.log $clientdir \
+	    $niter $dbname $method $rep_verbose $verbose_type &]
 
 	puts "\tRep$tnum.d: Close and remove database on master."
 	error_check_good close_master_db [$db close] 0
@@ -138,7 +139,7 @@ proc rep018_sub { method niter tnum logset recargs largs } {
 	error_check_good db_remove [$masterenv dbremove -auto_commit $dbname] 0
 
 	puts "\tRep$tnum.e: Create new database on master with the same name."
-	set db [eval "berkdb_open -create $omethod -auto_commit \
+	set db [eval "berkdb_open_noerr -create $omethod -auto_commit \
 	    -env $masterenv $largs $dbname"]
 	error_check_good new_db_open [is_valid_db $db] TRUE
 

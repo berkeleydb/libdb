@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_put.c,v 12.25 2007/05/25 15:37:48 bostic Exp $
+ * $Id: bt_put.c,v 12.29 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -70,13 +70,13 @@ __bam_iitem(dbc, key, data, op, flags)
 	DBT *key, *data;
 	u_int32_t op, flags;
 {
-	DB_ENV *dbenv;
 	BKEYDATA *bk, bk_tmp;
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT bk_hdr, tdbt;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	db_indx_t cnt, indx;
 	u_int32_t data_size, have_bytes, need_bytes, needed, pages, pagespace;
@@ -86,7 +86,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	COMPQUIET(cnt, 0);
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
@@ -100,7 +100,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	 */
 	if (F_ISSET(dbp, DB_AM_FIXEDLEN) &&
 	    F_ISSET(data, DB_DBT_PARTIAL) && data->size != data->dlen)
-		return (__db_rec_repl(dbenv, data->size, data->dlen));
+		return (__db_rec_repl(env, data->size, data->dlen));
 
 	/*
 	 * Figure out how much space the data will take, including if it's a
@@ -115,7 +115,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	padrec = 0;
 	if (F_ISSET(dbp, DB_AM_FIXEDLEN)) {
 		if (data_size > t->re_len)
-			return (__db_rec_toobig(dbenv, data_size, t->re_len));
+			return (__db_rec_toobig(env, data_size, t->re_len));
 
 		/* Records that are deleted anyway needn't be padded out. */
 		if (!LF_ISSET(BI_DELETED) && data_size < t->re_len) {
@@ -144,12 +144,12 @@ __bam_iitem(dbc, key, data, op, flags)
 	 * we build the real record so that we're comparing the real items.
 	 */
 	if (op == DB_CURRENT && dbp->dup_compare != NULL) {
-		if ((ret = __bam_cmp(dbp, dbc->txn, data, h,
+		if ((ret = __bam_cmp(dbp, dbc->thread_info, dbc->txn, data, h,
 		    indx + (TYPE(h) == P_LBTREE ? O_INDX : 0),
 		    dbp->dup_compare, &cmp)) != 0)
 			return (ret);
 		if (cmp != 0) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		"Existing data sorts differently from put data");
 			return (EINVAL);
 		}
@@ -209,7 +209,7 @@ __bam_iitem(dbc, key, data, op, flags)
 			needed += need_bytes - have_bytes;
 		break;
 	default:
-		return (__db_unknown_flag(dbenv, "DB->put", op));
+		return (__db_unknown_flag(env, "DB->put", op));
 	}
 
 	/* Split the page if there's not enough room. */
@@ -245,7 +245,8 @@ __bam_iitem(dbc, key, data, op, flags)
 			return (__db_space_err(dbp));
 	}
 
-	if ((ret = __memp_dirty(mpf, &h, dbc->txn, dbc->priority, 0)) != 0)
+	if ((ret = __memp_dirty(mpf, &h,
+	     dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 		return (ret);
 	if (cp->csp->page == cp->page)
 		cp->csp->page = h;
@@ -349,7 +350,7 @@ __bam_iitem(dbc, key, data, op, flags)
 		replace = 1;
 		break;
 	default:
-		return (__db_unknown_flag(dbenv, "DB->put", op));
+		return (__db_unknown_flag(env, "DB->put", op));
 	}
 
 	/* Add the data. */
@@ -358,7 +359,7 @@ __bam_iitem(dbc, key, data, op, flags)
 		 * We do not have to handle deleted (BI_DELETED) records
 		 * in this case; the actual records should never be created.
 		 */
-		DB_ASSERT(dbenv, !LF_ISSET(BI_DELETED));
+		DB_ASSERT(env, !LF_ISSET(BI_DELETED));
 		ret = __bam_ovput(dbc,
 		    B_OVERFLOW, PGNO_INVALID, h, indx, data);
 	} else {
@@ -378,9 +379,9 @@ __bam_iitem(dbc, key, data, op, flags)
 	if (ret != 0) {
 		if (del == 1 && (t_ret =
 		     __bam_ca_di(dbc, PGNO(h), indx + 1, -1)) != 0) {
-			__db_err(dbenv, t_ret,
+			__db_err(env, t_ret,
 			    "cursor adjustment after delete failed");
-			return (__db_panic(dbenv, t_ret));
+			return (__env_panic(env, t_ret));
 		}
 		return (ret);
 	}
@@ -481,7 +482,7 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 	/* We use the record data return memory, it's only a short-term use. */
 	rdata = &dbc->my_rdata;
 	if (rdata->ulen < nbytes) {
-		if ((ret = __os_realloc(dbp->dbenv,
+		if ((ret = __os_realloc(dbp->env,
 		    nbytes, &rdata->data)) != 0) {
 			rdata->ulen = 0;
 			rdata->data = NULL;
@@ -528,8 +529,8 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 		 * in the current record rather than allocate a separate copy.
 		 */
 		memset(&copy, 0, sizeof(copy));
-		if ((ret = __db_goff(dbp, dbc->txn, &copy, bo->tlen,
-		    bo->pgno, &rdata->data, &rdata->ulen)) != 0)
+		if ((ret = __db_goff(dbp, dbc->thread_info, dbc->txn, &copy,
+		    bo->tlen, bo->pgno, &rdata->data, &rdata->ulen)) != 0)
 			return (ret);
 
 		/* Skip any leading data from the original record. */
@@ -865,7 +866,8 @@ __bam_dup_convert(dbc, h, indx, cnt)
 	ret = __bam_ca_di(dbc,
 	    PGNO(h), first + P_INDX, (int)(first + P_INDX - indx));
 
-err:	if ((t_ret = __memp_fput(mpf, dp, dbc->priority)) != 0 && ret == 0)
+err:	if ((t_ret = __memp_fput(mpf,
+	     dbc->thread_info, dp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);

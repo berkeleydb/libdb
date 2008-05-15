@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_alloc.c,v 12.13 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_alloc.c,v 12.18 2008/04/11 00:46:48 alexg Exp $
  */
 
 #include "db_config.h"
@@ -11,7 +11,7 @@
 #include "db_int.h"
 
 #ifdef DIAGNOSTIC
-static void __os_guard __P((DB_ENV *));
+static void __os_guard __P((ENV *));
 
 typedef union {
 	size_t size;
@@ -41,18 +41,21 @@ typedef union {
  *	Allocate memory to be used by the application.
  *
  *	Use, in order of preference, the allocation function specified to the
- *	DB_ENV handle, the allocation function specified as a replacement for
+ *	ENV handle, the allocation function specified as a replacement for
  *	the library malloc, or the library malloc().
  *
- * PUBLIC: int __os_umalloc __P((DB_ENV *, size_t, void *));
+ * PUBLIC: int __os_umalloc __P((ENV *, size_t, void *));
  */
 int
-__os_umalloc(dbenv, size, storep)
-	DB_ENV *dbenv;
+__os_umalloc(env, size, storep)
+	ENV *env;
 	size_t size;
 	void *storep;
 {
+	DB_ENV *dbenv;
 	int ret;
+
+	dbenv = env == NULL ? NULL : env->dbenv;
 
 	/* Never allocate 0 bytes -- some C libraries don't like it. */
 	if (size == 0)
@@ -71,14 +74,14 @@ __os_umalloc(dbenv, size, storep)
 				ret = ENOMEM;
 				__os_set_errno(ENOMEM);
 			}
-			__db_err(dbenv, ret, "malloc: %lu", (u_long)size);
+			__db_err(env, ret, "malloc: %lu", (u_long)size);
 			return (ret);
 		}
 		return (0);
 	}
 
 	if ((*(void **)storep = dbenv->db_malloc(size)) == NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "user-specified malloc function returned NULL");
 		return (ENOMEM);
 	}
@@ -92,17 +95,19 @@ __os_umalloc(dbenv, size, storep)
  *
  *	A realloc(3) counterpart to __os_umalloc's malloc(3).
  *
- * PUBLIC: int __os_urealloc __P((DB_ENV *, size_t, void *));
+ * PUBLIC: int __os_urealloc __P((ENV *, size_t, void *));
  */
 int
-__os_urealloc(dbenv, size, storep)
-	DB_ENV *dbenv;
+__os_urealloc(env, size, storep)
+	ENV *env;
 	size_t size;
 	void *storep;
 {
+	DB_ENV *dbenv;
 	int ret;
 	void *ptr;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	ptr = *(void **)storep;
 
 	/* Never allocate 0 bytes -- some C libraries don't like it. */
@@ -111,7 +116,7 @@ __os_urealloc(dbenv, size, storep)
 
 	if (dbenv == NULL || dbenv->db_realloc == NULL) {
 		if (ptr == NULL)
-			return (__os_umalloc(dbenv, size, storep));
+			return (__os_umalloc(env, size, storep));
 
 		if (DB_GLOBAL(j_realloc) != NULL)
 			*(void **)storep = DB_GLOBAL(j_realloc)(ptr, size);
@@ -125,14 +130,14 @@ __os_urealloc(dbenv, size, storep)
 				ret = ENOMEM;
 				__os_set_errno(ENOMEM);
 			}
-			__db_err(dbenv, ret, "realloc: %lu", (u_long)size);
+			__db_err(env, ret, "realloc: %lu", (u_long)size);
 			return (ret);
 		}
 		return (0);
 	}
 
 	if ((*(void **)storep = dbenv->db_realloc(ptr, size)) == NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "User-specified realloc function returned NULL");
 		return (ENOMEM);
 	}
@@ -146,13 +151,17 @@ __os_urealloc(dbenv, size, storep)
  *
  *	A free(3) counterpart to __os_umalloc's malloc(3).
  *
- * PUBLIC: void __os_ufree __P((DB_ENV *, void *));
+ * PUBLIC: void __os_ufree __P((ENV *, void *));
  */
 void
-__os_ufree(dbenv, ptr)
-	DB_ENV *dbenv;
+__os_ufree(env, ptr)
+	ENV *env;
 	void *ptr;
 {
+	DB_ENV *dbenv;
+
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	if (dbenv != NULL && dbenv->db_free != NULL)
 		dbenv->db_free(ptr);
 	else if (DB_GLOBAL(j_free) != NULL)
@@ -165,11 +174,11 @@ __os_ufree(dbenv, ptr)
  * __os_strdup --
  *	The strdup(3) function for DB.
  *
- * PUBLIC: int __os_strdup __P((DB_ENV *, const char *, void *));
+ * PUBLIC: int __os_strdup __P((ENV *, const char *, void *));
  */
 int
-__os_strdup(dbenv, str, storep)
-	DB_ENV *dbenv;
+__os_strdup(env, str, storep)
+	ENV *env;
 	const char *str;
 	void *storep;
 {
@@ -180,7 +189,7 @@ __os_strdup(dbenv, str, storep)
 	*(void **)storep = NULL;
 
 	size = strlen(str) + 1;
-	if ((ret = __os_malloc(dbenv, size, &p)) != 0)
+	if ((ret = __os_malloc(env, size, &p)) != 0)
 		return (ret);
 
 	memcpy(p, str, size);
@@ -193,24 +202,22 @@ __os_strdup(dbenv, str, storep)
  * __os_calloc --
  *	The calloc(3) function for DB.
  *
- * PUBLIC: int __os_calloc __P((DB_ENV *, size_t, size_t, void *));
+ * PUBLIC: int __os_calloc __P((ENV *, size_t, size_t, void *));
  */
 int
-__os_calloc(dbenv, num, size, storep)
-	DB_ENV *dbenv;
+__os_calloc(env, num, size, storep)
+	ENV *env;
 	size_t num, size;
 	void *storep;
 {
-	void *p;
 	int ret;
 
 	size *= num;
-	if ((ret = __os_malloc(dbenv, size, &p)) != 0)
+	if ((ret = __os_malloc(env, size, storep)) != 0)
 		return (ret);
 
-	memset(p, 0, size);
+	memset(*(void **)storep, 0, size);
 
-	*(void **)storep = p;
 	return (0);
 }
 
@@ -218,11 +225,11 @@ __os_calloc(dbenv, num, size, storep)
  * __os_malloc --
  *	The malloc(3) function for DB.
  *
- * PUBLIC: int __os_malloc __P((DB_ENV *, size_t, void *));
+ * PUBLIC: int __os_malloc __P((ENV *, size_t, void *));
  */
 int
-__os_malloc(dbenv, size, storep)
-	DB_ENV *dbenv;
+__os_malloc(env, size, storep)
+	ENV *env;
 	size_t size;
 	void *storep;
 {
@@ -255,7 +262,7 @@ __os_malloc(dbenv, size, storep)
 			ret = ENOMEM;
 			__os_set_errno(ENOMEM);
 		}
-		__db_err(dbenv, ret, "malloc: %lu", (u_long)size);
+		__db_err(env, ret, "malloc: %lu", (u_long)size);
 		return (ret);
 	}
 
@@ -282,11 +289,11 @@ __os_malloc(dbenv, size, storep)
  * __os_realloc --
  *	The realloc(3) function for DB.
  *
- * PUBLIC: int __os_realloc __P((DB_ENV *, size_t, void *));
+ * PUBLIC: int __os_realloc __P((ENV *, size_t, void *));
  */
 int
-__os_realloc(dbenv, size, storep)
-	DB_ENV *dbenv;
+__os_realloc(env, size, storep)
+	ENV *env;
 	size_t size;
 	void *storep;
 {
@@ -301,7 +308,7 @@ __os_realloc(dbenv, size, storep)
 
 	/* If we haven't yet allocated anything yet, simply call malloc. */
 	if (ptr == NULL)
-		return (__os_malloc(dbenv, size, storep));
+		return (__os_malloc(env, size, storep));
 
 #ifdef DIAGNOSTIC
 	/* Add room for size and a guard byte. */
@@ -315,7 +322,7 @@ __os_realloc(dbenv, size, storep)
 
 		s = ((db_allocinfo_t *)ptr)->size;
 		if (((u_int8_t *)ptr)[s - 1] != CLEAR_BYTE)
-			 __os_guard(dbenv);
+			 __os_guard(env);
 	}
 #endif
 
@@ -338,7 +345,7 @@ __os_realloc(dbenv, size, storep)
 			ret = ENOMEM;
 			__os_set_errno(ENOMEM);
 		}
-		__db_err(dbenv, ret, "realloc: %lu", (u_long)size);
+		__db_err(env, ret, "realloc: %lu", (u_long)size);
 		return (ret);
 	}
 #ifdef DIAGNOSTIC
@@ -357,11 +364,11 @@ __os_realloc(dbenv, size, storep)
  * __os_free --
  *	The free(3) function for DB.
  *
- * PUBLIC: void __os_free __P((DB_ENV *, void *));
+ * PUBLIC: void __os_free __P((ENV *, void *));
  */
 void
-__os_free(dbenv, ptr)
-	DB_ENV *dbenv;
+__os_free(env, ptr)
+	ENV *env;
 	void *ptr;
 {
 #ifdef DIAGNOSTIC
@@ -383,13 +390,13 @@ __os_free(dbenv, ptr)
 	ptr = &((db_allocinfo_t *)ptr)[-1];
 	size = ((db_allocinfo_t *)ptr)->size;
 	if (((u_int8_t *)ptr)[size - 1] != CLEAR_BYTE)
-		 __os_guard(dbenv);
+		 __os_guard(env);
 
 	/* Overwrite memory. */
 	if (size != 0)
 		memset(ptr, CLEAR_BYTE, size);
 #else
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 #endif
 
 	if (DB_GLOBAL(j_free) != NULL)
@@ -404,11 +411,11 @@ __os_free(dbenv, ptr)
  *	Complain and abort.
  */
 static void
-__os_guard(dbenv)
-	DB_ENV *dbenv;
+__os_guard(env)
+	ENV *env;
 {
-	__db_errx(dbenv, "Guard byte incorrect during free");
-	__os_abort();
+	__db_errx(env, "Guard byte incorrect during free");
+	__os_abort(env);
 	/* NOTREACHED */
 }
 #endif

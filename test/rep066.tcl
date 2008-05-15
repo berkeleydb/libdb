@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep066.tcl,v 12.10 2007/05/24 20:20:42 alanb Exp $
+# $Id: rep066.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep066
 # TEST	Replication and dead log handles.
@@ -32,6 +32,13 @@ proc rep066 { method { niter 10 } { tnum "066" } args } {
 		return "ALL"
 	}
 
+	# This test requires a second handle on an env, and HP-UX
+	# doesn't support that.
+	if { $is_hp_test } {
+		puts "Skipping rep$tnum for HP-UX."
+		return
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
@@ -56,10 +63,11 @@ proc rep066 { method { niter 10 } { tnum "066" } args } {
 proc rep066_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

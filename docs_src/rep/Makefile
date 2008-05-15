@@ -1,6 +1,7 @@
-# $Id: Makefile,v 1.8 2007/06/22 16:57:17 bostic Exp $
+# $Id: Makefile,v 1.10 2007/10/24 14:33:31 sue Exp $
 
-COMMON=	rep_config.html \
+COMMON=	rep_clockskew.html \
+	rep_config.html \
 	rep_elect.html \
 	rep_limit.html \
 	rep_list.html \

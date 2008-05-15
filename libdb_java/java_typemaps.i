@@ -521,10 +521,10 @@ JAVA_TYPEMAP(DB_LOCKREQ *, com.sleepycat.db.LockRequest[], jobjectArray)
 %native(DbEnv_lock_vec) void DbEnv_lock_vec(DB_ENV *dbenv, u_int32_t locker,
     u_int32_t flags, DB_LOCKREQ *list, int offset, int nlist);
 %{
-JNIEXPORT void JNICALL
+SWIGEXPORT void JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
-    jclass jcls, jlong jdbenvp, jint locker, jint flags, jobjectArray list,
-    jint offset, jint count) {
+    jclass jcls, jlong jdbenvp, jobject jdbenv, jint locker, jint flags,
+    jobjectArray list, jint offset, jint count) {
 	DB_ENV *dbenv;
 	DB_LOCKREQ *lockreq;
 	DB_LOCKREQ *prereq;	/* preprocessed requests */
@@ -532,17 +532,18 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	DB_LOCK *lockp;
 	DBT_LOCKED *locked_dbts;
 	DBT *obj;
+	ENV *env;
 	int err, alloc_err, i;
 	size_t bytesize, ldbtsize;
 	jobject jlockreq;
 	db_lockop_t op;
-	jobject jobj, jlock, jdbenv;
+	jobject jobj, jlock;
 	jlong jlockp;
 	int completed;
 
 	COMPQUIET(jcls, NULL);
 	dbenv = *(DB_ENV **)(void *)&jdbenvp;
-	jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	env = dbenv->env;
 
 	if (dbenv == NULL) {
 		__dbj_throw(jenv, EINVAL, "null object", NULL, jdbenv);
@@ -556,14 +557,14 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	}
 
 	bytesize = sizeof(DB_LOCKREQ) * count;
-	if ((err = __os_malloc(dbenv, bytesize, &lockreq)) != 0) {
+	if ((err = __os_malloc(env, bytesize, &lockreq)) != 0) {
 		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
 		goto out0;
 	}
 	memset(lockreq, 0, bytesize);
 
 	ldbtsize = sizeof(DBT_LOCKED) * count;
-	if ((err = __os_malloc(dbenv, ldbtsize, &locked_dbts)) != 0) {
+	if ((err = __os_malloc(env, ldbtsize, &locked_dbts)) != 0) {
 		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
 		goto out1;
 	}
@@ -597,7 +598,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			if ((err = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
 			    (err =
-			    __os_umalloc(dbenv, obj->size, &obj->data)) != 0 ||
+			    __os_umalloc(env, obj->size, &obj->data)) != 0 ||
 			    (err = __dbj_dbt_memcopy(obj, 0,
 				obj->data, obj->size, DB_USERCOPY_GETDATA)) != 0)
 				goto out2;
@@ -629,7 +630,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			if ((err = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
 			    (err =
-			    __os_umalloc(dbenv, obj->size, &obj->data)) != 0 ||
+			    __os_umalloc(env, obj->size, &obj->data)) != 0 ||
 			    (err = __dbj_dbt_memcopy(obj, 0,
 				obj->data, obj->size, DB_USERCOPY_GETDATA)) != 0)
 				goto out2;
@@ -675,7 +676,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			 * during this method call.
 			 */
 			if ((alloc_err =
-			    __os_malloc(dbenv, sizeof(DB_LOCK), &lockp)) != 0) {
+			    __os_malloc(env, sizeof(DB_LOCK), &lockp)) != 0) {
 				__dbj_throw(jenv, alloc_err, NULL, NULL,
 				    jdbenv);
 				goto out2;
@@ -712,44 +713,45 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	} else if (err != 0)
 		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
 
-out2:	__os_free(dbenv, locked_dbts);
+out2:	__os_free(env, locked_dbts);
 out1:	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++)
 		if ((prereq->op == DB_LOCK_GET || prereq->op == DB_LOCK_PUT) &&
 		    prereq->obj->data != NULL)
-			__os_ufree(dbenv, prereq->obj->data);
-	__os_free(dbenv, lockreq);
+			__os_ufree(env, prereq->obj->data);
+	__os_free(env, lockreq);
 out0:	return;
 }
 %}
 
 JAVA_TYPEMAP(struct __db_repmgr_sites,
-    com.sleepycat.db.ReplicationHostAddress[], jobjectArray)
+    com.sleepycat.db.ReplicationManagerSiteInfo[], jobjectArray)
 %typemap(out) struct __db_repmgr_sites
 {
 	int i, len;
+	jobject jrep_addr, jrep_info;
 
 	len = $1.nsites;
-	$result = (*jenv)->NewObjectArray(jenv, (jsize)len, rephost_class,
+	$result = (*jenv)->NewObjectArray(jenv, (jsize)len, repmgr_siteinfo_class,
 	    NULL);
 	if ($result == NULL)
 		return $null; /* an exception is pending */
 	for (i = 0; i < len; i++) {
-		jobject jrep_addr = (*jenv)->NewObject(jenv,
-		    rephost_class, rephost_construct);
-
-		(*jenv)->SetObjectField(jenv, jrep_addr, rephost_host_fid,
-		    (*jenv)->NewStringUTF(jenv, $1.sites[i].host));
-		(*jenv)->SetIntField(jenv, jrep_addr, rephost_port_fid,
-		    $1.sites[i].port);
-		(*jenv)->SetIntField(jenv, jrep_addr, rephost_eid_fid,
-		    $1.sites[i].eid);
-		(*jenv)->SetIntField(jenv, jrep_addr, rephost_status_fid,
-		    $1.sites[i].status);
-
+		jstring addr_host = (*jenv)->NewStringUTF(jenv, $1.sites[i].host);
+		if (addr_host == NULL)
+			return $null; /* An exception is pending */
+		jrep_addr = (*jenv)->NewObject(jenv,
+		    rephost_class, rephost_construct, addr_host, $1.sites[i].port);
 		if (jrep_addr == NULL)
 			return $null; /* An exception is pending */
 
-		(*jenv)->SetObjectArrayElement(jenv, $result, i, jrep_addr);
+		jrep_info = (*jenv)->NewObject(jenv,
+		    repmgr_siteinfo_class, repmgr_siteinfo_construct, jrep_addr, $1.sites[i].eid);
+		(*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_status_fid,
+		    $1.sites[i].status);
+		if (jrep_info == NULL)
+			return $null; /* An exception is pending */
+
+		(*jenv)->SetObjectArrayElement(jenv, $result, i, jrep_info);
 	}
 	__os_ufree(NULL, $1.sites);
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd15scr.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd15scr.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
 #
 # Recd15 - lots of txns - txn prepare script
 # Usage: recd15script envcmd dbcmd gidf numtxns

@@ -1,55 +1,54 @@
-#include "db_config.h"
-
-#include "db_int.h"
-#include "dbinc/db_page.h"
-#include "dbinc/ex_apprec.h"
-#include "dbinc/log.h"
+#include "db.h"
 
 /*
  * ex_apprec_mkdir_recover --
  *	Recovery function for mkdir.
  *
  * PUBLIC: int ex_apprec_mkdir_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((dbenv *, DBT *, DB_LSN *, db_recops));
  */
 int
-ex_apprec_mkdir_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+ex_apprec_mkdir_recover(dbenv, dbtp, lsnp, op)
+	dbenv *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
-	void *info;
 {
 	ex_apprec_mkdir_args *argp;
-	DB *file_dbp;
-	DBC *dbc;
-	DB_MPOOLFILE *mpf;
-	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
-	REC_PRINT(ex_apprec_mkdir_print);
-	REC_INTRO(ex_apprec_mkdir_read, 1);
-
-	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
-		if (DB_REDO(op)) {
-			if ((ret = mpf->get(mpf,
-			    &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
-				goto out;
-		} else {
-			*lsnp = argp->prev_lsn;
-			ret = 0;
-			goto out;
-		}
+#ifdef DEBUG_RECOVER
+	(void)ex_apprec_mkdir_print(dbenv, dbtp, lsnp, op);
+#endif
+	argp = NULL;
+	if ((ret = ex_apprec_mkdir_read(dbenv, dbtp->data, &argp)) != 0)
+		goto out;
 
 	modified = 0;
-	cmp_n = log_compare(lsnp, &LSN(pagep));
+	cmp_n = 0;
+	cmp_p = 0;
 
 	/*
-	 * Use this when there is something like "pagelsn" in the argp
-	 * structure.  Sometimes, you might need to compare meta-data
-	 * lsn's instead.
+	 * The function now needs to calculate cmp_n and cmp_p based
+	 * on whatever is in argp (usually an LSN representing the state
+	 * of an object BEFORE the operation described in this record was
+	 * applied) and whatever other information the function needs,
+	 * e.g., the LSN of the object as it exists now.
 	 *
-	 * cmp_p = log_compare(&LSN(pagep), argp->pagelsn);
+	 * cmp_p should be set to 0 if the current state of the object
+	 * is believed to be same as the state of the object BEFORE the
+	 * described operation was applied.  For example, if you had an
+	 * LSN in the log record (argp->prevlsn) and a current LSN of the
+	 * object (curlsn), you might want to do:
+	 *
+	 * cmp_p = log_compare(curlsn, argp->prevlsn);
+	 *
+	 * Similarly, cmp_n should be set to 0 if the current state
+	 * of the object reflects the object AFTER this operation has
+	 * been applied.  Thus, if you can figure out an object's current
+	 * LSN, yo might set cmp_n as:
+	 *
+	 * cmp_n = log_compare(lsnp, curlsn);
 	 */
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
@@ -58,12 +57,14 @@ ex_apprec_mkdir_recover(dbenv, dbtp, lsnp, op, info)
 		/* Need to undo update described. */
 		modified = 1;
 	}
-	if (ret = mpf->put(mpf, pagep, modified ? DB_MPOOL_DIRTY : 0))
-		goto out;
 
+	/* Allow for following LSN pointers through a transaction. */
 	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-out:	REC_CLOSE;
+out:	if (argp != NULL)
+		free(argp);
+
+	return (ret);
 }
 

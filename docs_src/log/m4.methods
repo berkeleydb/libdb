@@ -1,4 +1,4 @@
-m4_comment([$Id: m4.methods,v 1.6 2005/09/30 19:00:24 bostic Exp $])
+m4_comment([$Id: m4.methods,v 1.7 2008/01/23 21:15:44 sarette Exp $])
 
 m4_table_begin(, _center)
 
@@ -19,6 +19,7 @@ m4_comment([DbLogc::close])m4_table_element(m4_ref(logc_close), Close a log curs
 m4_comment([DbLogc::get])m4_table_element(m4_ref(logc_get), Retrieve a log record)
 
 m4_table_header(Logging Subsystem Configuration, _empty)
+m4_comment([DbEnv::log_set_config])m4_table_element(m4_ref(dbenv_log_set_config), Configure the logging subsystem)
 m4_comment([DbEnv::set_lg_bsize])m4_table_element(m4_ref(dbenv_set_lg_bsize), Set log buffer size)
 m4_comment([DbEnv::set_lg_dir])m4_table_element(m4_ref(dbenv_set_lg_dir), Set the environment logging directory)
 m4_comment([DbEnv::set_lg_filemode])m4_table_element(m4_ref(dbenv_set_lg_filemode), Set log file mode)

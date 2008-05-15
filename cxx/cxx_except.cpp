@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_except.cpp,v 12.12 2007/05/17 15:14:56 bostic Exp $
+ * $Id: cxx_except.cpp,v 12.14 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -39,28 +39,28 @@ DbException::~DbException() throw()
 
 DbException::DbException(int err)
 :	err_(err)
-,	env_(0)
+,	dbenv_(0)
 {
 	describe(0, 0);
 }
 
 DbException::DbException(const char *description)
 :	err_(0)
-,	env_(0)
+,	dbenv_(0)
 {
 	describe(0, description);
 }
 
 DbException::DbException(const char *description, int err)
 :	err_(err)
-,	env_(0)
+,	dbenv_(0)
 {
 	describe(0, description);
 }
 
 DbException::DbException(const char *prefix, const char *description, int err)
 :	err_(err)
-,	env_(0)
+,	dbenv_(0)
 {
 	describe(prefix, description);
 }
@@ -69,7 +69,7 @@ DbException::DbException(const DbException &that)
 :	__DB_STD(exception)()
 ,	what_(dupString(that.what_))
 ,	err_(that.err_)
-,	env_(0)
+,	dbenv_(0)
 {
 }
 
@@ -133,12 +133,12 @@ const char *DbException::what() const throw()
 
 DbEnv *DbException::get_env() const
 {
-	return env_;
+	return dbenv_;
 }
 
-void DbException::set_env(DbEnv *env)
+void DbException::set_env(DbEnv *dbenv)
 {
-	env_= env;
+	dbenv_= dbenv;
 }
 
 ////////////////////////////////////////////////////////////////////////

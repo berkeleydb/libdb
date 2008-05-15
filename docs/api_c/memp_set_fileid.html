@@ -1,5 +1,5 @@
 <!--$Id: memp_set_fileid.so,v 10.14 2005/04/14 13:08:06 sue Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_MPOOLFILE-&gt;set_fileid</h3>
+<b>DB_MPOOLFILE-&gt;set_fileid</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);
 <p>
 int
 DB_MPOOLFILE-&gt;get_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_MPOOLFILE-&gt;set_fileid</h3>
+<b>Description: DB_MPOOLFILE-&gt;set_fileid</b>
 <p>The DB_MPOOLFILE-&gt;set_fileid method specifies a unique identifier for the file.
 (The shared memory buffer pool functions must be able to uniquely
 identify files in order that multiple processes wanting to share a file
@@ -63,13 +63,12 @@ called.
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>fileid</b><dd>The <b>fileid</b> parameter is the unique identifier for the file.
-Unique file identifiers must be a DB_FILE_ID_LEN length array of bytes.
-</dl>
+<b>Parameters</b> <br>
+ <b>fileid</b><ul compact><li>The <b>fileid</b> parameter is the unique identifier for the file.
+Unique file identifiers must be a DB_FILE_ID_LEN length array of bytes.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB_MPOOLFILE-&gt;get_fileid</h3>
+<b>Description: DB_MPOOLFILE-&gt;get_fileid</b>
 <p>The DB_MPOOLFILE-&gt;get_fileid method copies the file's identifier into the
 memory location referenced by <b>fileid</b>.</p>
 <p>The DB_MPOOLFILE-&gt;get_fileid method
@@ -79,14 +78,14 @@ and 0 on success.
 <p>The DB_MPOOLFILE-&gt;get_fileid method may be called at any time during the life of the
 application.</p>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/mempfile_class.html">DB_MPOOLFILE</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -300,11 +300,13 @@ int main(void)
                     <span>
                         record (that is, reading records from the page that it currently has locked),
                     </span>
+                    
                 the cursor releases its lock on that
                     
                     <span>
                         record or page.
                     </span>
+                    
                  This means that the data the cursor has read and released
                  may change before the cursor's transaction has completed.
               </p>
@@ -321,6 +323,7 @@ int main(void)
                     <span>
                         record or page.
                     </span>
+                    
              </p>
         <p>
                 When you configure your application for this level of isolation, you may see better performance
@@ -443,6 +446,16 @@ int main(void)
                     copy. This frees other writers from blocking due to a
                     read lock held on the page.
             </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                        Snapshot isolation is strongly recommended for read-only threads when writer
+                        threads are also running, as this will eliminate read-write contention and
+                        greatly improve transaction throughput for your writer threads. However, in
+                        order for snapshot isolation to work for your reader-only threads, you must
+                        of course use transactions for your DB reads.
+                    </p>
+        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
@@ -561,11 +574,17 @@ int main(void)
             <ul type="disc">
               <li>
                 <p>
-                                           Opening the database with
+                                           Opening the database  with
                                            multiversion support. You can
                                            configure this either when you
                                            open your environment or when
-                                           you open your database.
+                                           you open your 
+                                           
+                                           <span>
+                                           database.
+                                           </span>
+                                           
+
                                            <span>
                                             Use the
                                            <tt class="literal">DB_MULTIVERSION</tt>
@@ -584,22 +603,20 @@ int main(void)
                                            To do this, 
                                            
                                            <span>
-                                           pass the
-                                           <tt class="literal">DB_TXN_SNAPSHOT</tt> flag 
-                                           when you 
+                                                pass the <tt class="literal">DB_TXN_SNAPSHOT</tt> flag 
+                                                when you 
 
-                                           <span>
-                                           open the cursor or
-                                            </span>
+                                                <span>
+                                                  open the cursor or
+                                                </span>
 
-                                            create the transaction. 
+                                                create the transaction. 
                                             
-                                           <span>
-                                            If
-                                           configured for the transaction,
-                                           then this flag is not required
-                                           when the cursor is opened.
-                                            </span>
+                                                <span>
+                                                    If configured for the transaction,
+                                                     then this flag is not required
+                                                     when the cursor is opened.
+                                                </span>
 
                                             </span>
 

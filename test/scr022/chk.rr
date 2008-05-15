@@ -1,14 +1,14 @@
 #!/bin/sh -
 #
-# $Id: chk.rr,v 12.1 2005/10/20 19:17:56 bostic Exp $
+# $Id: chk.rr,v 12.2 2008/05/07 12:47:06 bschmeck Exp $
 
 d=../..
 
 t1=__1
 
-# Check for DB_RUNRECOVERY being specified instead of a call to db_panic.
+# Check for DB_RUNRECOVERY being specified instead of a call to env_panic.
 egrep DB_RUNRECOVERY $d/*/*.c |
-    sed -e '/__db_panic(.*, DB_RUNRECOVERY)/d' \
+    sed -e '/__env_panic(.*, DB_RUNRECOVERY)/d' \
 	-e '/\/php_db4\//d' \
 	-e '/case DB_RUNRECOVERY:/d' \
 	-e '/db_dispatch.c:.*if (ret == DB_RUNRECOVERY/d' \
@@ -20,7 +20,7 @@ egrep DB_RUNRECOVERY $d/*/*.c |
 	-e '/txn.c:.*returned DB_RUNRECOVERY and we need to/d' \
 	> $t1
 [ -s $t1 ] && {
-	echo "DB_RUNRECOVERY used; should be a call to db_panic."
+	echo "DB_RUNRECOVERY used; should be a call to env_panic."
 	cat $t1
 	exit 1
 }

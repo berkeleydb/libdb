@@ -1,9 +1,9 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_win32.c,v 12.25 2007/06/28 11:14:04 alexg Exp $
+ * $Id: mut_win32.c,v 12.32 2008/03/13 15:23:09 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -34,8 +34,8 @@ static SECURITY_DESCRIPTOR null_sd;
 static SECURITY_ATTRIBUTES all_sa;
 static int security_initialized = 0;
 
-static __inline int get_handle(dbenv, mutexp, eventp)
-	DB_ENV *dbenv;
+static __inline int get_handle(env, mutexp, eventp)
+	ENV *env;
 	DB_MUTEX *mutexp;
 	HANDLE *eventp;
 {
@@ -61,7 +61,7 @@ static __inline int get_handle(dbenv, mutexp, eventp)
 
 	if ((*eventp = CreateEvent(&all_sa, FALSE, FALSE, idbuf)) == NULL) {
 		ret = __os_get_syserr();
-		__db_syserr(dbenv, ret, "Win32 create event failed");
+		__db_syserr(env, ret, "Win32 create event failed");
 	}
 
 	return (ret);
@@ -71,11 +71,11 @@ static __inline int get_handle(dbenv, mutexp, eventp)
  * __db_win32_mutex_init --
  *	Initialize a Win32 mutex.
  *
- * PUBLIC: int __db_win32_mutex_init __P((DB_ENV *, db_mutex_t, u_int32_t));
+ * PUBLIC: int __db_win32_mutex_init __P((ENV *, db_mutex_t, u_int32_t));
  */
 int
-__db_win32_mutex_init(dbenv, mutex, flags)
-	DB_ENV *dbenv;
+__db_win32_mutex_init(env, mutex, flags)
+	ENV *env;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
@@ -83,7 +83,7 @@ __db_win32_mutex_init(dbenv, mutex, flags)
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
@@ -96,13 +96,14 @@ __db_win32_mutex_init(dbenv, mutex, flags)
  * __db_win32_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_win32_mutex_lock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_win32_mutex_lock __P((ENV *, db_mutex_t));
  */
 int
-__db_win32_mutex_lock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_win32_mutex_lock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
@@ -115,13 +116,16 @@ __db_win32_mutex_lock(dbenv, mutex)
 #ifdef DB_WINCE
 	volatile db_threadid_t tmp_tid;
 #endif
+	dbenv = env->dbenv;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
+
+	CHECK_MTX_THREAD(env, mutexp);
 
 	event = NULL;
 	ms = 50;
@@ -135,13 +139,13 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		 * the mutex is already "set".
 		 */
 #ifdef DB_WINCE
-		/* 
-		 * Memory mapped regions on Windows CE cause problems with 
+		/*
+		 * Memory mapped regions on Windows CE cause problems with
 		 * InterlockedExchange calls. Each page in a mapped region
-		 * needs to have been written to prior to an 
+		 * needs to have been written to prior to an
 		 * InterlockedExchange call, or the InterlockedExchange call
 		 * hangs. This does not seem to be documented anywhere. For
-		 * now, read/write a non-critical piece of memory from the 
+		 * now, read/write a non-critical piece of memory from the
 		 * shared region prior to attempting an InterlockedExchange
 		 * operation.
 		 */
@@ -162,16 +166,15 @@ loop:	/* Attempt to acquire the resource for N spins. */
 #ifdef DIAGNOSTIC
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			char buf[DB_THREADID_STRLEN];
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "Win32 lock failed: mutex already locked by %s",
 			     dbenv->thread_id_string(dbenv,
 			     mutexp->pid, mutexp->tid, buf));
-			return (__db_panic(dbenv, EACCES));
+			return (__env_panic(env, EACCES));
 		}
 #endif
 		F_SET(mutexp, DB_MUTEX_LOCKED);
 		dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-		CHECK_MTX_THREAD(dbenv, mutexp);
 
 #ifdef HAVE_STATISTICS
 		if (event == NULL)
@@ -198,7 +201,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		 * every time we get a mutex to ensure contention.
 		 */
 		if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-			__os_yield(dbenv);
+			__os_yield(env, 0, 0);
 #endif
 
 		return (0);
@@ -217,7 +220,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		    now.QuadPart, mutexp, mutexp->id);
 #endif
 		InterlockedIncrement(&mutexp->nwaiters);
-		if ((ret = get_handle(dbenv, mutexp, &event)) != 0)
+		if ((ret = get_handle(env, mutexp, &event)) != 0)
 			goto err;
 	}
 	if ((ret = WaitForSingleObject(event, ms)) == WAIT_FAILED) {
@@ -227,24 +230,25 @@ loop:	/* Attempt to acquire the resource for N spins. */
 	if ((ms <<= 1) > MS_PER_SEC)
 		ms = MS_PER_SEC;
 
-	PANIC_CHECK(dbenv);
+	PANIC_CHECK(env);
 	goto loop;
 
-err:	__db_syserr(dbenv, ret, "Win32 lock failed");
-	return (__db_panic(dbenv, __os_posix_err(ret)));
+err:	__db_syserr(env, ret, "Win32 lock failed");
+	return (__env_panic(env, __os_posix_err(ret)));
 }
 
 /*
  * __db_win32_mutex_unlock --
  *	Release a mutex.
  *
- * PUBLIC: int __db_win32_mutex_unlock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_win32_mutex_unlock __P((ENV *, db_mutex_t));
  */
 int
-__db_win32_mutex_unlock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_win32_mutex_unlock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
@@ -253,24 +257,26 @@ __db_win32_mutex_unlock(dbenv, mutex)
 #ifdef MUTEX_DIAG
 	LARGE_INTEGER now;
 #endif
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 #ifdef DIAGNOSTIC
 	if (!mutexp->tas || !F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_errx(dbenv, "Win32 unlock failed: lock already unlocked");
-		return (__db_panic(dbenv, EACCES));
+		__db_errx(env, "Win32 unlock failed: lock already unlocked");
+		return (__env_panic(env, EACCES));
 	}
 #endif
 	F_CLR(mutexp, DB_MUTEX_LOCKED);
 	MUTEX_UNSET(&mutexp->tas);
 
 	if (mutexp->nwaiters > 0) {
-		if ((ret = get_handle(dbenv, mutexp, &event)) != 0)
+		if ((ret = get_handle(env, mutexp, &event)) != 0)
 			goto err;
 
 #ifdef MUTEX_DIAG
@@ -289,19 +295,19 @@ __db_win32_mutex_unlock(dbenv, mutex)
 
 	return (0);
 
-err:	__db_syserr(dbenv, ret, "Win32 unlock failed");
-	return (__db_panic(dbenv, __os_posix_err(ret)));
+err:	__db_syserr(env, ret, "Win32 unlock failed");
+	return (__env_panic(env, __os_posix_err(ret)));
 }
 
 /*
  * __db_win32_mutex_destroy --
  *	Destroy a mutex.
  *
- * PUBLIC: int __db_win32_mutex_destroy __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_win32_mutex_destroy __P((ENV *, db_mutex_t));
  */
 int
-__db_win32_mutex_destroy(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_win32_mutex_destroy(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
 	return (0);

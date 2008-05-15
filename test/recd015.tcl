@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: recd015.tcl,v 12.8 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd015.tcl,v 12.10 2008/04/01 17:59:32 carol Exp $
 #
 # TEST	recd015
 # TEST	This is a recovery test for testing lots of prepared txns.
@@ -36,25 +36,14 @@ proc recd015 { method args } {
 	# on txn_recover.
 	#
 	set numtxns 10000
-	set testfile recd015.db
 	set txnmax [expr $numtxns + 5]
-	#
-	# For this test we create our database ahead of time so that we
-	# don't need to send methods and args to the script.
-	#
-	env_cleanup $testdir
-	set env_cmd "berkdb_env -create -txn_max \
-		$txnmax -lock_max_lockers $txnmax -txn -home $testdir"
-	set env [eval $env_cmd]
-	error_check_good dbenv [is_valid_env $env] TRUE
-	set db [eval {berkdb_open -create} $omethod -env $env $args $testfile]
-	error_check_good dbopen [is_valid_db $db] TRUE
-	error_check_good dbclose [$db close] 0
-	error_check_good envclose [$env close] 0
+	set env_cmd "berkdb_env -create -txn_max $txnmax \
+	    -lock_max_lockers $txnmax -txn -home $testdir"
 
 	set msg "\tRecd015.b"
 	foreach op { abort commit discard } {
 		puts "$msg: Large test to prepare $numtxns txn with $op"
+		env_cleanup $testdir
 		recd015_body $env_cmd $testfile $numtxns $msg $op
 	}
 

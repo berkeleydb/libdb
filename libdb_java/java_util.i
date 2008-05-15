@@ -82,7 +82,8 @@ static jclass keyrange_class;
 static jclass bt_stat_class, compact_class, h_stat_class, lock_stat_class;
 static jclass log_stat_class, mpool_stat_class, mpool_fstat_class;
 static jclass mutex_stat_class, qam_stat_class, rep_stat_class;
-static jclass repmgr_stat_class, rephost_class, seq_stat_class, txn_stat_class;
+static jclass repmgr_stat_class, repmgr_siteinfo_class, rephost_class;
+static jclass seq_stat_class, txn_stat_class;
 static jclass txn_active_class;
 static jclass lock_class, lockreq_class;
 static jclass dbex_class, deadex_class, lockex_class, memex_class;
@@ -102,8 +103,7 @@ static jfieldID kr_less_fid, kr_equal_fid, kr_greater_fid;
 static jfieldID lock_cptr_fid;
 static jfieldID lockreq_op_fid, lockreq_modeflag_fid, lockreq_timeout_fid;
 static jfieldID lockreq_obj_fid, lockreq_lock_fid;
-static jfieldID rephost_port_fid, rephost_host_fid, rephost_eid_fid;
-static jfieldID rephost_status_fid;
+static jfieldID repmgr_siteinfo_status_fid;
 
 /* BEGIN-STAT-FIELD-DECLS */
 static jfieldID bt_stat_bt_magic_fid;
@@ -158,13 +158,20 @@ static jfieldID lock_stat_st_cur_maxid_fid;
 static jfieldID lock_stat_st_maxlocks_fid;
 static jfieldID lock_stat_st_maxlockers_fid;
 static jfieldID lock_stat_st_maxobjects_fid;
+static jfieldID lock_stat_st_partitions_fid;
 static jfieldID lock_stat_st_nmodes_fid;
 static jfieldID lock_stat_st_nlockers_fid;
 static jfieldID lock_stat_st_nlocks_fid;
 static jfieldID lock_stat_st_maxnlocks_fid;
+static jfieldID lock_stat_st_maxhlocks_fid;
+static jfieldID lock_stat_st_locksteals_fid;
+static jfieldID lock_stat_st_maxlsteals_fid;
 static jfieldID lock_stat_st_maxnlockers_fid;
 static jfieldID lock_stat_st_nobjects_fid;
 static jfieldID lock_stat_st_maxnobjects_fid;
+static jfieldID lock_stat_st_maxhobjects_fid;
+static jfieldID lock_stat_st_objectsteals_fid;
+static jfieldID lock_stat_st_maxosteals_fid;
 static jfieldID lock_stat_st_nrequests_fid;
 static jfieldID lock_stat_st_nreleases_fid;
 static jfieldID lock_stat_st_nupgrade_fid;
@@ -176,12 +183,14 @@ static jfieldID lock_stat_st_locktimeout_fid;
 static jfieldID lock_stat_st_nlocktimeouts_fid;
 static jfieldID lock_stat_st_txntimeout_fid;
 static jfieldID lock_stat_st_ntxntimeouts_fid;
+static jfieldID lock_stat_st_part_wait_fid;
+static jfieldID lock_stat_st_part_nowait_fid;
+static jfieldID lock_stat_st_part_max_wait_fid;
+static jfieldID lock_stat_st_part_max_nowait_fid;
 static jfieldID lock_stat_st_objs_wait_fid;
 static jfieldID lock_stat_st_objs_nowait_fid;
 static jfieldID lock_stat_st_lockers_wait_fid;
 static jfieldID lock_stat_st_lockers_nowait_fid;
-static jfieldID lock_stat_st_locks_wait_fid;
-static jfieldID lock_stat_st_locks_nowait_fid;
 static jfieldID lock_stat_st_region_wait_fid;
 static jfieldID lock_stat_st_region_nowait_fid;
 static jfieldID lock_stat_st_hash_len_fid;
@@ -284,6 +293,7 @@ static jfieldID rep_stat_st_startup_complete_fid;
 static jfieldID rep_stat_st_status_fid;
 static jfieldID rep_stat_st_next_lsn_fid;
 static jfieldID rep_stat_st_waiting_lsn_fid;
+static jfieldID rep_stat_st_max_perm_lsn_fid;
 static jfieldID rep_stat_st_next_pg_fid;
 static jfieldID rep_stat_st_waiting_pg_fid;
 static jfieldID rep_stat_st_dupmasters_fid;
@@ -332,6 +342,8 @@ static jfieldID rep_stat_st_election_tiebreaker_fid;
 static jfieldID rep_stat_st_election_votes_fid;
 static jfieldID rep_stat_st_election_sec_fid;
 static jfieldID rep_stat_st_election_usec_fid;
+static jfieldID rep_stat_st_max_lease_sec_fid;
+static jfieldID rep_stat_st_max_lease_usec_fid;
 static jfieldID repmgr_stat_st_perm_failed_fid;
 static jfieldID repmgr_stat_st_msgs_queued_fid;
 static jfieldID repmgr_stat_st_msgs_dropped_fid;
@@ -386,7 +398,7 @@ static jmethodID dbex_construct, deadex_construct, lockex_construct;
 static jmethodID memex_construct, memex_update_method;
 static jmethodID repdupmasterex_construct, rephandledeadex_construct;
 static jmethodID repholdelectionex_construct, repjoinfailex_construct;
-static jmethodID rephost_construct, repleaseexpiredex_construct;
+static jmethodID repmgr_siteinfo_construct, rephost_construct, repleaseexpiredex_construct;
 static jmethodID repleasetimeoutex_construct, replockoutex_construct;
 static jmethodID repunavailex_construct;
 static jmethodID runrecex_construct, versionex_construct;
@@ -405,8 +417,9 @@ static jmethodID rep_startup_done_event_notify_method;
 static jmethodID write_failed_event_notify_method;
 
 static jmethodID append_recno_method, bt_compare_method, bt_prefix_method;
-static jmethodID db_feedback_method, dup_compare_method, h_compare_method;
-static jmethodID h_hash_method, seckey_create_method;
+static jmethodID db_feedback_method, dup_compare_method;
+static jmethodID foreignkey_nullify_method, h_compare_method, h_hash_method;
+static jmethodID seckey_create_method;
 
 static jmethodID outputstream_write_method;
 
@@ -449,6 +462,7 @@ const struct {
 	{ &rephandledeadex_class, DB_PKG "ReplicationHandleDeadException" },
 	{ &repholdelectionex_class, DB_PKG "ReplicationHoldElectionException" },
 	{ &rephost_class, DB_PKG "ReplicationHostAddress" },
+	{ &repmgr_siteinfo_class, DB_PKG "ReplicationManagerSiteInfo" },
 	{ &repjoinfailex_class, DB_PKG "ReplicationJoinFailureException" },
 	{ &repleaseexpiredex_class, DB_PKG "ReplicationLeaseExpiredException" },
 	{ &repleasetimeoutex_class, DB_PKG "ReplicationLeaseTimeoutException" },
@@ -552,13 +566,20 @@ const struct {
 	{ &lock_stat_st_maxlocks_fid, &lock_stat_class, "st_maxlocks", "I" },
 	{ &lock_stat_st_maxlockers_fid, &lock_stat_class, "st_maxlockers", "I" },
 	{ &lock_stat_st_maxobjects_fid, &lock_stat_class, "st_maxobjects", "I" },
+	{ &lock_stat_st_partitions_fid, &lock_stat_class, "st_partitions", "I" },
 	{ &lock_stat_st_nmodes_fid, &lock_stat_class, "st_nmodes", "I" },
 	{ &lock_stat_st_nlockers_fid, &lock_stat_class, "st_nlockers", "I" },
 	{ &lock_stat_st_nlocks_fid, &lock_stat_class, "st_nlocks", "I" },
 	{ &lock_stat_st_maxnlocks_fid, &lock_stat_class, "st_maxnlocks", "I" },
+	{ &lock_stat_st_maxhlocks_fid, &lock_stat_class, "st_maxhlocks", "I" },
+	{ &lock_stat_st_locksteals_fid, &lock_stat_class, "st_locksteals", "I" },
+	{ &lock_stat_st_maxlsteals_fid, &lock_stat_class, "st_maxlsteals", "I" },
 	{ &lock_stat_st_maxnlockers_fid, &lock_stat_class, "st_maxnlockers", "I" },
 	{ &lock_stat_st_nobjects_fid, &lock_stat_class, "st_nobjects", "I" },
 	{ &lock_stat_st_maxnobjects_fid, &lock_stat_class, "st_maxnobjects", "I" },
+	{ &lock_stat_st_maxhobjects_fid, &lock_stat_class, "st_maxhobjects", "I" },
+	{ &lock_stat_st_objectsteals_fid, &lock_stat_class, "st_objectsteals", "I" },
+	{ &lock_stat_st_maxosteals_fid, &lock_stat_class, "st_maxosteals", "I" },
 	{ &lock_stat_st_nrequests_fid, &lock_stat_class, "st_nrequests", "I" },
 	{ &lock_stat_st_nreleases_fid, &lock_stat_class, "st_nreleases", "I" },
 	{ &lock_stat_st_nupgrade_fid, &lock_stat_class, "st_nupgrade", "I" },
@@ -570,12 +591,14 @@ const struct {
 	{ &lock_stat_st_nlocktimeouts_fid, &lock_stat_class, "st_nlocktimeouts", "I" },
 	{ &lock_stat_st_txntimeout_fid, &lock_stat_class, "st_txntimeout", "I" },
 	{ &lock_stat_st_ntxntimeouts_fid, &lock_stat_class, "st_ntxntimeouts", "I" },
+	{ &lock_stat_st_part_wait_fid, &lock_stat_class, "st_part_wait", "I" },
+	{ &lock_stat_st_part_nowait_fid, &lock_stat_class, "st_part_nowait", "I" },
+	{ &lock_stat_st_part_max_wait_fid, &lock_stat_class, "st_part_max_wait", "I" },
+	{ &lock_stat_st_part_max_nowait_fid, &lock_stat_class, "st_part_max_nowait", "I" },
 	{ &lock_stat_st_objs_wait_fid, &lock_stat_class, "st_objs_wait", "I" },
 	{ &lock_stat_st_objs_nowait_fid, &lock_stat_class, "st_objs_nowait", "I" },
 	{ &lock_stat_st_lockers_wait_fid, &lock_stat_class, "st_lockers_wait", "I" },
 	{ &lock_stat_st_lockers_nowait_fid, &lock_stat_class, "st_lockers_nowait", "I" },
-	{ &lock_stat_st_locks_wait_fid, &lock_stat_class, "st_locks_wait", "I" },
-	{ &lock_stat_st_locks_nowait_fid, &lock_stat_class, "st_locks_nowait", "I" },
 	{ &lock_stat_st_region_wait_fid, &lock_stat_class, "st_region_wait", "I" },
 	{ &lock_stat_st_region_nowait_fid, &lock_stat_class, "st_region_nowait", "I" },
 	{ &lock_stat_st_hash_len_fid, &lock_stat_class, "st_hash_len", "I" },
@@ -678,6 +701,7 @@ const struct {
 	{ &rep_stat_st_status_fid, &rep_stat_class, "st_status", "I" },
 	{ &rep_stat_st_next_lsn_fid, &rep_stat_class, "st_next_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &rep_stat_st_waiting_lsn_fid, &rep_stat_class, "st_waiting_lsn", "L" DB_PKG "LogSequenceNumber;" },
+	{ &rep_stat_st_max_perm_lsn_fid, &rep_stat_class, "st_max_perm_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &rep_stat_st_next_pg_fid, &rep_stat_class, "st_next_pg", "I" },
 	{ &rep_stat_st_waiting_pg_fid, &rep_stat_class, "st_waiting_pg", "I" },
 	{ &rep_stat_st_dupmasters_fid, &rep_stat_class, "st_dupmasters", "I" },
@@ -726,6 +750,8 @@ const struct {
 	{ &rep_stat_st_election_votes_fid, &rep_stat_class, "st_election_votes", "I" },
 	{ &rep_stat_st_election_sec_fid, &rep_stat_class, "st_election_sec", "I" },
 	{ &rep_stat_st_election_usec_fid, &rep_stat_class, "st_election_usec", "I" },
+	{ &rep_stat_st_max_lease_sec_fid, &rep_stat_class, "st_max_lease_sec", "I" },
+	{ &rep_stat_st_max_lease_usec_fid, &rep_stat_class, "st_max_lease_usec", "I" },
 	{ &repmgr_stat_st_perm_failed_fid, &repmgr_stat_class, "st_perm_failed", "I" },
 	{ &repmgr_stat_st_msgs_queued_fid, &repmgr_stat_class, "st_msgs_queued", "I" },
 	{ &repmgr_stat_st_msgs_dropped_fid, &repmgr_stat_class, "st_msgs_dropped", "I" },
@@ -768,10 +794,7 @@ const struct {
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
-	{ &rephost_port_fid, &rephost_class, "port", "I" },
-	{ &rephost_host_fid, &rephost_class, "host", "Ljava/lang/String;" },
-	{ &rephost_eid_fid, &rephost_class, "eid", "I" },
-	{ &rephost_status_fid, &rephost_class, "status", "I" }
+	{ &repmgr_siteinfo_status_fid, &repmgr_siteinfo_class, "status", "I" }
 };
 
 const struct {
@@ -802,7 +825,9 @@ const struct {
 	{ &seq_stat_construct, &seq_stat_class, "<init>", "()V" },
 	{ &txn_stat_construct, &txn_stat_class, "<init>", "()V" },
 	{ &txn_active_construct, &txn_active_class, "<init>", "()V" },
-	{ &rephost_construct, &rephost_class, "<init>", "()V" },
+	{ &rephost_construct, &rephost_class, "<init>", "(Ljava/lang/String;I)V" },
+        { &repmgr_siteinfo_construct, &repmgr_siteinfo_class, "<init>", 
+	    "(L" DB_PKG "ReplicationHostAddress;I)V" },
 
 	{ &dbex_construct, &dbex_class, "<init>",
 	    "(Ljava/lang/String;IL" DB_PKG "internal/DbEnv;)V" },
@@ -883,6 +908,9 @@ const struct {
 	{ &db_feedback_method, &db_class, "handle_db_feedback", "(II)V" },
 	{ &dup_compare_method, &db_class, "handle_dup_compare",
 	    "([B[B)I" },
+	{ &foreignkey_nullify_method, &db_class, "handle_foreignkey_nullify",
+	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG
+	    "DatabaseEntry;)Z" },
 	{ &h_compare_method, &db_class, "handle_h_compare",
 	    "([B[B)I" },
 	{ &h_hash_method, &db_class, "handle_h_hash", "([BI)I" },
@@ -895,7 +923,7 @@ const struct {
 
 #define	NELEM(x) (sizeof (x) / sizeof (x[0]))
 
-JNIEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
+SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
     JNIEnv *jenv, jclass clazz)
 {
 	jclass cl;
@@ -967,9 +995,9 @@ static JNIEnv *__dbj_get_jnienv(void)
 {
 	/*
 	 * Note: Different versions of the JNI disagree on the signature for
-	 * AttachCurrentThread.  The most recent documentation seems to say
-	 * that (JNIEnv **) is correct, but newer JNIs seem to use (void **),
-	 * oddly enough.
+	 * AttachCurrentThreadAsDaemon.  The most recent documentation seems to
+	 * say that (JNIEnv **) is correct, but newer JNIs seem to use
+	 * (void **), oddly enough.
 	 */
 #ifdef JNI_VERSION_1_2
 	void *jenv = 0;
@@ -981,7 +1009,7 @@ static JNIEnv *__dbj_get_jnienv(void)
 	 * This should always succeed, as we are called via some Java activity.
 	 * I think therefore I am (a thread).
 	 */
-	if ((*javavm)->AttachCurrentThread(javavm, &jenv, 0) != 0)
+	if ((*javavm)->AttachCurrentThreadAsDaemon(javavm, &jenv, 0) != 0)
 		return (0);
 
 	return ((JNIEnv *)jenv);

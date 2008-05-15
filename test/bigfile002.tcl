@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: bigfile002.tcl,v 12.7 2007/05/17 15:15:55 bostic Exp $
+# $Id: bigfile002.tcl,v 12.9 2008/04/22 09:39:29 winter Exp $
 #
 # TEST	bigfile002
 # TEST	This one should be faster and not require so much disk space,
@@ -10,7 +10,11 @@
 # TEST	with 1K pages.  Dirty page 6000000.  Sync.
 proc bigfile002 { args } {
 	source ./include.tcl
-
+	global is_fat32
+	if { $is_fat32 } { 
+		puts "Skipping bigfile002 for FAT32 file system."
+		return
+	}
 	puts "Bigfile002: Creating large, sparse file through mpool..."
 	flush stdout
 

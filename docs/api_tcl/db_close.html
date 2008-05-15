@@ -1,6 +1,6 @@
 <!--$Id: db_close.so,v 11.15 2002/08/18 21:17:23 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.28 2004/12/16 19:13:05 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3><i>db</i> <b>close</b></h3>
+<b><i>db</i> <b>close</b></b>
 </td>
 <td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,18 +19,18 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db close
+<b><pre>db close
 	[-nosync]
-</pre></h3>
-<h3>Description(db close)</h3>
+</pre></b>
+<b>Description(db close)</b>
 <p>The <i>db</i> <b>close</b> command flushes any cached database information to
 disk, closes any open cursors, frees any allocated resources, and closes
 any underlying files.  Because key/data pairs are cached in memory, failing
 to sync the file with the <i>db</i> <b>close</b> or <i>db</i> <b>sync</b> command may
 result in inconsistent or lost information.</p>
 <p>The options are as follows:</p>
-<dl compact>
-<dt>-nosync<dd>Do not flush cached information to disk.
+<br>
+<b>-nosync</b><ul compact><li>Do not flush cached information to disk.
 <p>The -nosync flag is a dangerous option. It should only be set if the
 application is doing logging (with transactions) so that the database is
 recoverable after a system or application crash, or if the database is
@@ -44,8 +44,8 @@ transactions and logging with automatic recovery, use logging and
 application-specific recovery, or edit a copy of the database; and after
 all applications using the database have successfully called
 <i>db</i> <b>close</b>, atomically replace the original database with the
-updated copy.</p>
-</dl>
+updated copy.</p></ul>
+<br>
 <p>After <i>db</i> <b>close</b> has been called, regardless of its return, the DB
 handle may not be accessed again.</p>
 <p>The <i>db</i> <b>close</b> command returns 0 on success, and in the case of error, a Tcl error
@@ -54,6 +54,6 @@ is thrown.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

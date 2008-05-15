@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_int.h,v 12.6 2007/05/17 15:15:05 bostic Exp $
+ * $Id: cxx_int.h,v 12.8 2008/01/08 20:58:17 bostic Exp $
  */
 
 #ifndef _DB_CXX_INT_H_
@@ -60,11 +60,11 @@ WRAPPED_CLASS(DbTxn, DbTxnImp, DB_TXN)
 // the tristate values given above.  If UNKNOWN is specified,
 // the behavior is taken from the last initialized DbEnv.
 //
-#define	DB_ERROR(env, caller, ecode, policy) \
-    DbEnv::runtime_error(env, caller, ecode, policy)
+#define	DB_ERROR(dbenv, caller, ecode, policy) \
+    DbEnv::runtime_error(dbenv, caller, ecode, policy)
 
-#define	DB_ERROR_DBT(env, caller, dbt, policy) \
-    DbEnv::runtime_error_dbt(env, caller, dbt, policy)
+#define	DB_ERROR_DBT(dbenv, caller, dbt, policy) \
+    DbEnv::runtime_error_dbt(dbenv, caller, dbt, policy)
 
 #define	DB_OVERFLOWED_DBT(dbt) \
 	(F_ISSET(dbt, DB_DBT_USERMEM) && dbt->size > dbt->ulen)

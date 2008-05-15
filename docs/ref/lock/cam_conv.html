@@ -1,5 +1,5 @@
-<!--$Id: cam_conv.so,v 10.14 2003/10/18 19:16:02 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: cam_conv.so,v 10.15 2007/10/26 15:02:17 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></b></td>
 <td align=right><a href="../lock/twopl.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/am_conv.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Berkeley DB Concurrent Data Store locking conventions</h3>
+<p align=center><b>Berkeley DB Concurrent Data Store locking conventions</b></p>
 <p>The Berkeley DB Concurrent Data Store product has a simple set of conventions for locking.  It
 provides multiple-reader/single-writer semantics, but not per-page
 locking or transaction recoverability.  As such, it does its locking
@@ -22,12 +21,12 @@ entirely in the Berkeley DB interface layer.</p>
 <p>The object it locks is the file, identified by its unique file number.
 The locking matrix is not one of the two standard lock modes, instead,
 we use a four-lock set, consisting of the following:</p>
-<dl compact>
-<dt>DB_LOCK_NG<dd>not granted (always 0)
-<dt>DB_LOCK_READ<dd>read (shared)
-<dt>DB_LOCK_WRITE<dd>write (exclusive)
-<dt>DB_LOCK_IWRITE<dd>intention-to-write (shared with NG and READ, but conflicts with WRITE and IWRITE)
-</dl>
+<br>
+<b>DB_LOCK_NG</b><ul compact><li>not granted (always 0)</ul>
+<b>DB_LOCK_READ</b><ul compact><li>read (shared)</ul>
+<b>DB_LOCK_WRITE</b><ul compact><li>write (exclusive)</ul>
+<b>DB_LOCK_IWRITE</b><ul compact><li>intention-to-write (shared with NG and READ, but conflicts with WRITE and IWRITE)</ul>
+<br>
 <p>The IWRITE lock is used for cursors that will be used for updating
 (IWRITE locks are implicitly obtained for write operations through the
 Berkeley DB handles, for example, <a href="../../api_c/db_put.html">DB-&gt;put</a> or <a href="../../api_c/db_del.html">DB-&gt;del</a>).  While
@@ -48,6 +47,6 @@ already locked with a READ lock.
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../lock/twopl.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/am_conv.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

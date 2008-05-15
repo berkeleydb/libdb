@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: hash_reclaim.c,v 12.9 2007/05/17 15:15:38 bostic Exp $
+ * $Id: hash_reclaim.c,v 12.11 2008/01/08 20:58:34 bostic Exp $
  */
 
 #include "db_config.h"
@@ -22,11 +22,12 @@
  * need to go to a model where we maintain the free list with chunks of
  * contiguous pages as well.
  *
- * PUBLIC: int __ham_reclaim __P((DB *, DB_TXN *txn));
+ * PUBLIC: int __ham_reclaim __P((DB *, DB_THREAD_INFO *, DB_TXN *txn));
  */
 int
-__ham_reclaim(dbp, txn)
+__ham_reclaim(dbp, ip, txn)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 {
 	DBC *dbc;
@@ -34,7 +35,7 @@ __ham_reclaim(dbp, txn)
 	int ret;
 
 	/* Open up a cursor that we'll use for traversing. */
-	if ((ret = __db_cursor(dbp, txn, &dbc, 0)) != 0)
+	if ((ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
 		return (ret);
 	hcp = (HASH_CURSOR *)dbc->internal;
 
@@ -49,7 +50,7 @@ __ham_reclaim(dbp, txn)
 	F_SET(dbc, DBC_DONTLOCK);
 
 	if ((ret = __ham_traverse(dbc,
-	    DB_LOCK_WRITE, __db_reclaim_callback, dbc, 1)) != 0)
+	    DB_LOCK_WRITE, __db_reclaim_callback, NULL, 1)) != 0)
 		goto err;
 	if ((ret = __dbc_close(dbc)) != 0)
 		goto err;
@@ -75,22 +76,21 @@ __ham_truncate(dbc, countp)
 	DBC *dbc;
 	u_int32_t *countp;
 {
-	db_trunc_param trunc;
+	u_int32_t count;
 	int ret, t_ret;
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
 
-	trunc.count = 0;
-	trunc.dbc = dbc;
+	count = 0;
 
 	ret = __ham_traverse(dbc,
-	    DB_LOCK_WRITE, __db_truncate_callback, &trunc, 1);
+	    DB_LOCK_WRITE, __db_truncate_callback, &count, 1);
 
 	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (countp != NULL)
-		*countp = trunc.count;
+		*countp = count;
 	return (ret);
 }

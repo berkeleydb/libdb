@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;        " />
+    <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            &#10;            Store or Database&#10;            &#10;        " />
     <link rel="next" href="abortresults.html" title="Aborting a Transaction" />
   </head>
   <body>
@@ -73,6 +73,15 @@
               <a href="txncursor.html">Transactional Cursors</a>
             </span>
           </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="txncursor.html#dplcursors">Using Transactional DPL Cursors</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
           <dt>
             <span class="sect1">
               <a href="txnindices.html">Secondary Indices with Transaction Applications</a>
@@ -138,10 +147,83 @@
       </div>
       <p>
         For example, the following example opens a transactional-enabled environment and
-        database, obtains a transaction handle, and then performs a write
+        store, obtains a transaction handle, and then performs a write
         operation under its protection. In the event of any failure in the
-        write operation, the transaction is aborted and the database is left in a
+        write operation, the transaction is aborted and the store is left in a
         state as if no operations had ever been attempted in the first place.
+
+    </p>
+      <pre class="programlisting">package persist.txn;
+                                                                                                                                     
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.Transaction;
+
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.StoreConfig;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+                                                                                                                                     
+...
+                                                                                                                                     
+Environment myEnv = null;
+EntityStore store = null;
+
+// Our convenience data accessor class, used for easy access to 
+// EntityClass indexes.
+DataAccessor da;
+
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+    myEnvConfig.setTransactional(true);
+
+    StoreConfig storeConfig = new StoreConfig();
+    storeConfig.setTransactional(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    EntityStore store = new EntityStore(myEnv, 
+                             "EntityStore", storeConfig);
+
+    da = new DataAccessor(store);
+
+    // Assume that Inventory is an entity class.
+    Inventory theInventory = new Inventory();
+    theInventory.setItemName("Waffles");
+    theInventory.setItemSku("waf23rbni");
+
+    Transaction txn = myEnv.beginTransaction(null, null);
+        
+    try {
+        // Put the object to the store using the transaction handle.
+        da.inventoryBySku.put(txn, theInventory);
+
+        // Commit the transaction. The data is now safely written to the
+        // store.
+        txn.commit();
+    // If there is a problem, abort the transaction
+    } catch (Exception e) {
+        if (txn != null) {
+            txn.abort();
+            txn = null;
+        }
+    }
+
+
+} catch (DatabaseException de) {
+    // Exception handling goes here
+    } catch (FileNotFoundException fnfe) {
+    // Exception handling goes here
+}</pre>
+      <p>
+        The same thing can be done with the base API. In this case, the
+        database in use is left unchanged if the write operation fails:
     </p>
       <pre class="programlisting">package db.txn;
                                                                                                                                      
@@ -154,6 +236,7 @@ import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.Transaction;
 
 import java.io.File;
+import java.io.FileNotFoundException;
                                                                                                                                      
 ...
                                                                                                                                      
@@ -198,6 +281,8 @@ try {
 
 } catch (DatabaseException de) {
     // Exception handling goes here
+} catch (FileNotFoundException fnfe) {
+    // Exception handling goes here
 } </pre>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -219,10 +304,12 @@ try {
 
             
 
-            Logging causes all database write operations to be identified in
+            Logging causes all database <span>or
+                    store</span> write operations to be identified in
 
             <span>logs, and by default these
             logs are backed by files on disk.  These logs are used to restore your databases 
+            <span>or store</span>
             </span>
 
             
@@ -233,7 +320,11 @@ try {
         <p>
             Moreover, DB performs <span class="emphasis"><em>write-ahead</em></span>
             logging. This means that information is written to the logs
-            <span class="emphasis"><em>before</em></span> the actual database is changed.
+            <span class="emphasis"><em>before</em></span> the actual database 
+            <span>
+                    or store
+            </span>
+            is changed.
             This means that all write activity performed under the
             protection of the transaction is noted in the log before
             the transaction is committed. Be aware, however, that database
@@ -328,6 +419,9 @@ try {
         </div>
         <p>
             Be aware that because your transaction commit caused database
+            <span>
+                    or store
+            </span>
             modifications recorded in your logs to be forced to disk, your modifications
             are by default "persistent" in that they can be recovered in the event of
             an application or system failure. However, recovery time is
@@ -511,7 +605,8 @@ try {
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Opening a Transactional Environment and
-            Database
+            
+            Store or Database
             
          </td>
           <td width="20%" align="center">

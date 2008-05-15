@@ -19,6 +19,7 @@ __APIREL__/api_cxx/db_get.html__OCT__DB_CONSUME Db::get@DB_CONSUME
 __APIREL__/api_cxx/db_get.html__OCT__DB_CONSUME_WAIT Db::get@DB_CONSUME_WAIT
 __APIREL__/api_cxx/db_get.html__OCT__DB_GET_BOTH Db::get@DB_GET_BOTH
 __APIREL__/api_cxx/db_get.html__OCT__DB_SET_RECNO Db::get@DB_SET_RECNO
+__APIREL__/api_cxx/db_get.html__OCT__DB_IGNORE_LEASE Db::get@DB_IGNORE_LEASE
 __APIREL__/api_cxx/db_get.html__OCT__DB_MULTIPLE Db::get@DB_MULTIPLE
 __APIREL__/api_cxx/db_get.html__OCT__DB_READ_COMMITTED Db::get@DB_READ_COMMITTED
 __APIREL__/api_cxx/db_get.html__OCT__DB_READ_UNCOMMITTED Db::get@DB_READ_UNCOMMITTED
@@ -115,6 +116,7 @@ __APIREL__/api_cxx/dbc_get.html__OCT__DB_PREV_NODUP Dbc::get@DB_PREV_NODUP
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_SET Dbc::get@DB_SET
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_SET_RANGE Dbc::get@DB_SET_RANGE
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_SET_RECNO Dbc::get@DB_SET_RECNO
+__APIREL__/api_cxx/dbc_get.html__OCT__DB_IGNORE_LEASE Dbc::get@DB_IGNORE_LEASE
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_READ_UNCOMMITTED Dbc::get@DB_READ_UNCOMMITTED
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_MULTIPLE Dbc::get@DB_MULTIPLE
 __APIREL__/api_cxx/dbc_get.html__OCT__DB_MULTIPLE_KEY Dbc::get@DB_MULTIPLE_KEY
@@ -176,37 +178,28 @@ __APIREL__/api_cxx/env_set_flags.html__OCT__2 configure @locking for Berkeley DB
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_CDB_ALLDB DbEnv::set_flags@DB_CDB_ALLDB
 __APIREL__/api_cxx/env_set_flags.html__OCT__3 turn off system @buffering for database files
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_DIRECT_DB DbEnv::set_flags@DB_DIRECT_DB
-__APIREL__/api_cxx/env_set_flags.html__OCT__4 turn off system @buffering for log files
-__APIREL__/api_cxx/env_set_flags.html__OCT__DB_DIRECT_LOG DbEnv::set_flags@DB_DIRECT_LOG
-__APIREL__/api_cxx/env_set_flags.html__OCT__5 turn off system @buffering for database files
+__APIREL__/api_cxx/env_set_flags.html__OCT__4 turn off system @buffering for database files
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_DSYNC_DB DbEnv::set_flags@DB_DSYNC_DB
-__APIREL__/api_cxx/env_set_flags.html__OCT__6 turn off system @buffering for log files
-__APIREL__/api_cxx/env_set_flags.html__OCT__DB_DSYNC_LOG DbEnv::set_flags@DB_DSYNC_LOG
-__APIREL__/api_cxx/env_set_flags.html__OCT__7 automatic @log file removal
-__APIREL__/api_cxx/env_set_flags.html__OCT__DB_LOG_AUTOREMOVE DbEnv::set_flags@DB_LOG_AUTOREMOVE
-__APIREL__/api_cxx/env_set_flags.html__OCT__8 in memory @logs
-__APIREL__/api_cxx/env_set_flags.html__OCT__DB_LOG_INMEMORY DbEnv::set_flags@DB_LOG_INMEMORY
-__APIREL__/api_cxx/env_set_flags.html__OCT__DB_LOG_BUFFER_FULL DbEnv::set_flags@DB_LOG_BUFFER_FULL
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_MULTIVERSION DbEnv::set_flags@DB_MULTIVERSION
-__APIREL__/api_cxx/env_set_flags.html__OCT__9 ignore @locking
+__APIREL__/api_cxx/env_set_flags.html__OCT__5 ignore @locking
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_NOLOCKING DbEnv::set_flags@DB_NOLOCKING
-__APIREL__/api_cxx/env_set_flags.html__OCT__10 turn off database file @memory mapping
+__APIREL__/api_cxx/env_set_flags.html__OCT__6 turn off database file @memory mapping
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_NOMMAP DbEnv::set_flags@DB_NOMMAP
-__APIREL__/api_cxx/env_set_flags.html__OCT__11 ignore database environment @panic
+__APIREL__/api_cxx/env_set_flags.html__OCT__7 ignore database environment @panic
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_NOPANIC DbEnv::set_flags@DB_NOPANIC
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_OVERWRITE DbEnv::set_flags@DB_OVERWRITE
-__APIREL__/api_cxx/env_set_flags.html__OCT__12 turn off access to a database @environment
+__APIREL__/api_cxx/env_set_flags.html__OCT__8 turn off access to a database @environment
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_PANIC_ENVIRONMENT DbEnv::set_flags@DB_PANIC_ENVIRONMENT
-__APIREL__/api_cxx/env_set_flags.html__OCT__13 fault database @environment in during open
+__APIREL__/api_cxx/env_set_flags.html__OCT__9 fault database @environment in during open
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_REGION_INIT DbEnv::set_flags@DB_REGION_INIT
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_TIME_NOTGRANTED DbEnv::set_flags@DB_TIME_NOTGRANTED
-__APIREL__/api_cxx/env_set_flags.html__OCT__14 turn off synchronous @transaction commit
+__APIREL__/api_cxx/env_set_flags.html__OCT__10 turn off synchronous @transaction commit
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_TXN_NOSYNC DbEnv::set_flags@DB_TXN_NOSYNC
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_TXN_NOWAIT DbEnv::set_flags@DB_TXN_NOWAIT
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_TXN_SNAPSHOT DbEnv::set_flags@DB_TXN_SNAPSHOT
-__APIREL__/api_cxx/env_set_flags.html__OCT__15 turn off synchronous @transaction commit
+__APIREL__/api_cxx/env_set_flags.html__OCT__11 turn off synchronous @transaction commit
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_TXN_WRITE_NOSYNC DbEnv::set_flags@DB_TXN_WRITE_NOSYNC
-__APIREL__/api_cxx/env_set_flags.html__OCT__16 configure for @stress testing
+__APIREL__/api_cxx/env_set_flags.html__OCT__12 configure for @stress testing
 __APIREL__/api_cxx/env_set_flags.html__OCT__DB_YIELDCPU DbEnv::set_flags@DB_YIELDCPU
 __APIREL__/api_cxx/env_set_isalive.html__OCT__DB_MUTEX_PROCESS_ONLY DbEnv::set_isalive@DB_MUTEX_PROCESS_ONLY
 __APIREL__/api_cxx/env_set_rpc_server.html__OCT__DB_NOSERVER DbEnv::set_rpc_server@DB_NOSERVER
@@ -214,7 +207,7 @@ __APIREL__/api_cxx/env_set_rpc_server.html__OCT__DB_NOSERVER_ID DbEnv::set_rpc_s
 __APIREL__/api_cxx/env_set_rpc_server.html__OCT__DB_NOSERVER_HOME DbEnv::set_rpc_server@DB_NOSERVER_HOME
 __APIREL__/api_cxx/env_set_rpc_server.html__OCT__2 @DB_NOSERVER
 __APIREL__/api_cxx/env_set_rpc_server.html__OCT__3 @DB_NOSERVER_ID
-__APIREL__/api_cxx/env_set_thread_id_string.html__OCT__2 @DB_NOSERVER
+__APIREL__/api_cxx/env_set_thread_id_string.html__OCT__2 @DB_THREADID_STRLEN
 __APIREL__/api_cxx/env_set_timeout.html__OCT__DB_SET_LOCK_TIMEOUT DbEnv::set_timeout@DB_SET_LOCK_TIMEOUT
 __APIREL__/api_cxx/env_set_timeout.html__OCT__DB_SET_TXN_TIMEOUT DbEnv::set_timeout@DB_SET_TXN_TIMEOUT
 __APIREL__/api_cxx/env_set_timeout.html__OCT__DB_SET_LOCK_TIMEOUT DbEnv::set_timeout@DB_SET_LOCK_TIMEOUT
@@ -226,10 +219,18 @@ __APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_FILEOPS_ALL DbEnv::set_ver
 __APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_RECOVERY DbEnv::set_verbose@DB_VERB_RECOVERY
 __APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REGISTER DbEnv::set_verbose@DB_VERB_REGISTER
 __APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REPLICATION DbEnv::set_verbose@DB_VERB_REPLICATION
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REP_ELECT DbEnv::set_verbose@DB_VERB_REP_ELECT
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REP_LEASE DbEnv::set_verbose@DB_VERB_REP_LEASE
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REP_MISC DbEnv::set_verbose@DB_VERB_REP_MISC
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REP_MSGS DbEnv::set_verbose@DB_VERB_REP_MSGS
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REP_SYNC DbEnv::set_verbose@DB_VERB_REP_SYNC
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REPMGR_CONNFAIL DbEnv::set_verbose@DB_VERB_REPMGR_CONNFAIL
+__APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_REPMGR_MISC DbEnv::set_verbose@DB_VERB_REPMGR_MISC
 __APIREL__/api_cxx/env_set_verbose.html__OCT__DB_VERB_WAITSFOR DbEnv::set_verbose@DB_VERB_WAITSFOR
 __APIREL__/api_cxx/env_stat.html__OCT__DB_STAT_ALL DbEnv::stat_print@DB_STAT_ALL
 __APIREL__/api_cxx/env_stat.html__OCT__DB_STAT_CLEAR DbEnv::stat_print@DB_STAT_CLEAR
 __APIREL__/api_cxx/env_stat.html__OCT__DB_STAT_SUBSYSTEM DbEnv::stat_print@DB_STAT_SUBSYSTEM
+__APIREL__/api_cxx/env_cdsgroup_begin.html__OCT__2 allocate a @locker ID for Berkeley DB Concurrent Data Store
 __APIREL__/api_cxx/env_set_lk_detect.html__OCT__DB_LOCK_DEFAULT DbEnv::set_lk_detect@DB_LOCK_DEFAULT
 __APIREL__/api_cxx/env_set_lk_detect.html__OCT__DB_LOCK_EXPIRE DbEnv::set_lk_detect@DB_LOCK_EXPIRE
 __APIREL__/api_cxx/env_set_lk_detect.html__OCT__DB_LOCK_MAXLOCKS DbEnv::set_lk_detect@DB_LOCK_MAXLOCKS
@@ -272,6 +273,17 @@ __APIREL__/api_cxx/lock_vec.html__OCT__DB_LOCK_IWRITE DbEnv::lock_vec@DB_LOCK_IW
 __APIREL__/api_cxx/lock_vec.html__OCT__DB_LOCK_IREAD DbEnv::lock_vec@DB_LOCK_IREAD
 __APIREL__/api_cxx/lock_vec.html__OCT__DB_LOCK_IWR DbEnv::lock_vec@DB_LOCK_IWR
 __APIREL__/api_cxx/lock_vec.html__OCT__obj DbEnv::lock_vec@obj
+__APIREL__/api_cxx/env_log_set_config.html__OCT__2 turn off system @buffering for log files
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_DIRECT DbEnv::log_set_config@DB_LOG_DIRECT
+__APIREL__/api_cxx/env_log_set_config.html__OCT__3 turn off system @buffering for log files
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_DSYNC DbEnv::log_set_config@DB_LOG_DSYNC
+__APIREL__/api_cxx/env_log_set_config.html__OCT__4 automatic @log file removal
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_AUTO_REMOVE DbEnv::log_set_config@DB_LOG_AUTO_REMOVE
+__APIREL__/api_cxx/env_log_set_config.html__OCT__5 in memory @logs
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_IN_MEMORY DbEnv::log_set_config@DB_LOG_IN_MEMORY
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_BUFFER_FULL DbEnv::log_set_config@DB_LOG_BUFFER_FULL
+__APIREL__/api_cxx/env_log_set_config.html__OCT__6 pre-zero @log files
+__APIREL__/api_cxx/env_log_set_config.html__OCT__DB_LOG_ZERO DbEnv::log_set_config@DB_LOG_ZERO
 __APIREL__/api_cxx/log_archive.html__OCT__DB_ARCH_ABS DbEnv::log_archive@DB_ARCH_ABS
 __APIREL__/api_cxx/log_archive.html__OCT__DB_ARCH_DATA DbEnv::log_archive@DB_ARCH_DATA
 __APIREL__/api_cxx/log_archive.html__OCT__DB_ARCH_LOG DbEnv::log_archive@DB_ARCH_LOG
@@ -324,8 +336,11 @@ __APIREL__/api_cxx/mutex_stat.html__OCT__DB_STAT_ALL DbEnv::mutex_stat@DB_STAT_A
 __APIREL__/api_cxx/mutex_stat.html__OCT__DB_STAT_CLEAR DbEnv::mutex_stat@DB_STAT_CLEAR
 __APIREL__/api_cxx/rep_config.html__OCT__DB_REP_CONF_BULK DbEnv::rep_set_config@DB_REP_CONF_BULK
 __APIREL__/api_cxx/rep_config.html__OCT__DB_REP_CONF_DELAYCLIENT DbEnv::rep_set_config@DB_REP_CONF_DELAYCLIENT
+__APIREL__/api_cxx/rep_config.html__OCT__DB_REP_CONF_LEASE DbEnv::rep_set_config@DB_REP_CONF_LEASE
+__APIREL__/api_cxx/rep_config.html__OCT__DB_REP_LEASE_EXPIRED DbEnv::rep_set_config@DB_REP_LEASE_EXPIRED
 __APIREL__/api_cxx/rep_config.html__OCT__DB_REP_CONF_NOAUTOINIT DbEnv::rep_set_config@DB_REP_CONF_NOAUTOINIT
 __APIREL__/api_cxx/rep_config.html__OCT__DB_REP_CONF_NOWAIT DbEnv::rep_set_config@DB_REP_CONF_NOWAIT
+__APIREL__/api_cxx/rep_config.html__OCT__DB_REPMGR_CONF_2SITE_STRICT DbEnv::rep_set_config@DB_REPMGR_CONF_2SITE_STRICT
 __APIREL__/api_cxx/rep_elect.html__OCT__2 @DB_REP_UNAVAIL
 __APIREL__/api_cxx/rep_message.html__OCT__DB_REP_DUPMASTER DbEnv::rep_process_message@DB_REP_DUPMASTER
 __APIREL__/api_cxx/rep_message.html__OCT__DB_REP_HOLDELECTION DbEnv::rep_process_message@DB_REP_HOLDELECTION
@@ -345,7 +360,9 @@ __APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_CONNECTION_RETRY DbEnv::rep_set
 __APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_ELECTION_TIMEOUT DbEnv::rep_set_timeout@DB_REP_ELECTION_TIMEOUT
 __APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_ELECTION_RETRY DbEnv::rep_set_timeout@DB_REP_ELECTION_RETRY
 __APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_FULL_ELECTION_TIMEOUT DbEnv::rep_set_timeout@DB_REP_FULL_ELECTION_TIMEOUT
-__APIREL__/api_cxx/rep_transport.html__OCT__2 @DB_EID_BROADCAST
+__APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_HEARTBEAT_MONITOR DbEnv::rep_set_timeout@DB_REP_HEARTBEAT_MONITOR
+__APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_HEARTBEAT_SEND DbEnv::rep_set_timeout@DB_REP_HEARTBEAT_SEND
+__APIREL__/api_cxx/rep_timeout.html__OCT__DB_REP_LEASE_TIMEOUT DbEnv::rep_set_timeout@DB_REP_LEASE_TIMEOUT
 __APIREL__/api_cxx/rep_transport.html__OCT__DB_REP_ANYWHERE DbEnv::rep_set_transport@DB_REP_ANYWHERE
 __APIREL__/api_cxx/rep_transport.html__OCT__DB_REP_NOBUFFER DbEnv::rep_set_transport@DB_REP_NOBUFFER
 __APIREL__/api_cxx/rep_transport.html__OCT__DB_REP_PERMANENT DbEnv::rep_set_transport@DB_REP_PERMANENT

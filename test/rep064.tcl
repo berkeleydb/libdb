@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: rep064.tcl,v 12.9 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep064.tcl,v 12.11 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep064
 # TEST	Replication rename and forced-upgrade test.
@@ -56,10 +56,11 @@ proc rep064_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

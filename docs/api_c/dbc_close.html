@@ -1,5 +1,5 @@
 <!--$Id: dbc_close.so,v 10.35 2006/10/24 13:26:50 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DBcursor-&gt;close</h3>
+<b>DBcursor-&gt;close</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DBcursor-&gt;close(DBC *DBcursor);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DBcursor-&gt;close</h3>
+<b>Description: DBcursor-&gt;close</b>
 <p>The DBcursor-&gt;close method discards the cursor.</p>
 <p>It is possible for the DBcursor-&gt;close method to return
 <a href="../ref/program/errorret.html#DB_LOCK_DEADLOCK">DB_LOCK_DEADLOCK</a>, signaling that any enclosing transaction should
@@ -38,28 +38,28 @@ cursor handle may not be used again.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The DBcursor-&gt;close method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>DB_LOCK_DEADLOCK<dd>A transactional database environment operation was selected to resolve
-a deadlock.
-<dt>DB_LOCK_NOTGRANTED<dd>A Berkeley DB Concurrent Data Store database environment configured for lock timeouts was unable
-to grant a lock in the allowed time.
-</dl>
-<dl compact>
-<dt>EINVAL<dd>If the cursor is already closed; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>DB_LOCK_DEADLOCK</b><ul compact><li>A transactional database environment operation was selected to resolve
+a deadlock.</ul>
+<b>DB_LOCK_NOTGRANTED</b><ul compact><li>A Berkeley DB Concurrent Data Store database environment configured for lock timeouts was unable
+to grant a lock in the allowed time.</ul>
+<br>
+<br>
+<b>EINVAL</b><ul compact><li>If the cursor is already closed; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/dbc_class.html">DBC</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/dbc_list.html">Database Cursors and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

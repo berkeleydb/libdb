@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: DbRecord.c,v 1.14 2007/05/17 15:15:13 bostic Exp $
+ * $Id: DbRecord.c,v 1.16 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include "csv.h"
@@ -42,7 +42,7 @@ DbRecord_print(DbRecord *recordp, FILE *fp)
 		case STRING:
 			fprintf(fp, "%s\n", *(char **)faddr);
 			break;
-		case ULONG:
+		case UNSIGNED_LONG:
 			fprintf(fp, "%lu\n", *(u_long *)faddr);
 			break;
 		}
@@ -169,7 +169,7 @@ DbRecord_field(
 		    OFFSET_LEN(recordp->offset, field)] = '\0';
 		break;
 	case DOUBLE:
-	case ULONG:
+	case UNSIGNED_LONG:
 		/* This shouldn't be possible -- 2^32 is only 10 digits. */
 		len = OFFSET_LEN(recordp->offset, field);
 		if (len > sizeof(number_buf) - 1) {
@@ -371,7 +371,7 @@ DbRecord_search_field(DbField *f, char *value, OPERATOR op)
 			cmp = field_cmp_string;
 			key.size = strlen(value);
 			break;
-		case ULONG:
+		case UNSIGNED_LONG:
 			if (strtoul_err(value, &value_ulong) != 0)
 				return (1);
 			cmp = field_cmp_ulong;

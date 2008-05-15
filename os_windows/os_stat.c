@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_stat.c,v 12.12 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_stat.c,v 12.15 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,22 +15,25 @@
  *	Return if the file exists.
  */
 int
-__os_exists(dbenv, path, isdirp)
-	DB_ENV *dbenv;
+__os_exists(env, path, isdirp)
+	ENV *env;
 	const char *path;
 	int *isdirp;
 {
-	int ret;
+	DB_ENV *dbenv;
 	DWORD attrs;
 	_TCHAR *tpath;
+	int ret;
 
-	TO_TSTRING(dbenv, path, tpath, ret);
+	dbenv = env == NULL ? NULL : env->dbenv;
+
+	TO_TSTRING(env, path, tpath, ret);
 	if (ret != 0)
 		return (ret);
 
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: stat %s", path);
+		__db_msg(env, "fileops: stat %s", path);
 
 	RETRY_CHK(
 	    ((attrs = GetFileAttributes(tpath)) == (DWORD)-1 ? 1 : 0), ret);
@@ -40,7 +43,7 @@ __os_exists(dbenv, path, isdirp)
 	} else
 		ret = __os_posix_err(ret);
 
-	FREE_STRING(dbenv, tpath);
+	FREE_STRING(env, tpath);
 	return (ret);
 }
 
@@ -50,8 +53,8 @@ __os_exists(dbenv, path, isdirp)
  *	to replace.
  */
 int
-__os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
-	DB_ENV *dbenv;
+__os_ioinfo(env, path, fhp, mbytesp, bytesp, iosizep)
+	ENV *env;
 	const char *path;
 	DB_FH *fhp;
 	u_int32_t *mbytesp, *bytesp, *iosizep;
@@ -62,7 +65,7 @@ __os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
 
 	RETRY_CHK((!GetFileInformationByHandle(fhp->handle, &bhfi)), ret);
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "GetFileInformationByHandle");
+		__db_syserr(env, ret, "GetFileInformationByHandle");
 		return (__os_posix_err(ret));
 	}
 

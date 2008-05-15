@@ -1,4 +1,4 @@
-m4_comment([$Id: elect.so,v 1.27 2007/04/05 20:37:29 bostic Exp $])
+m4_comment([$Id: elect.so,v 1.30 2008/01/19 14:12:58 bostic Exp $])
 
 m4_ref_title(m4_db Replication,
     Elections,, rep/newsite, rep/mastersync)
@@ -63,7 +63,7 @@ However, in the case of restarting a whole group after an administrative
 shut down, it is possible that a slower booting site had later logs than
 any other site.  To cover that case, an application would like to give
 the election more time to ensure all sites have a chance to participate.
-Since it is intractable to for a starting site to determine which case
+Since it is intractable for a starting site to determine which case
 the whole group is in, the use of a long timeout gives all sites a
 reasonable chance to participate.  If an application wanting full
 participation sets the m4_arg(nvotes) arg to the m4_refT(rep_elect) to
@@ -119,9 +119,21 @@ Neither of these solutions is recommended: in the case of a network
 partition, either of these choices can result in there being two masters
 in one replication group, and the databases in the environment might
 irretrievably diverge as they are modified in different ways by the
-masters.  In the case of a two-system replication group, the application
-may want to require access to a remote network site, or some other
-external tie-breaker to allow a system to declare itself master.])
+masters.])
+
+m4_p([dnl
+Note that this presents a special problem for a replication group
+consisting of only two environments.  If a master site fails, the
+remaining client can never comprise a majority of sites in the group.
+If the client application can reach a remote network site, or some other
+external tie-breaker, it may be able to determine whether it is safe
+to declare itself master.  Otherwise it must choose between providing
+availability of a writable master (at the risk of duplicate masters),
+or strict protection against duplicate masters (but no master when a
+failure occurs).  Users of the Base replication API can accomplish
+this by judicious setting of the nvotes and nsites parameters to the
+m4_refT(rep_elect).  Replication Manager offers this choice via the
+m4_refT(rep_set_config).])
 
 m4_p([dnl
 It is possible for a less-preferred database environment to win an

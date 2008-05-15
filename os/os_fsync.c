@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_fsync.c,v 12.13 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_fsync.c,v 12.17 2008/05/06 03:03:37 david Exp $
  */
 
 #include "db_config.h"
@@ -51,16 +51,19 @@ __mpe_fsync(fd)
  * __os_fsync --
  *	Flush a file descriptor.
  *
- * PUBLIC: int __os_fsync __P((DB_ENV *, DB_FH *));
+ * PUBLIC: int __os_fsync __P((ENV *, DB_FH *));
  */
 int
-__os_fsync(dbenv, fhp)
-	DB_ENV *dbenv;
+__os_fsync(env, fhp)
+	ENV *env;
 	DB_FH *fhp;
 {
+	DB_ENV *dbenv;
 	int ret;
 
-	DB_ASSERT(dbenv, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+	dbenv = env == NULL ? NULL : env->dbenv;
+
+	DB_ASSERT(env, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
 
 	/*
 	 * Do nothing if the file descriptor has been marked as not requiring
@@ -70,7 +73,7 @@ __os_fsync(dbenv, fhp)
 		return (0);
 
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: flush %s", fhp->name);
+		__db_msg(env, "fileops: flush %s", fhp->name);
 
 	if (DB_GLOBAL(j_fsync) != NULL)
 		ret = DB_GLOBAL(j_fsync)(fhp->fd);
@@ -83,6 +86,8 @@ __os_fsync(dbenv, fhp)
 		 */
 		if (ret == ENOTSUP)
 			RETRY_CHK((fsync(fhp->fd)), ret);
+#elif defined(HAVE_QNX)
+		ret = __qnx_fsync(fhp);
 #elif defined(HAVE_FDATASYNC)
 		RETRY_CHK((fdatasync(fhp->fd)), ret);
 #else
@@ -91,7 +96,7 @@ __os_fsync(dbenv, fhp)
 	}
 
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "fsync");
+		__db_syserr(env, ret, "fsync");
 		ret = __os_posix_err(ret);
 	}
 	return (ret);

@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: txn.src,v 12.11 2007/06/01 17:35:16 sue Exp $
+ * $Id: txn.src,v 12.13 2008/01/08 20:59:00 bostic Exp $
  */
 
-PREFIX	__txn
 DBPRIVATE
+PREFIX	__txn
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep048script.tcl,v 12.8 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep048script.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # Rep048 script - toggle bulk transfer while updates are going on.
 

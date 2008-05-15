@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: MultipleKeyNIODataEntry.java,v 1.5 2007/05/17 15:15:41 bostic Exp $
+ * $Id: MultipleKeyNIODataEntry.java,v 1.8 2008/04/02 13:43:38 bschmeck Exp $
  */
 
 package com.sleepycat.db;
@@ -13,11 +13,26 @@ import com.sleepycat.db.internal.DbUtil;
 
 import java.nio.ByteBuffer;
 
+/**
+A DatabaseEntry that holds multiple key/data pairs returned by a single
+{@link com.sleepycat.db.Database Database} or {@link com.sleepycat.db.Cursor Cursor} get call.
+*/
 public class MultipleKeyNIODataEntry extends MultipleEntry {
+    /**
+    Construct an entry with no data. The object must be configured
+    before use with the {@link com.sleepycat.db.DatabaseEntry#setDataNIO DatabaseEntry.setDataNIO} method.
+    */
     public MultipleKeyNIODataEntry() {
         super(null);
     }
 
+    /**
+    Construct an entry with a given java.nio.ByteBuffer.  The offset is
+    set to zero; the size is set to the length of the buffer.
+    <p>
+    @param data
+    ByteBuffer wrapped by the entry.
+    */
     public MultipleKeyNIODataEntry(final ByteBuffer data) {
         super(data);
     }
@@ -32,7 +47,24 @@ public class MultipleKeyNIODataEntry extends MultipleEntry {
         return DbConstants.DB_MULTIPLE_KEY;
     }
 
-    public boolean next(final DatabaseEntry key, final DatabaseEntry data) {
+    /**
+    Get the next key/data pair in the returned set.  This method may only
+    be called after a successful call to a {@link com.sleepycat.db.Database Database} or
+    {@link com.sleepycat.db.Cursor Cursor} get method with this object as the data parameter.
+    <p>
+    @param key
+    an entry that is set to refer to the next key element in the returned
+    set.
+    <p>
+    @param data
+    an entry that is set to refer to the next data element in the returned
+    set.
+    <p>
+    @return
+    indicates whether a value was found.  A return of <code>false</code>
+    indicates that the end of the set was reached.
+    */
+   public boolean next(final DatabaseEntry key, final DatabaseEntry data) {
         byte[] intarr;
         int saveoffset;
         if (pos == 0)

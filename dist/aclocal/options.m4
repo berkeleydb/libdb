@@ -1,4 +1,4 @@
-# $Id: options.m4,v 12.7 2007/05/04 13:46:25 bostic Exp $
+# $Id: options.m4,v 12.8 2008/03/20 03:53:54 mjc Exp $
 
 # Process user-specified options.
 AC_DEFUN(AM_OPTIONS_SET, [
@@ -156,19 +156,6 @@ AC_ARG_ENABLE(mingw,
 			[Build Berkeley DB for MinGW.])],
 	[db_cv_mingw="$enable_mingw"], [db_cv_mingw="no"])
 AC_MSG_RESULT($db_cv_mingw)
-
-AC_MSG_CHECKING(if --enable-fine_grained_lock_manager option specified)
-AC_ARG_ENABLE(fine_grained_lock_manager,
-	[AC_HELP_STRING([--enable-fine_grained_lock_manager],
-			[Build Berkeley DB with a fine-grained lock manager.])],
-	[db_cv_fine_grained_lock_manager="$enable_fine_grained_lock_manager"],
-	[db_cv_fine_grained_lock_manager="no"])
-AC_MSG_RESULT($db_cv_fine_grained_lock_manager)
-AH_TEMPLATE(HAVE_FINE_GRAINED_LOCK_MANAGER,
-    [Define to 1 to build Berkeley DB with a fine-grained lock manager.])
-if test "$db_cv_fine_grained_lock_manager" = "yes"; then
-	AC_DEFINE(HAVE_FINE_GRAINED_LOCK_MANAGER)
-fi
 
 AC_MSG_CHECKING(if --enable-o_direct option specified)
 AC_ARG_ENABLE(o_direct,

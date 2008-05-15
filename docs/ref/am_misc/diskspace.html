@@ -1,5 +1,5 @@
 <!--$Id: diskspace.so,v 10.17 2002/08/09 13:43:47 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am_misc/dbsizes.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_misc/tune.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Disk space requirements</h3>
+<p align=center><b>Disk space requirements</b></p>
 <p>It is possible to estimate the total database size based on the size of
 the data.  The following calculations are an estimate of how many bytes
 you will need to hold a set of data and then how many pages it will take
@@ -30,7 +29,7 @@ account overflow records, filesystem metadata information, large sets
 of duplicate data items (where the key is only stored once), or
 real-life situations where the sizes of key and data items are wildly
 variable, and the page-fill factor changes over time.</p>
-<h3>Btree</h3>
+<b>Btree</b>
 <p>The formulas for the Btree access method are as follows:</p>
 <blockquote><pre>useful-bytes-per-page = (page-size - page-overhead) * page-fill-factor
 <p>
@@ -71,7 +70,7 @@ the example, there are 224751 pages of data.</p>
 multiplied by the <b>page-size</b>.  In the example, the result is
 1841160192 bytes, or roughly 1.71GB.</p>
 <blockquote><pre>1841160192 = 224751 * 8192</pre></blockquote>
-<h3>Hash</h3>
+<b>Hash</b>
 <p>The formulas for the Hash access method are as follows:</p>
 <blockquote><pre>useful-bytes-per-page = (page-size - page-overhead)
 <p>
@@ -143,6 +142,6 @@ only at specific points in the file, and this too can lead to sparse hash
 tables.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am_misc/dbsizes.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_misc/tune.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash_open.c,v 12.26 2007/06/14 14:54:37 bostic Exp $
+ * $Id: hash_open.c,v 12.33 2008/01/30 12:18:22 mjc Exp $
  */
 
 #include "db_config.h"
@@ -58,24 +58,25 @@ static db_pgno_t __ham_init_meta __P((DB *, HMETA *, db_pgno_t, DB_LSN *));
 /*
  * __ham_open --
  *
- * PUBLIC: int __ham_open __P((DB *,
+ * PUBLIC: int __ham_open __P((DB *, DB_THREAD_INFO *,
  * PUBLIC:     DB_TXN *, const char * name, db_pgno_t, u_int32_t));
  */
 int
-__ham_open(dbp, txn, name, base_pgno, flags)
+__ham_open(dbp, ip, txn, name, base_pgno, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name;
 	db_pgno_t base_pgno;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DBC *dbc;
-	HASH_CURSOR *hcp;
+	ENV *env;
 	HASH *hashp;
+	HASH_CURSOR *hcp;
 	int ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	dbc = NULL;
 
 	/*
@@ -84,8 +85,8 @@ __ham_open(dbp, txn, name, base_pgno, flags)
 	 * In STD_LOCKING mode, we'll synchronize using the meta page
 	 * lock instead.
 	 */
-	if ((ret = __db_cursor(dbp,
-	    txn, &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(dbenv) ?
+	if ((ret = __db_cursor(dbp, ip,
+	    txn, &dbc, LF_ISSET(DB_CREATE) && CDB_LOCKING(env) ?
 	    DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
@@ -108,8 +109,12 @@ __ham_open(dbp, txn, name, base_pgno, flags)
 			F_SET(dbp, DB_AM_DUPSORT);
 		if (F_ISSET(&hcp->hdr->dbmeta, DB_HASH_SUBDB))
 			F_SET(dbp, DB_AM_SUBDB);
-	} else if (!IS_RECOVERING(dbenv) && !F_ISSET(dbp, DB_AM_RECOVER)) {
-		__db_errx(dbenv,
+		if (PGNO(hcp->hdr) == PGNO_BASE_MD &&
+		     !F_ISSET(dbp, DB_AM_RECOVER))
+			__memp_set_last_pgno(dbp->mpf,
+			    hcp->hdr->dbmeta.last_pgno);
+	} else if (!IS_RECOVERING(env) && !F_ISSET(dbp, DB_AM_RECOVER)) {
+		__db_errx(env,
 		    "%s: Invalid hash meta page %lu", name, (u_long)base_pgno);
 		ret = EINVAL;
 	}
@@ -134,11 +139,11 @@ __ham_metachk(dbp, name, hashm)
 	const char *name;
 	HMETA *hashm;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	u_int32_t vers;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * At this point, all we know is that the magic number is for a Hash.
@@ -151,7 +156,7 @@ __ham_metachk(dbp, name, hashm)
 	case 4:
 	case 5:
 	case 6:
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: hash version %lu requires a version upgrade",
 		    name, (u_long)vers);
 		return (DB_OLD_VERSION);
@@ -160,13 +165,14 @@ __ham_metachk(dbp, name, hashm)
 	case 9:
 		break;
 	default:
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: unsupported hash version: %lu", name, (u_long)vers);
 		return (EINVAL);
 	}
 
 	/* Swap the page if we need to. */
-	if (F_ISSET(dbp, DB_AM_SWAP) && (ret = __ham_mswap((PAGE *)hashm)) != 0)
+	if (F_ISSET(dbp, DB_AM_SWAP) &&
+	    (ret = __ham_mswap(env, (PAGE *)hashm)) != 0)
 		return (ret);
 
 	/* Check the type. */
@@ -179,7 +185,7 @@ __ham_metachk(dbp, name, hashm)
 	 * Check application info against metadata info, and set info, flags,
 	 * and type based on metadata info.
 	 */
-	if ((ret = __db_fchk(dbenv,
+	if ((ret = __db_fchk(env,
 	    "DB->open", hashm->dbmeta.flags,
 	    DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT)) != 0)
 		return (ret);
@@ -188,7 +194,7 @@ __ham_metachk(dbp, name, hashm)
 		F_SET(dbp, DB_AM_DUP);
 	else
 		if (F_ISSET(dbp, DB_AM_DUP)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		"%s: DB_DUP specified to open method but not set in database",
 			    name);
 			return (EINVAL);
@@ -198,7 +204,7 @@ __ham_metachk(dbp, name, hashm)
 		F_SET(dbp, DB_AM_SUBDB);
 	else
 		if (F_ISSET(dbp, DB_AM_SUBDB)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 	    "%s: multiple databases specified but not supported in file",
 			name);
 			return (EINVAL);
@@ -209,7 +215,7 @@ __ham_metachk(dbp, name, hashm)
 			dbp->dup_compare = __bam_defcmp;
 	} else
 		if (dbp->dup_compare != NULL) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		"%s: duplicate sort function specified but not set in database",
 			    name);
 			return (EINVAL);
@@ -239,12 +245,12 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 	db_pgno_t pgno;
 	DB_LSN *lsnp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	HASH *hashp;
 	db_pgno_t nbuckets;
 	u_int i, l2;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	hashp = dbp->h_internal;
 
 	if (hashp->h_hash == NULL)
@@ -266,9 +272,8 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 	if (F_ISSET(dbp, DB_AM_CHKSUM))
 		FLD_SET(meta->dbmeta.metaflags, DBMETA_CHKSUM);
 	if (F_ISSET(dbp, DB_AM_ENCRYPT)) {
-		meta->dbmeta.encrypt_alg =
-		   ((DB_CIPHER *)dbenv->crypto_handle)->alg;
-		DB_ASSERT(dbenv, meta->dbmeta.encrypt_alg != 0);
+		meta->dbmeta.encrypt_alg = env->crypto_handle->alg;
+		DB_ASSERT(env, meta->dbmeta.encrypt_alg != 0);
 		meta->crypto_magic = meta->dbmeta.magic;
 	}
 	meta->dbmeta.type = P_HASHMETA;
@@ -319,27 +324,29 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
  * memory or calls __memp_fget), 2) the initialization, and 3) the "put page"
  * chunk which either does a fop write or an __memp_fput.
  *
- * PUBLIC: int __ham_new_file __P((DB *, DB_TXN *, DB_FH *, const char *));
+ * PUBLIC: int __ham_new_file __P((DB *,
+ * PUBLIC:      DB_THREAD_INFO *, DB_TXN *, DB_FH *, const char *));
  */
 int
-__ham_new_file(dbp, txn, fhp, name)
+__ham_new_file(dbp, ip, txn, fhp, name)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DB_FH *fhp;
 	const char *name;
 {
-	DB_ENV *dbenv;
+	DBT pdbt;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
 	DB_PGINFO pginfo;
-	DBT pdbt;
+	ENV *env;
 	HMETA *meta;
 	PAGE *page;
 	int ret;
 	db_pgno_t lpgno;
 	void *buf;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	meta = NULL;
 	page = NULL;
@@ -348,7 +355,7 @@ __ham_new_file(dbp, txn, fhp, name)
 	if (F_ISSET(dbp, DB_AM_INMEM)) {
 		/* Build meta-data page. */
 		lpgno = PGNO_BASE_MD;
-		if ((ret = __memp_fget(mpf, &lpgno, txn,
+		if ((ret = __memp_fget(mpf, &lpgno, ip, txn,
 		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 			return (ret);
 		LSN_NOT_LOGGED(lsn);
@@ -357,13 +364,13 @@ __ham_new_file(dbp, txn, fhp, name)
 		if ((ret = __db_log_page(dbp,
 		    txn, &lsn, meta->dbmeta.pgno, (PAGE *)meta)) != 0)
 			goto err;
-		ret = __memp_fput(mpf, meta, dbp->priority);
+		ret = __memp_fput(mpf, ip, meta, dbp->priority);
 		meta = NULL;
 		if (ret != 0)
 			goto err;
 
 		/* Allocate the final hash bucket. */
-		if ((ret = __memp_fget(mpf, &lpgno, txn,
+		if ((ret = __memp_fget(mpf, &lpgno, ip, txn,
 		    DB_MPOOL_CREATE, &page)) != 0)
 			goto err;
 		P_INIT(page,
@@ -372,7 +379,7 @@ __ham_new_file(dbp, txn, fhp, name)
 		if ((ret =
 		    __db_log_page(dbp, txn, &page->lsn, lpgno, page)) != 0)
 			goto err;
-		ret = __memp_fput(mpf, page, dbp->priority);
+		ret = __memp_fput(mpf, ip, page, dbp->priority);
 		page = NULL;
 		if (ret != 0)
 			goto err;
@@ -386,15 +393,16 @@ __ham_new_file(dbp, txn, fhp, name)
 		    F_ISSET(dbp, (DB_AM_CHKSUM | DB_AM_ENCRYPT | DB_AM_SWAP));
 		pdbt.data = &pginfo;
 		pdbt.size = sizeof(pginfo);
-		if ((ret = __os_calloc(dbp->dbenv, 1, dbp->pgsize, &buf)) != 0)
+		if ((ret = __os_calloc(dbp->env, 1, dbp->pgsize, &buf)) != 0)
 			return (ret);
 		meta = (HMETA *)buf;
 		LSN_NOT_LOGGED(lsn);
 		lpgno = __ham_init_meta(dbp, meta, PGNO_BASE_MD, &lsn);
 		meta->dbmeta.last_pgno = lpgno;
-		if ((ret = __db_pgout(dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
+		if ((ret =
+		    __db_pgout(env->dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(dbenv, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
 		    dbp->pgsize, 0, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -408,9 +416,9 @@ __ham_new_file(dbp, txn, fhp, name)
 		P_INIT(page,
 		    dbp->pgsize, lpgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
 		LSN_NOT_LOGGED(page->lsn);
-		if ((ret = __db_pgout(dbenv, lpgno, buf, &pdbt)) != 0)
+		if ((ret = __db_pgout(env->dbenv, lpgno, buf, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(dbenv, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
 		    dbp->pgsize, lpgno, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -418,12 +426,12 @@ __ham_new_file(dbp, txn, fhp, name)
 	}
 
 err:	if (buf != NULL)
-		__os_free(dbenv, buf);
+		__os_free(env, buf);
 	else {
 		if (meta != NULL)
-			(void)__memp_fput(mpf, meta, dbp->priority);
+			(void)__memp_fput(mpf, ip, meta, dbp->priority);
 		if (page != NULL)
-			(void)__memp_fput(mpf, page, dbp->priority);
+			(void)__memp_fput(mpf, ip, page, dbp->priority);
 	}
 	return (ret);
 }
@@ -432,25 +440,26 @@ err:	if (buf != NULL)
  * __ham_new_subdb --
  *	Create the necessary pages to begin a new subdatabase.
  *
- * PUBLIC: int __ham_new_subdb __P((DB *, DB *, DB_TXN *));
+ * PUBLIC: int __ham_new_subdb __P((DB *, DB *, DB_THREAD_INFO *, DB_TXN *));
  */
 int
-__ham_new_subdb(mdbp, dbp, txn)
+__ham_new_subdb(mdbp, dbp, ip, txn)
 	DB *mdbp, *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 {
 	DBC *dbc;
-	DB_ENV *dbenv;
+	DBMETA *mmeta;
 	DB_LOCK metalock, mmlock;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
-	DBMETA *mmeta;
+	ENV *env;
 	HMETA *meta;
 	PAGE *h;
 	int i, ret, t_ret;
 	db_pgno_t lpgno, mpgno;
 
-	dbenv = mdbp->dbenv;
+	env = mdbp->env;
 	mpf = mdbp->mpf;
 	dbc = NULL;
 	meta = NULL;
@@ -458,15 +467,15 @@ __ham_new_subdb(mdbp, dbp, txn)
 	LOCK_INIT(metalock);
 	LOCK_INIT(mmlock);
 
-	if ((ret = __db_cursor(mdbp, txn,
-	    &dbc, CDB_LOCKING(dbenv) ?  DB_WRITECURSOR : 0)) != 0)
+	if ((ret = __db_cursor(mdbp, ip, txn,
+	    &dbc, CDB_LOCKING(env) ?  DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
 	/* Get and lock the new meta data page. */
 	if ((ret = __db_lget(dbc,
 	    0, dbp->meta_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &dbp->meta_pgno, dbc->txn,
+	if ((ret = __memp_fget(mpf, &dbp->meta_pgno, ip, dbc->txn,
 	    DB_MPOOL_CREATE, &meta)) != 0)
 		goto err;
 
@@ -483,7 +492,7 @@ __ham_new_subdb(mdbp, dbp, txn)
 	mpgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc, 0, mpgno, DB_LOCK_WRITE, 0, &mmlock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &mpgno, dbc->txn,
+	if ((ret = __memp_fget(mpf, &mpgno, ip, dbc->txn,
 	    DB_MPOOL_DIRTY, &mmeta)) != 0)
 		goto err;
 
@@ -501,7 +510,7 @@ __ham_new_subdb(mdbp, dbp, txn)
 		goto err;
 
 	/* Reflect the group allocation. */
-	if (DBENV_LOGGING(dbenv)
+	if (DBENV_LOGGING(env)
 #if !defined(DEBUG_WOP)
 	    && txn != NULL
 #endif
@@ -512,31 +521,31 @@ __ham_new_subdb(mdbp, dbp, txn)
 			goto err;
 
 	/* Release the new meta-data page. */
-	if ((ret = __memp_fput(mpf, meta, dbc->priority)) != 0)
+	if ((ret = __memp_fput(mpf, ip, meta, dbc->priority)) != 0)
 		goto err;
 	meta = NULL;
 
 	lpgno += mmeta->last_pgno;
 
 	/* Now allocate the final hash bucket. */
-	if ((ret = __memp_fget(mpf, &lpgno, dbc->txn,
+	if ((ret = __memp_fget(mpf, &lpgno, ip, dbc->txn,
 	    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &h)) != 0)
 		goto err;
 
 	mmeta->last_pgno = lpgno;
 	P_INIT(h, dbp->pgsize, lpgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
 	LSN(h) = LSN(mmeta);
-	if ((ret = __memp_fput(mpf, h, dbc->priority)) != 0)
+	if ((ret = __memp_fput(mpf, ip, h, dbc->priority)) != 0)
 		goto err;
 
 err:	/* Now put the master-metadata page back. */
 	if (mmeta != NULL && (t_ret = __memp_fput(mpf,
-		mmeta, dbc->priority)) != 0 && ret == 0)
+		ip, mmeta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __LPUT(dbc, mmlock)) != 0 && ret == 0)
 		ret = t_ret;
-	if (meta != NULL &&
-	    (t_ret = __memp_fput(mpf, meta, dbc->priority)) != 0 && ret == 0)
+	if (meta != NULL && (t_ret = __memp_fput(mpf,
+	    ip, meta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;

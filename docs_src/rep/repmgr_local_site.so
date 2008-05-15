@@ -1,4 +1,4 @@
-m4_comment([$Id: repmgr_local_site.so,v 1.2 2006/04/27 18:07:38 bostic Exp $])
+m4_comment([$Id: repmgr_local_site.so,v 1.4 2008/03/03 15:54:30 paula Exp $])
 
 define(M4PAGELOCAL, [repmgr_set_local_site])
 include(m4/m4.seealso)
@@ -18,7 +18,7 @@ m4_p([dnl
 The m4_refT(repmgr_set_local_site) specifies the host identification
 string and port number for the local system.])
 
-m4_when_before_repmgr_start(repmgr_set_local_site)
+m4_when(repmgr_set_local_site, after, repmgr_start)
 m4_return(repmgr_set_local_site, std)
 
 m4_parambegin

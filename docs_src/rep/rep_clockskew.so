@@ -1,0 +1,79 @@
+m4_comment([$Id: rep_clockskew.so,v 1.12 2008/02/01 18:53:41 bostic Exp $])
+
+FOOO
+
+define(M4PAGELOCAL, [rep_set_clockskew, rep_get_clockskew])
+include(m4/m4.seealso)
+
+m4_pf_header(m4_ref(rep_set_clockskew),
+ifelse(M4API, C_API, [dnl
+int
+DB_ENV-__GT__rep_set_clockskew(DB_ENV *env,
+    u_int32_t fast_clock, u_int32_t slow_clock);
+m4_blank
+int
+DB_ENV-__GT__rep_get_clockskew(DB_ENV *env,
+    u_int32_t *fast_clockp, u_int32_t *slow_clockp);
+])
+ifelse(M4API, CXX_API, [dnl
+int
+DbEnv::rep_set_clockskew(u_int32_t fast_clock, u_int32_t slow_clock);
+m4_blank
+DbEnv::rep_get_clockskew(u_int32_t *fast_clockp, u_in32_t *slow_clockp);
+]))
+
+m4_p([dnl
+The m4_refT(rep_set_clockskew) sets the clock skew ratio among
+replication group members based on the fastest and slowest measurements
+among the group for use with master leases.  Calling this method is
+optional, the default values for clock skew assume no skew.  The user
+must also configure leases via the m4_refT(rep_set_config).
+Additionally, the user must also set the master lease timeout via the
+m4_refT(rep_set_timeout) and the number of sites in the replication
+group via the m4_refT(rep_set_nsites).  These methods may be called in
+any order.  For a description of the clock skew values, see
+m4_link(M4RELDIR/ref/rep/clock_skew, [Clock skew]).  For a description
+of master leases, see m4_link(M4RELDIR/ref/rep/lease, [Master
+leases]).])
+
+m4_p([dnl
+These arguments can be used to express either raw measurements of a
+clock timing experiment or a percentage across machines.  For instance
+a group of sites have a 2% variance, then m4_arg(fast_clock) should be
+given as 102, and m4_arg(slow_clock) should be set at 100.  Or, for a
+0.03% difference, you can use 10003 and 10000 respectively.])
+
+m4_env_config(rep_set_clockskew, replication subsystem, rep_set_clockskew, [dnl
+the clockskew specified in two parts: the fast_clock and the slow_clock.
+For example, "rep_set_clockskew 102 100"])
+
+m4_scope_env(rep_set_clockskew)
+m4_when_two(rep_set_clockskew, after, repmgr_start, rep_start)
+m4_return(rep_set_clockskew, std)
+
+m4_parambegin
+m4_param(fast_clock, [dnl
+The value, relative to the m4_arg(slow_clock), of the fastest clock
+in the group of sites.])
+m4_param(slow_clock, [dnl
+The value of the slowest clock in the group of sites.])
+
+m4_paramend
+
+m4_err(rep_set_clockskew, einval)
+
+m4_pf_description(m4_ref(rep_get_clockskew))
+m4_p([dnl
+The m4_refT(rep_get_clockskew) returns the current clock skew values.])
+
+m4_when_any(rep_get_clockskew)
+
+m4_return(rep_get_clockskew, std)
+
+m4_parambegin
+m4_param_co(fast_clockp, value for the fastest clock in the group of sites)
+m4_param_co(slow_clockp, value for the slowest clock in the group of sites)
+m4_paramend
+
+m4_seealso(Replication)
+m4_page_footer

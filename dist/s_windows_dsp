@@ -1,5 +1,5 @@
 #!/bin/bash -
-#	$Id: s_windows_dsp,v 12.21 2007/07/06 16:29:16 bostic Exp $
+#	$Id: s_windows_dsp,v 12.23 2008/01/30 18:39:13 bostic Exp $
 #
 # Build Windows/32 .dsp files.
 
@@ -198,7 +198,7 @@ do
 		;;
 	esac
 	;;
-    brew|s60|vx|vxsmall )
+    brew|s60|vx|vxsmall|vx6 )
         ;;
     * )
         echo \

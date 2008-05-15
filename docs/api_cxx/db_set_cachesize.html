@@ -1,6 +1,6 @@
 <!--$Id: db_set_cachesize.so,v 10.21 2002/08/18 21:15:53 bostic Exp $-->
 <!--$Id: env_set_cachesize.so,v 10.51 2007/07/06 00:22:52 mjc Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db::set_cachesize</h3>
+<b>Db::set_cachesize</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,16 +19,16 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 Db::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache);
 int
 Db::get_cachesize(u_int32_t *gbytesp, u_int32_t *bytesp, int *ncachep);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db::set_cachesize</h3>
+<b>Description: Db::set_cachesize</b>
 <p>Set the size of the shared memory buffer pool -- that is, the cache.
 The cache should be the size of the normal working data set of the
 application, with some small amount of additional memory for unusual
@@ -60,26 +60,25 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>bytes</b><dd>The size of the cache is set to <b>gbytes</b> gigabytes plus <b>bytes</b>.
-<dt><b>gbytes</b><dd>The size of the cache is set to <b>gbytes</b> gigabytes plus <b>bytes</b>.
-<dt><b>ncache</b><dd>The <b>ncache</b> parameter is the number of caches to create.
-</dl>
-<h3>Errors</h3>
+<b>Parameters</b> <br>
+ <b>bytes</b><ul compact><li>The size of the cache is set to <b>gbytes</b> gigabytes plus <b>bytes</b>.</ul>
+ <b>gbytes</b><ul compact><li>The size of the cache is set to <b>gbytes</b> gigabytes plus <b>bytes</b>.</ul>
+ <b>ncache</b><ul compact><li>The <b>ncache</b> parameter is the number of caches to create.</ul>
+<br>
+<br><b>Errors</b>
 <p>The Db::set_cachesize method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If the specified cache size was impossibly small;
+<br>
+<b>EINVAL</b><ul compact><li>If the specified cache size was impossibly small;
 the method was called after
 <a href="../api_cxx/db_open.html">Db::open</a> was called; or if an
-invalid flag value or parameter was specified.
-</dl>
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Db::get_cachesize</h3>
+<b>Description: Db::get_cachesize</b>
 <p>The Db::get_cachesize method returns the current size and composition of the
 cache.</p>
 <p>The Db::get_cachesize method may be called at any time during the life of the
@@ -89,24 +88,23 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>bytesp</b><dd>The <b>bytesp</b> parameter references memory into which
- the additional bytes of memory in the cache is copied. 
-<dt><b>gbytesp</b><dd>The <b>gbytesp</b> parameter references memory into which
- the gigabytes of memory in the cache is copied. 
-<dt><b>ncachep</b><dd>The <b>ncachep</b> parameter references memory into which
- the number of caches is copied. 
-</dl>
+<b>Parameters</b> <br>
+ <b>bytesp</b><ul compact><li>The <b>bytesp</b> parameter references memory into which
+ the additional bytes of memory in the cache is copied.</ul> 
+ <b>gbytesp</b><ul compact><li>The <b>gbytesp</b> parameter references memory into which
+ the gigabytes of memory in the cache is copied.</ul> 
+ <b>ncachep</b><ul compact><li>The <b>ncachep</b> parameter references memory into which
+ the number of caches is copied.</ul> 
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/db_class.html">Db</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

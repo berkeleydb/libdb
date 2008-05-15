@@ -142,8 +142,9 @@ T_PV_NULL
 	if ($arg == &PL_sv_undef)
 	    $var = NULL ;
 	else {
-            $var = ($type)SvPV($arg,PL_na) ;
-	    if (PL_na == 0)
+        STRLEN len;
+            $var = ($type)SvPV($arg,len) ;
+	    if (len == 0)
 		$var = NULL ;
 	}
 
@@ -195,8 +196,9 @@ T_dbtkeydatum
 	        $var.size = (int)sizeof(db_recno_t);
 	    }
 	    else {
-	        $var.data = SvPV(my_sv, PL_na);
-	        $var.size = (int)PL_na;
+            STRLEN len;
+	        $var.data = SvPV(my_sv, len);
+	        $var.size = (int)len;
 	    }
 	}
 
@@ -213,8 +215,9 @@ T_dbtkeydatum_btree
 	        $var.size = (int)sizeof(db_recno_t);
 	    }
 	    else {
-	        $var.data = SvPV(my_sv, PL_na);
-	        $var.size = (int)PL_na;
+            STRLEN len;
+	        $var.data = SvPV(my_sv, len);
+	        $var.size = (int)len;
 	    }
 	}
 
@@ -231,8 +234,9 @@ T_dbtkeydatum_btree_r
 	        $var.size = (int)sizeof(db_recno_t);
 	    }
 	    else {
-	        $var.data = SvPV(my_sv, PL_na);
-	        $var.size = (int)PL_na;
+            STRLEN len;
+	        $var.data = SvPV(my_sv, len);
+	        $var.size = (int)len;
 	    }
 	}
 
@@ -249,19 +253,21 @@ T_dbtkeydatum_btree_pr
 	        $var.size = (int)sizeof(db_recno_t);
 	    }
 	    else {
-	        $var.data = SvPV(my_sv, PL_na);
-	        $var.size = (int)PL_na;
+            STRLEN len;
+	        $var.data = SvPV(my_sv, len);
+	        $var.size = (int)len;
 	    }
 	}
 
 T_dbtdatum
 	{
 	    SV* my_sv = $arg ;
+        STRLEN len;
 	    DBM_ckFilter(my_sv, filter_store_value, \"filter_store_value\");
 	    DBT_clear($var) ;
             SvGETMAGIC($arg) ;
-	    $var.data = SvPV(my_sv, PL_na);
-	    $var.size = (int)PL_na;
+	    $var.data = SvPV(my_sv, len);
+	    $var.size = (int)len;
   	    $var.flags = db->partial ;
     	    $var.dlen  = db->dlen ;
 	    $var.doff  = db->doff ;
@@ -271,10 +277,11 @@ T_dbtdatum_opt
 	DBT_clear($var) ;
 	if (flagSetBoth()) {
 	   SV* my_sv = $arg ;
+       STRLEN len;
 	   DBM_ckFilter(my_sv, filter_store_value, \"filter_store_value\");
            SvGETMAGIC($arg) ;
-	   $var.data = SvPV(my_sv, PL_na);
-	   $var.size = (int)PL_na;
+	   $var.data = SvPV(my_sv, len);
+	   $var.size = (int)len;
   	   $var.flags = db->partial ;
     	   $var.dlen  = db->dlen ;
 	   $var.doff  = db->doff ;
@@ -284,10 +291,11 @@ T_dbtdatum_btree
 	DBT_clear($var) ;
 	if (flagSetBoth()) {
 	    SV* my_sv = $arg ;
+        STRLEN len;
 	    DBM_ckFilter(my_sv, filter_store_value, \"filter_store_value\");
             SvGETMAGIC($arg) ;
-	    $var.data = SvPV(my_sv, PL_na);
-	    $var.size = (int)PL_na;
+	    $var.data = SvPV(my_sv, len);
+	    $var.size = (int)len;
   	    $var.flags = db->partial ;
     	    $var.dlen  = db->dlen ;
 	    $var.doff  = db->doff ;

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: hash_conv.c,v 12.6 2007/05/17 15:15:38 bostic Exp $
+ * $Id: hash_conv.c,v 12.10 2008/01/30 12:18:22 mjc Exp $
  */
 
 #include "db_config.h"
@@ -18,12 +18,11 @@
  *	Convert host-specific page layout from the host-independent format
  *	stored on disk.
  *
- * PUBLIC: int __ham_pgin __P((DB_ENV *, DB *, db_pgno_t, void *, DBT *));
+ * PUBLIC: int __ham_pgin __P((DB *, db_pgno_t, void *, DBT *));
  */
 int
-__ham_pgin(dbenv, dummydbp, pg, pp, cookie)
-	DB_ENV *dbenv;
-	DB *dummydbp;
+__ham_pgin(dbp, pg, pp, cookie)
+	DB *dbp;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -48,8 +47,8 @@ __ham_pgin(dbenv, dummydbp, pg, pp, cookie)
 	if (!F_ISSET(pginfo, DB_AM_SWAP))
 		return (0);
 
-	return (h->type == P_HASHMETA ?  __ham_mswap(pp) :
-	    __db_byteswap(dbenv, dummydbp, pg, pp, pginfo->db_pagesize, 1));
+	return (h->type == P_HASHMETA ? __ham_mswap(dbp->env, pp) :
+	    __db_byteswap(dbp, pg, pp, pginfo->db_pagesize, 1));
 }
 
 /*
@@ -57,12 +56,11 @@ __ham_pgin(dbenv, dummydbp, pg, pp, cookie)
  *	Convert host-specific page layout to the host-independent format
  *	stored on disk.
  *
- * PUBLIC: int __ham_pgout __P((DB_ENV *, DB *, db_pgno_t, void *, DBT *));
+ * PUBLIC: int __ham_pgout __P((DB *, db_pgno_t, void *, DBT *));
  */
 int
-__ham_pgout(dbenv, dummydbp, pg, pp, cookie)
-	DB_ENV *dbenv;
-	DB *dummydbp;
+__ham_pgout(dbp, pg, pp, cookie)
+	DB *dbp;
 	db_pgno_t pg;
 	void *pp;
 	DBT *cookie;
@@ -75,25 +73,27 @@ __ham_pgout(dbenv, dummydbp, pg, pp, cookie)
 		return (0);
 
 	h = pp;
-	return (h->type == P_HASHMETA ?  __ham_mswap(pp) :
-	    __db_byteswap(dbenv, dummydbp, pg, pp, pginfo->db_pagesize, 0));
+	return (h->type == P_HASHMETA ?  __ham_mswap(dbp->env, pp) :
+	    __db_byteswap(dbp, pg, pp, pginfo->db_pagesize, 0));
 }
 
 /*
  * __ham_mswap --
  *	Swap the bytes on the hash metadata page.
  *
- * PUBLIC: int __ham_mswap __P((void *));
+ * PUBLIC: int __ham_mswap __P((ENV *, void *));
  */
 int
-__ham_mswap(pg)
+__ham_mswap(env, pg)
+	ENV *env;
 	void *pg;
 {
 	u_int8_t *p;
 	int i;
 
-	__db_metaswap(pg);
+	COMPQUIET(env, NULL);
 
+	__db_metaswap(pg);
 	p = (u_int8_t *)pg + sizeof(DBMETA);
 
 	SWAP32(p);		/* max_bucket */

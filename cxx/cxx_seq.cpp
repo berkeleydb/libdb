@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_seq.cpp,v 12.9 2007/05/17 17:23:26 bostic Exp $
+ * $Id: cxx_seq.cpp,v 12.10 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"

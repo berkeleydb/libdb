@@ -1,4 +1,4 @@
-m4_comment([$Id: memp_stat.so,v 10.71 2007/07/06 00:22:53 mjc Exp $])
+m4_comment([$Id: memp_stat.so,v 10.72 2007/09/21 20:06:03 bostic Exp $])
 
 define(M4PAGELOCAL, [memp_stat, memp_fstat, memp_stat_print])
 include(m4/m4.seealso)
@@ -201,7 +201,7 @@ m4_field(u_int32_t, st_page_out,
 [Pages written from the cache to the backing file.])
 m4_tagend
 
-m4_when_after_envopen(memp_stat)
+m4_when(memp_stat, before, dbenv_open)
 
 m4_return(memp_stat, std)
 

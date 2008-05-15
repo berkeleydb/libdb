@@ -39,6 +39,8 @@ public class RepmgrConfigTest extends EventHandlerAdapter
             ReplicationManagerAckPolicy ackPolicyToSet,
             int nsitesToStart,
             boolean validStartPolicy,
+	    int requestMin,
+	    int requestMax,
             boolean validPolicy
             )
         {
@@ -54,7 +56,9 @@ public class RepmgrConfigTest extends EventHandlerAdapter
             this.nsitesToStart           = nsitesToStart;
             this.validStartPolicy        = validStartPolicy;
             this.validPolicy             = validPolicy;
-        }
+	    this.requestMin              = requestMin;
+	    this.requestMax              = requestMax;
+	}
          
         boolean txnSync;
         boolean initializeReplication;
@@ -67,7 +71,9 @@ public class RepmgrConfigTest extends EventHandlerAdapter
         ReplicationManagerAckPolicy ackPolicyToSet;
         int nsitesToStart;
         boolean validStartPolicy;
-     
+	int requestMin;
+        int requestMax;
+	    
         // should this set of options work or not?
         boolean validPolicy;
     }
@@ -75,24 +81,27 @@ public class RepmgrConfigTest extends EventHandlerAdapter
     static int    port        = 4242;
     static int    priority    = 100;
     static String homedirName = "";
+	
     ConfigOptions[] optionVariations =
-        { new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  true ), //0:
-          new ConfigOptions(false, true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  true ), //1: disable txnSync
-          new ConfigOptions(true,  false, false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  false), //2: don't call initRep
-          new ConfigOptions(true,  true,  true,  true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  true ), //3: enable verbose rep
-          new ConfigOptions(true,  true,  false, false, true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  false), //4: don't set a local site
-          new ConfigOptions(true,  true,  false, true,  false, 50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  true ), //5: don't assign priority explicitly
-          new ConfigOptions(true,  true,  false, true,  true,  -1, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  true,  false), //6: ??assign an invalid priority.
-          new ConfigOptions(true,  true,  false, true,  true,  50, false, true,  ReplicationManagerAckPolicy.ALL,       1,  true,  false), //7: don't set the event handler.
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  false, ReplicationManagerAckPolicy.ALL,       1,  true,  true ), //8: ?? don't set ack policy
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL_PEERS, 1,  true,  true ), //9:
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.NONE,      1,  true,  true ), //10:
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ONE,       1,  true,  true ), //11:
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ONE_PEER,  1,  true,  true ), //12:
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  null,                                  1,  true,  false), //13: set an invalid ack policy
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       -1, true,  false), //14: set nsites negative
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       0,  true,  false), //15:
-          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1,  false, false), //16: dont set a valid start policy.
+        { new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //0:
+          new ConfigOptions(false, true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //1: disable txnSync
+          new ConfigOptions(true,  false, false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, false ), //2: don't call initRep
+          new ConfigOptions(true,  true,  true,  true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //3: enable verbose rep
+          new ConfigOptions(true,  true,  false, false, true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, false ), //4: don't set a local site
+          new ConfigOptions(true,  true,  false, true,  false, 50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //5: don't assign priority explicitly
+          new ConfigOptions(true,  true,  false, true,  true,  -1, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //6: ??assign an invalid priority.
+          new ConfigOptions(true,  true,  false, true,  true,  50, false, true,  ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, false ), //7: don't set the event handler.
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  false, ReplicationManagerAckPolicy.ALL,       1, true, 3, 9, true ), //8: ?? don't set ack policy
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL_PEERS, 1, true, 3, 9, true ), //9:
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.NONE,      1, true, 3, 9, true ), //10:
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ONE,       1, true, 3, 9, true ), //11:
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ONE_PEER,  1, true, 3, 9, true ), //12:
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  null,                                  1, true, 3, 9, false ), //13: set an invalid ack policy
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,      -1, true, 3, 9, false ), //14: set nsites negative
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       0, true, 3, 9, false ), //15:
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, false, 3, 9, false ), //16: dont set a valid start policy.
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 0, 9, false ), //17: set requestMin as 0
+          new ConfigOptions(true,  true,  false, true,  true,  50, true,  true,  ReplicationManagerAckPolicy.ALL,       1, true, 9, 3, false ), //18: set requestMax < requestMin
         };
     File homedir;
     EnvironmentConfig envConfig;
@@ -208,6 +217,14 @@ public class RepmgrConfigTest extends EventHandlerAdapter
     {
         assertTrue(runTestWithOptions(optionVariations[16]));
     }
+    @Test (timeout=3000) public void TestOptions17()
+    {
+        assertTrue(runTestWithOptions(optionVariations[17]));
+    }
+    @Test (timeout=3000) public void TestOptions18()
+    {
+        assertTrue(runTestWithOptions(optionVariations[18]));
+    }
 
     // returns true if failure matches options failure spec.
     boolean runTestWithOptions(ConfigOptions opts)
@@ -235,6 +252,9 @@ public class RepmgrConfigTest extends EventHandlerAdapter
             if (opts.setAckPolicy)
                 envConfig.setReplicationManagerAckPolicy(opts.ackPolicyToSet);
          
+	    envConfig.setReplicationRequestMin(opts.requestMin);
+	    envConfig.setReplicationRequestMax(opts.requestMax);
+
             try {
                 dbenv = new Environment(homedir, envConfig);
             } catch(FileNotFoundException e) {
@@ -245,8 +265,12 @@ public class RepmgrConfigTest extends EventHandlerAdapter
                     gotexcept = true;
                 if (opts.validPolicy)
                     TestUtils.DEBUGOUT(3, "Unexpected DB exception from Environment create." + dbe);
-            }
-         
+	    } catch(IllegalArgumentException iae){
+	    	    gotexcept = true;
+	       if (opts.validPolicy)
+		    TestUtils.DEBUGOUT(3, "Unexpected DB exception from setRepRequest." + iae);
+	    }
+	             
             if (!gotexcept) {
                 try {
                     // start replication manager
@@ -275,7 +299,7 @@ public class RepmgrConfigTest extends EventHandlerAdapter
             }
         } catch (IllegalArgumentException iae) {
                 gotexcept = true;
-            if (opts.validPolicy)
+	    if (opts.validPolicy)
                 TestUtils.DEBUGOUT(3, "Unexpected IllegalArgumentException." + iae);
         } catch (AssertionError ae) {
                 gotexcept = true;

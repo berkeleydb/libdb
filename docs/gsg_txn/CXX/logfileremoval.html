@@ -104,17 +104,20 @@
           </li>
           <li>
             <p>
-                        <span>
+                      <span>
                             Call
+                        <span>
                             
-                            <tt class="methodname">DbEnv::set_flags()</tt>
-                            method with the <tt class="literal">DB_LOG_AUTOREMOVE</tt> flag.
+                            <tt class="methodname">DbEnv::log_set_config()</tt>
+                            method with the <tt class="literal">DB_LOG_AUTO_REMOVE</tt> flag.
+                        </span>
+                        
                             Note that this flag can be set at any point in
                             the lifetime of your application. Setting this
                             parameter affects all environment handles
                             opened against the environment; not just the
                             handle used to set the flag.
-                        </span>
+                      </span>
                         
                 </p>
             <p>

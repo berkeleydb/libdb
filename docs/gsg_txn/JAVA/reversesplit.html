@@ -38,7 +38,7 @@
             If your application is using the Btree access method, and your
             application is repeatedly deleting then adding records to your
             database, then you might be able to reduce lock contention by
-            turning off reverse Btree splits. 
+            turning off reverse Btree splits.
         </p>
       <p>
             As pages are emptied in a database, DB attempts to
@@ -115,6 +115,61 @@ try {
                                     "sampleDatabase",   // db file name
                                     "null",             // db name
                                     dbConfig);
+} catch (DatabaseException de) {
+    // Exception handling goes here
+} catch (FileNotFoundException fnfe) {
+    // Exception handling goes here
+}</pre>
+      <p>
+        Or, if you are using the DPL:
+</p>
+      <pre class="programlisting">package db.txn;
+                                                                                                                                     
+import com.sleepycat.db.Database;
+import com.sleepycat.db.DatabaseType;
+import com.sleepycat.db.DatabaseConfig;
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+                                                                                                                                     
+...
+                                                                                                                                     
+EntityStore myStore = null;
+Environment myEnv = null;
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+    myEnvConfig.setTransactional(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    // Configure the store.
+    StoreConfig myStoreConfig = new StoreConfig();
+    myStoreConfig.setAllowCreate(true);
+    myStoreConfig.setTransactional(true);
+
+    // Configure the underlying database.
+    DatabaseConfig dbConfig = new DatabaseConfig();
+    dbConfig.setTransactional(true);
+    dbConfig.setAllowCreate(true);
+    dbConfig.setType(DatabaseType.BTREE);
+
+    // Set BTree reverse split to off
+    dbConfig.setReverseSplitOff(true);
+
+    // Instantiate the store
+    myStore = new EntityStore(myEnv, "store_name", myStoreConfig);
+
+    // Set the DatabaseConfig object, so that the underlying
+    // database is configured for uncommitted reads.
+    myStore.setPrimaryConfig(SomeEntityClass.class, dbConfig);
+
 } catch (DatabaseException de) {
     // Exception handling goes here
 } catch (FileNotFoundException fnfe) {

@@ -1,0 +1,76 @@
+m4_comment([$Id: set_func_region_map.so,v 10.22 2008/01/17 03:26:52 bostic Exp $])
+
+define(M4PAGELOCAL, dbenv_set_func_region_map)
+include(m4/m4.seealso)
+
+m4_pf_header(m4_ref(dbenv_set_func_region_map),
+ifelse(M4API, C_API, [dnl
+int
+db_env_set_func_region_map(
+    int (*func_region_map)(DB_ENV *dbenv, char *path, size_t len, int *is_create, void **addr),
+    int (*func_region_unmap)(DB_ENV *dbenv, void *addr));
+]))
+
+m4_p([dnl
+The m4_db library optionally uses the ability to create shared memory
+regions (which may or may not be backed by physical files).  The memory
+will be used as a shared memory region for synchronization between m4_db
+threads/processes; while the returned memory may be of any kind (for
+example, anonymous memory), it must be able to support semaphores.])
+
+m4_scope_process(dbenv_set_func_region_map)
+
+m4_when_init(dbenv_set_func_region_map)
+
+m4_return(dbenv_set_func_region_map, std)
+
+m4_parambegin
+m4_param(func_region_map, [dnl
+The m4_arg(func_region_map) parameter is the function which creates
+shared memory regions.  The function takes 5 parameters:
+m4_tagbegin
+m4_tag(m4_arg(dbenv), [dnl
+The m4_arg(dbenv) parameter is the enclosing database environment
+handle.  This handle is provided to uniquely identify a shared memory
+region: the m4_arg(dbenv) parameter and the path are a unique identifier
+pair for mapping any new region, and the m4_arg(dbenv) parameter and the
+address are a unique identifier pair for unmapping any region.])
+m4_tag(m4_arg(path), [dnl
+The m4_arg(path) parameter is the name of the region.  Repeated requests
+for the shared regions of the same name, in the same database
+environment, should return a reference to the same memory.])
+m4_tag(m4_arg(len), [dnl
+The m4_arg(len) parameter is the length, in bytes, needed for the
+region.])
+m4_tag(m4_arg(is_create), [dnl
+The memory referenced by the m4_arg(is_create) parameter will be
+non-zero if flags to m4_db allowed creation of the mapped region; the
+memory referenced by the m4_arg(is_create) parameter must be set to
+non-zero if the region is created by the m4_arg(func_region_map) function, and
+set to zero if the region is not created by the function.  This returned
+information will determine if the region is subsequently initialized by
+m4_db.])
+m4_tag(m4_arg(addr), [dnl
+The m4_arg(addr) parameter is the memory location into which a pointer
+to the region or mapped file is returned.])
+m4_tagend
+
+m4_ret_internal(func_region_map)])
+
+m4_param(func_region_unmap, [dnl
+The m4_arg(func_region_unmap) parameter is the function which unmaps a
+shared memory region.  The function takes 2 parameters:
+m4_tagbegin
+m4_tag(m4_arg(dbenv), [dnl
+The m4_arg(dbenv) parameter is the enclosing database environment handle.])
+m4_tag(m4_arg(addr), [dnl
+The m4_arg(addr) parameter is the value returned by the
+m4_arg(func_region_map) function when the region was mapped into
+memory.])
+m4_tagend
+
+m4_ret_internal(func_region_unmap)])
+m4_paramend
+
+m4_rtc_seealso
+m4_page_footer

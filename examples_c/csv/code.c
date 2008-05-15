@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: code.c,v 1.14 2007/05/17 15:15:13 bostic Exp $
+ * $Id: code.c,v 1.16 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include "csv.h"
@@ -195,8 +195,8 @@ desc_load()
 				fields[field_cnt].indx = 1;
 			else if (strcasecmp(p, "string") == 0)
 				fields[field_cnt].type = STRING;
-			else if (strcasecmp(p, "ulong") == 0)
-				fields[field_cnt].type = ULONG;
+			else if (strcasecmp(p, "unsigned_long") == 0)
+				fields[field_cnt].type = UNSIGNED_LONG;
 			else {
 				fprintf(stderr,
 				    "%s: unknown keyword: %s\n", progname, p);
@@ -241,8 +241,8 @@ desc_dump()
 		case STRING:
 			fprintf(stderr, "string");
 			break;
-		case ULONG:
-			fprintf(stderr, "ulong");
+		case UNSIGNED_LONG:
+			fprintf(stderr, "unsigned_long");
 			break;
 		}
 		if (f->indx)
@@ -301,7 +301,7 @@ code_header()
 		case STRING:
 			fprintf(hfp, "\tchar\t\t*%s;\n", f->name);
 			break;
-		case ULONG:
+		case UNSIGNED_LONG:
 			fprintf(hfp, "\tu_long\t\t %s;\n", f->name);
 			break;
 		}
@@ -349,7 +349,7 @@ code_source()
 			/* NOTREACHED */
 			break;
 		case DOUBLE:
-		case ULONG:
+		case UNSIGNED_LONG:
 			fprintf(cfp, "\t0,\t\t/* %s */\n", f->name);
 			break;
 		case STRING:
@@ -387,8 +387,8 @@ type_to_string(type)
 		return ("DOUBLE");
 	case STRING:
 		return ("STRING");
-	case ULONG:
-		return ("ULONG");
+	case UNSIGNED_LONG:
+		return ("UNSIGNED_LONG");
 	}
 
 	abort();

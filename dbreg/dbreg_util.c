@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: dbreg_util.c,v 12.29 2007/06/13 18:21:31 ubell Exp $
+ * $Id: dbreg_util.c,v 12.40 2008/04/02 17:09:26 sue Exp $
  */
 
 #include "db_config.h"
@@ -16,17 +16,17 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-static int __dbreg_check_master __P((DB_ENV *, u_int8_t *, char *));
+static int __dbreg_check_master __P((ENV *, u_int8_t *, char *));
 
 /*
  * __dbreg_add_dbentry --
  *	Adds a DB entry to the dbreg DB entry table.
  *
- * PUBLIC: int __dbreg_add_dbentry __P((DB_ENV *, DB_LOG *, DB *, int32_t));
+ * PUBLIC: int __dbreg_add_dbentry __P((ENV *, DB_LOG *, DB *, int32_t));
  */
 int
-__dbreg_add_dbentry(dbenv, dblp, dbp, ndx)
-	DB_ENV *dbenv;
+__dbreg_add_dbentry(env, dblp, dbp, ndx)
+	ENV *env;
 	DB_LOG *dblp;
 	DB *dbp;
 	int32_t ndx;
@@ -36,7 +36,7 @@ __dbreg_add_dbentry(dbenv, dblp, dbp, ndx)
 
 	ret = 0;
 
-	MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_LOCK(env, dblp->mtx_dbreg);
 
 	/*
 	 * Check if we need to grow the table.  Note, ndx is 0-based (the
@@ -44,7 +44,7 @@ __dbreg_add_dbentry(dbenv, dblp, dbp, ndx)
 	 * number of available slots.
 	 */
 	if (dblp->dbentry_cnt <= ndx) {
-		if ((ret = __os_realloc(dbenv,
+		if ((ret = __os_realloc(env,
 		    (size_t)(ndx + DB_GROW_SIZE) * sizeof(DB_ENTRY),
 		    &dblp->dbentry)) != 0)
 			goto err;
@@ -57,11 +57,11 @@ __dbreg_add_dbentry(dbenv, dblp, dbp, ndx)
 		dblp->dbentry_cnt = i;
 	}
 
-	DB_ASSERT(dbenv, dblp->dbentry[ndx].dbp == NULL);
+	DB_ASSERT(env, dblp->dbentry[ndx].dbp == NULL);
 	dblp->dbentry[ndx].deleted = dbp == NULL;
 	dblp->dbentry[ndx].dbp = dbp;
 
-err:	MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+err:	MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 	return (ret);
 }
 
@@ -76,12 +76,12 @@ __dbreg_rem_dbentry(dblp, ndx)
 	DB_LOG *dblp;
 	int32_t ndx;
 {
-	MUTEX_LOCK(dblp->dbenv, dblp->mtx_dbreg);
+	MUTEX_LOCK(dblp->env, dblp->mtx_dbreg);
 	if (dblp->dbentry_cnt > ndx) {
 		dblp->dbentry[ndx].dbp = NULL;
 		dblp->dbentry[ndx].deleted = 0;
 	}
-	MUTEX_UNLOCK(dblp->dbenv, dblp->mtx_dbreg);
+	MUTEX_UNLOCK(dblp->env, dblp->mtx_dbreg);
 
 	return (0);
 }
@@ -90,36 +90,36 @@ __dbreg_rem_dbentry(dblp, ndx)
  * __dbreg_log_files --
  *	Put a DBREG_CHKPNT/CLOSE log record for each open database.
  *
- * PUBLIC: int __dbreg_log_files __P((DB_ENV *, u_int32_t));
+ * PUBLIC: int __dbreg_log_files __P((ENV *, u_int32_t));
  */
 int
-__dbreg_log_files(dbenv, opcode)
-	DB_ENV *dbenv;
+__dbreg_log_files(env, opcode)
+	ENV *env;
 	u_int32_t opcode;
 {
+	DBT *dbtp, fid_dbt, t;
 	DB_LOG *dblp;
 	DB_LSN r_unused;
-	DBT *dbtp, fid_dbt, t;
 	FNAME *fnp;
 	LOG *lp;
 	int ret;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
 	ret = 0;
 
-	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	MUTEX_LOCK(env, lp->mtx_filelist);
 
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
 		/* This id was revoked by a switch in replication master. */
 		if (fnp->id == DB_LOGFILEID_INVALID)
 			continue;
-		if (fnp->name_off == INVALID_ROFF)
+		if (fnp->fname_off == INVALID_ROFF)
 			dbtp = NULL;
 		else {
 			memset(&t, 0, sizeof(t));
-			t.data = R_ADDR(&dblp->reginfo, fnp->name_off);
+			t.data = R_ADDR(&dblp->reginfo, fnp->fname_off);
 			t.size = (u_int32_t)strlen(t.data) + 1;
 			dbtp = &t;
 		}
@@ -134,8 +134,7 @@ __dbreg_log_files(dbenv, opcode)
 		 * For this we output DBREG_RCLOSE records so the files will be
 		 * closed on the forward pass.
 		 */
-		if ((ret = __dbreg_register_log(dbenv,
-		    NULL, &r_unused,
+		if ((ret = __dbreg_register_log(env, NULL, &r_unused,
 		    F_ISSET(fnp, DB_FNAME_DURABLE) ? 0 : DB_LOG_NOT_DURABLE,
 		    opcode,
 		    dbtp, &fid_dbt, fnp->id, fnp->s_type, fnp->meta_pgno,
@@ -143,7 +142,7 @@ __dbreg_log_files(dbenv, opcode)
 			break;
 	}
 
-	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+	MUTEX_UNLOCK(env, lp->mtx_filelist);
 
 	return (ret);
 }
@@ -156,26 +155,26 @@ __dbreg_log_files(dbenv, opcode)
  *	db_rename.  We may not have flushed the log_register record that
  *	closes the file.
  *
- * PUBLIC: int __dbreg_close_files __P((DB_ENV *, int));
+ * PUBLIC: int __dbreg_close_files __P((ENV *, int));
  */
 int
-__dbreg_close_files(dbenv, do_restored)
-	DB_ENV *dbenv;
+__dbreg_close_files(env, do_restored)
+	ENV *env;
 	int do_restored;
 {
-	DB_LOG *dblp;
 	DB *dbp;
+	DB_LOG *dblp;
 	int ret, t_ret;
 	int32_t i;
 
 	/* If we haven't initialized logging, we have nothing to do. */
-	if (!LOGGING_ON(dbenv))
+	if (!LOGGING_ON(env))
 		return (0);
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	ret = 0;
 
-	MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_LOCK(env, dblp->mtx_dbreg);
 	for (i = 0; i < dblp->dbentry_cnt; i++) {
 		/*
 		 * We only want to close dbps that recovery opened.  Any
@@ -204,7 +203,7 @@ __dbreg_close_files(dbenv, do_restored)
 			if (do_restored &&
 			    !F_ISSET(dbp->log_filename, DB_FNAME_RESTORED))
 				continue;
-			MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+			MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 			if (F_ISSET(dbp, DB_AM_RECOVER))
 				t_ret = __db_close(dbp, NULL, DB_NOSYNC);
 			else
@@ -212,36 +211,36 @@ __dbreg_close_files(dbenv, do_restored)
 				     dbp, 0, DB_LOGFILEID_INVALID);
 			if (ret == 0)
 				ret = t_ret;
-			MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+			MUTEX_LOCK(env, dblp->mtx_dbreg);
 		}
 
 		dblp->dbentry[i].deleted = 0;
 		dblp->dbentry[i].dbp = NULL;
 	}
-	MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 	return (ret);
 }
 
 /*
  * __dbreg_close_file --
  *	Close a database file opened by recovery.
- * PUBLIC: int __dbreg_close_file __P((DB_ENV *, FNAME *));
+ * PUBLIC: int __dbreg_close_file __P((ENV *, FNAME *));
  */
 int
-__dbreg_close_file(dbenv, fnp)
-	DB_ENV *dbenv;
+__dbreg_close_file(env, fnp)
+	ENV *env;
 	FNAME *fnp;
 {
-	DB_LOG *dblp;
 	DB *dbp;
+	DB_LOG *dblp;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 
 	dbp = dblp->dbentry[fnp->id].dbp;
 	if (dbp == NULL)
 		return (0);
-	DB_ASSERT(dbenv, dbp->log_filename == fnp);
-	DB_ASSERT(dbenv, F_ISSET(dbp, DB_AM_RECOVER));
+	DB_ASSERT(env, dbp->log_filename == fnp);
+	DB_ASSERT(env, F_ISSET(dbp, DB_AM_RECOVER));
 	return (__db_close(dbp, NULL, DB_NOSYNC));
 }
 
@@ -251,29 +250,29 @@ __dbreg_close_file(dbenv, fnp)
  * prepared txns that may use these files.  These will be invalidated later
  * when all outstanding prepared txns are resolved.
  *
- * PUBLIC: int __dbreg_mark_restored __P((DB_ENV *));
+ * PUBLIC: int __dbreg_mark_restored __P((ENV *));
  */
 int
-__dbreg_mark_restored(dbenv)
-	DB_ENV *dbenv;
+__dbreg_mark_restored(env)
+	ENV *env;
 {
 	DB_LOG *dblp;
 	FNAME *fnp;
 	LOG *lp;
 
 	/* If we haven't initialized logging, we have nothing to do. */
-	if (!LOGGING_ON(dbenv))
+	if (!LOGGING_ON(env))
 		return (0);
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	MUTEX_LOCK(env, lp->mtx_filelist);
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname)
 		if (fnp->id != DB_LOGFILEID_INVALID)
 			F_SET(fnp, DB_FNAME_RESTORED);
 
-	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+	MUTEX_UNLOCK(env, lp->mtx_filelist);
 	return (0);
 }
 
@@ -283,11 +282,11 @@ __dbreg_mark_restored(dbenv)
  * id so that another process will be able to clean up the information
  * when it notices.
  *
- * PUBLIC: int __dbreg_invalidate_files __P((DB_ENV *, int));
+ * PUBLIC: int __dbreg_invalidate_files __P((ENV *, int));
  */
 int
-__dbreg_invalidate_files(dbenv, do_restored)
-	DB_ENV *dbenv;
+__dbreg_invalidate_files(env, do_restored)
+	ENV *env;
 	int do_restored;
 {
 	DB_LOG *dblp;
@@ -296,14 +295,14 @@ __dbreg_invalidate_files(dbenv, do_restored)
 	int ret;
 
 	/* If we haven't initialized logging, we have nothing to do. */
-	if (!LOGGING_ON(dbenv))
+	if (!LOGGING_ON(env))
 		return (0);
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
 	ret = 0;
-	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	MUTEX_LOCK(env, lp->mtx_filelist);
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
 		/*
 		 * Normally, skip any file with DB_FNAME_RESTORED
@@ -315,14 +314,14 @@ __dbreg_invalidate_files(dbenv, do_restored)
 		if (!F_ISSET(fnp, DB_FNAME_RESTORED) && do_restored)
 			continue;
 		if (fnp->id != DB_LOGFILEID_INVALID) {
-			if ((ret = __dbreg_log_close(dbenv,
+			if ((ret = __dbreg_log_close(env,
 			    fnp, NULL, DBREG_RCLOSE)) != 0)
 				goto err;
 			fnp->old_id = fnp->id;
 			fnp->id = DB_LOGFILEID_INVALID;
 		}
 	}
-err:	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+err:	MUTEX_UNLOCK(env, lp->mtx_filelist);
 	return (ret);
 }
 
@@ -330,52 +329,35 @@ err:	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
  * __dbreg_id_to_db --
  *	Return the DB corresponding to the specified dbreg id.
  *
- * PUBLIC: int __dbreg_id_to_db __P((DB_ENV *, DB_TXN *, DB **, int32_t, int));
+ * PUBLIC: int __dbreg_id_to_db __P((ENV *, DB_TXN *, DB **, int32_t, int));
  */
 int
-__dbreg_id_to_db(dbenv, txn, dbpp, ndx, inc)
-	DB_ENV *dbenv;
+__dbreg_id_to_db(env, txn, dbpp, ndx, tryopen)
+	ENV *env;
 	DB_TXN *txn;
 	DB **dbpp;
 	int32_t ndx;
-	int inc;
-{
-	return (__dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, 1));
-}
-
-/*
- * __dbreg_id_to_db_int --
- *	Return the DB corresponding to the specified dbreg id.  The internal
- * version takes a final parameter that indicates whether we should attempt
- * to open the file if no mapping is found.  During recovery, the recovery
- * routines all want to try to open the file (and this is called from
- * __dbreg_id_to_db), however, if we have a multi-process environment where
- * some processes may not have the files open (e.g., XA), then we also get
- * called from __dbreg_assign_id and it's OK if there is no mapping.
- *
- * PUBLIC: int __dbreg_id_to_db_int __P((DB_ENV *,
- * PUBLIC:     DB_TXN *, DB **, int32_t, int, int));
- */
-int
-__dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, tryopen)
-	DB_ENV *dbenv;
-	DB_TXN *txn;
-	DB **dbpp;
-	int32_t ndx;
-	int inc, tryopen;
+	int tryopen;
 {
 	DB_LOG *dblp;
 	FNAME *fname;
 	int ret;
 	char *name;
 
+	dblp = env->lg_handle;
 	ret = 0;
-	dblp = dbenv->lg_handle;
-	COMPQUIET(inc, 0);
 
-	MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_LOCK(env, dblp->mtx_dbreg);
 
 	/*
+	 * We take a final parameter that indicates whether we should attempt
+	 * to open the file if no mapping is found.  During recovery, the
+	 * recovery routines all want to try to open the file (and this is
+	 * called from __dbreg_id_to_db), however, if we have a multi-process
+	 * environment where some processes may not have the files open (e.g.,
+	 * XA), then we also get called from __dbreg_assign_id and it's OK if
+	 * there is no mapping.
+	 *
 	 * Under XA, a process different than the one issuing DB operations
 	 * may abort a transaction.  In this case, the "recovery" routines
 	 * are run by a process that does not necessarily have the file open,
@@ -394,7 +376,7 @@ __dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, tryopen)
 		 * no longer need it anyway--the dbentry table didn't have what
 		 * we needed.
 		 */
-		MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+		MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 
 		if (__dbreg_id_to_fname(dblp, ndx, 0, &fname) != 0)
 			/*
@@ -412,7 +394,8 @@ __dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, tryopen)
 		 * other process that has the file open shouldn't be closing it
 		 * while we're trying to abort.
 		 */
-		name = R_ADDR(&dblp->reginfo, fname->name_off);
+		name = fname->fname_off == INVALID_ROFF ?
+		    NULL : R_ADDR(&dblp->reginfo, fname->fname_off);
 
 		/*
 		 * At this point, we are not holding the thread lock, so exit
@@ -422,7 +405,7 @@ __dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, tryopen)
 		 * routine.
 		 * If TXN_INVALID is passed then no txnlist is needed.
 		 */
-		if ((ret = __dbreg_do_open(dbenv, txn, dblp,
+		if ((ret = __dbreg_do_open(env, txn, dblp,
 		    fname->ufid, name, fname->s_type, ndx, fname->meta_pgno,
 		    NULL, TXN_INVALID, F_ISSET(fname, DB_FNAME_INMEM) ?
 		    DBREG_REOPEN : DBREG_OPEN)) != 0)
@@ -456,7 +439,7 @@ __dbreg_id_to_db_int(dbenv, txn, dbpp, ndx, inc, tryopen)
 		if ((*dbpp)->mpf != NULL && (*dbpp)->mpf->mfp != NULL)
 			(*dbpp)->mpf->mfp->file_written = 1;
 
-err:	MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+err:	MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 	return (ret);
 }
 
@@ -474,18 +457,18 @@ __dbreg_id_to_fname(dblp, id, have_lock, fnamep)
 	int have_lock;
 	FNAME **fnamep;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	FNAME *fnp;
 	LOG *lp;
 	int ret;
 
-	dbenv = dblp->dbenv;
+	env = dblp->env;
 	lp = dblp->reginfo.primary;
 
 	ret = -1;
 
 	if (!have_lock)
-		MUTEX_LOCK(dbenv, lp->mtx_filelist);
+		MUTEX_LOCK(env, lp->mtx_filelist);
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname)
 		if (fnp->id == id) {
 			*fnamep = fnp;
@@ -493,7 +476,7 @@ __dbreg_id_to_fname(dblp, id, have_lock, fnamep)
 			break;
 		}
 	if (!have_lock)
-		MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+		MUTEX_UNLOCK(env, lp->mtx_filelist);
 
 	return (ret);
 }
@@ -511,18 +494,18 @@ __dbreg_fid_to_fname(dblp, fid, have_lock, fnamep)
 	int have_lock;
 	FNAME **fnamep;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	FNAME *fnp;
 	LOG *lp;
 	int ret;
 
-	dbenv = dblp->dbenv;
+	env = dblp->env;
 	lp = dblp->reginfo.primary;
 
 	ret = -1;
 
 	if (!have_lock)
-		MUTEX_LOCK(dbenv, lp->mtx_filelist);
+		MUTEX_LOCK(env, lp->mtx_filelist);
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname)
 		if (memcmp(fnp->ufid, fid, DB_FILE_ID_LEN) == 0) {
 			*fnamep = fnp;
@@ -530,7 +513,7 @@ __dbreg_fid_to_fname(dblp, fid, have_lock, fnamep)
 			break;
 		}
 	if (!have_lock)
-		MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+		MUTEX_UNLOCK(env, lp->mtx_filelist);
 
 	return (ret);
 }
@@ -542,24 +525,28 @@ __dbreg_fid_to_fname(dblp, fid, have_lock, fnamep)
  * and the name passed could be transient unless there is something
  * ensuring that the file cannot be closed.
  *
- * PUBLIC: int __dbreg_get_name __P((DB_ENV *, u_int8_t *, char **));
+ * PUBLIC: int __dbreg_get_name __P((ENV *, u_int8_t *, char **, char **));
  */
 int
-__dbreg_get_name(dbenv, fid, namep)
-	DB_ENV *dbenv;
+__dbreg_get_name(env, fid, fnamep, dnamep)
+	ENV *env;
 	u_int8_t *fid;
-	char **namep;
+	char **fnamep, **dnamep;
 {
 	DB_LOG *dblp;
 	FNAME *fnp;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 
 	if (dblp != NULL && __dbreg_fid_to_fname(dblp, fid, 0, &fnp) == 0) {
-		*namep = R_ADDR(&dblp->reginfo, fnp->name_off);
+		*fnamep = fnp->fname_off == INVALID_ROFF ?
+		    NULL : R_ADDR(&dblp->reginfo, fnp->fname_off);
+		*dnamep = fnp->dname_off == INVALID_ROFF ?
+		    NULL : R_ADDR(&dblp->reginfo, fnp->dname_off);
 		return (0);
 	}
 
+	*fnamep = *dnamep = NULL;
 	return (-1);
 }
 
@@ -567,14 +554,14 @@ __dbreg_get_name(dbenv, fid, namep)
  * __dbreg_do_open --
  *	Open files referenced in the log.  This is the part of the open that
  * is not protected by the thread mutex.
- * PUBLIC: int __dbreg_do_open __P((DB_ENV *, DB_TXN *, DB_LOG *, u_int8_t *,
- * PUBLIC:     char *, DBTYPE, int32_t, db_pgno_t, void *, u_int32_t,
- * PUBLIC:     u_int32_t));
+ * PUBLIC: int __dbreg_do_open __P((ENV *,
+ * PUBLIC:     DB_TXN *, DB_LOG *, u_int8_t *, char *, DBTYPE,
+ * PUBLIC:     int32_t, db_pgno_t, void *, u_int32_t, u_int32_t));
  */
 int
-__dbreg_do_open(dbenv,
+__dbreg_do_open(env,
     txn, lp, uid, name, ftype, ndx, meta_pgno, info, id, opcode)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txn;
 	DB_LOG *lp;
 	u_int8_t *uid;
@@ -587,13 +574,14 @@ __dbreg_do_open(dbenv,
 {
 	DB *dbp;
 	u_int32_t cstat, ret_stat;
-	int ret;
+	int ret, try_inmem;
 	char *dname, *fname;
 
 	cstat = TXN_EXPECTED;
 	fname = name;
 	dname = NULL;
-	if ((ret = __db_create_internal(&dbp, lp->dbenv, 0)) != 0)
+	try_inmem = 0;
+	if ((ret = __db_create_internal(&dbp, lp->env, 0)) != 0)
 		return (ret);
 
 	/*
@@ -617,7 +605,7 @@ __dbreg_do_open(dbenv,
 	}
 	if (opcode == DBREG_PREOPEN) {
 		dbp->type = ftype;
-		if ((ret = __dbreg_setup(dbp, name, id)) != 0)
+		if ((ret = __dbreg_setup(dbp, name, NULL, id)) != 0)
 			goto err;
 		MAKE_INMEM(dbp);
 		goto skip_open;
@@ -629,16 +617,17 @@ __dbreg_do_open(dbenv,
 		dname = name;
 	}
 
-	if ((ret = __db_open(dbp, txn, fname, dname, ftype,
+retry_inmem:
+	if ((ret = __db_open(dbp, NULL, txn, fname, dname, ftype,
 	    DB_DURABLE_UNKNOWN | DB_ODDFILESIZE,
-	    __db_omode(OWNER_RW), meta_pgno)) == 0) {
+	    DB_MODE_600, meta_pgno)) == 0) {
 skip_open:
 		/*
 		 * Verify that we are opening the same file that we were
 		 * referring to when we wrote this log record.
 		 */
 		if ((meta_pgno != PGNO_BASE_MD &&
-		    __dbreg_check_master(dbenv, uid, name) != 0) ||
+		    __dbreg_check_master(env, uid, name) != 0) ||
 		    memcmp(uid, dbp->fileid, DB_FILE_ID_LEN) != 0)
 			cstat = TXN_UNEXPECTED;
 		else
@@ -655,28 +644,46 @@ skip_open:
 		 * the file system object.
 		 */
 		if (id != TXN_INVALID)
-			ret = __db_txnlist_update(dbenv,
+			ret = __db_txnlist_update(env,
 			    info, id, cstat, NULL, &ret_stat, 1);
 
 err:		if (cstat == TXN_UNEXPECTED)
 			goto not_right;
 		return (ret);
 	} else if (ret == ENOENT) {
+		/* 
+		 * If we are on a checkpoint record and open failed, try
+		 * it as a named in-mem database.  Currently checkpoint
+		 * records do not distinguish between a named in-memory
+		 * database and one on-disk.  Therefore, an internal init
+		 * via replication that is trying to open and access this
+		 * as a named in-men database will not find it on-disk, and
+		 * we need to try to open it in-memory too.
+		 */
+		if (try_inmem == 0 && opcode == DBREG_CHKPNT) {
+			MAKE_INMEM(dbp);
+			fname = NULL;
+			dname = name;
+			try_inmem = 1;
+			goto retry_inmem;
+		} else if (try_inmem != 0)
+			CLR_INMEM(dbp);
+
 		/* Record that the open failed in the txnlist. */
 		if (id != TXN_INVALID)
-			ret = __db_txnlist_update(dbenv, info,
+			ret = __db_txnlist_update(env, info,
 			    id, TXN_UNEXPECTED, NULL, &ret_stat, 1);
 	}
 not_right:
 	(void)__db_close(dbp, NULL, DB_NOSYNC);
 	/* Add this file as deleted. */
-	(void)__dbreg_add_dbentry(dbenv, lp, NULL, ndx);
+	(void)__dbreg_add_dbentry(env, lp, NULL, ndx);
 	return (ret);
 }
 
 static int
-__dbreg_check_master(dbenv, uid, name)
-	DB_ENV *dbenv;
+__dbreg_check_master(env, uid, name)
+	ENV *env;
 	u_int8_t *uid;
 	char *name;
 {
@@ -684,11 +691,11 @@ __dbreg_check_master(dbenv, uid, name)
 	int ret;
 
 	ret = 0;
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		return (ret);
 	F_SET(dbp, DB_AM_RECOVER);
-	ret = __db_open(dbp, NULL,
-	    name, NULL, DB_BTREE, 0, __db_omode(OWNER_RW), PGNO_BASE_MD);
+	ret = __db_open(dbp, NULL, NULL,
+	    name, NULL, DB_BTREE, 0, DB_MODE_600, PGNO_BASE_MD);
 
 	if (ret == 0 && memcmp(uid, dbp->fileid, DB_FILE_ID_LEN) != 0)
 		ret = EINVAL;
@@ -719,27 +726,27 @@ int
 __dbreg_lazy_id(dbp)
 	DB *dbp;
 {
-	DB_ENV *dbenv;
 	DB_LOG *dblp;
 	DB_TXN *txn;
+	ENV *env;
 	FNAME *fnp;
 	LOG *lp;
 	int32_t id;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	DB_ASSERT(dbenv, IS_REP_MASTER(dbenv));
+	DB_ASSERT(env, IS_REP_MASTER(env));
 
-	dbenv = dbp->dbenv;
-	dblp = dbenv->lg_handle;
+	env = dbp->env;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 	fnp = dbp->log_filename;
 
 	/* The mtx_filelist protects the FNAME list and id management. */
-	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	MUTEX_LOCK(env, lp->mtx_filelist);
 	if (fnp->id != DB_LOGFILEID_INVALID) {
-		MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+		MUTEX_UNLOCK(env, lp->mtx_filelist);
 		return (0);
 	}
 	id = DB_LOGFILEID_INVALID;
@@ -751,7 +758,7 @@ __dbreg_lazy_id(dbp)
 	if (fnp->old_id != DB_LOGFILEID_INVALID &&
 	    (ret = __dbreg_revoke_id(dbp, 1, DB_LOGFILEID_INVALID)) != 0)
 		goto err;
-	if ((ret = __txn_begin(dbenv, NULL, &txn, 0)) != 0)
+	if ((ret = __txn_begin(env, NULL, NULL, &txn, 0)) != 0)
 		goto err;
 
 	if ((ret = __dbreg_get_id(dbp, txn, &id)) != 0) {
@@ -776,6 +783,6 @@ __dbreg_lazy_id(dbp)
 err:
 	if (ret != 0 && id != DB_LOGFILEID_INVALID)
 		(void)__dbreg_revoke_id(dbp, 1, id);
-	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+	MUTEX_UNLOCK(env, lp->mtx_filelist);
 	return (ret);
 }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: JoinTest.java,v 12.7 2007/05/04 00:28:29 mark Exp $
+ * $Id: JoinTest.java,v 12.9 2008/02/07 17:12:31 mark Exp $
  */
 
 package com.sleepycat.collections.test;
@@ -28,6 +28,8 @@ import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.SecondaryConfig;
 import com.sleepycat.db.SecondaryDatabase;
+import com.sleepycat.util.test.SharedTestUtils;
+import com.sleepycat.util.test.TestEnv;
 
 /**
  * @author Mark Hayes
@@ -77,7 +79,7 @@ public class JoinTest extends TestCase
     public void setUp()
         throws Exception {
 
-        DbTestUtil.printTestName(getName());
+        SharedTestUtils.printTestName(getName());
         env = TestEnv.TXN.open(getName());
         runner = new TransactionRunner(env);
         createDatabase();
@@ -151,7 +153,7 @@ public class JoinTest extends TestCase
         config.setTransactional(true);
         config.setAllowCreate(true);
 
-        return DbCompat.openDatabase(env, null, file, null, config);
+        return DbCompat.testOpenDatabase(env, null, file, null, config);
     }
 
     private SecondaryDatabase openSecondaryDb(Database primary,
@@ -167,9 +169,8 @@ public class JoinTest extends TestCase
         secConfig.setKeyCreator(factory.getKeyCreator(MarshalledObject.class,
                                                       keyName));
 
-        return DbCompat.openSecondaryDatabase(env, null,
-                                              file, null,
-                                              primary, secConfig);
+        return DbCompat.testOpenSecondaryDatabase
+            (env, null, file, null, primary, secConfig);
     }
 
     private void createViews()

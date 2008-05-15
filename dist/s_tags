@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_tags,v 12.3 2006/12/21 14:21:40 bostic Exp $
+#	$Id: s_tags,v 12.4 2007/08/06 16:28:03 bostic Exp $
 #
 # Build tags files.
 

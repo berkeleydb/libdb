@@ -131,21 +131,10 @@ public class RepmgrElectionTest extends EventHandlerAdapter implements Runnable
         envConfig.setEventHandler(this);
         envConfig.setReplicationManagerAckPolicy(ReplicationManagerAckPolicy.ALL);
      
-        for(int existingSites = 0; existingSites < threadNumber; existingSites++)
-        {
-            /*
-             * This causes warnings to be produced - it seems only
-             * able to make a connection to the master site, not other
-             * client sites.
-             * The documentation and code lead me to believe this is not
-             * as expected - so leaving in here for now.
-             */
-            ReplicationHostAddress host = new ReplicationHostAddress(address, basePort+existingSites);
-            envConfig.replicationManagerAddRemoteSite(host);
-        }
      
         try {
             dbenv = new Environment(homedir, envConfig);
+	    
         } catch(FileNotFoundException e) {
             fail("Unexpected FNFE in standard environment creation." + e);
         } catch(DatabaseException dbe) {
@@ -159,7 +148,22 @@ public class RepmgrElectionTest extends EventHandlerAdapter implements Runnable
              * RepmgrElectionTest test(0): Waiting for handle count (1) or msg_th (0) to complete replication lockout
              * Repeated every minute.
              */
-            if(threadNumber == 0)
+	    envConfig = dbenv.getConfig();
+	    for(int existingSites = 0; existingSites < threadNumber; existingSites++)
+	    {
+		/*
+                 * This causes warnings to be produced - it seems only
+                 * able to make a connection to the master site, not other
+                 * client sites.
+                 * The documentation and code lead me to believe this is not
+                 * as expected - so leaving in here for now.
+                 */
+                ReplicationHostAddress host = new ReplicationHostAddress(
+		    address, basePort+existingSites);
+                envConfig.replicationManagerAddRemoteSite(host, false);
+	    }
+	    dbenv.setConfig(envConfig);            
+	    if(threadNumber == 0)
                 dbenv.replicationManagerStart(NUM_WORKER_THREADS, ReplicationManagerStartPolicy.REP_MASTER);
             else
                 dbenv.replicationManagerStart(NUM_WORKER_THREADS, ReplicationManagerStartPolicy.REP_CLIENT);

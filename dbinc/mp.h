@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp.h,v 12.38 2007/06/07 16:47:01 bostic Exp $
+ * $Id: mp.h,v 12.45 2008/03/10 13:28:01 mjc Exp $
  */
 
 #ifndef	_DB_MP_H_
@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 struct __bh;		typedef struct __bh BH;
-struct __bh_frozen;	typedef struct __bh_frozen_p BH_FROZEN_PAGE;
+struct __bh_frozen_p;	typedef struct __bh_frozen_p BH_FROZEN_PAGE;
 struct __bh_frozen_a;	typedef struct __bh_frozen_a BH_FROZEN_ALLOC;
 struct __db_mpool_hash; typedef struct __db_mpool_hash DB_MPOOL_HASH;
 struct __db_mpreg;	typedef struct __db_mpreg DB_MPREG;
@@ -29,10 +29,10 @@ struct __mpool;		typedef struct __mpool MPOOL;
  */
 #define	MPF_ILLEGAL_AFTER_OPEN(dbmfp, name)				\
 	if (F_ISSET(dbmfp, MP_OPEN_CALLED))				\
-		return (__db_mi_open((dbmfp)->dbenv, name, 1));
+		return (__db_mi_open((dbmfp)->env, name, 1));
 #define	MPF_ILLEGAL_BEFORE_OPEN(dbmfp, name)				\
 	if (!F_ISSET(dbmfp, MP_OPEN_CALLED))				\
-		return (__db_mi_open((dbmfp)->dbenv, name, 0));
+		return (__db_mi_open((dbmfp)->env, name, 0));
 
 /*
  * Cache flush operations, plus modifiers.
@@ -66,10 +66,10 @@ struct __db_mpool {
 	TAILQ_HEAD(__db_mpoolfileh, __db_mpoolfile) dbmfq;
 
 	/*
-	 * The dbenv and reginfo fields are not thread protected, as they are
+	 * The env and reginfo fields are not thread protected, as they are
 	 * initialized during mpool creation, and not modified again.
 	 */
-	DB_ENV	   *dbenv;		/* Enclosing environment. */
+	ENV	   *env;		/* Enclosing environment. */
 	REGINFO	   *reginfo;		/* Underlying cache regions. */
 };
 
@@ -101,18 +101,18 @@ struct __db_mpreg {
 	(FHASH(id, len) % MPOOL_FILE_BUCKETS)
 
 /* Macros to lock/unlock the mpool region as a whole. */
-#define	MPOOL_SYSTEM_LOCK(dbenv)					\
-	MUTEX_LOCK(dbenv, ((MPOOL *)					\
-	    (dbenv)->mp_handle->reginfo[0].primary)->mtx_region)
-#define	MPOOL_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((MPOOL *)					\
-	    (dbenv)->mp_handle->reginfo[0].primary)->mtx_region)
+#define	MPOOL_SYSTEM_LOCK(env)						\
+	MUTEX_LOCK(env, ((MPOOL *)					\
+	    (env)->mp_handle->reginfo[0].primary)->mtx_region)
+#define	MPOOL_SYSTEM_UNLOCK(env)					\
+	MUTEX_UNLOCK(env, ((MPOOL *)					\
+	    (env)->mp_handle->reginfo[0].primary)->mtx_region)
 
 /* Macros to lock/unlock a specific mpool region. */
-#define	MPOOL_REGION_LOCK(dbenv, infop)					\
-	MUTEX_LOCK(dbenv, ((MPOOL *)(infop)->primary)->mtx_region)
-#define	MPOOL_REGION_UNLOCK(dbenv, infop)				\
-	MUTEX_UNLOCK(dbenv, ((MPOOL *)(infop)->primary)->mtx_region)
+#define	MPOOL_REGION_LOCK(env, infop)					\
+	MUTEX_LOCK(env, ((MPOOL *)(infop)->primary)->mtx_region)
+#define	MPOOL_REGION_UNLOCK(env, infop)					\
+	MUTEX_UNLOCK(env, ((MPOOL *)(infop)->primary)->mtx_region)
 
 /*
  * MPOOL --
@@ -247,7 +247,7 @@ struct __mpool {
  *	 hash bucket.  Use a nearby prime instead.
  */
 #define	MP_HASH(mf_offset, pgno)					\
-	((pgno) ^ ((mf_offset) * 509))
+	((((pgno) << 8) ^ (pgno)) ^ ((mf_offset) * 509))
 
 /*
  * Inline the calculation of the mask, since we can't reliably store the mask
@@ -282,36 +282,39 @@ struct __mpool {
 	DB_MPOOL *__t_dbmp;						\
 	MPOOL *__t_mp;							\
 									\
-	__t_dbmp = dbmfp->dbenv->mp_handle;				\
+	__t_dbmp = dbmfp->env->mp_handle;				\
 	__t_mp = __t_dbmp->reginfo[0].primary;				\
 	if (__t_mp->max_nreg == 1) {					\
 		*(infopp) = &__t_dbmp->reginfo[0];			\
 	} else								\
-		ret = __memp_get_bucket((dbmfp), (pgno), (infopp), NULL);\
+		ret = __memp_get_bucket((dbmfp)->env,			\
+		    (dbmfp)->mfp, (pgno), (infopp), NULL);		\
 } while (0)
 
 /*
  * MP_GET_BUCKET --
  *	Select and lock the bucket for a given page.
  */
-#define	MP_GET_BUCKET(dbmfp, pgno, infopp, hp, ret) do {		\
+#define	MP_GET_BUCKET(env, mfp, pgno, infopp, hp, ret) do {		\
 	DB_MPOOL *__t_dbmp;						\
 	MPOOL *__t_mp;							\
 	roff_t __t_mf_offset;						\
 	u_int32_t __t_bucket;						\
 									\
-	__t_dbmp = (dbmfp)->dbenv->mp_handle;				\
+	__t_dbmp = (env)->mp_handle;					\
 	__t_mp = __t_dbmp->reginfo[0].primary;				\
 	if (__t_mp->max_nreg == 1) {					\
 		*(infopp) = &__t_dbmp->reginfo[0];			\
-		__t_mf_offset = R_OFFSET(*(infopp), (dbmfp)->mfp);	\
-		MP_BUCKET(__t_mf_offset, (pgno), __t_mp->nbuckets, __t_bucket);\
+		__t_mf_offset = R_OFFSET(*(infopp), (mfp));		\
+		MP_BUCKET(__t_mf_offset,				\
+		    (pgno), __t_mp->nbuckets, __t_bucket);		\
 		(hp) = R_ADDR(*(infopp), __t_mp->htab);			\
 		(hp) = &(hp)[__t_bucket];				\
-		MUTEX_LOCK(dbenv, (hp)->mtx_hash);			\
+		MUTEX_LOCK(env, (hp)->mtx_hash);			\
 		ret = 0;						\
 	} else								\
-		ret = __memp_get_bucket((dbmfp), (pgno), (infopp), &(hp));\
+		ret = __memp_get_bucket((env), 				\
+		    (mfp), (pgno), (infopp), &(hp));			\
 } while (0)
 
 struct __db_mpool_hash {
@@ -321,7 +324,6 @@ struct __db_mpool_hash {
 	DB_HASHTAB	hash_bucket;	/* Head of bucket. */
 
 	u_int32_t	hash_page_dirty;/* Count of dirty pages. */
-	u_int32_t	hash_priority;	/* Minimum priority of bucket buffer. */
 
 #ifndef __TEST_DB_NO_STATISTICS
 	u_int32_t	hash_io_wait;	/* Count of I/O waits. */
@@ -495,7 +497,7 @@ struct __bh {
 #define	BH_THAWED	0x100		/* Page was thawed. */
 	u_int16_t	flags;
 
-	u_int32_t	priority;	/* LRU priority. */
+	u_int32_t	priority;	/* Priority. */
 	SH_TAILQ_ENTRY	hq;		/* MPOOL hash bucket queue. */
 
 	db_pgno_t	pgno;		/* Underlying MPOOLFILE page number. */
@@ -540,19 +542,19 @@ struct __bh_frozen_a {
 #define	IS_DIRTY(p)							\
     F_ISSET((BH *)((u_int8_t *)(p) - SSZA(BH, buf)), BH_DIRTY)
 
-#define	BH_OWNER(dbenv, bhp)						\
-    ((TXN_DETAIL *)R_ADDR(&dbenv->tx_handle->reginfo, bhp->td_off))
+#define	BH_OWNER(env, bhp)						\
+    ((TXN_DETAIL *)R_ADDR(&env->tx_handle->reginfo, bhp->td_off))
 
-#define	BH_OWNED_BY(dbenv, bhp, txn)	((txn) != NULL &&		\
+#define	BH_OWNED_BY(env, bhp, txn)	((txn) != NULL &&		\
     (bhp)->td_off != INVALID_ROFF &&					\
-    (txn)->td == BH_OWNER(dbenv, bhp))
+    (txn)->td == BH_OWNER(env, bhp))
 
 #define	BH_PRIORITY(bhp)						\
     (SH_CHAIN_SINGLETON(bhp, vc) ? (bhp)->priority :			\
      __memp_bh_priority(bhp))
 
-#define	VISIBLE_LSN(dbenv, bhp)						\
-    (&BH_OWNER(dbenv, bhp)->visible_lsn)
+#define	VISIBLE_LSN(env, bhp)						\
+    (&BH_OWNER(env, bhp)->visible_lsn)
 
 /*
  * Make a copy of the buffer's visible LSN, one field at a time.  We rely on the
@@ -564,15 +566,15 @@ struct __bh_frozen_a {
  * since we had to take the log region lock to allocate the read LSN so we were
  * never going to see this buffer anyway.
  */
-#define	BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn)				\
+#define	BH_VISIBLE(env, bhp, read_lsnp, vlsn)				\
     (bhp->td_off == INVALID_ROFF ||					\
-    ((vlsn).file = VISIBLE_LSN(dbenv, bhp)->file,			\
-    (vlsn).offset = VISIBLE_LSN(dbenv, bhp)->offset,			\
+    ((vlsn).file = VISIBLE_LSN(env, bhp)->file,			\
+    (vlsn).offset = VISIBLE_LSN(env, bhp)->offset,			\
     LOG_COMPARE((read_lsnp), &(vlsn)) >= 0))
 
 #define	BH_OBSOLETE(bhp, old_lsn, vlsn)	(SH_CHAIN_HASNEXT(bhp, vc) ?	\
-    BH_VISIBLE(dbenv, SH_CHAIN_NEXTP(bhp, vc, __bh), &(old_lsn), vlsn) :\
-    BH_VISIBLE(dbenv, bhp, &(old_lsn), vlsn))
+    BH_VISIBLE(env, SH_CHAIN_NEXTP(bhp, vc, __bh), &(old_lsn), vlsn) :\
+    BH_VISIBLE(env, bhp, &(old_lsn), vlsn))
 
 #define	MVCC_SKIP_CURADJ(dbc, pgno)					\
     (dbc->txn != NULL && F_ISSET(dbc->txn, TXN_SNAPSHOT) &&		\
@@ -594,11 +596,11 @@ struct __bh_frozen_a {
 		if ((u_int8_t *)p < (u_int8_t *)__orig + sizeof(BH))	\
 			p = (u_int8_t *)p + VM_PAGESIZE;		\
 		__bhp = (BH *)((u_int8_t *)p - SSZA(BH, buf));		\
-		DB_ASSERT(dbenv,					\
+		DB_ASSERT(env,					\
 		    ((uintptr_t)__bhp->buf & (VM_PAGESIZE - 1)) == 0);	\
-		DB_ASSERT(dbenv,					\
+		DB_ASSERT(env,					\
 		    (u_int8_t *)__bhp >= (u_int8_t *)__orig);		\
-		DB_ASSERT(dbenv, (u_int8_t *)p + mfp->stat.st_pagesize <\
+		DB_ASSERT(env, (u_int8_t *)p + mfp->stat.st_pagesize <\
 		    (u_int8_t *)__orig + len);				\
 		__bhp->align_off =					\
 		    (u_int16_t)((u_int8_t *)__bhp - (u_int8_t *)__orig);\
@@ -616,13 +618,13 @@ struct __bh_frozen_a {
 #ifdef linux
 #define	MVCC_MPROTECT(buf, sz, mode) do {				\
 	int __ret = mprotect((buf), (sz), (mode));			\
-	DB_ASSERT(dbenv, __ret == 0);					\
+	DB_ASSERT(env, __ret == 0);					\
 } while (0)
 #else
 #define	MVCC_MPROTECT(buf, sz, mode) do {				\
-	if (!F_ISSET(dbenv, DB_ENV_PRIVATE | DB_ENV_SYSTEM_MEM)) {	\
+	if (!F_ISSET(env, ENV_PRIVATE | ENV_SYSTEM_MEM)) {		\
 		int __ret = mprotect((buf), (sz), (mode));		\
-		DB_ASSERT(dbenv, __ret == 0);				\
+		DB_ASSERT(env, __ret == 0);				\
 	}								\
 } while (0)
 #endif /* linux */
@@ -638,9 +640,6 @@ struct __bh_frozen_a {
  * Flags to __memp_ftruncate.
  */
 #define	MP_TRUNC_RECOVER	0x01
-
-/* Private flags to DB_MPOOLFILE->close. */
-#define	DB_MPOOL_NOLOCK		0x002	/* Already have mpf locked. */
 
 #if defined(__cplusplus)
 }

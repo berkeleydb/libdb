@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  *
- * $Id: os_truncate.c,v 12.15 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_truncate.c,v 12.19 2008/02/18 19:34:22 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Truncate the file.
  */
 int
-__os_truncate(dbenv, fhp, pgno, pgsize)
-	DB_ENV *dbenv;
+__os_truncate(env, fhp, pgno, pgsize)
+	ENV *env;
 	DB_FH *fhp;
 	db_pgno_t pgno;
 	u_int32_t pgsize;
@@ -29,15 +29,17 @@ __os_truncate(dbenv, fhp, pgno, pgsize)
 			long high;
 		};
 	} off;
+	DB_ENV *dbenv;
 	off_t offset;
 	int ret;
 
-	ret = 0;
+	dbenv = env == NULL ? NULL : env->dbenv;
 	offset = (off_t)pgsize * pgno;
+	ret = 0;
 
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: truncate %s to %lu", fhp->name, (u_long)offset);
 
 #ifdef HAVE_FILESYSTEM_NOTZERO
@@ -51,7 +53,7 @@ __os_truncate(dbenv, fhp, pgno, pgsize)
 
 		/* Stat the file. */
 		if ((ret =
-		    __os_ioinfo(dbenv, NULL, fhp, &mbytes, &bytes, NULL)) != 0)
+		    __os_ioinfo(env, NULL, fhp, &mbytes, &bytes, NULL)) != 0)
 			return (ret);
 		stat_offset = (off_t)mbytes * MEGABYTE + bytes;
 
@@ -59,6 +61,8 @@ __os_truncate(dbenv, fhp, pgno, pgsize)
 			return (0);
 	}
 #endif
+
+	LAST_PANIC_CHECK_BEFORE_IO(env);
 
 	/*
 	 * Windows doesn't provide truncate directly.  Instead, it has
@@ -86,7 +90,7 @@ __os_truncate(dbenv, fhp, pgno, pgsize)
 	    !SetEndOfFile(fhp->trunc_handle)), ret);
 
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "SetFilePointer: %lu", pgno * pgsize);
+		__db_syserr(env, ret, "SetFilePointer: %lu", pgno * pgsize);
 		ret = __os_posix_err(ret);
 	}
 

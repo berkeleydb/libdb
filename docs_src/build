@@ -2,7 +2,7 @@
 #
 # Script to build the web-version of the Berkeley DB documentation.
 #
-# $Id: build,v 1.103 2007/07/06 16:44:46 bostic Exp $
+# $Id: build,v 1.107 2008/02/07 17:12:18 mark Exp $
 
 # The build script must be run from the document source directory.
 MSG="build: build script must be run from the document source directory."
@@ -138,6 +138,19 @@ run()
 		done;;
 	index)
 		sh $DOCS_SRC/support/Xindex;;
+	javadoc)
+	        javadoc $JAVADOC_ARGS -protected -d $TARGET/java \
+                    -use -link http://java.sun.com/j2se/1.5.0/docs/api/ \
+                    -link http://java.sun.com/javaee/5/docs/api/ \
+                    -sourcepath $BDB_SRC/java/src \
+                    -source 1.5 -stylesheetfile support/style.css \
+                    -header '<b>Berkeley DB</b><br><font size="-1"> version '$DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH'</font>' \
+                    -windowtitle 'Oracle - Berkeley DB Java API' -bottom '<font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>' \
+                    com.sleepycat.db com.sleepycat.bind com.sleepycat.bind.serial com.sleepycat.bind.tuple com.sleepycat.collections com.sleepycat.persist com.sleepycat.persist.model com.sleepycat.persist.evolve com.sleepycat.persist.raw com.sleepycat.util \
+                    -group 'Berkeley DB Core Package' com.sleepycat.db \
+                    -group 'Berkeley DB Direct Persistence Layer (DPL) Packages' com.sleepycat.persist:com.sleepycat.persist.model:com.sleepycat.persist.evolve:com.sleepycat.persist.raw \
+                    -group 'Berkeley DB Bind and Collections Packages' com.sleepycat.bind:com.sleepycat.bind.serial:com.sleepycat.bind.tuple:com.sleepycat.collections:com.sleepycat.util | \
+                egrep -v 'Generating|first sentence';;
 	ref)
 		[ -d $TARGET/ref ] || mkdir $TARGET/ref
 		reftoc
@@ -171,7 +184,7 @@ build_vxworks build_win build_wince cam changelog debug distrib dumpload
 env ext install intro java lock log mp program refs rep rpc sequence tcl
 test transapp txn upgrade upgrade.2.0 upgrade.3.0 upgrade.3.1
 upgrade.3.2 upgrade.3.3 upgrade.4.0 upgrade.4.1 upgrade.4.2 upgrade.4.3
-upgrade.4.4 upgrade.4.5 upgrade.4.6 xa"
+upgrade.4.4 upgrade.4.5 upgrade.4.6 upgrade.4.7 xa"
 
 if [ $# = 0 ]; then
 	echo "Building Berkeley DB documentation ..."
@@ -189,6 +202,7 @@ if [ $# = 0 ]; then
 	run tcl
 	run utility
 	run index
+	run javadoc
 else
 	run $*
 fi

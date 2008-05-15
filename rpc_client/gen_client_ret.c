@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: gen_client_ret.c,v 12.12 2007/05/23 15:18:37 bostic Exp $
+ * $Id: gen_client_ret.c,v 12.15 2008/01/08 20:58:49 bostic Exp $
  */
 
 #include "db_config.h"
@@ -19,9 +19,9 @@
 #include "db_server.h"
 #include "dbinc_auto/rpc_client_ext.h"
 
-#define	FREE_IF_CHANGED(dbtp, orig)	do {				\
+#define	FREE_IF_CHANGED(e, dbtp, orig) do {				\
 	if ((dbtp)->data != NULL && (dbtp)->data != orig) {		\
-		__os_free(dbenv, (dbtp)->data);				\
+		__os_free((e), (dbtp)->data);				\
 		(dbtp)->data = NULL;					\
 	}								\
 } while (0)
@@ -58,6 +58,7 @@ __dbcl_env_open_ret(dbenv, home, flags, mode, replyp)
 	__env_open_reply *replyp;
 {
 	DB_TXNMGR *tmgrp;
+	ENV *env;
 	int ret;
 
 	COMPQUIET(home, NULL);
@@ -69,18 +70,19 @@ __dbcl_env_open_ret(dbenv, home, flags, mode, replyp)
 	if (replyp->status != 0)
 		return (replyp->status);
 
+	env = dbenv->env;
 	dbenv->cl_id = replyp->envcl_id;
+
 	/*
 	 * If the user requested transactions, then we have some
 	 * local client-side setup to do also.
 	 */
 	if (LF_ISSET(DB_INIT_TXN)) {
-		if ((ret = __os_calloc(dbenv,
-		    1, sizeof(DB_TXNMGR), &tmgrp)) != 0)
+		if ((ret = __os_calloc(env, 1, sizeof(DB_TXNMGR), &tmgrp)) != 0)
 			return (ret);
 		TAILQ_INIT(&tmgrp->txn_chain);
-		tmgrp->dbenv = dbenv;
-		dbenv->tx_handle = tmgrp;
+		tmgrp->env = env;
+		env->tx_handle = tmgrp;
 	}
 
 	return (replyp->status);
@@ -103,7 +105,7 @@ __dbcl_env_remove_ret(dbenv, home, flags, replyp)
 	COMPQUIET(flags, 0);
 
 	ret = __dbcl_refresh(dbenv);
-	__os_free(NULL, dbenv);
+	__db_env_destroy(dbenv);
 	if (replyp->status == 0 && ret != 0)
 		return (ret);
 	else
@@ -127,13 +129,14 @@ __dbcl_txn_abort_ret(txnp, replyp)
  * PUBLIC:     DB_TXN *, DB_TXN **, u_int32_t, __env_txn_begin_reply *));
  */
 int
-__dbcl_env_txn_begin_ret(envp, parent, txnpp, flags, replyp)
-	DB_ENV *envp;
+__dbcl_env_txn_begin_ret(dbenv, parent, txnpp, flags, replyp)
+	DB_ENV *dbenv;
 	DB_TXN *parent, **txnpp;
 	u_int32_t flags;
 	__env_txn_begin_reply *replyp;
 {
 	DB_TXN *txn;
+	ENV *env;
 	int ret;
 
 	COMPQUIET(flags, 0);
@@ -141,7 +144,8 @@ __dbcl_env_txn_begin_ret(envp, parent, txnpp, flags, replyp)
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	if ((ret = __os_calloc(envp, 1, sizeof(DB_TXN), &txn)) != 0)
+	env = dbenv->env;
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
 		return (ret);
 	/*
 	 * !!!
@@ -149,7 +153,7 @@ __dbcl_env_txn_begin_ret(envp, parent, txnpp, flags, replyp)
 	 * size of the txn structure.  But if we're running on 64-bit
 	 * machines, we could overflow.  Ignore for now.
 	 */
-	__dbcl_txn_setup(envp, txn, parent, (u_int32_t)replyp->txnidcl_id);
+	__dbcl_txn_setup(env, txn, parent, (u_int32_t)replyp->txnidcl_id);
 	*txnpp = txn;
 	return (replyp->status);
 }
@@ -159,18 +163,20 @@ __dbcl_env_txn_begin_ret(envp, parent, txnpp, flags, replyp)
  * PUBLIC:     DB_TXN **, __env_cdsgroup_begin_reply *));
  */
 int
-__dbcl_env_cdsgroup_begin_ret(envp, txnpp, replyp)
-	DB_ENV *envp;
+__dbcl_env_cdsgroup_begin_ret(dbenv, txnpp, replyp)
+	DB_ENV *dbenv;
 	DB_TXN **txnpp;
 	__env_cdsgroup_begin_reply *replyp;
 {
 	DB_TXN *txn;
+	ENV *env;
 	int ret;
 
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	if ((ret = __os_calloc(envp, 1, sizeof(DB_TXN), &txn)) != 0)
+	env = dbenv->env;
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
 		return (ret);
 	/*
 	 * !!!
@@ -178,7 +184,7 @@ __dbcl_env_cdsgroup_begin_ret(envp, txnpp, replyp)
 	 * size of the txn structure.  But if we're running on 64-bit
 	 * machines, we could overflow.  Ignore for now.
 	 */
-	__dbcl_txn_setup(envp, txn, NULL, (u_int32_t)replyp->txnidcl_id);
+	__dbcl_txn_setup(env, txn, NULL, (u_int32_t)replyp->txnidcl_id);
 	*txnpp = txn;
 	return (replyp->status);
 }
@@ -230,9 +236,10 @@ __dbcl_env_txn_recover_ret(dbenv, preplist, count, retp, flags, replyp)
 {
 	DB_PREPLIST *prep;
 	DB_TXN *txnarray, *txn;
+	ENV *env;
 	u_int32_t i, *txnid;
-	int ret;
 	u_int8_t *gid;
+	int ret;
 
 	COMPQUIET(flags, 0);
 	COMPQUIET(count, 0);
@@ -240,13 +247,14 @@ __dbcl_env_txn_recover_ret(dbenv, preplist, count, retp, flags, replyp)
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	*retp = (long) replyp->retcount;
+	*retp = (long)replyp->retcount;
 
 	if (replyp->retcount == 0)
 		return (replyp->status);
 
-	if ((ret = __os_calloc(dbenv, replyp->retcount, sizeof(DB_TXN),
-	    &txnarray)) != 0)
+	env = dbenv->env;
+	if ((ret = __os_calloc(
+	    env, replyp->retcount, sizeof(DB_TXN), &txnarray)) != 0)
 		return (ret);
 	/*
 	 * We have a bunch of arrays that need to iterate in
@@ -258,7 +266,7 @@ __dbcl_env_txn_recover_ret(dbenv, preplist, count, retp, flags, replyp)
 	gid = (u_int8_t *)replyp->gid.gid_val;
 	prep = preplist;
 	while (i++ < replyp->retcount) {
-		__dbcl_txn_setup(dbenv, txn, NULL, *txnid);
+		__dbcl_txn_setup(env, txn, NULL, *txnid);
 		prep->txn = txn;
 		memcpy(prep->gid, gid, DB_XIDDATASIZE);
 		/*
@@ -326,26 +334,26 @@ __dbcl_db_get_ret(dbp, txnp, key, data, flags, replyp)
 	u_int32_t flags;
 	__db_get_reply *replyp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 	void *oldkey;
 
 	COMPQUIET(txnp, NULL);
 	COMPQUIET(flags, 0);
 
-	ret = 0;
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
+	ret = 0;
 
 	oldkey = key->data;
-	ret = __dbcl_retcopy(dbenv, key, replyp->keydata.keydata_val,
+	ret = __dbcl_retcopy(env, key, replyp->keydata.keydata_val,
 	    replyp->keydata.keydata_len, &dbp->my_rkey.data,
 	    &dbp->my_rkey.ulen);
 	if (ret)
 		return (ret);
-	ret = __dbcl_retcopy(dbenv, data, replyp->datadata.datadata_val,
+	ret = __dbcl_retcopy(env, data, replyp->datadata.datadata_val,
 	    replyp->datadata.datadata_len, &dbp->my_rdata.data,
 	    &dbp->my_rdata.ulen);
 	/*
@@ -353,7 +361,7 @@ __dbcl_db_get_ret(dbp, txnp, key, data, flags, replyp)
 	 * free it before returning the error.
 	 */
 	if (ret)
-		FREE_IF_CHANGED(key, oldkey);
+		FREE_IF_CHANGED(env, key, oldkey);
 	return (ret);
 }
 
@@ -442,38 +450,38 @@ __dbcl_db_pget_ret(dbp, txnp, skey, pkey, data, flags, replyp)
 	u_int32_t flags;
 	__db_pget_reply *replyp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 	void *oldskey, *oldpkey;
 
 	COMPQUIET(txnp, NULL);
 	COMPQUIET(flags, 0);
 
-	ret = 0;
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
+	ret = 0;
 
 	oldskey = skey->data;
-	ret = __dbcl_retcopy(dbenv, skey, replyp->skeydata.skeydata_val,
+	ret = __dbcl_retcopy(env, skey, replyp->skeydata.skeydata_val,
 	    replyp->skeydata.skeydata_len, &dbp->my_rskey.data,
 	    &dbp->my_rskey.ulen);
 	if (ret)
 		return (ret);
 
 	oldpkey = pkey->data;
-	if ((ret = __dbcl_retcopy(dbenv, pkey, replyp->pkeydata.pkeydata_val,
+	if ((ret = __dbcl_retcopy(env, pkey, replyp->pkeydata.pkeydata_val,
 	    replyp->pkeydata.pkeydata_len, &dbp->my_rkey.data,
 	    &dbp->my_rkey.ulen)) != 0)
 		goto err;
-	ret = __dbcl_retcopy(dbenv, data, replyp->datadata.datadata_val,
+	ret = __dbcl_retcopy(env, data, replyp->datadata.datadata_val,
 	    replyp->datadata.datadata_len, &dbp->my_rdata.data,
 	    &dbp->my_rdata.ulen);
 
 	if (ret) {
-err:		FREE_IF_CHANGED(skey, oldskey);
-		FREE_IF_CHANGED(pkey, oldpkey);
+err:		FREE_IF_CHANGED(env, skey, oldskey);
+		FREE_IF_CHANGED(env, pkey, oldpkey);
 	}
 	return (ret);
 }
@@ -577,7 +585,7 @@ __dbcl_db_stat_ret(dbp, txnp, sp, flags, replyp)
 		return (replyp->status);
 
 	len = replyp->stats.stats_len * sizeof(u_int32_t);
-	if ((ret = __os_umalloc(dbp->dbenv, len, &retsp)) != 0)
+	if ((ret = __os_umalloc(dbp->env, len, &retsp)) != 0)
 		return (ret);
 	for (i = 0, q = retsp, p = (u_int32_t *)replyp->stats.stats_val;
 	    i < replyp->stats.stats_len; i++, q++, p++)
@@ -718,24 +726,25 @@ __dbcl_dbc_get_ret(dbc, key, data, flags, replyp)
 	u_int32_t flags;
 	__dbc_get_reply *replyp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 	void *oldkey;
 
 	COMPQUIET(flags, 0);
 
-	ret = 0;
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	dbenv = dbc->dbp->dbenv;
+	ret = 0;
+	env = dbc->env;
+
 	oldkey = key->data;
-	ret = __dbcl_retcopy(dbenv, key, replyp->keydata.keydata_val,
+	ret = __dbcl_retcopy(env, key, replyp->keydata.keydata_val,
 	    replyp->keydata.keydata_len, &dbc->my_rkey.data,
 	    &dbc->my_rkey.ulen);
 	if (ret)
 		return (ret);
-	ret = __dbcl_retcopy(dbenv, data, replyp->datadata.datadata_val,
+	ret = __dbcl_retcopy(env, data, replyp->datadata.datadata_val,
 	    replyp->datadata.datadata_len, &dbc->my_rdata.data,
 	    &dbc->my_rdata.ulen);
 
@@ -744,7 +753,7 @@ __dbcl_dbc_get_ret(dbc, key, data, flags, replyp)
 	 * free it before returning the error.
 	 */
 	if (ret)
-		FREE_IF_CHANGED(key, oldkey);
+		FREE_IF_CHANGED(env, key, oldkey);
 	return (ret);
 }
 
@@ -761,31 +770,31 @@ __dbcl_dbc_pget_ret(dbc, skey, pkey, data, flags, replyp)
 	u_int32_t flags;
 	__dbc_pget_reply *replyp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 	void *oldskey, *oldpkey;
 
 	COMPQUIET(flags, 0);
 
-	ret = 0;
 	if (replyp->status != 0)
 		return (replyp->status);
 
-	dbenv = dbc->dbp->dbenv;
+	ret = 0;
+	env = dbc->env;
 
 	oldskey = skey->data;
-	ret = __dbcl_retcopy(dbenv, skey, replyp->skeydata.skeydata_val,
+	ret = __dbcl_retcopy(env, skey, replyp->skeydata.skeydata_val,
 	    replyp->skeydata.skeydata_len, &dbc->my_rskey.data,
 	    &dbc->my_rskey.ulen);
 	if (ret)
 		return (ret);
 
 	oldpkey = pkey->data;
-	if ((ret = __dbcl_retcopy(dbenv, pkey, replyp->pkeydata.pkeydata_val,
+	if ((ret = __dbcl_retcopy(env, pkey, replyp->pkeydata.pkeydata_val,
 	    replyp->pkeydata.pkeydata_len, &dbc->my_rkey.data,
 	    &dbc->my_rkey.ulen)) != 0)
 		goto err;
-	ret = __dbcl_retcopy(dbenv, data, replyp->datadata.datadata_val,
+	ret = __dbcl_retcopy(env, data, replyp->datadata.datadata_val,
 	    replyp->datadata.datadata_len, &dbc->my_rdata.data,
 	    &dbc->my_rdata.ulen);
 
@@ -794,8 +803,8 @@ __dbcl_dbc_pget_ret(dbc, skey, pkey, data, flags, replyp)
 	 * free it before returning the error.
 	 */
 	if (ret) {
-err:		FREE_IF_CHANGED(skey, oldskey);
-		FREE_IF_CHANGED(pkey, oldpkey);
+err:		FREE_IF_CHANGED(env, skey, oldskey);
+		FREE_IF_CHANGED(env, pkey, oldpkey);
 	}
 	return (ret);
 }

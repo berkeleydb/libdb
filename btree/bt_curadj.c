@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: bt_curadj.c,v 12.14 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_curadj.c,v 12.17 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -42,29 +42,29 @@ __bam_ca_delete(dbp, pgno, indx, delete, countp)
 {
 	BTREE_CURSOR *cp;
 	DB *ldbp;
-	DB_ENV *dbenv;
 	DBC *dbc;
+	ENV *env;
 	int count;		/* !!!: Has to contain max number of cursors. */
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * Adjust the cursors.  We have the page write locked, so the
 	 * only other cursors that can be pointing at a page are
 	 * those in the same thread of control.  Unfortunately, we don't
 	 * know that they're using the same DB handle, so traverse
-	 * all matching DB handles in the same DB_ENV, then all cursors
+	 * all matching DB handles in the same ENV, then all cursors
 	 * on each matching DB handle.
 	 *
 	 * Each cursor is single-threaded, so we only need to lock the
 	 * list of DBs and then the list of cursors in each DB.
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (count = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			cp = (BTREE_CURSOR *)dbc->internal;
 			if (cp->pgno == pgno && cp->indx == indx &&
@@ -79,7 +79,7 @@ __bam_ca_delete(dbp, pgno, indx, delete, countp)
 				 * be a problem, but this assert should
 				 * be re-activated when the Btree stack
 				 * code is re-written.
-				DB_ASSERT(dbenv, !STD_LOCKING(dbc) ||
+				DB_ASSERT(env, !STD_LOCKING(dbc) ||
 				    cp->lock_mode != DB_LOCK_NG);
 				 */
 				if (delete)
@@ -89,9 +89,9 @@ __bam_ca_delete(dbp, pgno, indx, delete, countp)
 				++count;
 			}
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	if (countp != NULL)
 		*countp = count;
@@ -112,29 +112,29 @@ __ram_ca_delete(dbp, root_pgno, foundp)
 {
 	DB *ldbp;
 	DBC *dbc;
-	DB_ENV *dbenv;
+	ENV *env;
 	int found;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * Review the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (found = 0;
 	    found == 0 && ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links)
 			if (dbc->internal->root == root_pgno &&
 			    !MVCC_SKIP_CURADJ(dbc, root_pgno)) {
 				found = 1;
 				break;
 			}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	*foundp = found;
 	return (0);
@@ -154,27 +154,27 @@ __bam_ca_di(my_dbc, pgno, indx, adjust)
 	int adjust;
 {
 	DB *dbp, *ldbp;
-	DB_ENV *dbenv;
-	DB_LSN lsn;
-	DB_TXN *my_txn;
 	DBC *dbc;
 	DBC_INTERNAL *cp;
+	DB_LSN lsn;
+	DB_TXN *my_txn;
+	ENV *env;
 	int found, ret;
 
 	dbp = my_dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	my_txn = IS_SUBTRANSACTION(my_dbc->txn) ? my_dbc->txn : NULL;
 
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (found = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			if (dbc->dbtype == DB_RECNO)
 				continue;
@@ -182,9 +182,9 @@ __bam_ca_di(my_dbc, pgno, indx, adjust)
 			if (cp->pgno == pgno && cp->indx >= indx &&
 			    (dbc == my_dbc || !MVCC_SKIP_CURADJ(dbc, pgno))) {
 				/* Cursor indices should never be negative. */
-				DB_ASSERT(dbenv, cp->indx != 0 || adjust > 0);
+				DB_ASSERT(env, cp->indx != 0 || adjust > 0);
 				/* [#8032]
-				DB_ASSERT(dbenv, !STD_LOCKING(dbc) ||
+				DB_ASSERT(env, !STD_LOCKING(dbc) ||
 				    cp->lock_mode != DB_LOCK_NG);
 				*/
 				cp->indx += adjust;
@@ -192,9 +192,9 @@ __bam_ca_di(my_dbc, pgno, indx, adjust)
 					found = 1;
 			}
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	if (found != 0 && DBC_LOGGING(my_dbc)) {
 		if ((ret = __bam_curadj_log(dbp, my_dbc->txn, &lsn, 0,
@@ -231,7 +231,7 @@ __bam_opd_cursor(dbp, dbc, first, tpgno, ti)
 	 * an old off-page dup cursor--to augment the checking dbc_newopd
 	 * will do, assert this.
 	 */
-	DB_ASSERT(dbp->dbenv, orig_cp->opd == NULL);
+	DB_ASSERT(dbp->env, orig_cp->opd == NULL);
 	if ((ret = __dbc_newopd(dbc, tpgno, orig_cp->opd, &dbc_nopd)) != 0)
 		return (ret);
 
@@ -280,25 +280,25 @@ __bam_ca_dup(my_dbc, first, fpgno, fi, tpgno, ti)
 	BTREE_CURSOR *orig_cp;
 	DB *dbp, *ldbp;
 	DBC *dbc;
-	DB_ENV *dbenv;
 	DB_LSN lsn;
 	DB_TXN *my_txn;
+	ENV *env;
 	int found, ret, t_ret;
 
 	dbp = my_dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	my_txn = IS_SUBTRANSACTION(my_dbc->txn) ? my_dbc->txn : NULL;
 	ret = 0;
 
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (found = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-loop:		MUTEX_LOCK(dbenv, dbp->mutex);
+loop:		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			/* Find cursors pointing to this record. */
 			orig_cp = (BTREE_CURSOR *)dbc->internal;
@@ -313,9 +313,9 @@ loop:		MUTEX_LOCK(dbenv, dbp->mutex);
 			if (orig_cp->opd != NULL)
 				continue;
 
-			MUTEX_UNLOCK(dbenv, dbp->mutex);
+			MUTEX_UNLOCK(env, dbp->mutex);
 			/* [#8032]
-			DB_ASSERT(dbenv, !STD_LOCKING(dbc) ||
+			DB_ASSERT(env, !STD_LOCKING(dbc) ||
 			    orig_cp->lock_mode != DB_LOCK_NG);
 			*/
 			if ((ret = __bam_opd_cursor(dbp,
@@ -326,9 +326,9 @@ loop:		MUTEX_LOCK(dbenv, dbp->mutex);
 			/* We released the mutex to get a cursor, start over. */
 			goto loop;
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-err:	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+err:	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	if (found != 0 && DBC_LOGGING(my_dbc)) {
 		if ((t_ret = __bam_curadj_log(dbp, my_dbc->txn,
@@ -358,21 +358,21 @@ __bam_ca_undodup(dbp, first, fpgno, fi, ti)
 	BTREE_CURSOR *orig_cp;
 	DB *ldbp;
 	DBC *dbc;
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ret = 0;
 
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-loop:		MUTEX_LOCK(dbenv, dbp->mutex);
+loop:		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			orig_cp = (BTREE_CURSOR *)dbc->internal;
 
@@ -389,7 +389,7 @@ loop:		MUTEX_LOCK(dbenv, dbp->mutex);
 			    orig_cp->opd->internal)->indx != ti ||
 			    MVCC_SKIP_CURADJ(dbc, fpgno))
 				continue;
-			MUTEX_UNLOCK(dbenv, dbp->mutex);
+			MUTEX_UNLOCK(env, dbp->mutex);
 			if ((ret = __dbc_close(orig_cp->opd)) != 0)
 				goto err;
 			orig_cp->opd = NULL;
@@ -400,9 +400,9 @@ loop:		MUTEX_LOCK(dbenv, dbp->mutex);
 			 */
 			goto loop;
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-err:	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+err:	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	return (ret);
 }
@@ -420,24 +420,24 @@ __bam_ca_rsplit(my_dbc, fpgno, tpgno)
 {
 	DB *dbp, *ldbp;
 	DBC *dbc;
-	DB_ENV *dbenv;
 	DB_LSN lsn;
 	DB_TXN *my_txn;
+	ENV *env;
 	int found, ret;
 
 	dbp = my_dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	my_txn = IS_SUBTRANSACTION(my_dbc->txn) ? my_dbc->txn : NULL;
 
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (found = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			if (dbc->dbtype == DB_RECNO)
 				continue;
@@ -445,16 +445,16 @@ __bam_ca_rsplit(my_dbc, fpgno, tpgno)
 			    !MVCC_SKIP_CURADJ(dbc, fpgno)) {
 				dbc->internal->pgno = tpgno;
 				/* [#8032]
-				DB_ASSERT(dbenv, !STD_LOCKING(dbc) ||
+				DB_ASSERT(env, !STD_LOCKING(dbc) ||
 				    dbc->internal->lock_mode != DB_LOCK_NG);
 				*/
 				if (my_txn != NULL && dbc->txn != my_txn)
 					found = 1;
 			}
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	if (found != 0 && DBC_LOGGING(my_dbc)) {
 		if ((ret = __bam_curadj_log(dbp, my_dbc->txn,
@@ -481,13 +481,13 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 	DB *dbp, *ldbp;
 	DBC *dbc;
 	DBC_INTERNAL *cp;
-	DB_ENV *dbenv;
 	DB_LSN lsn;
 	DB_TXN *my_txn;
+	ENV *env;
 	int found, ret;
 
 	dbp = my_dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	my_txn = IS_SUBTRANSACTION(my_dbc->txn) ? my_dbc->txn : NULL;
 
 	/*
@@ -500,12 +500,12 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 	 * the cursor is on the right page, it is decremented by the number of
 	 * records split to the left page.
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (found = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			if (dbc->dbtype == DB_RECNO)
 				continue;
@@ -513,7 +513,7 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 			if (cp->pgno == ppgno &&
 			    !MVCC_SKIP_CURADJ(dbc, ppgno)) {
 				/* [#8032]
-				DB_ASSERT(dbenv, !STD_LOCKING(dbc) ||
+				DB_ASSERT(env, !STD_LOCKING(dbc) ||
 				    cp->lock_mode != DB_LOCK_NG);
 				*/
 				if (my_txn != NULL && dbc->txn != my_txn)
@@ -527,9 +527,9 @@ __bam_ca_split(my_dbc, ppgno, lpgno, rpgno, split_indx, cleft)
 				}
 			}
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	if (found != 0 && DBC_LOGGING(my_dbc)) {
 		if ((ret = __bam_curadj_log(dbp,
@@ -559,10 +559,10 @@ __bam_ca_undosplit(dbp, frompgno, topgno, lpgno, split_indx)
 {
 	DB *ldbp;
 	DBC *dbc;
-	DB_ENV *dbenv;
 	DBC_INTERNAL *cp;
+	ENV *env;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * Adjust the cursors.  See the comment in __bam_ca_delete().
@@ -570,12 +570,12 @@ __bam_ca_undosplit(dbp, frompgno, topgno, lpgno, split_indx)
 	 * When backing out a split, we move the cursor back
 	 * to the original offset and bump it by the split_indx.
 	 */
-	MUTEX_LOCK(dbenv, dbenv->mtx_dblist);
-	FIND_FIRST_DB_MATCH(dbenv, dbp, ldbp);
+	MUTEX_LOCK(env, env->mtx_dblist);
+	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		TAILQ_FOREACH(dbc, &ldbp->active_queue, links) {
 			if (dbc->dbtype == DB_RECNO)
 				continue;
@@ -588,9 +588,9 @@ __bam_ca_undosplit(dbp, frompgno, topgno, lpgno, split_indx)
 			    !MVCC_SKIP_CURADJ(dbc, lpgno))
 				cp->pgno = frompgno;
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
-	MUTEX_UNLOCK(dbenv, dbenv->mtx_dblist);
+	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	return (0);
 }

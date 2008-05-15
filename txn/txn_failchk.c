@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: txn_failchk.c,v 12.9 2007/06/29 00:25:02 margo Exp $
+ * $Id: txn_failchk.c,v 12.11 2008/01/08 20:59:00 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,12 +15,13 @@
  * __txn_failchk --
  *	Check for transactions started by dead threads of control.
  *
- * PUBLIC: int __txn_failchk __P((DB_ENV *));
+ * PUBLIC: int __txn_failchk __P((ENV *));
  */
 int
-__txn_failchk(dbenv)
-	DB_ENV *dbenv;
+__txn_failchk(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
 	DB_TXN *ktxn, *txn;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
@@ -30,10 +31,11 @@ __txn_failchk(dbenv)
 	char buf[DB_THREADID_STRLEN];
 	pid_t pid;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
+	dbenv = env->dbenv;
 	region = mgr->reginfo.primary;
 
-retry:	TXN_SYSTEM_LOCK(dbenv);
+retry:	TXN_SYSTEM_LOCK(env);
 
 	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail) {
 		/*
@@ -54,26 +56,26 @@ retry:	TXN_SYSTEM_LOCK(dbenv);
 			continue;
 
 		if (F_ISSET(td, TXN_DTL_INMEMORY))
-			return (__db_failed(dbenv,
+			return (__db_failed(env,
 			     "Transaction has in memory logs",
 			     td->pid, td->tid));
 
 		/* Abort the transaction. */
-		TXN_SYSTEM_UNLOCK(dbenv);
-		if ((ret = __os_calloc(dbenv, 1, sizeof(DB_TXN), &txn)) != 0)
+		TXN_SYSTEM_UNLOCK(env);
+		if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
 			return (ret);
-		if ((ret = __txn_continue(dbenv, txn, td)) != 0)
+		if ((ret = __txn_continue(env, txn, td)) != 0)
 			return (ret);
 		F_SET(txn, TXN_MALLOC);
 		SH_TAILQ_FOREACH(ktd, &td->kids, klinks, __txn_detail) {
 			if (F_ISSET(ktd, TXN_DTL_INMEMORY))
-				return (__db_failed(dbenv,
+				return (__db_failed(env,
 				     "Transaction has in memory logs",
 				     td->pid, td->tid));
 			if ((ret =
-			    __os_calloc(dbenv, 1, sizeof(DB_TXN), &ktxn)) != 0)
+			    __os_calloc(env, 1, sizeof(DB_TXN), &ktxn)) != 0)
 				return (ret);
-			if ((ret = __txn_continue(dbenv, ktxn, ktd)) != 0)
+			if ((ret = __txn_continue(env, ktxn, ktd)) != 0)
 				return (ret);
 			F_SET(ktxn, TXN_MALLOC);
 			ktxn->parent = txn;
@@ -83,15 +85,15 @@ retry:	TXN_SYSTEM_LOCK(dbenv);
 		pid = td->pid;
 		tid = td->tid;
 		(void)dbenv->thread_id_string(dbenv, pid, tid, buf);
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "Aborting txn %#lx: %s", (u_long)txn->txnid, buf);
 		if ((ret = __txn_abort(txn)) != 0)
-			return (__db_failed(dbenv,
+			return (__db_failed(env,
 			     "Transaction abort failed", pid, tid));
 		goto retry;
 	}
 
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
 }

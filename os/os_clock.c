@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: os_clock.c,v 12.14 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_clock.c,v 12.19 2008/02/06 21:30:36 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,24 +14,33 @@
  * __os_gettime --
  *	Return the current time-of-day clock in seconds and nanoseconds.
  *
- * PUBLIC: void __os_gettime __P((DB_ENV *, db_timespec *));
+ * PUBLIC: void __os_gettime __P((ENV *, db_timespec *, int));
  */
 void
-__os_gettime(dbenv, tp)
-	DB_ENV *dbenv;
+__os_gettime(env, tp, monotonic)
+	ENV *env;
 	db_timespec *tp;
+	int monotonic;
 {
 	const char *sc;
 	int ret;
 
 #if defined(HAVE_CLOCK_GETTIME)
+#if defined(HAVE_CLOCK_MONOTONIC)
+	if (monotonic)
+		RETRY_CHK((clock_gettime(
+		    CLOCK_MONOTONIC, (struct timespec *)tp)), ret);
+	else
+#endif
+		RETRY_CHK((clock_gettime(
+		    CLOCK_REALTIME, (struct timespec *)tp)), ret);
+
 	RETRY_CHK((clock_gettime(CLOCK_REALTIME, (struct timespec *)tp)), ret);
 	if (ret != 0) {
 		sc = "clock_gettime";
 		goto err;
 	}
-#endif
-#if !defined(HAVE_CLOCK_GETTIME) && defined(HAVE_GETTIMEOFDAY)
+#elif defined(HAVE_GETTIMEOFDAY)
 	struct timeval v;
 
 	RETRY_CHK((gettimeofday(&v, NULL)), ret);
@@ -42,8 +51,7 @@ __os_gettime(dbenv, tp)
 
 	tp->tv_sec = v.tv_sec;
 	tp->tv_nsec = v.tv_usec * NS_PER_US;
-#endif
-#if !defined(HAVE_GETTIMEOFDAY) && !defined(HAVE_CLOCK_GETTIME)
+#elif defined(HAVE_TIME)
 	time_t now;
 
 	RETRY_CHK((time(&now) == (time_t)-1 ? 1 : 0), ret);
@@ -54,9 +62,12 @@ __os_gettime(dbenv, tp)
 
 	tp->tv_sec = now;
 	tp->tv_nsec = 0;
+#else
+	NO AVAILABLE CLOCK IMPLEMENTATION
 #endif
+	COMPQUIET(monotonic, 0);
 	return;
 
-err:	__db_syserr(dbenv, ret, "%s", sc);
-	(void)__db_panic(dbenv, __os_posix_err(ret));
+err:	__db_syserr(env, ret, "%s", sc);
+	(void)__env_panic(env, __os_posix_err(ret));
 }

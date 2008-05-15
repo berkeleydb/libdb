@@ -1,4 +1,4 @@
-m4_comment([$Id: stat.so,v 10.21 2003/10/18 19:15:53 bostic Exp $])
+m4_comment([$Id: stat.so,v 10.22 2007/12/07 21:35:23 bostic Exp $])
 
 m4_ref_title(Access Methods,
     Database statistics, database @statistics, am/delete, am/truncate)
@@ -9,7 +9,7 @@ database, for example, the number of key/data pairs in the database, how
 the database was originally configured, and so on.])
 
 m4_p([dnl
-There is one flag you can set to customize the returned statistics:])
+There is a flag you can set to avoid time-consuming operations:])
 
 m4_tagbegin
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: TransactionRunner.java,v 12.8 2007/05/04 00:28:25 mark Exp $
+ * $Id: TransactionRunner.java,v 12.10 2008/02/07 17:12:26 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -170,7 +170,7 @@ public class TransactionRunner {
     /**
      * Returns the transaction configuration used for calling
      * {@link Environment#beginTransaction}.
-     * 
+     *
      * <p>If this property is null, the default configuration is used.  The
      * configuration object is not cloned, and any modifications to it will
      * impact subsequent transactions.</p>
@@ -185,7 +185,7 @@ public class TransactionRunner {
     /**
      * Changes the transaction configuration used for calling
      * {@link Environment#beginTransaction}.
-     * 
+     *
      * <p>If this property is null, the default configuration is used.  The
      * configuration object is not cloned, and any modifications to it will
      * impact subsequent transactions.</p>
@@ -239,9 +239,9 @@ public class TransactionRunner {
                         } catch (Throwable e2) {
 
                             /*
-                             * XXX We should really throw a 3rd exception that
-                             * wraps both e and e2, to give the user a complete
-                             * set of error information.
+                             * We print this stack trace so that the
+                             * information is not lost when we throw the
+                             * original exception.
                              */
 			    if (DbCompat.TRANSACTION_RUNNER_PRINT_STACK_TRACES) {
 				e2.printStackTrace();

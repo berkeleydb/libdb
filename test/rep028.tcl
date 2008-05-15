@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep028.tcl,v 12.15 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep028.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep028
 # TEST	Replication and non-rep env handles. (Also see rep006.)
@@ -65,10 +65,11 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	source ./include.tcl
 	global is_hp_test
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set omethod [convert_method $method]
@@ -120,7 +121,6 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	# creates a database before the master does, then when that
 	# client goes to use it, it gets DB_DEAD_HANDLE.
 	#
-
 	if { $clargs == "create" } {
 		puts "\tRep$tnum.b: Create database non-replicated."
 		set let c
@@ -139,7 +139,15 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	#
 	puts "\tRep$tnum.$let: Declare env as rep client"
 	error_check_good client [$clientenv rep_start -client] 0
-
+	if { $clargs == "create" } {
+		#
+		# We'll only catch this error if we turn on no-autoinit.
+		# Otherwise, the system will throw away everything on the
+		# client and resync.
+		#
+		$clientenv rep_config {noautoinit on}
+	}
+	
 	# Bring the client online by processing the startup messages.
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist 0 NONE err
@@ -148,26 +156,24 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	# determine this client was never part of the replication group.
 	#
 	if { $clargs == "create" } {
-		error_check_good dead [is_substr $err \
-		    "was never part"] 1
+		error_check_good errchk [is_substr $err \
+		    "DB_REP_JOIN_FAILURE"] 1
 		error_check_good close [$nonrepdb close] 0
-	}
+	} else {
+		# Open the same db through the master handle.  Put data
+		# and process messages.
+		set db [eval berkdb_open_noerr \
+		    -create $omethod -env $masterenv -auto_commit $dbname]
+		error_check_good db_open [is_valid_db $db] TRUE
+		eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
+		process_msgs $envlist
 
-	# Open the same db through the master handle.  Put data
-	# and process messages.
-	set db [eval berkdb_open_noerr \
-	    -create $omethod -env $masterenv -auto_commit $dbname]
-	error_check_good db_open [is_valid_db $db] TRUE
-	eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
-	process_msgs $envlist
-
-	#
-	# If we're the open case, we want to just read the existing
-	# database through a non-rep readonly handle.  Doing so
-	# should not create log records on the client (but has
-	# in the past).
-	#
-	if { $clargs == "open" } {
+		#
+		# If we're the open case, we want to just read the existing
+		# database through a non-rep readonly handle.  Doing so
+		# should not create log records on the client (but has
+		# in the past).
+		#
 		puts "\tRep$tnum.$nextlet: Open and read database"
 		set nonrepdb [eval berkdb_open \
 		    -rdonly -env $nonrepenv $dbname]
@@ -192,9 +198,10 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 		error_check_good stat_cprlog $stat 0
 		error_check_good log_cmp \
 		    [filecmp $masterdir/prlog $clientdir/prlog] 0
+
+		# Clean up.
+		error_check_good db_close [$db close] 0
 	}
-	# Clean up.
-	error_check_good db_close [$db close] 0
 
 	error_check_good nonrepenv_close [$nonrepenv close] 0
 	error_check_good masterenv_close [$masterenv close] 0

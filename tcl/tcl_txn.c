@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_txn.c,v 12.22 2007/05/17 15:15:54 bostic Exp $
+ * $Id: tcl_txn.c,v 12.25 2008/03/13 17:48:30 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -55,11 +55,11 @@ _TxnInfoDelete(interp, txnip)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_TxnCheckpoint(interp, objc, objv, envp)
+tcl_TxnCheckpoint(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	static const char *txnckpopts[] = {
 		"-force",
@@ -114,7 +114,8 @@ tcl_TxnCheckpoint(interp, objc, objv, envp)
 		}
 	}
 	_debug_check();
-	ret = envp->txn_checkpoint(envp, (u_int32_t)kb, (u_int32_t)min, flags);
+	ret = dbenv->txn_checkpoint(dbenv, (u_int32_t)kb, (u_int32_t)min,
+	    flags);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "txn checkpoint");
 	return (result);
@@ -127,11 +128,11 @@ tcl_TxnCheckpoint(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
-tcl_Txn(interp, objc, objv, envp, envip)
+tcl_Txn(interp, objc, objv, dbenv, envip)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	static const char *txnopts[] = {
@@ -265,7 +266,7 @@ get_timeout:		if (i >= objc) {
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->txn_begin(envp, parent, &txn, flag);
+	ret = dbenv->txn_begin(dbenv, parent, &txn, flag);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "txn");
 	if (result == TCL_ERROR)
@@ -316,11 +317,11 @@ get_timeout:		if (i >= objc) {
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
-tcl_CDSGroup(interp, objc, objv, envp, envip)
+tcl_CDSGroup(interp, objc, objv, dbenv, envip)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	DBTCL_INFO *ip;
@@ -346,7 +347,7 @@ tcl_CDSGroup(interp, objc, objv, envp, envip)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->cdsgroup_begin(envp, &txn);
+	ret = dbenv->cdsgroup_begin(dbenv, &txn);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "cdsgroup");
 	if (result == TCL_ERROR)
 		_DeleteInfo(ip);
@@ -373,11 +374,11 @@ tcl_CDSGroup(interp, objc, objv, envp, envip)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_TxnStat(interp, objc, objv, envp)
+tcl_TxnStat(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	DBTCL_INFO *ip;
 	DB_TXN_ACTIVE *p;
@@ -395,7 +396,7 @@ tcl_TxnStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->txn_stat(envp, &sp, 0);
+	ret = dbenv->txn_stat(dbenv, &sp, 0);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "txn stat");
 	if (result == TCL_ERROR)
@@ -443,7 +444,7 @@ tcl_TxnStat(interp, objc, objv, envp)
 #endif
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_ufree(envp, sp);
+	__os_ufree(dbenv->env, sp);
 	return (result);
 }
 
@@ -454,11 +455,11 @@ error:
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_TxnTimeout(interp, objc, objv, envp)
+tcl_TxnTimeout(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	long timeout;
 	int result, ret;
@@ -474,7 +475,7 @@ tcl_TxnTimeout(interp, objc, objv, envp)
 	if (result != TCL_OK)
 		return (result);
 	_debug_check();
-	ret = envp->set_timeout(envp, (u_int32_t)timeout, DB_SET_TXN_TIMEOUT);
+	ret = dbenv->set_timeout(dbenv, (u_int32_t)timeout, DB_SET_TXN_TIMEOUT);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "lock timeout");
 	return (result);
@@ -704,11 +705,11 @@ tcl_TxnCommit(interp, objc, objv, txnp, txnip)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
-tcl_TxnRecover(interp, objc, objv, envp, envip)
+tcl_TxnRecover(interp, objc, objv, dbenv, envip)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 #define	DO_PREPLIST(count)						\
@@ -749,7 +750,7 @@ for (i = 0; i < count; i++) {						\
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->txn_recover(envp, prep, DBTCL_PREP, &count, DB_FIRST);
+	ret = dbenv->txn_recover(dbenv, prep, DBTCL_PREP, &count, DB_FIRST);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 	    "txn recover");
 	if (result == TCL_ERROR)
@@ -762,8 +763,8 @@ for (i = 0; i < count; i++) {						\
 	 * might be more.  Keep going until we get them all.
 	 */
 	while (count == DBTCL_PREP) {
-		ret = envp->txn_recover(
-		    envp, prep, DBTCL_PREP, &count, DB_NEXT);
+		ret = dbenv->txn_recover(
+		    dbenv, prep, DBTCL_PREP, &count, DB_NEXT);
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "txn recover");
 		if (result == TCL_ERROR)

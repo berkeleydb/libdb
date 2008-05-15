@@ -1,0 +1,82 @@
+m4_comment([$Id: env_set_intermediate_dir_mode.so,v 1.1 2008/01/15 15:35:22 bostic Exp $])
+
+define(M4PAGELOCAL, [dbenv_set_intermediate_dir_mode, dbenv_get_intermediate_dir_mode])
+include(m4/m4.seealso)
+
+m4_pf_header(m4_ref(dbenv_set_intermediate_dir_mode),
+ifelse(M4API, C_API, [dnl
+int
+DB_ENV-__GT__set_intermediate_dir_mode(DB_ENV *dbenv, const char *mode);
+m4_blank
+int
+DB_ENV-__GT__get_intermediate_dir_mode(DB_ENV *dbenv, const char **modep);
+])
+ifelse(M4API, CXX_API, [dnl
+int
+DbEnv::set_intermediate_dir_mode(u_int32_t mode);
+m4_blank
+int
+DbEnv::get_intermediate_dir_mode(u_int32_t *modep);
+]))
+
+m4_p([dnl
+By default, m4_db does not create intermediate directories needed for
+recovery, that is, if the file m4_path(/a/b/c/mydatabase) is being
+recovered, and the directory path m4_arg(b/c) does not exist, recovery
+will fail.   This default behavior is because m4_db does not know what
+permissions are appropriate for intermediate directory creation, and
+creating the directory might result in a security problem.])
+
+m4_p([dnl
+The m4_refT(dbenv_set_intermediate_dir_mode) causes m4_db to create any
+intermediate directories needed during recovery, using the specified
+permissions.])
+
+m4_p([dnl
+On UNIX systems or in m4_posix1_name environments, created directories
+are owned by the process owner; the group ownership of created
+directories is based on the system and directory defaults, and is not
+further specified by m4_db.])
+
+m4_env_config(dbenv_set_intermediate_dir_mode,
+[intermediate directory permissions],
+set_intermediate_dir_mode, [the directory permissions])
+
+m4_scope_dbenv(dbenv_set_intermediate_dir_mode)
+
+m4_when_envopen(dbenv_set_intermediate_dir_mode)
+
+m4_return(dbenv_set_intermediate_dir_mode, std)
+
+m4_parambegin
+m4_param(mode, [dnl
+The m4_arg(mode) parameter specifies the directory permissions.
+m4_p([dnl
+Directory permissions are interpreted as a string of nine characters,
+using the character set m4_arg(r) (read), m4_arg(w) (write), m4_arg(x)
+(execute or search), and m4_arg(-) (none).  The first character is the
+read permissions for the directory owner (set to either m4_arg(r) or
+m4_arg(-)). The second character is the write permissions for the
+directory owner (set to either m4_arg(w) or m4_arg(-)). The third
+character is the execute permissions for the directory owner (set to
+either m4_arg(x) or m4_arg(-)).])
+m4_p([dnl
+Similarly, the second set of three characters are the read, write and
+execute/search permissions for the directory group, and the third set
+of three characters are the read, write and execute/search permissions
+for all others.  For example, the string m4_arg(rwx------) would
+configure read, write and execute/search access for the owner only.  The
+string m4_arg(rwxrwx---) would configure read, write and execute/search
+access for both the owner and the group.  The string m4_arg(rwxr-----)
+would configure read, write and execute/search access for the directory
+owner and read-only access for the directory group.])])
+m4_paramend
+
+m4_err(dbenv_set_intermediate_dir_mode,
+einval, [the method was called after m4_ref(dbenv_open) was called])
+
+m4_pf_getter(dbenv_get_intermediate_dir_mode,
+intermediate directory permissions,, modep, reference)
+
+m4_seealso(DbEnv)
+m4_page_footer

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: shelltest.tcl,v 12.10 2007/05/17 15:15:56 bostic Exp $
+# $Id: shelltest.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	scr###
 # TEST	The scr### directories are shell scripts that test a variety of
@@ -101,3 +101,5 @@ proc scr030 {} { shelltest 30 }
 proc scr031 {} { shelltest 31 }
 proc scr032 {} { shelltest 32 }
 proc scr033 {} { shelltest 33 }
+proc scr034 {} { shelltest 34 }
+proc scr035 {} { shelltest 35 }

@@ -1,5 +1,5 @@
 <!--$Id: intro.so,v 10.25 2006/11/13 18:05:02 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></b></td>
 <td align=right><a href="../lock/nondb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../log/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Introduction to the logging subsystem</h3>
+<p align=center><b>Introduction to the logging subsystem</b></p>
 <p>The Logging subsystem is the logging facility used by Berkeley DB.  It is
 largely Berkeley DB-specific, although it is potentially useful outside of
 the Berkeley DB package for applications wanting write-ahead logging support.
@@ -32,19 +31,19 @@ have two methods: <a href="../../api_c/logc_get.html">DB_LOGC-&gt;get</a> method
 log, and <a href="../../api_c/logc_close.html">DB_LOGC-&gt;close</a> method to destroy the cursor.</p>
 <p>There are additional methods for integrating the log subsystem with a
 transaction processing system:</p>
-<dl compact>
-<dt><a href="../../api_c/log_flush.html">DB_ENV-&gt;log_flush</a><dd>Flushes the log up to a particular log sequence number.
-<dt><a href="../../api_c/log_compare.html">log_compare</a><dd>Allows applications to compare any two log sequence numbers.
-<dt><a href="../../api_c/log_file.html">DB_ENV-&gt;log_file</a>   <dd>Maps a log sequence number to the specific log file that contains it.
-<dt><a href="../../api_c/log_archive.html">DB_ENV-&gt;log_archive</a><dd>Returns various sets of log filenames.  These methods are used for
+<br>
+<b><a href="../../api_c/log_flush.html">DB_ENV-&gt;log_flush</a></b><ul compact><li>Flushes the log up to a particular log sequence number.</ul>
+<b><a href="../../api_c/log_compare.html">log_compare</a></b><ul compact><li>Allows applications to compare any two log sequence numbers.</ul>
+<b><a href="../../api_c/log_file.html">DB_ENV-&gt;log_file</a>   </b><ul compact><li>Maps a log sequence number to the specific log file that contains it.</ul>
+<b><a href="../../api_c/log_archive.html">DB_ENV-&gt;log_archive</a></b><ul compact><li>Returns various sets of log filenames.  These methods are used for
 database administration; for example, to determine if log files may
-safely be removed from the system.
-<dt><a href="../../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>   <dd>The display <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/log_stat.html">DB_ENV-&gt;log_stat</a> method to
-display statistics about the log.
-<dt><a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a><dd>The log meta-information (but not the log files themselves) may be
-removed using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> method.
-</dl>
-<!--$Id: m4.methods,v 1.6 2005/09/30 19:00:24 bostic Exp $-->
+safely be removed from the system.</ul>
+<b><a href="../../api_c/log_stat.html">DB_ENV-&gt;log_stat</a>   </b><ul compact><li>The display <a href="../../utility/db_stat.html">db_stat</a> utility uses the <a href="../../api_c/log_stat.html">DB_ENV-&gt;log_stat</a> method to
+display statistics about the log.</ul>
+<b><a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a></b><ul compact><li>The log meta-information (but not the log files themselves) may be
+removed using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> method.</ul>
+<br>
+<!--$Id: m4.methods,v 1.7 2008/01/23 21:15:44 sarette Exp $-->
 <table border=1 align=center>
 <tr><th>Logging Subsystem and Related Methods</th><th>Description</th></tr>
 <!--DbLsn--><tr><td><a href="../../api_c/lsn_class.html">DB_LSN</a></td><td>Log Sequence Numbers</td></tr>
@@ -61,6 +60,7 @@ removed using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> me
 <!--DbLogc::close--><tr><td><a href="../../api_c/logc_close.html">DB_LOGC-&gt;close</a></td><td>Close a log cursor</td></tr>
 <!--DbLogc::get--><tr><td><a href="../../api_c/logc_get.html">DB_LOGC-&gt;get</a></td><td>Retrieve a log record</td></tr>
 <tr><th>Logging Subsystem Configuration</th><th><br></th></tr>
+<!--DbEnv::log_set_config--><tr><td><a href="../../api_c/env_log_set_config.html">DB_ENV-&gt;log_set_config</a></td><td>Configure the logging subsystem</td></tr>
 <!--DbEnv::set_lg_bsize--><tr><td><a href="../../api_c/env_set_lg_bsize.html">DB_ENV-&gt;set_lg_bsize</a></td><td>Set log buffer size</td></tr>
 <!--DbEnv::set_lg_dir--><tr><td><a href="../../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a></td><td>Set the environment logging directory</td></tr>
 <!--DbEnv::set_lg_filemode--><tr><td><a href="../../api_c/env_set_lg_mode.html">DB_ENV-&gt;set_lg_filemode</a></td><td>Set log file mode</td></tr>
@@ -69,6 +69,6 @@ removed using the <a href="../../api_c/env_remove.html">DB_ENV-&gt;remove</a> me
 </table>
 <table width="100%"><tr><td><br></td><td align=right><a href="../lock/nondb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../log/config.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

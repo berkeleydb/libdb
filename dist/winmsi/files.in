@@ -1,4 +1,4 @@
-# $Id: files.in,v 1.11 2007/02/16 04:50:44 alexg Exp $
+# $Id: files.in,v 1.13 2008/04/17 01:59:10 alexg Exp $
 # Lists files needed to install particular
 # features in Windows.  Feature names must be
 # listed in features.in .
@@ -11,13 +11,13 @@
 
 CoreAPI		build_windows/Release/libdb${PRODUCT_MAJMIN}.dll	/bin/
 DCoreAPI	build_windows/Debug/libdb${PRODUCT_MAJMIN}d.dll	/bin/debug/
-DCoreAPI	build_windows/Debug/db_dll.pdb		/bin/debug/
+DCoreAPI	build_windows/Debug/libdb${PRODUCT_MAJMIN}d.pdb		/bin/debug/
 CoreAPI		build_windows/Release/libdb${PRODUCT_MAJMIN}.lib	/lib/
 DCoreAPI	build_windows/Debug/libdb${PRODUCT_MAJMIN}d.lib	/lib/
 CoreAPI		build_windows/Release/msvcr71.dll		/bin/
-DCoreAPI	build_windows/Debug/msvcr71d.dll		/bin/debug/
+DCoreAPI	build_windows/Debug/msvcr71.dll		/bin/debug/
 CoreAPI		build_windows/Release/msvcp71.dll		/bin/
-DCoreAPI	build_windows/Debug/msvcp71d.dll		/bin/debug/
+DCoreAPI	build_windows/Debug/msvcp71.dll		/bin/debug/
 
 # After the build process, we create an installed_include directory
 # housing all the needed include files, for user convenience
@@ -30,7 +30,7 @@ CoreAPI		${PRODUCT_STAGE}/dbvars.bat		/
 # link C/C++ against the java library
 JavaAPI		build_windows/Release/libdb_java${PRODUCT_MAJMIN}.dll	/bin/	dbj${PRODUCT_MAJMIN}.dll
 DJavaAPI 	build_windows/Debug/libdb_java${PRODUCT_MAJMIN}d.dll	/bin/debug/	dbj${PRODUCT_MAJMIN}d.dll
-DJavaAPI 	build_windows/Debug/db_java.pdb		/bin/debug/
+DJavaAPI 	build_windows/Debug/libdb_java${PRODUCT_MAJMIN}d.pdb		/bin/debug/
 JavaAPI		build_windows/Release/db.jar		/jar/
 DJavaAPI	build_windows/Debug/db.jar		/jar/debug/
 
@@ -40,7 +40,7 @@ DJavaEx		build_windows/Debug/dbexamples.jar	/jar/debug/	dbexam~1.jar
 # We don't include the .lib files for Tcl, nobody needs to
 # link C/C++ against the Tcl library
 DTclAPI		build_windows/Debug/libdb_tcl${PRODUCT_MAJMIN}d.dll	/bin/debug/	dbt${PRODUCT_MAJMIN}d.dll
-DTclAPI		build_windows/Debug/db_tcl.pdb		/bin/debug/
+DTclAPI		build_windows/Debug/libdb_tcl${PRODUCT_MAJMIN}d.pdb		/bin/debug/
 TclAPI		build_windows/Release/libdb_tcl${PRODUCT_MAJMIN}.dll	/bin/	dbt${PRODUCT_MAJMIN}.dll
 
 PerlAPI		perl/BerkeleyDB/blib/			/lib/perl/

@@ -37,7 +37,8 @@
       <p>
             When you use transactional cursors with a concurrent application, remember that 
             in the event of a deadlock you must make sure that you close your cursor before you abort and retry your
-            transaction.
+            transaction. <span>This is true of both
+                    base API and DPL cursors.</span>
          </p>
       <p>
             Also, remember that when you are using the default isolation level, 
@@ -49,7 +50,8 @@
       <p>
                 For this reason, if you must routinely walk your database with a
                 transactional cursor, consider using a reduced isolation level
-                such as read committed.
+                such as read committed. <span>This is
+                        true of both base API and DPL cursors.</span>
           </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -75,7 +77,8 @@
                 cursors configured for uncommitted reads uses uncommitted reads.
             </p>
         <p>
-                Either way, you must first configure your database handle to support
+                    Either way, you must first configure your database
+                    <span>or store</span> handle to support
                 uncommitted reads before you can configure your transactions or
                 your cursors to use them.
             </p>
@@ -135,6 +138,81 @@ try {
         cconfig.setReadUncommitted(true);
         cursor = db.openCursor(txn, cconfig);
 
+        // From here, you perform your cursor reads and writes 
+        // as normal, committing and aborting the transactions as 
+        // is necessary, and testing for deadlock exceptions as 
+        // normal (omitted for brevity). 
+        
+        ... </pre>
+        <p>
+        If you are using the DPL:
+</p>
+        <pre class="programlisting">package persist.txn;
+
+import com.sleepycat.db.CursorConfig;
+import com.sleepycat.db.DatabaseConfig;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+
+import com.sleepycat.persist.EntityCursor;
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.PrimaryIndex;
+import com.sleepycat.persist.StoreConfig;
+
+import java.util.Iterator;
+
+import java.io.File;
+
+...
+
+EntityStore myStore = null;
+Environment myEnv = null;
+PrimaryIndex&lt;String,AnEntityClass&gt; pKey;
+
+try {
+
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setTransactional(true);
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    // Set up the entity store
+    StoreConfig myStoreConfig = new StoreConfig();
+    myStoreConfig.setAllowCreate(true);
+    myStoreConfig.setTransactional(true);
+
+    // Configure uncommitted reads
+    DatabaseConfig dbConfig = new DatabaseConfig();
+    dbConfig.setTransactional(true);
+    dbConfig.setType(DatabaseType.BTREE);
+    dbConfig.setAllowCreate(true);
+    dbConfig.setReadUncommitted(true);      // Enable uncommitted reads.
+
+    // Instantiate the store
+    myStore = new EntityStore(myEnv, storeName, myStoreConfig);
+
+    // Set the DatabaseConfig object, so that the underlying
+    // database is configured for uncommitted reads.
+    myStore.setPrimaryConfig(AnEntityClass.class, myDbConfig);
+
+    // Open the transaction. Note that this is a degree 3
+    // transaction.
+    Transaction txn = myEnv.beginTransaction(null, null);
+
+    //Configure our cursor for uncommitted reads.
+    CursorConfig cconfig = new CursorConfig();
+    cconfig.setReadUncommitted(true);
+
+    // Get our cursor. Note that we pass the transaction 
+    // handle here. Note also that we cause the cursor 
+    // to perform uncommitted reads.
+    EntityCursor&lt;AnEntityClass&gt; cursor = pKey.entities(txn, cconfig);
+
+    try {
         // From here, you perform your cursor reads and writes 
         // as normal, committing and aborting the transactions as 
         // is necessary, and testing for deadlock exceptions as 

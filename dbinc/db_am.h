@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_am.h,v 12.29 2007/06/13 19:06:07 bostic Exp $
+ * $Id: db_am.h,v 12.44 2008/05/07 12:27:33 bschmeck Exp $
  */
 #ifndef _DB_AM_H_
 #define	_DB_AM_H_
@@ -12,13 +12,38 @@
 extern "C" {
 #endif
 
+struct __db_foreign_info; \
+                        typedef struct __db_foreign_info DB_FOREIGN_INFO;
+
+/*
+ * Keep track of information for foreign keys.  Used to maintain a linked list
+ * of 'primary' DBs which reference this 'foreign' DB.
+ */
+struct __db_foreign_info {
+	DB *dbp;
+	u_int32_t flags;
+	int (*callback) __P((DB *, const DBT *, DBT *, const DBT *, int *));
+
+	/*
+	 * List entries for foreign key.
+	 *
+	 * !!!
+	 * Explicit representations of structures from queue.h.
+	 * LIST_ENTRY(__db) s_links;
+	 */
+	struct {
+		struct __db_foreign_info *le_next;
+		struct __db_foreign_info **le_prev;
+	} f_links;
+};
+
 /*
  * IS_ENV_AUTO_COMMIT --
  *	Auto-commit test for enviroment operations: DbEnv::{open,remove,rename}
  */
-#define	IS_ENV_AUTO_COMMIT(dbenv, txn, flags)				\
-	(LF_ISSET(DB_AUTO_COMMIT) ||					\
-	    ((txn) == NULL && F_ISSET((dbenv), DB_ENV_AUTO_COMMIT) &&	\
+#define	IS_ENV_AUTO_COMMIT(env, txn, flags)				\
+	(LF_ISSET(DB_AUTO_COMMIT) || ((txn) == NULL &&			\
+	    F_ISSET((env)->dbenv, DB_ENV_AUTO_COMMIT) &&		\
 	    !LF_ISSET(DB_NO_AUTO_COMMIT)))
 
 /*
@@ -46,18 +71,14 @@ extern "C" {
 /*
  * Standard initialization and shutdown macros for all recovery functions.
  */
-#define	REC_INTRO(func, inc_count, do_cursor) do {			\
+#define	REC_INTRO(func, ip, do_cursor) do {				\
 	argp = NULL;							\
+	dbc = NULL;							\
 	file_dbp = NULL;						\
-	COMPQUIET(dbc, NULL);						\
-	/* mpf isn't used by all of the recovery functions. */		\
-	COMPQUIET(mpf, NULL);						\
-	if ((ret = func(dbenv, dbtp->data, &argp)) != 0)		\
-		goto out;						\
-	if (info != NULL)						\
-		argp->txnp->td = ((DB_TXNHEAD *)info)->td;		\
-	if ((ret = __dbreg_id_to_db(dbenv, argp->txnp,			\
-	    &file_dbp, argp->fileid, inc_count)) != 0) {		\
+	COMPQUIET(mpf, NULL);	/* Not all recovery routines use mpf. */\
+	if ((ret = func(env, &file_dbp,					\
+	    (info != NULL) ? ((DB_TXNHEAD *)info)->td : NULL,		\
+	    dbtp->data, &argp)) != 0) {					\
 		if (ret	== DB_DELETED) {				\
 			ret = 0;					\
 			goto done;					\
@@ -65,7 +86,8 @@ extern "C" {
 		goto out;						\
 	}								\
 	if (do_cursor) {						\
-		if ((ret = __db_cursor(file_dbp, NULL, &dbc, 0)) != 0)	\
+		if ((ret =						\
+		    __db_cursor(file_dbp, ip, NULL, &dbc, 0)) != 0)	\
 			goto out;					\
 		F_SET(dbc, DBC_RECOVER);				\
 	}								\
@@ -75,7 +97,7 @@ extern "C" {
 #define	REC_CLOSE {							\
 	int __t_ret;							\
 	if (argp != NULL)						\
-		__os_free(dbenv, argp);					\
+		__os_free(env, argp);					\
 	if (dbc != NULL &&						\
 	    (__t_ret = __dbc_close(dbc)) != 0 && ret == 0)		\
 		ret = __t_ret;						\
@@ -87,41 +109,30 @@ extern "C" {
  */
 #define	REC_NOOP_INTRO(func) do {					\
 	argp = NULL;							\
-	if ((ret = func(dbenv, dbtp->data, &argp)) != 0)		\
+	if ((ret = func(env, dbtp->data, &argp)) != 0)		\
 		return (ret);						\
 } while (0)
 #define	REC_NOOP_CLOSE							\
 	if (argp != NULL)						\
-		__os_free(dbenv, argp);					\
+		__os_free(env, argp);					\
 	return (ret)
 
 /*
  * Macro for reading pages during recovery.  In most cases we
- * want to avoid an error if the page is not found during rollback
- * or if we are using truncate to remove pages from the file.
+ * want to avoid an error if the page is not found during rollback.
  */
-#ifndef HAVE_FTRUNCATE
-#define	REC_FGET(mpf, pgno, pagep, cont)				\
-	if ((ret = __memp_fget(mpf, &(pgno), NULL, 0, pagep)) != 0) {	\
-		if (ret != DB_PAGE_NOTFOUND || DB_REDO(op)) {		\
-			ret = __db_pgerr(file_dbp, pgno, ret);		\
-			goto out;					\
-		} else							\
-			goto cont;					\
-	}
-#else
-#define	REC_FGET(mpf, pgno, pagep, cont)				\
-	if ((ret = __memp_fget(mpf, &(pgno), NULL, 0, pagep)) != 0) {	\
+#define	REC_FGET(mpf, ip, pgno, pagep, cont)				\
+	if ((ret = __memp_fget(mpf,					\
+	     &(pgno), ip, NULL, 0, pagep)) != 0) { 			\
 		if (ret != DB_PAGE_NOTFOUND) {				\
 			ret = __db_pgerr(file_dbp, pgno, ret);		\
 			goto out;					\
 		} else							\
 			goto cont;					\
 	}
-#endif
-#define	REC_DIRTY(mpf, priority, pagep)					\
+#define	REC_DIRTY(mpf, ip, priority, pagep)				\
 	if ((ret = __memp_dirty(mpf,					\
-	    pagep, NULL, priority, DB_MPOOL_EDIT)) != 0) {		\
+	    pagep, ip, NULL, priority, DB_MPOOL_EDIT)) != 0) {		\
 		ret = __db_pgerr(file_dbp, PGNO(*(pagep)), ret);	\
 		goto out;						\
 	}
@@ -131,7 +142,7 @@ extern "C" {
  */
 #ifdef DEBUG_RECOVER
 #define	REC_PRINT(func)							\
-	(void)func(dbenv, dbtp, lsnp, op, info);
+	(void)func(env, dbtp, lsnp, op, info);
 #else
 #define	REC_PRINT(func)
 #endif
@@ -152,10 +163,10 @@ extern "C" {
  * we don't tie up the internal pages of the tree longer than necessary.
  */
 #define	__LPUT(dbc, lock)						\
-	__ENV_LPUT((dbc)->dbp->dbenv, lock)
+	__ENV_LPUT((dbc)->env, lock)
 
-#define	__ENV_LPUT(dbenv, lock)						\
-	(LOCK_ISSET(lock) ? __lock_put(dbenv, &(lock)) : 0)
+#define	__ENV_LPUT(env, lock)						\
+	(LOCK_ISSET(lock) ? __lock_put(env, &(lock)) : 0)
 
 /*
  * __TLPUT -- transactional lock put
@@ -170,11 +181,6 @@ extern "C" {
 #define	__TLPUT(dbc, lock)						\
 	(LOCK_ISSET(lock) ? __db_lput(dbc, &(lock)) : 0)
 
-typedef struct {
-	DBC *dbc;
-	u_int32_t count;
-} db_trunc_param;
-
 /*
  * A database should be required to be readonly if it's been explicitly
  * specified as such or if we're a client in a replicated environment
@@ -182,7 +188,31 @@ typedef struct {
  */
 #define	DB_IS_READONLY(dbp)						\
     (F_ISSET(dbp, DB_AM_RDONLY) ||					\
-    (IS_REP_CLIENT((dbp)->dbenv) && !F_ISSET((dbp), DB_AM_NOT_DURABLE)))
+    (IS_REP_CLIENT((dbp)->env) && !F_ISSET((dbp), DB_AM_NOT_DURABLE)))
+
+/*
+ * We copy the key out if there's any chance the key in the database is not
+ * the same as the user-specified key.  If there is a custom comparator we
+ * return a key, as the user-specified key might be a partial key, containing
+ * only the unique identifier.  [#13572] [#15770]
+ *
+ * The test for (flags != 0) is necessary for Db.{get,pget}, but it's not
+ * legal to pass a non-zero flags value to Dbc.{get,pget}.
+ *
+ * We need to split out the hash component, since it is possible to build
+ * without hash support enabled. Which would result in a null pointer access.
+ */
+#ifdef HAVE_HASH
+#define DB_RETURNS_A_KEY_HASH(dbp)					\
+	((HASH *)(dbp)->h_internal)->h_compare != NULL
+#else
+#define DB_RETURNS_A_KEY_HASH(dbp)	0
+#endif
+#define	DB_RETURNS_A_KEY(dbp, flags)					\
+	(((flags) != 0 && (flags) != DB_GET_BOTH &&			\
+	    (flags) != DB_GET_BOTH_RANGE && (flags) != DB_SET) ||	\
+	    ((BTREE *)(dbp)->bt_internal)->bt_compare != __bam_defcmp ||\
+	    DB_RETURNS_A_KEY_HASH(dbp))
 
 /*
  * For portability, primary keys that are record numbers are stored in
@@ -204,10 +234,10 @@ typedef struct {
 
 /*
  * Cursor adjustment:
- *	Return the first DB handle in the sorted DB_ENV list of DB
+ *	Return the first DB handle in the sorted ENV list of DB
  *	handles that has a matching file ID.
  */
-#define	FIND_FIRST_DB_MATCH(dbenv, dbp, tdbp) do {			\
+#define	FIND_FIRST_DB_MATCH(env, dbp, tdbp) do {			\
 	for ((tdbp) = (dbp);						\
 	    TAILQ_PREV((tdbp), __dblist, dblistlinks) != NULL &&	\
 	    TAILQ_PREV((tdbp),						\
@@ -231,6 +261,19 @@ typedef struct {
 	base = (index) + (adjust);					\
 	--(limit);							\
 } while (0)
+
+/*
+ * Sequence macros, shared between sequence.c and seq_stat.c
+ */
+#define	SEQ_IS_OPEN(seq)	((seq)->seq_key.data != NULL)
+
+#define	SEQ_ILLEGAL_AFTER_OPEN(seq, name)				\
+	if (SEQ_IS_OPEN(seq))						\
+		return (__db_mi_open((seq)->seq_dbp->env, name, 1));
+
+#define	SEQ_ILLEGAL_BEFORE_OPEN(seq, name)				\
+	if (!SEQ_IS_OPEN(seq))						\
+		return (__db_mi_open((seq)->seq_dbp->env, name, 0));
 
 /*
  * Flags to __db_chk_meta.

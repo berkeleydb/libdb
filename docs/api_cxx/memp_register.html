@@ -1,5 +1,5 @@
 <!--$Id: memp_register.so,v 10.38 2004/08/13 03:38:58 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::memp_register</h3>
+<b>DbEnv::memp_register</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 extern "C" {
@@ -30,9 +30,9 @@ extern "C" {
 int
 DbEnv::memp_register(int ftype,
     pgin_fcn_type pgin_fcn, pgout_fcn_type pgout_fcn);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::memp_register</h3>
+<b>Description: DbEnv::memp_register</b>
 <p>The DbEnv::memp_register method registers page-in and page-out
 functions for files of type <b>ftype</b> in the specified pool.</p>
 <p>If the <b>pgin_fcn</b> function is non-NULL, it is called each time
@@ -63,24 +63,33 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>ftype</b><dd>The <b>ftype</b> parameter specifies the type of file for which the
+<b>Parameters</b> <br>
+ <b>ftype</b><ul compact><li>The <b>ftype</b> parameter specifies the type of file for which the
 page-in and page-out functions will be called.
 <p>The <b>ftype</b> value for a file must be a non-zero positive number
 less than 128 (0 and negative numbers are reserved for internal use by
-the Berkeley DB library).</p>
-<dt><b>pgin_fcn<dd>pgout_fcn</b>
-</dl>
+the Berkeley DB library).</p></ul>
+ <b>pgin_fcn, pgout_fcn</b><ul compact><li>The page-in and page-out functions.
+<p>The <b>pgin_fcn</b> and <b>pgout_fcn</b> functions are called with a
+reference to the current database environment, the page number being
+read or written, a pointer to the page being read or written, and any
+parameter <b>pgcookie</b> that was specified to the
+<a href="../api_cxx/memp_set_pgcookie.html">DbMpoolFile::set_pgcookie</a> method.</p>
+<p>The <b>pgin_fcn</b> and <b>pgout_fcn</b> functions should return 0 on
+success, and a non-zero value on failure, in which case the shared Berkeley DB
+library function calling it will also fail, returning that non-zero
+value.  The non-zero value should be selected from values outside of the
+Berkeley DB library namespace.</p></ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

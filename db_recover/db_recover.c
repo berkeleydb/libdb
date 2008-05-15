@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_recover.c,v 12.14 2007/05/17 15:15:03 bostic Exp $
+ * $Id: db_recover.c,v 12.16 2008/01/08 20:58:16 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,14 +12,14 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
-void feedback __P((DB_ENV *, int, int));
-int main __P((int, char *[]));
-int read_timestamp __P((char *, time_t *));
-int usage __P((void));
-int version_check __P((void));
+void db_recover_feedback __P((DB_ENV *, int, int));
+int  main __P((int, char *[]));
+int  read_timestamp __P((char *, time_t *));
+int  usage __P((void));
+int  version_check __P((void));
 
 const char *progname;
 int newline_needed;
@@ -106,7 +106,7 @@ main(argc, argv)
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, progname);
 	if (set_feedback)
-		(void)dbenv->set_feedback(dbenv, feedback);
+		(void)dbenv->set_feedback(dbenv, db_recover_feedback);
 	if (verbose)
 		(void)dbenv->set_verbose(dbenv, DB_VERB_RECOVERY, 1);
 	if (timestamp &&
@@ -167,11 +167,11 @@ shutdown:	exitval = 1;
 }
 
 /*
- * feedback --
- *	provide feedback on recovery progress.
+ * db_recover_feedback --
+ *	Provide feedback on recovery progress.
  */
 void
-feedback(dbenv, opcode, percent)
+db_recover_feedback(dbenv, opcode, percent)
 	DB_ENV *dbenv;
 	int opcode;
 	int percent;

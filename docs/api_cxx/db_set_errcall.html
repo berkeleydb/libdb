@@ -1,6 +1,6 @@
 <!--$Id: db_set_errcall.so,v 10.10 2002/08/18 21:15:54 bostic Exp $-->
 <!--$Id: env_set_errcall.so,v 10.39 2006/05/17 20:47:46 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db::set_errcall</h3>
+<b>Db::set_errcall</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,14 +19,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 void Db::set_errcall(void (*db_errcall_fcn)
     (const DbEnv *dbenv, const char *errpfx, const char *msg));
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db::set_errcall</h3>
+<b>Description: Db::set_errcall</b>
 When an error occurs in the Berkeley DB library, an exception is thrown or an
 error return value is returned by the interface.  In some cases,
 however, the <b>errno</b> value may be insufficient to completely
@@ -55,30 +55,29 @@ the <a href="../api_cxx/env_set_errcall.html">DbEnv::set_errcall</a> method.</p>
 database.</p>
 <p>The Db::set_errcall method may be called at any time during the life of the
 application.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>db_errcall_fcn</b><dd>The <b>db_errcall_fcn</b> parameter is the application-specified error
+<b>Parameters</b> <br>
+ <b>db_errcall_fcn</b><ul compact><li>The <b>db_errcall_fcn</b> parameter is the application-specified error
 reporting function.  The function takes three parameters:
-<dl compact>
-<dt><b>dbenv</b><dd>The <b>dbenv</b> parameter is the enclosing database environment.
-<dt><b>errpfx</b><dd>The <b>errpfx</b> parameter is the prefix string (as previously set by
-<a href="../api_cxx/db_set_errpfx.html">Db::set_errpfx</a> or <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>).
-<dt><b>msg</b><dd>The <b>msg</b> parameter is the error message string.
-</dl>
+<br>
+<b><b>dbenv</b></b><ul compact><li>The <b>dbenv</b> parameter is the enclosing database environment.</ul>
+<b><b>errpfx</b></b><ul compact><li>The <b>errpfx</b> parameter is the prefix string (as previously set by
+<a href="../api_cxx/db_set_errpfx.html">Db::set_errpfx</a> or <a href="../api_cxx/env_set_errpfx.html">DbEnv::set_errpfx</a>).</ul>
+<b><b>msg</b></b><ul compact><li>The <b>msg</b> parameter is the error message string.</ul>
+<br>
 <p>Berkeley DB is not re-entrant.  Callback functions should not attempt to make
 library calls (for example, to release locks or close open handles).
 Re-entering Berkeley DB is not guaranteed to work correctly, and the results
-are undefined.</p>
-</dl>
+are undefined.</p></ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/db_class.html">Db</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

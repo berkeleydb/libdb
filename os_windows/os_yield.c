@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_yield.c,v 12.9 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_yield.c,v 12.13 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,15 +12,24 @@
 
 /*
  * __os_yield --
- *	Yield the processor.
+ *	Yield the processor, optionally pausing until running again.
  */
 void
-__os_yield(dbenv)
-	DB_ENV *dbenv;
+__os_yield(env, secs, usecs)
+	ENV *env;
+	u_long secs, usecs;		/* Seconds and microseconds. */
 {
+	COMPQUIET(env, NULL);
+
+	/* Don't require the values be normalized. */
+	for (; usecs >= US_PER_SEC; usecs -= US_PER_SEC)
+		++secs;
+
 	/*
-	 * The call to Sleep(0) is specified by MSDN to yield the current
-	 * thread's time slice to another thread of equal or greater priority.
+	 * Yield the processor so other processes or threads can run.
+	 *
+	 * Sheer raving paranoia -- don't sleep for 0 time, in case some
+	 * implementation doesn't yield the processor in that case.
 	 */
-	Sleep(0);
+	Sleep(secs * MS_PER_SEC + (usecs / US_PER_MS) + 1);
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc004.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: rpc004.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rpc004
 # TEST	Test RPC server and security
@@ -16,6 +16,7 @@ proc rpc004 { } {
 	source ./include.tcl
 
 	puts "Rpc004: RPC server + security"
+	puts "Rpc004: Using $rpc_svc"
 	# Skip test if release does not support encryption.
 	if { $has_crypto == 0 } {
 		puts "Skipping test rpc004 for non-crypto release."

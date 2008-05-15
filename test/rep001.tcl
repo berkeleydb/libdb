@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep001.tcl,v 12.17 2007/06/19 02:50:40 mjc Exp $
+# $Id: rep001.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep001
 # TEST	Replication rename and forced-upgrade test.
@@ -85,10 +85,11 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 	global testdir
 	global encrypt
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

@@ -1,12 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: SecondaryDeadlockTest.java,v 12.7 2007/05/04 00:28:29 mark Exp $
+ * $Id: SecondaryDeadlockTest.java,v 12.9 2008/02/07 17:12:31 mark Exp $
  */
 
 package com.sleepycat.collections.test;
+
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DeadlockException;
@@ -16,9 +20,7 @@ import com.sleepycat.collections.StoredSortedMap;
 import com.sleepycat.collections.TransactionRunner;
 import com.sleepycat.collections.TransactionWorker;
 import com.sleepycat.util.ExceptionUnwrapper;
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import com.sleepycat.util.test.TestEnv;
 
 /**
  * Tests whether secondary access can cause a self-deadlock when reading via a

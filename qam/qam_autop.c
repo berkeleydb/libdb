@@ -13,12 +13,12 @@
 #include "dbinc/txn.h"
 
 /*
- * PUBLIC: int __qam_incfirst_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __qam_incfirst_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__qam_incfirst_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__qam_incfirst_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -30,7 +30,8 @@ __qam_incfirst_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __qam_incfirst_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __qam_incfirst_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__qam_incfirst%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -43,17 +44,17 @@ __qam_incfirst_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\trecno: %lu\n", (u_long)argp->recno);
 	(void)printf("\tmeta_pgno: %lu\n", (u_long)argp->meta_pgno);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __qam_mvptr_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __qam_mvptr_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__qam_mvptr_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__qam_mvptr_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -65,7 +66,8 @@ __qam_mvptr_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __qam_mvptr_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __qam_mvptr_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__qam_mvptr%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -84,17 +86,17 @@ __qam_mvptr_print(dbenv, dbtp, lsnp, notused2, notused3)
 	    (u_long)argp->metalsn.file, (u_long)argp->metalsn.offset);
 	(void)printf("\tmeta_pgno: %lu\n", (u_long)argp->meta_pgno);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __qam_del_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __qam_del_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__qam_del_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__qam_del_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -106,7 +108,8 @@ __qam_del_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __qam_del_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __qam_del_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__qam_del%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -122,17 +125,17 @@ __qam_del_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tindx: %lu\n", (u_long)argp->indx);
 	(void)printf("\trecno: %lu\n", (u_long)argp->recno);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __qam_add_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __qam_add_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__qam_add_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__qam_add_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -146,7 +149,8 @@ __qam_add_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __qam_add_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __qam_add_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__qam_add%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -175,17 +179,17 @@ __qam_add_print(dbenv, dbtp, lsnp, notused2, notused3)
 	}
 	(void)printf("\n");
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __qam_delext_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __qam_delext_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__qam_delext_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__qam_delext_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -199,7 +203,8 @@ __qam_delext_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __qam_delext_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret =
+	    __qam_delext_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__qam_delext%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -221,35 +226,33 @@ __qam_delext_print(dbenv, dbtp, lsnp, notused2, notused3)
 	}
 	(void)printf("\n");
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __qam_init_print __P((DB_ENV *, int (***)(DB_ENV *,
- * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
+ * PUBLIC: int __qam_init_print __P((ENV *, DB_DISTAB *));
  */
 int
-__qam_init_print(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__qam_init_print(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
 	int ret;
 
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __qam_incfirst_print, DB___qam_incfirst)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __qam_mvptr_print, DB___qam_mvptr)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __qam_del_print, DB___qam_del)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __qam_add_print, DB___qam_add)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __qam_delext_print, DB___qam_delext)) != 0)
 		return (ret);
 	return (0);

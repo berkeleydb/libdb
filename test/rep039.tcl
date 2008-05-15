@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep039.tcl,v 1.24 2007/05/24 20:06:39 alanb Exp $
+# $Id: rep039.tcl,v 1.31 2008/04/10 17:19:47 carol Exp $
 #
 # TEST	rep039
 # TEST	Test of interrupted internal initialization changes.  The
@@ -61,24 +61,46 @@ proc rep039 { method { niter 200 } { tnum "039" } args } {
 	# and with and without cleaning.
 	set cleanopts { noclean clean }
 	set archopts { archive noarchive }
-	set nummsgs 5
-	set announce {puts "Rep$tnum ($method $r $clean $a $crash $args):\
-            Test of internal init. $i message iters."}
+	set nummsgs 4
+	set announce {puts "Rep$tnum ($method $r $clean $a $crash $l $args):\
+            Test of internal init. $i message iters. \
+	    Test $cnt of $maxtest tests $with recovery."}
 	foreach r $test_recopts {
-		if { $r == "-recover" && ! $is_windows_test } {
+		if { $r == "-recover" && ! $is_windows_test && ! $is_hp_test } {
 			set crashopts { master_change client_crash both }
 		} else {
 			set crashopts { master_change }
 		}
+		# Only one of the three sites in the replication group needs to
+		# be tested with in-memory logs: the "client under test".
+		#
+		if { $r == "-recover" } {
+			set cl_logopts { on-disk }
+			set with "with"
+		} else {
+			set cl_logopts { on-disk in-memory }
+			set with "without"
+		}
+		set maxtest [expr [llength $crashopts] * \
+		    [llength $cleanopts] * \
+		    [llength $archopts] * \
+		    [llength $cl_logopts] * \
+		    [expr $nummsgs]]
+		set cnt 1
 		foreach crash $crashopts {
 			foreach clean $cleanopts {
 				foreach a $archopts {
-					for { set i 1 } \
-					    { $i < $nummsgs } { incr i } {
-						eval $announce
-						rep039_sub $method $niter \
-						    $tnum $r $clean $a $crash \
-						    $i $args
+					foreach l $cl_logopts {
+						for { set i 1 } \
+						    { $i <= $nummsgs } \
+						    { incr i } {
+							eval $announce
+							rep039_sub $method \
+							    $niter $tnum $r \
+							    $clean $a $crash \
+							    $l $i $args
+							incr cnt
+						}
 					}
 				}
 			}
@@ -86,14 +108,16 @@ proc rep039 { method { niter 200 } { tnum "039" } args } {
 	}
 }
 
-proc rep039_sub { method niter tnum recargs clean archive crash pmsgs largs } {
+proc rep039_sub \
+    { method niter tnum recargs clean archive crash cl_logopt pmsgs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set master_change false
@@ -159,8 +183,14 @@ proc rep039_sub { method niter tnum recargs clean archive crash pmsgs largs } {
 
 	# Open a client
 	repladd 2
-	set env_B_cmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_B \
+	set txn_arg [adjust_txnargs $cl_logopt]
+	set log_arg [adjust_logargs $cl_logopt]
+        if { $cl_logopt == "on-disk" } {
+		# Override in this case, because we want to specify log_buffer.
+		set log_arg "-log_buffer $log_buf"
+	}
+	set env_B_cmd "berkdb_env_noerr -create $txn_arg $verbargs \
+	    $log_arg -log_max $log_max -errpfx SITE_B \
 	    -home $dirs(B) -rep_transport \[list 2 replsend\]"
 	set envs(B) [eval $env_B_cmd $recargs -rep_client]
 
@@ -310,7 +340,9 @@ proc rep039_sub { method niter tnum recargs clean archive crash pmsgs largs } {
 
 	# Simulate a client crash: simply abandon the handle without closing it.
 	# Note that this doesn't work on Windows, because there you can't remove
-	# a file if anyone (including yourself) has it open.
+	# a file if anyone (including yourself) has it open.  This also does not
+	# work on HP-UX, because there you are not allowed to open a second 
+	# handle on an env. 
 	#
 	# Note that crashing only makes sense with "-recover".
 	#

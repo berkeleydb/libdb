@@ -1,0 +1,34 @@
+<!--$Id: log.so,v 1.3 2008/03/12 18:08:22 sarette Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Release 4.7: Log configuration</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></b></td>
+<td align=right><a href="../upgrade.4.7/interdir.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.7/disk.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Release 4.7: Log configuration</b></p>
+<p>In the Berkeley DB 4.7 release, the logging subsystem is configured using the
+<a href="../../api_c/env_log_set_config.html">DB_ENV-&gt;log_set_config</a> method instead of the previously used
+<a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method.</p>
+<p>The <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method no longer accepts the flags DB_DIRECT_LOG,
+DB_DSYNC_LOG, DB_LOG_INMEMORY or DB_LOG_AUTOREMOVE.  Applications should
+be modified to use the equivalent flags accepted by the
+<a href="../../api_c/env_log_set_config.html">DB_ENV-&gt;log_set_config</a> method.</p>
+<table border=1 align=center>
+<tr><th>Previous <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> flag</th><th>Replacement <a href="../../api_c/env_log_set_config.html">DB_ENV-&gt;log_set_config</a> flag</th></tr>
+<tr><td>DB_DIRECT_LOG</td><td>DB_LOG_DIRECT</td></tr>
+<tr><td>DB_DSYNC_LOG</td><td>DB_LOG_DSYNC</td></tr>
+<tr><td>DB_LOG_INMEMORY</td><td>DB_LOG_IN_MEMORY</td></tr>
+<tr><td>DB_LOG_AUTOREMOVE</td><td>DB_LOG_AUTO_REMOVE</td></tr>
+</table>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.4.7/interdir.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.7/disk.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

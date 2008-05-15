@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: README,v 1.20 2007/05/17 15:15:13 bostic Exp $
+ * $Id: README,v 1.22 2008/01/08 20:58:23 bostic Exp $
  */
 
 The "comma-separated value" (csv) directory is a suite of three programs:
@@ -45,7 +45,7 @@ Second, there's a "description" of that csv file in sample.desc:
 		BirthDate
 		Color		string index
 		Fruit		string index
-		Age		ulong index
+		Age		unsigned_long index
 	}
 
 The DESCRIPTION file maps one-to-one to the fields in the csv file, and

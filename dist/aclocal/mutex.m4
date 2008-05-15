@@ -1,4 +1,4 @@
-# $Id: mutex.m4,v 12.26 2007/05/18 15:08:50 bostic Exp $
+# $Id: mutex.m4,v 12.27 2007/08/20 18:45:39 bostic Exp $
 
 # POSIX pthreads tests: inter-process safe and intra-process only.
 AC_DEFUN(AM_PTHREADS_SHARED, [
@@ -521,16 +521,6 @@ AC_TRY_LINK([
 fi
 ])
 
-# Mutexes may not have been found, or may have been disabled.
-case "$db_cv_mutex" in
-disabled)		;;
-no)
-			AC_MSG_ERROR([Unable to find a mutex implementation]);;
-*)			AC_DEFINE(HAVE_MUTEX_SUPPORT)
-			AH_TEMPLATE(HAVE_MUTEX_SUPPORT,
-			    [Define to 1 if the Berkeley DB library should support mutexes.])
-esac
-
 # Configure a pthreads-style mutex implementation.
 hybrid=pthread
 case "$db_cv_mutex" in
@@ -683,6 +673,23 @@ win32)			ADDITIONAL_OBJS="mut_win32${o} $ADDITIONAL_OBJS"
 win32/gcc)		ADDITIONAL_OBJS="mut_win32${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_WIN32_GCC)
 			AH_TEMPLATE(HAVE_MUTEX_WIN32_GCC, [Define to 1 to use the GCC compiler and Windows mutexes.]);;
+esac
+
+# Mutexes may not have been found, or may have been disabled.
+case "$db_cv_mutex" in
+disabled)
+	;;
+*)
+	# Test to see if mutexes have been found by checking the list of
+	# additional objects for a mutex implementation.
+	case "$ADDITIONAL_OBJS" in
+	*mut_fcntl*|*mut_pthread*|*mut_tas*|*mut_win32*)
+		AC_DEFINE(HAVE_MUTEX_SUPPORT)
+		AH_TEMPLATE(HAVE_MUTEX_SUPPORT,
+	    [Define to 1 if the Berkeley DB library should support mutexes.]);;
+	*)
+		AC_MSG_ERROR([Unable to find a mutex implementation]);;
+	esac
 esac
 
 # We may have found both a pthreads-style mutex implementation as well as a

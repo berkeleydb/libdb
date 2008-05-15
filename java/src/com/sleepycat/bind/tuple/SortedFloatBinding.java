@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: SortedFloatBinding.java,v 12.4 2007/05/04 00:28:25 mark Exp $
+ * $Id: SortedFloatBinding.java,v 12.6 2008/02/07 17:12:25 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -22,7 +22,7 @@ import com.sleepycat.db.DatabaseEntry;
  * <ul>
  * <li>The byte array (stored) formats used by {@link FloatBinding} and
  * {@link SortedFloatBinding} are different and incompatible.  They are not
- * interchangable once data has been stored.</li>
+ * interchangeable once data has been stored.</li>
  * <li>An instance of {@link FloatBinding}, not {@link SortedFloatBinding}, is
  * returned by {@link TupleBinding#getPrimitiveBinding} method.  Therefore, to
  * use {@link SortedFloatBinding}, {@link TupleBinding#getPrimitiveBinding}

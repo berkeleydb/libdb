@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_net.c,v 12.17 2007/05/17 17:29:27 bostic Exp $
+ * $Id: rep_net.c,v 12.20 2008/02/27 22:04:15 alanb Exp $
  */
 
 #include <sys/types.h>
@@ -368,14 +368,15 @@ listen_socket_accept(machtab, progname, s, eidp)
 	int *eidp;
 {
 	struct sockaddr_in si;
-	int si_len;
+	socklen_t si_len;
 	int host, ret;
 	socket_t ns;
 	u_int16_t port;
 
 	COMPQUIET(progname, NULL);
 
-wait:	memset(&si, 0, sizeof(si));
+accept_wait:
+	memset(&si, 0, sizeof(si));
 	si_len = sizeof(si);
 	ns = accept(s, (struct sockaddr *)&si, &si_len);
 	if (ns == SOCKET_CREATION_FAILURE) {
@@ -396,7 +397,7 @@ wait:	memset(&si, 0, sizeof(si));
 	ret = machtab_add(machtab, ns, host, port, eidp);
 	if (ret == EEXIST) {
 		closesocket(ns);
-		goto wait;
+		goto accept_wait;
 	} else if (ret != 0)
 		goto err;
 	printf("Connected to host %x port %d, eid = %d\n", host, port, *eidp);

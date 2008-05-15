@@ -1,4 +1,4 @@
-m4_comment([$Id: naming.so,v 10.50 2004/08/13 03:39:00 bostic Exp $])
+m4_comment([$Id: naming.so,v 10.51 2007/09/26 15:11:31 bostic Exp $])
 
 define(M4PAGELOCAL, [DB_HOME, db_home])
 
@@ -92,9 +92,9 @@ leading slash or backslash (for example, m4_path(C:/tmp)).])])
 m4_tag([m4_ref(DbEnv) methods, DB_CONFIG], [dnl
 If a relevant configuration string (for example, set_data_dir), is
 specified either by calling a m4_ref(DbEnv) method or as a line in the
-DB_CONFIG configuration file, the value is prepended to the filename.
-If the resulting filename is an absolute pathname, the filename is used
-without further modification by m4_db.])
+m4_ref(DB_CONFIG) configuration file, the value is prepended to the
+filename.  If the resulting filename is an absolute pathname, the
+filename is used without further modification by m4_db.])
 
 m4_tag(db_home, [dnl
 If the application specified a non-NULL m4_arg(db_home) argument to

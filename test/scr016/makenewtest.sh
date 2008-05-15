@@ -42,7 +42,7 @@ namelower=`echo $1 | tr -t [:upper:] [:lower:]`
 echo "/*-" >> $outname
 echo " * See the file LICENSE for redistribution information." >> $outname
 echo " * " >> $outname
-echo " * Copyright (c) 2002,2007 Oracle.  All rights reserved." >> $outname
+echo " * Copyright (c) 2002,2008 Oracle.  All rights reserved." >> $outname
 echo " *" >> $outname
 echo " */" >> $outname
 echo "" >> $outname

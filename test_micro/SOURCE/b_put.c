@@ -1,32 +1,37 @@
 /*
- * $Id: b_put.c,v 1.11 2007/05/29 17:39:15 bostic Exp $
+ * $Id: b_put.c,v 1.15 2008/01/31 17:01:22 bostic Exp $
  */
 #include "bench.h"
 
-int usage(void);
-int s(DB *, const DBT *, const DBT *, DBT *);
+static int usage(void);
+static int b_put_secondary(DB *, const DBT *, const DBT *, DBT *);
 
 int
-main(int argc, char *argv[])
+b_put(int argc, char *argv[])
 {
-	DB_ENV *dbenv = NULL;
+	extern char *optarg;
+	extern int optind;
+	DB_ENV *dbenv;
 	DB *dbp, **second;
 	DBTYPE type;
 	DBT key, data;
 	db_recno_t recno;
-	size_t dsize;
-	int ch, i, count, secondaries;
+	u_int32_t cachesize;
+	int ch, dsize, i, count, secondaries;
 	char *ts, buf[64];
 
-	cleanup_test_dir();
-
-	count = 100000;
-	ts = "Btree";
+	second = NULL;
 	type = DB_BTREE;
+	cachesize = MEGABYTE;
 	dsize = 20;
+	count = 100000;
 	secondaries = 0;
-	while ((ch = getopt(argc, argv, "c:d:s:t:")) != EOF)
+	ts = "Btree";
+	while ((ch = getopt(argc, argv, "C:c:d:s:t:")) != EOF)
 		switch (ch) {
+		case 'C':
+			cachesize = (u_int32_t)atoi(optarg);
+			break;
 		case 'c':
 			count = atoi(optarg);
 			break;
@@ -43,10 +48,14 @@ main(int argc, char *argv[])
 				type = DB_BTREE;
 				break;
 			case 'H': case 'h':
+				if (b_util_have_hash())
+					return (0);
 				ts = "Hash";
 				type = DB_HASH;
 				break;
 			case 'Q': case 'q':
+				if (b_util_have_queue())
+					return (0);
 				ts = "Queue";
 				type = DB_QUEUE;
 				break;
@@ -78,13 +87,12 @@ main(int argc, char *argv[])
 	/* Create the environment. */
 	DB_BENCH_ASSERT(db_env_create(&dbenv, 0) == 0);
 	dbenv->set_errfile(dbenv, stderr);
-	DB_BENCH_ASSERT(
-	    dbenv->set_cachesize(dbenv, 0, 1048576 /* 1MB */, 0) == 0);
+	DB_BENCH_ASSERT(dbenv->set_cachesize(dbenv, 0, cachesize, 0) == 0);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 1
-	DB_BENCH_ASSERT(dbenv->open(dbenv, "TESTDIR",
+	DB_BENCH_ASSERT(dbenv->open(dbenv, TESTDIR,
 	    NULL, DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE, 0666) == 0);
 #else
-	DB_BENCH_ASSERT(dbenv->open(dbenv, "TESTDIR",
+	DB_BENCH_ASSERT(dbenv->open(dbenv, TESTDIR,
 	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE, 0666) == 0);
 #endif
 
@@ -94,18 +102,19 @@ main(int argc, char *argv[])
 	 */
 	DB_BENCH_ASSERT(db_create(&dbp, dbenv, 0) == 0);
 	if (type == DB_QUEUE)
-		DB_BENCH_ASSERT(dbp->set_re_len(dbp, dsize) == 0);
+		DB_BENCH_ASSERT(dbp->set_re_len(dbp, (u_int32_t)dsize) == 0);
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 	DB_BENCH_ASSERT(
-	    dbp->open(dbp, NULL, "a", NULL, type, DB_CREATE, 0666) == 0);
+	    dbp->open(dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #else
-	DB_BENCH_ASSERT(dbp->open(dbp, "a", NULL, type, DB_CREATE, 0666) == 0);
+	DB_BENCH_ASSERT(
+	    dbp->open(dbp, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #endif
 
 	/* Optionally create the secondaries. */
 	if (secondaries != 0) {
-		DB_BENCH_ASSERT(
-		    (second = calloc(sizeof(DB *), secondaries)) != NULL);
+		DB_BENCH_ASSERT((second =
+		    calloc(sizeof(DB *), (size_t)secondaries)) != NULL);
 		for (i = 0; i < secondaries; ++i) {
 			DB_BENCH_ASSERT(db_create(&second[i], dbenv, 0) == 0);
 			snprintf(buf, sizeof(buf), "%d.db", i);
@@ -122,11 +131,11 @@ main(int argc, char *argv[])
 			 * The DB_TXN argument to Db.associate was added in
 			 * 4.1.25.
 			 */
-			DB_BENCH_ASSERT(
-			    dbp->associate(dbp, NULL, second[i], s, 0) == 0);
+			DB_BENCH_ASSERT(dbp->associate(
+			    dbp, NULL, second[i], b_put_secondary, 0) == 0);
 #else
-			DB_BENCH_ASSERT(
-			    dbp->associate(dbp, second[i], s, 0) == 0);
+			DB_BENCH_ASSERT(dbp->associate(
+			    dbp, second[i], b_put_secondary, 0) == 0);
 #endif
 #endif
 		}
@@ -139,7 +148,7 @@ main(int argc, char *argv[])
 	case DB_BTREE:
 	case DB_HASH:
 		key.data = "01234567890123456789";
-		key.size = 10;
+		key.size = 20;
 		break;
 	case DB_QUEUE:
 	case DB_RECNO:
@@ -148,11 +157,12 @@ main(int argc, char *argv[])
 		key.size = sizeof(recno);
 		break;
 	case DB_UNKNOWN:
-		abort();
+		b_util_abort();
 		break;
 	}
 
-	DB_BENCH_ASSERT((data.data = malloc(data.size = dsize)) != NULL);
+	DB_BENCH_ASSERT(
+	    (data.data = malloc(data.size = (size_t)dsize)) != NULL);
 
 	/* Store the key/data pair count times. */
 	TIMER_START;
@@ -172,24 +182,36 @@ main(int argc, char *argv[])
 	printf("\n");
 	TIMER_DISPLAY(count);
 
+	if (second != NULL) {
+		for (i = 0; i < secondaries; ++i)
+			DB_BENCH_ASSERT(second[i]->close(second[i], 0) == 0);
+		free(second);
+	}
+
+	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
+	DB_BENCH_ASSERT(dbenv->close(dbenv, 0) == 0);
+
 	return (0);
 }
 
-int
-s(dbp, pkey, pdata, skey)
+static int
+b_put_secondary(dbp, pkey, pdata, skey)
 	DB *dbp;
 	const DBT *pkey, *pdata;
 	DBT *skey;
 {
 	skey->data = pkey->data;
 	skey->size = pkey->size;
+
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(pdata, NULL);
 	return (0);
 }
 
-int
+static int
 usage()
 {
-	(void)fprintf(stderr,
-	    "usage: b_put [-c count] [-d bytes] [-s secondaries] [-t type]\n");
+	(void)fprintf(stderr, "usage: b_put %s\n",
+	    "[-C cachesz] [-c count] [-d bytes] [-s secondaries] [-t type]");
 	return (EXIT_FAILURE);
 }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_seek.c,v 1.4 2007/05/17 15:15:47 bostic Exp $
+ * $Id: os_seek.c,v 1.7 2008/01/08 20:58:44 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Seek to a page/byte offset in the file.
  */
 int
-__os_seek(dbenv, fhp, pgno, pgsize, relative)
-	DB_ENV *dbenv;
+__os_seek(env, fhp, pgno, pgsize, relative)
+	ENV *env;
 	DB_FH *fhp;
 	db_pgno_t pgno;
 	u_int32_t pgsize;
@@ -24,6 +24,10 @@ __os_seek(dbenv, fhp, pgno, pgsize, relative)
 {
 	off_t offset;
 	int ret;
+
+#if defined(HAVE_STATISTICS)
+	++fhp->seek_count;
+#endif
 
 	offset = (off_t)pgsize * pgno + relative;
 
@@ -39,7 +43,7 @@ __os_seek(dbenv, fhp, pgno, pgsize, relative)
 		fhp->offset = relative;
 		ret = 0;
 	} else {
-		__db_syserr(dbenv, ret,
+		__db_syserr(env, ret,
 		    "seek: %lu: (%lu * %lu) + %lu", (u_long)offset,
 		    (u_long)pgno, (u_long)pgsize, (u_long)relative);
 		ret = __os_posix_err(ret);

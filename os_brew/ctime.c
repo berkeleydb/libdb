@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: ctime.c,v 1.6 2007/05/17 15:15:46 bostic Exp $
+ * $Id: ctime.c,v 1.8 2008/01/08 20:58:44 bostic Exp $
  */
 
 #include "db_config.h"
@@ -13,11 +13,11 @@
 static void  __os_brew_ct_numb __P((char *, int));
 
 /*
- * __db_ctime --
+ * __os_ctime --
  *	Format a time-stamp.
  */
 char *
-__db_ctime(tod, time_buf)
+__os_ctime(tod, time_buf)
 	const time_t *tod;
 	char *time_buf;
 {
@@ -66,8 +66,8 @@ __db_ctime(tod, time_buf)
 }
 
 /*
- * ct_numb --
- *	Used by asctime.
+ * __os_brew_ct_numb --
+ *	Append ASCII representations for two digits to a string.
  */
 static void
 __os_brew_ct_numb(cp, n)

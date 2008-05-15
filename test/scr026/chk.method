@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.method,v 12.6 2007/06/15 18:45:42 bostic Exp $
+# $Id: chk.method,v 12.7 2008/05/07 12:47:43 bschmeck Exp $
 #
 # Check that DB doesn't call DB or DB_ENV methods internally.
 
@@ -74,6 +74,7 @@ sed \
     -e '/^php_db4\//d' \
     -e '/^tcl\//d' \
     -e '/^test\//d' \
+    -e '/^test_erlang\//d' \
     -e '/^test_perf\//d' \
     -e '/^test_purify\//d' \
     -e '/^test_rep\//d' \
@@ -92,7 +93,7 @@ sed \
     -e '/dbenv->thread_id(/d' \
     -e '/dbenv->thread_id_string(/d' \
     -e '/rep_util.c:.*ret = dbenv->rep_send(/d' \
-    -e '/test_mutex.c:/d' \
+    -e '/test_mutex.c:/d'
 >$t
 
 test -s $t && {

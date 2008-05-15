@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  */
 
 #include "gettingstarted_common.h"
@@ -35,9 +35,9 @@ get_item_name(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
 
     /* Check to make sure there's data */
     if (pdata->size < offset)
-        return (-1); /* Returning non-zero means that the
-                      * secondary record is not created/updated.
-                      */
+	return (-1); /* Returning non-zero means that the
+		      * secondary record is not created/updated.
+		      */
 
     /* Now set the secondary key's data to be the item name */
     memset(skey, 0, sizeof(DBT));
@@ -60,9 +60,9 @@ open_database(DB **dbpp, const char *file_name,
     /* Initialize the DB handle */
     ret = db_create(&dbp, NULL, 0);
     if (ret != 0) {
-        fprintf(error_file_pointer, "%s: %s\n", program_name,
-                db_strerror(ret));
-        return (ret);
+	fprintf(error_file_pointer, "%s: %s\n", program_name,
+		db_strerror(ret));
+	return (ret);
     }
     /* Point to the memory malloc'd by db_create() */
     *dbpp = dbp;
@@ -76,12 +76,12 @@ open_database(DB **dbpp, const char *file_name,
      * sorted duplicates.
      */
     if (is_secondary) {
-        ret = dbp->set_flags(dbp, DB_DUPSORT);
-        if (ret != 0) {
-            dbp->err(dbp, ret, "Attempt to set DUPSORT flags failed.",
-              file_name);
-            return (ret);
-        }
+	ret = dbp->set_flags(dbp, DB_DUPSORT);
+	if (ret != 0) {
+	    dbp->err(dbp, ret, "Attempt to set DUPSORT flags failed.",
+	      file_name);
+	    return (ret);
+	}
     }
 
     /* Set the open flags */
@@ -89,15 +89,15 @@ open_database(DB **dbpp, const char *file_name,
 
     /* Now open the database */
     ret = dbp->open(dbp,        /* Pointer to the database */
-                    NULL,       /* Txn pointer */
-                    file_name,  /* File name */
-                    NULL,       /* Logical db name */
-                    DB_BTREE,   /* Database type (using btree) */
-                    open_flags, /* Open flags */
-                    0);         /* File mode. Using defaults */
+		    NULL,       /* Txn pointer */
+		    file_name,  /* File name */
+		    NULL,       /* Logical db name */
+		    DB_BTREE,   /* Database type (using btree) */
+		    open_flags, /* Open flags */
+		    0);         /* File mode. Using defaults */
     if (ret != 0) {
-        dbp->err(dbp, ret, "Database '%s' open failed.", file_name);
-        return (ret);
+	dbp->err(dbp, ret, "Database '%s' open failed.", file_name);
+	return (ret);
     }
 
     return (0);
@@ -116,11 +116,11 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
       program_name, error_file_pointer,
       PRIMARY_DB);
     if (ret != 0)
-        /*
-         * Error reporting is handled in open_database() so just return
-         * the return code.
-         */
-        return (ret);
+	/*
+	 * Error reporting is handled in open_database() so just return
+	 * the return code.
+	 */
+	return (ret);
 
     /* Open the inventory database */
     ret = open_database(&(my_stock->inventory_dbp),
@@ -128,11 +128,11 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
       program_name, error_file_pointer,
       PRIMARY_DB);
     if (ret != 0)
-        /*
-         * Error reporting is handled in open_database() so just return
-         * the return code.
-         */
-        return (ret);
+	/*
+	 * Error reporting is handled in open_database() so just return
+	 * the return code.
+	 */
+	return (ret);
 
     /*
      * Open the itemname secondary database. This is used to
@@ -144,11 +144,11 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
       program_name, error_file_pointer,
       SECONDARY_DB);
     if (ret != 0)
-        /*
-         * Error reporting is handled in open_database() so just return
-         * the return code.
-         */
-        return (0);
+	/*
+	 * Error reporting is handled in open_database() so just return
+	 * the return code.
+	 */
+	return (0);
 
     /*
      * Associate the itemname db with its primary db
@@ -214,24 +214,24 @@ databases_close(STOCK_DBS *my_stock)
      * to disk, so no sync is required here.
      */
     if (my_stock->itemname_sdbp != NULL) {
-        ret = my_stock->itemname_sdbp->close(my_stock->itemname_sdbp, 0);
-        if (ret != 0)
-            fprintf(stderr, "Itemname database close failed: %s\n",
-              db_strerror(ret));
+	ret = my_stock->itemname_sdbp->close(my_stock->itemname_sdbp, 0);
+	if (ret != 0)
+	    fprintf(stderr, "Itemname database close failed: %s\n",
+	      db_strerror(ret));
     }
 
     if (my_stock->inventory_dbp != NULL) {
-        ret = my_stock->inventory_dbp->close(my_stock->inventory_dbp, 0);
-        if (ret != 0)
-            fprintf(stderr, "Inventory database close failed: %s\n",
-              db_strerror(ret));
+	ret = my_stock->inventory_dbp->close(my_stock->inventory_dbp, 0);
+	if (ret != 0)
+	    fprintf(stderr, "Inventory database close failed: %s\n",
+	      db_strerror(ret));
     }
 
     if (my_stock->vendor_dbp != NULL) {
-        ret = my_stock->vendor_dbp->close(my_stock->vendor_dbp, 0);
-        if (ret != 0)
-            fprintf(stderr, "Vendor database close failed: %s\n",
-              db_strerror(ret));
+	ret = my_stock->vendor_dbp->close(my_stock->vendor_dbp, 0);
+	if (ret != 0)
+	    fprintf(stderr, "Vendor database close failed: %s\n",
+	      db_strerror(ret));
     }
 
     printf("databases closed.\n");

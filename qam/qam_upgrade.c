@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: qam_upgrade.c,v 12.6 2007/05/17 15:15:50 bostic Exp $
+ * $Id: qam_upgrade.c,v 12.8 2008/01/08 20:58:47 bostic Exp $
  */
 
 #include "db_config.h"
@@ -25,8 +25,8 @@ __qam_31_qammeta(dbp, real_name, buf)
 	char *real_name;
 	u_int8_t *buf;
 {
-	QMETA31 *newmeta;
 	QMETA30 *oldmeta;
+	QMETA31 *newmeta;
 
 	COMPQUIET(dbp, NULL);
 	COMPQUIET(real_name, NULL);
@@ -69,8 +69,8 @@ __qam_32_qammeta(dbp, real_name, buf)
 	char *real_name;
 	u_int8_t *buf;
 {
-	QMETA32 *newmeta;
 	QMETA31 *oldmeta;
+	QMETA32 *newmeta;
 
 	COMPQUIET(dbp, NULL);
 	COMPQUIET(real_name, NULL);

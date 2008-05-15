@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn.c,v 12.78 2007/06/29 00:25:02 margo Exp $
+ * $Id: txn.c,v 12.89 2008/04/19 15:47:42 mjc Exp $
  */
 
 #include "db_config.h"
@@ -71,7 +71,7 @@ static int  __txn_begin_int __P((DB_TXN *));
 static int  __txn_commit_pp __P((DB_TXN *, u_int32_t));
 static int  __txn_discard __P((DB_TXN *, u_int32_t));
 static int  __txn_dispatch_undo
-		__P((DB_ENV *, DB_TXN *, DBT *, DB_LSN *, DB_TXNHEAD *));
+		__P((ENV *, DB_TXN *, DBT *, DB_LSN *, DB_TXNHEAD *));
 static int  __txn_end __P((DB_TXN *, int));
 static int  __txn_isvalid __P((const DB_TXN *, txnop_t));
 static int  __txn_undo __P((DB_TXN *));
@@ -79,7 +79,7 @@ static void __txn_set_txn_lsnp __P((DB_TXN *, DB_LSN **, DB_LSN **));
 
 /*
  * __txn_begin_pp --
- *	DB_ENV->txn_begin pre/post processing.
+ *	ENV->txn_begin pre/post processing.
  *
  * PUBLIC: int __txn_begin_pp __P((DB_ENV *, DB_TXN *, DB_TXN **, u_int32_t));
  */
@@ -90,54 +90,56 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int rep_check, ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv, dbenv->tx_handle, "txn_begin", DB_INIT_TXN);
+	env = dbenv->env;
 
-	if ((ret = __db_fchk(dbenv,
+	ENV_REQUIRES_CONFIG(env, env->tx_handle, "txn_begin", DB_INIT_TXN);
+
+	if ((ret = __db_fchk(env,
 	    "txn_begin", flags,
 	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
 	    DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT)) != 0)
 		return (ret);
-	if ((ret = __db_fcchk(dbenv, "txn_begin", flags,
+	if ((ret = __db_fcchk(env, "txn_begin", flags,
 	    DB_TXN_WRITE_NOSYNC | DB_TXN_NOSYNC, DB_TXN_SYNC)) != 0)
 		return (ret);
-	if ((ret = __db_fcchk(dbenv, "txn_begin",
+	if ((ret = __db_fcchk(env, "txn_begin",
 	    flags, DB_TXN_WRITE_NOSYNC, DB_TXN_NOSYNC)) != 0)
 		return (ret);
 	if (parent != NULL && !F_ISSET(parent, TXN_SNAPSHOT) &&
 	    LF_ISSET(DB_TXN_SNAPSHOT)) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "Child transaction snapshot setting must match parent");
 		return (EINVAL);
 	}
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	if (parent == NULL) {
-		rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
-		if (rep_check && (ret = __op_rep_enter(dbenv)) != 0)
+		rep_check = IS_ENV_REPLICATED(env) ? 1 : 0;
+		if (rep_check && (ret = __op_rep_enter(env)) != 0)
 			goto err;
 	} else
 		rep_check = 0;
-	ret = __txn_begin(dbenv, parent, txnpp, flags);
+	ret = __txn_begin(env, ip, parent, txnpp, flags);
 	/*
 	 * We only decrement the count if the operation fails.
 	 * Otherwise the count will be decremented when the
 	 * txn is resolved by txn_commit, txn_abort, etc.
 	 */
 	if (ret != 0 && rep_check)
-		(void)__op_rep_exit(dbenv);
+		(void)__op_rep_exit(env);
 
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __txn_begin --
- *	DB_ENV->txn_begin.
+ *	ENV->txn_begin.
  *
  * This is a wrapper to the actual begin process.  Normal transaction begin
  * allocates a DB_TXN structure for the caller, while XA transaction begin
@@ -147,29 +149,35 @@ err:	ENV_LEAVE(dbenv, ip);
  * provides access to the transaction ID and the offset in the transaction
  * region of the TXN_DETAIL structure.
  *
- * PUBLIC: int __txn_begin __P((DB_ENV *, DB_TXN *, DB_TXN **, u_int32_t));
+ * PUBLIC: int __txn_begin __P((ENV *,
+ * PUBLIC:      DB_THREAD_INFO *, DB_TXN *, DB_TXN **, u_int32_t));
  */
 int
-__txn_begin(dbenv, parent, txnpp, flags)
-	DB_ENV *dbenv;
+__txn_begin(env, ip, parent, txnpp, flags)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	DB_TXN *parent, **txnpp;
 	u_int32_t flags;
 {
+	DB_ENV *dbenv;
 	DB_LOCKREGION *region;
 	DB_TXN *txn;
 	TXN_DETAIL *ptd, *td;
 	int ret;
 
 	*txnpp = NULL;
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_TXN), &txn)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
 		return (ret);
 
-	txn->mgrp = dbenv->tx_handle;
+	dbenv = env->dbenv;
+	txn->mgrp = env->tx_handle;
 	txn->parent = parent;
 	TAILQ_INIT(&txn->kids);
 	TAILQ_INIT(&txn->events);
 	STAILQ_INIT(&txn->logs);
 	txn->flags = TXN_MALLOC;
+	txn->thread_info =
+	     ip != NULL ? ip : (parent != NULL ? parent->thread_info : NULL);
 
 	/*
 	 * Set the sync mode for commit.  Any local bits override those
@@ -209,10 +217,10 @@ __txn_begin(dbenv, parent, txnpp, flags)
 		SH_TAILQ_INSERT_HEAD(&ptd->kids, td, klinks, __txn_detail);
 	}
 
-	if (LOCKING_ON(dbenv)) {
-		region = dbenv->lk_handle->reginfo.primary;
+	if (LOCKING_ON(env)) {
+		region = env->lk_handle->reginfo.primary;
 		if (parent != NULL) {
-			ret = __lock_inherit_timeout(dbenv,
+			ret = __lock_inherit_timeout(env,
 			    parent->locker, txn->locker);
 			/* No parent locker set yet. */
 			if (ret == EINVAL) {
@@ -228,7 +236,7 @@ __txn_begin(dbenv, parent, txnpp, flags)
 		 * or it has no timeouts set.
 		 */
 		if (parent == NULL && region->tx_timeout != 0)
-			if ((ret = __lock_set_timeout(dbenv, txn->locker,
+			if ((ret = __lock_set_timeout(env, txn->locker,
 			    region->tx_timeout, DB_SET_TXN_TIMEOUT)) != 0)
 				goto err;
 	}
@@ -237,7 +245,7 @@ __txn_begin(dbenv, parent, txnpp, flags)
 	return (0);
 
 err:
-	__os_free(dbenv, txn);
+	__os_free(env, txn);
 	return (ret);
 }
 
@@ -245,20 +253,18 @@ err:
  * __txn_xa_begin --
  *	XA version of txn_begin.
  *
- * PUBLIC: int __txn_xa_begin __P((DB_ENV *, DB_TXN *));
+ * PUBLIC: int __txn_xa_begin __P((ENV *, DB_TXN *));
  */
 int
-__txn_xa_begin(dbenv, txn)
-	DB_ENV *dbenv;
+__txn_xa_begin(env, txn)
+	ENV *env;
 	DB_TXN *txn;
 {
-	PANIC_CHECK(dbenv);
-
 	/*
 	 * We need to initialize the transaction structure, but must be careful
 	 * not to smash the links.  We manually initialize the structure.
 	 */
-	txn->mgrp = dbenv->tx_handle;
+	txn->mgrp = env->tx_handle;
 	TAILQ_INIT(&txn->kids);
 	TAILQ_INIT(&txn->events);
 	STAILQ_INIT(&txn->logs);
@@ -275,11 +281,11 @@ __txn_xa_begin(dbenv, txn)
  * __txn_recycle_id --
  *	Find a range of useable transaction ids.
  *
- * PUBLIC: int __txn_recycle_id __P((DB_ENV *));
+ * PUBLIC: int __txn_recycle_id __P((ENV *));
  */
 int
-__txn_recycle_id(dbenv)
-	DB_ENV *dbenv;
+__txn_recycle_id(env)
+	ENV *env;
 {
 	DB_LSN null_lsn;
 	DB_TXNMGR *mgr;
@@ -288,10 +294,10 @@ __txn_recycle_id(dbenv)
 	u_int32_t *ids;
 	int nids, ret;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
-	if ((ret = __os_malloc(dbenv,
+	if ((ret = __os_malloc(env,
 	    sizeof(u_int32_t) * region->maxtxns, &ids)) != 0)
 		return (ret);
 	nids = 0;
@@ -302,14 +308,14 @@ __txn_recycle_id(dbenv)
 	if (nids != 0)
 		__db_idspace(ids, nids,
 		    &region->last_txnid, &region->cur_maxid);
-	__os_free(dbenv, ids);
+	__os_free(env, ids);
 
 	/*
 	 * Check LOGGING_ON rather than DBENV_LOGGING as we want to emit this
 	 * record at the end of recovery.
 	 */
-	if (LOGGING_ON(dbenv))
-	    ret = __txn_recycle_log(dbenv, NULL, &null_lsn,
+	if (LOGGING_ON(env))
+	    ret = __txn_recycle_log(env, NULL, &null_lsn,
 		0, region->last_txnid + 1, region->cur_maxid);
 
 	return (ret);
@@ -321,22 +327,20 @@ __txn_recycle_id(dbenv)
  * that is used only for transactions that must be started to compensate
  * for actions during an abort.  Currently only used for allocations.
  *
- * PUBLIC: int __txn_compensate_begin __P((DB_ENV *, DB_TXN **));
+ * PUBLIC: int __txn_compensate_begin __P((ENV *, DB_TXN **));
  */
 int
-__txn_compensate_begin(dbenv, txnpp)
-	DB_ENV *dbenv;
+__txn_compensate_begin(env, txnpp)
+	ENV *env;
 	DB_TXN **txnpp;
 {
 	DB_TXN *txn;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_TXN), &txn)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
 		return (ret);
 
-	txn->mgrp = dbenv->tx_handle;
+	txn->mgrp = env->tx_handle;
 	TAILQ_INIT(&txn->kids);
 	TAILQ_INIT(&txn->events);
 	STAILQ_INIT(&txn->logs);
@@ -357,17 +361,19 @@ __txn_begin_int(txn)
 	DB_ENV *dbenv;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
+	ENV *env;
 	TXN_DETAIL *td;
 	u_int32_t id;
 	int ret;
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
+	dbenv = env->dbenv;
 	region = mgr->reginfo.primary;
 
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	if (!F_ISSET(txn, TXN_COMPENSATE) && F_ISSET(region, TXN_IN_RECOVERY)) {
-		__db_errx(dbenv, "operation not permitted during recovery");
+		__db_errx(env, "operation not permitted during recovery");
 		ret = EINVAL;
 		goto err;
 	}
@@ -381,13 +387,13 @@ __txn_begin_int(txn)
 		region->last_txnid = TXN_MINIMUM - 1;
 
 	if (region->last_txnid == region->cur_maxid &&
-	    (ret = __txn_recycle_id(dbenv)) != 0)
+	    (ret = __txn_recycle_id(env)) != 0)
 		goto err;
 
 	/* Allocate a new transaction detail structure. */
 	if ((ret =
 	    __env_alloc(&mgr->reginfo, sizeof(TXN_DETAIL), &td)) != 0) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "Unable to allocate memory for transaction detail");
 		goto err;
 	}
@@ -407,8 +413,8 @@ __txn_begin_int(txn)
 	dbenv->thread_id(dbenv, &td->pid, &td->tid);
 
 	/* allocate a locker for this txn */
-	if (LOCKING_ON(dbenv) && (ret =
-	    __lock_getlocker(dbenv->lk_handle, id, 1, &txn->locker)) != 0)
+	if (LOCKING_ON(env) && (ret =
+	    __lock_getlocker(env->lk_handle, id, 1, &txn->locker)) != 0)
 		goto err;
 
 	ZERO_LSN(td->last_lsn);
@@ -430,7 +436,7 @@ __txn_begin_int(txn)
 	td->nlog_slots = TXN_NSLOTS;
 	td->log_dbs = R_OFFSET(&mgr->reginfo, td->slots);
 
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	txn->txnid = id;
 	txn->td  = td;
@@ -449,20 +455,20 @@ __txn_begin_int(txn)
 	 * If this is a transaction family, we must link the child to the
 	 * maximal grandparent in the lock table for deadlock detection.
 	 */
-	if (txn->parent != NULL && LOCKING_ON(dbenv))
-		if ((ret = __lock_addfamilylocker(dbenv,
+	if (txn->parent != NULL && LOCKING_ON(env))
+		if ((ret = __lock_addfamilylocker(env,
 		    txn->parent->txnid, txn->txnid)) != 0)
 			return (ret);
 
 	if (F_ISSET(txn, TXN_MALLOC)) {
-		MUTEX_LOCK(dbenv, mgr->mutex);
+		MUTEX_LOCK(env, mgr->mutex);
 		TAILQ_INSERT_TAIL(&mgr->txn_chain, txn, links);
-		MUTEX_UNLOCK(dbenv, mgr->mutex);
+		MUTEX_UNLOCK(env, mgr->mutex);
 	}
 
 	return (0);
 
-err:	TXN_SYSTEM_UNLOCK(dbenv);
+err:	TXN_SYSTEM_UNLOCK(env);
 	return (ret);
 }
 
@@ -471,11 +477,11 @@ err:	TXN_SYSTEM_UNLOCK(dbenv);
  *	Fill in the fields of the local transaction structure given
  *	the detail transaction structure.
  *
- * PUBLIC: int __txn_continue __P((DB_ENV *, DB_TXN *, TXN_DETAIL *));
+ * PUBLIC: int __txn_continue __P((ENV *, DB_TXN *, TXN_DETAIL *));
  */
 int
 __txn_continue(env, txn, td)
-	DB_ENV *env;
+	ENV *env;
 	DB_TXN *txn;
 	TXN_DETAIL *td;
 {
@@ -521,20 +527,20 @@ __txn_commit_pp(txn, flags)
 	DB_TXN *txn;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int not_child, ret, t_ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 	not_child = txn->parent == NULL;
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	ret = __txn_commit(txn, flags);
-	if (not_child && IS_ENV_REPLICATED(dbenv) &&
-	    (t_ret = __op_rep_exit(dbenv)) != 0 && ret == 0)
+	if (not_child && IS_ENV_REPLICATED(env) &&
+	    (t_ret = __op_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -550,33 +556,50 @@ __txn_commit(txn, flags)
 	u_int32_t flags;
 {
 	DBT list_dbt;
-	DB_ENV *dbenv;
 	DB_LOCKREQ request;
 	DB_TXN *kid;
+	ENV *env;
 	REGENV *renv;
 	REGINFO *infop;
 	TXN_DETAIL *td;
 	u_int32_t id;
 	int ret, t_ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 	td = txn->td;
-
-	PANIC_CHECK(dbenv);
 
 	/*
 	 * A common mistake in Berkeley DB programs is to mis-handle deadlock
 	 * return.  If the transaction deadlocked, they want abort, not commit.
 	 */
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
-		ret = __db_txn_deadlock_err(dbenv, txn);
+		ret = __db_txn_deadlock_err(env, txn);
 		goto err;
 	}
 
 	if ((ret = __txn_isvalid(txn, TXN_OP_COMMIT)) != 0)
 		return (ret);
 
-	infop = dbenv->reginfo;
+	/*
+	 * Check for master leases at the beginning.  If we are a
+	 * master and cannot have valid leases now, we error and
+	 * abort this txn.  Leases are granted on PERM records,
+	 * and since this is the beginning of txn_commit, there
+	 * might not be *any* in the log yet.  If that is the case,
+	 * then __rep_lease_check (from __rep_lease_refresh and
+	 * lower, log_c_get) will return DB_NOTFOUND.  If we get
+	 * that here, allow the operation to continue because leases
+	 * will be checked after the commit completes again anyway.
+	 */
+	if (txn->parent == NULL && IS_REP_MASTER(env) &&
+	    IS_USING_LEASES(env) && (ret = __rep_lease_check(env, 1)) != 0) {
+		if (ret == DB_NOTFOUND) {
+			ret = 0;
+		} else
+			goto err;
+	}
+
+	infop = env->reginfo;
 	renv = infop->primary;
 	/*
 	 * No mutex is needed as envid is read-only once it is set.
@@ -590,10 +613,10 @@ __txn_commit(txn, flags)
 	 * happen, but we don't want to fail in the field 'cause the app is
 	 * specifying the wrong flag for some reason.
 	 */
-	if (__db_fchk(dbenv, "DB_TXN->commit", flags,
+	if (__db_fchk(env, "DB_TXN->commit", flags,
 	    DB_TXN_NOSYNC | DB_TXN_SYNC | DB_TXN_WRITE_NOSYNC) != 0)
 		flags = DB_TXN_SYNC;
-	if (__db_fcchk(dbenv, "DB_TXN->commit", flags,
+	if (__db_fcchk(env, "DB_TXN->commit", flags,
 	    DB_TXN_SYNC, DB_TXN_NOSYNC | DB_TXN_WRITE_NOSYNC) != 0)
 		flags = DB_TXN_SYNC;
 
@@ -610,6 +633,8 @@ __txn_commit(txn, flags)
 		F_SET(txn, TXN_SYNC);
 	}
 
+	DB_ASSERT(env, F_ISSET(txn, TXN_SYNC_FLAGS));
+
 	/*
 	 * Commit any unresolved children.  If anyone fails to commit,
 	 * then try to abort the rest of the kids and then abort the parent.
@@ -619,7 +644,7 @@ __txn_commit(txn, flags)
 		if ((ret = __txn_commit(kid, flags)) != 0)
 			while ((kid = TAILQ_FIRST(&txn->kids)) != NULL)
 				if ((t_ret = __txn_abort(kid)) != 0)
-					return (__db_panic(dbenv, t_ret));
+					return (__env_panic(env, t_ret));
 
 	/*
 	 * If there are any log records, write a log record and sync the log,
@@ -628,7 +653,7 @@ __txn_commit(txn, flags)
 	 * abort (if its parent aborts), and otherwise its parent or ultimate
 	 * ancestor will write synchronously.
 	 */
-	if (DBENV_LOGGING(dbenv) && (!IS_ZERO_LSN(td->last_lsn) ||
+	if (DBENV_LOGGING(env) && (!IS_ZERO_LSN(td->last_lsn) ||
 	    STAILQ_FIRST(&txn->logs) != NULL)) {
 		if (txn->parent == NULL) {
 			/*
@@ -640,23 +665,23 @@ __txn_commit(txn, flags)
 			 * release the locks below.
 			 */
 			if ((ret =
-			    __txn_doevents(dbenv, txn, TXN_PREPARE, 1)) != 0)
+			    __txn_doevents(env, txn, TXN_PREPARE, 1)) != 0)
 				goto err;
 
 			memset(&request, 0, sizeof(request));
-			if (LOCKING_ON(dbenv)) {
+			if (LOCKING_ON(env)) {
 				request.op = DB_LOCK_PUT_READ;
-				if (IS_REP_MASTER(dbenv) &&
+				if (IS_REP_MASTER(env) &&
 				    !IS_ZERO_LSN(td->last_lsn)) {
 					memset(&list_dbt, 0, sizeof(list_dbt));
 					request.obj = &list_dbt;
 				}
-				ret = __lock_vec(dbenv,
+				ret = __lock_vec(env,
 				    txn->locker, 0, &request, 1, NULL);
 			}
 
 			if (ret == 0 && !IS_ZERO_LSN(td->last_lsn)) {
-				ret = __txn_regop_log(dbenv, txn,
+				ret = __txn_regop_log(env, txn,
 				    &td->visible_lsn, LOG_FLAGS(txn),
 				    TXN_COMMIT,
 				    (int32_t)time(NULL), id, request.obj);
@@ -666,9 +691,9 @@ __txn_commit(txn, flags)
 				if (ret == 0) {
 					DB_LSN s_lsn;
 
-					DB_ASSERT(dbenv, __log_current_lsn(
-					    dbenv, &s_lsn, NULL, NULL) == 0);
-					DB_ASSERT(dbenv, LOG_COMPARE(
+					DB_ASSERT(env, __log_current_lsn(
+					    env, &s_lsn, NULL, NULL) == 0);
+					DB_ASSERT(env, LOG_COMPARE(
 					    &td->visible_lsn, &s_lsn) <= 0);
 					COMPQUIET(s_lsn.file, 0);
 				}
@@ -676,13 +701,13 @@ __txn_commit(txn, flags)
 			}
 
 			if (request.obj != NULL && request.obj->data != NULL)
-				__os_free(dbenv, request.obj->data);
+				__os_free(env, request.obj->data);
 			if (ret != 0)
 				goto err;
 		} else {
 			/* Log the commit in the parent! */
 			if (!IS_ZERO_LSN(td->last_lsn) &&
-			    (ret = __txn_child_log(dbenv, txn->parent,
+			    (ret = __txn_child_log(env, txn->parent,
 			    &((TXN_DETAIL *)txn->parent->td)->last_lsn,
 			    0, txn->txnid, &td->last_lsn)) != 0) {
 				goto err;
@@ -701,25 +726,24 @@ __txn_commit(txn, flags)
 		}
 	}
 
-	/*
-	 * Process any aborted pages from our children.  We delay putting pages
-	 * on the free list that are newly allocated and then aborted so we can
-	 * undo other allocations, if necessary, without worrying about these
-	 * pages which were not on the free list before.
-	 */
 	if (txn->txn_list != NULL) {
-#ifndef HAVE_FTRUNCATE
-		t_ret = __db_do_the_limbo(dbenv,
-		      NULL, txn, txn->txn_list, LIMBO_NORMAL);
-		if (t_ret != 0 && ret == 0)
-			ret = t_ret;
-#endif
-		__db_txnlist_end(dbenv, txn->txn_list);
+		__db_txnlist_end(env, txn->txn_list);
 		txn->txn_list = NULL;
 	}
 
 	if (ret != 0)
 		goto err;
+
+	/*
+	 * Check for master leases at the end of only a normal commit.
+	 * If we're a child, that is not a perm record.  If we are a
+	 * master and cannot get valid leases now, something happened
+	 * during the commit.  The only thing to do is panic.
+	 */
+	if (txn->parent == NULL && IS_REP_MASTER(env) && IS_USING_LEASES(env) &&
+	    (ret = __rep_lease_check(env, 1)) != 0) {
+		return (__env_panic(env, ret));
+	}
 
 	/* This is OK because __txn_end can only fail with a panic. */
 	return (__txn_end(txn, 1));
@@ -733,7 +757,7 @@ err:	/*
 	 * returned DB_RUNRECOVERY and we need to propagate that up.
 	 */
 	if (td->status == TXN_PREPARED)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	if ((t_ret = __txn_abort(txn)) != 0)
 		ret = t_ret;
@@ -748,20 +772,20 @@ static int
 __txn_abort_pp(txn)
 	DB_TXN *txn;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int not_child, ret, t_ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 	not_child = txn->parent == NULL;
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	ret = __txn_abort(txn);
-	if (not_child && IS_ENV_REPLICATED(dbenv) &&
-	    (t_ret = __op_rep_exit(dbenv)) != 0 && ret == 0)
+	if (not_child && IS_ENV_REPLICATED(env) &&
+	    (t_ret = __op_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -775,23 +799,21 @@ int
 __txn_abort(txn)
 	DB_TXN *txn;
 {
-	DB_ENV *dbenv;
 	DB_LOCKREQ request;
 	DB_TXN *kid;
+	ENV *env;
 	REGENV *renv;
 	REGINFO *infop;
 	TXN_DETAIL *td;
 	u_int32_t id;
 	int ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 	td = txn->td;
-
-	PANIC_CHECK(dbenv);
 
 	/* Ensure that abort always fails fatally. */
 	if ((ret = __txn_isvalid(txn, TXN_OP_ABORT)) != 0)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	/*
 	 * Try to abort any unresolved children.
@@ -804,7 +826,7 @@ __txn_abort(txn)
 		if ((ret = __txn_abort(kid)) != 0)
 			return (ret);
 
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	renv = infop->primary;
 	/*
 	 * No mutex is needed as envid is read-only once it is set.
@@ -824,12 +846,12 @@ __txn_abort(txn)
 			goto undo;
 	}
 
-	if (LOCKING_ON(dbenv)) {
+	if (LOCKING_ON(env)) {
 		/* Allocate a locker for this restored txn if necessary. */
 		if (txn->locker == NULL &&
-		    (ret = __lock_getlocker(dbenv->lk_handle,
+		    (ret = __lock_getlocker(env->lk_handle,
 		    txn->txnid, 1, &txn->locker)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 		/*
 		 * We are about to free all the read locks for this transaction
 		 * below.  Some of those locks might be handle locks which
@@ -837,26 +859,26 @@ __txn_abort(txn)
 		 * handle is closed.  Check the events and preprocess any
 		 * trades now so that we don't release the locks below.
 		 */
-		if ((ret = __txn_doevents(dbenv, txn, TXN_ABORT, 1)) != 0)
-			return (__db_panic(dbenv, ret));
+		if ((ret = __txn_doevents(env, txn, TXN_ABORT, 1)) != 0)
+			return (__env_panic(env, ret));
 
 		/* Turn off timeouts. */
-		if ((ret = __lock_set_timeout(dbenv,
+		if ((ret = __lock_set_timeout(env,
 		    txn->locker, 0, DB_SET_TXN_TIMEOUT)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 
-		if ((ret = __lock_set_timeout(dbenv,
+		if ((ret = __lock_set_timeout(env,
 		    txn->locker, 0, DB_SET_LOCK_TIMEOUT)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 
 		request.op = DB_LOCK_UPGRADE_WRITE;
 		request.obj = NULL;
 		if ((ret = __lock_vec(
-		    dbenv, txn->locker, DB_LOCK_ABORT, &request, 1, NULL)) != 0)
-			return (__db_panic(dbenv, ret));
+		    env, txn->locker, 0, &request, 1, NULL)) != 0)
+			return (__env_panic(env, ret));
 	}
 undo:	if ((ret = __txn_undo(txn)) != 0)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	/*
 	 * Normally, we do not need to log aborts.  However, if we
@@ -864,10 +886,10 @@ undo:	if ((ret = __txn_undo(txn)) != 0)
 	 * then we log the abort so we know that this transaction
 	 * was actually completed.
 	 */
-done:	 if (DBENV_LOGGING(dbenv) && td->status == TXN_PREPARED &&
-	    (ret = __txn_regop_log(dbenv, txn, &td->last_lsn,
+done:	 if (DBENV_LOGGING(env) && td->status == TXN_PREPARED &&
+	    (ret = __txn_regop_log(env, txn, &td->last_lsn,
 	    LOG_FLAGS(txn), TXN_ABORT, (int32_t)time(NULL), id, NULL)) != 0)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	/* __txn_end always panics if it errors, so pass the return along. */
 	return (__txn_end(txn, 0));
@@ -882,18 +904,18 @@ __txn_discard(txn, flags)
 	DB_TXN *txn;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret, t_ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 	ret = __txn_discard_int(txn, flags);
-	if (IS_ENV_REPLICATED(dbenv) &&
-	    (t_ret = __op_rep_exit(dbenv)) != 0 && ret == 0)
+	if (IS_ENV_REPLICATED(env) &&
+	    (t_ret = __op_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -908,35 +930,33 @@ __txn_discard_int(txn, flags)
 	DB_TXN *txn;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_TXN *freep;
 	DB_TXNMGR *mgr;
+	ENV *env;
 	int ret;
 
 	COMPQUIET(flags, 0);
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 	freep = NULL;
-
-	PANIC_CHECK(dbenv);
 
 	if ((ret = __txn_isvalid(txn, TXN_OP_DISCARD)) != 0)
 		return (ret);
 
 	/* Should be no children. */
-	DB_ASSERT(dbenv, TAILQ_FIRST(&txn->kids) == NULL);
+	DB_ASSERT(env, TAILQ_FIRST(&txn->kids) == NULL);
 
 	/* Free the space. */
-	MUTEX_LOCK(dbenv, mgr->mutex);
+	MUTEX_LOCK(env, mgr->mutex);
 	mgr->n_discards++;
 	if (F_ISSET(txn, TXN_MALLOC)) {
 		TAILQ_REMOVE(&mgr->txn_chain, txn, links);
 		freep = txn;
 	}
-	MUTEX_UNLOCK(dbenv, mgr->mutex);
+	MUTEX_UNLOCK(env, mgr->mutex);
 	if (freep != NULL)
-		__os_free(dbenv, freep);
+		__os_free(env, freep);
 
 	return (0);
 }
@@ -953,37 +973,29 @@ __txn_prepare(txn, gid)
 	u_int8_t *gid;
 {
 	DBT list_dbt, xid;
-	DB_ENV *dbenv;
 	DB_LOCKREQ request;
 	DB_THREAD_INFO *ip;
 	DB_TXN *kid;
+	ENV *env;
 	TXN_DETAIL *td;
 	u_int32_t lflags;
 	int ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 	td = txn->td;
-
-	PANIC_CHECK(dbenv);
 
 	if ((ret = __txn_isvalid(txn, TXN_OP_PREPARE)) != 0)
 		return (ret);
 	if (F_ISSET(txn, TXN_DEADLOCK))
-		return (__db_txn_deadlock_err(dbenv, txn));
+		return (__db_txn_deadlock_err(env, txn));
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Commit any unresolved children. */
 	while ((kid = TAILQ_FIRST(&txn->kids)) != NULL)
 		if ((ret = __txn_commit(kid, DB_TXN_NOSYNC)) != 0)
 			goto err;
 
-#ifndef HAVE_FTRUNCATE
-	if (txn->txn_list != NULL  &&
-	    (ret = __db_do_the_limbo(dbenv,
-	    NULL, txn, txn->txn_list, LIMBO_PREPARE)) != 0)
-		goto err;
-#endif
 	/*
 	 * In XA, the global transaction ID in the txn_detail structure is
 	 * already set; in a non-XA environment, we must set it here.  XA
@@ -992,21 +1004,21 @@ __txn_prepare(txn, gid)
 	 * of those states, then we are calling prepare directly and we need
 	 * to fill in the td->xid.
 	 */
-	if ((ret = __txn_doevents(dbenv, txn, TXN_PREPARE, 1)) != 0)
+	if ((ret = __txn_doevents(env, txn, TXN_PREPARE, 1)) != 0)
 		goto err;
 	memset(&request, 0, sizeof(request));
-	if (LOCKING_ON(dbenv)) {
+	if (LOCKING_ON(env)) {
 		request.op = DB_LOCK_PUT_READ;
 		if (!IS_ZERO_LSN(td->last_lsn)) {
 			memset(&list_dbt, 0, sizeof(list_dbt));
 			request.obj = &list_dbt;
 		}
-		if ((ret = __lock_vec(dbenv,
+		if ((ret = __lock_vec(env,
 		    txn->locker, 0, &request, 1, NULL)) != 0)
 			goto err;
 
 	}
-	if (DBENV_LOGGING(dbenv)) {
+	if (DBENV_LOGGING(env)) {
 		memset(&xid, 0, sizeof(xid));
 		if (td->xa_status != TXN_XA_ENDED &&
 		    td->xa_status != TXN_XA_SUSPENDED)
@@ -1017,23 +1029,23 @@ __txn_prepare(txn, gid)
 		xid.data = td->xid;
 
 		lflags = DB_LOG_COMMIT | DB_FLUSH;
-		if ((ret = __txn_xa_regop_log(dbenv, txn, &td->last_lsn,
+		if ((ret = __txn_xa_regop_log(env, txn, &td->last_lsn,
 		    lflags, TXN_PREPARE, &xid, td->format, td->gtrid, td->bqual,
 		    &td->begin_lsn, request.obj)) != 0)
 			__db_err(
-			    dbenv, ret, "DB_TXN->prepare: log_write failed");
+			    env, ret, "DB_TXN->prepare: log_write failed");
 
 		if (request.obj != NULL && request.obj->data != NULL)
-			__os_free(dbenv, request.obj->data);
+			__os_free(env, request.obj->data);
 		if (ret != 0)
 			goto err;
 
 	}
 
-	MUTEX_LOCK(dbenv, txn->mgrp->mutex);
+	MUTEX_LOCK(env, txn->mgrp->mutex);
 	td->status = TXN_PREPARED;
-	MUTEX_UNLOCK(dbenv, txn->mgrp->mutex);
-err:	ENV_LEAVE(dbenv, ip);
+	MUTEX_UNLOCK(env, txn->mgrp->mutex);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -1077,42 +1089,42 @@ __txn_set_name(txn, name)
 	DB_TXN *txn;
 	const char *name;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
 	DB_TXNMGR *mgr;
+	ENV *env;
 	TXN_DETAIL *td;
 	size_t len;
 	int ret;
 	char *p;
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 	td = txn->td;
 	len = strlen(name) + 1;
 
-	if ((ret = __os_realloc(dbenv, len, &txn->name)) != 0)
+	if ((ret = __os_realloc(env, len, &txn->name)) != 0)
 		return (ret);
 	memcpy(txn->name, name, len);
 
-	ENV_ENTER(dbenv, ip);
-	TXN_SYSTEM_LOCK(dbenv);
+	ENV_ENTER(env, ip);
+	TXN_SYSTEM_LOCK(env);
 	if (td->name != INVALID_ROFF) {
 		__env_alloc_free(
 		    &mgr->reginfo, R_ADDR(&mgr->reginfo, td->name));
 		td->name = INVALID_ROFF;
 	}
 	if ((ret = __env_alloc(&mgr->reginfo, len, &p)) != 0) {
-		TXN_SYSTEM_UNLOCK(dbenv);
-		__db_errx(dbenv,
+		TXN_SYSTEM_UNLOCK(env);
+		__db_errx(env,
 		    "Unable to allocate memory for transaction name");
 
-		__os_free(dbenv, txn->name);
+		__os_free(env, txn->name);
 		txn->name = NULL;
 
-		ENV_LEAVE(dbenv, ip);
+		ENV_LEAVE(env, ip);
 		return (ret);
 	}
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 	td->name = R_OFFSET(&mgr->reginfo, p);
 	memcpy(p, name, len);
 
@@ -1121,18 +1133,18 @@ __txn_set_name(txn, name)
 	 * If DIAGNOSTIC is set, map the name into the log so users can track
 	 * operations through the log.
 	 */
-	if (DBENV_LOGGING(dbenv))
-		(void)__log_printf(dbenv, txn,
+	if (DBENV_LOGGING(env))
+		(void)__log_printf(env, txn,
 		    "transaction %#lx named %s", (u_long)txn->txnid, name);
 #endif
 
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (0);
 }
 
 /*
  * __txn_set_timeout --
- *	DB_ENV->set_txn_timeout.
+ *	ENV->set_txn_timeout.
  * PUBLIC: int  __txn_set_timeout __P((DB_TXN *, db_timeout_t, u_int32_t));
  */
 int
@@ -1141,18 +1153,18 @@ __txn_set_timeout(txn, timeout, op)
 	db_timeout_t timeout;
 	u_int32_t op;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	dbenv = txn->mgrp->dbenv;
+	env = txn->mgrp->env;
 
 	if (op != DB_SET_TXN_TIMEOUT && op != DB_SET_LOCK_TIMEOUT)
-		return (__db_ferr(dbenv, "DB_TXN->set_timeout", 0));
+		return (__db_ferr(env, "DB_TXN->set_timeout", 0));
 
-	ENV_ENTER(dbenv, ip);
-	ret = __lock_set_timeout( dbenv, txn->locker, timeout, op);
-	ENV_LEAVE(txn->mgrp->dbenv, ip);
+	ENV_ENTER(env, ip);
+	ret = __lock_set_timeout( env, txn->locker, timeout, op);
+	ENV_LEAVE(txn->mgrp->env, ip);
 	return (ret);
 }
 
@@ -1165,25 +1177,25 @@ __txn_isvalid(txn, op)
 	const DB_TXN *txn;
 	txnop_t op;
 {
-	DB_ENV *dbenv;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
+	ENV *env;
 	TXN_DETAIL *td;
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 	region = mgr->reginfo.primary;
 
 	/* Check for recovery. */
 	if (!F_ISSET(txn, TXN_COMPENSATE) &&
 	    F_ISSET(region, TXN_IN_RECOVERY)) {
-		__db_errx(dbenv, "operation not permitted during recovery");
+		__db_errx(env, "operation not permitted during recovery");
 		goto err;
 	}
 
 	/* Check for live cursors. */
 	if (txn->cursors != 0) {
-		__db_errx(dbenv, "transaction has active cursors");
+		__db_errx(env, "transaction has active cursors");
 		goto err;
 	}
 
@@ -1208,8 +1220,8 @@ __txn_isvalid(txn, op)
 		 */
 		if (td->status != TXN_PREPARED &&
 		    !F_ISSET(td, TXN_DTL_RESTORED)) {
-			__db_errx(dbenv, "not a restored transaction");
-			return (__db_panic(dbenv, EINVAL));
+			__db_errx(env, "not a restored transaction");
+			return (__env_panic(env, EINVAL));
 		}
 
 		return (0);
@@ -1222,7 +1234,7 @@ __txn_isvalid(txn, op)
 			 * I'm not arguing this is good, but I could imagine
 			 * someone doing it.
 			 */
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "Prepare disallowed on child transactions");
 			return (EINVAL);
 		}
@@ -1236,7 +1248,7 @@ __txn_isvalid(txn, op)
 	switch (td->status) {
 	case TXN_PREPARED:
 		if (op == TXN_OP_PREPARE) {
-			__db_errx(dbenv, "transaction already prepared");
+			__db_errx(env, "transaction already prepared");
 			/*
 			 * Txn_prepare doesn't blow away the user handle, so
 			 * in this case, give the user the opportunity to
@@ -1250,7 +1262,7 @@ __txn_isvalid(txn, op)
 	case TXN_ABORTED:
 	case TXN_COMMITTED:
 	default:
-		__db_errx(dbenv, "transaction already %s",
+		__db_errx(env, "transaction already %s",
 		    td->status == TXN_COMMITTED ? "committed" : "aborted");
 		goto err;
 	}
@@ -1262,7 +1274,7 @@ err:	/*
 	 * handles are dead by definition when we return, and if you use
 	 * a cursor you forgot to close, we have no idea what will happen.
 	 */
-	return (__db_panic(dbenv, EINVAL));
+	return (__env_panic(env, EINVAL));
 }
 
 /*
@@ -1274,24 +1286,24 @@ __txn_end(txn, is_commit)
 	DB_TXN *txn;
 	int is_commit;
 {
-	DB_ENV *dbenv;
 	DB_LOCKREQ request;
 	DB_TXNLOGREC *lr;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
+	ENV *env;
 	TXN_DETAIL *ptd, *td;
 	db_mutex_t mvcc_mtx;
 	int do_closefiles, ret;
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 	region = mgr->reginfo.primary;
 	do_closefiles = 0;
 
 	/* Process commit events. */
-	if ((ret = __txn_doevents(dbenv,
+	if ((ret = __txn_doevents(env,
 	    txn, is_commit ? TXN_COMMIT : TXN_ABORT, 0)) != 0)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	/*
 	 * Release the locks.
@@ -1302,27 +1314,27 @@ __txn_end(txn, is_commit)
 	 * deadlock here because we're not acquiring any new locks,
 	 * so DB_LOCK_DEADLOCK is just as fatal as any other error.
 	 */
-	if (LOCKING_ON(dbenv)) {
+	if (LOCKING_ON(env)) {
 		/* Allocate a locker for this restored txn if necessary. */
 		if (txn->locker == NULL &&
-		    (ret = __lock_getlocker(dbenv->lk_handle,
+		    (ret = __lock_getlocker(env->lk_handle,
 		    txn->txnid, 1, &txn->locker)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 		request.op = txn->parent == NULL ||
 		    is_commit == 0 ? DB_LOCK_PUT_ALL : DB_LOCK_INHERIT;
 		request.obj = NULL;
-		if ((ret = __lock_vec(dbenv,
+		if ((ret = __lock_vec(env,
 		    txn->locker, 0, &request, 1, NULL)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 	}
 
 	/* End the transaction. */
 	td = txn->td;
-	if (td->nlog_dbs != 0 && (ret = __txn_dref_fname(dbenv, txn)) != 0)
-		return (__db_panic(dbenv, ret));
+	if (td->nlog_dbs != 0 && (ret = __txn_dref_fname(env, txn)) != 0)
+		return (__env_panic(env, ret));
 
 	if (td->mvcc_ref != 0 && IS_MAX_LSN(td->visible_lsn)) {
-		DB_ASSERT(dbenv, !is_commit);
+		DB_ASSERT(env, !is_commit);
 
 		/*
 		 * In the abort path, we need to make sure that the versions
@@ -1330,12 +1342,12 @@ __txn_end(txn, is_commit)
 		 * visible_lsn before setting td->status to ensure safe reads
 		 * of visible_lsn in __memp_fget.
 		 */
-		if ((ret = __log_current_lsn(dbenv, &td->visible_lsn,
+		if ((ret = __log_current_lsn(env, &td->visible_lsn,
 		    NULL, NULL)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 	}
 
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	td->status = is_commit ? TXN_COMMITTED : TXN_ABORTED;
 	SH_TAILQ_REMOVE(&region->active_txn, td, links, __txn_detail);
 	if (F_ISSET(td, TXN_DTL_RESTORED)) {
@@ -1352,7 +1364,7 @@ __txn_end(txn, is_commit)
 		ptd = txn->parent->td;
 		SH_TAILQ_REMOVE(&ptd->kids, td, klinks, __txn_detail);
 	} else if ((mvcc_mtx = td->mvcc_mtx) != MUTEX_INVALID) {
-		MUTEX_LOCK(dbenv, mvcc_mtx);
+		MUTEX_LOCK(env, mvcc_mtx);
 		if (td->mvcc_ref != 0) {
 			SH_TAILQ_INSERT_HEAD(&region->mvcc_txn,
 			    td, links, __txn_detail);
@@ -1364,10 +1376,10 @@ __txn_end(txn, is_commit)
 #endif
 			td = NULL;
 		}
-		MUTEX_UNLOCK(dbenv, mvcc_mtx);
+		MUTEX_UNLOCK(env, mvcc_mtx);
 		if (td != NULL)
-			if ((ret = __mutex_free(dbenv, &td->mvcc_mtx)) != 0)
-				return (__db_panic(dbenv, ret));
+			if ((ret = __mutex_free(env, &td->mvcc_mtx)) != 0)
+				return (__env_panic(env, ret));
 	}
 
 	if (td != NULL) {
@@ -1385,33 +1397,33 @@ __txn_end(txn, is_commit)
 	--region->stat.st_nactive;
 #endif
 
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	/*
 	 * The transaction cannot get more locks, remove its locker info,
 	 * if any.
 	 */
-	if (LOCKING_ON(dbenv) && (ret =
-	    __lock_freefamilylocker(dbenv->lk_handle, txn->locker)) != 0)
-		return (__db_panic(dbenv, ret));
+	if (LOCKING_ON(env) && (ret =
+	    __lock_freefamilylocker(env->lk_handle, txn->locker)) != 0)
+		return (__env_panic(env, ret));
 	if (txn->parent != NULL)
 		TAILQ_REMOVE(&txn->parent->kids, txn, klinks);
 
 	/* Free the space. */
 	while ((lr = STAILQ_FIRST(&txn->logs)) != NULL) {
 		STAILQ_REMOVE(&txn->logs, lr, __txn_logrec, links);
-		__os_free(dbenv, lr);
+		__os_free(env, lr);
 	}
 	if (txn->name != NULL) {
-		__os_free(dbenv, txn->name);
+		__os_free(env, txn->name);
 		txn->name = NULL;
 	}
 	if (F_ISSET(txn, TXN_MALLOC)) {
-		MUTEX_LOCK(dbenv, mgr->mutex);
+		MUTEX_LOCK(env, mgr->mutex);
 		TAILQ_REMOVE(&mgr->txn_chain, txn, links);
-		MUTEX_UNLOCK(dbenv, mgr->mutex);
+		MUTEX_UNLOCK(env, mgr->mutex);
 
-		__os_free(dbenv, txn);
+		__os_free(env, txn);
 	}
 
 	if (do_closefiles) {
@@ -1420,13 +1432,13 @@ __txn_end(txn, is_commit)
 		 * txn and need to invalidate the fileids that were left
 		 * open for those txns and then close them.
 		 */
-		(void)__dbreg_invalidate_files(dbenv, 1);
-		(void)__dbreg_close_files(dbenv, 1);
-		if (IS_REP_MASTER(dbenv))
-			F_CLR(dbenv->rep_handle, DBREP_OPENFILES);
-		F_CLR(dbenv->lg_handle, DBLOG_OPENFILES);
+		(void)__dbreg_invalidate_files(env, 1);
+		(void)__dbreg_close_files(env, 1);
+		if (IS_REP_MASTER(env))
+			F_CLR(env->rep_handle, DBREP_OPENFILES);
+		F_CLR(env->lg_handle, DBLOG_OPENFILES);
 		mgr->n_discards = 0;
-		(void)__txn_checkpoint(dbenv, 0, 0,
+		(void)__txn_checkpoint(env, 0, 0,
 		    DB_CKP_INTERNAL | DB_FORCE);
 	}
 
@@ -1434,8 +1446,8 @@ __txn_end(txn, is_commit)
 }
 
 static int
-__txn_dispatch_undo(dbenv, txn, rdbt, key_lsn, txnlist)
-	DB_ENV *dbenv;
+__txn_dispatch_undo(env, txn, rdbt, key_lsn, txnlist)
+	ENV *env;
 	DB_TXN *txn;
 	DBT *rdbt;
 	DB_LSN *key_lsn;
@@ -1444,14 +1456,14 @@ __txn_dispatch_undo(dbenv, txn, rdbt, key_lsn, txnlist)
 	int ret;
 
 	txnlist->td = txn->td;
-	ret = __db_dispatch(dbenv, dbenv->recover_dtab,
-	    dbenv->recover_dtab_size, rdbt, key_lsn, DB_TXN_ABORT, txnlist);
+	ret = __db_dispatch(env, &env->recover_dtab,
+	    rdbt, key_lsn, DB_TXN_ABORT, txnlist);
 	if (ret == DB_SURPRISE_KID) {
 		F_SET(txn, TXN_CHILDCOMMIT);
 		ret = 0;
 	}
 	if (ret == 0 && F_ISSET(txn, TXN_CHILDCOMMIT) && IS_ZERO_LSN(*key_lsn))
-		ret = __db_txnlist_lsnget(dbenv, txnlist, key_lsn, 0);
+		ret = __db_txnlist_lsnget(env, txnlist, key_lsn, 0);
 
 	return (ret);
 }
@@ -1465,22 +1477,22 @@ __txn_undo(txn)
 	DB_TXN *txn;
 {
 	DBT rdbt;
-	DB_ENV *dbenv;
 	DB_LOGC *logc;
 	DB_LSN key_lsn;
 	DB_TXN *ptxn;
 	DB_TXNHEAD *txnlist;
 	DB_TXNLOGREC *lr;
 	DB_TXNMGR *mgr;
+	ENV *env;
 	int ret, t_ret;
 
 	mgr = txn->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 	logc = NULL;
 	txnlist = NULL;
 	ret = 0;
 
-	if (!LOGGING_ON(dbenv))
+	if (!LOGGING_ON(env))
 		return (0);
 
 	/*
@@ -1503,7 +1515,8 @@ __txn_undo(txn)
 		txnlist = ptxn->txn_list;
 	else if (txn->txn_list != NULL)
 		txnlist = txn->txn_list;
-	else if ((ret = __db_txnlist_init(dbenv, 0, 0, NULL, &txnlist)) != 0)
+	else if ((ret = __db_txnlist_init(env,
+	    txn->thread_info, 0, 0, NULL, &txnlist)) != 0)
 		return (ret);
 	else if (ptxn != NULL)
 		ptxn->txn_list = txnlist;
@@ -1517,9 +1530,9 @@ __txn_undo(txn)
 		rdbt.size = 0;
 		LSN_NOT_LOGGED(key_lsn);
 		ret =
-		    __txn_dispatch_undo(dbenv, txn, &rdbt, &key_lsn, txnlist);
+		    __txn_dispatch_undo(env, txn, &rdbt, &key_lsn, txnlist);
 		if (ret != 0) {
-			__db_err(dbenv, ret,
+			__db_err(env, ret,
 			    "DB_TXN->abort: in-memory log undo failed");
 			goto err;
 		}
@@ -1528,7 +1541,7 @@ __txn_undo(txn)
 	key_lsn = ((TXN_DETAIL *)txn->td)->last_lsn;
 
 	if (!IS_ZERO_LSN(key_lsn) &&
-	     (ret = __log_cursor(dbenv, &logc)) != 0)
+	     (ret = __log_cursor(env, &logc)) != 0)
 		goto err;
 
 	while (!IS_ZERO_LSN(key_lsn)) {
@@ -1537,27 +1550,23 @@ __txn_undo(txn)
 		 * before the current one in the key_lsn argument.
 		 */
 		if ((ret = __logc_get(logc, &key_lsn, &rdbt, DB_SET)) == 0) {
-			ret = __txn_dispatch_undo(dbenv,
+			ret = __txn_dispatch_undo(env,
 			    txn, &rdbt, &key_lsn, txnlist);
 		}
 
 		if (ret != 0) {
-			__db_err(dbenv, ret,
+			__db_err(env, ret,
 		    "DB_TXN->abort: log undo failed for LSN: %lu %lu",
 			    (u_long)key_lsn.file, (u_long)key_lsn.offset);
 			goto err;
 		}
 	}
 
-#ifndef HAVE_FTRUNCATE
-	ret = __db_do_the_limbo(dbenv, ptxn, txn, txnlist, LIMBO_NORMAL);
-#endif
-
 err:	if (logc != NULL && (t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (ptxn == NULL && txnlist != NULL)
-		__db_txnlist_end(dbenv, txnlist);
+		__db_txnlist_end(env, txnlist);
 	return (ret);
 }
 
@@ -1565,11 +1574,11 @@ err:	if (logc != NULL && (t_ret = __logc_close(logc)) != 0 && ret == 0)
  * __txn_activekids --
  *	Return if this transaction has any active children.
  *
- * PUBLIC: int __txn_activekids __P((DB_ENV *, u_int32_t, DB_TXN *));
+ * PUBLIC: int __txn_activekids __P((ENV *, u_int32_t, DB_TXN *));
  */
 int
-__txn_activekids(dbenv, rectype, txn)
-	DB_ENV *dbenv;
+__txn_activekids(env, rectype, txn)
+	ENV *env;
 	u_int32_t rectype;
 	DB_TXN *txn;
 {
@@ -1581,7 +1590,7 @@ __txn_activekids(dbenv, rectype, txn)
 		return (0);
 
 	if (TAILQ_FIRST(&txn->kids) != NULL) {
-		__db_errx(dbenv, "Child transaction is active");
+		__db_errx(env, "Child transaction is active");
 		return (EPERM);
 	}
 	return (0);
@@ -1592,11 +1601,11 @@ __txn_activekids(dbenv, rectype, txn)
  *	Force an abort record into the log if the commit record
  *	failed to get to disk.
  *
- * PUBLIC: int __txn_force_abort __P((DB_ENV *, u_int8_t *));
+ * PUBLIC: int __txn_force_abort __P((ENV *, u_int8_t *));
  */
 int
-__txn_force_abort(dbenv, buffer)
-	DB_ENV *dbenv;
+__txn_force_abort(env, buffer)
+	ENV *env;
 	u_int8_t *buffer;
 {
 	DB_CIPHER *db_cipher;
@@ -1606,7 +1615,7 @@ __txn_force_abort(dbenv, buffer)
 	size_t hdrsize, rec_len;
 	int ret;
 
-	db_cipher = dbenv->crypto_handle;
+	db_cipher = env->crypto_handle;
 
 	/*
 	 * This routine depends on the layout of HDR and the __txn_regop
@@ -1614,7 +1623,7 @@ __txn_force_abort(dbenv, buffer)
 	 * of the commit record in the log buffer and overwrite the
 	 * commit with an abort and recalculate the checksum.
 	 */
-	hdrsize = CRYPTO_ON(dbenv) ? HDR_CRYPTO_SZ : HDR_NORMAL_SZ;
+	hdrsize = CRYPTO_ON(env) ? HDR_CRYPTO_SZ : HDR_NORMAL_SZ;
 
 	hdrp = (HDR *)buffer;
 	memcpy(&hdr.prev, buffer + SSZ(HDR, prev), sizeof(hdr.prev));
@@ -1622,12 +1631,12 @@ __txn_force_abort(dbenv, buffer)
 	rec_len = hdr.len - hdrsize;
 
 	offset = sizeof(u_int32_t) + sizeof(u_int32_t) + sizeof(DB_LSN);
-	if (CRYPTO_ON(dbenv)) {
+	if (CRYPTO_ON(env)) {
 		key = db_cipher->mac_key;
 		sum_len = DB_MAC_KEY;
-		if ((ret = db_cipher->decrypt(dbenv, db_cipher->data,
+		if ((ret = db_cipher->decrypt(env, db_cipher->data,
 		    &hdrp->iv[0], buffer + hdrsize, rec_len)) != 0)
-			return (__db_panic(dbenv, ret));
+			return (__env_panic(env, ret));
 	} else {
 		key = NULL;
 		sum_len = sizeof(u_int32_t);
@@ -1636,10 +1645,10 @@ __txn_force_abort(dbenv, buffer)
 	opcode = TXN_ABORT;
 	memcpy(bp, &opcode, sizeof(opcode));
 
-	if (CRYPTO_ON(dbenv) &&
-	    (ret = db_cipher->encrypt(dbenv,
+	if (CRYPTO_ON(env) &&
+	    (ret = db_cipher->encrypt(env,
 	    db_cipher->data, &hdrp->iv[0], buffer + hdrsize, rec_len)) != 0)
-		return (__db_panic(dbenv, ret));
+		return (__env_panic(env, ret));
 
 	__db_chksum(&hdr, buffer + hdrsize, rec_len, key, chksum);
 	memcpy(buffer + SSZA(HDR, chksum), chksum, sum_len);
@@ -1653,26 +1662,26 @@ __txn_force_abort(dbenv, buffer)
  *	middle of taking care of restored transactions.  If so, close the files
  *	we opened.
  *
- * PUBLIC: int __txn_preclose __P((DB_ENV *));
+ * PUBLIC: int __txn_preclose __P((ENV *));
  */
 int
-__txn_preclose(dbenv)
-	DB_ENV *dbenv;
+__txn_preclose(env)
+	ENV *env;
 {
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	int do_closefiles, ret;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 	do_closefiles = 0;
 
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	if (region != NULL &&
 	    region->stat.st_nrestores <= mgr->n_discards &&
 	    mgr->n_discards != 0)
 		do_closefiles = 1;
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	if (do_closefiles) {
 		/*
@@ -1680,9 +1689,9 @@ __txn_preclose(dbenv)
 		 * do not create additional log records that will confuse future
 		 * recoveries.
 		 */
-		F_SET(dbenv->lg_handle, DBLOG_RECOVER);
-		ret = __dbreg_close_files(dbenv, 0);
-		F_CLR(dbenv->lg_handle, DBLOG_RECOVER);
+		F_SET(env->lg_handle, DBLOG_RECOVER);
+		ret = __dbreg_close_files(env, 0);
+		F_CLR(env->lg_handle, DBLOG_RECOVER);
 	} else
 		ret = 0;
 
@@ -1693,20 +1702,20 @@ __txn_preclose(dbenv)
  * __txn_reset --
  *	Reset the last txnid to its minimum value, and log the reset.
  *
- * PUBLIC: int __txn_reset __P((DB_ENV *));
+ * PUBLIC: int __txn_reset __P((ENV *));
  */
 int
-__txn_reset(dbenv)
-	DB_ENV *dbenv;
+__txn_reset(env)
+	ENV *env;
 {
 	DB_LSN scrap;
 	DB_TXNREGION *region;
 
-	region = dbenv->tx_handle->reginfo.primary;
+	region = env->tx_handle->reginfo.primary;
 	region->last_txnid = TXN_MINIMUM;
 
-	DB_ASSERT(dbenv, LOGGING_ON(dbenv));
-	return (__txn_recycle_log(dbenv,
+	DB_ASSERT(env, LOGGING_ON(env));
+	return (__txn_recycle_log(env,
 	    NULL, &scrap, 0, TXN_MINIMUM, TXN_MAXIMUM));
 }
 

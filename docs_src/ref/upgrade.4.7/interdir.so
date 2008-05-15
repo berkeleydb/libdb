@@ -1,0 +1,18 @@
+m4_comment([$Id: interdir.so,v 1.2 2008/03/12 18:08:22 sarette Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Release 4.7: DB_ENV-__GT__set_intermediate_dir,,
+    upgrade.4.7/tcl, upgrade.4.7/log)
+
+m4_p([dnl
+Historic releases of m4_db contained an undocumented m4_ref(DbEnv)
+method named DB_ENV-__GT__set_intermediate_dir, which configured the
+creation of any intermediate directories needed during recovery.  This
+method has been standardized as the
+m4_refT(dbenv_set_intermediate_dir_mode).])
+
+m4_p([dnl
+Applications using DB_ENV-__GT__set_intermediate_dir should be modified
+to use the m4_refT(dbenv_set_intermediate_dir_mode) instead.])
+
+m4_page_footer

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: BlockIterator.java,v 12.5 2007/05/04 00:28:25 mark Exp $
+ * $Id: BlockIterator.java,v 12.7 2008/02/07 17:12:26 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -18,9 +18,9 @@ import com.sleepycat.db.OperationStatus;
 import com.sleepycat.util.keyrange.KeyRange;
 
 /**
- * An iterator that does need closing because a cursor is not kept open across
- * method calls.  A cursor is opened to read a block of records at a time and
- * then closed before the method returns.
+ * An iterator that does not need closing because a cursor is not kept open
+ * across method calls.  A cursor is opened to read a block of records at a
+ * time and then closed before the method returns.
  *
  * @author Mark Hayes
  */
@@ -42,6 +42,14 @@ class BlockIterator implements BaseIterator {
      * nextIndex is always greater or equal to zero.  If the next record is not
      * available, then nextIndex is equal to keys.length or keys[nextIndex] is
      * null.
+     *
+     * If the block is empty, then either the iterator is uninitialized or the
+     * key range is empty.  Either way, nextIndex will be the array length and
+     * all array values will be null.  This is the initial state set by the
+     * constructor.  If remove() is used to delete all records in the key
+     * range, it will restore the iterator to this initial state.  The block
+     * must never be allowed to become empty when the key range is non-empty,
+     * since then the iterator's position would be lost.  [#15858]
      */
     private int nextIndex;
 
@@ -264,7 +272,7 @@ class BlockIterator implements BaseIterator {
     }
 
     /**
-     * Moves the cursor to the key/data at the given slot, and returns false 
+     * Moves the cursor to the key/data at the given slot, and returns false
      * if the reposition (search) fails.
      */
     private boolean moveCursor(int i, DataCursor cursor)
@@ -397,7 +405,7 @@ class BlockIterator implements BaseIterator {
             int last = keys.length - 1;
             int next = nextIndex;
             boolean found = false;
-        
+
             /* Reposition to the last known key/data pair. */
             int repos = cursor.repositionRange
                 (keys[next], priKeys[next], values[next], false);
@@ -547,6 +555,49 @@ class BlockIterator implements BaseIterator {
                 cursor.delete();
                 deleteSlot(dataIndex);
                 dataObject = null;
+
+                /*
+                 * Repopulate the block after removing all records, using the
+                 * cursor position of the deleted record as a starting point.
+                 * First try moving forward, since the user was moving forward.
+                 * (It is possible to delete all records in the block only by
+                 * moving forward, i.e, when nextIndex is greater than
+                 * dataIndex.)
+                 */
+                if (nextIndex == 0 && keys[0] == null) {
+                    OperationStatus status;
+                    for (int i = 0; i < keys.length; i += 1) {
+                        status = coll.iterateDuplicates() ?
+                                 cursor.getNext(false) :
+                                 cursor.getNextNoDup(false);
+                        if (status == OperationStatus.SUCCESS) {
+                            setSlot(i, cursor);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    /*
+                     * If no records are found past the cursor position, try
+                     * moving backward.  If no records are found before the
+                     * cursor position, leave nextIndex set to keys.length,
+                     * which is the same as the initial iterator state and is
+                     * appropriate for an empty key range.
+                     */
+                    if (keys[0] == null) {
+                        nextIndex = keys.length;
+                        for (int i = nextIndex - 1; i >= 0; i -= 1) {
+                            status = coll.iterateDuplicates() ?
+                                     cursor.getPrev(false) :
+                                     cursor.getPrevNoDup(false);
+                            if (status == OperationStatus.SUCCESS) {
+                                setSlot(i, cursor);
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                }
                 coll.closeCursor(cursor);
                 coll.commitAutoCommit(doAutoCommit);
             } else {
@@ -626,7 +677,7 @@ class BlockIterator implements BaseIterator {
                     if (!moveCursor(insertIndex, cursor)) {
                         throw new IllegalStateException();
                     }
-                    
+
                     /*
                      * For a recno-renumber database or a database with
                      * unsorted duplicates, insert before the iterator 'next'

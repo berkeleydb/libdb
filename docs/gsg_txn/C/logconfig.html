@@ -257,10 +257,11 @@
               <p>
                         Specify
                             <span>
-                                <tt class="literal">DB_LOG_INMEMORY</tt> to the
-                                <tt class="methodname">DB_ENV-&gt;set_flags()</tt>
+                                <tt class="literal">DB_LOG_IN_MEMORY</tt> to the
+                                <tt class="methodname">DB_ENV-&gt;log_set_config()</tt>
                                 
                             </span>
+                            
                             
                             method. Note that you must specify this before
                             your application opens its first environment
@@ -300,7 +301,7 @@ main(void)
      * Doing this means that we give up our transactional durability
      * guarantee.
      */
-    envp-&gt;set_flags(envp, DB_LOG_INMEMORY, 1);
+    envp-&gt;log_set_config(envp, DB_LOG_IN_MEMORY, 1);
 
     /* 
      * Configure the size of our log memory buffer. This must be

@@ -35,8 +35,15 @@
         <div></div>
       </div>
       <p>
-            You can use transactions with your secondary indices so long as you
             
+            <span>
+                If you are using the base API, then you
+            </span>
+
+                can use transactions with your secondary indices so long as you
+
+            
+
             <span>
                 open the secondary index so that it is transactional. 
             </span>
@@ -61,6 +68,28 @@
             Note that when you use transactions to protect your database writes, your secondary indices are protected from
             corruption because updates to the primary and the secondaries are performed in a single atomic transaction.
         </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                            If you are using the DPL, then be aware that
+                            you never have to provide a transactional
+                            handle when opening an index, be it a primary
+                            or a secondary. However, transactions are
+                            enabled for your store, then all of the indexes
+                            that you open will be enabled for transactional
+                            usage. More, any write operation performed
+                            using that index will be done using a
+                            transaction, regardless of whether you
+                            explictly provide a transactional handle to the
+                            write operation.
+                    </p>
+        <p>
+                            If you do not explictly provide a transaction
+                            handle to DPL write operations performed on a
+                            transactional store, then auto commit is
+                            silently used for that operation.
+                    </p>
+      </div>
       <p>
             For example:
         </p>

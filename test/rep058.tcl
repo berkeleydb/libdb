@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2007 Oracle.  All rights reserved.
+# Copyright (c) 2005,2008 Oracle.  All rights reserved.
 #
-# $Id: rep058.tcl,v 12.13 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep058.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep058
 # TEST
@@ -54,10 +54,11 @@ proc rep058 { method { tnum "058" } args } {
 proc rep058_sub { method tnum logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set orig_tdir $testdir
@@ -110,10 +111,16 @@ proc rep058_sub { method tnum logset recargs largs } {
 	puts "\tRep$tnum.b: Start master and client now."
 	error_check_good master [$menv rep_start -master] 0
 	error_check_good client [$cenv rep_start -client] 0
+	#
+	# We'll only catch this error if we turn on no-autoinit.
+	# Otherwise, the system will throw away everything on the
+	# client and resync.
+	#
+	$cenv rep_config {noautoinit on}
 
 	set envlist "{$menv 1} {$cenv 2}"
 	process_msgs $envlist 0 NONE err
-	error_check_good msg_err [is_substr $err "never part of"] 1
+	error_check_good msg_err [is_substr $err "REP_JOIN_FAILURE"] 1
 
 	puts "\tRep$tnum.c: Clean up."
 	error_check_good cdb_close [$cdb close] 0

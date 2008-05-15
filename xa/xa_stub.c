@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: xa_stub.c,v 1.3 2007/05/17 15:16:00 bostic Exp $
+ * $Id: xa_stub.c,v 1.5 2008/01/08 20:59:00 bostic Exp $
  */
 
 #include "db_config.h"
@@ -25,7 +25,7 @@ static int
 __db_noxa(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_errx(dbenv,
+	__db_errx(dbenv->env,
 	    "library build did not include support for XA");
 	return (DB_OPNOTSUP);
 }

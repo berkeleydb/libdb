@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_base.h,v 12.15 2007/05/17 17:29:27 bostic Exp $
+ * $Id: rep_base.h,v 12.17 2008/02/27 22:04:15 alanb Exp $
  */
 
 #ifndef _EX_REPQUOTE_H_
@@ -84,6 +84,7 @@ typedef HANDLE mutex_t;
 #define	mutex_unlock(m)		(ReleaseMutex(*(m)) ? 0 : -1)
 #define	sleep(s)		Sleep(1000 * (s))
 
+typedef int socklen_t;
 typedef SOCKET socket_t;
 #define	SOCKET_CREATION_FAILURE INVALID_SOCKET
 #define	readsocket(s, buf, sz)	recv((s), (buf), (int)(sz), 0)

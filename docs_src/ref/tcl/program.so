@@ -1,7 +1,16 @@
-m4_comment([$Id: program.so,v 11.15 2006/07/24 17:46:17 sue Exp $])
+m4_comment([$Id: program.so,v 11.16 2007/07/30 19:26:29 bostic Exp $])
 
 m4_ref_title(Tcl API,
     Tcl API programming notes, @Tcl API programming notes, tcl/using, tcl/error)
+
+m4_p([dnl
+The m4_db Tcl API does not attempt to avoid evaluating input as Tcl
+commands.  For this reason, it may be dangerous to pass unreviewed user
+input through the m4_db Tcl API, as the input may subsequently be
+evaluated as a Tcl command.  Additionally, the m4_db Tcl API
+initialization routine resets process' effective user and group IDs to
+the real user and group IDs, to minimize the effectiveness of a Tcl
+injection attack.])
 
 m4_p([dnl
 The Tcl API closely parallels the m4_db programmatic interfaces.  If you

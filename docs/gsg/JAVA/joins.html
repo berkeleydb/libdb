@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
+    <link rel="up" href="indexes.html" title="Chapter 10. Secondary Databases" />
     <link rel="previous" href="secondaryCursor.html" title="&#10;        Using Secondary Cursors&#10;        &#10;    " />
     <link rel="next" href="javaindexusage.html" title="Secondary Database Example" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="secondaryCursor.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 5. Secondary Databases</th>
+          <th width="60%" align="center">Chapter 10. Secondary Databases</th>
           <td width="20%" align="right"> <a accesskey="n" href="javaindexusage.html">Next</a></td>
         </tr>
       </table>
@@ -143,9 +143,11 @@
             </li>
             <li>
               <p>
-                    Create an array of <span>secondary</span> cursors, and place in it each
-                    of the cursors that are participating in your join query. Note that this array must be null
-                    terminated.
+
+                    Create an array of <span>secondary</span> cursors, and
+                    place in it each of the cursors that are participating in your join query. 
+                    
+
                 </p>
             </li>
             <li>
@@ -256,8 +258,7 @@ try {
         // positioned cursors
         SecondaryCursor[] cursorArray = {colorSecCursor,
                                          typeSecCursor, 
-                                         makeSecCursor,
-                                         null};
+                                         makeSecCursor};
 
         // Create the join cursor
         joinCursor = automotiveDB.join(cursorArray, null);

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_trickle.c,v 12.16 2007/06/01 18:32:44 bostic Exp $
+ * $Id: mp_trickle.c,v 12.20 2008/01/08 20:58:42 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,11 +12,11 @@
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
-static int __memp_trickle __P((DB_ENV *, int, int *));
+static int __memp_trickle __P((ENV *, int, int *));
 
 /*
  * __memp_trickle_pp --
- *	DB_ENV->memp_trickle pre/post processing.
+ *	ENV->memp_trickle pre/post processing.
  *
  * PUBLIC: int __memp_trickle_pp __P((DB_ENV *, int, int *));
  */
@@ -26,25 +26,27 @@ __memp_trickle_pp(dbenv, pct, nwrotep)
 	int pct, *nwrotep;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "memp_trickle", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv, (__memp_trickle(dbenv, pct, nwrotep)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "memp_trickle", DB_INIT_MPOOL);
+
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__memp_trickle(env, pct, nwrotep)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __memp_trickle --
- *	DB_ENV->memp_trickle.
+ *	ENV->memp_trickle.
  */
 static int
-__memp_trickle(dbenv, pct, nwrotep)
-	DB_ENV *dbenv;
+__memp_trickle(env, pct, nwrotep)
+	ENV *env;
 	int pct, *nwrotep;
 {
 	DB_MPOOL *dbmp;
@@ -52,14 +54,14 @@ __memp_trickle(dbenv, pct, nwrotep)
 	u_int32_t clean, dirty, i, need_clean, total, dtmp, wrote;
 	int ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 
 	if (nwrotep != NULL)
 		*nwrotep = 0;
 
 	if (pct < 1 || pct > 100) {
-		__db_errx(dbenv,
+		__db_errx(env,
 	    "DB_ENV->memp_trickle: %d: percent must be between 1 and 100",
 		    pct);
 		return (EINVAL);
@@ -100,7 +102,7 @@ __memp_trickle(dbenv, pct, nwrotep)
 		return (0);
 
 	need_clean -= clean;
-	ret = __memp_sync_int(dbenv, NULL,
+	ret = __memp_sync_int(env, NULL,
 	    need_clean, DB_SYNC_TRICKLE | DB_SYNC_INTERRUPT_OK, &wrote, NULL);
 	STAT((mp->stat.st_page_trickle += wrote));
 	if (nwrotep != NULL)

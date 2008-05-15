@@ -1,4 +1,4 @@
-m4_comment([$Id: env_set_verbose.so,v 10.54 2006/10/20 15:32:29 bostic Exp $])
+m4_comment([$Id: env_set_verbose.so,v 10.56 2008/01/19 14:12:57 bostic Exp $])
 
 define(M4PAGELOCAL, [dnl
 	dbenv_set_verbose, dbenv_get_verbose DB_VERB_DEADLOCK,
@@ -67,7 +67,31 @@ Display additional information concerning support for the
 m4_ref(DB_REGISTER) flag to the m4_refT(dbenv_open).])
 
 m4_tag(m4_idef(DB_VERB_REPLICATION), [dnl
-Display detailed information when processing replication messages.])
+Display all detailed information about replication. This includes the
+information displayed by all of the other DB_VERB_REP_* and DB_VERB_REPMGR_*
+values.])
+
+m4_tag(m4_idef(DB_VERB_REP_ELECT), [dnl
+Display detailed information about replication elections.])
+
+m4_tag(m4_idef(DB_VERB_REP_LEASE), [dnl
+Display detailed information about replication master leases.])
+
+m4_tag(m4_idef(DB_VERB_REP_MISC), [dnl
+Display detailed information about general replication processing not
+covered by the other DB_VERB_REP_* values.])
+
+m4_tag(m4_idef(DB_VERB_REP_MSGS), [dnl
+Display detailed information about replication message processing.])
+
+m4_tag(m4_idef(DB_VERB_REP_SYNC), [dnl
+Display detailed information about replication client synchronization.])
+
+m4_tag(m4_idef(DB_VERB_REPMGR_CONNFAIL), [dnl
+Display detailed information about Replication Manager connection failures.])
+
+m4_tag(m4_idef(DB_VERB_REPMGR_MISC), [dnl
+Display detailed information about general Replication Manager processing.])
 
 m4_tag(m4_idef(DB_VERB_WAITSFOR), [dnl
 Display the waits-for table when doing deadlock detection.])

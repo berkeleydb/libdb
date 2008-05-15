@@ -1,5 +1,5 @@
-<!--$Id: env_open.so,v 10.111 2006/08/02 17:39:47 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: env_open.so,v 10.114 2008/04/29 22:42:03 mbrey Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;open</h3>
+<b>DB_ENV-&gt;open</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -29,9 +29,9 @@ DB_ENV-&gt;get_home(DB_ENV *dbenv, const char **homep);
 <p>
 int
 DB_ENV-&gt;get_open_flags(DB_ENV *dbenv, u_int32_t *flagsp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;open</h3>
+<b>Description: DB_ENV-&gt;open</b>
 <p>The DB_ENV-&gt;open method opens a Berkeley DB environment.  It provides a
 structure for creating a consistent environment for processes using one
 or more of the features of Berkeley DB.</p>
@@ -41,18 +41,17 @@ and 0 on success.
 If DB_ENV-&gt;open fails, the <a href="../api_c/env_close.html">DB_ENV-&gt;close</a> method must be called
 to discard the <a href="../api_c/env_class.html">DB_ENV</a> handle.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>db_home</b><dd>The <b>db_home</b> parameter is the database environment's home
+<b>Parameters</b> <br>
+ <b>db_home</b><ul compact><li>The <b>db_home</b> parameter is the database environment's home
 directory.  For more information on <b>db_home</b>, and filename
 resolution in general, see <a href="../ref/env/naming.html">Berkeley DB File
 Naming</a>.  The environment variable <b>DB_HOME</b> may be used as
 the path of the database home, as described in
-<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
+<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.</ul>
 <p>When using a Unicode build on Windows (the default), the <b>db_home</b>
 argument will be interpreted as a UTF-8 string, which is equivalent to
 ASCII for Latin characters.</p>
-<dt><b>flags</b><dd>The <b>flags</b> parameter specifies the subsystems that are initialized
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter specifies the subsystems that are initialized
 and how the application's environment affects Berkeley DB file naming, among
 other things.
 The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
@@ -72,47 +71,47 @@ environment without specifying any subsystem flags.  Applications
 joining an environment, requiring specific subsystems from their
 environments, should open the environment specifying those specific
 subsystem flags.</p>
-<dl compact>
-<dt><a name="DB_INIT_CDB">DB_INIT_CDB</a><dd>Initialize locking for the <a href="../ref/cam/intro.html">Berkeley DB Concurrent Data Store</a>
+<br>
+<b><a name="DB_INIT_CDB">DB_INIT_CDB</a></b><ul compact><li>Initialize locking for the <a href="../ref/cam/intro.html">Berkeley DB Concurrent Data Store</a>
 product.  In this mode, Berkeley DB provides multiple reader/single writer
 access.  The only other subsystem that should be specified with the
-DB_INIT_CDB flag is DB_INIT_MPOOL.
-<dt><a name="DB_INIT_LOCK">DB_INIT_LOCK</a><dd>Initialize the locking subsystem.  This subsystem should be used when
+DB_INIT_CDB flag is DB_INIT_MPOOL.</ul>
+<b><a name="DB_INIT_LOCK">DB_INIT_LOCK</a></b><ul compact><li>Initialize the locking subsystem.  This subsystem should be used when
 multiple processes or threads are going to be reading and writing a
 Berkeley DB database, so that they do not interfere with each other.  If all
 threads are accessing the database(s) read-only, locking is unnecessary.
 When the DB_INIT_LOCK flag is specified, it is usually necessary
 to run a deadlock detector, as well.  See <a href="../utility/db_deadlock.html">db_deadlock</a> and
-<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> for more information.
-<dt><a name="DB_INIT_LOG">DB_INIT_LOG</a><dd>Initialize the logging subsystem.  This subsystem should be used when
+<a href="../api_c/lock_detect.html">DB_ENV-&gt;lock_detect</a> for more information.</ul>
+<b><a name="DB_INIT_LOG">DB_INIT_LOG</a></b><ul compact><li>Initialize the logging subsystem.  This subsystem should be used when
 recovery from application or system failure is necessary.  If the log
 region is being created and log files are already present, the log files
 are reviewed; subsequent log writes are appended to the end of the log,
-rather than overwriting current log entries.
-<dt><a name="DB_INIT_MPOOL">DB_INIT_MPOOL</a><dd>Initialize the shared memory buffer pool subsystem.  This subsystem
+rather than overwriting current log entries.</ul>
+<b><a name="DB_INIT_MPOOL">DB_INIT_MPOOL</a></b><ul compact><li>Initialize the shared memory buffer pool subsystem.  This subsystem
 should be used whenever an application is using any Berkeley DB access
-method.
-<dt><a name="DB_INIT_REP">DB_INIT_REP</a><dd>Initialize the replication subsystem.  This subsystem
+method.</ul>
+<b><a name="DB_INIT_REP">DB_INIT_REP</a></b><ul compact><li>Initialize the replication subsystem.  This subsystem
 should be used whenever an application plans on using replication.
 The DB_INIT_REP flag requires the DB_INIT_TXN and
-DB_INIT_LOCK flags also be configured.
-<dt><a name="DB_INIT_TXN">DB_INIT_TXN</a><dd>Initialize the transaction subsystem.  This subsystem should be used
+DB_INIT_LOCK flags also be configured.</ul>
+<b><a name="DB_INIT_TXN">DB_INIT_TXN</a></b><ul compact><li>Initialize the transaction subsystem.  This subsystem should be used
 when recovery and atomicity of multiple operations are important.  The
-DB_INIT_TXN flag implies the DB_INIT_LOG flag.
-</dl>
+DB_INIT_TXN flag implies the DB_INIT_LOG flag.</ul>
+<br>
 <p>The second group of flags govern what recovery, if any, is performed when
 the environment is initialized:</p>
-<dl compact>
-<dt><a name="DB_RECOVER">DB_RECOVER</a><dd>Run normal recovery on this environment before opening it for normal
+<br>
+<b><a name="DB_RECOVER">DB_RECOVER</a></b><ul compact><li>Run normal recovery on this environment before opening it for normal
 use.  If this flag is set, the DB_CREATE and DB_INIT_TXN
 flags must also be set, because the regions will be removed and
-re-created, and transactions are required for application recovery.
-<dt><a name="DB_RECOVER_FATAL">DB_RECOVER_FATAL</a><dd>Run catastrophic recovery on this environment before opening it for
+re-created, and transactions are required for application recovery.</ul>
+<b><a name="DB_RECOVER_FATAL">DB_RECOVER_FATAL</a></b><ul compact><li>Run catastrophic recovery on this environment before opening it for
 normal use.  If this flag is set, the DB_CREATE and
 DB_INIT_TXN flags must also be set, because the regions will be
 removed and re-created, and transactions are required for application
-recovery.
-</dl>
+recovery.</ul>
+<br>
 <p>A standard part of the recovery process is to remove the existing Berkeley DB
 environment and create a new one in which to perform recovery.  If the
 thread of control performing recovery does not specify the correct
@@ -138,26 +137,26 @@ is necessary to ensure that all necessary log files are present before
 running recovery.  For further information, consult <a href="../utility/db_archive.html">db_archive</a>
 and <a href="../utility/db_recover.html">db_recover</a>.</p>
 <p>The third group of flags govern file-naming extensions in the environment:</p>
-<dl compact>
+<br>
 <a name="2"><!--meow--></a>
-<dt><a name="DB_USE_ENVIRON">DB_USE_ENVIRON</a><dd>The Berkeley DB process' environment may be permitted to specify information
+<b><a name="DB_USE_ENVIRON">DB_USE_ENVIRON</a></b><ul compact><li>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.  Because permitting users to specify which files
 are used can create security problems, environment information will be
 used in file naming for all users only if the DB_USE_ENVIRON
-flag is set.
-<dt><a name="DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a><dd>The Berkeley DB process' environment may be permitted to specify information
+flag is set.</ul>
+<b><a name="DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a></b><ul compact><li>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.  Because permitting users to specify which files
 are used can create security problems, if the
 DB_USE_ENVIRON_ROOT flag is set, environment information will
 be used for file naming only for users with appropriate permissions (for
-example, users with a user-ID of 0 on UNIX systems).
-</dl>
+example, users with a user-ID of 0 on UNIX systems).</ul>
+<br>
 <p>Finally, there are a few additional unrelated flags:</p>
-<dl compact>
-<dt><a name="DB_CREATE">DB_CREATE</a><dd>Cause Berkeley DB subsystems to create any underlying files, as necessary.
-<dt><a name="DB_LOCKDOWN">DB_LOCKDOWN</a><dd>Lock shared Berkeley DB environment files and memory-mapped databases into
-memory.
-<dt><a name="DB_PRIVATE">DB_PRIVATE</a><dd>Allocate region memory from the heap instead of from memory backed by
+<br>
+<b><a name="DB_CREATE">DB_CREATE</a></b><ul compact><li>Cause Berkeley DB subsystems to create any underlying files, as necessary.</ul>
+<b><a name="DB_LOCKDOWN">DB_LOCKDOWN</a></b><ul compact><li>Lock shared Berkeley DB environment files and memory-mapped databases into
+memory.</ul>
+<b><a name="DB_PRIVATE">DB_PRIVATE</a></b><ul compact><li>Allocate region memory from the heap instead of from memory backed by
 the filesystem or system shared memory.
 <p>This flag implies the environment will only be accessed by a single
 process (although that process may be multithreaded).  This flag has two
@@ -172,8 +171,8 @@ application and Berkeley DB utilities (for example, <a href="../utility/db_archi
 <a href="../utility/db_checkpoint.html">db_checkpoint</a> or <a href="../utility/db_stat.html">db_stat</a>) are expected to access the
 environment, the DB_PRIVATE flag should not be specified.</p>
 <p>See <a href="../ref/env/region.html">Shared Memory Regions</a> for more
-information.</p>
-<dt><a name="DB_REGISTER">DB_REGISTER</a><dd>Check to see if recovery needs to be performed before opening the
+information.</p></ul>
+<b><a name="DB_REGISTER">DB_REGISTER</a></b><ul compact><li>Check to see if recovery needs to be performed before opening the
 database environment.  (For this check to be accurate, all processes
 using the environment must specify DB_REGISTER when opening the
 environment.)  If recovery needs to be performed for any reason
@@ -184,20 +183,21 @@ DB_RECOVER is not specified, <a href="../ref/program/errorret.html#DB_RUNRECOVER
 returned.  If recovery does not need to be performed, the
 DB_RECOVER flag will be ignored.  See
 <a href="../ref/transapp/app.html">Architecting Transactional Data Store
-applications</a> for more information.
-<dt><a name="DB_SYSTEM_MEM">DB_SYSTEM_MEM</a><dd>Allocate region memory from system shared memory instead of from heap
+applications</a> for more information.</ul>
+<b><a name="DB_SYSTEM_MEM">DB_SYSTEM_MEM</a></b><ul compact><li>Allocate region memory from system shared memory instead of from heap
 memory or memory backed by the filesystem.
 <p>See <a href="../ref/env/region.html">Shared Memory Regions</a> for more
-information.</p>
-<dt><a name="DB_THREAD">DB_THREAD</a><dd>Cause the <a href="../api_c/env_class.html">DB_ENV</a> handle returned by DB_ENV-&gt;open to be
+information.</p></ul>
+<b><a name="DB_THREAD">DB_THREAD</a></b><ul compact><li>Cause the <a href="../api_c/env_class.html">DB_ENV</a> handle returned by DB_ENV-&gt;open to be
 <i>free-threaded</i>; that is, concurrently usable by multiple
 threads in the address space.  The DB_THREAD flag should be specified
 if the <a href="../api_c/env_class.html">DB_ENV</a> handle will be concurrently used by more than one
 thread in the process, or if any <a href="../api_c/db_class.html">DB</a> handles opened in the scope
 of the <a href="../api_c/env_class.html">DB_ENV</a> handle will be concurrently used by more than one
 thread in the process.
-</dl>
-<dt><b>mode</b><dd>On Windows systems, the mode parameter is ignored.
+<p>This flag is required when using the Replication Manager.</p></ul>
+<br></ul>
+ <b>mode</b><ul compact><li>On Windows systems, the mode parameter is ignored.
 <p>On UNIX systems or in IEEE/ANSI Std 1003.1 (POSIX) environments, files created by Berkeley DB
 are created with mode <b>mode</b> (as described in <b>chmod</b>(2))
 and modified by the process' umask value at the time of creation (see
@@ -206,69 +206,67 @@ group ownership of created files is based on the system and directory
 defaults, and is not further specified by Berkeley DB.  System shared memory
 segments created by Berkeley DB are created with mode <b>mode</b>, unmodified
 by the process' umask value.  If <b>mode</b> is 0, Berkeley DB will use a
-default mode of readable and writable by both owner and group.</p>
-</dl>
+default mode of readable and writable by both owner and group.</p></ul>
+<br>
 <a name="3"><!--meow--></a>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;open method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>DB_RUNRECOVERY<dd>The DB_REGISTER flag was specified, a failure has occurred, and no
-recovery flag was specified.
-</dl>
-<dl compact>
-<dt>DB_VERSION_MISMATCH<dd>The version of the Berkeley DB library doesn't match the version that created
-the database environment.
-</dl>
-<dl compact>
-<dt>EAGAIN<dd>The shared memory region was locked and (repeatedly) unavailable.
-</dl>
-<dl compact>
-<dt>EINVAL<dd>If the DB_THREAD flag was specified and fast mutexes are not
+<br>
+<b>DB_RUNRECOVERY</b><ul compact><li>The DB_REGISTER flag was specified, a failure has occurred, and no
+recovery flag was specified.</ul>
+<br>
+<br>
+<b>DB_VERSION_MISMATCH</b><ul compact><li>The version of the Berkeley DB library doesn't match the version that created
+the database environment.</ul>
+<br>
+<br>
+<b>EAGAIN</b><ul compact><li>The shared memory region was locked and (repeatedly) unavailable.</ul>
+<br>
+<br>
+<b>EINVAL</b><ul compact><li>If the DB_THREAD flag was specified and fast mutexes are not
 available for this architecture;
 The DB_HOME or TMPDIR environment variables were set, but empty;
 An incorrectly formatted <b>NAME VALUE</b> entry or line was found; or if an
-invalid flag value or parameter was specified.
-</dl>
-<dl compact>
-<dt>ENOSPC<dd>HP-UX only:
+invalid flag value or parameter was specified.</ul>
+<br>
+<br>
+<b>ENOSPC</b><ul compact><li>HP-UX only:
 Due to the constraints of the PA-RISC memory architecture, HP-UX does not
 allow a process to map a file into its address space multiple times.
 For this reason, each Berkeley DB environment may be opened only once by a
 process on HP-UX; that is, calls to DB_ENV-&gt;open will fail if the
-specified Berkeley DB environment has been opened and not subsequently closed.
-</dl>
-<dl compact>
-<dt>ENOENT<dd>The file or directory does not exist.
-</dl>
+specified Berkeley DB environment has been opened and not subsequently closed.</ul>
+<br>
+<br>
+<b>ENOENT</b><ul compact><li>The file or directory does not exist.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;get_home</h3>
+<b>Description: DB_ENV-&gt;get_home</b>
 <p>The DB_ENV-&gt;get_home method returns the database environment home directory.</p>
 <p>The DB_ENV-&gt;get_home method may be called at any time during the life of the
 application.</p>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;get_open_flags</h3>
-<p>The DB_ENV-&gt;get_open_flags method returns the open method flags.</p>
-<p>The DB_ENV-&gt;get_open_flags method may not be called before the DB_ENV-&gt;open method has
-been called.</p>
+<b>Description: DB_ENV-&gt;get_open_flags</b>
+<p>The DB_ENV-&gt;get_open_flags method returns the open method flags originally used to create the database environment.</p>
+<p>The DB_ENV-&gt;get_open_flags method may not be called before the DB_ENV-&gt;open method is called.</p>
 <p>The DB_ENV-&gt;get_open_flags method
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flagsp</b><dd>The DB_ENV-&gt;get_open_flags method returns  the
-open method flags in <b>flagsp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>flagsp</b><ul compact><li>The DB_ENV-&gt;get_open_flags method returns  the
+open method flags originally used to create the database environment in <b>flagsp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

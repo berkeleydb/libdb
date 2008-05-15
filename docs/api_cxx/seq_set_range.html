@@ -1,5 +1,5 @@
 <!--$Id: seq_set_range.so,v 1.6 2004/09/07 15:37:41 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbSequence::set_range</h3>
+<b>DbSequence::set_range</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,16 +18,16 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 DbSequence::set_range(db_seq_t min, db_seq_t max);
 <p>
 int DbSequence::get_range(u_int32_t, db_seq_t *minp, db_seq_t *maxp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbSequence::set_range</h3>
+<b>Description: DbSequence::set_range</b>
 <p>Configure a sequence range.  This call is only effective when the
 sequence is being created.  The range is limited to a signed 64 bit
 integer.</p>
@@ -38,23 +38,22 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>min</b><dd>Specifies the minimum value for the sequence.
-<dt><b>max</b><dd>Specifies the maximum value for the sequence.
-</dl>
-<h3>Errors</h3>
+<b>Parameters</b> <br>
+ <b>min</b><ul compact><li>Specifies the minimum value for the sequence.</ul>
+ <b>max</b><ul compact><li>Specifies the maximum value for the sequence.</ul>
+<br>
+<br><b>Errors</b>
 <p>The DbSequence::set_range method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbSequence::get_range</h3>
+<b>Description: DbSequence::get_range</b>
 <p>The DbSequence::get_range method returns the range of values in the sequence.</p>
 <p>The DbSequence::get_range method may be called at any time during the life of the
 application.</p>
@@ -63,20 +62,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>minp</b><dd>The DbSequence::get_range method returns the minimum value in <b>minp</b>.
-<dt><b>maxp</b><dd>The DbSequence::get_range method returns the maximum value in <b>maxp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>minp</b><ul compact><li>The DbSequence::get_range method returns the minimum value in <b>minp</b>.</ul>
+ <b>maxp</b><ul compact><li>The DbSequence::get_range method returns the maximum value in <b>maxp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/seq_class.html">DbSequence</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/seq_list.html">Sequences and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

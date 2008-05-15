@@ -1,6 +1,6 @@
 <!--$Id: dbc_put.so,v 11.18 2004/12/02 18:21:08 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.28 2004/12/16 19:13:05 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3><i>dbc</i> <b>put</b></h3>
+<b><i>dbc</i> <b>put</b></b>
 </td>
 <td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,7 +19,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>dbc put
+<b><pre>dbc put
 	[-after]
 	[-before]
 	[-current]
@@ -30,12 +30,12 @@ dbc put
 	[-keylast]
 	[-partial {doff dlen}]
 	key data
-</pre></h3>
-<h3>Description(dbc put)</h3>
+</pre></b>
+<b>Description(dbc put)</b>
 <p>The <i>dbc</i> <b>put</b> command stores the specified key/data pair into the
 database.  One of the following options must be specified:</p>
-<dl compact>
-<dt>-after<dd>In the case of the Btree and Hash access methods, insert the data element
+<br>
+<b>-after</b><ul compact><li>In the case of the Btree and Hash access methods, insert the data element
 as a duplicate element of the key to which the cursor refers. The new
 element appears immediately after the current cursor position. It is an
 error to specify <b>-after</b> if the underlying Btree or Hash database
@@ -52,8 +52,8 @@ the key parameter is ignored. See <b>berkdb open</b> for more information.</p>
 <b>-after</b>.</p>
 <p>If the current cursor record has already been deleted, and the underlying
 access method is Hash, <i>dbc</i> <b>put</b> will throw a Tcl error. If the
-underlying access method is Btree or Recno, the operation will succeed.</p>
-<dt>-before<dd>In the case of the Btree and Hash access methods, insert the data element
+underlying access method is Btree or Recno, the operation will succeed.</p></ul>
+<b>-before</b><ul compact><li>In the case of the Btree and Hash access methods, insert the data element
 as a duplicate element of the key to which the cursor refers. The new
 element appears immediately before the current cursor position. It is an
 error to specify <b>-before</b> if the underlying Btree or Hash database
@@ -70,8 +70,8 @@ key parameter is ignored. See <b>berkdb open</b> for more information.</p>
 <b>-before</b>.</p>
 <p>If the current cursor record has already been deleted and the underlying
 access method is Hash, <i>dbc</i> <b>put</b> will throw a Tcl error. If the
-underlying access method is Btree or Recno, the operation will succeed.</p>
-<dt>-current<dd>Overwrite the data of the key/data pair to which the cursor refers with
+underlying access method is Btree or Recno, the operation will succeed.</p></ul>
+<b>-current</b><ul compact><li>Overwrite the data of the key/data pair to which the cursor refers with
 the specified data item.  No key argument should be specified.
 <p>If the <b>-dupsort</b> option was specified to <b>berkdb open</b> and the
 data item of the key/data pair to which the cursor refers does not
@@ -80,8 +80,8 @@ error.</p>
 <p>If the current cursor record has already been deleted and the underlying
 access method is Hash, <i>dbc</i> <b>put</b> will throw a Tcl error. If the
 underlying access method is Btree, Queue, or Recno, the operation will
-succeed.</p>
-<dt>-keyfirst<dd>In the case of the Btree and Hash access methods, insert the specified
+succeed.</p></ul>
+<b>-keyfirst</b><ul compact><li>In the case of the Btree and Hash access methods, insert the specified
 key/data pair into the database.
 <p>If the key already exists in the database, and the <b>-dupsort</b> option
 was specified to <b>berkdb open</b>, the inserted data item is added in its
@@ -89,8 +89,8 @@ sorted location.  If the key already exists in the database, and the
 <b>-dupsort</b> option was not specified, the inserted data item is added
 as the first of the data items for that key.</p>
 <p>The <b>-keyfirst</b> option may not be specified to the Queue or Recno
-access methods.</p>
-<dt>-keylast<dd>In the case of the Btree and Hash access methods, insert the specified
+access methods.</p></ul>
+<b>-keylast</b><ul compact><li>In the case of the Btree and Hash access methods, insert the specified
 key/data pair into the database.
 <p>If the key already exists in the database, and the <b>-dupsort</b> option
 was specified to <b>berkdb open</b>, the inserted data item is added in its
@@ -98,8 +98,8 @@ sorted location.  If the key already exists in the database, and the
 <b>-dupsort</b> option was not specified, the inserted data item is added
 as the last of the data items for that key.</p>
 <p>The <b>-keylast</b> option may not be specified to the Queue or Recno
-access methods.</p>
-<dt>-partial {doff dlen}<dd><p>The <b>dlen</b> bytes starting <b>doff</b> bytes from the beginning
+access methods.</p></ul>
+<b>-partial {doff dlen}</b><ul compact><li><p>The <b>dlen</b> bytes starting <b>doff</b> bytes from the beginning
 of the specified key's data record are replaced by the data specified
 by the data and size structure elements.  If <b>dlen</b> is smaller
 than the length of the supplied data, the record will grow; if
@@ -112,8 +112,8 @@ that supports duplicate records. Partial puts in databases supporting
 duplicate records must be done using a <i>dbc</i> <b>put</b> command.</p>
 <p>It is an error to attempt a partial put with differing <b>dlen</b> and
 supplied data length values in Queue or Recno databases with fixed-length
-records.</p>
-</dl>
+records.</p></ul>
+<br>
 <p>If a key is specified, and
 if the underlying database is a Queue or Recno database, the given key
 will be interpreted by Tcl as an integer.  For all other database types,
@@ -128,6 +128,6 @@ is thrown.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

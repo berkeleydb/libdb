@@ -1,5 +1,5 @@
-<!--$Id: rep_nsites.so,v 1.2 2006/06/23 01:28:47 alanb Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: rep_nsites.so,v 1.6 2008/01/30 20:14:30 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::rep_set_nsites</h3>
+<b>DbEnv::rep_set_nsites</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,39 +18,45 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
-DbEnv::rep_set_nsites(int nsites);
+DbEnv::rep_set_nsites(u_int32_t nsites);
 <p>
 int
-DbEnv::rep_get_nsites(int *nsitesp);
-</pre></h3>
+DbEnv::rep_get_nsites(u_int32_t *nsitesp);
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::rep_set_nsites</h3>
+<b>Description: DbEnv::rep_set_nsites</b>
 <p>The DbEnv::rep_set_nsites method specifies the total number of sites
 in a replication group.</p>
 <p>The DbEnv::rep_set_nsites method is typically called by applications which
 use the Berkeley DB library "replication manager" support.  (However, see
 also the <a href="../api_cxx/rep_elect.html">DbEnv::rep_elect</a> man page, the description of the <b>nsites</b>
 parameter.)</p>
+<p>The database environment's replication subsystem may also be configured using the
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
+file is a single line with the string "rep_set_nsites", one or more whitespace
+characters, and the number of sites specified.
+For example, "rep_set_nsites 5" sets the number of sites to 5.
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
 <p>The DbEnv::rep_set_nsites method configures a database environment, not only operations
 performed using the specified <a href="../api_cxx/env_class.html">DbEnv</a> handle.</p>
-<p>The DbEnv::rep_set_nsites method may be called at any time during the life of the
-application.</p>
+<p>The DbEnv::rep_set_nsites method may not be called before the <a href="../api_cxx/rep_start.html">DbEnv::rep_start</a> method is called.</p>
 <p>The DbEnv::rep_set_nsites method
 either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>nsites</b><dd>A positive integer specifying the total number of sites in the replication
-group.
-</dl>
+<b>Parameters</b> <br>
+ <b>nsites</b><ul compact><li>An integer specifying the total number of sites in the replication
+group.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbEnv::rep_get_nsites</h3>
+<b>Description: DbEnv::rep_get_nsites</b>
 <p>The DbEnv::rep_get_nsites method returns the total number of sites in the replication group.</p>
 <p>The DbEnv::rep_get_nsites method may be called at any time during the life of the
 application.</p>
@@ -59,20 +65,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>nsitesp</b><dd>The DbEnv::rep_get_nsites method returns  the
-total number of sites in the replication group in <b>nsitesp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>nsitesp</b><ul compact><li>The DbEnv::rep_get_nsites method returns  the
+total number of sites in the replication group in <b>nsitesp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/rep_list.html">Replication and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,4 +1,4 @@
-m4_comment([$Id: db_compact.so,v 1.6 2006/09/08 18:36:02 bostic Exp $])
+m4_comment([$Id: db_compact.so,v 1.8 2008/04/30 15:25:34 mbrey Exp $])
 
 define(M4PAGELOCAL, dbh_compact)
 include(m4/m4.seealso)
@@ -104,7 +104,7 @@ filesystem.
 m4_p([dnl
 Note that only pages at the end of a file can be returned to the
 filesystem.  Because of the one-pass nature of the compaction algorithm,
-any unemptied page near the end of the file inhibits returning pages to
+any not emptied page near the end of the file inhibits returning pages to
 the file system.  A repeated call to the m4_refT(dbh_compact) with a low
 m4_arg(compact_fillpercent) may be used to return pages in this case.])])
 m4_tagend])
@@ -117,7 +117,7 @@ operation stopped.])
 
 m4_paramend
 
-m4_err(dbh_compact, deadlock, repinval, readonly, einval,,)
+m4_err(dbh_compact, deadlock, rephandle, replockout, readonly, einval,,)
 
 m4_seealso(Db)
 m4_page_footer

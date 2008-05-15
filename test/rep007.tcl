@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep007.tcl,v 12.16 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep007.tcl,v 12.20 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep007
 # TEST	Replication and bad LSNs
@@ -49,10 +49,11 @@ proc rep007 { method { niter 10 } { tnum "007" } args } {
 proc rep007_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -112,19 +113,17 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 
 	# Databases should now have identical contents.
 	set dbname "test.db"
-	if { [is_hash $method] == 0 } {
-		set db1 [berkdb_open_noerr -env $masterenv -auto_commit $dbname]
-		set db2 [berkdb_open_noerr -env $clientenv -auto_commit $dbname]
-		set db3 [berkdb_open_noerr -env $cl2env -auto_commit $dbname]
+	set db1 [berkdb_open_noerr -env $masterenv -auto_commit $dbname]
+	set db2 [berkdb_open_noerr -env $clientenv -auto_commit $dbname]
+	set db3 [berkdb_open_noerr -env $cl2env -auto_commit $dbname]
 
-		error_check_good compare1and2 [db_compare \
-		    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
-		error_check_good compare1and3 [db_compare \
-		    $db1 $db3 $masterdir/$dbname $clientdir2/$dbname] 0
-		error_check_good db1_close [$db1 close] 0
-		error_check_good db2_close [$db2 close] 0
-		error_check_good db3_close [$db3 close] 0
-	}
+	error_check_good compare1and2 [db_compare \
+	    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
+	error_check_good compare1and3 [db_compare \
+	    $db1 $db3 $masterdir/$dbname $clientdir2/$dbname] 0
+	error_check_good db1_close [$db1 close] 0
+	error_check_good db2_close [$db2 close] 0
+	error_check_good db3_close [$db3 close] 0
 
 	puts "\tRep$tnum.b: Close client 1 and make master changes."
 	error_check_good client_close [$clientenv close] 0
@@ -148,7 +147,7 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	set pair [lindex [$c get -first] 0]
 	set key [lindex $pair 0]
 	set data [lindex $pair 1]
-	error_check_bad dbcget [llength $key] 0
+
 	error_check_good cursor_del [$c del] 0
 	error_check_good dbcclose [$c close] 0
 	error_check_good txn_commit [$txn commit] 0
@@ -177,14 +176,11 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 
 	set newmasterenv [eval $cl_envcmd $recargs -rep_master]
 	# Now we can check that database 2 does not match 3.
-	if { [is_hash $method] == 0 } {
-		set db2 \
-		    [berkdb_open_noerr -env $newmasterenv -auto_commit $dbname]
+	set db2 [berkdb_open_noerr -env $newmasterenv -auto_commit $dbname]
 
-		error_check_good db_compare [db_compare $db2 $db3 \
-		    $clientdir/$dbname $clientdir2/$dbname] 1
-		error_check_good db2_close [$db2 close] 0
-	}
+	error_check_good db_compare [db_compare $db2 $db3 \
+	    $clientdir/$dbname $clientdir2/$dbname] 1
+	error_check_good db2_close [$db2 close] 0
 	error_check_good db3_close [$db3 close] 0
 
 	puts "\tRep$tnum.d: Make incompatible changes to new master."
@@ -203,7 +199,6 @@ proc rep007_sub { method niter tnum logset recargs largs } {
 	error_check_good dbclose [$db close] 0
 
 	eval rep_test $method $newmasterenv NULL $niter $start $start 0 0 $largs
-	set cl2rec 0
 	set envlist "{$newmasterenv 2} {$cl2env 3}"
 	process_msgs $envlist
 

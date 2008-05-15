@@ -1,5 +1,5 @@
-<!--$Id: elect.so,v 1.27 2007/04/05 20:37:29 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: elect.so,v 1.30 2008/01/19 14:12:58 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
 <td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mastersync.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Elections</h3>
+<p align=center><b>Elections</b></p>
 <p>When using the Base replication API, it is the responsibility of the
 application to initiate elections if desired.  It is never dangerous
 to hold an election, as the Berkeley DB election process ensures there is
@@ -63,7 +62,7 @@ However, in the case of restarting a whole group after an administrative
 shut down, it is possible that a slower booting site had later logs than
 any other site.  To cover that case, an application would like to give
 the election more time to ensure all sites have a chance to participate.
-Since it is intractable to for a starting site to determine which case
+Since it is intractable for a starting site to determine which case
 the whole group is in, the use of a long timeout gives all sites a
 reasonable chance to participate.  If an application wanting full
 participation sets the <b>nvotes</b> arg to the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method to
@@ -113,9 +112,19 @@ Neither of these solutions is recommended: in the case of a network
 partition, either of these choices can result in there being two masters
 in one replication group, and the databases in the environment might
 irretrievably diverge as they are modified in different ways by the
-masters.  In the case of a two-system replication group, the application
-may want to require access to a remote network site, or some other
-external tie-breaker to allow a system to declare itself master.</p>
+masters.</p>
+<p>Note that this presents a special problem for a replication group
+consisting of only two environments.  If a master site fails, the
+remaining client can never comprise a majority of sites in the group.
+If the client application can reach a remote network site, or some other
+external tie-breaker, it may be able to determine whether it is safe
+to declare itself master.  Otherwise it must choose between providing
+availability of a writable master (at the risk of duplicate masters),
+or strict protection against duplicate masters (but no master when a
+failure occurs).  Users of the Base replication API can accomplish
+this by judicious setting of the nvotes and nsites parameters to the
+<a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.  Replication Manager offers this choice via the
+<a href="../../api_c/rep_config.html">DB_ENV-&gt;rep_set_config</a> method.</p>
 <p>It is possible for a less-preferred database environment to win an
 election if a number of systems crash at the same time.  Because an
 election winner is declared as soon as enough environments participate
@@ -146,6 +155,6 @@ based on configuration information supplied to the
 <a href="../../api_c/rep_priority.html">DB_ENV-&gt;rep_set_priority</a> method and the <a href="../../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a> method.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/newsite.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mastersync.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

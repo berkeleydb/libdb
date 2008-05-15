@@ -1,6 +1,7 @@
-# $Id: Makefile,v 1.6 2005/09/30 19:00:24 bostic Exp $
+# $Id: Makefile,v 1.7 2008/01/23 21:15:44 sarette Exp $
 
-COMMON=	env_set_lg_bsize.html \
+COMMON=	env_log_set_config.html \
+	env_set_lg_bsize.html \
 	env_set_lg_dir.html \
 	env_set_lg_max.html \
 	env_set_lg_mode.html \

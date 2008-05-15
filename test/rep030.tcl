@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep030.tcl,v 12.24 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep030.tcl,v 12.26 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep030
 # TEST	Test of internal initialization multiple files and pagesizes.
@@ -65,10 +65,11 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

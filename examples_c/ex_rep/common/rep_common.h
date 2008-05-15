@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2006,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_common.h,v 12.5 2007/05/17 15:15:29 bostic Exp $
+ * $Id: rep_common.h,v 12.6 2008/01/08 20:58:25 bostic Exp $
  */
 
 /* Data shared by both repmgr and base versions of this program. */

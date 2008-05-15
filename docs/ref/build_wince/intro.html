@@ -1,5 +1,5 @@
-<!--$Id: intro.so,v 1.2 2007/06/04 14:55:40 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: intro.so,v 1.3 2008/05/05 05:22:43 alexg Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,15 +10,12 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows CE systems</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows CE systems</dl></b></td>
 <td align=right><a href="../build_win/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_wince/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Building for Windows CE</h3>
+<p align=center><b>Building for Windows CE</b></p>
 <p>This page contains general instructions on building Berkeley DB for
-Windows CE platforms using specific compilers. The
-<a href="../../ref/build_wince/faq.html">Windows CE FAQ</a> also
-contains helpful information.</p>
+Windows CE platforms using specific compilers.</p>
 <p>The <b>build_wince</b> directory in the Berkeley DB distribution contains
 project files for Microsoft eMbedded Visual C++:</p>
 <table border=1 align=center>
@@ -27,7 +24,7 @@ project files for Microsoft eMbedded Visual C++:</p>
 <tr>    <td align=center>*.vcp</td>    <td align=center>eMbedded Visual C++ 4.0 projects</td>    </tr>
 </table>
 <p>These project files can be used to build Berkeley DB for the Windows CE platform.</p>
-<h3>Building Berkeley DB for Windows CE</h3>
+<b>Building Berkeley DB for Windows CE</b>
 <h4>eMbedded Visual C++ 4.0</h4>
 <ol>
 <p><li>Choose <i>File -&gt; Open Workspace...</i>.
@@ -46,14 +43,14 @@ examples, <b>build_wince\Release</b> or
 <b>build_wince\Debug</b>).</p>
 <p>When building your application during development, you should normally
 link against
-<b>build_wince\Debug\libdb_small46sd.lib</b>.  You can
+<b>build_wince\Debug\libdb_small47sd.lib</b>.  You can
 also build using a release version of the Berkeley DB libraries and tools,
 which will be placed in
-<b>build_windows\Release\libdb_small46s.lib</b>.
+<b>build_windows\Release\libdb_small47s.lib</b>.
 You will also need to add the <b>build_wince</b> directory to the list
 of include directories of your application's project, or copy the Berkeley DB
 include files to a location in your Visual Studio include path.</p>
-<h3>Building Berkeley DB for different target CPU architectures</h3>
+<b>Building Berkeley DB for different target CPU architectures</b>
 <p>There are many possible target CPU architectures for a Windows CE
 application.  This section outlines the process required to add a new
 target architecture to the project files supplied with Berkeley DB.</p>
@@ -79,6 +76,6 @@ CE</i> above.
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../build_win/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_wince/notes.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

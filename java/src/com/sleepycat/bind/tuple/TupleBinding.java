@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: TupleBinding.java,v 12.7 2007/05/04 00:28:25 mark Exp $
+ * $Id: TupleBinding.java,v 12.9 2008/02/07 17:12:25 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -28,7 +28,7 @@ import com.sleepycat.db.DatabaseEntry;
  * </ul>
  *
  * <p>For key or data entries which are Java primitive classes (String,
- * Integer, etc) {@link #getPrimitiveBinding} may be used to return a builtin
+ * Integer, etc) {@link #getPrimitiveBinding} may be used to return a built in
  * tuple binding.  A custom tuple binding for these types is not needed.
  * <em>Note:</em> {@link #getPrimitiveBinding} returns bindings that do not
  * sort negative floating point numbers correctly by default.  See {@link

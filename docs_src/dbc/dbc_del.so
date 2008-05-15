@@ -1,6 +1,6 @@
-m4_comment([$Id: dbc_del.so,v 10.47 2006/10/24 13:26:50 bostic Exp $])
+m4_comment([$Id: dbc_del.so,v 10.49 2007/10/24 16:06:07 bostic Exp $])
 
-define(M4PAGELOCAL, [dbc_del, DB_SECONDARY_BAD])
+define(M4PAGELOCAL, [dbc_del])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(dbc_del),
@@ -35,7 +35,7 @@ m4_parambegin
 m4_unusedflags
 m4_paramend
 
-m4_err(dbc_del, deadlock, repinval, secondary_bad, readonly,
+m4_err(dbc_del, deadlock, rephandle, replockout, secondary_bad, readonly,
 einval, [the cursor has not been initialized], cdbperm)
 
 m4_seealso(Dbc)

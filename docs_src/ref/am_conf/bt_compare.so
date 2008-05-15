@@ -1,4 +1,4 @@
-m4_comment([$Id: bt_compare.so,v 10.25 2004/03/05 21:39:33 bostic Exp $])
+m4_comment([$Id: bt_compare.so,v 10.26 2008/01/10 16:02:56 bostic Exp $])
 
 m4_ref_title(Access Methods, Btree comparison,
     specifying a Btree @comparison function, am_conf/malloc, am_conf/bt_prefix)
@@ -46,12 +46,11 @@ must also return that key A is less than key C.])
 
 m4_p([dnl
 It is reasonable for a comparison function to not examine an entire key
-in some applications, which implies that partial keys may be specified
-to the m4_db interfaces.  When partial keys are specified to m4_db,
-interfaces which retrieve data items based on a user-specified key (for
-example, m4_ref(dbh_get) and m4_ref(dbc_get) with the m4_ref(DB_SET)
-flag), will not modify the user-specified key by returning the actual
-key stored in the database.  The actual key can be retrieved by calling
-the m4_refT(dbc_get) with the m4_ref(DB_CURRENT) flag.])
+in some applications, which implies partial keys may be specified to the
+m4_db interfaces.  When partial keys are specified to m4_db, interfaces
+which retrieve data items based on a user-specified key (for example,
+m4_ref(dbh_get) and m4_ref(dbc_get) with the m4_ref(DB_SET) flag), will
+modify the user-specified key by returning the actual key stored in the
+database.])
 
 m4_page_footer

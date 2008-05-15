@@ -1,5 +1,5 @@
 <!--$Id: env_class.so,v 10.45 2005/11/30 19:09:47 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv</h3>
+<b>DbEnv</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 class DbEnv {
@@ -32,9 +32,9 @@ public:
 	static const DbEnv *DbEnv::get_const_DbEnv(const DB_ENV *dbenv);
 	...
 };
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv</h3>
+<b>Description: DbEnv</b>
 <p>The DbEnv object is the handle for a Berkeley DB environment -- a
 collection including support for some or all of caching, locking,
 logging and transaction subsystems, as well as databases and log files.
@@ -52,22 +52,22 @@ regardless of the method's return.</p>
 allocates memory internally; calling the <a href="../api_cxx/env_close.html">DbEnv::close</a> or
 <a href="../api_cxx/env_remove.html">DbEnv::remove</a> methods will free that memory.</p>
 <p>The following <b>flags</b> value may be specified:</p>
-<dl compact>
-<dt><a name="DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a><dd>The Berkeley DB C++ API supports two different error behaviors.  By default,
+<br>
+<b><a name="DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a></b><ul compact><li>The Berkeley DB C++ API supports two different error behaviors.  By default,
 whenever an error occurs, an exception is thrown that encapsulates the
 error information.  This generally allows for cleaner logic for
 transaction processing because a try block can surround a single
 transaction.  However, if DB_CXX_NO_EXCEPTIONS is specified,
 exceptions are not thrown; instead, each individual function returns an
-error code.
-<dt><a name="DB_RPCCLIENT">DB_RPCCLIENT</a><dd>Create a client environment to connect to a server.
+error code.</ul>
+<b><a name="DB_RPCCLIENT">DB_RPCCLIENT</a></b><ul compact><li>Create a client environment to connect to a server.</ul>
 <p>The DB_RPCCLIENT flag indicates to the system that this environment
 is remote on a server.  The use of this flag causes the environment
 methods to use functions that call a server instead of local functions.
 Prior to making any environment or database method calls, the application
 must call the <a href="../api_cxx/env_set_rpc_server.html">DbEnv::set_rpc_server</a> function to establish the
 connection to the server.</p>
-</dl>
+<br>
 <p>Each DbEnv object has an associated DB_ENV structure,
 which is used by the underlying implementation of Berkeley DB and its
 C-language API.  The DbEnv::get_DB_ENV method returns a pointer to this
@@ -84,14 +84,14 @@ object, if there is one.</p>
 and C++ language software.  It should not be necessary to use these
 calls in a purely C++ application.</p>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 DbEnv
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,5 +1,5 @@
-<!--$Id: app.so,v 1.31 2007/05/17 18:17:18 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: app.so,v 1.32 2008/04/23 15:49:17 alanb Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
 <td align=right><a href="../rep/pri.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mgr_meth.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Building replicated applications</h3>
+<p align=center><b>Building replicated applications</b></p>
 <p>The simplest way to build a replicated Berkeley DB application is to first
 build (and debug!) the transactional version of the same application.
 Then, add a thin replication layer: application initialization must be
@@ -31,13 +30,14 @@ relative pathnames and changing working directories after opening the
 environment.  In such applications the replication initialization code
 may not be able to locate the databases, and applications that change
 their working directories may need to use absolute pathnames.</p>
-<p>During application initialization, the application performs three
-additional tasks: first, it must specify the <a href="../../api_c/env_open.html#DB_INIT_REP">DB_INIT_REP</a> flag
-when opening its database environment; second, it must provide Berkeley DB
-information about its communications infrastructure; and third, it must
-start the Berkeley DB replication system.  Generally, a replicated application
-will do normal Berkeley DB recovery and configuration, exactly like any other
-transactional application.</p>
+<p>During application initialization, the application performs
+three additional tasks: first, it must specify the <a href="../../api_c/env_open.html#DB_INIT_REP">DB_INIT_REP</a>
+flag when opening its database environment and additionally, a
+Replication Manager application must also specify the <a href="../../api_c/env_open.html#DB_THREAD">DB_THREAD</a> flag;
+second, it must provide Berkeley DB information about its communications
+infrastructure; and third, it must start the Berkeley DB replication system.
+Generally, a replicated application will do normal Berkeley DB recovery and
+configuration, exactly like any other transactional application.</p>
 <p>Replication Manager applications configure the built-in communications
 infrastructure by calling the <a href="../../api_c/repmgr_local_site.html">DB_ENV-&gt;repmgr_set_local_site</a> method
 once and the <a href="../../api_c/repmgr_remote_site.html">DB_ENV-&gt;repmgr_add_remote_site</a> method zero or more
@@ -103,6 +103,6 @@ For Replication Manager applications, this also terminates all network
 connections and background processing threads.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/pri.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/mgr_meth.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

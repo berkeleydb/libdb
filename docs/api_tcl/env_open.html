@@ -1,6 +1,6 @@
 <!--$Id: env_open.so,v 11.29 2002/12/22 21:11:07 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.28 2004/12/16 19:13:05 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3><b>berkdb env</b></h3>
+<b><b>berkdb env</b></b>
 </td>
 <td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,7 +19,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>berkdb env
+<b><pre>berkdb env
 	[-cachesize {gbytes bytes ncache}]
 	[-create]
 	[-data_dir dirname]
@@ -39,8 +39,8 @@
 	[-txn_max max]
 	[-use_environ]
 	[-use_environ_root]
-</pre></h3>
-<h3>Description(berkdb env)</h3>
+</pre></b>
+<b>Description(berkdb env)</b>
 <p>The <b>berkdb env</b> command opens and optionally creates a database
 environment.  The returned environment handle is bound to a Tcl command
 of the form <b>envN</b>, where N is an integer starting at 0 (for
@@ -49,8 +49,8 @@ accesses the environment methods.  The command automatically initializes
 the Shared Memory Buffer Pool subsystem.  This subsystem is used
 whenever the application is using any Berkeley DB access method.</p>
 <p>The options are as follows:</p>
-<dl compact>
-<dt>-cachesize {gbytes bytes ncache}<dd>Set the size of the database's shared memory buffer pool (that is, the
+<br>
+<b>-cachesize {gbytes bytes ncache}</b><ul compact><li>Set the size of the database's shared memory buffer pool (that is, the
 cache), to <b>gbytes</b> gigabytes plus <b>bytes</b>.  The cache
 should be the size of the normal working data set of the application,
 with some small amount of additional memory for unusual situations.
@@ -68,17 +68,17 @@ cache will be allocated contiguously in memory.  If it is greater than
 1, the cache will be broken up into <b>ncache</b> equally sized
 separate pieces of memory.</p>
 <p>For information on tuning the Berkeley DB cache size, see
-<a href="../ref/am_conf/cachesize.html">Selecting a cache size</a>.</p>
-<dt>-create<dd>Cause Berkeley DB subsystems to create any underlying files, as necessary.
-<dt>-data_dir dirname<dd>Specify the environment's data directory as described in
-<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<dt>-encryptaes passwd<dd>Specify the database should be encrypted with the given password
+<a href="../ref/am_conf/cachesize.html">Selecting a cache size</a>.</p></ul>
+<b>-create</b><ul compact><li>Cause Berkeley DB subsystems to create any underlying files, as necessary.</ul>
+<b>-data_dir dirname</b><ul compact><li>Specify the environment's data directory as described in
+<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.</ul>
+<b>-encryptaes passwd</b><ul compact><li>Specify the database should be encrypted with the given password
 using the Rijndael/AES (also known as the Advanced Encryption Standard
-and Federal Information Processing Standard (FIPS) 197) algorithm.
-<dt>-encryptany passwd<dd>Specify the already existing environment should be opened
+and Federal Information Processing Standard (FIPS) 197) algorithm.</ul>
+<b>-encryptany passwd</b><ul compact><li>Specify the already existing environment should be opened
 with the given password.  This option is used if the environment is
-known to be encrypted, but the specific algorithm used is not known.
-<dt>-errfile filename<dd><p>When an error occurs in the Berkeley DB library, a Berkeley DB error or an error
+known to be encrypted, but the specific algorithm used is not known.</ul>
+<b>-errfile filename</b><ul compact><li><p>When an error occurs in the Berkeley DB library, a Berkeley DB error or an error
 return value is returned by the function. In some cases, however, the
 errno value may be insufficient to completely describe the cause of the
 error especially during initial application debugging.</p>
@@ -92,19 +92,19 @@ specified file reference.</p>
 character.</p>
 <p>This error-logging enhancement does not slow performance or significantly
 increase application size, and may be run during normal operation as well
-as during application debugging.</p>
-<dt>-home directory<dd>The <b>-home</b> argument is described in
-<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<dt>-log_dir dirname<dd>Specify the environment's logging file directory as described in
-<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<dt>-mode mode<dd><p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by Berkeley DB
+as during application debugging.</p></ul>
+<b>-home directory</b><ul compact><li>The <b>-home</b> argument is described in
+<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.</ul>
+<b>-log_dir dirname</b><ul compact><li>Specify the environment's logging file directory as described in
+<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.</ul>
+<b>-mode mode</b><ul compact><li><p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by Berkeley DB
 are created with mode <b>mode</b> (as described in <b>chmod</b>(2)) and
 modified by the process' umask value at the time of creation (see
 <b>umask</b>(2)).  The group ownership of created files is based on
 the system and directory defaults, and is not further specified by Berkeley DB.
 If <b>mode</b> is 0, files are created readable and writable by both
-owner and group.  On Windows systems, the mode argument is ignored.</p>
-<dt>-private<dd>Specify that the environment will only be accessed by a single process
+owner and group.  On Windows systems, the mode argument is ignored.</p></ul>
+<b>-private</b><ul compact><li>Specify that the environment will only be accessed by a single process
 (although that process may be multithreaded).  This flag has two effects
 on the Berkeley DB environment.  First, all underlying data structures are
 allocated from per-process memory instead of from shared memory that is
@@ -114,23 +114,23 @@ are only configured to work between threads.
 accessing the environment, as it is likely to cause database corruption
 and unpredictable behavior.  For example, if both a server application
 and the Berkeley DB utility <a href="../utility/db_stat.html">db_stat</a> will access the environment, the
-<b>-private</b> option should not be specified.</p>
-<dt>-recover<dd>Run normal recovery on this environment before opening it for normal use.
+<b>-private</b> option should not be specified.</p></ul>
+<b>-recover</b><ul compact><li>Run normal recovery on this environment before opening it for normal use.
 If this flag is set, the <b>-create</b> option must also be set because
-the regions will be removed and re-created.
-<dt>-recover_fatal<dd>Run catastrophic recovery on this environment before opening it for
+the regions will be removed and re-created.</ul>
+<b>-recover_fatal</b><ul compact><li>Run catastrophic recovery on this environment before opening it for
 normal use.  If this flag is set, the <b>-create</b> option must also be
-set since the regions will be removed and re-created.
-<dt>-shm_key key<dd>Specify a base segment ID for Berkeley DB environment shared memory regions
+set since the regions will be removed and re-created.</ul>
+<b>-shm_key key</b><ul compact><li>Specify a base segment ID for Berkeley DB environment shared memory regions
 created in system memory on systems supporting X/Open-style shared
 memory interfaces, for example, UNIX systems supporting shmget(2) and
-related System V IPC interfaces.  See <a href="../ref/env/region.html">Shared Memory Regions</a> for more information.
-<dt>-system_mem<dd>Allocate memory from system shared memory instead of memory backed by the
+related System V IPC interfaces.  See <a href="../ref/env/region.html">Shared Memory Regions</a> for more information.</ul>
+<b>-system_mem</b><ul compact><li>Allocate memory from system shared memory instead of memory backed by the
 filesystem.  See <a href="../ref/env/region.html">Shared Memory Regions</a>
-for more information.
-<dt>-tmp_dir dirname<dd>Specify the environment's tmp directory, as described in
-<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
-<dt>-txn [nosync]<dd>Initialize the Transaction subsystem.  This subsystem is used when
+for more information.</ul>
+<b>-tmp_dir dirname</b><ul compact><li>Specify the environment's tmp directory, as described in
+<a href="../ref/env/naming.html">Berkeley DB File Naming</a>.</ul>
+<b>-txn [nosync]</b><ul compact><li>Initialize the Transaction subsystem.  This subsystem is used when
 recovery and atomicity of multiple operations and recovery are important.
 The <b>-txn</b> option implies the initialization of the logging
 and locking subsystems as well.
@@ -143,32 +143,32 @@ committed transactions may be undone during recovery instead of being
 redone.</p>
 <p>The number of transactions that are potentially at risk is governed by
 how often the log is checkpointed (see <a href="../utility/db_checkpoint.html">db_checkpoint</a> for more
-information) and how many log updates can fit on a single log page.</p>
-<dt>-txn_max max<dd>Set the maximum number of simultaneous transactions that are supported
+information) and how many log updates can fit on a single log page.</p></ul>
+<b>-txn_max max</b><ul compact><li>Set the maximum number of simultaneous transactions that are supported
 by the environment, which bounds the size of backing files.  When there
 are more than the specified number of concurrent transactions, calls to
-<i>env</i> <b>txn</b> will fail (until some active transactions complete).
-<dt>-use_environ<dd>The Berkeley DB process' environment may be permitted to specify information
+<i>env</i> <b>txn</b> will fail (until some active transactions complete).</ul>
+<b>-use_environ</b><ul compact><li>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see
 <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
 Because permitting users to specify which files are used can create
 security problems, environment information will be used in file naming
-for all users only if the <b>-use_environ</b> flag is set.
-<dt>-use_environ_root<dd>The Berkeley DB process' environment may be permitted to specify information
+for all users only if the <b>-use_environ</b> flag is set.</ul>
+<b>-use_environ_root</b><ul compact><li>The Berkeley DB process' environment may be permitted to specify information
 to be used when naming files; see
 <a href="../ref/env/naming.html">Berkeley DB File Naming</a>.
 As permitting users to specify which files are used can create security
 problems, if the <b>-use_environ_root</b> flag is set, environment
 information will be used for file naming only for users with appropriate
 permissions (for example, users with a user-ID of 0 on IEEE/ANSI Std 1003.1 (POSIX)
-systems).
-</dl>
+systems).</ul>
+<br>
 <p>The <b>berkdb env</b> command returns an environment handle on success.</p>
 <p>In the case of error, a Tcl error is thrown.</p>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

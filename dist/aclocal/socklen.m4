@@ -30,10 +30,10 @@ AC_DEFUN([AM_SOCKLEN_T],[
 	 db_cv_socklen_t_equiv=
 	 for arg2 in "struct sockaddr" void; do
 	   for t in int size_t "unsigned int" "long int" "unsigned long int"; do
-	     AC_TRY_COMPILE(
-	       [#include <sys/types.h>
-		#include <sys/socket.h>
-
+	     AC_TRY_COMPILE([$db_includes
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
 		int getpeername (int, $arg2 *, $t *);],
 	       [$t len;
 		getpeername (0, 0, &len);],
@@ -49,7 +49,7 @@ AC_DEFUN([AM_SOCKLEN_T],[
       AC_MSG_RESULT([$db_cv_socklen_t_equiv])
       AC_DEFINE_UNQUOTED([socklen_t], [$db_cv_socklen_t_equiv],
 	[type to use in place of socklen_t if not defined])],
-	[#include <sys/types.h>
-	 #ifdef HAVE_SYS_SOCKET_H
-	 #include <sys/socket.h>
-	 #endif])])
+	[$db_includes
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif])])

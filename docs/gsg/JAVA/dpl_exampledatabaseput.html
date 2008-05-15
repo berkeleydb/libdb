@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>ExampleDatabasePut.class</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="up" href="dpl_example.html" title="Chapter 6. A DPL Example" />
+    <link rel="previous" href="dataaccessorclass.html" title="DataAccessor.class" />
+    <link rel="next" href="dpl_exampleinventoryread.html" title="ExampleInventoryRead.class" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">ExampleDatabasePut.class</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="dataaccessorclass.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. A DPL Example</th>
+          <td width="20%" align="right"> <a accesskey="n" href="dpl_exampleinventoryread.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="dpl_exampledatabaseput"></a>ExampleDatabasePut.class</h2>
+          </div>
+        </div>
+        <div></div>
+      </div>
+      <p>
+                   Our example reads inventory and vendor information from
+                   flat text files, encapsulates this data in objects of
+                   the appropriate type, and then writes each object to an
+                   <tt class="classname">EntityStore</tt>.
+           </p>
+      <p>
+                To begin, we import the Java classes that our example
+                needs. Most of the imports are related to reading the raw
+                data from flat text files and breaking them apart for usage
+                with our data classes. We also import classes from the
+                DB package, but we do not actually import any classes
+                from the DPL. The reason why is because we have
+                placed almost all of our DPL work off into
+                other classes, so there is no need for direct usage of
+                those APIs here.
+           </p>
+      <pre class="programlisting">package persist.gettingStarted;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.sleepycat.db.DatabaseException; </pre>
+      <p>
+            Now we can begin the class itself. Here we set default paths
+            for the on-disk resources that we require (the environment
+            home, and the location of the text files containing our sample
+            data). We also declare <tt class="classname">DataAccessor</tt>
+            and <tt class="classname">MyDbEnv</tt> members. We describe these
+            classes and show their implementation in
+            <a href="dataaccessorclass.html">DataAccessor.class</a>
+            and
+            <a href="mydbenv-persist.html">MyDbEnv</a>.
+        </p>
+      <pre class="programlisting">public class ExampleDatabasePut {
+
+    private static File myDbEnvPath = new File("/tmp/JEDB");
+    private static File inventoryFile = new File("./inventory.txt");
+    private static File vendorsFile = new File("./vendors.txt");
+
+    private DataAccessor da;
+
+    // Encapsulates the environment and data store.
+    private static MyDbEnv myDbEnv = new MyDbEnv();</pre>
+      <p>
+            Next, we provide our <tt class="methodname">usage()</tt>
+            method. The command line options provided there are necessary
+            only if the default values to the on-disk resources are not
+            sufficient.
+    </p>
+      <pre class="programlisting">    private static void usage() {
+        System.out.println("ExampleDatabasePut [-h &lt;env directory&gt;]");
+        System.out.println("      [-i &lt;inventory file&gt;] [-v &lt;vendors file&gt;]");
+        System.exit(-1);
+    } </pre>
+      <p>
+        Our <tt class="methodname">main()</tt> method is also reasonably
+        self-explanatory. We simply instantiate an
+        <tt class="classname">ExampleDatabasePut</tt> object there and then
+        call its <tt class="methodname">run()</tt> method. We also provide a
+        top-level <tt class="literal">try</tt> block there for any exceptions that might be thrown
+        during runtime.
+    </p>
+      <p>
+        Notice that the <tt class="literal">finally</tt> statement in the
+        top-level <tt class="literal">try</tt> block calls
+        <tt class="methodname">MyDbEnv.close()</tt>. This method closes our
+        <tt class="classname">EntityStore</tt> and <tt class="classname">Environment</tt>
+        objects. By placing it here in the <tt class="literal">finally</tt>
+        statement, we can make sure that our store and environment are
+        always cleanly closed.
+    </p>
+      <pre class="programlisting">    public static void main(String args[]) {
+        ExampleDatabasePut edp = new ExampleDatabasePut();
+        try {
+            edp.run(args);
+        } catch (DatabaseException dbe) {
+            System.err.println("ExampleDatabasePut: " + dbe.toString());
+            dbe.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Exception: " + e.toString());
+            e.printStackTrace();
+        } finally {
+            myDbEnv.close();
+        }
+        System.out.println("All done.");
+    } </pre>
+      <p>
+               Our <tt class="methodname">run()</tt> method does four
+            things. It calls <tt class="methodname">MyDbEnv.setup()</tt>,
+            which opens our <tt class="classname">Environment</tt> and
+            <tt class="classname">EntityStore</tt>.  It then instantiates a
+            <tt class="classname">DataAccessor</tt> object, which we will use
+            to write data to the store.  It calls
+            <tt class="methodname">loadVendorsDb()</tt> which loads all of the
+            vendor information. And then it calls
+            <tt class="methodname">loadInventoryDb()</tt> which loads all of
+            the inventory information.
+       </p>
+      <p>
+            Notice that the <tt class="classname">MyDbEnv</tt>
+            object is being setup as read-write. This results in the
+            <tt class="classname">EntityStore</tt> being opened for
+            transactional support. 
+            (See <a href="mydbenv-persist.html">MyDbEnv</a>
+            for implementation details.)
+        </p>
+      <pre class="programlisting">    private void run(String args[])
+        throws DatabaseException {
+        // Parse the arguments list
+        parseArgs(args);
+
+        myDbEnv.setup(myDbEnvPath,  // Path to the environment home 
+                      false);       // Environment read-only?
+
+        // Open the data accessor. This is used to store
+        // persistent objects.
+        da = new DataAccessor(myDbEnv.getEntityStore());
+
+        System.out.println("loading vendors db....");
+        loadVendorsDb();
+
+        System.out.println("loading inventory db....");
+        loadInventoryDb();
+    } </pre>
+      <p>
+            We can now implement the <tt class="methodname">loadVendorsDb()</tt>
+            method. This method is responsible for reading the vendor
+            contact information from the appropriate flat-text file,
+            populating <tt class="classname">Vendor</tt> class objects with the
+            data and then writing it to the <tt class="classname">EntityStore</tt>.
+            As explained above, each individual object is written with
+            transactional support. However, because a transaction handle is
+            not explicitly used, the write is performed using auto-commit.
+            This happens because the <tt class="classname">EntityStore</tt>
+            was opened to support transactions.
+    </p>
+      <p>
+            To actually write each class to the
+            <tt class="classname">EntityStore</tt>, we simply call the
+            <tt class="methodname">PrimaryIndex.put()</tt> method for the
+            <tt class="classname">Vendor</tt> entity instance. We obtain this
+            method from our <tt class="classname">DataAccessor</tt>
+            class.
+    </p>
+      <pre class="programlisting">    private void loadVendorsDb()
+            throws DatabaseException {
+
+        // loadFile opens a flat-text file that contains our data
+        // and loads it into a list for us to work with. The integer
+        // parameter represents the number of fields expected in the
+        // file.
+        List vendors = loadFile(vendorsFile, 8);
+
+        // Now load the data into the store.
+        for (int i = 0; i &lt; vendors.size(); i++) {
+            String[] sArray = (String[])vendors.get(i);
+            Vendor theVendor = new Vendor();
+            theVendor.setVendorName(sArray[0]);
+            theVendor.setAddress(sArray[1]);
+            theVendor.setCity(sArray[2]);
+            theVendor.setState(sArray[3]);
+            theVendor.setZipcode(sArray[4]);
+            theVendor.setBusinessPhoneNumber(sArray[5]);
+            theVendor.setRepName(sArray[6]);
+            theVendor.setRepPhoneNumber(sArray[7]);
+
+            // Put it in the store.
+            da.vendorByName.put(theVendor);
+        }
+    } </pre>
+      <p>
+            Now we can implement our <tt class="methodname">loadInventoryDb()</tt>
+            method. This does exactly the same thing as the
+            <tt class="methodname">loadVendorsDb()</tt>
+            method.
+    </p>
+      <pre class="programlisting">    private void loadInventoryDb()
+        throws DatabaseException {
+
+        // loadFile opens a flat-text file that contains our data
+        // and loads it into a list for us to work with. The integer
+        // parameter represents the number of fields expected in the
+        // file.
+        List inventoryArray = loadFile(inventoryFile, 6);
+
+        // Now load the data into the store. The item's sku is the
+        // key, and the data is an Inventory class object.
+
+        for (int i = 0; i &lt; inventoryArray.size(); i++) {
+            String[] sArray = (String[])inventoryArray.get(i);
+            String sku = sArray[1];
+
+            Inventory theInventory = new Inventory();
+            theInventory.setItemName(sArray[0]);
+            theInventory.setSku(sArray[1]);
+            theInventory.setVendorPrice(
+                (new Float(sArray[2])).floatValue());
+            theInventory.setVendorInventory(
+                (new Integer(sArray[3])).intValue());
+            theInventory.setCategory(sArray[4]);
+            theInventory.setVendor(sArray[5]);
+
+            // Put it in the store. Note that this causes our secondary key
+            // to be automatically updated for us.
+            da.inventoryBySku.put(theInventory);
+        }
+    } </pre>
+      <p>
+            The remainder of this example simple parses the command line
+            and loads data from a flat-text file. There is nothing here
+            that is of specific interest to the DPL, but we
+            show this part of the example anyway in the interest of
+            completeness.
+    </p>
+      <pre class="programlisting">    private static void parseArgs(String args[]) {
+        for(int i = 0; i &lt; args.length; ++i) {
+            if (args[i].startsWith("-")) {
+                switch(args[i].charAt(1)) {
+                  case 'h':
+                    myDbEnvPath = new File(args[++i]);
+                    break;
+                  case 'i':
+                    inventoryFile = new File(args[++i]);
+                    break;
+                  case 'v':
+                    vendorsFile = new File(args[++i]);
+                    break;
+                  default:
+                    usage();
+                }
+            }
+        }
+    }
+
+    private List loadFile(File theFile, int numFields) {
+        List&lt;String[]&gt; records = new ArrayList&lt;String[]&gt;();
+        try {
+            String theLine = null;
+            FileInputStream fis = new FileInputStream(theFile);
+            BufferedReader br = 
+                new BufferedReader(new InputStreamReader(fis));
+            while((theLine=br.readLine()) != null) {
+                String[] theLineArray = theLine.split("#");
+                if (theLineArray.length != numFields) {
+                    System.out.println("Malformed line found in " + 
+                        theFile.getPath());
+                    System.out.println("Line was: '" + theLine);
+                    System.out.println("length found was: " + 
+                        theLineArray.length);
+                    System.exit(-1);
+                }
+                records.add(theLineArray);
+            }
+            // Close the input stream handle
+            fis.close();
+        } catch (FileNotFoundException e) {
+            System.err.println(theFile.getPath() + " does not exist.");
+            e.printStackTrace();
+            usage();
+        } catch (IOException e)  {
+            System.err.println("IO Exception: " + e.toString());
+            e.printStackTrace();
+            System.exit(-1);
+        }
+        return records;
+    }
+
+    protected ExampleDatabasePut() {}
+} </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="dataaccessorclass.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="dpl_example.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="dpl_exampleinventoryread.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">DataAccessor.class </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> ExampleInventoryRead.class</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

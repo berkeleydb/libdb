@@ -1,5 +1,5 @@
-<!--$Id: bt_compare.so,v 10.25 2004/03/05 21:39:33 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: bt_compare.so,v 10.26 2008/01/10 16:02:56 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am_conf/malloc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_conf/bt_prefix.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Btree comparison</h3>
+<p align=center><b>Btree comparison</b></p>
 <p>The Btree data structure is a sorted, balanced tree structure storing
 associated key/data pairs.  By default, the sort order is lexicographical,
 with shorter keys collating before longer keys.  The user can specify the
@@ -77,15 +76,14 @@ that the key relations must be transitive, that is, if key A is less
 than key B, and key B is less than key C, then the comparison routine
 must also return that key A is less than key C.</p>
 <p>It is reasonable for a comparison function to not examine an entire key
-in some applications, which implies that partial keys may be specified
-to the Berkeley DB interfaces.  When partial keys are specified to Berkeley DB,
-interfaces which retrieve data items based on a user-specified key (for
-example, <a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/dbc_get.html">DBcursor-&gt;get</a> with the <a href="../../api_c/dbc_get.html#DB_SET">DB_SET</a>
-flag), will not modify the user-specified key by returning the actual
-key stored in the database.  The actual key can be retrieved by calling
-the <a href="../../api_c/dbc_get.html">DBcursor-&gt;get</a> method with the <a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a> flag.</p>
+in some applications, which implies partial keys may be specified to the
+Berkeley DB interfaces.  When partial keys are specified to Berkeley DB, interfaces
+which retrieve data items based on a user-specified key (for example,
+<a href="../../api_c/db_get.html">DB-&gt;get</a> and <a href="../../api_c/dbc_get.html">DBcursor-&gt;get</a> with the <a href="../../api_c/dbc_get.html#DB_SET">DB_SET</a> flag), will
+modify the user-specified key by returning the actual key stored in the
+database.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am_conf/malloc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_conf/bt_prefix.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

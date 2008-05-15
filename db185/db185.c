@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db185.c,v 12.11 2007/05/17 15:14:57 bostic Exp $
+ * $Id: db185.c,v 12.13 2008/01/11 16:54:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 #include "db185_int.h"
@@ -228,7 +228,7 @@ __db185_open(file, oflags, mode, type, openinfo)
 
 	/* Open the database. */
 	if ((ret = dbp->open(dbp, NULL,
-	    file, NULL, type, __db_oflags(oflags), mode)) != 0)
+	    file, NULL, type, __db_openflags(oflags), mode)) != 0)
 		goto err;
 
 	/* Create the cursor used for sequential ops. */

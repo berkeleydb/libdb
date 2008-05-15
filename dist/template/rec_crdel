@@ -10,11 +10,11 @@
  *	Recovery function for metasub.
  *
  * PUBLIC: int __crdel_metasub_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_metasub_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -24,11 +24,14 @@ __crdel_metasub_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__crdel_metasub_print);
-	REC_INTRO(__crdel_metasub_read, 1);
+	REC_INTRO(__crdel_metasub_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -72,11 +75,11 @@ out:	REC_CLOSE;
  *	Recovery function for inmem_create.
  *
  * PUBLIC: int __crdel_inmem_create_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_create_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -86,11 +89,14 @@ __crdel_inmem_create_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__crdel_inmem_create_print);
-	REC_INTRO(__crdel_inmem_create_read, 1);
+	REC_INTRO(__crdel_inmem_create_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -134,11 +140,11 @@ out:	REC_CLOSE;
  *	Recovery function for inmem_rename.
  *
  * PUBLIC: int __crdel_inmem_rename_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_rename_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_rename_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -148,11 +154,14 @@ __crdel_inmem_rename_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__crdel_inmem_rename_print);
-	REC_INTRO(__crdel_inmem_rename_read, 1);
+	REC_INTRO(__crdel_inmem_rename_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -196,11 +205,11 @@ out:	REC_CLOSE;
  *	Recovery function for inmem_remove.
  *
  * PUBLIC: int __crdel_inmem_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__crdel_inmem_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__crdel_inmem_remove_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -210,11 +219,14 @@ __crdel_inmem_remove_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__crdel_inmem_remove_print);
-	REC_INTRO(__crdel_inmem_remove_read, 1);
+	REC_INTRO(__crdel_inmem_remove_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {

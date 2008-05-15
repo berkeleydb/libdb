@@ -1,5 +1,5 @@
 <!--$Id: dbisnot.so,v 10.8 2002/08/23 20:36:50 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></b></td>
 <td align=right><a href="../intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>What Berkeley DB is not</h3>
+<p align=center><b>What Berkeley DB is not</b></p>
 <p>In contrast to most other database systems, Berkeley DB provides relatively
 simple data access services.</p>
 <p>Records in Berkeley DB are (<i>key</i>, <i>value</i>) pairs. Berkeley DB
@@ -49,7 +48,7 @@ values.  Large values are not treated specially in Berkeley DB. They are
 simply broken into page-sized chunks, and reassembled on demand when
 the application needs them. Unlike some other database systems, Berkeley DB
 offers no special support for binary large objects (BLOBs).</p>
-<h3>Not a relational database</h3>
+<b>Not a relational database</b>
 <p>Berkeley DB is not a relational database.</p>
 <p>First, Berkeley DB does not support SQL queries. All access to data is through
 the Berkeley DB API. Developers must learn a new set of interfaces in order
@@ -92,7 +91,7 @@ fact, the popular MySQL relational system uses Berkeley DB for
 transaction-protected table management, and takes care of all the SQL
 parsing and execution. It uses Berkeley DB for the storage level, and provides
 the semantics and access tools.</p>
-<h3>Not an object-oriented database</h3>
+<b>Not an object-oriented database</b>
 <p>Object-oriented databases are designed for very tight integration with
 object-oriented programming languages. Berkeley DB is written entirely in the
 C programming language. It includes language bindings for C++, Java,
@@ -106,14 +105,14 @@ Berkeley DB.</p>
 object-oriented databases do. The object-oriented application programmer
 must decide what records are required, and must fetch them by making
 method calls on Berkeley DB objects.</p>
-<h3>Not a network database</h3>
+<b>Not a network database</b>
 <p>Berkeley DB does not support network-style navigation among records, as
 network databases do. Records in a Berkeley DB table may move around over
 time, as new records are added to the table and old ones are deleted.
 Berkeley DB is able to do fast searches for records based on keys, but there
 is no way to create a persistent physical pointer to a record.
 Applications can only refer to records by key, not by address.</p>
-<h3>Not a database server</h3>
+<b>Not a database server</b>
 <p>Berkeley DB is not a standalone database server. It is a library, and runs in
 the address space of the application that uses it. If more than one
 application links in Berkeley DB, then all can use the same database at the
@@ -135,6 +134,6 @@ servers make calls through the Berkeley DB API to find records and return them
 to clients. On its own, however, Berkeley DB is not a server.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../intro/dbis.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/need.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

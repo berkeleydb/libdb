@@ -692,11 +692,11 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
      DB_APP_INIT DB_ARCH_ABS DB_ARCH_LOG DB_DEGREE_2 DB_DSYNC_DB DB_FILEOPEN
      DB_FIXEDLEN DB_GET_BOTH DB_INIT_CDB DB_INIT_LOG DB_INIT_REP DB_INIT_TXN
      DB_KEYEMPTY DB_KEYEXIST DB_KEYFIRST DB_LOCKDOWN DB_LOCK_GET DB_LOCK_PUT
-     DB_LOGMAGIC DB_LOG_DISK DB_LOG_PERM DB_MULTIPLE DB_NEXT_DUP DB_NOSERVER
-     DB_NOTFOUND DB_OK_BTREE DB_OK_QUEUE DB_OK_RECNO DB_POSITION DB_PREV_DUP
-     DB_QAMMAGIC DB_REGISTER DB_RENUMBER DB_SEQ_WRAP DB_SNAPSHOT DB_STAT_ALL
-     DB_TRUNCATE DB_TXNMAGIC DB_TXN_LOCK DB_TXN_REDO DB_TXN_SYNC DB_TXN_UNDO
-     DB_TXN_WAIT DB_WRNOSYNC DB_YIELDCPU */
+     DB_LOGMAGIC DB_LOG_DISK DB_LOG_PERM DB_LOG_ZERO DB_MULTIPLE DB_NEXT_DUP
+     DB_NOSERVER DB_NOTFOUND DB_OK_BTREE DB_OK_QUEUE DB_OK_RECNO DB_POSITION
+     DB_PREV_DUP DB_QAMMAGIC DB_REGISTER DB_RENUMBER DB_SEQ_WRAP DB_SNAPSHOT
+     DB_STAT_ALL DB_ST_DUPOK DB_ST_RELEN DB_TRUNCATE DB_TXNMAGIC DB_TXN_LOCK
+     DB_TXN_REDO DB_TXN_SYNC DB_TXN_UNDO DB_TXN_WAIT DB_WRNOSYNC DB_YIELDCPU */
   /* Offset 8 gives the best switch position.  */
   switch (name[8]) {
   case 'A':
@@ -811,6 +811,15 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
     /*                       ^         */
 #ifdef DB_LOG_PERM
       *iv_return = DB_LOG_PERM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_ZERO", 11)) {
+    /*                       ^         */
+#ifdef DB_LOG_ZERO
+      *iv_return = DB_LOG_ZERO;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -944,6 +953,15 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_ST_RELEN", 11)) {
+    /*                       ^         */
+#ifdef DB_ST_RELEN
+      *iv_return = DB_ST_RELEN;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   case 'N':
     if (memEQ(name, "DB_APP_INIT", 11)) {
@@ -1029,6 +1047,15 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
     /*                       ^         */
 #ifdef DB_MULTIPLE
       *iv_return = DB_MULTIPLE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_ST_DUPOK", 11)) {
+    /*                       ^         */
+#ifdef DB_ST_DUPOK
+      *iv_return = DB_ST_DUPOK;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -1157,12 +1184,12 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
      DB_ARCH_DATA DB_CDB_ALLDB DB_CL_WRITER DB_DELIMITER DB_DIRECT_DB
      DB_DSYNC_LOG DB_DUPCURSOR DB_ENV_FATAL DB_FAST_STAT DB_GET_BOTHC
      DB_GET_RECNO DB_HASHMAGIC DB_INIT_LOCK DB_JOIN_ITEM DB_LOCKMAGIC
-     DB_LOCK_DUMP DB_LOCK_RW_N DB_LOGOLDVER DB_MAX_PAGES DB_MPOOL_NEW
-     DB_NEEDSPLIT DB_NODUPDATA DB_NOLOCKING DB_NORECURSE DB_OVERWRITE
-     DB_PAGEYIELD DB_PAGE_LOCK DB_PERMANENT DB_POSITIONI DB_PRINTABLE
-     DB_QAMOLDVER DB_RPCCLIENT DB_SET_RANGE DB_SET_RECNO DB_SWAPBYTES
-     DB_TEMPORARY DB_TXN_ABORT DB_TXN_APPLY DB_TXN_PRINT DB_WRITELOCK
-     DB_WRITEOPEN DB_XA_CREATE */
+     DB_LOCK_DUMP DB_LOCK_RW_N DB_LOGOLDVER DB_LOG_DSYNC DB_MAX_PAGES
+     DB_MPOOL_NEW DB_NEEDSPLIT DB_NODUPDATA DB_NOLOCKING DB_NORECURSE
+     DB_OVERWRITE DB_PAGEYIELD DB_PAGE_LOCK DB_PERMANENT DB_POSITIONI
+     DB_PRINTABLE DB_QAMOLDVER DB_RPCCLIENT DB_SET_RANGE DB_SET_RECNO
+     DB_ST_DUPSET DB_ST_RECNUM DB_SWAPBYTES DB_TEMPORARY DB_TXN_ABORT
+     DB_TXN_APPLY DB_TXN_PRINT DB_WRITELOCK DB_WRITEOPEN DB_XA_CREATE */
   /* Offset 3 gives the best switch position.  */
   switch (name[3]) {
   case 'A':
@@ -1349,6 +1376,15 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_LOG_DSYNC", 12)) {
+    /*                  ^               */
+#ifdef DB_LOG_DSYNC
+      *iv_return = DB_LOG_DSYNC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   case 'M':
     if (memEQ(name, "DB_MAX_PAGES", 12)) {
@@ -1507,6 +1543,24 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_ST_DUPSET", 12)) {
+    /*                  ^               */
+#ifdef DB_ST_DUPSET
+      *iv_return = DB_ST_DUPSET;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_ST_RECNUM", 12)) {
+    /*                  ^               */
+#ifdef DB_ST_RECNUM
+      *iv_return = DB_ST_RECNUM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_SWAPBYTES", 12)) {
     /*                  ^               */
 #ifdef DB_SWAPBYTES
@@ -1607,26 +1661,67 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
      DB_DONOTINDEX DB_ENV_CREATE DB_ENV_NOMMAP DB_ENV_THREAD DB_FREE_SPACE
      DB_HASHOLDVER DB_INCOMPLETE DB_INIT_MPOOL DB_LOCK_ABORT DB_LOCK_NORUN
      DB_LOCK_RIW_N DB_LOCK_TRADE DB_LOGVERSION DB_LOG_CHKPNT DB_LOG_COMMIT
-     DB_LOG_LOCKED DB_LOG_NOCOPY DB_LOG_RESEND DB_MPOOL_EDIT DB_MPOOL_FREE
-     DB_MPOOL_LAST DB_MUTEXDEBUG DB_MUTEXLOCKS DB_NEXT_NODUP DB_NOORDERCHK
-     DB_PREV_NODUP DB_PR_HEADERS DB_QAMVERSION DB_RDWRMASTER DB_REGISTERED
-     DB_REP_CLIENT DB_REP_CREATE DB_REP_IGNORE DB_REP_ISPERM DB_REP_MASTER
-     DB_SEQUENTIAL DB_SPARE_FLAG DB_STAT_CLEAR DB_SYSTEM_MEM DB_TXNVERSION
-     DB_TXN_NOSYNC DB_TXN_NOWAIT DB_VERIFY_BAD DB_debug_FLAG DB_user_BEGIN */
-  /* Offset 5 gives the best switch position.  */
-  switch (name[5]) {
+     DB_LOG_DIRECT DB_LOG_LOCKED DB_LOG_NOCOPY DB_LOG_RESEND DB_MPOOL_EDIT
+     DB_MPOOL_FREE DB_MPOOL_LAST DB_MUTEXDEBUG DB_MUTEXLOCKS DB_NEXT_NODUP
+     DB_NOORDERCHK DB_PREV_NODUP DB_PR_HEADERS DB_QAMVERSION DB_RDWRMASTER
+     DB_REGISTERED DB_REP_CLIENT DB_REP_CREATE DB_REP_IGNORE DB_REP_ISPERM
+     DB_REP_MASTER DB_SEQUENTIAL DB_SPARE_FLAG DB_STAT_CLEAR DB_ST_DUPSORT
+     DB_SYSTEM_MEM DB_TXNVERSION DB_TXN_NOSYNC DB_TXN_NOWAIT DB_VERIFY_BAD
+     DB_debug_FLAG DB_user_BEGIN */
+  /* Offset 8 gives the best switch position.  */
+  switch (name[8]) {
   case 'A':
-    if (memEQ(name, "DB_SPARE_FLAG", 13)) {
-    /*                    ^              */
-#ifdef DB_SPARE_FLAG
-      *iv_return = DB_SPARE_FLAG;
+    if (memEQ(name, "DB_LOCK_ABORT", 13)) {
+    /*                       ^           */
+#ifdef DB_LOCK_ABORT
+      *iv_return = DB_LOCK_ABORT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_PR_HEADERS", 13)) {
+    /*                       ^           */
+#ifdef DB_PR_HEADERS
+      *iv_return = DB_PR_HEADERS;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_RDWRMASTER", 13)) {
+    /*                       ^           */
+#ifdef DB_RDWRMASTER
+      *iv_return = DB_RDWRMASTER;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_MASTER", 13)) {
+    /*                       ^           */
+#ifdef DB_REP_MASTER
+      *iv_return = DB_REP_MASTER;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'B':
+    if (memEQ(name, "DB_user_BEGIN", 13)) {
+    /*                       ^           */
+#ifdef DB_user_BEGIN
+      *iv_return = DB_user_BEGIN;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'C':
     if (memEQ(name, "DB_STAT_CLEAR", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_STAT_CLEAR
       *iv_return = DB_STAT_CLEAR;
       return PERL_constant_ISIV;
@@ -1635,27 +1730,149 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'C':
-    if (memEQ(name, "DB_INCOMPLETE", 13)) {
-    /*                    ^              */
-#ifdef DB_INCOMPLETE
-      *iv_return = DB_INCOMPLETE;
+  case 'D':
+    if (memEQ(name, "DB_MUTEXDEBUG", 13)) {
+    /*                       ^           */
+#ifdef DB_MUTEXDEBUG
+      *iv_return = DB_MUTEXDEBUG;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_LOCK_ABORT", 13)) {
-    /*                    ^              */
-#ifdef DB_LOCK_ABORT
-      *iv_return = DB_LOCK_ABORT;
+    break;
+  case 'E':
+    if (memEQ(name, "DB_LOG_RESEND", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_RESEND
+      *iv_return = DB_LOG_RESEND;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_NOORDERCHK", 13)) {
+    /*                       ^           */
+#ifdef DB_NOORDERCHK
+      *iv_return = DB_NOORDERCHK;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'G':
+    if (memEQ(name, "DB_REP_IGNORE", 13)) {
+    /*                       ^           */
+#ifdef DB_REP_IGNORE
+      *iv_return = DB_REP_IGNORE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'H':
+    if (memEQ(name, "DB_ENV_THREAD", 13)) {
+    /*                       ^           */
+#ifdef DB_ENV_THREAD
+      *iv_return = DB_ENV_THREAD;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_CHKPNT", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_CHKPNT
+      *iv_return = DB_LOG_CHKPNT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'I':
+    if (memEQ(name, "DB_DONOTINDEX", 13)) {
+    /*                       ^           */
+#ifdef DB_DONOTINDEX
+      *iv_return = DB_DONOTINDEX;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_DIRECT", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_DIRECT
+      *iv_return = DB_LOG_DIRECT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'L':
+    if (memEQ(name, "DB_HASHOLDVER", 13)) {
+    /*                       ^           */
+#ifdef DB_HASHOLDVER
+      *iv_return = DB_HASHOLDVER;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_MUTEXLOCKS", 13)) {
+    /*                       ^           */
+#ifdef DB_MUTEXLOCKS
+      *iv_return = DB_MUTEXLOCKS;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_CLIENT", 13)) {
+    /*                       ^           */
+#ifdef DB_REP_CLIENT
+      *iv_return = DB_REP_CLIENT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'M':
+    if (memEQ(name, "DB_BTREEMAGIC", 13)) {
+    /*                       ^           */
+#ifdef DB_BTREEMAGIC
+      *iv_return = DB_BTREEMAGIC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_INIT_MPOOL", 13)) {
+    /*                       ^           */
+#ifdef DB_INIT_MPOOL
+      *iv_return = DB_INIT_MPOOL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SYSTEM_MEM", 13)) {
+    /*                       ^           */
+#ifdef DB_SYSTEM_MEM
+      *iv_return = DB_SYSTEM_MEM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'N':
     if (memEQ(name, "DB_LOCK_NORUN", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_LOCK_NORUN
       *iv_return = DB_LOCK_NORUN;
       return PERL_constant_ISIV;
@@ -1663,8 +1880,131 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_NEXT_NODUP", 13)) {
+    /*                       ^           */
+#ifdef DB_NEXT_NODUP
+      *iv_return = DB_NEXT_NODUP;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_PREV_NODUP", 13)) {
+    /*                       ^           */
+#ifdef DB_PREV_NODUP
+      *iv_return = DB_PREV_NODUP;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SEQUENTIAL", 13)) {
+    /*                       ^           */
+#ifdef DB_SEQUENTIAL
+      *iv_return = DB_SEQUENTIAL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'O':
+    if (memEQ(name, "DB_ENV_NOMMAP", 13)) {
+    /*                       ^           */
+#ifdef DB_ENV_NOMMAP
+      *iv_return = DB_ENV_NOMMAP;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_COMMIT", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_COMMIT
+      *iv_return = DB_LOG_COMMIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_LOCKED", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_LOCKED
+      *iv_return = DB_LOG_LOCKED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_NOCOPY", 13)) {
+    /*                       ^           */
+#ifdef DB_LOG_NOCOPY
+      *iv_return = DB_LOG_NOCOPY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_TXN_NOSYNC", 13)) {
+    /*                       ^           */
+#ifdef DB_TXN_NOSYNC
+      *iv_return = DB_TXN_NOSYNC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_TXN_NOWAIT", 13)) {
+    /*                       ^           */
+#ifdef DB_TXN_NOWAIT
+      *iv_return = DB_TXN_NOWAIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'P':
+    if (memEQ(name, "DB_CHECKPOINT", 13)) {
+    /*                       ^           */
+#ifdef DB_CHECKPOINT
+      *iv_return = DB_CHECKPOINT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_INCOMPLETE", 13)) {
+    /*                       ^           */
+#ifdef DB_INCOMPLETE
+      *iv_return = DB_INCOMPLETE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_ST_DUPSORT", 13)) {
+    /*                       ^           */
+#ifdef DB_ST_DUPSORT
+      *iv_return = DB_ST_DUPSORT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'R':
+    if (memEQ(name, "DB_ENV_CREATE", 13)) {
+    /*                       ^           */
+#ifdef DB_ENV_CREATE
+      *iv_return = DB_ENV_CREATE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_LOCK_RIW_N", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_LOCK_RIW_N
       *iv_return = DB_LOCK_RIW_N;
       return PERL_constant_ISIV;
@@ -1672,8 +2012,84 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_LOGVERSION", 13)) {
+    /*                       ^           */
+#ifdef DB_LOGVERSION
+      *iv_return = DB_LOGVERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_QAMVERSION", 13)) {
+    /*                       ^           */
+#ifdef DB_QAMVERSION
+      *iv_return = DB_QAMVERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_CREATE", 13)) {
+    /*                       ^           */
+#ifdef DB_REP_CREATE
+      *iv_return = DB_REP_CREATE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_TXNVERSION", 13)) {
+    /*                       ^           */
+#ifdef DB_TXNVERSION
+      *iv_return = DB_TXNVERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'S':
+    if (memEQ(name, "DB_AGGRESSIVE", 13)) {
+    /*                       ^           */
+#ifdef DB_AGGRESSIVE
+      *iv_return = DB_AGGRESSIVE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_FREE_SPACE", 13)) {
+    /*                       ^           */
+#ifdef DB_FREE_SPACE
+      *iv_return = DB_FREE_SPACE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_ISPERM", 13)) {
+    /*                       ^           */
+#ifdef DB_REP_ISPERM
+      *iv_return = DB_REP_ISPERM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'T':
+    if (memEQ(name, "DB_DIRECT_LOG", 13)) {
+    /*                       ^           */
+#ifdef DB_DIRECT_LOG
+      *iv_return = DB_DIRECT_LOG;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_LOCK_TRADE", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #if (DB_VERSION_MAJOR > 4) || \
     (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \
     (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \
@@ -1684,102 +2100,8 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
-    break;
-  case 'E':
-    if (memEQ(name, "DB_CHECKPOINT", 13)) {
-    /*                    ^              */
-#ifdef DB_CHECKPOINT
-      *iv_return = DB_CHECKPOINT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_FREE_SPACE", 13)) {
-    /*                    ^              */
-#ifdef DB_FREE_SPACE
-      *iv_return = DB_FREE_SPACE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_PREV_NODUP", 13)) {
-    /*                    ^              */
-#ifdef DB_PREV_NODUP
-      *iv_return = DB_PREV_NODUP;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'G':
-    if (memEQ(name, "DB_AGGRESSIVE", 13)) {
-    /*                    ^              */
-#ifdef DB_AGGRESSIVE
-      *iv_return = DB_AGGRESSIVE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOGVERSION", 13)) {
-    /*                    ^              */
-#ifdef DB_LOGVERSION
-      *iv_return = DB_LOGVERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOG_CHKPNT", 13)) {
-    /*                    ^              */
-#ifdef DB_LOG_CHKPNT
-      *iv_return = DB_LOG_CHKPNT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOG_COMMIT", 13)) {
-    /*                    ^              */
-#ifdef DB_LOG_COMMIT
-      *iv_return = DB_LOG_COMMIT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOG_LOCKED", 13)) {
-    /*                    ^              */
-#ifdef DB_LOG_LOCKED
-      *iv_return = DB_LOG_LOCKED;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOG_NOCOPY", 13)) {
-    /*                    ^              */
-#ifdef DB_LOG_NOCOPY
-      *iv_return = DB_LOG_NOCOPY;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOG_RESEND", 13)) {
-    /*                    ^              */
-#ifdef DB_LOG_RESEND
-      *iv_return = DB_LOG_RESEND;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
     if (memEQ(name, "DB_REGISTERED", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_REGISTERED
       *iv_return = DB_REGISTERED;
       return PERL_constant_ISIV;
@@ -1788,192 +2110,9 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'I':
-    if (memEQ(name, "DB_INIT_MPOOL", 13)) {
-    /*                    ^              */
-#ifdef DB_INIT_MPOOL
-      *iv_return = DB_INIT_MPOOL;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'M':
-    if (memEQ(name, "DB_QAMVERSION", 13)) {
-    /*                    ^              */
-#ifdef DB_QAMVERSION
-      *iv_return = DB_QAMVERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'N':
-    if (memEQ(name, "DB_DONOTINDEX", 13)) {
-    /*                    ^              */
-#ifdef DB_DONOTINDEX
-      *iv_return = DB_DONOTINDEX;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_TXNVERSION", 13)) {
-    /*                    ^              */
-#ifdef DB_TXNVERSION
-      *iv_return = DB_TXNVERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_TXN_NOSYNC", 13)) {
-    /*                    ^              */
-#ifdef DB_TXN_NOSYNC
-      *iv_return = DB_TXN_NOSYNC;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_TXN_NOWAIT", 13)) {
-    /*                    ^              */
-#ifdef DB_TXN_NOWAIT
-      *iv_return = DB_TXN_NOWAIT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'O':
-    if (memEQ(name, "DB_MPOOL_EDIT", 13)) {
-    /*                    ^              */
-#ifdef DB_MPOOL_EDIT
-      *iv_return = DB_MPOOL_EDIT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MPOOL_FREE", 13)) {
-    /*                    ^              */
-#ifdef DB_MPOOL_FREE
-      *iv_return = DB_MPOOL_FREE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MPOOL_LAST", 13)) {
-    /*                    ^              */
-#ifdef DB_MPOOL_LAST
-      *iv_return = DB_MPOOL_LAST;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_NOORDERCHK", 13)) {
-    /*                    ^              */
-#ifdef DB_NOORDERCHK
-      *iv_return = DB_NOORDERCHK;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'P':
-    if (memEQ(name, "DB_REP_CLIENT", 13)) {
-    /*                    ^              */
-#ifdef DB_REP_CLIENT
-      *iv_return = DB_REP_CLIENT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_CREATE", 13)) {
-    /*                    ^              */
-#ifdef DB_REP_CREATE
-      *iv_return = DB_REP_CREATE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_IGNORE", 13)) {
-    /*                    ^              */
-#ifdef DB_REP_IGNORE
-      *iv_return = DB_REP_IGNORE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_ISPERM", 13)) {
-    /*                    ^              */
-#ifdef DB_REP_ISPERM
-      *iv_return = DB_REP_ISPERM;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_MASTER", 13)) {
-    /*                    ^              */
-#ifdef DB_REP_MASTER
-      *iv_return = DB_REP_MASTER;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'Q':
-    if (memEQ(name, "DB_SEQUENTIAL", 13)) {
-    /*                    ^              */
-#ifdef DB_SEQUENTIAL
-      *iv_return = DB_SEQUENTIAL;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'R':
-    if (memEQ(name, "DB_BTREEMAGIC", 13)) {
-    /*                    ^              */
-#ifdef DB_BTREEMAGIC
-      *iv_return = DB_BTREEMAGIC;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_DIRECT_LOG", 13)) {
-    /*                    ^              */
-#ifdef DB_DIRECT_LOG
-      *iv_return = DB_DIRECT_LOG;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_DIRTY_READ", 13)) {
-    /*                    ^              */
-#ifdef DB_DIRTY_READ
-      *iv_return = DB_DIRTY_READ;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
+  case 'Y':
     if (memEQ(name, "DB_VERIFY_BAD", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_VERIFY_BAD
       *iv_return = DB_VERIFY_BAD;
       return PERL_constant_ISIV;
@@ -1982,124 +2121,56 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'S':
-    if (memEQ(name, "DB_HASHOLDVER", 13)) {
-    /*                    ^              */
-#ifdef DB_HASHOLDVER
-      *iv_return = DB_HASHOLDVER;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_SYSTEM_MEM", 13)) {
-    /*                    ^              */
-#ifdef DB_SYSTEM_MEM
-      *iv_return = DB_SYSTEM_MEM;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'T':
-    if (memEQ(name, "DB_MUTEXDEBUG", 13)) {
-    /*                    ^              */
-#ifdef DB_MUTEXDEBUG
-      *iv_return = DB_MUTEXDEBUG;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MUTEXLOCKS", 13)) {
-    /*                    ^              */
-#ifdef DB_MUTEXLOCKS
-      *iv_return = DB_MUTEXLOCKS;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'V':
-    if (memEQ(name, "DB_ENV_CREATE", 13)) {
-    /*                    ^              */
-#ifdef DB_ENV_CREATE
-      *iv_return = DB_ENV_CREATE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_ENV_NOMMAP", 13)) {
-    /*                    ^              */
-#ifdef DB_ENV_NOMMAP
-      *iv_return = DB_ENV_NOMMAP;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_ENV_THREAD", 13)) {
-    /*                    ^              */
-#ifdef DB_ENV_THREAD
-      *iv_return = DB_ENV_THREAD;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'W':
-    if (memEQ(name, "DB_RDWRMASTER", 13)) {
-    /*                    ^              */
-#ifdef DB_RDWRMASTER
-      *iv_return = DB_RDWRMASTER;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'X':
-    if (memEQ(name, "DB_NEXT_NODUP", 13)) {
-    /*                    ^              */
-#ifdef DB_NEXT_NODUP
-      *iv_return = DB_NEXT_NODUP;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
   case '_':
-    if (memEQ(name, "DB_PR_HEADERS", 13)) {
-    /*                    ^              */
-#ifdef DB_PR_HEADERS
-      *iv_return = DB_PR_HEADERS;
+    if (memEQ(name, "DB_DIRTY_READ", 13)) {
+    /*                       ^           */
+#ifdef DB_DIRTY_READ
+      *iv_return = DB_DIRTY_READ;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    break;
-  case 'b':
+    if (memEQ(name, "DB_MPOOL_EDIT", 13)) {
+    /*                       ^           */
+#ifdef DB_MPOOL_EDIT
+      *iv_return = DB_MPOOL_EDIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_MPOOL_FREE", 13)) {
+    /*                       ^           */
+#ifdef DB_MPOOL_FREE
+      *iv_return = DB_MPOOL_FREE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_MPOOL_LAST", 13)) {
+    /*                       ^           */
+#ifdef DB_MPOOL_LAST
+      *iv_return = DB_MPOOL_LAST;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SPARE_FLAG", 13)) {
+    /*                       ^           */
+#ifdef DB_SPARE_FLAG
+      *iv_return = DB_SPARE_FLAG;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_debug_FLAG", 13)) {
-    /*                    ^              */
+    /*                       ^           */
 #ifdef DB_debug_FLAG
       *iv_return = DB_debug_FLAG;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'e':
-    if (memEQ(name, "DB_user_BEGIN", 13)) {
-    /*                    ^              */
-#ifdef DB_user_BEGIN
-      *iv_return = DB_user_BEGIN;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -2124,50 +2195,51 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
      DB_REGION_ANON DB_REGION_INIT DB_REGION_NAME DB_RENAMEMAGIC DB_REPMGR_PEER
      DB_REP_BULKOVF DB_REP_EGENCHG DB_REP_LOCKOUT DB_REP_NEWSITE DB_REP_NOTPERM
      DB_REP_UNAVAIL DB_REVSPLITOFF DB_RUNRECOVERY DB_SEQ_WRAPPED DB_SET_TXN_NOW
-     DB_USE_ENVIRON DB_WRITECURSOR DB_XIDDATASIZE */
-  /* Offset 9 gives the best switch position.  */
-  switch (name[9]) {
+     DB_ST_IS_RECNO DB_ST_TOPLEVEL DB_USE_ENVIRON DB_WRITECURSOR DB_XIDDATASIZE
+     */
+  /* Offset 10 gives the best switch position.  */
+  switch (name[10]) {
   case 'A':
-    if (memEQ(name, "DB_LOCK_RANDOM", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_RANDOM
-      *iv_return = DB_LOCK_RANDOM;
+    if (memEQ(name, "DB_EID_INVALID", 14)) {
+    /*                         ^          */
+#ifdef DB_EID_INVALID
+      *iv_return = DB_EID_INVALID;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_OPEN_CALLED", 14)) {
-    /*                        ^           */
-#ifdef DB_OPEN_CALLED
-      *iv_return = DB_OPEN_CALLED;
+    if (memEQ(name, "DB_ENV_NOPANIC", 14)) {
+    /*                         ^          */
+#ifdef DB_ENV_NOPANIC
+      *iv_return = DB_ENV_NOPANIC;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_REP_UNAVAIL", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_UNAVAIL
-      *iv_return = DB_REP_UNAVAIL;
+    if (memEQ(name, "DB_EVENT_PANIC", 14)) {
+    /*                         ^          */
+#ifdef DB_EVENT_PANIC
+      *iv_return = DB_EVENT_PANIC;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_SEQ_WRAPPED", 14)) {
-    /*                        ^           */
-#ifdef DB_SEQ_WRAPPED
-      *iv_return = DB_SEQ_WRAPPED;
+    if (memEQ(name, "DB_REGION_ANON", 14)) {
+    /*                         ^          */
+#ifdef DB_REGION_ANON
+      *iv_return = DB_REGION_ANON;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_XIDDATASIZE", 14)) {
-    /*                        ^           */
-#ifdef DB_XIDDATASIZE
-      *iv_return = DB_XIDDATASIZE;
+    if (memEQ(name, "DB_RENAMEMAGIC", 14)) {
+    /*                         ^          */
+#ifdef DB_RENAMEMAGIC
+      *iv_return = DB_RENAMEMAGIC;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -2175,84 +2247,8 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'C':
-    if (memEQ(name, "DB_ENV_LOCKING", 14)) {
-    /*                        ^           */
-#ifdef DB_ENV_LOCKING
-      *iv_return = DB_ENV_LOCKING;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MAX_RECORDS", 14)) {
-    /*                        ^           */
-#ifdef DB_MAX_RECORDS
-      *iv_return = DB_MAX_RECORDS;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MPOOL_CLEAN", 14)) {
-    /*                        ^           */
-#ifdef DB_MPOOL_CLEAN
-      *iv_return = DB_MPOOL_CLEAN;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_RECORDCOUNT", 14)) {
-    /*                        ^           */
-#ifdef DB_RECORDCOUNT
-      *iv_return = DB_RECORDCOUNT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_LOCKOUT", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_LOCKOUT
-      *iv_return = DB_REP_LOCKOUT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'D':
-    if (memEQ(name, "DB_FILE_ID_LEN", 14)) {
-    /*                        ^           */
-#ifdef DB_FILE_ID_LEN
-      *iv_return = DB_FILE_ID_LEN;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_MPOOL_DIRTY", 14)) {
-    /*                        ^           */
-#ifdef DB_MPOOL_DIRTY
-      *iv_return = DB_MPOOL_DIRTY;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'E':
-    if (memEQ(name, "DB_ARCH_REMOVE", 14)) {
-    /*                        ^           */
-#ifdef DB_ARCH_REMOVE
-      *iv_return = DB_ARCH_REMOVE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
     if (memEQ(name, "DB_LOCK_RECORD", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_LOCK_RECORD
       *iv_return = DB_LOCK_RECORD;
       return PERL_constant_ISIV;
@@ -2260,37 +2256,41 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_LOCK_REMOVE", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_REMOVE
-      *iv_return = DB_LOCK_REMOVE;
+    break;
+  case 'D':
+    if (memEQ(name, "DB_BTREEOLDVER", 14)) {
+    /*                         ^          */
+#ifdef DB_BTREEOLDVER
+      *iv_return = DB_BTREEOLDVER;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_NOSERVER_ID", 14)) {
-    /*                        ^           */
-#ifdef DB_NOSERVER_ID
-      *iv_return = DB_NOSERVER_ID;
+    if (memEQ(name, "DB_LOCK_OLDEST", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_OLDEST
+      *iv_return = DB_LOCK_OLDEST;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_ODDFILESIZE", 14)) {
-    /*                        ^           */
-#ifdef DB_ODDFILESIZE
-      *iv_return = DB_ODDFILESIZE;
+    break;
+  case 'E':
+    if (memEQ(name, "DB_ST_IS_RECNO", 14)) {
+    /*                         ^          */
+#ifdef DB_ST_IS_RECNO
+      *iv_return = DB_ST_IS_RECNO;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_REP_EGENCHG", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_EGENCHG
-      *iv_return = DB_REP_EGENCHG;
+    if (memEQ(name, "DB_ST_TOPLEVEL", 14)) {
+    /*                         ^          */
+#ifdef DB_ST_TOPLEVEL
+      *iv_return = DB_ST_TOPLEVEL;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -2299,7 +2299,7 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
     break;
   case 'G':
     if (memEQ(name, "DB_ENV_LOGGING", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_ENV_LOGGING
       *iv_return = DB_ENV_LOGGING;
       return PERL_constant_ISIV;
@@ -2309,126 +2309,8 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'I':
-    if (memEQ(name, "DB_ENV_PRIVATE", 14)) {
-    /*                        ^           */
-#ifdef DB_ENV_PRIVATE
-      *iv_return = DB_ENV_PRIVATE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REVSPLITOFF", 14)) {
-    /*                        ^           */
-#ifdef DB_REVSPLITOFF
-      *iv_return = DB_REVSPLITOFF;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'L':
-    if (memEQ(name, "DB_BTREEOLDVER", 14)) {
-    /*                        ^           */
-#ifdef DB_BTREEOLDVER
-      *iv_return = DB_BTREEOLDVER;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_ENV_DBLOCAL", 14)) {
-    /*                        ^           */
-#ifdef DB_ENV_DBLOCAL
-      *iv_return = DB_ENV_DBLOCAL;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOCK_OLDEST", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_OLDEST
-      *iv_return = DB_LOCK_OLDEST;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_BULKOVF", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_BULKOVF
-      *iv_return = DB_REP_BULKOVF;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'M':
-    if (memEQ(name, "DB_RENAMEMAGIC", 14)) {
-    /*                        ^           */
-#ifdef DB_RENAMEMAGIC
-      *iv_return = DB_RENAMEMAGIC;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'N':
-    if (memEQ(name, "DB_SET_TXN_NOW", 14)) {
-    /*                        ^           */
-#ifdef DB_SET_TXN_NOW
-      *iv_return = DB_SET_TXN_NOW;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'O':
-    if (memEQ(name, "DB_AUTO_COMMIT", 14)) {
-    /*                        ^           */
-#ifdef DB_AUTO_COMMIT
-      *iv_return = DB_AUTO_COMMIT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_JOIN_NOSORT", 14)) {
-    /*                        ^           */
-#ifdef DB_JOIN_NOSORT
-      *iv_return = DB_JOIN_NOSORT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOCK_NOWAIT", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_NOWAIT
-      *iv_return = DB_LOCK_NOWAIT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_RUNRECOVERY", 14)) {
-    /*                        ^           */
-#ifdef DB_RUNRECOVERY
-      *iv_return = DB_RUNRECOVERY;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'P':
     if (memEQ(name, "DB_ENV_APPINIT", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_ENV_APPINIT
       *iv_return = DB_ENV_APPINIT;
       return PERL_constant_ISIV;
@@ -2436,97 +2318,35 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_ENV_NOPANIC", 14)) {
-    /*                        ^           */
-#ifdef DB_ENV_NOPANIC
-      *iv_return = DB_ENV_NOPANIC;
+    if (memEQ(name, "DB_LOCK_SWITCH", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_SWITCH
+      *iv_return = DB_LOCK_SWITCH;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_EVENT_PANIC", 14)) {
-    /*                        ^           */
-#ifdef DB_EVENT_PANIC
-      *iv_return = DB_EVENT_PANIC;
+    if (memEQ(name, "DB_MPOOL_DIRTY", 14)) {
+    /*                         ^          */
+#ifdef DB_MPOOL_DIRTY
+      *iv_return = DB_MPOOL_DIRTY;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    break;
-  case 'R':
-    if (memEQ(name, "DB_HASHVERSION", 14)) {
-    /*                        ^           */
-#ifdef DB_HASHVERSION
-      *iv_return = DB_HASHVERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_LOCKVERSION", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCKVERSION
-      *iv_return = DB_LOCKVERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_OLD_VERSION", 14)) {
-    /*                        ^           */
-#ifdef DB_OLD_VERSION
-      *iv_return = DB_OLD_VERSION;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'T':
-    if (memEQ(name, "DB_ENCRYPT_AES", 14)) {
-    /*                        ^           */
-#ifdef DB_ENCRYPT_AES
-      *iv_return = DB_ENCRYPT_AES;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_REP_NOTPERM", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_NOTPERM
-      *iv_return = DB_REP_NOTPERM;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'U':
-    if (memEQ(name, "DB_WRITECURSOR", 14)) {
-    /*                        ^           */
-#ifdef DB_WRITECURSOR
-      *iv_return = DB_WRITECURSOR;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'V':
-    if (memEQ(name, "DB_EID_INVALID", 14)) {
-    /*                        ^           */
-#ifdef DB_EID_INVALID
-      *iv_return = DB_EID_INVALID;
+    if (memEQ(name, "DB_REGION_INIT", 14)) {
+    /*                         ^          */
+#ifdef DB_REGION_INIT
+      *iv_return = DB_REGION_INIT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     if (memEQ(name, "DB_USE_ENVIRON", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_USE_ENVIRON
       *iv_return = DB_USE_ENVIRON;
       return PERL_constant_ISIV;
@@ -2535,58 +2355,38 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'W':
-    if (memEQ(name, "DB_LOCK_SWITCH", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_SWITCH
-      *iv_return = DB_LOCK_SWITCH;
+  case 'K':
+    if (memEQ(name, "DB_ENV_LOCKING", 14)) {
+    /*                         ^          */
+#ifdef DB_ENV_LOCKING
+      *iv_return = DB_ENV_LOCKING;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_NOOVERWRITE", 14)) {
-    /*                        ^           */
-#ifdef DB_NOOVERWRITE
-      *iv_return = DB_NOOVERWRITE;
+    if (memEQ(name, "DB_REP_BULKOVF", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_BULKOVF
+      *iv_return = DB_REP_BULKOVF;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_REP_NEWSITE", 14)) {
-    /*                        ^           */
-#ifdef DB_REP_NEWSITE
-      *iv_return = DB_REP_NEWSITE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'X':
-    if (memEQ(name, "DB_LOCK_EXPIRE", 14)) {
-    /*                        ^           */
-#ifdef DB_LOCK_EXPIRE
-      *iv_return = DB_LOCK_EXPIRE;
+    if (memEQ(name, "DB_REP_LOCKOUT", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_LOCKOUT
+      *iv_return = DB_REP_LOCKOUT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case '_':
-    if (memEQ(name, "DB_CHKSUM_SHA1", 14)) {
-    /*                        ^           */
-#ifdef DB_CHKSUM_SHA1
-      *iv_return = DB_CHKSUM_SHA1;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
+  case 'L':
     if (memEQ(name, "DB_HANDLE_LOCK", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_HANDLE_LOCK
       *iv_return = DB_HANDLE_LOCK;
       return PERL_constant_ISIV;
@@ -2594,8 +2394,26 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_MPOOL_CLEAN", 14)) {
+    /*                         ^          */
+#ifdef DB_MPOOL_CLEAN
+      *iv_return = DB_MPOOL_CLEAN;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_OPEN_CALLED", 14)) {
+    /*                         ^          */
+#ifdef DB_OPEN_CALLED
+      *iv_return = DB_OPEN_CALLED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_RECORD_LOCK", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_RECORD_LOCK
       *iv_return = DB_RECORD_LOCK;
       return PERL_constant_ISIV;
@@ -2603,26 +2421,48 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_REGION_ANON", 14)) {
-    /*                        ^           */
-#ifdef DB_REGION_ANON
-      *iv_return = DB_REGION_ANON;
+    break;
+  case 'M':
+    if (memEQ(name, "DB_ARCH_REMOVE", 14)) {
+    /*                         ^          */
+#ifdef DB_ARCH_REMOVE
+      *iv_return = DB_ARCH_REMOVE;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
-    if (memEQ(name, "DB_REGION_INIT", 14)) {
-    /*                        ^           */
-#ifdef DB_REGION_INIT
-      *iv_return = DB_REGION_INIT;
+    if (memEQ(name, "DB_AUTO_COMMIT", 14)) {
+    /*                         ^          */
+#ifdef DB_AUTO_COMMIT
+      *iv_return = DB_AUTO_COMMIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOCK_REMOVE", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_REMOVE
+      *iv_return = DB_LOCK_REMOVE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'N':
+    if (memEQ(name, "DB_LOCK_RANDOM", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_RANDOM
+      *iv_return = DB_LOCK_RANDOM;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     if (memEQ(name, "DB_REGION_NAME", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_REGION_NAME
       *iv_return = DB_REGION_NAME;
       return PERL_constant_ISIV;
@@ -2630,10 +2470,260 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_REP_EGENCHG", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_EGENCHG
+      *iv_return = DB_REP_EGENCHG;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'O':
+    if (memEQ(name, "DB_ENV_DBLOCAL", 14)) {
+    /*                         ^          */
+#ifdef DB_ENV_DBLOCAL
+      *iv_return = DB_ENV_DBLOCAL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_MAX_RECORDS", 14)) {
+    /*                         ^          */
+#ifdef DB_MAX_RECORDS
+      *iv_return = DB_MAX_RECORDS;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_RECORDCOUNT", 14)) {
+    /*                         ^          */
+#ifdef DB_RECORDCOUNT
+      *iv_return = DB_RECORDCOUNT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'P':
+    if (memEQ(name, "DB_LOCK_EXPIRE", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_EXPIRE
+      *iv_return = DB_LOCK_EXPIRE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_REPMGR_PEER", 14)) {
-    /*                        ^           */
+    /*                         ^          */
 #ifdef DB_REPMGR_PEER
       *iv_return = DB_REPMGR_PEER;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_NOTPERM", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_NOTPERM
+      *iv_return = DB_REP_NOTPERM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SEQ_WRAPPED", 14)) {
+    /*                         ^          */
+#ifdef DB_SEQ_WRAPPED
+      *iv_return = DB_SEQ_WRAPPED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'R':
+    if (memEQ(name, "DB_NOOVERWRITE", 14)) {
+    /*                         ^          */
+#ifdef DB_NOOVERWRITE
+      *iv_return = DB_NOOVERWRITE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_NOSERVER_ID", 14)) {
+    /*                         ^          */
+#ifdef DB_NOSERVER_ID
+      *iv_return = DB_NOSERVER_ID;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_WRITECURSOR", 14)) {
+    /*                         ^          */
+#ifdef DB_WRITECURSOR
+      *iv_return = DB_WRITECURSOR;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'S':
+    if (memEQ(name, "DB_CHKSUM_SHA1", 14)) {
+    /*                         ^          */
+#ifdef DB_CHKSUM_SHA1
+      *iv_return = DB_CHKSUM_SHA1;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_HASHVERSION", 14)) {
+    /*                         ^          */
+#ifdef DB_HASHVERSION
+      *iv_return = DB_HASHVERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_JOIN_NOSORT", 14)) {
+    /*                         ^          */
+#ifdef DB_JOIN_NOSORT
+      *iv_return = DB_JOIN_NOSORT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOCKVERSION", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCKVERSION
+      *iv_return = DB_LOCKVERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_ODDFILESIZE", 14)) {
+    /*                         ^          */
+#ifdef DB_ODDFILESIZE
+      *iv_return = DB_ODDFILESIZE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_OLD_VERSION", 14)) {
+    /*                         ^          */
+#ifdef DB_OLD_VERSION
+      *iv_return = DB_OLD_VERSION;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_NEWSITE", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_NEWSITE
+      *iv_return = DB_REP_NEWSITE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_XIDDATASIZE", 14)) {
+    /*                         ^          */
+#ifdef DB_XIDDATASIZE
+      *iv_return = DB_XIDDATASIZE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'T':
+    if (memEQ(name, "DB_REVSPLITOFF", 14)) {
+    /*                         ^          */
+#ifdef DB_REVSPLITOFF
+      *iv_return = DB_REVSPLITOFF;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'V':
+    if (memEQ(name, "DB_ENV_PRIVATE", 14)) {
+    /*                         ^          */
+#ifdef DB_ENV_PRIVATE
+      *iv_return = DB_ENV_PRIVATE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_UNAVAIL", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_UNAVAIL
+      *iv_return = DB_REP_UNAVAIL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_RUNRECOVERY", 14)) {
+    /*                         ^          */
+#ifdef DB_RUNRECOVERY
+      *iv_return = DB_RUNRECOVERY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'W':
+    if (memEQ(name, "DB_LOCK_NOWAIT", 14)) {
+    /*                         ^          */
+#ifdef DB_LOCK_NOWAIT
+      *iv_return = DB_LOCK_NOWAIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case '_':
+    if (memEQ(name, "DB_ENCRYPT_AES", 14)) {
+    /*                         ^          */
+#ifdef DB_ENCRYPT_AES
+      *iv_return = DB_ENCRYPT_AES;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_FILE_ID_LEN", 14)) {
+    /*                         ^          */
+#ifdef DB_FILE_ID_LEN
+      *iv_return = DB_FILE_ID_LEN;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SET_TXN_NOW", 14)) {
+    /*                         ^          */
+#ifdef DB_SET_TXN_NOW
+      *iv_return = DB_SET_TXN_NOW;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -2653,14 +2743,14 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
      DB_ENV_YIELDCPU DB_IGNORE_LEASE DB_LOCK_DEFAULT DB_LOCK_INHERIT
      DB_LOCK_NOTHELD DB_LOCK_PUT_ALL DB_LOCK_PUT_OBJ DB_LOCK_TIMEOUT
      DB_LOCK_UPGRADE DB_LOG_INMEMORY DB_LOG_WRNOSYNC DB_MPOOL_CREATE
-     DB_MPOOL_EXTENT DB_MPOOL_NOFILE DB_MPOOL_UNLINK DB_MULTIPLE_KEY
-     DB_MULTIVERSION DB_MUTEX_LOCKED DB_MUTEX_THREAD DB_OPFLAGS_MASK
-     DB_ORDERCHKONLY DB_PRIORITY_LOW DB_REGION_MAGIC DB_REP_ANYWHERE
-     DB_REP_ELECTION DB_REP_LOGREADY DB_REP_LOGSONLY DB_REP_NOBUFFER
-     DB_REP_OUTDATED DB_REP_PAGEDONE DB_STAT_NOERROR DB_SURPRISE_KID
-     DB_TEST_POSTLOG DB_TEST_PREOPEN DB_TEST_RECYCLE DB_TXN_LOCK_2PL
-     DB_TXN_LOG_MASK DB_TXN_LOG_REDO DB_TXN_LOG_UNDO DB_TXN_SNAPSHOT
-     DB_VERB_FILEOPS DB_VERIFY_FATAL */
+     DB_MPOOL_EXTENT DB_MPOOL_NOFILE DB_MPOOL_NOLOCK DB_MPOOL_UNLINK
+     DB_MULTIPLE_KEY DB_MULTIVERSION DB_MUTEX_LOCKED DB_MUTEX_THREAD
+     DB_OPFLAGS_MASK DB_ORDERCHKONLY DB_PRIORITY_LOW DB_REGION_MAGIC
+     DB_REP_ANYWHERE DB_REP_ELECTION DB_REP_LOGREADY DB_REP_LOGSONLY
+     DB_REP_NOBUFFER DB_REP_OUTDATED DB_REP_PAGEDONE DB_STAT_NOERROR
+     DB_ST_OVFL_LEAF DB_SURPRISE_KID DB_TEST_POSTLOG DB_TEST_PREOPEN
+     DB_TEST_RECYCLE DB_TXN_LOCK_2PL DB_TXN_LOG_MASK DB_TXN_LOG_REDO
+     DB_TXN_LOG_UNDO DB_TXN_SNAPSHOT DB_VERB_FILEOPS DB_VERIFY_FATAL */
   /* Offset 10 gives the best switch position.  */
   switch (name[10]) {
   case 'C':
@@ -2953,6 +3043,15 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_MPOOL_NOLOCK", 15)) {
+    /*                         ^           */
+#ifdef DB_MPOOL_NOLOCK
+      *iv_return = DB_MPOOL_NOLOCK;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_MUTEX_LOCKED", 15)) {
     /*                         ^           */
 #ifdef DB_MUTEX_LOCKED
@@ -3142,6 +3241,15 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_ST_OVFL_LEAF", 15)) {
+    /*                         ^           */
+#ifdef DB_ST_OVFL_LEAF
+      *iv_return = DB_ST_OVFL_LEAF;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_TXN_LOG_MASK", 15)) {
     /*                         ^           */
 #ifdef DB_TXN_LOG_MASK
@@ -3180,17 +3288,18 @@ constant_16 (pTHX_ const char *name, IV *iv_return) {
      here.  However, subsequent manual editing may have added or removed some.
      DB_CACHED_COUNTS DB_COMPACT_FLAGS DB_EID_BROADCAST DB_ENV_CDB_ALLDB
      DB_ENV_DIRECT_DB DB_ENV_DSYNC_LOG DB_ENV_NOLOCKING DB_ENV_OVERWRITE
-     DB_ENV_RPCCLIENT DB_FCNTL_LOCKING DB_FREELIST_ONLY DB_IMMUTABLE_KEY
-     DB_JAVA_CALLBACK DB_LOCK_CONFLICT DB_LOCK_DEADLOCK DB_LOCK_MAXLOCKS
-     DB_LOCK_MAXWRITE DB_LOCK_MINLOCKS DB_LOCK_MINWRITE DB_LOCK_NOTEXIST
-     DB_LOCK_PUT_READ DB_LOCK_YOUNGEST DB_LOGC_BUF_SIZE DB_MPOOL_DISCARD
-     DB_MPOOL_PRIVATE DB_NOSERVER_HOME DB_PAGE_NOTFOUND DB_PRIORITY_HIGH
-     DB_RECOVER_FATAL DB_REPFLAGS_MASK DB_REP_CONF_BULK DB_REP_DUPMASTER
-     DB_REP_NEWMASTER DB_REP_PERMANENT DB_REP_REREQUEST DB_SECONDARY_BAD
-     DB_SEQ_RANGE_SET DB_TEST_POSTOPEN DB_TEST_POSTSYNC DB_TXN_LOCK_MASK
-     DB_TXN_OPENFILES DB_VERB_CHKPOINT DB_VERB_DEADLOCK DB_VERB_RECOVERY
-     DB_VERB_REGISTER DB_VERB_WAITSFOR DB_VERSION_MAJOR DB_VERSION_MINOR
-     DB_VERSION_PATCH DB_VRFY_FLAGMASK */
+     DB_ENV_RPCCLIENT DB_FCNTL_LOCKING DB_FOREIGN_ABORT DB_FREELIST_ONLY
+     DB_IMMUTABLE_KEY DB_JAVA_CALLBACK DB_LOCK_CONFLICT DB_LOCK_DEADLOCK
+     DB_LOCK_MAXLOCKS DB_LOCK_MAXWRITE DB_LOCK_MINLOCKS DB_LOCK_MINWRITE
+     DB_LOCK_NOTEXIST DB_LOCK_PUT_READ DB_LOCK_YOUNGEST DB_LOGC_BUF_SIZE
+     DB_LOG_IN_MEMORY DB_MPOOL_DISCARD DB_MPOOL_PRIVATE DB_NOSERVER_HOME
+     DB_PAGE_NOTFOUND DB_PRIORITY_HIGH DB_RECOVER_FATAL DB_REPFLAGS_MASK
+     DB_REP_CONF_BULK DB_REP_DUPMASTER DB_REP_NEWMASTER DB_REP_PERMANENT
+     DB_REP_REREQUEST DB_SECONDARY_BAD DB_SEQ_RANGE_SET DB_TEST_POSTOPEN
+     DB_TEST_POSTSYNC DB_TXN_LOCK_MASK DB_TXN_OPENFILES DB_VERB_CHKPOINT
+     DB_VERB_DEADLOCK DB_VERB_RECOVERY DB_VERB_REGISTER DB_VERB_REP_MISC
+     DB_VERB_REP_MSGS DB_VERB_REP_SYNC DB_VERB_WAITSFOR DB_VERSION_MAJOR
+     DB_VERSION_MINOR DB_VERSION_PATCH DB_VRFY_FLAGMASK */
   /* Offset 10 gives the best switch position.  */
   switch (name[10]) {
   case 'A':
@@ -3381,6 +3490,15 @@ constant_16 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'M':
+    if (memEQ(name, "DB_LOG_IN_MEMORY", 16)) {
+    /*                         ^            */
+#ifdef DB_LOG_IN_MEMORY
+      *iv_return = DB_LOG_IN_MEMORY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_REP_DUPMASTER", 16)) {
     /*                         ^            */
 #ifdef DB_REP_DUPMASTER
@@ -3473,6 +3591,35 @@ constant_16 (pTHX_ const char *name, IV *iv_return) {
     /*                         ^            */
 #ifdef DB_FCNTL_LOCKING
       *iv_return = DB_FCNTL_LOCKING;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'P':
+    if (memEQ(name, "DB_VERB_REP_MISC", 16)) {
+    /*                         ^            */
+#ifdef DB_VERB_REP_MISC
+      *iv_return = DB_VERB_REP_MISC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_VERB_REP_MSGS", 16)) {
+    /*                         ^            */
+#ifdef DB_VERB_REP_MSGS
+      *iv_return = DB_VERB_REP_MSGS;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_VERB_REP_SYNC", 16)) {
+    /*                         ^            */
+#ifdef DB_VERB_REP_SYNC
+      *iv_return = DB_VERB_REP_SYNC;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -3651,6 +3798,15 @@ constant_16 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_FOREIGN_ABORT", 16)) {
+    /*                         ^            */
+#ifdef DB_FOREIGN_ABORT
+      *iv_return = DB_FOREIGN_ABORT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_RECOVER_FATAL", 16)) {
     /*                         ^            */
 #ifdef DB_RECOVER_FATAL
@@ -3699,9 +3855,10 @@ constant_17 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
      DB_ENV_DIRECT_LOG DB_ENV_REP_CLIENT DB_ENV_REP_MASTER DB_ENV_STANDALONE
      DB_ENV_SYSTEM_MEM DB_ENV_TXN_NOSYNC DB_ENV_TXN_NOWAIT DB_ENV_USER_ALLOC
      DB_GET_BOTH_RANGE DB_LOG_AUTOREMOVE DB_LOG_SILENT_ERR DB_NO_AUTO_COMMIT
-     DB_READ_COMMITTED DB_RPC_SERVERPROG DB_RPC_SERVERVERS DB_STAT_LOCK_CONF
-     DB_STAT_MEMP_HASH DB_STAT_SUBSYSTEM DB_TEST_ELECTINIT DB_TEST_ELECTSEND
-     DB_TEST_PRERENAME DB_TXN_POPENFILES DB_VERSION_STRING */
+     DB_READ_COMMITTED DB_REP_CONF_LEASE DB_RPC_SERVERPROG DB_RPC_SERVERVERS
+     DB_STAT_LOCK_CONF DB_STAT_MEMP_HASH DB_STAT_SUBSYSTEM DB_TEST_ELECTINIT
+     DB_TEST_ELECTSEND DB_TEST_PRERENAME DB_TXN_POPENFILES DB_VERB_REP_ELECT
+     DB_VERB_REP_LEASE DB_VERSION_STRING */
   /* Offset 13 gives the best switch position.  */
   switch (name[13]) {
   case 'A':
@@ -3720,6 +3877,26 @@ constant_17 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
     /*                            ^          */
 #ifdef DB_STAT_LOCK_CONF
       *iv_return = DB_STAT_LOCK_CONF;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'E':
+    if (memEQ(name, "DB_REP_CONF_LEASE", 17)) {
+    /*                            ^          */
+#ifdef DB_REP_CONF_LEASE
+      *iv_return = DB_REP_CONF_LEASE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_VERB_REP_LEASE", 17)) {
+    /*                            ^          */
+#ifdef DB_VERB_REP_LEASE
+      *iv_return = DB_VERB_REP_LEASE;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -3783,6 +3960,15 @@ constant_17 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
     /*                            ^          */
 #ifdef DB_ENV_USER_ALLOC
       *iv_return = DB_ENV_USER_ALLOC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_VERB_REP_ELECT", 17)) {
+    /*                            ^          */
+#ifdef DB_VERB_REP_ELECT
+      *iv_return = DB_VERB_REP_ELECT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -3952,14 +4138,15 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
      here.  However, subsequent manual editing may have added or removed some.
      DB_ALREADY_ABORTED DB_DURABLE_UNKNOWN DB_ENV_AUTO_COMMIT
      DB_ENV_OPEN_CALLED DB_ENV_REF_COUNTED DB_ENV_REGION_INIT
-     DB_LOCK_NOTGRANTED DB_LOG_BUFFER_FULL DB_LOG_NOT_DURABLE
+     DB_FOREIGN_CASCADE DB_FOREIGN_NULLIFY DB_LOCK_NOTGRANTED
+     DB_LOG_AUTO_REMOVE DB_LOG_BUFFER_FULL DB_LOG_NOT_DURABLE
      DB_MPOOL_NEW_GROUP DB_MUTEX_ALLOCATED DB_PR_RECOVERYTEST
      DB_REPMGR_ACKS_ALL DB_REPMGR_ACKS_ONE DB_REP_ACK_TIMEOUT
      DB_REP_CONF_NOWAIT DB_REP_HANDLE_DEAD DB_REP_STARTUPDONE
-     DB_SEQUENCE_OLDVER DB_SET_TXN_TIMEOUT DB_TEST_ELECTVOTE1
-     DB_TEST_ELECTVOTE2 DB_TEST_ELECTWAIT1 DB_TEST_ELECTWAIT2
-     DB_TEST_POSTRENAME DB_TEST_PREDESTROY DB_THREADID_STRLEN
-     DB_TIME_NOTGRANTED DB_TXN_NOT_DURABLE */
+     DB_SA_SKIPFIRSTKEY DB_SEQUENCE_OLDVER DB_SET_TXN_TIMEOUT
+     DB_TEST_ELECTVOTE1 DB_TEST_ELECTVOTE2 DB_TEST_ELECTWAIT1
+     DB_TEST_ELECTWAIT2 DB_TEST_POSTRENAME DB_TEST_PREDESTROY
+     DB_THREADID_STRLEN DB_TIME_NOTGRANTED DB_TXN_NOT_DURABLE */
   /* Offset 13 gives the best switch position.  */
   switch (name[13]) {
   case 'A':
@@ -4003,6 +4190,15 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'E':
+    if (memEQ(name, "DB_LOG_AUTO_REMOVE", 18)) {
+    /*                            ^           */
+#ifdef DB_LOG_AUTO_REMOVE
+      *iv_return = DB_LOG_AUTO_REMOVE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_TEST_POSTRENAME", 18)) {
     /*                            ^           */
 #ifdef DB_TEST_POSTRENAME
@@ -4036,6 +4232,15 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'L':
+    if (memEQ(name, "DB_FOREIGN_NULLIFY", 18)) {
+    /*                            ^           */
+#ifdef DB_FOREIGN_NULLIFY
+      *iv_return = DB_FOREIGN_NULLIFY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_SEQUENCE_OLDVER", 18)) {
     /*                            ^           */
 #ifdef DB_SEQUENCE_OLDVER
@@ -4127,6 +4332,15 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'S':
+    if (memEQ(name, "DB_FOREIGN_CASCADE", 18)) {
+    /*                            ^           */
+#ifdef DB_FOREIGN_CASCADE
+      *iv_return = DB_FOREIGN_CASCADE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_REPMGR_ACKS_ALL", 18)) {
     /*                            ^           */
 #ifdef DB_REPMGR_ACKS_ALL
@@ -4140,6 +4354,15 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
     /*                            ^           */
 #ifdef DB_REPMGR_ACKS_ONE
       *iv_return = DB_REPMGR_ACKS_ONE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_SA_SKIPFIRSTKEY", 18)) {
+    /*                            ^           */
+#ifdef DB_SA_SKIPFIRSTKEY
+      *iv_return = DB_SA_SKIPFIRSTKEY;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -4267,15 +4490,16 @@ constant_19 (pTHX_ const char *name, IV *iv_return) {
      here.  However, subsequent manual editing may have added or removed some.
      DB_ENV_LOG_INMEMORY DB_ENV_MULTIVERSION DB_ENV_REP_LOGSONLY
      DB_ENV_TXN_SNAPSHOT DB_EVENT_REP_CLIENT DB_EVENT_REP_MASTER
-     DB_LOCK_FREE_LOCKER DB_LOCK_GET_TIMEOUT DB_LOCK_SET_TIMEOUT
-     DB_MUTEX_SELF_BLOCK DB_PRIORITY_DEFAULT DB_READ_UNCOMMITTED
-     DB_REPMGR_ACKS_NONE DB_REPMGR_CONNECTED DB_REP_HOLDELECTION
-     DB_REP_JOIN_FAILURE DB_SEQUENCE_VERSION DB_SET_LOCK_TIMEOUT
-     DB_STAT_LOCK_PARAMS DB_TEST_POSTDESTROY DB_TEST_POSTLOGMETA
-     DB_TEST_SUBDB_LOCKS DB_TXN_FORWARD_ROLL DB_TXN_LOG_UNDOREDO
-     DB_TXN_WRITE_NOSYNC DB_UPDATE_SECONDARY DB_USERCOPY_GETDATA
-     DB_USERCOPY_SETDATA DB_USE_ENVIRON_ROOT DB_VERB_FILEOPS_ALL
-     DB_VERB_REPLICATION DB_VERSION_MISMATCH */
+     DB_FOREIGN_CONFLICT DB_LOCK_FREE_LOCKER DB_LOCK_GET_TIMEOUT
+     DB_LOCK_SET_TIMEOUT DB_MUTEX_SELF_BLOCK DB_PRIORITY_DEFAULT
+     DB_READ_UNCOMMITTED DB_REPMGR_ACKS_NONE DB_REPMGR_CONNECTED
+     DB_REP_HOLDELECTION DB_REP_JOIN_FAILURE DB_SEQUENCE_VERSION
+     DB_SET_LOCK_TIMEOUT DB_STAT_LOCK_PARAMS DB_TEST_POSTDESTROY
+     DB_TEST_POSTLOGMETA DB_TEST_SUBDB_LOCKS DB_TXN_FORWARD_ROLL
+     DB_TXN_LOG_UNDOREDO DB_TXN_WRITE_NOSYNC DB_UPDATE_SECONDARY
+     DB_USERCOPY_GETDATA DB_USERCOPY_SETDATA DB_USE_ENVIRON_ROOT
+     DB_VERB_FILEOPS_ALL DB_VERB_REPLICATION DB_VERB_REPMGR_MISC
+     DB_VERSION_MISMATCH */
   /* Offset 14 gives the best switch position.  */
   switch (name[14]) {
   case 'A':
@@ -4350,6 +4574,15 @@ constant_19 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'F':
+    if (memEQ(name, "DB_FOREIGN_CONFLICT", 19)) {
+    /*                             ^           */
+#ifdef DB_FOREIGN_CONFLICT
+      *iv_return = DB_FOREIGN_CONFLICT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_PRIORITY_DEFAULT", 19)) {
     /*                             ^           */
 #if (DB_VERSION_MAJOR > 4) || \
@@ -4606,6 +4839,15 @@ constant_19 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_VERB_REPMGR_MISC", 19)) {
+    /*                             ^           */
+#ifdef DB_VERB_REPMGR_MISC
+      *iv_return = DB_VERB_REPMGR_MISC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   }
   return PERL_constant_NOTFOUND;
@@ -4619,7 +4861,8 @@ constant_20 (pTHX_ const char *name, IV *iv_return) {
      DB_EVENT_NOT_HANDLED DB_EVENT_REP_ELECTED DB_LOGFILEID_INVALID
      DB_PANIC_ENVIRONMENT DB_PRIORITY_VERY_LOW DB_REP_FULL_ELECTION
      DB_REP_LEASE_EXPIRED DB_REP_LEASE_TIMEOUT DB_STAT_LOCK_LOCKERS
-     DB_STAT_LOCK_OBJECTS DB_TXN_BACKWARD_ROLL DB_TXN_LOCK_OPTIMIST */
+     DB_STAT_LOCK_OBJECTS DB_STAT_MEMP_NOERROR DB_TXN_BACKWARD_ROLL
+     DB_TXN_LOCK_OPTIMIST */
   /* Offset 14 gives the best switch position.  */
   switch (name[14]) {
   case 'A':
@@ -4721,6 +4964,15 @@ constant_20 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_STAT_MEMP_NOERROR", 20)) {
+    /*                             ^            */
+#ifdef DB_STAT_MEMP_NOERROR
+      *iv_return = DB_STAT_MEMP_NOERROR;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   case 'P':
     if (memEQ(name, "DB_CXX_NO_EXCEPTIONS", 20)) {
@@ -4802,46 +5054,23 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
      DB_ENV_LOG_AUTOREMOVE DB_EVENT_WRITE_FAILED DB_LOCK_UPGRADE_WRITE
      DB_MUTEX_LOGICAL_LOCK DB_MUTEX_PROCESS_ONLY DB_PRIORITY_UNCHANGED
      DB_PRIORITY_VERY_HIGH DB_REPMGR_ACKS_QUORUM DB_REP_ELECTION_RETRY
-     DB_TXN_BACKWARD_ALLOC */
-  /* Offset 19 gives the best switch position.  */
-  switch (name[19]) {
-  case 'C':
-    if (memEQ(name, "DB_MUTEX_LOGICAL_LOCK", 21)) {
-    /*                                  ^        */
-#ifdef DB_MUTEX_LOGICAL_LOCK
-      *iv_return = DB_MUTEX_LOGICAL_LOCK;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
+     DB_REP_HEARTBEAT_SEND */
+  /* Offset 17 gives the best switch position.  */
+  switch (name[17]) {
   case 'E':
-    if (memEQ(name, "DB_EVENT_WRITE_FAILED", 21)) {
-    /*                                  ^        */
-#ifdef DB_EVENT_WRITE_FAILED
-      *iv_return = DB_EVENT_WRITE_FAILED;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    if (memEQ(name, "DB_PRIORITY_UNCHANGED", 21)) {
-    /*                                  ^        */
-#if (DB_VERSION_MAJOR > 4) || \
-    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 6) || \
-    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 6 && \
-     DB_VERSION_PATCH >= 11)
-      *iv_return = DB_PRIORITY_UNCHANGED;
+    if (memEQ(name, "DB_REP_ELECTION_RETRY", 21)) {
+    /*                                ^          */
+#ifdef DB_REP_ELECTION_RETRY
+      *iv_return = DB_REP_ELECTION_RETRY;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'G':
+  case 'H':
     if (memEQ(name, "DB_PRIORITY_VERY_HIGH", 21)) {
-    /*                                  ^        */
+    /*                                ^          */
 #if (DB_VERSION_MAJOR > 4) || \
     (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \
     (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \
@@ -4853,11 +5082,47 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
+  case 'I':
+    if (memEQ(name, "DB_EVENT_WRITE_FAILED", 21)) {
+    /*                                ^          */
+#ifdef DB_EVENT_WRITE_FAILED
+      *iv_return = DB_EVENT_WRITE_FAILED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   case 'L':
-    if (memEQ(name, "DB_MUTEX_PROCESS_ONLY", 21)) {
-    /*                                  ^        */
-#ifdef DB_MUTEX_PROCESS_ONLY
-      *iv_return = DB_MUTEX_PROCESS_ONLY;
+    if (memEQ(name, "DB_MUTEX_LOGICAL_LOCK", 21)) {
+    /*                                ^          */
+#ifdef DB_MUTEX_LOGICAL_LOCK
+      *iv_return = DB_MUTEX_LOGICAL_LOCK;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'M':
+    if (memEQ(name, "DB_ENV_LOG_AUTOREMOVE", 21)) {
+    /*                                ^          */
+#ifdef DB_ENV_LOG_AUTOREMOVE
+      *iv_return = DB_ENV_LOG_AUTOREMOVE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'N':
+    if (memEQ(name, "DB_PRIORITY_UNCHANGED", 21)) {
+    /*                                ^          */
+#if (DB_VERSION_MAJOR > 4) || \
+    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 6) || \
+    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 6 && \
+     DB_VERSION_PATCH >= 11)
+      *iv_return = DB_PRIORITY_UNCHANGED;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -4865,13 +5130,19 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'O':
-    if (memEQ(name, "DB_TXN_BACKWARD_ALLOC", 21)) {
-    /*                                  ^        */
-#if (DB_VERSION_MAJOR > 4) || \
-    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \
-    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \
-     DB_VERSION_PATCH >= 24)
-      *iv_return = DB_TXN_BACKWARD_ALLOC;
+    if (memEQ(name, "DB_MUTEX_PROCESS_ONLY", 21)) {
+    /*                                ^          */
+#ifdef DB_MUTEX_PROCESS_ONLY
+      *iv_return = DB_MUTEX_PROCESS_ONLY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REPMGR_ACKS_QUORUM", 21)) {
+    /*                                ^          */
+#ifdef DB_REPMGR_ACKS_QUORUM
+      *iv_return = DB_REPMGR_ACKS_QUORUM;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -4879,19 +5150,8 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'R':
-    if (memEQ(name, "DB_REP_ELECTION_RETRY", 21)) {
-    /*                                  ^        */
-#ifdef DB_REP_ELECTION_RETRY
-      *iv_return = DB_REP_ELECTION_RETRY;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'T':
     if (memEQ(name, "DB_LOCK_UPGRADE_WRITE", 21)) {
-    /*                                  ^        */
+    /*                                ^          */
 #if (DB_VERSION_MAJOR > 3) || \
     (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 3) || \
     (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 3 && \
@@ -4903,22 +5163,11 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'U':
-    if (memEQ(name, "DB_REPMGR_ACKS_QUORUM", 21)) {
-    /*                                  ^        */
-#ifdef DB_REPMGR_ACKS_QUORUM
-      *iv_return = DB_REPMGR_ACKS_QUORUM;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'V':
-    if (memEQ(name, "DB_ENV_LOG_AUTOREMOVE", 21)) {
-    /*                                  ^        */
-#ifdef DB_ENV_LOG_AUTOREMOVE
-      *iv_return = DB_ENV_LOG_AUTOREMOVE;
+  case 'S':
+    if (memEQ(name, "DB_REP_HEARTBEAT_SEND", 21)) {
+    /*                                ^          */
+#ifdef DB_REP_HEARTBEAT_SEND
+      *iv_return = DB_REP_HEARTBEAT_SEND;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -5047,7 +5296,7 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
      here.  However, subsequent manual editing may have added or removed some.
      DB_ENV_TXN_WRITE_NOSYNC DB_REPMGR_ACKS_ONE_PEER DB_REP_CHECKPOINT_DELAY
      DB_REP_CONF_DELAYCLIENT DB_REP_CONNECTION_RETRY DB_REP_DEFAULT_PRIORITY
-     DB_REP_ELECTION_TIMEOUT */
+     DB_REP_ELECTION_TIMEOUT DB_VERB_REPMGR_CONNFAIL */
   /* Offset 12 gives the best switch position.  */
   switch (name[12]) {
   case 'C':
@@ -5066,6 +5315,17 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
     /*                           ^                 */
 #ifdef DB_REP_CONF_DELAYCLIENT
       *iv_return = DB_REP_CONF_DELAYCLIENT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'G':
+    if (memEQ(name, "DB_VERB_REPMGR_CONNFAIL", 23)) {
+    /*                           ^                 */
+#ifdef DB_VERB_REPMGR_CONNFAIL
+      *iv_return = DB_VERB_REPMGR_CONNFAIL;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -5136,12 +5396,23 @@ constant_24 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
      DB_EVENT_REP_PERM_FAILED DB_EVENT_REP_STARTUPDONE DB_REPMGR_ACKS_ALL_PEERS
-     */
-  /* Offset 20 gives the best switch position.  */
-  switch (name[20]) {
-  case 'D':
+     DB_REP_HEARTBEAT_MONITOR */
+  /* Offset 22 gives the best switch position.  */
+  switch (name[22]) {
+  case 'E':
+    if (memEQ(name, "DB_EVENT_REP_PERM_FAILED", 24)) {
+    /*                                     ^        */
+#ifdef DB_EVENT_REP_PERM_FAILED
+      *iv_return = DB_EVENT_REP_PERM_FAILED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'N':
     if (memEQ(name, "DB_EVENT_REP_STARTUPDONE", 24)) {
-    /*                                   ^          */
+    /*                                     ^        */
 #ifdef DB_EVENT_REP_STARTUPDONE
       *iv_return = DB_EVENT_REP_STARTUPDONE;
       return PERL_constant_ISIV;
@@ -5150,22 +5421,22 @@ constant_24 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'E':
-    if (memEQ(name, "DB_REPMGR_ACKS_ALL_PEERS", 24)) {
-    /*                                   ^          */
-#ifdef DB_REPMGR_ACKS_ALL_PEERS
-      *iv_return = DB_REPMGR_ACKS_ALL_PEERS;
+  case 'O':
+    if (memEQ(name, "DB_REP_HEARTBEAT_MONITOR", 24)) {
+    /*                                     ^        */
+#ifdef DB_REP_HEARTBEAT_MONITOR
+      *iv_return = DB_REP_HEARTBEAT_MONITOR;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'I':
-    if (memEQ(name, "DB_EVENT_REP_PERM_FAILED", 24)) {
-    /*                                   ^          */
-#ifdef DB_EVENT_REP_PERM_FAILED
-      *iv_return = DB_EVENT_REP_PERM_FAILED;
+  case 'R':
+    if (memEQ(name, "DB_REPMGR_ACKS_ALL_PEERS", 24)) {
+    /*                                     ^        */
+#ifdef DB_REPMGR_ACKS_ALL_PEERS
+      *iv_return = DB_REPMGR_ACKS_ALL_PEERS;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -5224,29 +5495,32 @@ my @names = (qw(DB_AFTER DB_AGGRESSIVE DB_ALREADY_ABORTED DB_APPEND
 	       DB_EVENT_REP_PERM_FAILED DB_EVENT_REP_STARTUPDONE
 	       DB_EVENT_WRITE_FAILED DB_EXCL DB_EXTENT DB_FAST_STAT
 	       DB_FCNTL_LOCKING DB_FILEOPEN DB_FILE_ID_LEN DB_FIRST DB_FIXEDLEN
-	       DB_FLUSH DB_FORCE DB_FREELIST_ONLY DB_FREE_SPACE DB_GETREC
-	       DB_GET_BOTH DB_GET_BOTHC DB_GET_BOTH_RANGE DB_GET_RECNO
-	       DB_HANDLE_LOCK DB_HASHMAGIC DB_HASHOLDVER DB_HASHVERSION
-	       DB_IGNORE_LEASE DB_IMMUTABLE_KEY DB_INCOMPLETE DB_INIT_CDB
-	       DB_INIT_LOCK DB_INIT_LOG DB_INIT_MPOOL DB_INIT_REP DB_INIT_TXN
-	       DB_INORDER DB_JAVA_CALLBACK DB_JOINENV DB_JOIN_ITEM
-	       DB_JOIN_NOSORT DB_KEYEMPTY DB_KEYEXIST DB_KEYFIRST DB_KEYLAST
-	       DB_LAST DB_LOCKDOWN DB_LOCKMAGIC DB_LOCKVERSION DB_LOCK_ABORT
-	       DB_LOCK_CONFLICT DB_LOCK_DEADLOCK DB_LOCK_DEFAULT DB_LOCK_EXPIRE
-	       DB_LOCK_FREE_LOCKER DB_LOCK_MAXLOCKS DB_LOCK_MAXWRITE
-	       DB_LOCK_MINLOCKS DB_LOCK_MINWRITE DB_LOCK_NORUN DB_LOCK_NOTEXIST
-	       DB_LOCK_NOTGRANTED DB_LOCK_NOTHELD DB_LOCK_NOWAIT DB_LOCK_OLDEST
-	       DB_LOCK_RANDOM DB_LOCK_RECORD DB_LOCK_REMOVE DB_LOCK_RIW_N
-	       DB_LOCK_RW_N DB_LOCK_SET_TIMEOUT DB_LOCK_SWITCH DB_LOCK_UPGRADE
-	       DB_LOCK_YOUNGEST DB_LOGC_BUF_SIZE DB_LOGFILEID_INVALID
-	       DB_LOGMAGIC DB_LOGOLDVER DB_LOGVERSION DB_LOG_AUTOREMOVE
-	       DB_LOG_BUFFER_FULL DB_LOG_CHKPNT DB_LOG_COMMIT DB_LOG_DISK
-	       DB_LOG_INMEMORY DB_LOG_LOCKED DB_LOG_NOCOPY DB_LOG_NOT_DURABLE
-	       DB_LOG_PERM DB_LOG_RESEND DB_LOG_SILENT_ERR DB_LOG_WRNOSYNC
-	       DB_MAX_PAGES DB_MAX_RECORDS DB_MPOOL_CLEAN DB_MPOOL_CREATE
-	       DB_MPOOL_DIRTY DB_MPOOL_DISCARD DB_MPOOL_EDIT DB_MPOOL_EXTENT
-	       DB_MPOOL_FREE DB_MPOOL_LAST DB_MPOOL_NEW DB_MPOOL_NEW_GROUP
-	       DB_MPOOL_NOFILE DB_MPOOL_PRIVATE DB_MPOOL_UNLINK DB_MULTIPLE
+	       DB_FLUSH DB_FORCE DB_FOREIGN_ABORT DB_FOREIGN_CASCADE
+	       DB_FOREIGN_CONFLICT DB_FOREIGN_NULLIFY DB_FREELIST_ONLY
+	       DB_FREE_SPACE DB_GETREC DB_GET_BOTH DB_GET_BOTHC
+	       DB_GET_BOTH_RANGE DB_GET_RECNO DB_HANDLE_LOCK DB_HASHMAGIC
+	       DB_HASHOLDVER DB_HASHVERSION DB_IGNORE_LEASE DB_IMMUTABLE_KEY
+	       DB_INCOMPLETE DB_INIT_CDB DB_INIT_LOCK DB_INIT_LOG DB_INIT_MPOOL
+	       DB_INIT_REP DB_INIT_TXN DB_INORDER DB_JAVA_CALLBACK DB_JOINENV
+	       DB_JOIN_ITEM DB_JOIN_NOSORT DB_KEYEMPTY DB_KEYEXIST DB_KEYFIRST
+	       DB_KEYLAST DB_LAST DB_LOCKDOWN DB_LOCKMAGIC DB_LOCKVERSION
+	       DB_LOCK_ABORT DB_LOCK_CONFLICT DB_LOCK_DEADLOCK DB_LOCK_DEFAULT
+	       DB_LOCK_EXPIRE DB_LOCK_FREE_LOCKER DB_LOCK_MAXLOCKS
+	       DB_LOCK_MAXWRITE DB_LOCK_MINLOCKS DB_LOCK_MINWRITE DB_LOCK_NORUN
+	       DB_LOCK_NOTEXIST DB_LOCK_NOTGRANTED DB_LOCK_NOTHELD
+	       DB_LOCK_NOWAIT DB_LOCK_OLDEST DB_LOCK_RANDOM DB_LOCK_RECORD
+	       DB_LOCK_REMOVE DB_LOCK_RIW_N DB_LOCK_RW_N DB_LOCK_SET_TIMEOUT
+	       DB_LOCK_SWITCH DB_LOCK_UPGRADE DB_LOCK_YOUNGEST DB_LOGC_BUF_SIZE
+	       DB_LOGFILEID_INVALID DB_LOGMAGIC DB_LOGOLDVER DB_LOGVERSION
+	       DB_LOG_AUTOREMOVE DB_LOG_AUTO_REMOVE DB_LOG_BUFFER_FULL
+	       DB_LOG_CHKPNT DB_LOG_COMMIT DB_LOG_DIRECT DB_LOG_DISK
+	       DB_LOG_DSYNC DB_LOG_INMEMORY DB_LOG_IN_MEMORY DB_LOG_LOCKED
+	       DB_LOG_NOCOPY DB_LOG_NOT_DURABLE DB_LOG_PERM DB_LOG_RESEND
+	       DB_LOG_SILENT_ERR DB_LOG_WRNOSYNC DB_LOG_ZERO DB_MAX_PAGES
+	       DB_MAX_RECORDS DB_MPOOL_CLEAN DB_MPOOL_CREATE DB_MPOOL_DIRTY
+	       DB_MPOOL_DISCARD DB_MPOOL_EDIT DB_MPOOL_EXTENT DB_MPOOL_FREE
+	       DB_MPOOL_LAST DB_MPOOL_NEW DB_MPOOL_NEW_GROUP DB_MPOOL_NOFILE
+	       DB_MPOOL_NOLOCK DB_MPOOL_PRIVATE DB_MPOOL_UNLINK DB_MULTIPLE
 	       DB_MULTIPLE_KEY DB_MULTIVERSION DB_MUTEXDEBUG DB_MUTEXLOCKS
 	       DB_MUTEX_ALLOCATED DB_MUTEX_LOCKED DB_MUTEX_LOGICAL_LOCK
 	       DB_MUTEX_PROCESS_ONLY DB_MUTEX_SELF_BLOCK DB_MUTEX_THREAD
@@ -5267,15 +5541,17 @@ my @names = (qw(DB_AFTER DB_AGGRESSIVE DB_ALREADY_ABORTED DB_APPEND
 	       DB_REGISTERED DB_RENAMEMAGIC DB_RENUMBER DB_REPFLAGS_MASK
 	       DB_REPMGR_ACKS_ALL DB_REPMGR_ACKS_ALL_PEERS DB_REPMGR_ACKS_NONE
 	       DB_REPMGR_ACKS_ONE DB_REPMGR_ACKS_ONE_PEER DB_REPMGR_ACKS_QUORUM
-	       DB_REPMGR_CONNECTED DB_REPMGR_DISCONNECTED DB_REPMGR_PEER
-	       DB_REP_ACK_TIMEOUT DB_REP_ANYWHERE DB_REP_BULKOVF
-	       DB_REP_CHECKPOINT_DELAY DB_REP_CLIENT DB_REP_CONF_BULK
-	       DB_REP_CONF_DELAYCLIENT DB_REP_CONF_NOAUTOINIT
-	       DB_REP_CONF_NOWAIT DB_REP_CONNECTION_RETRY DB_REP_CREATE
-	       DB_REP_DEFAULT_PRIORITY DB_REP_DUPMASTER DB_REP_EGENCHG
-	       DB_REP_ELECTION DB_REP_ELECTION_RETRY DB_REP_ELECTION_TIMEOUT
+	       DB_REPMGR_CONF_2SITE_STRICT DB_REPMGR_CONNECTED
+	       DB_REPMGR_DISCONNECTED DB_REPMGR_PEER DB_REP_ACK_TIMEOUT
+	       DB_REP_ANYWHERE DB_REP_BULKOVF DB_REP_CHECKPOINT_DELAY
+	       DB_REP_CLIENT DB_REP_CONF_BULK DB_REP_CONF_DELAYCLIENT
+	       DB_REP_CONF_LEASE DB_REP_CONF_NOAUTOINIT DB_REP_CONF_NOWAIT
+	       DB_REP_CONNECTION_RETRY DB_REP_CREATE DB_REP_DEFAULT_PRIORITY
+	       DB_REP_DUPMASTER DB_REP_EGENCHG DB_REP_ELECTION
+	       DB_REP_ELECTION_RETRY DB_REP_ELECTION_TIMEOUT
 	       DB_REP_FULL_ELECTION DB_REP_FULL_ELECTION_TIMEOUT
-	       DB_REP_HANDLE_DEAD DB_REP_HOLDELECTION DB_REP_IGNORE
+	       DB_REP_HANDLE_DEAD DB_REP_HEARTBEAT_MONITOR
+	       DB_REP_HEARTBEAT_SEND DB_REP_HOLDELECTION DB_REP_IGNORE
 	       DB_REP_ISPERM DB_REP_JOIN_FAILURE DB_REP_LEASE_EXPIRED
 	       DB_REP_LEASE_TIMEOUT DB_REP_LOCKOUT DB_REP_LOGREADY
 	       DB_REP_LOGSONLY DB_REP_MASTER DB_REP_NEWMASTER DB_REP_NEWSITE
@@ -5283,13 +5559,16 @@ my @names = (qw(DB_AFTER DB_AGGRESSIVE DB_ALREADY_ABORTED DB_APPEND
 	       DB_REP_PERMANENT DB_REP_REREQUEST DB_REP_STARTUPDONE
 	       DB_REP_UNAVAIL DB_REVSPLITOFF DB_RMW DB_RPCCLIENT
 	       DB_RPC_SERVERPROG DB_RPC_SERVERVERS DB_RUNRECOVERY DB_SALVAGE
-	       DB_SECONDARY_BAD DB_SEQUENCE_OLDVER DB_SEQUENCE_VERSION
-	       DB_SEQUENTIAL DB_SEQ_DEC DB_SEQ_INC DB_SEQ_RANGE_SET DB_SEQ_WRAP
-	       DB_SEQ_WRAPPED DB_SET DB_SET_LOCK_TIMEOUT DB_SET_RANGE
-	       DB_SET_RECNO DB_SET_TXN_NOW DB_SET_TXN_TIMEOUT DB_SNAPSHOT
-	       DB_SPARE_FLAG DB_STAT_ALL DB_STAT_CLEAR DB_STAT_LOCK_CONF
-	       DB_STAT_LOCK_LOCKERS DB_STAT_LOCK_OBJECTS DB_STAT_LOCK_PARAMS
-	       DB_STAT_MEMP_HASH DB_STAT_NOERROR DB_STAT_SUBSYSTEM
+	       DB_SA_SKIPFIRSTKEY DB_SECONDARY_BAD DB_SEQUENCE_OLDVER
+	       DB_SEQUENCE_VERSION DB_SEQUENTIAL DB_SEQ_DEC DB_SEQ_INC
+	       DB_SEQ_RANGE_SET DB_SEQ_WRAP DB_SEQ_WRAPPED DB_SET
+	       DB_SET_LOCK_TIMEOUT DB_SET_RANGE DB_SET_RECNO DB_SET_TXN_NOW
+	       DB_SET_TXN_TIMEOUT DB_SNAPSHOT DB_SPARE_FLAG DB_STAT_ALL
+	       DB_STAT_CLEAR DB_STAT_LOCK_CONF DB_STAT_LOCK_LOCKERS
+	       DB_STAT_LOCK_OBJECTS DB_STAT_LOCK_PARAMS DB_STAT_MEMP_HASH
+	       DB_STAT_MEMP_NOERROR DB_STAT_NOERROR DB_STAT_SUBSYSTEM
+	       DB_ST_DUPOK DB_ST_DUPSET DB_ST_DUPSORT DB_ST_IS_RECNO
+	       DB_ST_OVFL_LEAF DB_ST_RECNUM DB_ST_RELEN DB_ST_TOPLEVEL
 	       DB_SURPRISE_KID DB_SWAPBYTES DB_SYSTEM_MEM DB_TEMPORARY
 	       DB_TEST_ELECTINIT DB_TEST_ELECTSEND DB_TEST_ELECTVOTE1
 	       DB_TEST_ELECTVOTE2 DB_TEST_ELECTWAIT1 DB_TEST_ELECTWAIT2
@@ -5308,8 +5587,10 @@ my @names = (qw(DB_AFTER DB_AGGRESSIVE DB_ALREADY_ABORTED DB_APPEND
 	       DB_USERCOPY_SETDATA DB_USE_ENVIRON DB_USE_ENVIRON_ROOT
 	       DB_VERB_CHKPOINT DB_VERB_DEADLOCK DB_VERB_FILEOPS
 	       DB_VERB_FILEOPS_ALL DB_VERB_RECOVERY DB_VERB_REGISTER
-	       DB_VERB_REPLICATION DB_VERB_WAITSFOR DB_VERIFY DB_VERIFY_BAD
-	       DB_VERIFY_FATAL DB_VERSION_MAJOR DB_VERSION_MINOR
+	       DB_VERB_REPLICATION DB_VERB_REPMGR_CONNFAIL DB_VERB_REPMGR_MISC
+	       DB_VERB_REP_ELECT DB_VERB_REP_LEASE DB_VERB_REP_MISC
+	       DB_VERB_REP_MSGS DB_VERB_REP_SYNC DB_VERB_WAITSFOR DB_VERIFY
+	       DB_VERIFY_BAD DB_VERIFY_FATAL DB_VERSION_MAJOR DB_VERSION_MINOR
 	       DB_VERSION_MISMATCH DB_VERSION_PATCH DB_VRFY_FLAGMASK
 	       DB_WRITECURSOR DB_WRITELOCK DB_WRITEOPEN DB_WRNOSYNC
 	       DB_XA_CREATE DB_XIDDATASIZE DB_YIELDCPU DB_debug_FLAG
@@ -5337,7 +5618,6 @@ my @names = (qw(DB_AFTER DB_AGGRESSIVE DB_ALREADY_ABORTED DB_APPEND
             {name=>"DB_RECNO", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
             {name=>"DB_TXN_ABORT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_APPLY", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_TXN_BACKWARD_ALLOC", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
             {name=>"DB_TXN_BACKWARD_ROLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_FORWARD_ROLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_OPENFILES", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
@@ -5412,6 +5692,16 @@ __END__
     break;
   case 24:
     return constant_24 (aTHX_ name, iv_return);
+    break;
+  case 27:
+    if (memEQ(name, "DB_REPMGR_CONF_2SITE_STRICT", 27)) {
+#ifdef DB_REPMGR_CONF_2SITE_STRICT
+      *iv_return = DB_REPMGR_CONF_2SITE_STRICT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   case 28:
     if (memEQ(name, "DB_REP_FULL_ELECTION_TIMEOUT", 28)) {

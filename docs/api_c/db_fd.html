@@ -1,5 +1,5 @@
 <!--$Id: db_fd.so,v 10.31 2005/06/14 14:06:57 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB-&gt;fd</h3>
+<b>DB-&gt;fd</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DB-&gt;fd(DB *db, int *fdp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB-&gt;fd</h3>
+<b>Description: DB-&gt;fd</b>
 <p>The DB-&gt;fd method provides access to a file descriptor representative
 of the underlying database.  A file descriptor referring to the same
 file will be returned to all processes that call <a href="../api_c/db_open.html">DB-&gt;open</a> with
@@ -38,20 +38,19 @@ Applications should instead use the Berkeley DB lock manager where possible.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>fdp</b><dd>The <b>fdp</b> parameter references memory into which
- the current file descriptor is copied. 
-</dl>
+<b>Parameters</b> <br>
+ <b>fdp</b><ul compact><li>The <b>fdp</b> parameter references memory into which
+ the current file descriptor is copied.</ul> 
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/db_class.html">DB</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

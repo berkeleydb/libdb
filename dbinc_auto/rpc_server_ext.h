@@ -79,6 +79,7 @@ void __dbc_put_proc __P((u_int, u_int32_t, u_int32_t, u_int32_t, u_int32_t, void
 void __dbc_get_priority_proc __P((u_int, __dbc_get_priority_reply *));
 void __dbc_set_priority_proc __P((u_int, u_int32_t, __dbc_set_priority_reply *));
 void __dbsrv_settimeout __P((ct_entry *, u_int32_t));
+void __dbsrv_timeout __P((int));
 void __dbclear_ctp __P((ct_entry *));
 void __dbdel_ctp __P((ct_entry *));
 ct_entry *new_ct_ent __P((int *));

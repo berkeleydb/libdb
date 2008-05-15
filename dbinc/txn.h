@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: txn.h,v 12.18 2007/05/17 19:33:03 bostic Exp $
+ * $Id: txn.h,v 12.20 2008/01/08 20:58:18 bostic Exp $
  */
 
 #ifndef	_DB_TXN_H_
@@ -107,17 +107,17 @@ struct __db_txnmgr {
 	u_int32_t n_discards;		/* Number of txns discarded. */
 
 	/* These fields are never updated after creation, so not protected. */
-	DB_ENV	*dbenv;			/* Environment. */
+	ENV	*env;			/* Environment. */
 	REGINFO	 reginfo;		/* Region information. */
 };
 
 /* Macros to lock/unlock the transaction region as a whole. */
-#define	TXN_SYSTEM_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, ((DB_TXNREGION *)				\
-	    (dbenv)->tx_handle->reginfo.primary)->mtx_region)
-#define	TXN_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((DB_TXNREGION *)				\
-	    (dbenv)->tx_handle->reginfo.primary)->mtx_region)
+#define	TXN_SYSTEM_LOCK(env)						\
+	MUTEX_LOCK(env, ((DB_TXNREGION *)				\
+	    (env)->tx_handle->reginfo.primary)->mtx_region)
+#define	TXN_SYSTEM_UNLOCK(env)						\
+	MUTEX_UNLOCK(env, ((DB_TXNREGION *)				\
+	    (env)->tx_handle->reginfo.primary)->mtx_region)
 
 /*
  * DB_TXNREGION --

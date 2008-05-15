@@ -203,7 +203,7 @@ main(void)
       <pre class="programlisting">
         <b class="userinput">
           <tt>        // Specify in-memory logging
-        envp-&gt;set_flags(DB_LOG_INMEMORY, 1);
+        envp-&gt;log_set_config(DB_LOG_IN_MEMORY, 1);
 
         // Specify the size of the in-memory log buffer.
         envp-&gt;set_lg_bsize(10 * 1024 * 1024);

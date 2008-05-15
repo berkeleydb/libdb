@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: test122.tcl,v 1.6 2007/05/24 18:20:47 carol Exp $
+# $Id: test122.tcl,v 1.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	test122
 # TEST	Tests of multi-version concurrency control.

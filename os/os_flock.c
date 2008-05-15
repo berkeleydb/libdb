@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_flock.c,v 12.14 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_flock.c,v 12.16 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,23 +14,26 @@
  * __os_fdlock --
  *	Acquire/release a lock on a byte in a file.
  *
- * PUBLIC: int __os_fdlock __P((DB_ENV *, DB_FH *, off_t, int, int));
+ * PUBLIC: int __os_fdlock __P((ENV *, DB_FH *, off_t, int, int));
  */
 int
-__os_fdlock(dbenv, fhp, offset, acquire, nowait)
-	DB_ENV *dbenv;
+__os_fdlock(env, fhp, offset, acquire, nowait)
+	ENV *env;
 	DB_FH *fhp;
 	int acquire, nowait;
 	off_t offset;
 {
 #ifdef HAVE_FCNTL
+	DB_ENV *dbenv;
 	struct flock fl;
 	int ret, t_ret;
 
-	DB_ASSERT(dbenv, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+	dbenv = env == NULL ? NULL : env->dbenv;
+
+	DB_ASSERT(env, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
 
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: flock %s %s offset %lu",
 		    fhp->name, acquire ? "acquire": "release", (u_long)offset);
 
@@ -46,14 +49,14 @@ __os_fdlock(dbenv, fhp, offset, acquire, nowait)
 		return (0);
 
 	if ((t_ret = __os_posix_err(ret)) != EACCES && t_ret != EAGAIN)
-		__db_syserr(dbenv, ret, "fcntl");
+		__db_syserr(env, ret, "fcntl");
 	return (t_ret);
 #else
 	COMPQUIET(fhp, NULL);
 	COMPQUIET(acquire, 0);
 	COMPQUIET(nowait, 0);
 	COMPQUIET(offset, 0);
-	__db_syserr(dbenv, DB_OPNOTSUP, "advisory file locking unavailable");
+	__db_syserr(env, DB_OPNOTSUP, "advisory file locking unavailable");
 	return (DB_OPNOTSUP);
 #endif
 }

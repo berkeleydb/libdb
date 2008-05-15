@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007 Oracle.  All rights reserved.
+# Copyright (c) 2007,2008 Oracle.  All rights reserved.
 #
-# $Id: rep076.tcl,v 12.2 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep076.tcl,v 12.5 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep076
 # TEST	Replication elections - what happens if elected client
@@ -60,10 +60,11 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	source ./include.tcl
 	global machids
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -138,7 +139,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 		set crash($i) 0
 		if { $rep_verbose == 1 } {
 			$clientenv($i) errpfx CLIENT$i
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			$clientenv($i) errfile /dev/stderr
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT$i -errfile /dev/stderr"]
@@ -157,7 +158,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	puts "\tRep$tnum: Second winner accepts its election."
 	setpriority pri $nclients $winner2
 	run_election env_cmd envlist err_cmd pri crash $qdir $m\
-	    $elector $nsites $nvotes $nclients $winner2
+	    $elector $nsites $nvotes $nclients $winner2 0 test.db
 
 	# Clean up.
 	foreach pair $envlist {

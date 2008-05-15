@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: dbm.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: dbm.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	dbm
 # TEST	Historic DBM interface test.  Use the first 1000 entries from the

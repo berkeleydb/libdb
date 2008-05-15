@@ -1,4 +1,4 @@
-m4_comment([$Id: env_set_alloc.so,v 1.22 2004/08/13 03:38:57 bostic Exp $])
+m4_comment([$Id: env_set_alloc.so,v 1.24 2008/01/19 14:12:57 bostic Exp $])
 
 ifdef([M4INTERFACE],, [define(M4INTERFACE, dbenv_set_alloc)])
 
@@ -114,8 +114,9 @@ m4_when_dbopen(dbh_set_alloc)
 m4_return(dbh_set_alloc, std)
 
 m4_err(dbh_set_alloc,
-einval, [Called in a database environment.
-m4_p([Called after m4_ref(dbh_open) was called.])])
+einval, [dnl
+called in a database environment, or called after m4_ref(dbh_open) was
+called])
 
 m4_seealso(Db)
 ])

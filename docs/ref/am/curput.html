@@ -1,5 +1,5 @@
 <!--$Id: curput.so,v 10.18 2003/10/18 19:15:52 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,26 +10,25 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a><a name="3"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Storing records with a cursor</h3>
+<p align=center><b>Storing records with a cursor</b></p>
 <p>The <a href="../../api_c/dbc_put.html">DBcursor-&gt;put</a> method stores records into the database using a cursor.  In
 general, <a href="../../api_c/dbc_put.html">DBcursor-&gt;put</a> takes a key and inserts the associated data
 into the database, at a location controlled by a specified flag.</p>
 <p>There are several flags that you can set to customize storage:</p>
-<dl compact>
-<dt><a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a><dd>Create a new record, immediately after the record to which the cursor
-refers.
-<dt><a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a><dd>Create a new record, immediately before the record to which the cursor
-refers.
-<dt><a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a><dd>Replace the data part of the record to which the cursor refers.
-<dt><a href="../../api_c/dbc_put.html#DB_KEYFIRST">DB_KEYFIRST</a><dd>Create a new record as the first of the duplicate records for the
-supplied key.
-<dt><a href="../../api_c/dbc_put.html#DB_KEYLAST">DB_KEYLAST</a><dd>Create a new record, as the last of the duplicate records for the supplied
-key.
-</dl>
+<br>
+<b><a href="../../api_c/dbc_put.html#DB_AFTER">DB_AFTER</a></b><ul compact><li>Create a new record, immediately after the record to which the cursor
+refers.</ul>
+<b><a href="../../api_c/dbc_put.html#DB_BEFORE">DB_BEFORE</a></b><ul compact><li>Create a new record, immediately before the record to which the cursor
+refers.</ul>
+<b><a href="../../api_c/dbc_get.html#DB_CURRENT">DB_CURRENT</a></b><ul compact><li>Replace the data part of the record to which the cursor refers.</ul>
+<b><a href="../../api_c/dbc_put.html#DB_KEYFIRST">DB_KEYFIRST</a></b><ul compact><li>Create a new record as the first of the duplicate records for the
+supplied key.</ul>
+<b><a href="../../api_c/dbc_put.html#DB_KEYLAST">DB_KEYLAST</a></b><ul compact><li>Create a new record, as the last of the duplicate records for the supplied
+key.</ul>
+<br>
 <p>In all cases, the cursor is repositioned by a <a href="../../api_c/dbc_put.html">DBcursor-&gt;put</a> operation
 to point to the newly inserted key/data pair in the database.</p>
 <p>The following is a code example showing a cursor storing two data items
@@ -84,6 +83,6 @@ err:	if ((ret = dbcp-&gt;c_close(dbcp)) != 0)
 }</pre></blockquote>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am/curget.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am/curdel.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: xa_map.c,v 12.10 2007/05/17 15:16:00 bostic Exp $
+ * $Id: xa_map.c,v 12.12 2008/01/08 20:59:00 bostic Exp $
  */
 
 #include "db_config.h"
@@ -20,18 +20,18 @@
  * __db_rmid_to_env
  *	Return the environment associated with a given XA rmid.
  *
- * PUBLIC: int __db_rmid_to_env __P((int rmid, DB_ENV **envp));
+ * PUBLIC: int __db_rmid_to_env __P((int, ENV **));
  */
 int
-__db_rmid_to_env(rmid, dbenvp)
+__db_rmid_to_env(rmid, envp)
 	int rmid;
-	DB_ENV **dbenvp;
+	ENV **envp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 
-	dbenv = TAILQ_FIRST(&DB_GLOBAL(db_envq));
-	if (dbenv != NULL && dbenv->xa_rmid == rmid) {
-		*dbenvp = dbenv;
+	env = TAILQ_FIRST(&DB_GLOBAL(envq));
+	if (env != NULL && env->xa_rmid == rmid) {
+		*envp = env;
 		return (0);
 	}
 
@@ -40,11 +40,11 @@ __db_rmid_to_env(rmid, dbenvp)
 	 * the list of environments, so we acquire the correct environment
 	 * in DB->open.
 	 */
-	for (; dbenv != NULL; dbenv = TAILQ_NEXT(dbenv, links))
-		if (dbenv->xa_rmid == rmid) {
-			TAILQ_REMOVE(&DB_GLOBAL(db_envq), dbenv, links);
-			TAILQ_INSERT_HEAD(&DB_GLOBAL(db_envq), dbenv, links);
-			*dbenvp = dbenv;
+	for (; env != NULL; env = TAILQ_NEXT(env, links))
+		if (env->xa_rmid == rmid) {
+			TAILQ_REMOVE(&DB_GLOBAL(envq), env, links);
+			TAILQ_INSERT_HEAD(&DB_GLOBAL(envq), env, links);
+			*envp = env;
 			return (0);
 		}
 
@@ -55,32 +55,32 @@ __db_rmid_to_env(rmid, dbenvp)
  * __db_xid_to_txn
  *	Return the txn that corresponds to this XID.
  *
- * PUBLIC: int __db_xid_to_txn __P((DB_ENV *, XID *, roff_t *));
+ * PUBLIC: int __db_xid_to_txn __P((ENV *, XID *, roff_t *));
  */
 int
-__db_xid_to_txn(dbenv, xid, offp)
-	DB_ENV *dbenv;
+__db_xid_to_txn(env, xid, offp)
+	ENV *env;
 	XID *xid;
 	roff_t *offp;
 {
 	struct __txn_detail *td;
 
-	return (__txn_map_gid(dbenv, (u_int8_t *)xid->data, &td, offp));
+	return (__txn_map_gid(env, (u_int8_t *)xid->data, &td, offp));
 }
 
 /*
  * __db_map_rmid
  *	Create a mapping between the specified rmid and environment.
  *
- * PUBLIC: int __db_map_rmid __P((int, DB_ENV *));
+ * PUBLIC: int __db_map_rmid __P((int, ENV *));
  */
 int
-__db_map_rmid(rmid, dbenv)
+__db_map_rmid(rmid, env)
 	int rmid;
-	DB_ENV *dbenv;
+	ENV *env;
 {
-	dbenv->xa_rmid = rmid;
-	TAILQ_INSERT_TAIL(&DB_GLOBAL(db_envq), dbenv, links);
+	env->xa_rmid = rmid;
+	TAILQ_INSERT_TAIL(&DB_GLOBAL(envq), env, links);
 	return (0);
 }
 
@@ -94,9 +94,9 @@ int
 __db_unmap_rmid(rmid)
 	int rmid;
 {
-	DB_ENV *e;
+	ENV *e;
 
-	for (e = TAILQ_FIRST(&DB_GLOBAL(db_envq));
+	for (e = TAILQ_FIRST(&DB_GLOBAL(envq));
 	    e->xa_rmid != rmid;
 	    e = TAILQ_NEXT(e, links))
 	    ;
@@ -104,7 +104,7 @@ __db_unmap_rmid(rmid)
 	if (e == NULL)
 		return (EINVAL);
 
-	TAILQ_REMOVE(&DB_GLOBAL(db_envq), e, links);
+	TAILQ_REMOVE(&DB_GLOBAL(envq), e, links);
 	return (0);
 }
 
@@ -113,20 +113,20 @@ __db_unmap_rmid(rmid)
  *	Create a mapping between this XID and the transaction
  *	"td" in the shared region.
  *
- * PUBLIC: int __db_map_xid __P((DB_ENV *, XID *, TXN_DETAIL *));
+ * PUBLIC: int __db_map_xid __P((ENV *, XID *, TXN_DETAIL *));
  */
 int
-__db_map_xid(dbenv, xid, td)
-	DB_ENV *dbenv;
+__db_map_xid(env, xid, td)
+	ENV *env;
 	XID *xid;
 	TXN_DETAIL *td;
 {
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	memcpy(td->xid, xid->data, XIDDATASIZE);
 	td->bqual = (u_int32_t)xid->bqual_length;
 	td->gtrid = (u_int32_t)xid->gtrid_length;
 	td->format = (int32_t)xid->formatID;
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
 }
@@ -135,12 +135,12 @@ __db_map_xid(dbenv, xid, td)
  * __db_unmap_xid
  *	Destroy the mapping for the specified XID.
  *
- * PUBLIC: void __db_unmap_xid __P((DB_ENV *, XID *, size_t));
+ * PUBLIC: void __db_unmap_xid __P((ENV *, XID *, size_t));
  */
 
 void
-__db_unmap_xid(dbenv, xid, off)
-	DB_ENV *dbenv;
+__db_unmap_xid(env, xid, off)
+	ENV *env;
 	XID *xid;
 	size_t off;
 {
@@ -148,6 +148,6 @@ __db_unmap_xid(dbenv, xid, off)
 
 	COMPQUIET(xid, NULL);
 
-	td = R_ADDR(&dbenv->tx_handle->reginfo, off);
+	td = R_ADDR(&env->tx_handle->reginfo, off);
 	memset(td->xid, 0, sizeof(td->xid));
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep053.tcl,v 12.19 2007/05/17 19:33:06 bostic Exp $
+# $Id: rep053.tcl,v 12.22 2008/04/03 17:27:51 carol Exp $
 #
 # TEST	rep053
 # TEST	Replication and basic client-to-client synchronization.
@@ -56,10 +56,11 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -162,10 +163,11 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	if { $throttle == "throttle" } {
 		error_check_good req [expr $req > $expected_msgs] 1
 	} else {
-		error_check_good req $req $expected_msgs
+		error_check_good min_req [expr $req >= $expected_msgs] 1
+		set max_expected_msgs [expr $expected_msgs * 2] 
+		error_check_good max_req [expr $req <= $max_expected_msgs] 1
 	}
-	error_check_good miss $miss 1
-	error_check_good rereq $rereq 1
+	error_check_good miss=rereq $miss $rereq
 
 	# Check for throttling.
 	if { $throttle == "throttle" } {

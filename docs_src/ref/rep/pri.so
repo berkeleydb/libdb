@@ -1,4 +1,4 @@
-m4_comment([$Id: pri.so,v 1.7 2006/07/14 23:04:42 alanb Exp $])
+m4_comment([$Id: pri.so,v 1.8 2007/12/03 21:01:22 sue Exp $])
 
 m4_ref_title(m4_db Replication,
     Replication environment priorities,, rep/id, rep/app)
@@ -13,7 +13,7 @@ applications which use the Base replication API should specify
 environment priorities.])
 
 m4_p([dnl
-Priorities must be a non-negative integer, but do not need to be unique
+Priorities are an unsigned integer, but do not need to be unique
 throughout the replication group.  A priority of 0 means the system can
 never become a master, regardless.  Otherwise, larger valued priorities
 indicate a more desirable master.  For example, if a replication group

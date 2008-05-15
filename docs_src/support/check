@@ -1,4 +1,4 @@
-# $Id: check,v 10.155 2007/07/06 16:37:23 bostic Exp $
+# $Id: check,v 10.159 2008/02/19 15:41:28 bostic Exp $
 #
 # Script to check HTML output for links that reference nonexistent
 # pages, and for pages that aren't referenced by anything.
@@ -401,12 +401,12 @@ cat << END-OF-PROGRAM > /tmp/paren.c
 			if (c > o) {
 				printf("%s: too many closing parenthesis\n",
 				    argv[1]);
-				exit (0);
+				return (0);
 			}
 		}
 		if (c != o)
 			printf("%s: too many open parenthesis\n", argv[1]);
-		exit (0);
+		return (0);
 	}
 END-OF-PROGRAM
 
@@ -513,12 +513,10 @@ t45()
 	    sed -e /CVS/d \
 		-e /README/d \
 		-e /build[0-9]/d \
-		-e /test_cxx/d \
+		-e /test_erlang/d \
 		-e /test_perf/d \
 		-e /test_purify/d \
-		-e /test_rep/d \
 		-e /test_server/d \
-		-e /test_thread/d \
 		-e /test_vxworks/d > ${T}/2
 
 	cmp ${T}/1 ${T}/2 > /dev/null ||
@@ -542,6 +540,7 @@ t46()
 
 	sed -e 's/^\$1, \(DB_[^,]*\),.*/\1/p' \
 	    -e d $BDB_SRC/docs_src/m4/m4.links | sort > ${T}/2
+	cmp ${T}/1 ${T}/2 > /dev/null ||
 	(echo "<<< source files >>> m4/m4.links file" &&
 	    diff ${T}/1 ${T}/2 | egrep '^[<>]') >> ${T}/check_$of
 }
@@ -768,7 +767,9 @@ find $TARGET -name '*.html' |
         -e '/\/docs\/gsg_xml\//d' \
         -e '/\/docs\/gsg_xml_txn\//d' \
         -e '/\/docs\/intro_xml\//d' \
-        -e '/\/docs\/java\//d' | sort > ${HTML_FILES}
+        -e '/\/docs\/java\//d' \
+        -e '/\/docs\/porting\//d' \
+        | sort > ${HTML_FILES}
 
 [ -z $BDB_SRC ] || f="$f $BDB_SRC/docs_src"
 [ -z $XML_SRC ] || f="$f $XML_SRC/docs_src"

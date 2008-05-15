@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: reputils.tcl,v 12.54 2007/07/12 16:36:07 alanb Exp $
+# $Id: reputils.tcl,v 12.69 2008/05/02 15:35:17 sue Exp $
 #
 # Replication testing utilities
 
@@ -51,11 +51,55 @@ set anywhere 0
 
 global rep_verbose
 set rep_verbose 0
+global verbose_type
+set verbose_type "rep"
 
 # To run a replication test with verbose messages, type
 # 'run_verbose <test> <method>'.
+# To run a replication test with one of the subsets of verbose 
+# messages, use the same syntax with 'run_verbose_elect', 
+# 'run_verbose_lease', etc. 
+
 proc run_verbose { reptest args } {
+	global verbose_type
+	set verbose_type "rep"
+	run_verb $reptest $args
+}
+
+proc run_verbose_elect { reptest args } {
+	global verbose_type
+	set verbose_type "rep_elect"
+	run_verb $reptest $args
+}
+
+proc run_verbose_lease { reptest args } {
+	global verbose_type
+	set verbose_type "rep_lease"
+	run_verb $reptest $args
+}
+
+proc run_verbose_misc { reptest args } {
+	global verbose_type
+	set verbose_type "rep_misc"
+	run_verb $reptest $args
+}
+
+proc run_verbose_msgs { reptest args } {
+	global verbose_type
+	set verbose_type "rep_msgs"
+	run_verb $reptest $args
+}
+
+proc run_verbose_sync { reptest args } {
+	global verbose_type
+	set verbose_type "rep_sync"
+	run_verb $reptest $args
+}
+
+proc run_verb { reptest args } {
 	global rep_verbose
+	global verbose_type
+
 	if { [string match rep* $reptest] == 0 } {
 		error "run_verbose runs only for rep tests"
 		return
@@ -202,16 +246,21 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	#
 	# Set log smaller than default to force changing files,
 	# but big enough so that the tests that use binary files
-	# as keys/data can run.
+	# as keys/data can run.  Increase the size of the log region --
+	# sdb004 needs this, now that subdatabase names are stored 
+	# in the env region.
 	#
 	set logmax [expr 3 * 1024 * 1024]
 	set lockmax 40000
+	set logregion 2097152
+
 	set ma_cmd "berkdb_env -create -log_max $logmax $envargs \
-	    -cachesize { 0 4194304 1 } \
+	    -cachesize { 0 4194304 1 } -log_regionmax $logregion \
 	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 	    -home $masterdir -txn nosync -rep_master -rep_transport \
 	    \[list 1 replsend\]"
 #	set ma_cmd "berkdb_env_noerr -create -log_max $logmax $envargs \
+#	    -cachesize { 0 4194304 1 } -log_regionmax $logregion \
 #	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 #	    -verbose {rep on} -errfile /dev/stderr -errpfx $masterdir \
 #	    -home $masterdir -txn nosync -rep_master -rep_transport \
@@ -225,12 +274,12 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 		set envid [expr $i + 2]
 		repladd $envid
                 set cl_cmd "berkdb_env -create $envargs -txn nosync \
-		    -cachesize { 0 10000000 0 } \
+		    -cachesize { 0 10000000 0 } -log_regionmax $logregion \
 		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 		    -home $clientdir($i) -rep_client -rep_transport \
 		    \[list $envid replsend\]"
 #		set cl_cmd "berkdb_env_noerr -create $envargs -txn nosync \
-#		    -cachesize { 0 10000000 0 } \
+#		    -cachesize { 0 10000000 0 } -log_regionmax $logregion \
 #		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 #		    -home $clientdir($i) -rep_client -rep_transport \
 #		    \[list $envid replsend\] -verbose {rep on} \
@@ -281,7 +330,6 @@ proc repl_envprocq { test { nclients 1 } { oob 0 }} {
 	} else {
 		puts " in order"
 	}
-	set do_check 1
 	set droprestore $drop
 	while { 1 } {
 		set nproced 0
@@ -315,12 +363,12 @@ proc repl_envprocq { test { nclients 1 } { oob 0 }} {
 				   "Log records requested"]
 				error_check_bad requested_stats \
 				    $requested -1
-				if { $queued != 0 && $do_check != 0 } {
-					error_check_good num_requested \
-					    [expr $requested <= $queued] 1
-				}
 
-				$clientenv rep_request 1 4
+				#
+				# Set to 100 usecs.  An average ping
+				# to localhost should be a few 10s usecs.
+				#
+				$clientenv rep_request 100 400
 			}
 
 			# If we were dropping messages, we might need
@@ -328,7 +376,6 @@ proc repl_envprocq { test { nclients 1 } { oob 0 }} {
 			# and end up in the right state.
 			if { $drop != 0 } {
 				set drop 0
-				set do_check 0
 				$masterenv rep_flush
 				berkdb debug_check
 				puts "\t$test: Flushing Master"
@@ -342,7 +389,7 @@ proc repl_envprocq { test { nclients 1 } { oob 0 }} {
 	# have more processing to do.
 	for { set i 0 } { $i < $nclients } { incr i } {
 		set clientenv $repenv($i)
-		$clientenv rep_request 4 128
+		$clientenv rep_request 40000 1280000
 	}
 	set drop $droprestore
 }
@@ -486,7 +533,7 @@ proc repl_envclose { test envargs } {
 		if { $repenv($ncli) == "NULL" } {
 			break
 		}
-		$repenv($ncli) rep_request 1 1
+		$repenv($ncli) rep_request 100 100
 	}
 	repl_envprocq $test $ncli
 
@@ -606,7 +653,24 @@ proc replsend { control rec fromid toid flags lsn } {
 		error_check_good replsend_commit [$txn commit] 0
 	}
 
+	queue_logcheck
 	return 0
+}
+
+#
+# If the message queue log files are getting too numerous, checkpoint
+# and archive them.  Some tests are so large (particularly from
+# run_repmethod) that they can consume far too much disk space.
+proc queue_logcheck { } {
+	global queueenv
+
+
+	set logs [$queueenv log_archive -arch_log]
+	set numlogs [llength $logs]
+	if { $numlogs > 10 } {
+		$queueenv txn_checkpoint
+		$queueenv log_archive -arch_remove
+	}
 }
 
 # Discard all the pending messages for a particular site.
@@ -984,8 +1048,9 @@ proc setpriority { priority nclients winner {start 0} {upgrade 0} } {
 #	win		The expected winner of the election.
 #	reopen		Should the new master (i.e. winner) be closed
 #			and reopened as a client?
-#	dbname		Name of the underlying database.  Defaults to
-# 			the name of the db created by rep_test.
+#	dbname		Name of the underlying database.  The caller
+#			should send in "NULL" if the database has not
+# 			yet been created.
 # 	ignore		Should the winner ignore its own election?
 #			If ignore is 1, the winner is not made master.
 #	timeout_ok	We expect that this election will not succeed
@@ -993,8 +1058,8 @@ proc setpriority { priority nclients winner {start 0} {upgrade 0} } {
 #			already is a master). 
 
 proc run_election { ecmd celist errcmd priority crsh\
-    qdir msg elector nsites nvotes nclients win {reopen 0}\
-    {dbname "test.db"} {ignore 0} {timeout_ok 0} } {
+    qdir msg elector nsites nvotes nclients win reopen\
+    dbname {ignore 0} {timeout_ok 0} } {
 
 	global elect_timeout elect_serial
 	global is_hp_test
@@ -1156,17 +1221,28 @@ proc run_election { ecmd celist errcmd priority crsh\
 
 					# Reconfigure winning env as master.
 					if { $ignore == 0 } {
+						$clientenv($i) errpfx \
+						    NEWMASTER
 						error_check_good \
 						    make_master($i) \
 					    	    [$clientenv($i) \
 						    rep_start -master] 0
+
+						# Don't hold another election
+						# yet if we are setting up a 
+						# new master. This could 
+						# cause the new master to
+						# declare itself a client
+						# during internal init.
+						set he 0
 					}
 
 					# Occasionally force new log records
-					# to be written.
+					# to be written, unless the database 
+					# has not yet been created.
 					set write [berkdb random_int 1 10]
-					if { $write == 1 } {
-						set db [eval berkdb_open \
+					if { $write == 1 && $dbname != "NULL" } {
+						set db [eval berkdb_open_noerr \
 						    -env $clientenv($i) \
 						    -auto_commit $dbname]
 						error_check_good dbopen \
@@ -1188,7 +1264,7 @@ proc run_election { ecmd celist errcmd priority crsh\
 					set he 1
 					set tries $orig_tries
 				}
-				if { $he == 1 } {
+				if { $he == 1 && $got_newmaster == 0 } {
 					#
 					# Only close down the election pipe if the
 					# previously created one is done and
@@ -1570,6 +1646,7 @@ proc rep_test_bulk { method env repdb {nentries 10000} \
 		incr count
 	}
 	error_check_good txn [$t commit] 0
+	error_check_good txn_checkpoint [$env txn_checkpoint] 0
 	close $did
 	if { $repdb == "NULL" } {
 		error_check_good rep_close [$db close] 0
@@ -1749,14 +1826,16 @@ proc process_msgs { elist {perm_response 0} {dupp NONE} {errp NONE} \
 	if { [string compare $errp NONE] != 0 } {
 		upvar $errp errorp
 		set errorp 0
+		set var_name errorp
 	} else {
 		set errorp NONE
+		set var_name NONE
 	}
 
 	set upgcount 0
 	while { 1 } {
 		set nproced 0
-		incr nproced [proc_msgs_once $elist dupmaster errorp]
+		incr nproced [proc_msgs_once $elist dupmaster $var_name]
 		#
 		# If we're running the upgrade test, we are running only
 		# our own env, we need to loop a bit to allow the other
@@ -1789,8 +1868,10 @@ proc proc_msgs_once { elist {dupp NONE} {errp NONE} } {
 	if { [string compare $errp NONE] != 0 } {
 		upvar $errp errorp
 		set errorp 0
+		set var_name errorp
 	} else {
 		set errorp NONE
+		set var_name NONE
 	}
 
 	set nproced 0
@@ -1802,10 +1883,10 @@ proc proc_msgs_once { elist {dupp NONE} {errp NONE} } {
 # puts "Call replpq with on $envid"
 		if { $noenv_messaging } {
 			incr nproced [replprocessqueue_noenv $envname $envid \
-			    0 NONE dupmaster errorp]
+			    0 NONE dupmaster $var_name]
 		} else {
 			incr nproced [replprocessqueue $envname $envid \
-			    0 NONE dupmaster errorp]
+			    0 NONE dupmaster $var_name]
 		}
 		#
 		# If the user is expecting to handle an error and we get
@@ -1889,10 +1970,10 @@ proc rep_verify { masterdir masterenv clientdir clientenv \
 
 		set stat [catch {eval exec $util_path/db_printlog $args \
 		    $encargs -h $masterdir > $masterdir/prlog} result]
-		error_check_good stat_mprlog $stat 0
+		error_check_good stat_master_printlog $stat 0
 		set stat [catch {eval exec $util_path/db_printlog $args \
 		    $encargs -h $clientdir > $clientdir/prlog} result]
-		error_check_good stat_cprlog $stat 0
+		error_check_good stat_client_printlog $stat 0
 		if { $match } {
 			error_check_good log_cmp \
 			    [filecmp $masterdir/prlog $clientdir/prlog] 0
@@ -2031,7 +2112,8 @@ proc check_leaseget { db key getarg status } {
 		error_check_good kd_check \
 		    [is_substr $kd $status] 1
 	} else {
-		error_check_good get_result $stat $status
+		error_check_good get_result_good $stat $status
+		error_check_good dbkey [lindex [lindex $kd 0] 0] $key
 	}
 	set curs [$db cursor]
 	set stat [catch {eval {$curs get} $getarg -set $key} kd]
@@ -2040,7 +2122,8 @@ proc check_leaseget { db key getarg status } {
 		error_check_good kd_check \
 		    [is_substr $kd $status] 1
 	} else {
-		error_check_good get_result2 $stat $status
+		error_check_good get_result2_good $stat $status
+		error_check_good dbckey [lindex [lindex $kd 0] 0] $key
 	}
 	$curs close
 }

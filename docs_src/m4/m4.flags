@@ -1,4 +1,4 @@
-dnl $Id: m4.flags,v 10.144 2007/07/12 18:27:43 bostic Exp $
+dnl $Id: m4.flags,v 10.145 2007/10/26 15:01:32 bostic Exp $
 dnl ###################################################################
 dnl FLAGS
 dnl ###################################################################
@@ -83,22 +83,22 @@ m4_tag(m4_idef(DB_LOCK_DEFAULT), [dnl
 Use whatever lock policy was specified when the database environment
 was created.  If no lock policy has yet been specified, set the lock
 policy to DB_LOCK_RANDOM.])
-m4_tagns(m4_idef(DB_LOCK_EXPIRE), [dnl
+m4_tag(m4_idef(DB_LOCK_EXPIRE), [dnl
 Reject lock requests which have timed out.  No other deadlock detection
 is performed.])
-m4_tagns(m4_idef(DB_LOCK_MAXLOCKS), [dnl
+m4_tag(m4_idef(DB_LOCK_MAXLOCKS), [dnl
 Reject the lock request for the locker ID with the most locks.])
-m4_tagns(m4_idef(DB_LOCK_MAXWRITE), [dnl
+m4_tag(m4_idef(DB_LOCK_MAXWRITE), [dnl
 Reject the lock request for the locker ID with the most write locks.])
-m4_tagns(m4_idef(DB_LOCK_MINLOCKS), [dnl
+m4_tag(m4_idef(DB_LOCK_MINLOCKS), [dnl
 Reject the lock request for the locker ID with the fewest locks.])
-m4_tagns(m4_idef(DB_LOCK_MINWRITE), [dnl
+m4_tag(m4_idef(DB_LOCK_MINWRITE), [dnl
 Reject the lock request for the locker ID with the fewest write locks.])
-m4_tagns(m4_idef(DB_LOCK_OLDEST), [dnl
+m4_tag(m4_idef(DB_LOCK_OLDEST), [dnl
 Reject the lock request for the locker ID with the oldest lock.])
-m4_tagns(m4_idef(DB_LOCK_RANDOM), [dnl
+m4_tag(m4_idef(DB_LOCK_RANDOM), [dnl
 Reject the lock request for a random locker ID.])
-m4_tagns(m4_idef(DB_LOCK_YOUNGEST), [dnl
+m4_tag(m4_idef(DB_LOCK_YOUNGEST), [dnl
 Reject the lock request for the locker ID with the youngest lock.])
 m4_tagend])
 
@@ -120,10 +120,10 @@ values:
 m4_tagbegin
 m4_tag(m4_idef(DB_PRIORITY_VERY_LOW), [dnl
 The lowest priority: pages are the most likely to be discarded.])
-m4_tagns(m4_idef(DB_PRIORITY_LOW), [The next lowest priority.])
-m4_tagns(m4_idef(DB_PRIORITY_DEFAULT), [The default priority.])
-m4_tagns(m4_idef(DB_PRIORITY_HIGH), [The next highest priority.])
-m4_tagns(m4_idef(DB_PRIORITY_VERY_HIGH), [dnl
+m4_tag(m4_idef(DB_PRIORITY_LOW), [The next lowest priority.])
+m4_tag(m4_idef(DB_PRIORITY_DEFAULT), [The default priority.])
+m4_tag(m4_idef(DB_PRIORITY_HIGH), [The next highest priority.])
+m4_tag(m4_idef(DB_PRIORITY_VERY_HIGH), [dnl
 The highest priority: pages are the least likely to be discarded.])
 m4_tagend])])
 

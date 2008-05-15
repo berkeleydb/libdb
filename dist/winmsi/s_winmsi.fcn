@@ -1,4 +1,4 @@
-#	$Id: s_winmsi.fcn,v 1.12 2006/09/14 15:50:51 mjc Exp $
+#	$Id: s_winmsi.fcn,v 1.15 2008/04/17 01:59:10 alexg Exp $
 #
 # The common functions used by the s_winmsi scripts (both
 # for core DB and DB/XML).
@@ -518,7 +518,7 @@ ProcessLinks() {
 
            Xecho "<Shortcut Id=\"Short.$Shortname\" Directory=\"BerkeleyDbMenu\""
            Xecho "   Name=\"$Shortname\" LongName=\"$Name\""
-	   Xecho "   WorkingDirectory=\"[INSTALLDIR]\""
+           Xecho "   WorkingDirectory=\"INSTALLDIR\""
            Xecho "   Target='$TargetFile'"
            Xecho "   Show=\"normal\" />"
          else
@@ -959,7 +959,7 @@ CleanInputFile() {
         -e 's:\${PRODUCT_MAJMIN}:'"${PRODUCT_MAJMIN}":g \
         -e 's:\${PRODUCT_STAGE}:'"${PRODUCT_STAGE}":g \
 	-e 's:\${PRODUCT_SHARED_WINMSIDIR}:'"${PRODUCT_SHARED_WINMSIDIR}":g \
-        -e 's/^[ \t]*$//'	\
+        -e 's/^[\r \t]*$//' \
           < "$1" > "$2"
 
    # count tabs on each line
@@ -1209,8 +1209,8 @@ CreateWindowsSystem() {
     cd "${PRODUCT_SUB_BLDDIR}"
     cp -f $SYSTEMROOT/system32/msvcr71.dll  build_windows/Release/ || exit 1
     cp -f $SYSTEMROOT/system32/msvcp71.dll  build_windows/Release/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcr71d.dll build_windows/Debug/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcp71d.dll build_windows/Debug/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcr71.dll build_windows/Debug/ || exit 1
+    cp -f $SYSTEMROOT/system32/msvcp71.dll build_windows/Debug/ || exit 1
     cd $here
 }
 
@@ -1387,6 +1387,7 @@ CreateMsi() {
     local wxs="$2"
     local msifile="$3"
     local o=`echo "$wxs" | sed -e 's/[.]wxs$//' -e 's/$/.wixobj/'`
+    local tmpfile="dbcore.wxs.tmp"
 
     rm -f $o $wxs 
 
@@ -1394,6 +1395,12 @@ CreateMsi() {
     #
     Progress "Running m4 to create $wxs..."
     RunM4 < "$infile" > "$PRODUCT_STAGE/$wxs"  || Error "m4 failed" || exit 1
+    # Remove any stray "PUT-GUID-HERE" tags.
+    # They are added by some recent versions of WiX, including 2.0.5805.0
+    # The scripts already insert valid GUIDs.
+    sed -e 's/ Guid="PUT-GUID-HERE" / /' < "$wxs" > "$tmpfile"
+    rm -f "$wxs"
+    mv "$tmpfile" "$wxs"
 
     local here=`pwd`
     cd "$PRODUCT_STAGE"

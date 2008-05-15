@@ -1,5 +1,5 @@
 <!--$Id: rep_list.so,v 1.1 2002/08/30 20:02:36 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -8,8 +8,8 @@
 <meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
-<h3 align=center>Berkeley DB: Replication and Related Methods</h3>
-<!--$Id: m4.methods,v 1.10 2007/06/22 16:57:17 bostic Exp $-->
+<p align=center><b>Berkeley DB: Replication and Related Methods</b></p>
+<!--$Id: m4.methods,v 1.12 2007/10/26 15:43:11 bostic Exp $-->
 <table border=1 align=center>
 <tr><th>Replication Manager Methods</th><th>Description</th></tr>
 <!--DbEnv::repmgr_add_remote_site--><tr><td><a href="../api_c/repmgr_remote_site.html">DB_ENV-&gt;repmgr_add_remote_site</a></td><td>Specify the replication manager's remote sites</td></tr>
@@ -27,6 +27,7 @@
 <!--DbEnv::rep_sync--><tr><td><a href="../api_c/rep_sync.html">DB_ENV-&gt;rep_sync</a></td><td>Replication synchronization</td></tr>
 <tr><th>Replication Configuration</th><th><br></th></tr>
 <!--DbEnv::rep_set_config--><tr><td><a href="../api_c/rep_config.html">DB_ENV-&gt;rep_set_config</a></td><td>Configure the replication subsystem</td></tr>
+<!--DbEnv::rep_set_clockskew--><tr><td><a href="../api_c/rep_clockskew.html">DB_ENV-&gt;rep_set_clockskew</a></td><td>Configure master lease clock adjustment</td></tr>
 <!--DbEnv::rep_set_limit--><tr><td><a href="../api_c/rep_limit.html">DB_ENV-&gt;rep_set_limit</a></td><td>Limit data sent in response to a single message</td></tr>
 <!--DbEnv::rep_set_nsites--><tr><td><a href="../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a></td><td>Configure replication group site count</td></tr>
 <!--DbEnv::rep_set_priority--><tr><td><a href="../api_c/rep_priority.html">DB_ENV-&gt;rep_set_priority</a></td><td>Configure replication site priority</td></tr>
@@ -34,6 +35,6 @@
 <!--DbEnv::rep_set_timeout--><tr><td><a href="../api_c/rep_timeout.html">DB_ENV-&gt;rep_set_timeout</a></td><td>Configure replication timeouts</td></tr>
 <!--DbEnv::rep_set_transport--><tr><td><a href="../api_c/rep_transport.html">DB_ENV-&gt;rep_set_transport</a></td><td>Configure replication transport callback</td></tr>
 </table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

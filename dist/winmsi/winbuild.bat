@@ -1,5 +1,5 @@
 @echo off
-::	$Id: winbuild.bat,v 1.6 2005/12/01 03:04:21 bostic Exp $
+::	$Id: winbuild.bat,v 1.8 2008/04/17 01:59:10 alexg Exp $
 ::	Helper script to build Berkeley DB libraries and executables
 ::	using MSDEV
 ::
@@ -8,6 +8,8 @@ cd build_windows
 
 :: One of these calls should find the desired batch file
 
+call :TryBat "c:\Program Files\Microsoft Visual Studio 8\Common7\Tools\vsvars32.bat" && goto BATFOUND0
+
 call :TryBat "c:\Program Files\Microsoft Visual Studio .NET 2003\Common7\Tools\vsvars32.bat" && goto BATFOUND1
 
 call :TryBat "c:\Program Files\Microsoft Visual Studio .NET\Common7\Tools\vsvars32.bat" && goto BATFOUND2
@@ -15,6 +17,10 @@ call :TryBat "c:\Program Files\Microsoft Visual Studio .NET\Common7\Tools\vsvars
 call :TryBat "c:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat" && goto BATFOUND3
 
 goto BATNOTFOUND
+
+:BATFOUND0
+echo Using Visual Studio 2005
+goto BATFOUND
 
 :BATFOUND1
 echo Using Visual Studio .NET 2003
@@ -34,6 +40,7 @@ goto BATFOUND
 :CONVERSION
 start /wait devenv /useenv Berkeley_DB.dsw
 
+:CONVERSION0
 :: For some reason, the command doesn't wait, at least on XP.
 :: So we ask for input to continue.
 
@@ -64,17 +71,17 @@ goto CONVERSION
 ::if not %errorlevel% == 0 goto ERROR
 
 echo Building Berkeley DB
-devenv /useenv /build Debug /project build_all Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Debug x86" /project build_all Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
-devenv /useenv /build Release /project build_all Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Release x86" /project build_all Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
-devenv /useenv /build Debug /project db_java Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Debug x86" /project db_java Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
-devenv /useenv /build Release /project db_java Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Release x86" /project db_java Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
-devenv /useenv /build Debug /project db_tcl Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Debug x86" /project db_tcl Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
-devenv /useenv /build Release /project db_tcl Berkeley_DB.sln >> ..\winbld.out 2>&1
+devenv /useenv /build "Release x86" /project db_tcl Berkeley_DB.sln >> ..\winbld.out 2>&1
 if not %errorlevel% == 0 goto ERROR
 
 

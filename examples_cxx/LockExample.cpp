@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: LockExample.cpp,v 12.5 2007/05/17 15:15:31 bostic Exp $
+ * $Id: LockExample.cpp,v 12.6 2008/01/08 20:58:26 bostic Exp $
  */
 
 #include <sys/types.h>

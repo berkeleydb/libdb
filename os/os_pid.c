@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: os_pid.c,v 12.24 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_pid.c,v 12.27 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -29,11 +29,10 @@ __os_id(dbenv, pidp, tidp)
 {
 	/*
 	 * We can't depend on dbenv not being NULL, this routine is called
-	 * from places where there's no DB_ENV handle.  It takes a DB_ENV
-	 * handle as an arg because it's the default DB_ENV->thread_id function.
+	 * from places where there's no DB_ENV handle.
 	 *
-	 * We cache the pid in the DB_ENV handle, it's a fairly slow call on
-	 * lots of systems.
+	 * We cache the pid in the ENV handle, getting the process ID is a
+	 * fairly slow call on lots of systems.
 	 */
 	if (pidp != NULL) {
 		if (dbenv == NULL) {
@@ -43,7 +42,7 @@ __os_id(dbenv, pidp, tidp)
 			*pidp = getpid();
 #endif
 		} else
-			*pidp = dbenv->pid_cache;
+			*pidp = dbenv->env->pid_cache;
 	}
 
 	if (tidp != NULL) {

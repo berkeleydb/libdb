@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_net.c,v 1.55 2007/06/11 18:29:34 alanb Exp $
+ * $Id: repmgr_net.c,v 1.70 2008/03/13 17:31:28 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -17,7 +17,7 @@
  * transmitting messages, both replication messages and our own internal control
  * messages.  The protocol is as follows:
  *
- *      1 byte          - message type  (defined in repmgr_int.h)
+ *      1 byte          - message type  (defined in repmgr.h)
  *      4 bytes         - size of control
  *      4 bytes         - size of rec
  *      ? bytes         - control
@@ -58,16 +58,16 @@ struct sending_msg {
 	REPMGR_FLAT *fmsg;
 };
 
-static int __repmgr_send_broadcast
-    __P((DB_ENV *, const DBT *, const DBT *, u_int *, u_int *));
+static int __repmgr_close_connection __P((ENV *, REPMGR_CONNECTION *));
+static int __repmgr_destroy_connection __P((ENV *, REPMGR_CONNECTION *));
 static void setup_sending_msg
     __P((struct sending_msg *, u_int, const DBT *, const DBT *));
 static int __repmgr_send_internal
-    __P((DB_ENV *, REPMGR_CONNECTION *, struct sending_msg *, int));
+    __P((ENV *, REPMGR_CONNECTION *, struct sending_msg *, int));
 static int enqueue_msg
-    __P((DB_ENV *, REPMGR_CONNECTION *, struct sending_msg *, size_t));
-static int flatten __P((DB_ENV *, struct sending_msg *));
-static REPMGR_SITE *__repmgr_available_site __P((DB_ENV *, int));
+    __P((ENV *, REPMGR_CONNECTION *, struct sending_msg *, size_t));
+static int flatten __P((ENV *, struct sending_msg *));
+static REPMGR_SITE *__repmgr_available_site __P((ENV *, int));
 
 /*
  * __repmgr_send --
@@ -85,17 +85,19 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 	u_int32_t flags;
 {
 	DB_REP *db_rep;
-	u_int nsites, npeers, available, needed;
-	int ret, t_ret;
-	REPMGR_SITE *site;
+	ENV *env;
 	REPMGR_CONNECTION *conn;
+	REPMGR_SITE *site;
+	u_int available, nclients, needed, npeers_sent, nsites_sent;
+	int ret, t_ret;
 
-	db_rep = dbenv->rep_handle;
+	env = dbenv->env;
+	db_rep = env->rep_handle;
 
 	LOCK_MUTEX(db_rep->mutex);
 	if (eid == DB_EID_BROADCAST) {
-		if ((ret = __repmgr_send_broadcast(dbenv, control, rec,
-			 &nsites, &npeers)) != 0)
+		if ((ret = __repmgr_send_broadcast(env, REPMGR_REP_MESSAGE,
+		    control, rec, &nsites_sent, &npeers_sent)) != 0)
 			goto out;
 	} else {
 		/*
@@ -107,12 +109,13 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 		if ((flags & (DB_REP_ANYWHERE | DB_REP_REREQUEST)) ==
 		    DB_REP_ANYWHERE &&
 		    IS_VALID_EID(db_rep->peer) &&
-		    (site = __repmgr_available_site(dbenv, db_rep->peer)) !=
+		    (site = __repmgr_available_site(env, db_rep->peer)) !=
 		    NULL) {
-			RPRINT(dbenv, (dbenv, "sending request to peer"));
-		} else if ((site = __repmgr_available_site(dbenv, eid)) ==
+			RPRINT(env, DB_VERB_REPMGR_MISC,
+			    (env, "sending request to peer"));
+		} else if ((site = __repmgr_available_site(env, eid)) ==
 		    NULL) {
-			RPRINT(dbenv, (dbenv,
+			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 			    "ignoring message sent to unavailable site"));
 			ret = DB_REP_UNAVAIL;
 			goto out;
@@ -120,15 +123,15 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 
 		conn = site->ref.conn;
 		/* Pass the "blockable" argument as TRUE. */
-		if ((ret = __repmgr_send_one(dbenv, conn, REPMGR_REP_MESSAGE,
+		if ((ret = __repmgr_send_one(env, conn, REPMGR_REP_MESSAGE,
 		    control, rec, TRUE)) == DB_REP_UNAVAIL &&
-		    (t_ret = __repmgr_bust_connection(dbenv, conn)) != 0)
+		    (t_ret = __repmgr_bust_connection(env, conn)) != 0)
 			ret = t_ret;
 		if (ret != 0)
 			goto out;
 
-		nsites = 1;
-		npeers = site->priority > 0 ? 1 : 0;
+		nsites_sent = 1;
+		npeers_sent = site->priority > 0 ? 1 : 0;
 	}
 	/*
 	 * Right now, nsites and npeers represent the (maximum) number of sites
@@ -140,24 +143,29 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 	 * happen.
 	 */
 	if (LF_ISSET(DB_REP_PERMANENT)) {
+		/* Number of sites in the group besides myself. */
+		nclients = __repmgr_get_nsites(db_rep) - 1;
+
 		switch (db_rep->perm_policy) {
 		case DB_REPMGR_ACKS_NONE:
-			goto out;
+			needed = 0;
+			COMPQUIET(available, 0);
+			break;
 
 		case DB_REPMGR_ACKS_ONE:
 			needed = 1;
-			available = nsites;
+			available = nsites_sent;
 			break;
 
 		case DB_REPMGR_ACKS_ALL:
 			/* Number of sites in the group besides myself. */
-			needed = __repmgr_get_nsites(db_rep) - 1;
-			available = nsites;
+			needed = nclients;
+			available = nsites_sent;
 			break;
 
 		case DB_REPMGR_ACKS_ONE_PEER:
 			needed = 1;
-			available = npeers;
+			available = npeers_sent;
 			break;
 
 		case DB_REPMGR_ACKS_ALL_PEERS:
@@ -167,58 +175,68 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 			 * the optimization in this case.
 			 */
 			needed = 1;
-			available = npeers;
+			available = npeers_sent;
 			break;
 
 		case DB_REPMGR_ACKS_QUORUM:
 			/*
 			 * The minimum number of acks necessary to ensure that
 			 * the transaction is durable if an election is held.
+			 * (See note below at __repmgr_is_permanent, regarding
+			 * the surprising inter-relationship between
+			 * 2SITE_STRICT and QUORUM.)
 			 */
-			needed = (__repmgr_get_nsites(db_rep) - 1) / 2;
-			available = npeers;
+			if (nclients > 1 ||
+			    FLD_ISSET(db_rep->region->config,
+			    REP_C_2SITE_STRICT))
+				needed = nclients / 2;
+			else
+				needed = 1;
+			available = npeers_sent;
 			break;
 
 		default:
 			COMPQUIET(available, 0);
 			COMPQUIET(needed, 0);
-			(void)__db_unknown_path(dbenv, "__repmgr_send");
+			(void)__db_unknown_path(env, "__repmgr_send");
 			break;
 		}
+		if (needed == 0)
+			goto out;
 		if (available < needed) {
 			ret = DB_REP_UNAVAIL;
 			goto out;
 		}
 		/* In ALL_PEERS case, display of "needed" might be confusing. */
-		RPRINT(dbenv, (dbenv,
+		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 		    "will await acknowledgement: need %u", needed));
-		ret = __repmgr_await_ack(dbenv, lsnp);
+		ret = __repmgr_await_ack(env, lsnp);
 	}
 
 out:	UNLOCK_MUTEX(db_rep->mutex);
 	if (ret != 0 && LF_ISSET(DB_REP_PERMANENT)) {
 		STAT(db_rep->region->mstat.st_perm_failed++);
-		DB_EVENT(dbenv, DB_EVENT_REP_PERM_FAILED, NULL);
+		DB_EVENT(env, DB_EVENT_REP_PERM_FAILED, NULL);
 	}
 	return (ret);
 }
 
 static REPMGR_SITE *
-__repmgr_available_site(dbenv, eid)
-	DB_ENV *dbenv;
+__repmgr_available_site(env, eid)
+	ENV *env;
 	int eid;
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	site = SITE_FROM_EID(eid);
 	if (site->state != SITE_CONNECTED)
 		return (NULL);
 
-	if (F_ISSET(site->ref.conn, CONN_CONNECTING|CONN_DEFUNCT))
-		return (NULL);
-	return (site);
+	if (site->ref.conn->state == CONN_READY)
+		return (site);
+	return (NULL);
 }
 
 /*
@@ -228,11 +246,14 @@ __repmgr_available_site(dbenv, eid)
  * delivery.
  *
  * !!!
- * Caller must hold dbenv->mutex.
+ * Caller must hold env->mutex.
+ * PUBLIC: int __repmgr_send_broadcast __P((ENV *, u_int,
+ * PUBLIC:    const DBT *, const DBT *, u_int *, u_int *));
  */
-static int
-__repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
-	DB_ENV *dbenv;
+int
+__repmgr_send_broadcast(env, type, control, rec, nsitesp, npeersp)
+	ENV *env;
+	u_int type;
 	const DBT *control, *rec;
 	u_int *nsitesp, *npeersp;
 {
@@ -243,9 +264,22 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
 	u_int nsites, npeers;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	static const u_int version_max_msg_type[] = {
+		0, REPMGR_MAX_V1_MSG_TYPE, REPMGR_MAX_V2_MSG_TYPE
+	};
 
-	setup_sending_msg(&msg, REPMGR_REP_MESSAGE, control, rec);
+	db_rep = env->rep_handle;
+
+	/*
+	 * Sending a broadcast is quick, because we allow no blocking.  So it
+	 * shouldn't much matter.  But just in case, take the timestamp before
+	 * sending, so that if anything we err on the side of keeping clients
+	 * placated (i.e., possibly sending a heartbeat slightly more frequently
+	 * than necessary).
+	 */
+	__os_gettime(env, &db_rep->last_bcast, 1);
+
+	setup_sending_msg(&msg, type, control, rec);
 	nsites = npeers = 0;
 
 	/*
@@ -254,8 +288,26 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
 	 * macro.
 	 */
 	TAILQ_FOREACH(conn, &db_rep->connections, entries) {
-		if (F_ISSET(conn, CONN_CONNECTING | CONN_DEFUNCT) ||
-		    !IS_VALID_EID(conn->eid))
+		if (conn->state != CONN_READY)
+			continue;
+		DB_ASSERT(env, IS_VALID_EID(conn->eid) &&
+		    conn->version > 0 &&
+		    conn->version <= DB_REPMGR_VERSION);
+
+		/*
+		 * Skip if the type of message we're sending is beyond the range
+		 * of known message types for this connection's version.
+		 *
+		 * !!!
+		 * Don't be misled by the apparent generality of this simple
+		 * test.  It works currently, because the only kinds of messages
+		 * that we broadcast are REP_MESSAGE and HEARTBEAT.  But in the
+		 * future other kinds of messages might require more intricate
+		 * per-connection-version customization (for example,
+		 * per-version message format conversion, addition of new
+		 * fields, etc.).
+		 */
+		if (type > version_max_msg_type[conn->version])
 			continue;
 
 		/*
@@ -264,14 +316,14 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
 		 * afford to lose.  So don't allow blocking for them (pass
 		 * "blockable" argument as FALSE).
 		 */
-		if ((ret = __repmgr_send_internal(dbenv,
+		if ((ret = __repmgr_send_internal(env,
 		    conn, &msg, FALSE)) == 0) {
 			site = SITE_FROM_EID(conn->eid);
 			nsites++;
 			if (site->priority > 0)
 				npeers++;
 		} else if (ret == DB_REP_UNAVAIL) {
-			if ((ret = __repmgr_bust_connection(dbenv, conn)) != 0)
+			if ((ret = __repmgr_bust_connection(env, conn)) != 0)
 				return (ret);
 		} else
 			return (ret);
@@ -296,12 +348,12 @@ __repmgr_send_broadcast(dbenv, control, rec, nsitesp, npeersp)
  * It doubles as a synchronizer to make sure that two threads don't
  * intersperse writes that are part of two single messages.
  *
- * PUBLIC: int __repmgr_send_one __P((DB_ENV *, REPMGR_CONNECTION *,
+ * PUBLIC: int __repmgr_send_one __P((ENV *, REPMGR_CONNECTION *,
  * PUBLIC:    u_int, const DBT *, const DBT *, int));
  */
 int
-__repmgr_send_one(dbenv, conn, msg_type, control, rec, blockable)
-	DB_ENV *dbenv;
+__repmgr_send_one(env, conn, msg_type, control, rec, blockable)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 	u_int msg_type;
 	const DBT *control, *rec;
@@ -310,7 +362,7 @@ __repmgr_send_one(dbenv, conn, msg_type, control, rec, blockable)
 	struct sending_msg msg;
 
 	setup_sending_msg(&msg, msg_type, control, rec);
-	return (__repmgr_send_internal(dbenv, conn, &msg, blockable));
+	return (__repmgr_send_internal(env, conn, &msg, blockable));
 }
 
 /*
@@ -334,8 +386,8 @@ __repmgr_send_one(dbenv, conn, msg_type, control, rec, blockable)
  * start sending again (at least to a rough approximation).
  */
 static int
-__repmgr_send_internal(dbenv, conn, msg, blockable)
-	DB_ENV *dbenv;
+__repmgr_send_internal(env, conn, msg, blockable)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 	struct sending_msg *msg;
 	int blockable;
@@ -348,29 +400,36 @@ __repmgr_send_internal(dbenv, conn, msg, blockable)
 	size_t nw;
 	size_t total_written;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	DB_ASSERT(dbenv, !F_ISSET(conn, CONN_CONNECTING));
+	DB_ASSERT(env,
+	    conn->state != CONN_CONNECTING && conn->state != CONN_DEFUNCT);
 	if (!STAILQ_EMPTY(&conn->outbound_queue)) {
 		/*
 		 * Output to this site is currently owned by the select()
 		 * thread, so we can't try sending in-line here.  We can only
 		 * queue the msg for later.
 		 */
-		RPRINT(dbenv, (dbenv, "msg to %s to be queued",
-		    __repmgr_format_eid_loc(dbenv->rep_handle,
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "msg to %s to be queued",
+		    __repmgr_format_eid_loc(env->rep_handle,
 		    conn->eid, buffer)));
 		if (conn->out_queue_length >= OUT_QUEUE_LIMIT &&
-		    blockable && !F_ISSET(conn, CONN_CONGESTED)) {
-			RPRINT(dbenv, (dbenv,
+		    blockable && conn->state != CONN_CONGESTED) {
+			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 			    "block msg thread, await queue space"));
 
 			if ((drain_to = db_rep->ack_timeout) == 0)
 				drain_to = DB_REPMGR_DEFAULT_ACK_TIMEOUT;
+			RPRINT(env, DB_VERB_REPMGR_MISC,
+			    (env, "will await drain"));
 			conn->blockers++;
-			ret = __repmgr_await_drain(dbenv,
+			ret = __repmgr_await_drain(env,
 			    conn, drain_to * OUT_QUEUE_LIMIT);
 			conn->blockers--;
+			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			    "drain returned %d (%d,%d)", ret,
+			    db_rep->finished, conn->out_queue_length));
 			if (db_rep->finished)
 				return (DB_TIMEOUT);
 			if (ret != 0)
@@ -379,10 +438,11 @@ __repmgr_send_internal(dbenv, conn, msg, blockable)
 				goto empty;
 		}
 		if (conn->out_queue_length < OUT_QUEUE_LIMIT)
-			return (enqueue_msg(dbenv, conn, msg, 0));
+			return (enqueue_msg(env, conn, msg, 0));
 		else {
-			RPRINT(dbenv, (dbenv, "queue limit exceeded"));
-			STAT(dbenv->rep_handle->
+			RPRINT(env, DB_VERB_REPMGR_MISC,
+			    (env, "queue limit exceeded"));
+			STAT(env->rep_handle->
 			    region->mstat.st_msgs_dropped++);
 			return (blockable ? DB_TIMEOUT : 0);
 		}
@@ -405,22 +465,22 @@ empty:
 	}
 
 	if (ret != WOULDBLOCK) {
-		__db_err(dbenv, ret, "socket writing failure");
+		__db_err(env, ret, "socket writing failure");
 		return (DB_REP_UNAVAIL);
 	}
 
-	RPRINT(dbenv, (dbenv, "wrote only %lu bytes to %s",
+	RPRINT(env, DB_VERB_REPMGR_MISC, (env, "wrote only %lu bytes to %s",
 	    (u_long)total_written,
-	    __repmgr_format_eid_loc(dbenv->rep_handle, conn->eid, buffer)));
+	    __repmgr_format_eid_loc(env->rep_handle, conn->eid, buffer)));
 	/*
 	 * We can't send any more without blocking: queue (a pointer to) a
 	 * "flattened" copy of the message, so that the select() thread will
 	 * finish sending it later.
 	 */
-	if ((ret = enqueue_msg(dbenv, conn, msg, total_written)) != 0)
+	if ((ret = enqueue_msg(env, conn, msg, total_written)) != 0)
 		return (ret);
 
-	STAT(dbenv->rep_handle->region->mstat.st_msgs_queued++);
+	STAT(env->rep_handle->region->mstat.st_msgs_queued++);
 
 	/*
 	 * Wake the main select thread so that it can discover that it has
@@ -433,15 +493,15 @@ empty:
 	if (WSAEventSelect(conn->fd, conn->event_object,
 	    FD_READ|FD_WRITE|FD_CLOSE) == SOCKET_ERROR) {
 		ret = net_errno;
-		__db_err(dbenv, ret, "can't add FD_WRITE event bit");
+		__db_err(env, ret, "can't add FD_WRITE event bit");
 		return (ret);
 	}
 #endif
-	return (__repmgr_wake_main_thread(dbenv));
+	return (__repmgr_wake_main_thread(env));
 }
 
 /*
- * PUBLIC: int __repmgr_is_permanent __P((DB_ENV *, const DB_LSN *));
+ * PUBLIC: int __repmgr_is_permanent __P((ENV *, const DB_LSN *));
  *
  * Count up how many sites have ack'ed the given LSN.  Returns TRUE if enough
  * sites have ack'ed; FALSE otherwise.
@@ -450,8 +510,8 @@ empty:
  * Caller must hold the mutex.
  */
 int
-__repmgr_is_permanent(dbenv, lsnp)
-	DB_ENV *dbenv;
+__repmgr_is_permanent(env, lsnp)
+	ENV *env;
 	const DB_LSN *lsnp;
 {
 	DB_REP *db_rep;
@@ -459,7 +519,7 @@ __repmgr_is_permanent(dbenv, lsnp)
 	u_int eid, nsites, npeers;
 	int is_perm, has_missing_peer;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	if (db_rep->perm_policy == DB_REPMGR_ACKS_NONE)
 		return (TRUE);
@@ -468,7 +528,7 @@ __repmgr_is_permanent(dbenv, lsnp)
 	has_missing_peer = FALSE;
 	for (eid = 0; eid < db_rep->site_cnt; eid++) {
 		site = SITE_FROM_EID(eid);
-		if (site->priority == -1) {
+		if (!F_ISSET(site, SITE_HAS_PRIO)) {
 			/*
 			 * Never connected to this site: since we can't know
 			 * whether it's a peer, assume the worst.
@@ -503,11 +563,26 @@ __repmgr_is_permanent(dbenv, lsnp)
 		 * recommended practice of requiring votes from a majority of
 		 * sites).
 		 */
-		if (__repmgr_get_nsites(db_rep) == 2) {
+		if (__repmgr_get_nsites(db_rep) == 2 &&
+		    !FLD_ISSET(db_rep->region->config, REP_C_2SITE_STRICT)) {
 			/*
-			 * A group of 2 sites is, as always, a special case.
-			 * For a transaction to be durable the other site has to
-			 * have received it.
+			 * Unless instructed otherwise, our special handling for
+			 * 2-site groups means that a client that loses contact
+			 * with the master elects itself master (even though
+			 * that doesn't constitute a majority).  In order to
+			 * provide the expected guarantee implied by the
+			 * definition of "quorum" we have to fudge the ack
+			 * calculation in this case: specifically, we need to
+			 * make sure that the client has received it in order
+			 * for us to consider it "perm".
+			 *
+			 * Note that turning the usual strict behavior back on
+			 * in a 2-site group results in "0" as the number of
+			 * clients needed to ack a txn in order for it to have
+			 * arrived at a quorum.  This is the correct result,
+			 * strange as it may seem!  This may well mean that in a
+			 * 2-site group the QUORUM policy is rarely the right
+			 * choice.
 			 */
 			is_perm = (npeers >= 1);
 		} else
@@ -526,41 +601,38 @@ __repmgr_is_permanent(dbenv, lsnp)
 		break;
 	default:
 		is_perm = FALSE;
-		(void)__db_unknown_path(dbenv, "__repmgr_is_permanent");
+		(void)__db_unknown_path(env, "__repmgr_is_permanent");
 	}
 	return (is_perm);
 }
 
 /*
- * Abandons a connection, to recover from an error.  Upon entry the conn struct
- * must be on the connections list.  For now, just mark it as unusable; it will
- * be fully cleaned up in the top-level select thread, as soon as possible.
+ * Abandons a connection, to recover from an error.  Takes necessary recovery
+ * action.  Note that we don't actually close and clean up the connection here;
+ * that happens later, in the select() thread main loop.  See the definition of
+ * DISABLE_CONNECTION (repmgr.h) for more discussion.
  *
- * PUBLIC: int __repmgr_bust_connection __P((DB_ENV *,
+ * PUBLIC: int __repmgr_bust_connection __P((ENV *,
  * PUBLIC:     REPMGR_CONNECTION *));
  *
  * !!!
  * Caller holds mutex.
- *
- * Must be idempotent
  */
 int
-__repmgr_bust_connection(dbenv, conn)
-	DB_ENV *dbenv;
+__repmgr_bust_connection(env, conn)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
 	int connecting, ret, eid;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	ret = 0;
 
-	DB_ASSERT(dbenv, !TAILQ_EMPTY(&db_rep->connections));
 	eid = conn->eid;
-	connecting = F_ISSET(conn, CONN_CONNECTING);
+	connecting = (conn->state == CONN_CONNECTING);
 
-	F_SET(conn, CONN_DEFUNCT);
-	conn->eid = -1;
+	DISABLE_CONNECTION(conn);
 
 	/*
 	 * When we first accepted the incoming connection, we set conn->eid to
@@ -571,7 +643,7 @@ __repmgr_bust_connection(dbenv, conn)
 	if (IS_VALID_EID(eid)) {
 		/* schedule_connection_attempt wakes the main thread. */
 		if ((ret = __repmgr_schedule_connection_attempt(
-		    dbenv, (u_int)eid, FALSE)) != 0)
+		    env, (u_int)eid, FALSE)) != 0)
 			return (ret);
 
 		/*
@@ -581,9 +653,9 @@ __repmgr_bust_connection(dbenv, conn)
 		 */
 		if (!connecting && eid == db_rep->master_eid) {
 			(void)__memp_set_config(
-			    dbenv, DB_MEMP_SYNC_INTERRUPT, 1);
+			    env->dbenv, DB_MEMP_SYNC_INTERRUPT, 1);
 			if ((ret = __repmgr_init_election(
-			    dbenv, ELECT_FAILURE_ELECTION)) != 0)
+			    env, ELECT_FAILURE_ELECTION)) != 0)
 				return (ret);
 		}
 	} else {
@@ -591,65 +663,99 @@ __repmgr_bust_connection(dbenv, conn)
 		 * One way or another, make sure the main thread is poked, so
 		 * that we do the deferred clean-up.
 		 */
-		ret = __repmgr_wake_main_thread(dbenv);
+		ret = __repmgr_wake_main_thread(env);
 	}
 	return (ret);
 }
 
 /*
  * PUBLIC: int __repmgr_cleanup_connection
- * PUBLIC:    __P((DB_ENV *, REPMGR_CONNECTION *));
+ * PUBLIC:    __P((ENV *, REPMGR_CONNECTION *));
  *
  * !!!
  * Idempotent.  This can be called repeatedly as blocking message threads (of
  * which there could be multiples) wake up in case of error on the connection.
  */
 int
-__repmgr_cleanup_connection(dbenv, conn)
-	DB_ENV *dbenv;
+__repmgr_cleanup_connection(env, conn)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
-	QUEUED_OUTPUT *out;
-	REPMGR_FLAT *msg;
-	DBT *dbt;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	DB_ASSERT(dbenv, F_ISSET(conn, CONN_DEFUNCT) || db_rep->finished);
-	
+	if ((ret = __repmgr_close_connection(env, conn)) != 0)
+		goto out;
+
+	/*
+	 * If there's a blocked message thread waiting, we mustn't yank the
+	 * connection struct out from under it.  Instead, just wake it up.
+	 * We'll get another chance to come back through here soon.
+	 */
+	if (conn->blockers > 0) {
+		ret = __repmgr_signal(&conn->drained);
+		goto out;
+	}
+
+	TAILQ_REMOVE(&db_rep->connections, conn, entries);
+
+	ret = __repmgr_destroy_connection(env, conn);
+
+out:
+	return (ret);
+}
+
+static int
+__repmgr_close_connection(env, conn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+{
+	int ret;
+
+	DB_ASSERT(env,
+	    conn->state == CONN_DEFUNCT || env->rep_handle->finished);
+
+	ret = 0;
 	if (conn->fd != INVALID_SOCKET) {
 		ret = closesocket(conn->fd);
 		conn->fd = INVALID_SOCKET;
 		if (ret == SOCKET_ERROR) {
 			ret = net_errno;
-			__db_err(dbenv, ret, "closing socket");
+			__db_err(env, ret, "closing socket");
 		}
 #ifdef DB_WIN32
-		if (!WSACloseEvent(conn->event_object) && ret != 0)
+		if (!WSACloseEvent(conn->event_object) && ret == 0)
 			ret = net_errno;
 #endif
-		if (ret != 0)
-			return (ret);
 	}
+	return (ret);
+}
 
-	if (conn->blockers > 0)
-		return (__repmgr_signal(&conn->drained));
+static int
+__repmgr_destroy_connection(env, conn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+{
+	QUEUED_OUTPUT *out;
+	REPMGR_FLAT *msg;
+	DBT *dbt;
+	int ret;
 
-	TAILQ_REMOVE(&db_rep->connections, conn, entries);
 	/*
 	 * Deallocate any input and output buffers we may have.
 	 */
 	if (conn->reading_phase == DATA_PHASE) {
 		if (conn->msg_type == REPMGR_REP_MESSAGE)
-			__os_free(dbenv, conn->input.rep_message);
+			__os_free(env, conn->input.rep_message);
 		else {
 			dbt = &conn->input.repmgr_msg.cntrl;
-			__os_free(dbenv, dbt->data);
+			if (dbt->size > 0)
+				__os_free(env, dbt->data);
 			dbt = &conn->input.repmgr_msg.rec;
 			if (dbt->size > 0)
-				__os_free(dbenv, dbt->data);
+				__os_free(env, dbt->data);
 		}
 	}
 	while (!STAILQ_EMPTY(&conn->outbound_queue)) {
@@ -657,18 +763,18 @@ __repmgr_cleanup_connection(dbenv, conn)
 		STAILQ_REMOVE_HEAD(&conn->outbound_queue, entries);
 		msg = out->msg;
 		if (--msg->ref_count <= 0)
-			__os_free(dbenv, msg);
-		__os_free(dbenv, out);
+			__os_free(env, msg);
+		__os_free(env, out);
 	}
 
 	ret = __repmgr_free_cond(&conn->drained);
-	__os_free(dbenv, conn);
+	__os_free(env, conn);
 	return (ret);
 }
 
 static int
-enqueue_msg(dbenv, conn, msg, offset)
-	DB_ENV *dbenv;
+enqueue_msg(env, conn, msg, offset)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 	struct sending_msg *msg;
 	size_t offset;
@@ -676,9 +782,9 @@ enqueue_msg(dbenv, conn, msg, offset)
 	QUEUED_OUTPUT *q_element;
 	int ret;
 
-	if (msg->fmsg == NULL && ((ret = flatten(dbenv, msg)) != 0))
+	if (msg->fmsg == NULL && ((ret = flatten(env, msg)) != 0))
 		return (ret);
-	if ((ret = __os_malloc(dbenv, sizeof(QUEUED_OUTPUT), &q_element)) != 0)
+	if ((ret = __os_malloc(env, sizeof(QUEUED_OUTPUT), &q_element)) != 0)
 		return (ret);
 	q_element->msg = msg->fmsg;
 	msg->fmsg->ref_count++;	/* encapsulation would be sweeter */
@@ -691,8 +797,8 @@ enqueue_msg(dbenv, conn, msg, offset)
 }
 
 /*
- * The 'rec' DBT can be NULL, in which case we treat it like a zero-length DBT.
- * But 'control' is always present.
+ * Either "control" or "rec" (or both) may be NULL, in which case we treat it
+ * like a zero-length DBT.
  */
 static void
 setup_sending_msg(msg, type, control, rec)
@@ -700,7 +806,7 @@ setup_sending_msg(msg, type, control, rec)
 	u_int type;
 	const DBT *control, *rec;
 {
-	u_int32_t rec_size;
+	u_int32_t control_size, rec_size;
 
 	/*
 	 * The wire protocol is documented in a comment at the top of this
@@ -710,7 +816,8 @@ setup_sending_msg(msg, type, control, rec)
 	msg->type = type;
 	__repmgr_add_buffer(&msg->iovecs, &msg->type, sizeof(msg->type));
 
-	msg->control_size_buf = htonl(control->size);
+	control_size = control == NULL ? 0 : control->size;
+	msg->control_size_buf = htonl(control_size);
 	__repmgr_add_buffer(&msg->iovecs,
 	    &msg->control_size_buf, sizeof(msg->control_size_buf));
 
@@ -734,18 +841,18 @@ setup_sending_msg(msg, type, control, rec)
  * new simplified form.
  */
 static int
-flatten(dbenv, msg)
-	DB_ENV *dbenv;
+flatten(env, msg)
+	ENV *env;
 	struct sending_msg *msg;
 {
 	u_int8_t *p;
 	size_t msg_size;
 	int i, ret;
 
-	DB_ASSERT(dbenv, msg->fmsg == NULL);
+	DB_ASSERT(env, msg->fmsg == NULL);
 
 	msg_size = msg->iovecs.total_bytes;
-	if ((ret = __os_malloc(dbenv, sizeof(*msg->fmsg) + msg_size,
+	if ((ret = __os_malloc(env, sizeof(*msg->fmsg) + msg_size,
 	    &msg->fmsg)) != 0)
 		return (ret);
 	msg->fmsg->length = msg_size;
@@ -763,11 +870,11 @@ flatten(dbenv, msg)
 }
 
 /*
- * PUBLIC: int __repmgr_find_site __P((DB_ENV *, const char *, u_int));
+ * PUBLIC: int __repmgr_find_site __P((ENV *, const char *, u_int));
  */
 int
-__repmgr_find_site(dbenv, host, port)
-	DB_ENV *dbenv;
+__repmgr_find_site(env, host, port)
+	ENV *env;
 	const char *host;
 	u_int port;
 {
@@ -775,7 +882,7 @@ __repmgr_find_site(dbenv, host, port)
 	REPMGR_SITE *site;
 	u_int i;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	for (i = 0; i < db_rep->site_cnt; i++) {
 		site = &db_rep->sites[i];
 
@@ -795,12 +902,12 @@ __repmgr_find_site(dbenv, host, port)
  *
  * All inputs are assumed to have been already validated.
  *
- * PUBLIC: int __repmgr_pack_netaddr __P((DB_ENV *, const char *,
+ * PUBLIC: int __repmgr_pack_netaddr __P((ENV *, const char *,
  * PUBLIC:     u_int, ADDRINFO *, repmgr_netaddr_t *));
  */
 int
-__repmgr_pack_netaddr(dbenv, host, port, list, addr)
-	DB_ENV *dbenv;
+__repmgr_pack_netaddr(env, host, port, list, addr)
+	ENV *env;
 	const char *host;
 	u_int port;
 	ADDRINFO *list;
@@ -808,9 +915,9 @@ __repmgr_pack_netaddr(dbenv, host, port, list, addr)
 {
 	int ret;
 
-	DB_ASSERT(dbenv, host != NULL);
+	DB_ASSERT(env, host != NULL);
 
-	if ((ret = __os_strdup(dbenv, host, &addr->host)) != 0)
+	if ((ret = __os_strdup(env, host, &addr->host)) != 0)
 		return (ret);
 	addr->port = (u_int16_t)port;
 	addr->address_list = list;
@@ -819,12 +926,12 @@ __repmgr_pack_netaddr(dbenv, host, port, list, addr)
 }
 
 /*
- * PUBLIC: int __repmgr_getaddr __P((DB_ENV *,
+ * PUBLIC: int __repmgr_getaddr __P((ENV *,
  * PUBLIC:     const char *, u_int, int, ADDRINFO **));
  */
 int
-__repmgr_getaddr(dbenv, host, port, flags, result)
-	DB_ENV *dbenv;
+__repmgr_getaddr(env, host, port, flags, result)
+	ENV *env;
 	const char *host;
 	u_int port;
 	int flags;    /* Matches struct addrinfo declaration. */
@@ -841,14 +948,14 @@ __repmgr_getaddr(dbenv, host, port, flags, result)
 	 * push that type through the API.
 	 */
 	if (port > UINT16_MAX) {
-		__db_errx(dbenv, "port %u larger than max port %u",
+		__db_errx(env, "port %u larger than max port %u",
 		    port, UINT16_MAX);
 		return (EINVAL);
 	}
 
 #ifdef DB_WIN32
-	if (!dbenv->rep_handle->wsa_inited &&
-	    (ret = __repmgr_wsa_init(dbenv)) != 0)
+	if (!env->rep_handle->wsa_inited &&
+	    (ret = __repmgr_wsa_init(env)) != 0)
 		return (ret);
 #endif
 
@@ -860,12 +967,12 @@ __repmgr_getaddr(dbenv, host, port, flags, result)
 
 	/*
 	 * Although it's generally bad to discard error information, the return
-	 * code from __db_getaddrinfo is undependable.  Our callers at least
+	 * code from __os_getaddrinfo is undependable.  Our callers at least
 	 * would like to be able to distinguish errors in getaddrinfo (which we
 	 * want to consider to be re-tryable), from other failure (e.g., EINVAL,
 	 * above).
 	 */
-	if (__db_getaddrinfo(dbenv, host, port, buffer, &hints, &answer) != 0)
+	if (__os_getaddrinfo(env, host, port, buffer, &hints, &answer) != 0)
 		return (DB_REP_UNAVAIL);
 	*result = answer;
 
@@ -879,54 +986,54 @@ __repmgr_getaddr(dbenv, host, port, flags, result)
  * site.  Unless newsitep is passed in as NULL, which is allowed.
  *
  * PUBLIC: int __repmgr_add_site
- * PUBLIC:     __P((DB_ENV *, const char *, u_int, REPMGR_SITE **));
+ * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **));
  *
  * !!!
  * Caller is expected to hold the mutex.
  */
 int
-__repmgr_add_site(dbenv, host, port, newsitep)
-	DB_ENV *dbenv;
+__repmgr_add_site(env, host, port, newsitep)
+	ENV *env;
 	const char *host;
 	u_int port;
 	REPMGR_SITE **newsitep;
 {
-	DB_REP *db_rep;
 	ADDRINFO *address_list;
+	DB_REP *db_rep;
 	repmgr_netaddr_t addr;
 	REPMGR_SITE *site;
 	int ret, eid;
 
 	ret = 0;
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	if (IS_VALID_EID(eid = __repmgr_find_site(dbenv, host, port))) {
+	if (IS_VALID_EID(eid = __repmgr_find_site(env, host, port))) {
 		site = SITE_FROM_EID(eid);
 		ret = EEXIST;
 		goto out;
 	}
 
 	if ((ret = __repmgr_getaddr(
-	    dbenv, host, port, 0, &address_list)) == DB_REP_UNAVAIL) {
+	    env, host, port, 0, &address_list)) == DB_REP_UNAVAIL) {
 		/* Allow re-tryable errors.  We'll try again later. */
 		address_list = NULL;
 	} else if (ret != 0)
 		return (ret);
 
 	if ((ret = __repmgr_pack_netaddr(
-	    dbenv, host, port, address_list, &addr)) != 0) {
-		__db_freeaddrinfo(dbenv, address_list);
+	    env, host, port, address_list, &addr)) != 0) {
+		__os_freeaddrinfo(env, address_list);
 		return (ret);
 	}
 
-	if ((ret = __repmgr_new_site(dbenv, &site, &addr, SITE_IDLE)) != 0) {
-		__repmgr_cleanup_netaddr(dbenv, &addr);
+	if ((ret = __repmgr_new_site(env, &site, &addr, SITE_IDLE)) != 0) {
+		__repmgr_cleanup_netaddr(env, &addr);
 		return (ret);
 	}
 
 	if (db_rep->selector != NULL &&
 	    (ret = __repmgr_schedule_connection_attempt(
-	    dbenv, (u_int)EID_FROM_SITE(site), TRUE)) != 0)
+	    env, (u_int)EID_FROM_SITE(site), TRUE)) != 0)
 		return (ret);
 
 	/* Note that we should only come here for success and EEXIST. */
@@ -939,15 +1046,12 @@ out:
 /*
  * Initializes net-related memory in the db_rep handle.
  *
- * PUBLIC: int __repmgr_net_create __P((DB_ENV *, DB_REP *));
+ * PUBLIC: int __repmgr_net_create __P((DB_REP *));
  */
 int
-__repmgr_net_create(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_net_create(db_rep)
 	DB_REP *db_rep;
 {
-	COMPQUIET(dbenv, NULL);
-
 	db_rep->listen_fd = INVALID_SOCKET;
 	db_rep->master_eid = DB_EID_INVALID;
 
@@ -963,19 +1067,19 @@ __repmgr_net_create(dbenv, db_rep)
  *	a file descriptor for the socket, ready for an accept() call
  *	in a thread that we're happy to let block.
  *
- * PUBLIC:  int __repmgr_listen __P((DB_ENV *));
+ * PUBLIC:  int __repmgr_listen __P((ENV *));
  */
 int
-__repmgr_listen(dbenv)
-	DB_ENV *dbenv;
+__repmgr_listen(env)
+	ENV *env;
 {
-	DB_REP *db_rep;
 	ADDRINFO *ai;
+	DB_REP *db_rep;
 	char *why;
 	int sockopt, ret;
 	socket_t s;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	/* Use OOB value as sentinel to show no socket open. */
 	s = INVALID_SOCKET;
@@ -987,7 +1091,7 @@ __repmgr_listen(dbenv)
 	 * lint doesn't know about DB_ASSERT.
 	 */
 	COMPQUIET(why, "");
-	DB_ASSERT(dbenv, ai != NULL);
+	DB_ASSERT(env, ai != NULL);
 	for (; ai != NULL; ai = ADDR_LIST_NEXT(&db_rep->my_addr)) {
 
 		if ((s = socket(ai->ai_family,
@@ -1021,7 +1125,7 @@ __repmgr_listen(dbenv)
 		}
 
 		if ((ret = __repmgr_set_nonblocking(s)) != 0) {
-			__db_err(dbenv, ret, "can't unblock listen socket");
+			__db_err(env, ret, "can't unblock listen socket");
 			goto clean;
 		}
 
@@ -1030,42 +1134,43 @@ __repmgr_listen(dbenv)
 	}
 
 	ret = net_errno;
-	__db_err(dbenv, ret, why);
+	__db_err(env, ret, why);
 clean:	if (s != INVALID_SOCKET)
 		(void)closesocket(s);
 	return (ret);
 }
 
 /*
- * PUBLIC: int __repmgr_net_close __P((DB_ENV *));
+ * PUBLIC: int __repmgr_net_close __P((ENV *));
  */
 int
-__repmgr_net_close(dbenv)
-	DB_ENV *dbenv;
+__repmgr_net_close(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REPMGR_CONNECTION *conn;
 #ifndef DB_WIN32
 	struct sigaction sigact;
 #endif
-	int ret;
+	int ret, t_ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	if (db_rep->listen_fd == INVALID_SOCKET)
 		return (0);
 
-	TAILQ_FOREACH(conn, &db_rep->connections, entries) {
-		if (conn->fd != INVALID_SOCKET) {
-			(void)closesocket(conn->fd);
-			conn->fd = INVALID_SOCKET;
-#ifdef DB_WIN32
-			(void)WSACloseEvent(conn->event_object);
-#endif
-		}
+	ret = 0;
+	while (!TAILQ_EMPTY(&db_rep->connections)) {
+		conn = TAILQ_FIRST(&db_rep->connections);
+		if ((t_ret = __repmgr_close_connection(env, conn)) != 0 &&
+		    ret == 0)
+			ret = t_ret;
+		TAILQ_REMOVE(&db_rep->connections, conn, entries);
+		if ((t_ret = __repmgr_destroy_connection(env, conn)) != 0 &&
+		    ret == 0)
+			ret = t_ret;
 	}
 
-	ret = 0;
-	if (closesocket(db_rep->listen_fd) == SOCKET_ERROR)
+	if (closesocket(db_rep->listen_fd) == SOCKET_ERROR && ret == 0)
 		ret = net_errno;
 
 #ifdef DB_WIN32
@@ -1087,11 +1192,11 @@ __repmgr_net_close(dbenv)
 }
 
 /*
- * PUBLIC: void __repmgr_net_destroy __P((DB_ENV *, DB_REP *));
+ * PUBLIC: void __repmgr_net_destroy __P((ENV *, DB_REP *));
  */
 void
-__repmgr_net_destroy(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_net_destroy(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
 	REPMGR_CONNECTION *conn;
@@ -1099,7 +1204,7 @@ __repmgr_net_destroy(dbenv, db_rep)
 	REPMGR_SITE *site;
 	u_int i;
 
-	__repmgr_cleanup_netaddr(dbenv, &db_rep->my_addr);
+	__repmgr_cleanup_netaddr(env, &db_rep->my_addr);
 
 	if (db_rep->sites == NULL)
 		return;
@@ -1107,18 +1212,18 @@ __repmgr_net_destroy(dbenv, db_rep)
 	while (!TAILQ_EMPTY(&db_rep->retries)) {
 		retry = TAILQ_FIRST(&db_rep->retries);
 		TAILQ_REMOVE(&db_rep->retries, retry, entries);
-		__os_free(dbenv, retry);
+		__os_free(env, retry);
 	}
 
 	while (!TAILQ_EMPTY(&db_rep->connections)) {
 		conn = TAILQ_FIRST(&db_rep->connections);
-		(void)__repmgr_cleanup_connection(dbenv, conn);
+		(void)__repmgr_destroy_connection(env, conn);
 	}
 
 	for (i = 0; i < db_rep->site_cnt; i++) {
 		site = &db_rep->sites[i];
-		__repmgr_cleanup_netaddr(dbenv, &site->net_addr);
+		__repmgr_cleanup_netaddr(env, &site->net_addr);
 	}
-	__os_free(dbenv, db_rep->sites);
+	__os_free(env, db_rep->sites);
 	db_rep->sites = NULL;
 }

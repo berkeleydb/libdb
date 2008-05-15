@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.flags,v 12.2 2007/04/20 14:46:30 bostic Exp $
+# $Id: chk.flags,v 12.4 2007/11/18 20:47:29 bostic Exp $
 #
 # Check flag name-spaces.
 
@@ -22,9 +22,8 @@ else
 	exit 1
 fi
 
-echo Checking DB_ENV flags...
-cat $t1 |
-grep '(dbenv,' |
+echo 'Checking "dbenv" variables with flags other than DB_ENV_XXX'
+grep 'dbenv,' $t1 |
 sed -e '/DB_ENV_/d' \
     -e '/env_method.c.*, mapped_flags*)/d' \
     -e '/env_region.c.*, flags_orig*)/d' \
@@ -34,23 +33,58 @@ sed -e '/DB_ENV_/d' \
 	exit 1
 }
 
+echo 'Checking DB_ENV_XXX flags with variables other than "dbenv"'
 grep 'DB_ENV_' $t1 |
-sed -e '/((*dbenv)*,/d' \
-    -e '/((*dbp)*->dbenv,/d' \
-    -e '/((*env)*,/d' \
-    -e '/((*infop)*->dbenv,/d' \
-    -e '/((*reginfop)*->dbenv,/d' \
-    -e '/((*sdbp)*->dbenv,/d' \
+sed -e '/dbenv,/d' \
+    -e '/(dbenv),/d' \
     > $t2
 [ -s $t2 ] && {
 	cat $t2
 	exit 1
 }
 
-echo Checking DB flags...
+echo 'Checking "env" variables with flags other than ENV_XXX'
+grep '[^b]env,' $t1 |
+sed -e '/[^B]ENV_/d' \
+    -e '/env_method.c.*, mapped_flags*)/d' \
+    > $t2
+[ -s $t2 ] && {
+	cat $t2
+	exit 1
+}
+
+echo 'Checking ENV_XXX flags with variables other than "env"'
+grep '[^A-Z_]ENV_' $t1 |
+sed -e '/[^b]env,/d' \
+    -e '/(env),/d' \
+    > $t2
+[ -s $t2 ] && {
+	cat $t2
+	exit 1
+}
+
+echo 'Checking dbenv "verbose" field with flags other than DB_VERB_XXX'
+grep -- 'dbenv->verbose,' $t1 |
+sed -e '/DB_VERB_/d' \
+    -e '/env_method.c.*, which)/d' \
+    > $t2
+[ -s $t2 ] && {
+	cat $t2
+	exit 1
+}
+
+echo 'Checking DB_VER_XXX flags with other than dbenv "verbose" field'
+grep -- 'DB_VERB_' $t1 |
+sed -e '/dbenv->verbose,/d' \
+    > $t2
+[ -s $t2 ] && {
+	cat $t2
+	exit 1
+}
+
+echo 'Checking "db" variables with flags other than DB_AM_XXX'
 cp $t1 /tmp/_f
-cat $t1 |
-grep '(dbp,' |
+grep 'dbp,' $t1 |
 sed -e '/DB_AM_/d' \
     -e '/dbp, mapped_flag)/d' \
     > $t2
@@ -59,9 +93,13 @@ sed -e '/DB_AM_/d' \
 	exit 1
 }
 
+echo 'Checking DB_AM_XXX flags with variables other than "db"'
 grep 'DB_AM_' $t1 |
 sed \
     -e '/(&db,/d' \
+    -e '/_method.c:.*outflagsp,/d' \
+    -e '/rep_backup.c:.*->flags,/d' \
+    -e '/db.c:.*save_flags,/d' \
     -e '/((*[	 ]*db_rep->rep_db)*,/d' \
     -e '/((*[	 ]*dbc)*->dbp,/d' \
     -e '/((*[	 ]*dbc_arg->dbp)*,/d' \
@@ -85,9 +123,10 @@ sed \
 	exit 1
 }
 
+echo 'Checking "dbc" variables flags with flags other than DBC_XXX'
 echo Checking DBC flags...
 cat $t1 |
-grep '(dbc,' |
+grep 'dbc,' |
 sed -e '/DBC_/d' \
     > $t2
 [ -s $t2 ] && {
@@ -95,6 +134,7 @@ sed -e '/DBC_/d' \
 	exit 1
 }
 
+echo 'Checking DBC_XXX flags with variables other than "dbc"'
 grep 'DBC_' $t1 |
 sed -e '/((*dbc)*,/d' \
     -e '/(dbc_arg,/d' \

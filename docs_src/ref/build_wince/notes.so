@@ -1,7 +1,7 @@
-m4_comment([$Id: notes.so,v 1.2 2007/06/04 14:55:40 bostic Exp $])
+m4_comment([$Id: notes.so,v 1.3 2008/05/05 05:22:43 alexg Exp $])
 
 m4_ref_title(Building m4_db for Windows CE systems,
-    Windows CE notes, @Windows CE notes, build_wince/intro, build_wince/faq)
+    Windows CE notes, @Windows CE notes, build_wince/intro, build_vxworks/intro)
 
 m4_nlistbegin
 

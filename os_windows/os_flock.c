@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_flock.c,v 1.17 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_flock.c,v 1.21 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Acquire/release a lock on a byte in a file.
  */
 int
-__os_fdlock(dbenv, fhp, offset, acquire, nowait)
-	DB_ENV *dbenv;
+__os_fdlock(env, fhp, offset, acquire, nowait)
+	ENV *env;
 	DB_FH *fhp;
 	int acquire, nowait;
 	off_t offset;
@@ -28,19 +28,22 @@ __os_fdlock(dbenv, fhp, offset, acquire, nowait)
 	 * Should only happen if an app attempts to open an environment
 	 * with the DB_REGISTER flag.
 	 */
-	 __db_errx(dbenv, "fdlock API not implemented for WinCE, DB_REGISTER "
+	 __db_errx(env, "fdlock API not implemented for WinCE, DB_REGISTER "
 	     "environment flag not supported.");
 	return (EFAULT);
 #else
-	int ret;
 	DWORD low, high;
+	DB_ENV *dbenv;
 	OVERLAPPED over;
+	int ret;
 
-	DB_ASSERT(dbenv,
+	dbenv = env == NULL ? NULL : env->dbenv;
+
+	DB_ASSERT(env,
 	    F_ISSET(fhp, DB_FH_OPENED) && fhp->handle != INVALID_HANDLE_VALUE);
 
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: flock %s %s offset %lu",
 		    fhp->name, acquire ? "acquire": "release", (u_long)offset);
 
@@ -48,7 +51,7 @@ __os_fdlock(dbenv, fhp, offset, acquire, nowait)
 	 * Windows file locking interferes with read/write operations, so we
 	 * map the ranges to an area past the end of the file.
 	 */
-	DB_ASSERT(dbenv, offset < (u_int64_t)INT64_MAX);
+	DB_ASSERT(env, offset < (u_int64_t)INT64_MAX);
 	offset = UINT64_MAX - offset;
 	low = (DWORD)offset;
 	high = (DWORD)(offset >> 32);
@@ -73,7 +76,7 @@ __os_fdlock(dbenv, fhp, offset, acquire, nowait)
 				    ret);
 				if (__os_posix_err(ret) != EAGAIN)
 					break;
-				__os_sleep(dbenv, 1, 0);
+				__os_yield(env, 1, 0);
 			}
 		}
 	} else

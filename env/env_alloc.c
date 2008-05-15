@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: env_alloc.c,v 12.17 2007/05/22 18:35:39 ubell Exp $
+ * $Id: env_alloc.c,v 12.22 2008/01/27 18:02:31 bostic Exp $
  */
 
 #include "db_config.h"
@@ -13,10 +13,11 @@
 /*
  * Implement shared memory region allocation.  The initial list is a single
  * memory "chunk" which is carved up as memory is requested.  Chunks are
- * coalesced when free'd.  We maintain two linked-lists of chunks: a list of
- * all chunks sorted by address, and a list of free chunks sorted by size.
+ * coalesced when free'd.  We maintain two types of linked-lists: a list of
+ * all chunks sorted by address, and a set of lists with free chunks sorted
+ * by size.
  *
- * The ALLOC_LAYOUT structure is the governing structure for the chunk.
+ * The ALLOC_LAYOUT structure is the governing structure for the allocator.
  *
  * The ALLOC_ELEMENT structure is the structure that describes any single
  * chunk of memory, and is immediately followed by the user's memory.
@@ -26,23 +27,45 @@
  *
  * The memory chunks returned to the user are aligned to a uintmax_t boundary.
  * This is enforced by terminating the ALLOC_ELEMENT structure with a uintmax_t
- * field as that immediately precedes the user's memory.
- *
- * Any caller needing more than uintmax_t alignment is responsible for doing
- * the work themselves.
+ * field as that immediately precedes the user's memory.  Any caller needing
+ * more than uintmax_t alignment is responsible for doing alignment themselves.
  */
+
+typedef SH_TAILQ_HEAD(__sizeq) SIZEQ_HEAD;
+
 typedef struct __alloc_layout {
 	SH_TAILQ_HEAD(__addrq) addrq;		/* Sorted by address */
-	SH_TAILQ_HEAD(__sizeq) sizeq;		/* Sorted by size */
+
+	/*
+	 * A perfect Berkeley DB application does little allocation because
+	 * most things are allocated on startup and never free'd.  This is
+	 * true even for the cache, because we don't free and re-allocate
+	 * the memory associated with a cache buffer when swapping a page
+	 * in memory for a page on disk -- unless the page is changing size.
+	 * The latter problem is why we have multiple size queues.  If the
+	 * application's working set fits in cache, it's not a problem.  If
+	 * the application's working set doesn't fit in cache, but all of
+	 * the databases have the same size pages, it's still not a problem.
+	 * If the application's working set doesn't fit in cache, and its
+	 * databases have different page sizes, we can end up walking a lot
+	 * of 512B chunk allocations looking for an available 64KB chunk.
+	 *
+	 * So, we keep a set of queues, where we expect to find a chunk of
+	 * roughly the right size at the front of the list.  The first queue
+	 * is chunks <= 1024, the second is <= 2048, and so on.  With 11
+	 * queues, we have separate queues for chunks up to 1MB.
+	 */
+#define	DB_SIZE_Q_COUNT	11
+	SIZEQ_HEAD	sizeq[DB_SIZE_Q_COUNT];	/* Sorted by size */
+#ifdef HAVE_STATISTICS
+	u_int32_t	pow2_size[DB_SIZE_Q_COUNT];
+#endif
 
 #ifdef HAVE_STATISTICS
 	u_int32_t success;			/* Successful allocations */
 	u_int32_t failure;			/* Failed allocations */
 	u_int32_t freed;			/* Free calls */
 	u_int32_t longest;			/* Longest chain walked */
-#ifdef __ALLOC_DISPLAY_ALLOCATION_SIZES
-	u_int32_t pow2_size[32];		/* Allocation size tracking */
-#endif
 #endif
 	uintmax_t  unused;			/* Guarantee alignment */
 } ALLOC_LAYOUT;
@@ -66,6 +89,24 @@ typedef struct __alloc_element {
 } ALLOC_ELEMENT;
 
 /*
+ * If the chunk can be split into two pieces, with the fragment holding at
+ * least 64 bytes of memory, we divide the chunk into two parts.
+ */
+#define	SHALLOC_FRAGMENT	(sizeof(ALLOC_ELEMENT) + 64)
+
+/* Macro to find the appropriate queue for a specific size chunk. */
+#undef	SET_QUEUE_FOR_SIZE
+#define	SET_QUEUE_FOR_SIZE(head, q, i, len) do {			\
+	for (i = 0; i < DB_SIZE_Q_COUNT; ++i) {				\
+		q = &(head)->sizeq[i];					\
+		if ((len) <= (size_t)1024 << i)				\
+			break;						\
+	}								\
+} while (0)
+
+static void __env_size_insert __P((ALLOC_LAYOUT *, ALLOC_ELEMENT *));
+
+/*
  * __env_alloc_init --
  *	Initialize the area as one large chunk.
  *
@@ -76,23 +117,25 @@ __env_alloc_init(infop, size)
 	REGINFO *infop;
 	size_t size;
 {
-	DB_ENV *dbenv;
 	ALLOC_ELEMENT *elp;
 	ALLOC_LAYOUT *head;
+	ENV *env;
+	u_int i;
 
-	dbenv = infop->dbenv;
+	env = infop->env;
 
 	/* No initialization needed for heap memory regions. */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE))
+	if (F_ISSET(env, ENV_PRIVATE))
 		return;
 
 	/*
 	 * The first chunk of memory is the ALLOC_LAYOUT structure.
 	 */
 	head = infop->addr;
+	memset(head, 0, sizeof(*head));
 	SH_TAILQ_INIT(&head->addrq);
-	SH_TAILQ_INIT(&head->sizeq);
-	STAT((head->success = head->failure = head->freed = 0));
+	for (i = 0; i < DB_SIZE_Q_COUNT; ++i)
+		SH_TAILQ_INIT(&head->sizeq[i]);
 	COMPQUIET(head->unused, 0);
 
 	/*
@@ -103,7 +146,8 @@ __env_alloc_init(infop, size)
 	elp->ulen = 0;
 
 	SH_TAILQ_INSERT_HEAD(&head->addrq, elp, addrq, __alloc_element);
-	SH_TAILQ_INSERT_HEAD(&head->sizeq, elp, sizeq, __alloc_element);
+	SH_TAILQ_INSERT_HEAD(
+	    &head->sizeq[DB_SIZE_Q_COUNT - 1], elp, sizeq, __alloc_element);
 }
 
 /*
@@ -155,18 +199,18 @@ __env_alloc(infop, len, retp)
 	size_t len;
 	void *retp;
 {
+	SIZEQ_HEAD *q;
 	ALLOC_ELEMENT *elp, *frag, *elp_tmp;
 	ALLOC_LAYOUT *head;
-	DB_ENV *dbenv;
+	ENV *env;
 	size_t total_len;
 	u_int8_t *p;
+	u_int i;
 	int ret;
 #ifdef HAVE_STATISTICS
-	u_long st_search;
+	u_int32_t st_search;
 #endif
-
-	dbenv = infop->dbenv;
-
+	env = infop->env;
 	*(void **)retp = NULL;
 
 	/*
@@ -177,7 +221,7 @@ __env_alloc(infop, len, retp)
 	 *
 	 * { size_t total-length } { user-memory } { guard-byte }
 	 */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
+	if (F_ISSET(env, ENV_PRIVATE)) {
 		/* Check if we're over the limit. */
 		if (infop->allocated >= infop->max_alloc)
 			return (ENOMEM);
@@ -190,7 +234,7 @@ __env_alloc(infop, len, retp)
 		++len;
 #endif
 		/* Allocate the space. */
-		if ((ret = __os_malloc(dbenv, len, &p)) != 0)
+		if ((ret = __os_malloc(env, len, &p)) != 0)
 			return (ret);
 		infop->allocated += len;
 
@@ -203,37 +247,50 @@ __env_alloc(infop, len, retp)
 	}
 
 	head = infop->addr;
-
 	total_len = DB_ALLOC_SIZE(len);
-#ifdef __ALLOC_DISPLAY_ALLOCATION_SIZES
-	STAT((++head->pow2_size[__db_log2(len) - 1]));
+
+	/* Find the first size queue that could satisfy the request. */
+	SET_QUEUE_FOR_SIZE(head, q, i, total_len);
+
+#ifdef HAVE_STATISTICS
+	++head->pow2_size[i];		/* Note the size of the request. */
 #endif
 
 	/*
-	 * If the chunk can be split into two pieces, with the fragment holding
-	 * at least 64 bytes of memory, we divide the chunk into two parts.
+	 * Search this queue, and, if necessary, queues larger than this queue,
+	 * looking for a chunk we can use.
 	 */
-#define	SHALLOC_FRAGMENT	(sizeof(ALLOC_ELEMENT) + 64)
-
-	/*
-	 * Walk the size queue, looking for the smallest slot that satisfies
-	 * the request.
-	 */
-	elp = NULL;
 	STAT((st_search = 0));
-	SH_TAILQ_FOREACH(elp_tmp, &head->sizeq, sizeq, __alloc_element) {
-		STAT((++st_search));
-		if (elp_tmp->len < total_len)
-			break;
-		elp = elp_tmp;
-		/*
-		 * We might have a long list of chunks of the same size.  Stop
-		 * looking if we won't fragment memory by picking the current
-		 * slot.
-		 */
-		if (elp->len - total_len <= SHALLOC_FRAGMENT)
+	for (elp = NULL;; ++q) {
+		SH_TAILQ_FOREACH(elp_tmp, q, sizeq, __alloc_element) {
+			STAT((++st_search));
+
+			/*
+			 * Chunks are sorted from largest to smallest -- if
+			 * this chunk is less than what we need, no chunk
+			 * further down the list will be large enough.
+			 */
+			if (elp_tmp->len < total_len)
+				break;
+
+			/*
+			 * This chunk will do... maybe there's a better one,
+			 * but this one will do.
+			 */
+			elp = elp_tmp;
+
+			/*
+			 * We might have many chunks of the same size.  Stop
+			 * looking if we won't fragment memory by picking the
+			 * current one.
+			 */
+			if (elp_tmp->len - total_len <= SHALLOC_FRAGMENT)
+				break;
+		}
+		if (elp != NULL || ++i >= DB_SIZE_Q_COUNT)
 			break;
 	}
+
 #ifdef HAVE_STATISTICS
 	if (head->longest < st_search)
 		head->longest = st_search;
@@ -249,7 +306,7 @@ __env_alloc(infop, len, retp)
 	STAT((++head->success));
 
 	/* Pull the chunk off of the size queue. */
-	SH_TAILQ_REMOVE(&head->sizeq, elp, sizeq, __alloc_element);
+	SH_TAILQ_REMOVE(q, elp, sizeq, __alloc_element);
 
 	if (elp->len - total_len > SHALLOC_FRAGMENT) {
 		frag = (ALLOC_ELEMENT *)((u_int8_t *)elp + total_len);
@@ -262,18 +319,8 @@ __env_alloc(infop, len, retp)
 		SH_TAILQ_INSERT_AFTER(
 		    &head->addrq, elp, frag, addrq, __alloc_element);
 
-		/*
-		 * Insert the fragment into the appropriate place in the
-		 * size queue.
-		 */
-		SH_TAILQ_FOREACH(elp_tmp, &head->sizeq, sizeq, __alloc_element)
-			if (elp_tmp->len < frag->len)
-				break;
-		if (elp_tmp == NULL)
-			SH_TAILQ_INSERT_TAIL(&head->sizeq, frag, sizeq);
-		else
-			SH_TAILQ_INSERT_BEFORE(&head->sizeq,
-			    elp_tmp, frag, sizeq, __alloc_element);
+		/* Insert the frag into the correct size queue. */
+		__env_size_insert(head, frag);
 	}
 
 	p = (u_int8_t *)elp + sizeof(ALLOC_ELEMENT);
@@ -299,14 +346,15 @@ __env_alloc_free(infop, ptr)
 {
 	ALLOC_ELEMENT *elp, *elp_tmp;
 	ALLOC_LAYOUT *head;
-	DB_ENV *dbenv;
+	ENV *env;
+	SIZEQ_HEAD *q;
 	size_t len;
-	u_int8_t *p;
+	u_int8_t i, *p;
 
-	dbenv = infop->dbenv;
+	env = infop->env;
 
 	/* In a private region, we call free. */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
+	if (F_ISSET(env, ENV_PRIVATE)) {
 		/* Find the start of the memory chunk and its length. */
 		p = (u_int8_t *)((size_t *)ptr - 1);
 		len = *(size_t *)p;
@@ -315,12 +363,12 @@ __env_alloc_free(infop, ptr)
 
 #ifdef DIAGNOSTIC
 		/* Check the guard byte. */
-		DB_ASSERT(dbenv, p[len - 1] == GUARD_BYTE);
+		DB_ASSERT(env, p[len - 1] == GUARD_BYTE);
 
 		/* Trash the memory chunk. */
 		memset(p, CLEAR_BYTE, len);
 #endif
-		__os_free(dbenv, p);
+		__os_free(env, p);
 		return;
 	}
 
@@ -332,7 +380,7 @@ __env_alloc_free(infop, ptr)
 
 #ifdef DIAGNOSTIC
 	/* Check the guard byte. */
-	DB_ASSERT(dbenv, p[elp->ulen] == GUARD_BYTE);
+	DB_ASSERT(env, p[elp->ulen] == GUARD_BYTE);
 
 	/* Trash the memory chunk. */
 	memset(p, CLEAR_BYTE, elp->len - sizeof(ALLOC_ELEMENT));
@@ -352,10 +400,11 @@ __env_alloc_free(infop, ptr)
 		/*
 		 * If we're merging the entry into a previous entry, remove the
 		 * current entry from the addr queue and the previous entry from
-		 * the size queue, and merge.
+		 * its size queue, and merge.
 		 */
 		SH_TAILQ_REMOVE(&head->addrq, elp, addrq, __alloc_element);
-		SH_TAILQ_REMOVE(&head->sizeq, elp_tmp, sizeq, __alloc_element);
+		SET_QUEUE_FOR_SIZE(head, q, i, elp_tmp->len);
+		SH_TAILQ_REMOVE(q, elp_tmp, sizeq, __alloc_element);
 
 		elp_tmp->len += elp->len;
 		elp = elp_tmp;
@@ -369,20 +418,40 @@ __env_alloc_free(infop, ptr)
 		 * and merge.
 		 */
 		SH_TAILQ_REMOVE(&head->addrq, elp_tmp, addrq, __alloc_element);
-		SH_TAILQ_REMOVE(&head->sizeq, elp_tmp, sizeq, __alloc_element);
+		SET_QUEUE_FOR_SIZE(head, q, i, elp_tmp->len);
+		SH_TAILQ_REMOVE(q, elp_tmp, sizeq, __alloc_element);
 
 		elp->len += elp_tmp->len;
 	}
 
+	/* Insert in the correct place in the size queues. */
+	__env_size_insert(head, elp);
+}
+
+/*
+ * __env_size_insert --
+ *	Insert into the correct place in the size queues.
+ */
+static void
+__env_size_insert(head, elp)
+	ALLOC_LAYOUT *head;
+	ALLOC_ELEMENT *elp;
+{
+	SIZEQ_HEAD *q;
+	ALLOC_ELEMENT *elp_tmp;
+	u_int i;
+
+	/* Find the appropriate queue for the chunk. */
+	SET_QUEUE_FOR_SIZE(head, q, i, elp->len);
+
 	/* Find the correct slot in the size queue. */
-	SH_TAILQ_FOREACH(elp_tmp, &head->sizeq, sizeq, __alloc_element)
-		if (elp->len >= elp_tmp->len)
+	SH_TAILQ_FOREACH(elp_tmp, q, sizeq, __alloc_element)
+		if (elp->len <= elp_tmp->len)
 			break;
 	if (elp_tmp == NULL)
-		SH_TAILQ_INSERT_TAIL(&head->sizeq, elp, sizeq);
+		SH_TAILQ_INSERT_TAIL(q, elp, sizeq);
 	else
-		SH_TAILQ_INSERT_BEFORE(&head->sizeq,
-		    elp_tmp, elp, sizeq, __alloc_element);
+		SH_TAILQ_INSERT_BEFORE(q, elp_tmp, elp, sizeq, __alloc_element);
 }
 
 #ifdef HAVE_STATISTICS
@@ -401,19 +470,16 @@ __env_alloc_print(infop, flags)
 	ALLOC_ELEMENT *elp;
 #endif
 	ALLOC_LAYOUT *head;
-	DB_ENV *dbenv;
-#ifdef __ALLOC_DISPLAY_ALLOCATION_SIZES
-	DB_MSGBUF mb;
-	int i;
-#endif
+	ENV *env;
+	u_int i;
 
-	dbenv = infop->dbenv;
+	env = infop->env;
 	head = infop->addr;
 
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE))
+	if (F_ISSET(env, ENV_PRIVATE))
 		return;
 
-	__db_msg(dbenv,
+	__db_msg(env,
     "Region allocations: %lu allocations, %lu failures, %lu frees, %lu longest",
 	    (u_long)head->success, (u_long)head->failure, (u_long)head->freed,
 	    (u_long)head->longest);
@@ -421,35 +487,29 @@ __env_alloc_print(infop, flags)
 	if (!LF_ISSET(DB_STAT_ALL))
 		return;
 
-#ifdef __ALLOC_DISPLAY_ALLOCATION_SIZES
-	/*
-	 * We don't normally display the allocation history by size, it's too
-	 * expensive to calculate.
-	 */
-	DB_MSGBUF_INIT(&mb);
-	for (i = 0; i < 32; ++i)
-		__db_msgadd(dbenv, &mb, "%s%2d/%lu",
-		    i == 0 ? "Allocations by power-of-two sizes: " : ", ",
-		    i + 1, (u_long)head->pow2_size[i]);
-	DB_MSGBUF_FLUSH(dbenv, &mb);
-#endif
+	__db_msg(env, "%s", "Allocations by power-of-two sizes:");
+	for (i = 0; i < DB_SIZE_Q_COUNT; ++i)
+		__db_msg(env, "%3dKB\t%lu",
+		    (1024 << i) / 1024, (u_long)head->pow2_size[i]);
 
 #ifdef __ALLOC_DISPLAY_ALLOCATION_LISTS
 	/*
 	 * We don't normally display the list of address/chunk pairs, a few
 	 * thousand lines of output is too voluminous for even DB_STAT_ALL.
 	 */
-	__db_msg(dbenv,
+	__db_msg(env,
 	    "Allocation list by address: {chunk length, user length}");
 	SH_TAILQ_FOREACH(elp, &head->addrq, addrq, __alloc_element)
-		__db_msg(dbenv, "\t%#lx {%lu, %lu}",
+		__db_msg(env, "\t%#lx {%lu, %lu}",
 		    P_TO_ULONG(elp), (u_long)elp->len, (u_long)elp->ulen);
 
-	__db_msg(dbenv, "Allocation free list by size: {chunk length}");
-	SH_TAILQ_FOREACH(elp, &head->sizeq, sizeq, __alloc_element)
-		__db_msg(dbenv, "\t%#lx {%lu}",
-		    P_TO_ULONG(elp), (u_long)elp->len);
+	__db_msg(env, "Allocation free list by size: KB {chunk length}");
+	for (i = 0; i < DB_SIZE_Q_COUNT; ++i) {
+		__db_msg(env, "%3dKB", (1024 << i) / 1024);
+		SH_TAILQ_FOREACH(elp, &head->sizeq[i], sizeq, __alloc_element)
+			__db_msg(env,
+			    "\t%#lx {%lu}", P_TO_ULONG(elp), (u_long)elp->len);
+	}
 #endif
-	return;
 }
 #endif

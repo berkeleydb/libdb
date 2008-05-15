@@ -1,8 +1,8 @@
-m4_comment([$Id: run.so,v 10.48 2006/10/02 15:56:35 bostic Exp $])
+m4_comment([$Id: run.so,v 10.49 2007/07/27 14:19:26 bostic Exp $])
 
 m4_ref_title(Test Suite,
     Running the test suite,
-    running the @test suite, upgrade.4.6/disk, test/faq)
+    running the @test suite, upgrade.4.7/disk, test/faq)
 
 m4_p([dnl
 Once you have started tclsh and have loaded the test.tcl source file

@@ -942,5 +942,5 @@ program DB_RPC_SERVERPROG {
 		__txn_commit_reply __DB_txn_commit(__txn_commit_msg) = 70;
 		__txn_discard_reply __DB_txn_discard(__txn_discard_msg) = 71;
 		__txn_prepare_reply __DB_txn_prepare(__txn_prepare_msg) = 72;
-	} = 4006;
+	} = 4007;
 } = 351457;

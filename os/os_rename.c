@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_rename.c,v 12.10 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_rename.c,v 12.13 2008/02/18 19:34:21 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,20 +14,24 @@
  * __os_rename --
  *	Rename a file.
  *
- * PUBLIC: int __os_rename __P((DB_ENV *,
+ * PUBLIC: int __os_rename __P((ENV *,
  * PUBLIC:    const char *, const char *, u_int32_t));
  */
 int
-__os_rename(dbenv, oldname, newname, silent)
-	DB_ENV *dbenv;
+__os_rename(env, oldname, newname, silent)
+	ENV *env;
 	const char *oldname, *newname;
 	u_int32_t silent;
 {
+	DB_ENV *dbenv;
 	int ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: rename %s to %s", oldname, newname);
+		__db_msg(env, "fileops: rename %s to %s", oldname, newname);
+
+	LAST_PANIC_CHECK_BEFORE_IO(env);
 
 	if (DB_GLOBAL(j_rename) != NULL)
 		ret = DB_GLOBAL(j_rename)(oldname, newname);
@@ -41,7 +45,7 @@ __os_rename(dbenv, oldname, newname, silent)
 	if (ret != 0) {
 		if (!silent)
 			__db_syserr(
-			    dbenv, ret, "rename %s %s", oldname, newname);
+			    env, ret, "rename %s %s", oldname, newname);
 		ret = __os_posix_err(ret);
 	}
 	return (ret);

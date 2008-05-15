@@ -1,4 +1,4 @@
-m4_comment([$Id: id.so,v 1.8 2006/07/14 23:04:42 alanb Exp $])
+m4_comment([$Id: id.so,v 1.9 2007/09/26 15:11:31 bostic Exp $])
 
 m4_ref_title(m4_db Replication,
     Replication environment IDs,, rep/intro, rep/pri)
@@ -27,11 +27,13 @@ identifiers are intended for application use, as follows:])
 
 m4_tagbegin
 
-m4_tag([m4_ref(DB_EID_BROADCAST)], [dnl
+m4_idefz(DB_EID_BROADCAST)
+m4_tag(m4_ref(DB_EID_BROADCAST), [dnl
 The m4_ref(DB_EID_BROADCAST) identifier indicates a message should be
 broadcast to all members of a replication group.])
 
-m4_tag([m4_ref(DB_EID_INVALID)], [dnl
+m4_idefz(DB_EID_INVALID)
+m4_tag(DB_EID_INVALID, [dnl
 The m4_ref(DB_EID_INVALID) identifier is an invalid environment ID, and
 may be used to initialize environment ID variables that are subsequently
 checked for validity.])

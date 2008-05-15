@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: rep.h,v 12.91 2007/06/22 16:42:45 bostic Exp $
+ * $Id: rep.h,v 12.111 2008/05/02 15:19:43 sue Exp $
  */
 
 #ifndef _DB_REP_H_
@@ -97,27 +97,31 @@ extern "C" {
 #define	DB_LOGVERSION_44	11
 #define	DB_LOGVERSION_45	12
 #define	DB_LOGVERSION_46	13
+#define	DB_LOGVERSION_47	14
+#define	DB_LOGVERSION_MIN	DB_LOGVERSION_44
 #define	DB_REPVERSION_INVALID	0
-#define	DB_REPVERSION_42	1
-#define	DB_REPVERSION_43	2
 #define	DB_REPVERSION_44	3
 #define	DB_REPVERSION_45	3
 #define	DB_REPVERSION_46	4
-#define	DB_REPVERSION		DB_REPVERSION_46
+#define	DB_REPVERSION_47	5
+#define	DB_REPVERSION		DB_REPVERSION_47
+#define	DB_REPVERSION_MIN	DB_REPVERSION_44
 
 /*
  * RPRINT
  * REP_PRINT_MESSAGE
  *	Macros for verbose replication messages.
  */
-#define	RPRINT(dbenv, x) do {						\
-	if (FLD_ISSET((dbenv)->verbose, DB_VERB_REPLICATION)) {		\
+#define	RPRINT(env, verbose_category, x) do {				\
+	if (FLD_ISSET((env)->dbenv->verbose,				\
+	    (verbose_category) | DB_VERB_REPLICATION)) {		\
 		__rep_print x;						\
 	}								\
 } while (0)
-#define	REP_PRINT_MESSAGE(dbenv, eid, rp, str, fl) do {			\
-	if (FLD_ISSET((dbenv)->verbose, DB_VERB_REPLICATION)) {		\
-		__rep_print_message(dbenv, eid, rp, str, fl);		\
+#define	REP_PRINT_MESSAGE(env, eid, rp, str, fl) do {			\
+	if (FLD_ISSET((env)->dbenv->verbose,				\
+	    DB_VERB_REP_MSGS | DB_VERB_REPLICATION)) {			\
+		__rep_print_message(env, eid, rp, str, fl);		\
 	}								\
 } while (0)
 
@@ -150,6 +154,10 @@ extern "C" {
  * in this file.
  */
 #define	REP_INITNAME	"__db.rep.init"
+#define	REP_INITVERSION_46	1
+#define	REP_INITVERSION_47	2
+#define	REP_INITVERSION		2
+
 
 /*
  * Database types for __rep_client_dbinit
@@ -160,20 +168,20 @@ typedef enum {
 } repdb_t;
 
 /* Macros to lock/unlock the replication region as a whole. */
-#define	REP_SYSTEM_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, (dbenv)->rep_handle->region->mtx_region)
-#define	REP_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, (dbenv)->rep_handle->region->mtx_region)
+#define	REP_SYSTEM_LOCK(env)						\
+	MUTEX_LOCK(env, (env)->rep_handle->region->mtx_region)
+#define	REP_SYSTEM_UNLOCK(env)						\
+	MUTEX_UNLOCK(env, (env)->rep_handle->region->mtx_region)
 
 /*
  * Macros for manipulating the event synchronization.  We use a separate mutex
  * so that an application's call-back function can be invoked without locking
  * the whole region.
  */
-#define	REP_EVENT_LOCK(dbenv)					     \
-	MUTEX_LOCK(dbenv, (dbenv)->rep_handle->region->mtx_event)
-#define	REP_EVENT_UNLOCK(dbenv)					     \
-	MUTEX_UNLOCK(dbenv, (dbenv)->rep_handle->region->mtx_event)
+#define	REP_EVENT_LOCK(env)						\
+	MUTEX_LOCK(env, (env)->rep_handle->region->mtx_event)
+#define	REP_EVENT_UNLOCK(env)						\
+	MUTEX_UNLOCK(env, (env)->rep_handle->region->mtx_event)
 
 /*
  * REP --
@@ -192,11 +200,11 @@ typedef struct __rep {
 	u_int32_t	egen;		/* Replication election generation. */
 	u_int32_t	gen;		/* Replication generation number. */
 	u_int32_t	recover_gen;	/* Last generation number in log. */
-	int		asites;		/* Space allocated for sites. */
-	int		nsites;		/* Number of sites in group. */
-	int		nvotes;		/* Number of votes needed. */
-	int		priority;	/* My priority in an election. */
-	int		config_nsites;
+	u_int32_t	asites;		/* Space allocated for sites. */
+	u_int32_t	nsites;		/* Number of sites in group. */
+	u_int32_t	nvotes;		/* Number of votes needed. */
+	u_int32_t	priority;	/* My priority in an election. */
+	u_int32_t	config_nsites;
 
 	db_timeout_t	elect_timeout;	/* Normal/full election timeouts. */
 	db_timeout_t	full_elect_timeout;
@@ -206,11 +214,11 @@ typedef struct __rep {
 #define	REP_DEFAULT_THROTTLE	(10 * MEGABYTE) /* Default value is < 1Gig. */
 	u_int32_t	gbytes;		/* Limit on data sent in single... */
 	u_int32_t	bytes;		/* __rep_process_message call. */
-#define	DB_REP_REQUEST_GAP	4
-#define	DB_REP_MAX_GAP		128
-	u_int32_t	request_gap;	/* # of records to receive before we
+#define	DB_REP_REQUEST_GAP	40000	/* 40 msecs */
+#define	DB_REP_MAX_GAP		1280000	/* 1.28 seconds */
+	db_timespec	request_gap;	/* Minimum time to wait before we
 					 * request a missing log record. */
-	u_int32_t	max_gap;	/* Maximum number of records before
+	db_timespec	max_gap;	/* Maximum time to wait before
 					 * requesting a missing log record. */
 	/* Status change information */
 	u_int32_t	apply_th;	/* Number of callers in rep_apply. */
@@ -246,9 +254,12 @@ typedef struct __rep {
 	u_int32_t	nfiles;		/* Number of files we have info on. */
 	u_int32_t	curfile;	/* Cur file we're getting (0-based). */
 	__rep_fileinfo_args	*curinfo;	/* Current file info ptr. */
-	void		*finfo;		/* Current file info buffer. */
-	void		*nextinfo;	/* Next file info buffer. */
-	void		*originfo;	/* Original file info buffer. */
+	u_int8_t	*finfo;		/* Current file info buffer. */
+	u_int8_t	*nextinfo;	/* Next file info buffer. */
+	u_int8_t	*originfo;	/* Original file info buffer. */
+	u_int32_t	infolen;	/* Remaining length file info buffer. */
+	u_int32_t	originfolen;	/* Original length file info buffer. */
+	u_int32_t	infoversion;	/* Original file info version. */
 	DB_LSN		first_lsn;	/* Earliest LSN we need. */
 	u_int32_t	first_vers;	/* Log version of first log file. */
 	DB_LSN		last_lsn;	/* Latest LSN we need. */
@@ -256,25 +267,26 @@ typedef struct __rep {
 	db_pgno_t	waiting_pg;	/* First pg after gap. */
 	db_pgno_t	max_wait_pg;	/* Maximum pg requested. */
 	u_int32_t	npages;		/* Num of pages rcvd for this file. */
-	DB_MPOOLFILE	*file_mpf;	/* Mpoolfile for in-mem database. */
+	DB_MPOOLFILE	*file_mpf;	/* Mpoolfile for current database. */
 	DB		*file_dbp;	/* This file's page info. */
-	DB		*queue_dbp;	/* Dbp for a queue file. */
+	DBC		*queue_dbc;	/* Dbc for a queue file. */
 
 	/* Vote tallying information. */
-	int		sites;		/* Sites heard from. */
-	int		winner;		/* Current winner. */
-	int		w_priority;	/* Winner priority. */
+	u_int32_t	sites;		/* Sites heard from. */
+	int		winner;		/* Current winner EID. */
+	u_int32_t	w_priority;	/* Winner priority. */
 	u_int32_t	w_gen;		/* Winner generation. */
 	DB_LSN		w_lsn;		/* Winner LSN. */
 	u_int32_t	w_tiebreaker;	/* Winner tiebreaking value. */
-	int		votes;		/* Number of votes for this site. */
+	u_int32_t	votes;		/* Number of votes for this site. */
 
 	db_timespec	etime;		/* Election start timestamp. */
 
 	/* Leases. */
 	db_timeout_t	lease_timeout;	/* Lease timeout. */
 	db_timespec	lease_duration;	/* Lease timeout with clock skew. */
-	u_int32_t	clock_skew;	/* Clock skew factor. */
+	u_int32_t	clock_skew;	/* Clock skew. */
+	u_int32_t	clock_base;	/* Clock scale factor base. */
 	db_timespec	grant_expire;	/* Local grant expiration time. */
 
 	/* Statistics. */
@@ -284,11 +296,12 @@ typedef struct __rep {
 #endif
 
 	/* Configuration. */
-#define	REP_C_BULK		0x00001		/* Bulk transfer. */
-#define	REP_C_DELAYCLIENT	0x00002		/* Delay client sync-up. */
-#define	REP_C_LEASE		0x00004		/* Leases configured. */
-#define	REP_C_NOAUTOINIT	0x00008		/* No auto initialization. */
-#define	REP_C_NOWAIT		0x00010		/* Immediate error return. */
+#define	REP_C_2SITE_STRICT	0x00001		/* Don't cheat on elections. */
+#define	REP_C_BULK		0x00002		/* Bulk transfer. */
+#define	REP_C_DELAYCLIENT	0x00004		/* Delay client sync-up. */
+#define	REP_C_LEASE		0x00008		/* Leases configured. */
+#define	REP_C_NOAUTOINIT	0x00010		/* No auto initialization. */
+#define	REP_C_NOWAIT		0x00020		/* Immediate error return. */
 	u_int32_t	config;		/* Configuration flags. */
 
 #define	REP_F_CLIENT		0x00000001	/* Client replica. */
@@ -343,22 +356,22 @@ typedef struct __rep {
 
 #define	REP_F_INTERNAL_INIT_MASK (REP_F_RECOVER_PAGE | REP_F_RECOVER_LOG)
 
-#define	IS_REP_MASTER(dbenv)						\
-	(REP_ON(dbenv) &&						\
-	    F_ISSET(((REP *)(dbenv)->rep_handle->region), REP_F_MASTER))
+#define	IS_REP_MASTER(env)						\
+	(REP_ON(env) &&							\
+	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_MASTER))
 
-#define	IS_REP_CLIENT(dbenv)						\
-	(REP_ON(dbenv) &&						\
-	    F_ISSET(((REP *)(dbenv)->rep_handle->region), REP_F_CLIENT))
+#define	IS_REP_CLIENT(env)						\
+	(REP_ON(env) &&							\
+	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_CLIENT))
 
-#define	IS_USING_LEASES(dbenv)						\
-	(REP_ON(dbenv) &&						\
-	    FLD_ISSET(((REP *)(dbenv)->rep_handle->region)->config,	\
+#define	IS_USING_LEASES(env)						\
+	(REP_ON(env) &&							\
+	    FLD_ISSET(((REP *)(env)->rep_handle->region)->config,	\
 	    REP_C_LEASE))
 
-#define	IS_CLIENT_PGRECOVER(dbenv)					\
-	(IS_REP_CLIENT(dbenv) &&					\
-	    F_ISSET(((REP *)(dbenv)->rep_handle->region), REP_F_RECOVER_PAGE))
+#define	IS_CLIENT_PGRECOVER(env)					\
+	(IS_REP_CLIENT(env) &&						\
+	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_RECOVER_PAGE))
 
 /*
  * Macros to figure out if we need to do replication pre/post-amble processing.
@@ -366,8 +379,8 @@ typedef struct __rep {
  * replication is running recovery or because it's a handle entirely owned by
  * the replication code (replication opens its own databases to track state).
  */
-#define	IS_ENV_REPLICATED(dbenv)					\
-	(REP_ON(dbenv) && (dbenv)->rep_handle->region->flags != 0)
+#define	IS_ENV_REPLICATED(env)						\
+	(REP_ON(env) && (env)->rep_handle->region->flags != 0)
 
 /*
  * Gap processing flags.  These provide control over the basic
@@ -380,15 +393,16 @@ typedef struct __rep {
 /*
  * Basic pre/post-amble processing.
  */
-#define	REPLICATION_WRAP(dbenv, func_call, ret) do {			\
+#define	REPLICATION_WRAP(env, func_call, checklock, ret) do {		\
 	int __rep_check, __t_ret;					\
-	__rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;			\
-	if (__rep_check && ((ret) = __env_rep_enter(dbenv, 0)) != 0)	\
-		return ((ret));						\
-	(ret) = func_call;						\
-	if (__rep_check &&						\
-	    (__t_ret = __env_db_rep_exit(dbenv)) != 0 && (ret) == 0)	\
+	__rep_check = IS_ENV_REPLICATED(env) ? 1 : 0;			\
+	(ret) = __rep_check ? __env_rep_enter(env, checklock) : 0;	\
+	if ((ret) == 0) {						\
+		(ret) = func_call;					\
+		if (__rep_check && (__t_ret =				\
+		    __env_db_rep_exit(env)) != 0 && (ret) == 0)		\
 		(ret) = __t_ret;					\
+	}								\
 } while (0)
 
 /*
@@ -427,21 +441,22 @@ struct __db_rep {
 	u_int32_t	gbytes;		/* Limit on data sent in single... */
 	u_int32_t	bytes;		/* __rep_process_message call. */
 
-	u_int32_t	request_gap;	/* # of records to receive before we
+	db_timespec	request_gap;	/* Minimum time to wait before we
 					 * request a missing log record. */
-	u_int32_t	max_gap;	/* Maximum number of records before
+	db_timespec	max_gap;	/* Maximum time to wait before
 					 * requesting a missing log record. */
 
 	u_int32_t	clock_skew;	/* Clock skew factor. */
+	u_int32_t	clock_base;	/* Clock skew base. */
 	u_int32_t	config;		/* Configuration flags. */
-	int		config_nsites;
+	u_int32_t	config_nsites;
 
 	db_timeout_t	elect_timeout;	/* Normal/full election timeouts. */
 	db_timeout_t	full_elect_timeout;
 
 	db_timeout_t	chkpt_delay;	/* Master checkpoint delay. */
 
-	int		my_priority;
+	u_int32_t	my_priority;
 	db_timeout_t	lease_timeout;	/* Master leases. */
 	/*
 	 * End of shared configuration information.
@@ -469,6 +484,8 @@ struct __db_rep {
 	db_timeout_t	ack_timeout;
 	db_timeout_t	election_retry_wait;
 	db_timeout_t	connection_retry_wait;
+	db_timeout_t	heartbeat_frequency; /* Max period between msgs. */
+	db_timeout_t	heartbeat_monitor_timeout;
 
 	/* Repmgr's copies of rep stuff. */
 	int		master_eid;
@@ -499,6 +516,7 @@ struct __db_rep {
 
 	socket_t	listen_fd;
 	repmgr_netaddr_t my_addr;
+	db_timespec	last_bcast;	/* Time of last broadcast msg. */
 
 	int		finished; /* Repmgr threads should shut down. */
 	int		done_one; /* TODO: rename */
@@ -517,16 +535,8 @@ struct __db_rep {
 };
 
 /*
- * Control structure for replication communication infrastructure.
+ * Control structure flags for replication communication infrastructure.
  */
-typedef struct {
-	u_int32_t	rep_version;	/* Replication version number. */
-	u_int32_t	log_version;	/* Log version number. */
-
-	DB_LSN		lsn;		/* Log sequence number. */
-	u_int32_t	rectype;	/* Message type. */
-	u_int32_t	gen;		/* Generation number. */
-	db_timespec	msg_time;	/* Timestamp for leases. */
 /*
  * Define old DB_LOG_ values that we must support here.  For reasons of
  * compatibility with old versions, these values must be reserved explicitly in
@@ -534,6 +544,7 @@ typedef struct {
  */
 #define	DB_LOG_PERM_42_44	0x20
 #define	DB_LOG_RESEND_42_44	0x40
+#define	REPCTL_INIT_45		0x02	/* Back compatible flag value. */
 
 #define	REPCTL_ELECTABLE	0x01	/* Upgraded client is electable. */
 #define	REPCTL_FLUSH		0x02	/* Record should be flushed. */
@@ -547,8 +558,38 @@ typedef struct {
 #define	REPCTL_LOG_END		0x80	/* Approximate end of group-wide log. */
 #define	REPCTL_PERM		DB_LOG_PERM_42_44
 #define	REPCTL_RESEND		DB_LOG_RESEND_42_44
+
+/*
+ * File info flags for internal init.  The per-database (i.e., file) flag
+ * represents the on-disk format of the file, and is conveyed from the master to
+ * the initializing client in the UPDATE message, so that the client can know
+ * how to create the file.  The per-page flag is conveyed along with each PAGE
+ * message, describing the format of the page image being transmitted; it is of
+ * course set by the site serving the PAGE_REQ.  The serving site gets the page
+ * image from its own mpool, and thus the page is in the native format of the
+ * serving site.  This format may be different (i.e., opposite) from the on-disk
+ * format, and in fact can vary per-page, since with client-to-client sync it is
+ * possible for various different sites to serve the various PAGE_REQ requests.
+ */
+#define	REPINFO_DB_LITTLEENDIAN	0x0001	/* File is little-endian lorder. */
+#define	REPINFO_PG_LITTLEENDIAN	0x0002	/* Page is little-endian lorder. */
+
+/*
+ * Control message format for 4.6 release.  The db_timespec_t is
+ * not a portable structure.  Therefore, in 4.6, replication among
+ * mixed OSs such as Linux and Windows, which have different time_t
+ * sizes, does not work.
+ */
+typedef struct {
+	u_int32_t	rep_version;	/* Replication version number. */
+	u_int32_t	log_version;	/* Log version number. */
+
+	DB_LSN		lsn;		/* Log sequence number. */
+	u_int32_t	rectype;	/* Message type. */
+	u_int32_t	gen;		/* Generation number. */
+	db_timespec	msg_time;	/* Timestamp seconds for leases. */
 	u_int32_t	flags;		/* log_put flag value. */
-} REP_CONTROL;
+} REP_46_CONTROL;
 
 /*
  * Control message format for 4.5 release and earlier.
@@ -573,23 +614,9 @@ typedef struct __rep_lease_entry {
 	DB_LSN		lease_lsn;	/* Durable LSN lease applies to. */
 } REP_LEASE_ENTRY;
 
-typedef struct __rep_grant_info {
-	db_timespec	msg_time;	/* Echoed master timestamp. */
-#ifdef	DIAGNOSTIC
-	db_timespec	expire_time;	/* Local expiration time. */
-#endif
-} REP_GRANT_INFO;
-
-/* Election vote information, 4.2 version.  Does not have nvotes. */
-typedef struct __rep_old_vote {
-	u_int32_t	egen;		/* Election generation. */
-	int		nsites;		/* Number of sites I've been in
-					 * communication with. */
-	int		priority;	/* My site's priority. */
-	u_int32_t	tiebreaker;	/* Tie-breaking quasi-random value. */
-} REP_OLD_VOTE_INFO;
-
-/* Election vote information. */
+/*
+ * Old vote info where some fields were not fixed size.
+ */
 typedef struct {
 	u_int32_t	egen;		/* Election generation. */
 	int		nsites;		/* Number of sites I've been in
@@ -597,7 +624,7 @@ typedef struct {
 	int		nvotes;		/* Number of votes needed to win. */
 	int		priority;	/* My site's priority. */
 	u_int32_t	tiebreaker;	/* Tie-breaking quasi-random value. */
-} REP_VOTE_INFO;
+} REP_OLD_VOTE_INFO;
 
 typedef struct {
 	u_int32_t	egen;		/* Voter's election generation. */

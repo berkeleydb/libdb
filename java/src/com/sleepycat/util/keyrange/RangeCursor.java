@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: RangeCursor.java,v 1.6 2007/05/17 18:17:20 bostic Exp $
+ * $Id: RangeCursor.java,v 1.8 2008/02/07 17:12:29 mark Exp $
  */
 
 package com.sleepycat.util.keyrange;
@@ -50,6 +50,12 @@ public class RangeCursor implements Cloneable {
     private KeyRange pkRange;
 
     /**
+     * If the DB supported sorted duplicates, then calling
+     * Cursor.getSearchBothRange is allowed.
+     */
+    private boolean sortedDups;
+
+    /**
      * The privXxx entries are used only when the range is bounded.  We read
      * into these private entries to avoid modifying the caller's entry
      * parameters in the case where we read successfully but the key is out of
@@ -72,20 +78,12 @@ public class RangeCursor implements Cloneable {
     private boolean initialized;
 
     /**
-     * Creates a range cursor.
-     */
-    public RangeCursor(KeyRange range, Cursor cursor)
-        throws DatabaseException {
-
-        this.range = range;
-        this.cursor = cursor;
-        init();
-    }
-
-    /**
      * Creates a range cursor with a duplicate range.
      */
-    public RangeCursor(KeyRange range, KeyRange pkRange, Cursor cursor)
+    public RangeCursor(KeyRange range,
+                       KeyRange pkRange,
+                       boolean sortedDups,
+                       Cursor cursor)
         throws DatabaseException {
 
         if (pkRange != null && !range.singleKey) {
@@ -93,6 +91,7 @@ public class RangeCursor implements Cloneable {
         }
         this.range = range;
         this.pkRange = pkRange;
+        this.sortedDups = sortedDups;
         this.cursor = cursor;
         init();
         if (pkRange != null && secCursor == null) {
@@ -278,7 +277,7 @@ public class RangeCursor implements Cloneable {
                 status = OperationStatus.NOTFOUND;
                 Cursor oldCursor = beginOperation();
                 try {
-                    if (pkRange.beginKey == null) {
+                    if (pkRange.beginKey == null || !sortedDups) {
                         status = doGetSearchKey(lockMode);
                     } else {
                         KeyRange.copy(pkRange.beginKey, privPKey);
@@ -345,7 +344,9 @@ public class RangeCursor implements Cloneable {
             if (pkRange != null) {
                 KeyRange.copy(range.beginKey, privKey);
                 boolean doLast = false;
-                if (pkRange.endKey == null) {
+                if (!sortedDups) {
+                    status = doGetSearchKey(lockMode);
+                } else if (pkRange.endKey == null) {
                     doLast = true;
                 } else {
                     KeyRange.copy(pkRange.endKey, privPKey);
@@ -1000,8 +1001,8 @@ public class RangeCursor implements Cloneable {
             return OperationStatus.NOTFOUND;
         }
         if (secCursor != null && privPKey != null) {
-            return secCursor.getSearchBothRange(privKey, privPKey, privData,
-                                                lockMode);
+            return secCursor.getSearchBothRange(privKey, privPKey,
+                                                privData, lockMode);
         } else {
             return cursor.getSearchBothRange(privKey, privData, lockMode);
         }

@@ -37,7 +37,7 @@
       <p>
             When you use transactional cursors with a concurrent application, remember that 
             in the event of a deadlock you must make sure that you close your cursor before you abort and retry your
-            transaction.
+            transaction. 
          </p>
       <p>
             Also, remember that when you are using the default isolation level, 
@@ -49,7 +49,7 @@
       <p>
                 For this reason, if you must routinely walk your database with a
                 transactional cursor, consider using a reduced isolation level
-                such as read committed.
+                such as read committed. 
           </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -75,7 +75,8 @@
                 cursors configured for uncommitted reads uses uncommitted reads.
             </p>
         <p>
-                Either way, you must first configure your database handle to support
+                    Either way, you must first configure your database
+                     handle to support
                 uncommitted reads before you can configure your transactions or
                 your cursors to use them.
             </p>

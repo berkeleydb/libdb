@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: debug.h,v 12.12 2007/05/17 15:15:05 bostic Exp $
+ * $Id: debug.h,v 12.19 2008/01/29 01:41:10 bostic Exp $
  */
 
 #ifndef _DB_DEBUG_H_
@@ -79,13 +79,13 @@ typedef enum {
  * original routine that took the variadic list of arguments.
  */
 #if defined(STDC_HEADERS) || defined(__cplusplus)
-#define	DB_REAL_ERR(env, error, error_set, app_call, fmt) {		\
+#define	DB_REAL_ERR(dbenv, error, error_set, app_call, fmt) {		\
 	va_list __ap;							\
 									\
 	/* Call the application's callback function, if specified. */	\
 	va_start(__ap, fmt);						\
-	if ((env) != NULL && (env)->db_errcall != NULL)			\
-		__db_errcall(env, error, error_set, fmt, __ap);		\
+	if ((dbenv) != NULL && (dbenv)->db_errcall != NULL)		\
+		__db_errcall(dbenv, error, error_set, fmt, __ap);	\
 	va_end(__ap);							\
 									\
 	/*								\
@@ -96,21 +96,21 @@ typedef enum {
 	 * configured an output channel, default by writing to stderr.	\
 	 */								\
 	va_start(__ap, fmt);						\
-	if ((env) == NULL ||						\
-	    (env)->db_errfile != NULL ||				\
-	    ((env)->db_errcall == NULL &&				\
-	    ((app_call) || F_ISSET((env), DB_ENV_NO_OUTPUT_SET))))	\
-		__db_errfile(env, error, error_set, fmt, __ap);		\
+	if ((dbenv) == NULL ||						\
+	    (dbenv)->db_errfile != NULL ||				\
+	    ((dbenv)->db_errcall == NULL &&				\
+	    ((app_call) || F_ISSET((dbenv)->env, ENV_NO_OUTPUT_SET))))	\
+		__db_errfile(dbenv, error, error_set, fmt, __ap);	\
 	va_end(__ap);							\
 }
 #else
-#define	DB_REAL_ERR(env, error, error_set, fmt) {			\
+#define	DB_REAL_ERR(dbenv, error, error_set, app_call, fmt) {		\
 	va_list __ap;							\
 									\
 	/* Call the application's callback function, if specified. */	\
 	va_start(__ap);							\
-	if ((env) != NULL && (env)->db_errcall != NULL)			\
-		__db_errcall(env, error, error_set, fmt, __ap);		\
+	if ((dbenv) != NULL && (dbenv)->db_errcall != NULL)		\
+		__db_errcall(dbenv, error, error_set, fmt, __ap);	\
 	va_end(__ap);							\
 									\
 	/*								\
@@ -121,21 +121,22 @@ typedef enum {
 	 * configured an output channel, default by writing to stderr.	\
 	 */								\
 	va_start(__ap);							\
-	if ((env) == NULL ||						\
-	    (env)->db_errfile != NULL ||				\
-	    ((env)->db_errcall == NULL &&				\
-	    ((app_call) || F_ISSET((env), DB_ENV_NO_OUTPUT_SET))))	\
+	if ((dbenv) == NULL ||						\
+	    (dbenv)->db_errfile != NULL ||				\
+	    ((dbenv)->db_errcall == NULL &&				\
+	    ((app_call) || F_ISSET((dbenv)->env, ENV_NO_OUTPUT_SET))))	\
+		 __db_errfile(env, error, error_set, fmt, __ap); 	\
 	va_end(__ap);							\
 }
 #endif
 #if defined(STDC_HEADERS) || defined(__cplusplus)
-#define	DB_REAL_MSG(env, fmt) {						\
+#define	DB_REAL_MSG(dbenv, fmt) {					\
 	va_list __ap;							\
 									\
 	/* Call the application's callback function, if specified. */	\
 	va_start(__ap, fmt);						\
-	if ((env) != NULL && (env)->db_msgcall != NULL)			\
-		__db_msgcall(env, fmt, __ap);				\
+	if ((dbenv) != NULL && (dbenv)->db_msgcall != NULL)		\
+		__db_msgcall(dbenv, fmt, __ap);				\
 	va_end(__ap);							\
 									\
 	/*								\
@@ -144,20 +145,21 @@ typedef enum {
 	 * its file descriptor, write to stdout.			\
 	 */								\
 	va_start(__ap, fmt);						\
-	if ((env) == NULL ||						\
-	    (env)->db_msgfile != NULL || (env)->db_msgcall == NULL) {	\
-		__db_msgfile(env, fmt, __ap);				\
+	if ((dbenv) == NULL ||						\
+	    (dbenv)->db_msgfile != NULL ||				\
+	    (dbenv)->db_msgcall == NULL) {				\
+		__db_msgfile(dbenv, fmt, __ap);				\
 	}								\
 	va_end(__ap);							\
 }
 #else
-#define	DB_REAL_MSG(env, fmt) {						\
+#define	DB_REAL_MSG(dbenv, fmt) {					\
 	va_list __ap;							\
 									\
 	/* Call the application's callback function, if specified. */	\
 	va_start(__ap);							\
-	if ((env) != NULL && (env)->db_msgcall != NULL)			\
-		__db_msgcall(env, fmt, __ap);				\
+	if ((dbenv) != NULL && (dbenv)->db_msgcall != NULL)		\
+		__db_msgcall(dbenv, fmt, __ap);				\
 	va_end(__ap);							\
 									\
 	/*								\
@@ -166,9 +168,10 @@ typedef enum {
 	 * its file descriptor, write to stdout.			\
 	 */								\
 	va_start(__ap);							\
-	if ((env) == NULL ||						\
-	    (env)->db_msgfile != NULL || (env)->db_msgcall == NULL) {	\
-		__db_msgfile(env, fmt, __ap);				\
+	if ((dbenv) == NULL ||						\
+	    (dbenv)->db_msgfile != NULL ||				\
+	    (dbenv)->db_msgcall == NULL) {				\
+		__db_msgfile(dbenv, fmt, __ap);				\
 	}								\
 	va_end(__ap);							\
 }
@@ -193,7 +196,7 @@ typedef enum {
 		memset(&__op, 0, sizeof(__op));				\
 		__op.data = O;						\
 		__op.size = strlen(O) + 1;				\
-		(void)__db_debug_log((C)->dbp->dbenv, T, &__lsn, 0,	\
+		(void)__db_debug_log((C)->env, T, &__lsn, 0,		\
 		    &__op, (C)->dbp->log_filename->id, K, A, F);	\
 	}								\
 }
@@ -218,20 +221,13 @@ typedef enum {
 		(flags) |= DB_LOCK_NOWAIT;				\
 } while (0)
 
-#define	DB_ENV_TEST_RECYCLE(env, ret) do {				\
-	if ((env)->test_copy == DB_TEST_RECYCLE) {			\
-		ret = 0;						\
-		goto db_tr_err;						\
-	}								\
-} while (0)
-
 #define	DB_ENV_TEST_RECOVERY(env, val, ret, name) do {			\
 	int __ret;							\
 	PANIC_CHECK((env));						\
 	if ((env)->test_copy == (val)) {				\
 		/* COPY the FILE */					\
 		if ((__ret = __db_testcopy((env), NULL, (name))) != 0)	\
-			(ret) = __db_panic((env), __ret);		\
+			(ret) = __env_panic((env), __ret);		\
 	}								\
 	if ((env)->test_abort == (val)) {				\
 		/* ABORT the TXN */					\
@@ -242,20 +238,21 @@ typedef enum {
 } while (0)
 
 #define	DB_TEST_RECOVERY(dbp, val, ret, name) do {			\
+	ENV *__env = (dbp)->env;					\
 	int __ret;							\
-	PANIC_CHECK((dbp)->dbenv);					\
-	if ((dbp)->dbenv->test_copy == (val)) {				\
+	PANIC_CHECK(__env);						\
+	if (__env->test_copy == (val)) {				\
 		/* Copy the file. */					\
 		if (F_ISSET((dbp),					\
 		    DB_AM_OPEN_CALLED) && (dbp)->mpf != NULL)		\
 			(void)__db_sync(dbp);				\
 		if ((__ret =						\
-		    __db_testcopy((dbp)->dbenv, (dbp), (name))) != 0)	\
-			(ret) = __db_panic((dbp)->dbenv, __ret);	\
+		    __db_testcopy(__env, (dbp), (name))) != 0)		\
+			(ret) = __env_panic(__env, __ret);		\
 	}								\
-	if ((dbp)->dbenv->test_abort == (val)) {			\
+	if (__env->test_abort == (val)) {				\
 		/* Abort the transaction. */				\
-		(dbp)->dbenv->test_abort = 0;				\
+		__env->test_abort = 0;					\
 		(ret) = EINVAL;						\
 		goto db_tr_err;						\
 	}								\
@@ -263,11 +260,10 @@ typedef enum {
 
 #define	DB_TEST_RECOVERY_LABEL	db_tr_err:
 
-#define	DB_TEST_WAIT(env, val)					\
-	if ((val) != 0)						\
-		__os_sleep((env), (u_long)(val), 0)
+#define	DB_TEST_WAIT(env, val)						\
+	if ((val) != 0)							\
+		__os_yield((env), (u_long)(val), 0)
 #else
-#define	DB_ENV_TEST_RECYCLE(env, ret);
 #define	DB_TEST_SUBLOCKS(env, flags)
 #define	DB_ENV_TEST_RECOVERY(env, val, ret, name)
 #define	DB_TEST_RECOVERY(dbp, val, ret, name)

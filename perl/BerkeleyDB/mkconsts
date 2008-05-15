@@ -628,7 +628,7 @@ use constant IGNORE => 'ignore' ;
 	DB_PRIORITY_VERY_HIGH      => '4.1.24',
 
 	# enum db_recops
-	DB_TXN_BACKWARD_ALLOC      => '4.1.24',
+    #DB_TXN_BACKWARD_ALLOC      => '4.1.24',
 	DB_TXN_PRINT               => '4.1.24',
 
 	#########
@@ -837,6 +837,45 @@ use constant IGNORE => 'ignore' ;
 
 	# enum DB_CACHE_PRIORITY
 	DB_PRIORITY_UNCHANGED      => '4.6.11',
+
+	#########
+	# 4.7.16
+	#########
+
+	DBC_DUPLICATE              => IGNORE,
+	DB_FOREIGN_ABORT           => DEFINE,
+	DB_FOREIGN_CASCADE         => DEFINE,
+	DB_FOREIGN_CONFLICT        => DEFINE,
+	DB_FOREIGN_NULLIFY         => DEFINE,
+	DB_LOG_AUTO_REMOVE         => DEFINE,
+	DB_LOG_DIRECT              => DEFINE,
+	DB_LOG_DSYNC               => DEFINE,
+	DB_LOG_IN_MEMORY           => DEFINE,
+	DB_LOG_ZERO                => DEFINE,
+	DB_MPOOL_NOLOCK            => DEFINE,
+	DB_REPMGR_CONF_2SITE_STRICT => DEFINE,
+	DB_REP_CONF_LEASE          => DEFINE,
+	DB_REP_HEARTBEAT_MONITOR   => DEFINE,
+	DB_REP_HEARTBEAT_SEND      => DEFINE,
+	DB_SA_SKIPFIRSTKEY         => DEFINE,
+	DB_STAT_MEMP_NOERROR       => DEFINE,
+	DB_ST_DUPOK                => DEFINE,
+	DB_ST_DUPSET               => DEFINE,
+	DB_ST_DUPSORT              => DEFINE,
+	DB_ST_IS_RECNO             => DEFINE,
+	DB_ST_OVFL_LEAF            => DEFINE,
+	DB_ST_RECNUM               => DEFINE,
+	DB_ST_RELEN                => DEFINE,
+	DB_ST_TOPLEVEL             => DEFINE,
+	DB_VERB_REPMGR_CONNFAIL    => DEFINE,
+	DB_VERB_REPMGR_MISC        => DEFINE,
+	DB_VERB_REP_ELECT          => DEFINE,
+	DB_VERB_REP_LEASE          => DEFINE,
+	DB_VERB_REP_MISC           => DEFINE,
+	DB_VERB_REP_MSGS           => DEFINE,
+	DB_VERB_REP_SYNC           => DEFINE,
+	MP_DUMMY                   => IGNORE,
+
 
 	) ;
 

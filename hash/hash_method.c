@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: hash_method.c,v 12.7 2007/05/17 15:15:38 bostic Exp $
+ * $Id: hash_method.c,v 12.9 2008/01/08 20:58:34 bostic Exp $
  */
 
 #include "db_config.h"
@@ -30,7 +30,7 @@ __ham_db_create(dbp)
 	HASH *hashp;
 	int ret;
 
-	if ((ret = __os_malloc(dbp->dbenv,
+	if ((ret = __os_malloc(dbp->env,
 	    sizeof(HASH), &dbp->h_internal)) != 0)
 		return (ret);
 
@@ -60,7 +60,7 @@ __ham_db_close(dbp)
 {
 	if (dbp->h_internal == NULL)
 		return (0);
-	__os_free(dbp->dbenv, dbp->h_internal);
+	__os_free(dbp->env, dbp->h_internal);
 	dbp->h_internal = NULL;
 	return (0);
 }

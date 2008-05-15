@@ -1,15 +1,54 @@
 /* Do not edit: automatically built by gen_rec.awk. */
 
 #include "db_config.h"
-
-#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <db.h>
-
+#include "db.h"
+#include "db_int.h"
+#include "dbinc/db_swap.h"
 #include "ex_apprec.h"
+/*
+ * PUBLIC: int ex_apprec_mkdir_read __P((DB_ENV *, void *,
+ * PUBLIC:     ex_apprec_mkdir_args **));
+ */
+int
+ex_apprec_mkdir_read(dbenv, recbuf, argpp)
+	DB_ENV *dbenv;
+	void *recbuf;
+	ex_apprec_mkdir_args **argpp;
+{
+	ex_apprec_mkdir_args *argp;
+	u_int8_t *bp;
+	ENV *env;
+
+	env = dbenv->env;
+
+	if ((argp = malloc(sizeof(ex_apprec_mkdir_args) + sizeof(DB_TXN))) == NULL)
+		return (ENOMEM);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->dirname, 0, sizeof(argp->dirname));
+	LOGCOPY_32(env,&argp->dirname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->dirname.data = bp;
+	bp += argp->dirname.size;
+
+	*argpp = argp;
+	return (0);
+}
+
 /*
  * PUBLIC: int ex_apprec_mkdir_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, const DBT *));
@@ -25,15 +64,16 @@ ex_apprec_mkdir_log(dbenv, txnp, ret_lsnp, flags,
 {
 	DBT logrec;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
+	ENV *env;
 	u_int32_t zero, rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
 	int ret;
 
+	env = dbenv->env;
+	rlsnp = ret_lsnp;
 	rectype = DB_ex_apprec_mkdir;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (txnp == NULL) {
@@ -62,21 +102,21 @@ ex_apprec_mkdir_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
 	if (dirname == NULL) {
 		zero = 0;
-		memcpy(bp, &zero, sizeof(u_int32_t));
+		LOGCOPY_32(env, bp, &zero);
 		bp += sizeof(u_int32_t);
 	} else {
-		memcpy(bp, &dirname->size, sizeof(dirname->size));
+		LOGCOPY_32(env, bp, &dirname->size);
 		bp += sizeof(dirname->size);
 		memcpy(bp, dirname->data, dirname->size);
 		bp += dirname->size;
@@ -91,50 +131,10 @@ ex_apprec_mkdir_log(dbenv, txnp, ret_lsnp, flags,
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
 		(void)ex_apprec_mkdir_print(dbenv,
-		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT);
 #endif
 
 	free(logrec.data);
 	return (ret);
-}
-
-/*
- * PUBLIC: int ex_apprec_mkdir_read __P((DB_ENV *, void *,
- * PUBLIC:     ex_apprec_mkdir_args **));
- */
-int
-ex_apprec_mkdir_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
-	void *recbuf;
-	ex_apprec_mkdir_args **argpp;
-{
-	ex_apprec_mkdir_args *argp;
-	u_int8_t *bp;
-	/* Keep the compiler quiet. */
-
-	dbenv = NULL;
-	if ((argp = malloc(sizeof(ex_apprec_mkdir_args) + sizeof(DB_TXN))) == NULL)
-		return (ENOMEM);
-	bp = recbuf;
-	argp->txnp = (DB_TXN *)&argp[1];
-	memset(argp->txnp, 0, sizeof(DB_TXN));
-
-	memcpy(&argp->type, bp, sizeof(argp->type));
-	bp += sizeof(argp->type);
-
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
-	bp += sizeof(argp->txnp->txnid);
-
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
-	bp += sizeof(DB_LSN);
-
-	memset(&argp->dirname, 0, sizeof(argp->dirname));
-	memcpy(&argp->dirname.size, bp, sizeof(u_int32_t));
-	bp += sizeof(u_int32_t);
-	argp->dirname.data = bp;
-	bp += argp->dirname.size;
-
-	*argpp = argp;
-	return (0);
 }
 

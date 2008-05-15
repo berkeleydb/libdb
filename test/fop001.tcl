@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2007 Oracle.  All rights reserved.
+# Copyright (c) 2000,2008 Oracle.  All rights reserved.
 #
-# $Id: fop001.tcl,v 12.9 2007/06/01 21:00:58 carol Exp $
+# $Id: fop001.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	fop001.tcl
 # TEST	Test file system operations, combined in a transaction. [#7363]

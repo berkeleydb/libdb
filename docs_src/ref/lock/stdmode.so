@@ -1,4 +1,4 @@
-m4_comment([$Id: stdmode.so,v 10.26 2001/05/22 19:39:32 bostic Exp $])
+m4_comment([$Id: stdmode.so,v 10.27 2007/10/26 15:02:17 bostic Exp $])
 
 m4_ref_title(Locking Subsystem,
     Standard lock modes, standard @lock modes, lock/max, lock/dead)
@@ -19,11 +19,11 @@ to applications using the m4_db Locking subsystem interfaces directly.])
 
 m4_tagbegin
 m4_tag(DB_LOCK_NG, [not granted (always 0)])
-m4_tagns(DB_LOCK_READ, [read (shared)])
-m4_tagns(DB_LOCK_WRITE, [write (exclusive)])
-m4_tagns(DB_LOCK_IWRITE, [intention to write (shared)])
-m4_tagns(DB_LOCK_IREAD, [intention to read (shared)])
-m4_tagns(DB_LOCK_IWR, [intention to read and write (shared)])
+m4_tag(DB_LOCK_READ, [read (shared)])
+m4_tag(DB_LOCK_WRITE, [write (exclusive)])
+m4_tag(DB_LOCK_IWRITE, [intention to write (shared)])
+m4_tag(DB_LOCK_IREAD, [intention to read (shared)])
+m4_tag(DB_LOCK_IWR, [intention to read and write (shared)])
 m4_tagend
 
 m4_p([dnl

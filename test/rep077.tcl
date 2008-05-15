@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep077.tcl,v 12.1 2007/06/11 18:45:19 sue Exp $
+# $Id: rep077.tcl,v 12.3 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep077
 # TEST
@@ -42,10 +42,11 @@ proc rep077 { method { tnum "077"} args} {
 proc rep077_sub { method tnum logset largs} {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set niter 5

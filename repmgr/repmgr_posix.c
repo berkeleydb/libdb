@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_posix.c,v 1.29 2007/06/11 18:29:34 alanb Exp $
+ * $Id: repmgr_posix.c,v 1.37 2008/03/13 17:31:28 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -21,19 +21,19 @@
 size_t __repmgr_guesstimated_max = (128 * 1024);
 #endif
 
-static int __repmgr_conn_work __P((DB_ENV *,
+static int __repmgr_conn_work __P((ENV *,
     REPMGR_CONNECTION *, fd_set *, fd_set *, int));
-static int finish_connecting __P((DB_ENV *, REPMGR_CONNECTION *));
+static int finish_connecting __P((ENV *, REPMGR_CONNECTION *));
 
 /*
  * Starts the thread described in the argument, and stores the resulting thread
  * ID therein.
  *
- * PUBLIC: int __repmgr_thread_start __P((DB_ENV *, REPMGR_RUNNABLE *));
+ * PUBLIC: int __repmgr_thread_start __P((ENV *, REPMGR_RUNNABLE *));
  */
 int
-__repmgr_thread_start(dbenv, runnable)
-	DB_ENV *dbenv;
+__repmgr_thread_start(env, runnable)
+	ENV *env;
 	REPMGR_RUNNABLE *runnable;
 {
 	pthread_attr_t *attrp;
@@ -48,7 +48,7 @@ __repmgr_thread_start(dbenv, runnable)
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	attrp = &attributes;
 	if ((ret = pthread_attr_init(&attributes)) != 0) {
-		__db_err(dbenv,
+		__db_err(env,
 		    ret, "pthread_attr_init in repmgr_thread_start");
 		return (ret);
 	}
@@ -65,7 +65,7 @@ __repmgr_thread_start(dbenv, runnable)
 		size = PTHREAD_STACK_MIN;
 #endif
 	if ((ret = pthread_attr_setstacksize(&attributes, size)) != 0) {
-		__db_err(dbenv,
+		__db_err(env,
 		    ret, "pthread_attr_setstacksize in repmgr_thread_start");
 		return (ret);
 	}
@@ -74,7 +74,7 @@ __repmgr_thread_start(dbenv, runnable)
 #endif
 
 	return (pthread_create(&runnable->thread_id, attrp,
-		    runnable->run, dbenv));
+		    runnable->run, env));
 }
 
 /*
@@ -104,7 +104,7 @@ __repmgr_set_nonblocking(fd)
 }
 
 /*
- * PUBLIC: int __repmgr_wake_waiting_senders __P((DB_ENV *));
+ * PUBLIC: int __repmgr_wake_waiting_senders __P((ENV *));
  *
  * Wake any send()-ing threads waiting for an acknowledgement.
  *
@@ -113,14 +113,14 @@ __repmgr_set_nonblocking(fd)
  * properly.
  */
 int
-__repmgr_wake_waiting_senders(dbenv)
-	DB_ENV *dbenv;
+__repmgr_wake_waiting_senders(env)
+	ENV *env;
 {
-	return (pthread_cond_broadcast(&dbenv->rep_handle->ack_condition));
+	return (pthread_cond_broadcast(&env->rep_handle->ack_condition));
 }
 
 /*
- * PUBLIC: int __repmgr_await_ack __P((DB_ENV *, const DB_LSN *));
+ * PUBLIC: int __repmgr_await_ack __P((ENV *, const DB_LSN *));
  *
  * Waits (a limited time) for configured number of remote sites to ack the given
  * LSN.
@@ -129,23 +129,23 @@ __repmgr_wake_waiting_senders(dbenv)
  * Caller must hold repmgr->mutex.
  */
 int
-__repmgr_await_ack(dbenv, lsnp)
-	DB_ENV *dbenv;
+__repmgr_await_ack(env, lsnp)
+	ENV *env;
 	const DB_LSN *lsnp;
 {
 	DB_REP *db_rep;
 	struct timespec deadline;
 	int ret, timed;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	if ((timed = (db_rep->ack_timeout > 0)))
-		__repmgr_compute_wait_deadline(dbenv, &deadline,
+		__repmgr_compute_wait_deadline(env, &deadline,
 		    db_rep->ack_timeout);
 	else
 		COMPQUIET(deadline.tv_sec, 0);
 
-	while (!__repmgr_is_permanent(dbenv, lsnp)) {
+	while (!__repmgr_is_permanent(env, lsnp)) {
 		if (timed)
 			ret = pthread_cond_timedwait(&db_rep->ack_condition,
 			    &db_rep->mutex, &deadline);
@@ -161,37 +161,41 @@ __repmgr_await_ack(dbenv, lsnp)
 }
 
 /*
- * Computes a deadline time a certain distance into the future, in a form
- * suitable for the pthreads timed wait operation.  Curiously, that call uses
- * nano-second resolution; elsewhere we use microseconds.
+ * __repmgr_compute_wait_deadline --
+ *	Computes a deadline time a certain distance into the future.
  *
- * PUBLIC: void __repmgr_compute_wait_deadline __P((DB_ENV*,
+ * PUBLIC: void __repmgr_compute_wait_deadline __P((ENV*,
  * PUBLIC:    struct timespec *, db_timeout_t));
  */
 void
-__repmgr_compute_wait_deadline(dbenv, result, wait)
-	DB_ENV *dbenv;
+__repmgr_compute_wait_deadline(env, result, wait)
+	ENV *env;
 	struct timespec *result;
 	db_timeout_t wait;
 {
-	db_timespec v;
-
 	/*
+	 * The result is suitable for the pthread_cond_timewait call.  (That
+	 * call uses nano-second resolution; elsewhere we use microseconds.)
+	 *
 	 * Start with "now"; then add the "wait" offset.
 	 *
 	 * A db_timespec is the same as a "struct timespec" so we can pass
 	 * result directly to the underlying Berkeley DB OS routine.
+	 *
+	 * !!!
+	 * We use the system clock for the pthread_cond_timedwait call, but
+	 * that's not optimal on systems with monotonic timers.   Instead,
+	 * we should call pthread_condattr_setclock on systems where it and
+	 * monotonic timers are available, and then configure both this call
+	 * and the subsequent pthread_cond_timewait call to use a monotonic
+	 * timer.
 	 */
-	__os_gettime(dbenv, (db_timespec *)result);
-
-	/* Convert microsecond wait to a timespec. */
-	DB_TIMEOUT_TO_TIMESPEC(wait, &v);
-
-	timespecadd(result, &v);
+	__os_gettime(env, (db_timespec *)result, 0);
+	TIMESPEC_ADD_DB_TIMEOUT(result, wait);
 }
 
 /*
- * PUBLIC: int __repmgr_await_drain __P((DB_ENV *,
+ * PUBLIC: int __repmgr_await_drain __P((ENV *,
  * PUBLIC:    REPMGR_CONNECTION *, db_timeout_t));
  *
  * Waits for space to become available on the connection's output queue.
@@ -205,13 +209,13 @@ __repmgr_compute_wait_deadline(dbenv, result, wait)
  *
  * In cases #3 and #5 we return an error code.  Caller is responsible for
  * distinguishing the remaining cases if desired.
- * 
+ *
  * !!!
  * Caller must hold repmgr->mutex.
  */
 int
-__repmgr_await_drain(dbenv, conn, timeout)
-	DB_ENV *dbenv;
+__repmgr_await_drain(env, conn, timeout)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 	db_timeout_t timeout;
 {
@@ -219,9 +223,9 @@ __repmgr_await_drain(dbenv, conn, timeout)
 	struct timespec deadline;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	__repmgr_compute_wait_deadline(dbenv, &deadline, timeout);
+	__repmgr_compute_wait_deadline(env, &deadline, timeout);
 
 	ret = 0;
 	while (conn->out_queue_length >= OUT_QUEUE_LIMIT) {
@@ -235,13 +239,13 @@ __repmgr_await_drain(dbenv, conn, timeout)
 			 * Another thread could have stumbled into an error on
 			 * the socket while we were waiting.
 			 */
-			if (F_ISSET(conn, CONN_DEFUNCT)) {
+			if (conn->state == CONN_DEFUNCT) {
 				ret = DB_REP_UNAVAIL; /* #3. */
 				goto out;
 			}
 			break;
 		case ETIMEDOUT:
-			F_SET(conn, CONN_CONGESTED);
+			conn->state = CONN_CONGESTED;
 			ret = 0;
 			goto out; /* #2. */
 		default:
@@ -279,7 +283,7 @@ __repmgr_free_cond(c)
 }
 
 /*
- * PUBLIC: int __repmgr_init_sync __P((DB_ENV *, DB_REP *));
+ * PUBLIC: int __repmgr_init_sync __P((ENV *, DB_REP *));
  *
  * Allocate/initialize all data necessary for thread synchronization.  This
  * should be an all-or-nothing affair.  Other than here and in _close_sync there
@@ -288,14 +292,14 @@ __repmgr_free_cond(c)
  * descriptor(s) to keep track of which it is.
  */
 int
-__repmgr_init_sync(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_init_sync(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
 	int ret, mutex_inited, ack_inited, elect_inited, queue_inited,
 	    file_desc[2];
 
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 
 	mutex_inited = ack_inited = elect_inited = queue_inited = FALSE;
 
@@ -338,19 +342,19 @@ err:
 }
 
 /*
- * PUBLIC: int __repmgr_close_sync __P((DB_ENV *));
+ * PUBLIC: int __repmgr_close_sync __P((ENV *));
  *
  * Frees the thread synchronization data within a repmgr struct, in a
  * platform-specific way.
  */
 int
-__repmgr_close_sync(dbenv)
-	DB_ENV *dbenv;
+__repmgr_close_sync(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	int ret, t_ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	if (!(REPMGR_SYNC_INITED(db_rep)))
 		return (0);
@@ -383,17 +387,17 @@ __repmgr_close_sync(dbenv)
  * and allocation.  A valid db_rep->listen_fd acts as the "all-or-nothing"
  * sentinel signifying that these resources are allocated.
  *
- * PUBLIC: int __repmgr_net_init __P((DB_ENV *, DB_REP *));
+ * PUBLIC: int __repmgr_net_init __P((ENV *, DB_REP *));
  */
 int
-__repmgr_net_init(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_net_init(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
 	int ret;
 	struct sigaction sigact;
 
-	if ((ret = __repmgr_listen(dbenv)) != 0)
+	if ((ret = __repmgr_listen(env)) != 0)
 		return (ret);
 
 	/*
@@ -402,7 +406,7 @@ __repmgr_net_init(dbenv, db_rep)
 	 */
 	if (sigaction(SIGPIPE, NULL, &sigact) == -1) {
 		ret = errno;
-		__db_err(dbenv, ret, "can't access signal handler");
+		__db_err(env, ret, "can't access signal handler");
 		goto err;
 	}
 	/*
@@ -414,7 +418,7 @@ __repmgr_net_init(dbenv, db_rep)
 		sigact.sa_flags = 0;
 		if (sigaction(SIGPIPE, &sigact, NULL) == -1) {
 			ret = errno;
-			__db_err(dbenv, ret, "can't access signal handler");
+			__db_err(env, ret, "can't access signal handler");
 			goto err;
 		}
 	}
@@ -462,17 +466,17 @@ __repmgr_signal(v)
 }
 
 /*
- * PUBLIC: int __repmgr_wake_main_thread __P((DB_ENV*));
+ * PUBLIC: int __repmgr_wake_main_thread __P((ENV*));
  */
 int
-__repmgr_wake_main_thread(dbenv)
-	DB_ENV *dbenv;
+__repmgr_wake_main_thread(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	u_int8_t any_value;
 
 	COMPQUIET(any_value, 0);
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
 	/*
 	 * It doesn't matter what byte value we write.  Just the appearance of a
@@ -521,16 +525,15 @@ __repmgr_readv(fd, iovec, buf_count, byte_count_p)
 }
 
 /*
- * PUBLIC: int __repmgr_select_loop __P((DB_ENV *));
+ * PUBLIC: int __repmgr_select_loop __P((ENV *));
  */
 int
-__repmgr_select_loop(dbenv)
-	DB_ENV *dbenv;
+__repmgr_select_loop(env)
+	ENV *env;
 {
 	struct timeval select_timeout, *select_timeout_p;
 	DB_REP *db_rep;
 	REPMGR_CONNECTION *conn, *next;
-	REPMGR_RETRY *retry;
 	db_timespec timeout;
 	fd_set reads, writes;
 	int ret, flow_control, maxfd;
@@ -538,14 +541,14 @@ __repmgr_select_loop(dbenv)
 
 	flow_control = FALSE;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	/*
 	 * Almost this entire thread operates while holding the mutex.  But note
 	 * that it never blocks, except in the call to select() (which is the
 	 * one place we relinquish the mutex).
 	 */
 	LOCK_MUTEX(db_rep->mutex);
-	if ((ret = __repmgr_first_try_connections(dbenv)) != 0)
+	if ((ret = __repmgr_first_try_connections(env)) != 0)
 		goto out;
 	for (;;) {
 		FD_ZERO(&reads);
@@ -564,13 +567,26 @@ __repmgr_select_loop(dbenv)
 
 		/*
 		 * Examine all connections to see what sort of I/O to ask for on
-		 * each one.
+		 * each one.  Clean up defunct connections; note that this is
+		 * the only place where elements get deleted from this list.
+		 *
+		 * The TAILQ_FOREACH macro would be suitable here, except that
+		 * it doesn't allow unlinking the current element., which is
+		 * needed for cleanup_connection.
 		 */
-		TAILQ_FOREACH(conn, &db_rep->connections, entries) {
-			if (F_ISSET(conn, CONN_DEFUNCT))
+		for (conn = TAILQ_FIRST(&db_rep->connections);
+		     conn != NULL;
+		     conn = next) {
+			next = TAILQ_NEXT(conn, entries);
+
+			if (conn->state == CONN_DEFUNCT) {
+				if ((ret = __repmgr_cleanup_connection(env,
+				    conn)) != 0)
+					goto out;
 				continue;
-			
-			if (F_ISSET(conn, CONN_CONNECTING)) {
+			}
+
+			if (conn->state == CONN_CONNECTING) {
 				FD_SET((u_int)conn->fd, &reads);
 				FD_SET((u_int)conn->fd, &writes);
 				if (conn->fd > maxfd)
@@ -593,23 +609,15 @@ __repmgr_select_loop(dbenv)
 					maxfd = conn->fd;
 			}
 		}
-		/*
-		 * Decide how long to wait based on when it will next be time to
-		 * retry an idle connection.  (List items are in order, so we
-		 * only have to examine the first one.)
-		 */
-		if (TAILQ_EMPTY(&db_rep->retries))
-			select_timeout_p = NULL;
-		else {
-			retry = TAILQ_FIRST(&db_rep->retries);
 
-			__repmgr_timespec_diff_now(
-			    dbenv, &retry->time, &timeout);
-
+		if (__repmgr_compute_timeout(env, &timeout)) {
 			/* Convert the timespec to a timeval. */
 			select_timeout.tv_sec = timeout.tv_sec;
 			select_timeout.tv_usec = timeout.tv_nsec / NS_PER_US;
 			select_timeout_p = &select_timeout;
+		} else {
+			/* No time-based events, so wait only for I/O. */
+			select_timeout_p = NULL;
 		}
 
 		UNLOCK_MUTEX(db_rep->mutex);
@@ -622,27 +630,29 @@ __repmgr_select_loop(dbenv)
 				LOCK_MUTEX(db_rep->mutex);
 				continue; /* simply retry */
 			default:
-				__db_err(dbenv, ret, "select");
+				__db_err(env, ret, "select");
 				return (ret);
 			}
 		}
 		LOCK_MUTEX(db_rep->mutex);
 
-		if ((ret = __repmgr_retry_connections(dbenv)) != 0)
+		/*
+		 * Timer expiration events include retrying of lost connections.
+		 * Obviously elements can be added to the connection list there.
+		 */
+		if ((ret = __repmgr_check_timeouts(env)) != 0)
 			goto out;
 
 		/*
 		 * Examine each connection, to see what work needs to be done.
-		 * 
-		 * The TAILQ_FOREACH macro would be suitable here, except that
-		 * it doesn't allow unlinking the current element, which is
-		 * needed for cleanup_connection.
+		 * Except for one obscure case in finish_connecting, no
+		 * structural change to the connections list happens here.
 		 */
-		for (conn = TAILQ_FIRST(&db_rep->connections);
-		     conn != NULL;
-		     conn = next) {
-			next = TAILQ_NEXT(conn, entries);
-			if ((ret = __repmgr_conn_work(dbenv,
+		TAILQ_FOREACH(conn, &db_rep->connections, entries) {
+			if (conn->state == CONN_DEFUNCT)
+				continue;
+
+			if ((ret = __repmgr_conn_work(env,
 			    conn, &reads, &writes, flow_control)) != 0)
 				goto out;
 		}
@@ -661,8 +671,11 @@ __repmgr_select_loop(dbenv)
 				goto out;
 			}
 		}
+		/*
+		 * Obviously elements can be added to the connection list here.
+		 */
 		if (FD_ISSET((u_int)db_rep->listen_fd, &reads) &&
-		    (ret = __repmgr_accept(dbenv)) != 0)
+		    (ret = __repmgr_accept(env)) != 0)
 			goto out;
 	}
 out:
@@ -671,8 +684,8 @@ out:
 }
 
 static int
-__repmgr_conn_work(dbenv, conn, reads, writes, flow_control)
-	DB_ENV *dbenv;
+__repmgr_conn_work(env, conn, reads, writes, flow_control)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 	fd_set *reads, *writes;
 	int flow_control;
@@ -680,42 +693,31 @@ __repmgr_conn_work(dbenv, conn, reads, writes, flow_control)
 	int ret;
 	u_int fd;
 
-	if (F_ISSET(conn, CONN_DEFUNCT)) {
-		/*
-		 * Deferred clean-up, from an error that happened in another
-		 * thread, while we were sleeping in select().
-		*/
-		return (__repmgr_cleanup_connection(dbenv, conn));
-	}
-
 	ret = 0;
 	fd = (u_int)conn->fd;
-	
-	if (F_ISSET(conn, CONN_CONNECTING)) {
+
+	if (conn->state == CONN_CONNECTING) {
 		if (FD_ISSET(fd, reads) || FD_ISSET(fd, writes))
-			ret = finish_connecting(dbenv, conn);
+			ret = finish_connecting(env, conn);
 	} else {
 		/*
 		 * Here, the site is connected, and the FD_SET's are valid.
 		 */
 		if (FD_ISSET(fd, writes))
-			ret = __repmgr_write_some(dbenv, conn);
-				
+			ret = __repmgr_write_some(env, conn);
+
 		if (ret == 0 && !flow_control && FD_ISSET(fd, reads))
-			ret = __repmgr_read_from_site(dbenv, conn);
+			ret = __repmgr_read_from_site(env, conn);
 	}
 
-	if (ret == DB_REP_UNAVAIL) {
-		if ((ret = __repmgr_bust_connection(dbenv, conn)) != 0)
-			return (ret);
-		ret = __repmgr_cleanup_connection(dbenv, conn);
-	}
+	if (ret == DB_REP_UNAVAIL)
+		ret = __repmgr_bust_connection(env, conn);
 	return (ret);
 }
 
 static int
-finish_connecting(dbenv, conn)
-	DB_ENV *dbenv;
+finish_connecting(env, conn)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
@@ -734,18 +736,17 @@ finish_connecting(dbenv, conn)
 		goto err_rpt;
 	}
 
-	DB_ASSERT(dbenv, F_ISSET(conn, CONN_CONNECTING));
-	F_CLR(conn, CONN_CONNECTING);
-	return (__repmgr_send_handshake(dbenv, conn));
+	conn->state = CONN_CONNECTED;
+	return (__repmgr_propose_version(env, conn));
 
 err_rpt:
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	DB_ASSERT(dbenv, IS_VALID_EID(conn->eid));
+	DB_ASSERT(env, IS_VALID_EID(conn->eid));
 	eid = (u_int)conn->eid;
 
 	site = SITE_FROM_EID(eid);
-	__db_err(dbenv, errno,
+	__db_err(env, errno,
 	    "connecting to %s", __repmgr_format_site_loc(site, buffer));
 
 	/* If we've exhausted the list of possible addresses, give up. */
@@ -755,20 +756,12 @@ err_rpt:
 	}
 
 	/*
-	 * This is just like a little mini-"bust_connection", except that we
-	 * don't reschedule for later, 'cuz we're just about to try again right
-	 * now.  (Note that we don't have to worry about message threads
-	 * blocking on a full output queue: that can't happen when we're only
-	 * just connecting.)
-	 *
-	 * !!!
-	 * Which means this must only be called on the select() thread, since
-	 * only there are we allowed to actually close a connection.
+	 * Since we're immediately trying the next address in the list, simply
+	 * disable the failed connection, without the usual recovery.
 	 */
-	DB_ASSERT(dbenv, !TAILQ_EMPTY(&db_rep->connections));
-	if ((ret = __repmgr_cleanup_connection(dbenv, conn)) != 0)
-		return (ret);
-	ret = __repmgr_connect_site(dbenv, eid);
-	DB_ASSERT(dbenv, ret != DB_REP_UNAVAIL);
+	DISABLE_CONNECTION(conn);
+
+	ret = __repmgr_connect_site(env, eid);
+	DB_ASSERT(env, ret != DB_REP_UNAVAIL);
 	return (ret);
 }

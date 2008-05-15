@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep048.tcl,v 12.13 2007/06/19 03:33:16 moshen Exp $
+# $Id: rep048.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep048
 # TEST	Replication and log gap bulk transfers.
@@ -44,10 +44,11 @@ proc rep048_sub { method niter tnum logset recargs largs } {
 	global overflowword1
 	global overflowword2
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set orig_tdir $testdir
@@ -65,11 +66,16 @@ proc rep048_sub { method niter tnum logset recargs largs } {
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
 
+	set in_memory_log \
+	    [expr { $m_logtype == "in-memory" || $c_logtype == "in-memory" }]
+
 	# In-memory logs require a large log buffer, and can not
 	# be used with -txn nosync.  Adjust the args for master
 	# and client.
-	set m_logargs [adjust_logargs $m_logtype]
-	set c_logargs [adjust_logargs $c_logtype]
+	# This test has a long transaction, allocate a larger log 
+	# buffer for in-memory test.
+	set m_logargs [adjust_logargs $m_logtype [expr 20 * 1024 * 1024]]
+	set c_logargs [adjust_logargs $c_logtype [expr 20 * 1024 * 1024]]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 
@@ -138,8 +144,10 @@ proc rep048_sub { method niter tnum logset recargs largs } {
 	# Watch until the child is done.
 	watch_procs $pid 5
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $clientdir $clientenv 0 1 1 $testfile
-	rep_verify $masterdir $masterenv $clientdir $clientenv 0 1 0 "child.db"
+	rep_verify $masterdir $masterenv $clientdir $clientenv \
+	    $in_memory_log 1 1 $testfile
+	rep_verify $masterdir $masterenv $clientdir $clientenv \
+	    0 1 0 "child.db"
 
 	error_check_good mclose [$masterenv close] 0
 	error_check_good cclose [$clientenv close] 0

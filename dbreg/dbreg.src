@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: dbreg.src,v 12.7 2007/05/17 15:15:07 bostic Exp $
+ * $Id: dbreg.src,v 12.9 2008/01/08 20:58:19 bostic Exp $
  */
 
-PREFIX	__dbreg
 DBPRIVATE
+PREFIX	__dbreg
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"

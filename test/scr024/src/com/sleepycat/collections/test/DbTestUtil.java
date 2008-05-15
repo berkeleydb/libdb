@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: DbTestUtil.java,v 12.6 2007/05/04 00:28:29 mark Exp $
+ * $Id: DbTestUtil.java,v 12.7 2008/01/08 20:58:57 bostic Exp $
  */
 
 package com.sleepycat.collections.test;

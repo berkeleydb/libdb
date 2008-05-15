@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_dbcursor.c,v 12.17 2007/05/17 15:15:54 bostic Exp $
+ * $Id: tcl_dbcursor.c,v 12.19 2008/01/08 20:58:52 bostic Exp $
  */
 
 #include "db_config.h"
@@ -839,15 +839,15 @@ out1:
 	 */
 out:
 	if (key.data != NULL && F_ISSET(&key, DB_DBT_MALLOC))
-		__os_ufree(dbc->dbp->dbenv, key.data);
+		__os_ufree(dbc->env, key.data);
 	if (key.data != NULL && F_ISSET(&key, DB_DBT_USERMEM))
-		__os_free(dbc->dbp->dbenv, key.data);
+		__os_free(dbc->env, key.data);
 	if (data.data != NULL && F_ISSET(&data, DB_DBT_MALLOC))
-		__os_ufree(dbc->dbp->dbenv, data.data);
+		__os_ufree(dbc->env, data.data);
 	if (data.data != NULL && F_ISSET(&data, DB_DBT_USERMEM))
-		__os_free(dbc->dbp->dbenv, data.data);
+		__os_free(dbc->env, data.data);
 	if (pdata.data != NULL && F_ISSET(&pdata, DB_DBT_MALLOC))
-		__os_ufree(dbc->dbp->dbenv, pdata.data);
+		__os_ufree(dbc->env, pdata.data);
 	if (freedata)
 		__os_free(NULL, dtmp);
 	if (freekey)

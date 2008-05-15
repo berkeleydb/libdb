@@ -1,16 +1,17 @@
-m4_comment([$Id: max.so,v 10.11 2006/01/05 16:51:59 bostic Exp $])
+m4_comment([$Id: max.so,v 10.13 2008/04/29 22:46:51 mbrey Exp $])
 
 m4_ref_title(Locking Subsystem,
     Configuring locking: sizing the system,
     sizing the @locking subsystem, lock/config, lock/stdmode)
 
 m4_p([dnl
-The lock system is sized using the following three methods:])
+The lock system is sized using the following four methods:])
 
 m4_indent([dnl
 m4_ref(dbenv_set_lk_max_locks)
 m4_ref(dbenv_set_lk_max_lockers)
-m4_ref(dbenv_set_lk_max_objects)])
+m4_ref(dbenv_set_lk_max_objects)
+m4_ref(dbenv_set_lk_partitions)])
 
 m4_p([dnl
 The m4_ref(dbenv_set_lk_max_locks), m4_ref(dbenv_set_lk_max_lockers),
@@ -29,6 +30,25 @@ to err in the direction of allocating too many locks, lockers, and
 objects because increasing the number of locks does not require large
 amounts of additional resources.   The default values are 1000 of
 each type of object.])
+
+m4_p([dnl
+The m4_refT(dbenv_set_lk_partitions) specifies the number of lock
+table partitions.  Each partition may be accessed independently by
+a thread and more partitions can lead to higher levels of concurrency.
+The default is to set the number of partitions to be 10 times the number
+of cpus that the operating system reports at the time the environment is
+created.
+Having more than one partition when there is only one cpu is not beneficial and
+the locking system is more efficient when there is a single partition.
+Operating systems (Linux, Solaris) may report thread contexts as cpus and it
+may be necessary to override the default to force a single partition on
+a single hyperthreaded cpu system.
+Objects and locks are divided among the partitions so it best to allocate
+several locks and objects per partition.  The system will force there
+to be at least one per partition.
+If a partition runs out of locks or objects it will steal what is needed
+from the other partitions.  This operation could impact performance if
+it occurs too often.])
 
 m4_p([dnl
 When configuring a m4_cam application, the number of lock objects needed

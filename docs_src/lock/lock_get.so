@@ -1,4 +1,4 @@
-m4_comment([$Id: lock_get.so,v 10.53 2004/08/13 03:38:57 bostic Exp $])
+m4_comment([$Id: lock_get.so,v 10.54 2007/10/26 15:01:06 bostic Exp $])
 
 define(M4PAGELOCAL, lock_get)
 include(m4/m4.seealso)
@@ -44,11 +44,11 @@ The m4_arg(lock_mode) parameter is used as an index into the environment's
 lock conflict matrix.  When using the default lock conflict matrix,
 m4_arg(lock_mode) must be set to one of the following values:
 m4_tagbegin
-m4_tagns(DB_LOCK_READ, [read (shared)])
-m4_tagns(DB_LOCK_WRITE, [write (exclusive)])
-m4_tagns(DB_LOCK_IWRITE, [intention to write (shared)])
-m4_tagns(DB_LOCK_IREAD, [intention to read (shared)])
-m4_tagns(DB_LOCK_IWR, [intention to read and write (shared)])
+m4_tag(DB_LOCK_READ, [read (shared)])
+m4_tag(DB_LOCK_WRITE, [write (exclusive)])
+m4_tag(DB_LOCK_IWRITE, [intention to write (shared)])
+m4_tag(DB_LOCK_IREAD, [intention to read (shared)])
+m4_tag(DB_LOCK_IWR, [intention to read and write (shared)])
 m4_tagend
 m4_p([dnl
 See m4_ref(dbenv_set_lk_conflicts) and m4_link(M4RELDIR/ref/lock/stdmode,

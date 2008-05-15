@@ -1,5 +1,5 @@
 <!--$Id: memp_set_flags.so,v 1.19 2007/06/07 15:30:46 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbMpoolFile::set_flags</h3>
+<b>DbMpoolFile::set_flags</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DbMpoolFile::set_flags(u_int32_t flags, bool onoff);
 <p>
 int
 DbMpoolFile::get_flags(u_int32_t *flagsp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::set_flags</h3>
+<b>Description: DbMpoolFile::set_flags</b>
 <p>Configure a file in the cache.</p>
 <p>To set the flags for a particular database, call the
 DbMpoolFile::set_flags method using the <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle stored in
@@ -38,31 +38,30 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values:
-<dl compact>
-<dt><a name="DB_MPOOL_NOFILE">DB_MPOOL_NOFILE</a><dd>If set, no backing temporary file will be opened for the specified
+<br>
+<b><a name="DB_MPOOL_NOFILE">DB_MPOOL_NOFILE</a></b><ul compact><li>If set, no backing temporary file will be opened for the specified
 in-memory database, even if it expands to fill the entire cache.
 Attempts to create new database pages after the cache has been filled
 will fail.
 <p>The DB_MPOOL_NOFILE flag configures a file in the memory pool, not only
 operations performed using the specified <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle.</p>
 <p>The DB_MPOOL_NOFILE flag may be used to configure Berkeley DB at any time during
-the life of the application.</p>
-<dt><a name="DB_MPOOL_UNLINK">DB_MPOOL_UNLINK</a><dd>If set, remove the file when the last reference to it is closed.
+the life of the application.</p></ul>
+<b><a name="DB_MPOOL_UNLINK">DB_MPOOL_UNLINK</a></b><ul compact><li>If set, remove the file when the last reference to it is closed.
 <p>The DB_MPOOL_NOFILE flag configures a file in the memory pool, not only
 operations performed using the specified <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> handle.</p>
 <p>The DB_MPOOL_UNLINK flag may be used to configure Berkeley DB at any time during
-the life of the application.</p>
-</dl>
-<dt><b>onoff</b><dd>If <b>onoff</b> is
+the life of the application.</p></ul>
+<br></ul>
+ <b>onoff</b><ul compact><li>If <b>onoff</b> is
 false,
-the specified flags are cleared;  otherwise they are set.
-</dl>
+the specified flags are cleared;  otherwise they are set.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::get_flags</h3>
+<b>Description: DbMpoolFile::get_flags</b>
 <p>The DbMpoolFile::get_flags method returns the flags.</p>
 <p>The DbMpoolFile::get_flags method may be called at any time during the life of the
 application.</p>
@@ -71,20 +70,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flagsp</b><dd>The DbMpoolFile::get_flags method returns  the
-flags in <b>flagsp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>flagsp</b><ul compact><li>The DbMpoolFile::get_flags method returns  the
+flags in <b>flagsp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

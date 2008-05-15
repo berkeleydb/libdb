@@ -1,4 +1,4 @@
-m4_comment([$Id: rep_transport.so,v 1.35 2006/06/05 23:03:53 alanb Exp $])
+m4_comment([$Id: rep_transport.so,v 1.37 2008/02/04 20:55:16 sue Exp $])
 
 define(M4PAGELOCAL,
     [rep_set_transport, DB_REP_ANYWHERE, DB_REP_NOBUFFER, DB_REP_PERMANENT,
@@ -64,13 +64,16 @@ The m4_arg(envid) parameter is a positive integer identifier that
 specifies the replication environment to which the message should be
 sent (see m4_link(M4RELDIR/ref/rep/id, Replication environment IDs) for
 more information).
-m4_idefz(DB_EID_BROADCAST)
 m4_p([dnl
 The special identifier m4_ref(DB_EID_BROADCAST) indicates that a message
 should be broadcast to every environment in the replication group.  The
 application may use a true broadcast protocol or may send the message
 in sequence to each machine with which it is in communication.  In both
-cases, the sending site should not be asked to process the message.])])
+cases, the sending site should not be asked to process the message.])
+m4_p([dnl
+The special identifier m4_ref(DB_EID_INVALID) indicates an invalid
+environment ID.  This may be used to initialize values that are
+subsequently checked for validity.])])
 m4_tag(m4_arg(flags), [m4_sf_or_may
 m4_tagbegin
 m4_tag(m4_idef(DB_REP_ANYWHERE), [dnl

@@ -1,10 +1,10 @@
 # DB_File.pm -- Perl 5 interface to Berkeley DB 
 #
 # written by Paul Marquess (pmqs@cpan.org)
-# last modified 4th February 2007
-# version 1.815
+# last modified 28th October 2007
+# version 1.817
 #
-#     Copyright (c) 1995-2007 Paul Marquess. All rights reserved.
+#     Copyright (c) 1995-2008 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 
@@ -165,7 +165,8 @@ our ($db_version, $use_XSLoader, $splice_end_array, $Error);
 use Carp;
 
 
-$VERSION = "1.815" ;
+$VERSION = "1.817" ;
+$VERSION = eval $VERSION; # needed for dev releases
 
 {
     local $SIG{__WARN__} = sub {$splice_end_array = "@_";};
@@ -2249,7 +2250,7 @@ This version of B<DB_File> will work with either version 1.x, 2.x or
 3.x of Berkeley DB, but is limited to the functionality provided by
 version 1.
 
-The official web site for Berkeley DB is F<http://www.sleepycat.com>.
+The official web site for Berkeley DB is F<http://www.oracle.com/technology/products/berkeley-db/db/index.html>.
 All versions of Berkeley DB are available there.
 
 Alternatively, Berkeley DB version 1 is available at your nearest CPAN
@@ -2261,7 +2262,7 @@ compile properly on IRIX 5.3.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1995-2005 Paul Marquess. All rights reserved. This program
+Copyright (c) 1995-2007 Paul Marquess. All rights reserved. This program
 is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.
 
@@ -2270,7 +2271,7 @@ makes use of, namely Berkeley DB, is not. Berkeley DB has its own
 copyright and its own license. Please take the time to read it.
 
 Here are are few words taken from the Berkeley DB FAQ (at
-F<http://www.sleepycat.com>) regarding the license:
+F<http://www.oracle.com/technology/products/berkeley-db/db/index.html>) regarding the license:
 
     Do I have to license DB to use it in Perl scripts? 
 
@@ -2294,7 +2295,5 @@ L<perldbmfilter>
 
 The DB_File interface was written by Paul Marquess
 E<lt>pmqs@cpan.orgE<gt>.
-Questions about the DB system itself may be addressed to
-E<lt>db@sleepycat.comE<gt>.
 
 =cut

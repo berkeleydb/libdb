@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd002.tcl,v 12.7 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd002.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd002
 # TEST	Split recovery tests.  For every known split log message, makes sure
@@ -10,6 +10,13 @@
 proc recd002 { method {select 0} args} {
 	source ./include.tcl
 	global rand_init
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
@@ -29,12 +36,12 @@ proc recd002 { method {select 0} args} {
 	} else {
 		set pagesize 512
 	}
-	puts "Recd002: $method split recovery tests"
+	puts "Recd002: $method split recovery tests ($envargs)"
 
 	env_cleanup $testdir
 	set testfile recd002.db
 	set testfile2 recd002-2.db
-	set eflags "-create -txn -lock_max_locks 2000 -home $testdir"
+	set eflags "-create -txn -lock_max_locks 2000 -home $testdir $envargs"
 
 	puts "\tRecd002.a: creating environment"
 	set env_cmd "berkdb_env $eflags"

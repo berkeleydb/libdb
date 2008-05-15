@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: dbreg_rec.c,v 12.21 2007/05/17 15:15:07 bostic Exp $
+ * $Id: dbreg_rec.c,v 12.26 2008/01/08 20:58:19 bostic Exp $
  */
 
 #include "db_config.h"
@@ -42,36 +42,36 @@
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
 
-static int __dbreg_open_file __P((DB_ENV *,
+static int __dbreg_open_file __P((ENV *,
     DB_TXN *, __dbreg_register_args *, void *));
 
 /*
  * PUBLIC: int __dbreg_register_recover
- * PUBLIC:     __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:     __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__dbreg_register_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
+	__dbreg_register_args *argp;
 	DB_ENTRY *dbe;
 	DB_LOG *dblp;
 	DB *dbp;
-	__dbreg_register_args *argp;
-	int do_close, do_open, do_rem, ret, t_ret;
 	u_int32_t status;
+	int do_close, do_open, do_rem, ret, t_ret;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	dbp = NULL;
 
 #ifdef DEBUG_RECOVER
 	REC_PRINT(__dbreg_register_print);
 #endif
 	do_open = do_close = 0;
-	if ((ret = __dbreg_register_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __dbreg_register_read(env, dbtp->data, &argp)) != 0)
 		goto out;
 
 	switch (argp->opcode) {
@@ -116,7 +116,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 			do_open = 1;
 		break;
 	default:
-		ret = __db_unknown_path(dbenv, "__dbreg_register_recover");
+		ret = __db_unknown_path(env, "__dbreg_register_recover");
 		goto out;
 	}
 
@@ -133,7 +133,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 		 * we need to make sure that we use the same locker id on the
 		 * open.  We pass the txnid along to ensure this.
 		 */
-		ret = __dbreg_open_file(dbenv,
+		ret = __dbreg_open_file(env,
 		    op == DB_TXN_ABORT || op == DB_TXN_POPENFILES ?
 		    argp->txnp : NULL, argp, info);
 		if (ret == DB_PAGE_NOTFOUND && argp->meta_pgno != PGNO_BASE_MD)
@@ -151,7 +151,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 			    dblp->dbentry[argp->fileid].deleted) {
 				dblp->dbentry[argp->fileid].deleted = 0;
 				ret =
-				    __dbreg_open_file(dbenv, NULL, argp, info);
+				    __dbreg_open_file(env, NULL, argp, info);
 				if (ret == DB_PAGE_NOTFOUND &&
 				     argp->meta_pgno != PGNO_BASE_MD)
 					ret = ENOENT;
@@ -181,7 +181,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 		 * fact, not have the file open, and that's OK.
 		 */
 		do_rem = 0;
-		MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+		MUTEX_LOCK(env, dblp->mtx_dbreg);
 		if (argp->fileid < dblp->dbentry_cnt) {
 			/*
 			 * Typically, closes should match an open which means
@@ -205,12 +205,12 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 				if ((DB_REDO(op) &&
 				    argp->opcode != DBREG_RCLOSE) ||
 				    argp->opcode == DBREG_CHKPNT) {
-					__db_errx(dbenv,
+					__db_errx(env,
 				    "Warning: Improper file close at %lu/%lu",
 					    (u_long)lsnp->file,
 					    (u_long)lsnp->offset);
 				}
-				MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 				goto done;
 			}
 
@@ -228,30 +228,15 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 				 */
 				do_rem = F_ISSET(dbp, DB_AM_RECOVER) ?
 				    op != DB_TXN_ABORT : op == DB_TXN_ABORT;
-				MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
-				/*
-				 * If we are aborting an open then this
-				 * DBP can only be used in this txn, so
-				 * log it closed.
-				 */
-				if (!F_ISSET(dbp, DB_AM_RECOVER)) {
-					if (op == DB_TXN_ABORT)
-						ret = __dbreg_log_close(dbenv,
-						    dbp->log_filename,
-						    NULL, DBREG_RCLOSE);
-					if (ret == 0)
-						(void)__dbreg_revoke_id(dbp, 0,
-						    DB_LOGFILEID_INVALID);
-					ret = 0;
-				}
+				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 			} else if (dbe->deleted) {
-				MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 				if ((ret = __dbreg_rem_dbentry(
 				    dblp, argp->fileid)) != 0)
 					goto out;
 			}
 		} else
-			MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+			MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 
 		/*
 		 * During recovery, all files are closed.  On an abort, we only
@@ -272,7 +257,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 		 */
 		if (do_rem && dbp != NULL) {
 			if (argp->id != TXN_INVALID) {
-				if ((ret = __db_txnlist_find(dbenv,
+				if ((ret = __db_txnlist_find(env,
 				    info, argp->txnp->txnid, &status))
 				    != DB_NOTFOUND && ret != 0)
 					goto out;
@@ -295,7 +280,7 @@ __dbreg_register_recover(dbenv, dbtp, lsnp, op, info)
 done:	if (ret == 0)
 		*lsnp = argp->prev_lsn;
 out:	if (argp != NULL)
-		__os_free(dbenv, argp);
+		__os_free(env, argp);
 	return (ret);
 }
 
@@ -306,26 +291,26 @@ out:	if (argp != NULL)
  *	non-zero on error.
  */
 static int
-__dbreg_open_file(dbenv, txn, argp, info)
-	DB_ENV *dbenv;
+__dbreg_open_file(env, txn, argp, info)
+	ENV *env;
 	DB_TXN *txn;
 	__dbreg_register_args *argp;
 	void *info;
 {
+	DB *dbp;
 	DB_ENTRY *dbe;
 	DB_LOG *dblp;
-	DB *dbp;
 	u_int32_t id, status;
 	int ret;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 
 	/*
 	 * When we're opening, we have to check that the name we are opening
 	 * is what we expect.  If it's not, then we close the old file and
 	 * open the new one.
 	 */
-	MUTEX_LOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_LOCK(env, dblp->mtx_dbreg);
 	if (argp->fileid != DB_LOGFILEID_INVALID &&
 	    argp->fileid < dblp->dbentry_cnt)
 		dbe = &dblp->dbentry[argp->fileid];
@@ -334,7 +319,7 @@ __dbreg_open_file(dbenv, txn, argp, info)
 
 	if (dbe != NULL) {
 		if (dbe->deleted) {
-			MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+			MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 			return (ENOENT);
 		}
 
@@ -356,7 +341,7 @@ __dbreg_open_file(dbenv, txn, argp, info)
 			    argp->name.size == 0 ||
 			    memcmp(dbp->fileid, argp->uid.data,
 			    DB_FILE_ID_LEN) != 0) {
-				MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 				(void)__dbreg_revoke_id(dbp, 0,
 				    DB_LOGFILEID_INVALID);
 				if (F_ISSET(dbp, DB_AM_RECOVER))
@@ -369,8 +354,8 @@ __dbreg_open_file(dbenv, txn, argp, info)
 			 * dbp from an openfiles pass, in which case, what's
 			 * here had better be the same dbp.
 			 */
-			DB_ASSERT(dbenv, dbe->dbp == dbp);
-			MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+			DB_ASSERT(env, dbe->dbp == dbp);
+			MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 
 			/*
 			 * This is a successful open.  We need to record that
@@ -378,14 +363,14 @@ __dbreg_open_file(dbenv, txn, argp, info)
 			 * subtransaction that created the file system object.
 			 */
 			if (argp->id != TXN_INVALID &&
-			    (ret = __db_txnlist_update(dbenv, info,
+			    (ret = __db_txnlist_update(env, info,
 			    argp->id, TXN_EXPECTED, NULL, &status, 1)) != 0)
 				return (ret);
 			return (0);
 		}
 	}
 
-	MUTEX_UNLOCK(dbenv, dblp->mtx_dbreg);
+	MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 
 reopen:
 	/*
@@ -396,7 +381,7 @@ reopen:
 	 * recovery fails to get a valid dbp from __dbreg_id_to_db.
 	 */
 	if (argp->name.size == 0) {
-		(void)__dbreg_add_dbentry(dbenv, dblp, NULL, argp->fileid);
+		(void)__dbreg_add_dbentry(env, dblp, NULL, argp->fileid);
 		return (ENOENT);
 	}
 
@@ -408,10 +393,10 @@ reopen:
 		id = txn->txnid;
 		memset(txn, 0, sizeof(DB_TXN));
 		txn->txnid = id;
-		txn->mgrp = dbenv->tx_handle;
+		txn->mgrp = env->tx_handle;
 	}
 
-	return (__dbreg_do_open(dbenv,
+	return (__dbreg_do_open(env,
 	    txn, dblp, argp->uid.data, argp->name.data, argp->ftype,
 	    argp->fileid, argp->meta_pgno, info, argp->id, argp->opcode));
 }

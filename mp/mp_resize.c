@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2006,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_resize.c,v 12.5 2007/06/05 11:55:28 mjc Exp $
+ * $Id: mp_resize.c,v 12.14 2008/03/13 15:21:21 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -21,17 +21,17 @@ static int __memp_remove_bucket __P((DB_MPOOL *));
 static int __memp_remove_region __P((DB_MPOOL *));
 
 /*
- * PUBLIC: int __memp_get_bucket
- * PUBLIC:     __P((DB_MPOOLFILE *, db_pgno_t, REGINFO **, DB_MPOOL_HASH **));
+ * PUBLIC: int __memp_get_bucket __P((ENV *,
+ * PUBLIC:     MPOOLFILE *, db_pgno_t, REGINFO **, DB_MPOOL_HASH **));
  */
 int
-__memp_get_bucket(dbmfp, pgno, infopp, hpp)
-	DB_MPOOLFILE *dbmfp;
+__memp_get_bucket(env, mfp, pgno, infopp, hpp)
+	ENV *env;
+	MPOOLFILE *mfp;
 	db_pgno_t pgno;
 	REGINFO **infopp;
 	DB_MPOOL_HASH **hpp;
 {
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
 	DB_MPOOL_HASH *hp;
 	MPOOL *c_mp, *mp;
@@ -41,9 +41,8 @@ __memp_get_bucket(dbmfp, pgno, infopp, hpp)
 	u_int32_t *regids;
 	int ret;
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
-	mf_offset = R_OFFSET(dbmp->reginfo, dbmfp->mfp);
+	dbmp = env->mp_handle;
+	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
 	mp = dbmp->reginfo[0].primary;
 	ret = 0;
 
@@ -77,13 +76,13 @@ __memp_get_bucket(dbmfp, pgno, infopp, hpp)
 			hp = R_ADDR(infop, c_mp->htab);
 			hp = &hp[bucket - region * mp->htab_buckets];
 
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MUTEX_LOCK(env, hp->mtx_hash);
 
 			/*
 			 * Check that we still have the correct region mapped.
 			 */
 			if (regids[region] != infop->id) {
-				MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+				MUTEX_UNLOCK(env, hp->mtx_hash);
 				continue;
 			}
 
@@ -97,7 +96,7 @@ __memp_get_bucket(dbmfp, pgno, infopp, hpp)
 				    new_bucket);
 
 				if (new_bucket != bucket) {
-					MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+					MUTEX_UNLOCK(env, hp->mtx_hash);
 					continue;
 				}
 			}
@@ -117,16 +116,16 @@ __memp_merge_buckets(dbmp, new_nbuckets, old_bucket, new_bucket)
 	u_int32_t new_nbuckets, old_bucket, new_bucket;
 {
 	BH *alloc_bhp, *bhp, *current_bhp, *new_bhp, *next_bhp;
-	DB_ENV *dbenv;
 	DB_LSN vlsn;
 	DB_MPOOL_HASH *new_hp, *old_hp;
+	ENV *env;
 	MPOOL *mp, *new_mp, *old_mp;
 	MPOOLFILE *mfp;
 	REGINFO *new_infop, *old_infop;
 	u_int32_t bucket, high_mask, new_region, old_region;
 	int ret;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 	new_bhp = NULL;
 	ret = 0;
@@ -150,7 +149,7 @@ __memp_merge_buckets(dbmp, new_nbuckets, old_bucket, new_bucket)
 	 * in the target hash bucket after a previous split.
 	 */
 free_old:
-	MUTEX_LOCK(dbenv, new_hp->mtx_hash);
+	MUTEX_LOCK(env, new_hp->mtx_hash);
 	SH_TAILQ_FOREACH(bhp, &new_hp->hash_bucket, hq, __bh) {
 		MP_BUCKET(bhp->mf_offset, bhp->pgno, mp->nbuckets, bucket);
 
@@ -160,11 +159,11 @@ free_old:
 			 * after a split, since everyone will look for it in
 			 * the new hash bucket.
 			 */
-			DB_ASSERT(dbenv, !F_ISSET(bhp, BH_LOCKED | BH_DIRTY) &&
+			DB_ASSERT(env, !F_ISSET(bhp, BH_LOCKED | BH_DIRTY) &&
 			    bhp->ref == 0);
 			if ((ret = __memp_bhfree(dbmp,
 			    new_infop, new_hp, bhp, BH_FREE_FREEMEM)) != 0) {
-				MUTEX_UNLOCK(dbenv, new_hp->mtx_hash);
+				MUTEX_UNLOCK(env, new_hp->mtx_hash);
 				return (ret);
 			}
 
@@ -175,22 +174,22 @@ free_old:
 			goto free_old;
 		}
 	}
-	MUTEX_UNLOCK(dbenv, new_hp->mtx_hash);
+	MUTEX_UNLOCK(env, new_hp->mtx_hash);
 
 	/*
 	 * Before we begin, make sure that all of the buffers we care about are
 	 * not in use and not frozen.  We do this because we can't drop the old
 	 * hash bucket mutex once we start moving buffers around.
 	 */
-retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
+retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 	SH_TAILQ_FOREACH(bhp, &old_hp->hash_bucket, hq, __bh) {
 		MP_HASH_BUCKET(MP_HASH(bhp->mf_offset, bhp->pgno),
 		    new_nbuckets, high_mask, bucket);
 
 		if (bucket == new_bucket &&
 		    (F_ISSET(bhp, BH_LOCKED) || bhp->ref != 0)) {
-			MUTEX_UNLOCK(dbenv, old_hp->mtx_hash);
-			__os_yield(dbenv);
+			MUTEX_UNLOCK(env, old_hp->mtx_hash);
+			__os_yield(env, 0, 0);
 			goto retry;
 		} else if (bucket == new_bucket && F_ISSET(bhp, BH_FROZEN)) {
 			++bhp->ref;
@@ -198,15 +197,15 @@ retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
 				alloc_bhp = NULL;
 			else {
 				mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
-				MUTEX_UNLOCK(dbenv, old_hp->mtx_hash);
+				MUTEX_UNLOCK(env, old_hp->mtx_hash);
 				if ((ret = __memp_alloc(dbmp,
 				    old_infop, mfp, 0, NULL, &alloc_bhp)) != 0)
 					return (ret);
-				MUTEX_LOCK(dbenv, old_hp->mtx_hash);
+				MUTEX_LOCK(env, old_hp->mtx_hash);
 			}
 			if ((ret = __memp_bh_thaw(dbmp,
 			    old_infop, old_hp, bhp, alloc_bhp)) != 0) {
-				MUTEX_UNLOCK(dbenv, old_hp->mtx_hash);
+				MUTEX_UNLOCK(env, old_hp->mtx_hash);
 				return (ret);
 			}
 
@@ -216,7 +215,7 @@ retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
 			 * the buffers we care about are still unlocked and
 			 * unreferenced.
 			 */
-			MUTEX_UNLOCK(dbenv, old_hp->mtx_hash);
+			MUTEX_UNLOCK(env, old_hp->mtx_hash);
 			goto retry;
 		}
 	}
@@ -261,13 +260,13 @@ retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
 			 * per-MPOOLFILE and the transaction detail (for MVCC
 			 * buffers).
 			 */
-			MUTEX_LOCK(dbenv, mfp->mutex);
+			MUTEX_LOCK(env, mfp->mutex);
 			++mfp->block_cnt;
-			MUTEX_UNLOCK(dbenv, mfp->mutex);
+			MUTEX_UNLOCK(env, mfp->mutex);
 
 			if (alloc_bhp->td_off != INVALID_ROFF &&
-			    (ret = __txn_add_buffer(dbenv,
-			    R_ADDR(&dbenv->tx_handle->reginfo,
+			    (ret = __txn_add_buffer(env,
+			    R_ADDR(&env->tx_handle->reginfo,
 			    alloc_bhp->td_off))) != 0)
 				break;
 
@@ -285,20 +284,12 @@ retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
 				    next_bhp, alloc_bhp, vc, __bh);
 		}
 
-		MUTEX_LOCK(dbenv, new_hp->mtx_hash);
+		MUTEX_LOCK(env, new_hp->mtx_hash);
 		SH_TAILQ_INSERT_TAIL(&new_hp->hash_bucket, new_bhp, hq);
 		if (F_ISSET(new_bhp, BH_DIRTY))
 			++new_hp->hash_page_dirty;
 
-		/*
-		 * We're doing an insertion sort, so it is O(N**2), but since
-		 * buckets should be small, that should not matter.  When
-		 * splitting a bucket, we traverse in priority order and append
-		 * to the new bucket, and __memp_bucket_reorder is O(1) in that
-		 * case.
-		 */
-		__memp_bucket_reorder(dbenv, new_hp, new_bhp);
-		MUTEX_UNLOCK(dbenv, new_hp->mtx_hash);
+		MUTEX_UNLOCK(env, new_hp->mtx_hash);
 
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			F_CLR(bhp, BH_DIRTY);
@@ -308,7 +299,7 @@ retry:	MUTEX_LOCK(dbenv, old_hp->mtx_hash);
 
 	if (ret == 0)
 		mp->nbuckets = new_nbuckets;
-	MUTEX_UNLOCK(dbenv, old_hp->mtx_hash);
+	MUTEX_UNLOCK(env, old_hp->mtx_hash);
 
 	return (ret);
 }
@@ -317,16 +308,16 @@ static int
 __memp_add_bucket(dbmp)
 	DB_MPOOL *dbmp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	u_int32_t high_mask, new_bucket, old_bucket;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 
 	new_bucket = mp->nbuckets;
 	/* We should always be adding buckets to the last region. */
-	DB_ASSERT(dbenv, NREGION(mp, new_bucket) == mp->nreg - 1);
+	DB_ASSERT(env, NREGION(mp, new_bucket) == mp->nreg - 1);
 	MP_MASK(mp->nbuckets, high_mask);
 	old_bucket = new_bucket & (high_mask >> 1);
 
@@ -336,7 +327,7 @@ __memp_add_bucket(dbmp)
 	 * we implement variable region sizes, it's possible that we will be
 	 * splitting a hash bucket in the new region.  Catch that here.
 	 */
-	DB_ASSERT(dbenv, NREGION(mp, old_bucket) != NREGION(mp, new_bucket));
+	DB_ASSERT(env, NREGION(mp, old_bucket) != NREGION(mp, new_bucket));
 
 	return (__memp_merge_buckets(dbmp, mp->nbuckets + 1,
 	    old_bucket, new_bucket));
@@ -346,7 +337,7 @@ static int
 __memp_add_region(dbmp)
 	DB_MPOOL *dbmp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	REGINFO *infop;
 	int ret;
@@ -354,20 +345,20 @@ __memp_add_region(dbmp)
 	u_int i;
 	u_int32_t *regids;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 	/* All cache regions are the same size. */
 	reg_size = dbmp->reginfo[0].rp->size;
 	ret = 0;
 
 	infop = &dbmp->reginfo[mp->nreg];
-	infop->dbenv = dbenv;
+	infop->env = env;
 	infop->type = REGION_TYPE_MPOOL;
 	infop->id = INVALID_REGION_ID;
 	infop->flags = REGION_CREATE_OK;
-	if ((ret = __env_region_attach(dbenv, infop, reg_size)) != 0)
+	if ((ret = __env_region_attach(env, infop, reg_size)) != 0)
 		return (ret);
-	if ((ret = __memp_init(dbenv,
+	if ((ret = __memp_init(env,
 	    dbmp, mp->nreg, mp->htab_buckets, mp->max_nreg)) != 0)
 		return (ret);
 	regids = R_ADDR(dbmp->reginfo, mp->regids);
@@ -384,17 +375,17 @@ static int
 __memp_remove_bucket(dbmp)
 	DB_MPOOL *dbmp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	u_int32_t high_mask, new_bucket, old_bucket;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 
 	old_bucket = mp->nbuckets - 1;
 
 	/* We should always be removing buckets from the last region. */
-	DB_ASSERT(dbenv, NREGION(mp, old_bucket) == mp->nreg - 1);
+	DB_ASSERT(env, NREGION(mp, old_bucket) == mp->nreg - 1);
 	MP_MASK(mp->nbuckets - 1, high_mask);
 	new_bucket = old_bucket & (high_mask >> 1);
 
@@ -406,18 +397,18 @@ static int
 __memp_remove_region(dbmp)
 	DB_MPOOL *dbmp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	REGINFO *infop;
 	int ret;
 	u_int i;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 	ret = 0;
 
 	if (mp->nreg == 1) {
-		__db_errx(dbenv, "cannot remove the last cache");
+		__db_errx(env, "cannot remove the last cache");
 		return (EINVAL);
 	}
 
@@ -427,20 +418,20 @@ __memp_remove_region(dbmp)
 
 	/* Detach from the region then destroy it. */
 	infop = &dbmp->reginfo[--mp->nreg];
-	return (__env_region_detach(dbenv, infop, 1));
+	return (__env_region_detach(env, infop, 1));
 }
 
 static int
 __memp_map_regions(dbmp)
 	DB_MPOOL *dbmp;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	int ret;
 	u_int i;
 	u_int32_t *regids;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 	regids = R_ADDR(dbmp->reginfo, mp->regids);
 	ret = 0;
@@ -451,14 +442,14 @@ __memp_map_regions(dbmp)
 			continue;
 
 		if (dbmp->reginfo[i].primary != NULL)
-			ret = __env_region_detach(dbenv, &dbmp->reginfo[i], 0);
+			ret = __env_region_detach(env, &dbmp->reginfo[i], 0);
 
-		dbmp->reginfo[i].dbenv = dbenv;
+		dbmp->reginfo[i].env = env;
 		dbmp->reginfo[i].type = REGION_TYPE_MPOOL;
 		dbmp->reginfo[i].id = regids[i];
 		dbmp->reginfo[i].flags = REGION_JOIN_OK;
 		if ((ret =
-		    __env_region_attach(dbenv, &dbmp->reginfo[i], 0)) != 0)
+		    __env_region_attach(env, &dbmp->reginfo[i], 0)) != 0)
 			return (ret);
 		dbmp->reginfo[i].primary = R_ADDR(&dbmp->reginfo[i],
 		    dbmp->reginfo[i].rp->primary);
@@ -466,7 +457,7 @@ __memp_map_regions(dbmp)
 
 	for (; i < mp->max_nreg; i++)
 		if (dbmp->reginfo[i].primary != NULL &&
-		    (ret = __env_region_detach(dbenv,
+		    (ret = __env_region_detach(env,
 		    &dbmp->reginfo[i], 0)) != 0)
 			break;
 
@@ -481,13 +472,13 @@ __memp_resize(dbmp, gbytes, bytes)
 	DB_MPOOL *dbmp;
 	u_int32_t gbytes, bytes;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOL *mp;
 	int ret;
 	u_int32_t ncache;
 	roff_t reg_size, total_size;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	mp = dbmp->reginfo[0].primary;
 	reg_size = dbmp->reginfo[0].rp->size;
 	total_size = (roff_t)gbytes * GIGABYTE + bytes;
@@ -496,20 +487,20 @@ __memp_resize(dbmp, gbytes, bytes)
 	if (ncache < 1)
 		ncache = 1;
 	else if (ncache > mp->max_nreg) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "cannot resize to %lu cache regions: maximum is %lu",
 		    (u_long)ncache, (u_long)mp->max_nreg);
 		return (EINVAL);
 	}
 
 	ret = 0;
-	MUTEX_LOCK(dbenv, mp->mtx_resize);
+	MUTEX_LOCK(env, mp->mtx_resize);
 	while (mp->nreg != ncache)
 		if ((ret = (mp->nreg < ncache ?
 		    __memp_add_region(dbmp) :
 		    __memp_remove_region(dbmp))) != 0)
 			break;
-	MUTEX_UNLOCK(dbenv, mp->mtx_resize);
+	MUTEX_UNLOCK(env, mp->mtx_resize);
 
 	return (ret);
 }
@@ -523,14 +514,18 @@ __memp_get_cache_max(dbenv, max_gbytesp, max_bytesp)
 	u_int32_t *max_gbytesp, *max_bytesp;
 {
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOL *mp;
 	roff_t reg_size, max_size;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_ncache", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_ncache", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		/* Cannot be set after open, no lock required to read. */
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
 		reg_size = dbmp->reginfo[0].rp->size;
 		max_size = mp->max_nreg * reg_size;
@@ -552,7 +547,11 @@ __memp_set_cache_max(dbenv, max_gbytes, max_bytes)
 	DB_ENV *dbenv;
 	u_int32_t max_gbytes, max_bytes;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_cache_max");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_cache_max");
 	dbenv->mp_max_gbytes = max_gbytes;
 	dbenv->mp_max_bytes = max_bytes;
 

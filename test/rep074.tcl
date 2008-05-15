@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007 Oracle.  All rights reserved.
+# Copyright (c) 2007,2008 Oracle.  All rights reserved.
 #
-# $Id: rep074.tcl,v 12.5 2007/06/19 03:33:16 moshen Exp $
+# $Id: rep074.tcl,v 12.8 2008/04/09 16:26:32 carol Exp $
 #
 # TEST	rep074
 # TEST	Verify replication withstands send errors processing requests.
@@ -41,12 +41,14 @@ proc rep074 { method { niter 20 } { tnum "074" } args } {
 }
 
 proc rep074_sub { method niter tnum logset largs } {
-	global testdir rep_verbose rep074_failure_count
+	global testdir rep074_failure_count
+	global rep_verbose
+	global verbose_type
 
 	set rep074_failure_count -1
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -128,9 +130,11 @@ proc rep074_sub { method niter tnum logset largs } {
 
 	# Run some more new txns at the master, so that the client eventually
 	# decides to request the remainder of the LOG_REQ response that it's
-	# missing.
+	# missing.  Pause for a second to make sure we reach the lower 
+	# threshold for re-request on fast machines.
 	#
 	set rep074_failure_count -1
+	tclsleep 1
 	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
 	process_msgs $envlist
 

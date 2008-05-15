@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db.src,v 12.9 2007/05/17 15:14:56 bostic Exp $
+ * $Id: db.src,v 12.14 2008/01/30 04:30:36 mjc Exp $
  */
 
-PREFIX	__db
 DBPRIVATE
+PREFIX	__db
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"
@@ -40,7 +40,7 @@ DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 ARG	indx		u_int32_t	lu
 ARG	nbytes		u_int32_t	lu
-PGDBT	hdr		DBT		s
+DBT	hdr		DBT		s
 DBT	dbt		DBT		s
 POINTER	pagelsn		DB_LSN *	lu
 END
@@ -228,7 +228,7 @@ POINTER	meta_lsn	DB_LSN *	lu
 ARG	meta_pgno	db_pgno_t	lu
 PGDBT	header		DBT		s
 ARG	next		db_pgno_t	lu
-PGDBT	data		DBT		s
+PGDDBT	data		DBT		s
 END
 
 BEGIN pg_freedata		43	52
@@ -239,7 +239,7 @@ ARG	meta_pgno	db_pgno_t	lu
 PGDBT	header		DBT		s
 ARG	next		db_pgno_t	lu
 ARG	last_pgno	db_pgno_t	lu
-PGDBT	data		DBT		s
+PGDDBT	data		DBT		s
 END
 
 /*
@@ -247,10 +247,10 @@ END
  *
  * pgno:	the page being freed.
  */
-BEGIN pg_prepare		42	53
-DB	fileid		int32_t		ld
-ARG	pgno		db_pgno_t	lu
-END
+X BEGIN pg_prepare		42	53
+X DB	fileid		int32_t		ld
+X ARG	pgno		db_pgno_t	lu
+X END
 
 /*
  * pg_new: used to record a new page put on the free list.
@@ -261,14 +261,14 @@ END
  * header:	the header from the free'd page.
  * next:	the previous next pointer on the metadata page.
  */
-BEGIN pg_new		42	54
-DB	fileid		int32_t		ld
-ARG	pgno		db_pgno_t	lu
-POINTER	meta_lsn	DB_LSN *	lu
-ARG	meta_pgno	db_pgno_t	lu
-PGDBT	header		DBT		s
-ARG	next		db_pgno_t	lu
-END
+X BEGIN pg_new		42	54
+X DB	fileid		int32_t		ld
+X ARG	pgno		db_pgno_t	lu
+X POINTER	meta_lsn	DB_LSN *	lu
+X ARG	meta_pgno	db_pgno_t	lu
+X PGDBT	header		DBT		s
+X ARG	next		db_pgno_t	lu
+X END
 
 /*
  * pg_init: used to reinitialize a page during truncate.
@@ -281,7 +281,7 @@ BEGIN pg_init		43	60
 DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 PGDBT	header		DBT		s
-PGDBT	data		DBT		s
+PGDDBT	data		DBT		s
 END
 
 /*

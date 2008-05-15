@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: lock_util.c,v 12.9 2007/05/17 15:15:43 bostic Exp $
+ * $Id: lock_util.c,v 12.11 2008/01/08 20:58:41 bostic Exp $
  */
 
 #include "db_config.h"
@@ -83,13 +83,13 @@ __lock_lhash(lock_obj)
  * __lock_nomem --
  *	Report a lack of some resource.
  *
- * PUBLIC: int __lock_nomem __P((DB_ENV *, const char *));
+ * PUBLIC: int __lock_nomem __P((ENV *, const char *));
  */
 int
-__lock_nomem(dbenv, res)
-	DB_ENV *dbenv;
+__lock_nomem(env, res)
+	ENV *env;
 	const char *res;
 {
-	__db_errx(dbenv, "Lock table is out of available %s", res);
+	__db_errx(env, "Lock table is out of available %s", res);
 	return (ENOMEM);
 }

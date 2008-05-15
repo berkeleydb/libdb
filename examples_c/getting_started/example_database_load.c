@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  */
 
 #include "gettingstarted_common.h"
@@ -44,23 +44,23 @@ main(int argc, char *argv[])
 
     /* Parse the command line arguments */
     while ((ch = getopt(argc, argv, "b:h:")) != EOF)
-        switch (ch) {
-        case 'h':
-            if (optarg[strlen(optarg)-1] != '/' &&
-                optarg[strlen(optarg)-1] != '\\')
-                return (usage());
-            my_stock.db_home_dir = optarg;
-            break;
-        case 'b':
-            if (basename[strlen(basename)-1] != '/' &&
-                basename[strlen(basename)-1] != '\\')
-                return (usage());
-            basename = optarg;
-            break;
-        case '?':
-        default:
-            return (usage());
-        }
+	switch (ch) {
+	case 'h':
+	    if (optarg[strlen(optarg)-1] != '/' &&
+		optarg[strlen(optarg)-1] != '\\')
+		return (usage());
+	    my_stock.db_home_dir = optarg;
+	    break;
+	case 'b':
+	    if (basename[strlen(basename)-1] != '/' &&
+		basename[strlen(basename)-1] != '\\')
+		return (usage());
+	    basename = optarg;
+	    break;
+	case '?':
+	default:
+	    return (usage());
+	}
 
     /* Identify the files that will hold our databases */
     set_db_filenames(&my_stock);
@@ -77,22 +77,22 @@ main(int argc, char *argv[])
     /* Open all databases */
     ret = databases_setup(&my_stock, "example_database_load", stderr);
     if (ret) {
-        fprintf(stderr, "Error opening databases\n");
-        databases_close(&my_stock);
-        return (ret);
+	fprintf(stderr, "Error opening databases\n");
+	databases_close(&my_stock);
+	return (ret);
     }
 
     ret = load_vendors_database(my_stock, vendor_file);
     if (ret) {
-        fprintf(stderr, "Error loading vendors database.\n");
-        databases_close(&my_stock);
-        return (ret);
+	fprintf(stderr, "Error loading vendors database.\n");
+	databases_close(&my_stock);
+	return (ret);
     }
     ret = load_inventory_database(my_stock, inventory_file);
     if (ret) {
-        fprintf(stderr, "Error loading inventory database.\n");
-        databases_close(&my_stock);
-        return (ret);
+	fprintf(stderr, "Error loading inventory database.\n");
+	databases_close(&my_stock);
+	return (ret);
     }
 
     /* close our environment and databases */
@@ -117,51 +117,51 @@ load_vendors_database(STOCK_DBS my_stock, char *vendor_file)
     /* Load the vendors database */
     ifp = fopen(vendor_file, "r");
     if (ifp == NULL) {
-        fprintf(stderr, "Error opening file '%s'\n", vendor_file);
-        return (-1);
+	fprintf(stderr, "Error opening file '%s'\n", vendor_file);
+	return (-1);
     }
 
     while (fgets(buf, MAXLINE, ifp) != NULL) {
-        /* zero out the structure */
-        memset(&my_vendor, 0, sizeof(VENDOR));
-        /* Zero out the DBTs */
-        memset(&key, 0, sizeof(DBT));
-        memset(&data, 0, sizeof(DBT));
+	/* zero out the structure */
+	memset(&my_vendor, 0, sizeof(VENDOR));
+	/* Zero out the DBTs */
+	memset(&key, 0, sizeof(DBT));
+	memset(&data, 0, sizeof(DBT));
 
-        /*
-         * Scan the line into the structure.
-         * Convenient, but not particularly safe.
-         * In a real program, there would be a lot more
-         * defensive code here.
-         */
-        sscanf(buf,
-          "%20[^#]#%20[^#]#%20[^#]#%3[^#]#%6[^#]#%13[^#]#%20[^#]#%20[^\n]",
-          my_vendor.name, my_vendor.street,
-          my_vendor.city, my_vendor.state,
-          my_vendor.zipcode, my_vendor.phone_number,
-          my_vendor.sales_rep, my_vendor.sales_rep_phone);
+	/*
+	 * Scan the line into the structure.
+	 * Convenient, but not particularly safe.
+	 * In a real program, there would be a lot more
+	 * defensive code here.
+	 */
+	sscanf(buf,
+	  "%20[^#]#%20[^#]#%20[^#]#%3[^#]#%6[^#]#%13[^#]#%20[^#]#%20[^\n]",
+	  my_vendor.name, my_vendor.street,
+	  my_vendor.city, my_vendor.state,
+	  my_vendor.zipcode, my_vendor.phone_number,
+	  my_vendor.sales_rep, my_vendor.sales_rep_phone);
 
-        /* Now that we have our structure we can load it into the database. */
+	/* Now that we have our structure we can load it into the database. */
 
-        /* Set up the database record's key */
-        key.data = my_vendor.name;
-        key.size = (u_int32_t)strlen(my_vendor.name) + 1;
+	/* Set up the database record's key */
+	key.data = my_vendor.name;
+	key.size = (u_int32_t)strlen(my_vendor.name) + 1;
 
-        /* Set up the database record's data */
-        data.data = &my_vendor;
-        data.size = sizeof(VENDOR);
+	/* Set up the database record's data */
+	data.data = &my_vendor;
+	data.size = sizeof(VENDOR);
 
-        /*
-         * Note that given the way we built our struct, there's extra
-         * bytes in it. Essentially we're using fixed-width fields with
-         * the unused portion of some fields padded with zeros. This
-         * is the easiest thing to do, but it does result in a bloated
-         * database. Look at load_inventory_data() for an example of how
-         * to avoid this.
-         */
+	/*
+	 * Note that given the way we built our struct, there's extra
+	 * bytes in it. Essentially we're using fixed-width fields with
+	 * the unused portion of some fields padded with zeros. This
+	 * is the easiest thing to do, but it does result in a bloated
+	 * database. Look at load_inventory_data() for an example of how
+	 * to avoid this.
+	 */
 
-        /* Put the data into the database */
-        my_stock.vendor_dbp->put(my_stock.vendor_dbp, 0, &key, &data, 0);
+	/* Put the data into the database */
+	my_stock.vendor_dbp->put(my_stock.vendor_dbp, 0, &key, &data, 0);
     } /* end vendors database while loop */
 
     fclose(ifp);
@@ -216,55 +216,55 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
     /* Load the inventory database */
     ifp = fopen(inventory_file, "r");
     if (ifp == NULL) {
-        fprintf(stderr, "Error opening file '%s'\n", inventory_file);
-            return (-1);
+	fprintf(stderr, "Error opening file '%s'\n", inventory_file);
+	    return (-1);
     }
 
     while (fgets(buf, MAXLINE, ifp) != NULL) {
-        /*
-         * Scan the line into the appropriate buffers and variables.
-         * Convenient, but not particularly safe. In a real
-         * program, there would be a lot more defensive code here.
-         */
-        sscanf(buf,
-          "%20[^#]#%20[^#]#%f#%i#%20[^#]#%20[^\n]",
-          name, sku, &price, &quantity, category, vendor);
+	/*
+	 * Scan the line into the appropriate buffers and variables.
+	 * Convenient, but not particularly safe. In a real
+	 * program, there would be a lot more defensive code here.
+	 */
+	sscanf(buf,
+	  "%20[^#]#%20[^#]#%f#%i#%20[^#]#%20[^\n]",
+	  name, sku, &price, &quantity, category, vendor);
 
-        /*
-         * Now pack it into a single contiguous memory location for
-         * storage.
-         */
-        memset(databuf, 0, MAXDATABUF);
-        bufLen = 0;
-        dataLen = 0;
+	/*
+	 * Now pack it into a single contiguous memory location for
+	 * storage.
+	 */
+	memset(databuf, 0, MAXDATABUF);
+	bufLen = 0;
+	dataLen = 0;
 
-        dataLen = sizeof(float);
-        memcpy(databuf, &price, dataLen);
-        bufLen += dataLen;
+	dataLen = sizeof(float);
+	memcpy(databuf, &price, dataLen);
+	bufLen += dataLen;
 
-        dataLen = sizeof(int);
-        memcpy(databuf + bufLen, &quantity, dataLen);
-        bufLen += dataLen;
+	dataLen = sizeof(int);
+	memcpy(databuf + bufLen, &quantity, dataLen);
+	bufLen += dataLen;
 
-        bufLen = pack_string(databuf, name, bufLen);
-        bufLen = pack_string(databuf, sku, bufLen);
-        bufLen = pack_string(databuf, category, bufLen);
-        bufLen = pack_string(databuf, vendor, bufLen);
+	bufLen = pack_string(databuf, name, bufLen);
+	bufLen = pack_string(databuf, sku, bufLen);
+	bufLen = pack_string(databuf, category, bufLen);
+	bufLen = pack_string(databuf, vendor, bufLen);
 
-        /* Zero out the DBTs */
-        memset(&key, 0, sizeof(DBT));
-        memset(&data, 0, sizeof(DBT));
+	/* Zero out the DBTs */
+	memset(&key, 0, sizeof(DBT));
+	memset(&data, 0, sizeof(DBT));
 
-        /* The key is the item's SKU */
-        key.data = sku;
-        key.size = (u_int32_t)strlen(sku) + 1;
+	/* The key is the item's SKU */
+	key.data = sku;
+	key.size = (u_int32_t)strlen(sku) + 1;
 
-        /* The data is the information that we packed into databuf. */
-        data.data = databuf;
-        data.size = (u_int32_t)bufLen;
+	/* The data is the information that we packed into databuf. */
+	data.data = databuf;
+	data.size = (u_int32_t)bufLen;
 
-        /* Put the data into the database */
-        my_stock.vendor_dbp->put(my_stock.inventory_dbp, 0, &key, &data, 0);
+	/* Put the data into the database */
+	my_stock.vendor_dbp->put(my_stock.inventory_dbp, 0, &key, &data, 0);
     } /* end vendors database while loop */
 
     /* Cleanup */

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.6 2006/08/08 05:15:56 mjc Exp $
+# $Id: Makefile,v 1.7 2008/01/28 23:59:30 sarette Exp $
 
 COMMON=	env_cdsgroup_begin.html \
 	env_set_lk_conflicts.html \
@@ -6,6 +6,7 @@ COMMON=	env_cdsgroup_begin.html \
 	env_set_lk_max_lockers.html \
 	env_set_lk_max_locks.html \
 	env_set_lk_max_objects.html \
+	env_set_lk_partitions.html \
 	lock_class.html \
 	lock_detect.html \
 	lock_get.html \

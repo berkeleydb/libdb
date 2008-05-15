@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep038.tcl,v 12.19 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep038.tcl,v 12.23 2008/04/16 13:52:52 sue Exp $
 #
 # TEST	rep038
 # TEST	Test of internal initialization and ongoing master updates.
@@ -38,36 +38,44 @@ proc rep038 { method { niter 200 } { tnum "038" } args } {
 	set logsets [create_logsets 2]
 
 	# Run the body of the test with and without recovery,
-	# and with and without cleaning.  Skip recovery with in-memory
-	# logging - it doesn't make sense.
-	set cleanopts { clean noclean }
+	# and with various options, such as in-memory databases,
+	# forcing an archive during the middle of init, and normal.
+	# Skip recovery with in-memory logging - it doesn't make sense.
+	set testopts { in-memdb normal archive }
 	foreach r $test_recopts {
-		foreach c $cleanopts {
+		foreach t $testopts {
 			foreach l $logsets {
 				set logindex [lsearch -exact $l "in-memory"]
+				if { $t == "in-memdb" && \
+				    [is_queueext $method]} {
+					puts "Skipping rep$tnum for queueext\
+					    with in-memory databases."
+					continue
+				}
 				if { $r == "-recover" && $logindex != -1 } {
 					puts "Skipping rep$tnum for -recover\
 					    with in-memory logs."
 					continue
 				}
-				puts "Rep$tnum ($method $c $r $args):\
+				puts "Rep$tnum ($method $t $r $args):\
 				    Test of internal init with new records."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
-				rep038_sub $method $niter $tnum $l $r $c $args
+				rep038_sub $method $niter $tnum $l $r $t $args
 			}
 		}
 	}
 }
 
-proc rep038_sub { method niter tnum logset recargs clean largs } {
+proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -104,67 +112,48 @@ proc rep038_sub { method niter tnum logset recargs clean largs } {
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 	$masterenv rep_limit 0 0
 
-	# Open a client
-	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -log_max $log_max -errpfx CLIENT $verbargs \
-	    -home $clientdir -rep_transport \[list 2 replsend\]"
-	set clientenv [eval $cl_envcmd $recargs -rep_client]
-	$clientenv rep_limit 0 0
-
-	# Bring the clients online by processing the startup messages.
-	set envlist "{$masterenv 1} {$clientenv 2}"
-	process_msgs $envlist
-
-	# Clobber replication's 30-second anti-archive timer, which will have
-	# been started by client sync-up internal init, so that we can do a
-	# log_archive in a moment.
-	#
-	$masterenv test force noarchive_timeout
-
-	# Run rep_test in the master (and update client).
+	# Run rep_test in the master only.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
-	incr start $niter
-	process_msgs $envlist
-
-	puts "\tRep$tnum.b: Close client."
-	if { $c_logtype != "in-memory" } {
-		set res [eval exec $util_path/db_archive -l -h $clientdir]
+	if { $testopt == "in-memdb" } {
+		set testfile { "" "test.db" }
+	} else {
+		set testfile "test.db"
 	}
-	set last_client_log [get_logfile $clientenv last]
-	error_check_good client_close [$clientenv close] 0
+	set omethod [convert_method $method]
+	set dbargs [convert_args $method $largs]
+	set mdb [eval {berkdb_open} -env $masterenv -auto_commit\
+          	-create -mode 0644 $omethod $dbargs $testfile ]
+	error_check_good reptest_db [is_valid_db $mdb] TRUE
 
 	set stop 0
 	while { $stop == 0 } {
-		# Run rep_test in the master (don't update client).
-		puts "\tRep$tnum.c: Running rep_test in replicated env."
+		# Run rep_test in the master beyond the first log file.
 		eval rep_test\
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv $mdb $niter $start $start
 		incr start $niter
-		replclear 2
 
-		puts "\tRep$tnum.d: Run db_archive on master."
+		puts "\tRep$tnum.a.1: Run db_archive on master."
 		if { $m_logtype == "on-disk" } {
 			set res \
 			    [eval exec $util_path/db_archive -d -h $masterdir]
 		}
-		# Make sure we have a gap between the last client log
-		# and the first master log.
+		#
+		# Make sure we have moved beyond the first log file.
+		#
 		set first_master_log [get_logfile $masterenv first]
-		if { $first_master_log > $last_client_log } {
+		if { $first_master_log > 1 } {
 			set stop 1
 		}
 
 	}
 
-	puts "\tRep$tnum.e: Reopen client ($clean)."
-	if { $clean == "clean" } {
-		env_cleanup $clientdir
-	}
+	puts "\tRep$tnum.b: Open client."
+	repladd 2
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $c_logargs -log_max $log_max -errpfx CLIENT $verbargs \
+	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
-	error_check_good client_env [is_valid_env $clientenv] TRUE
 	$clientenv rep_limit 0 0
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	#
@@ -175,37 +164,110 @@ proc rep038_sub { method niter tnum logset recargs clean largs } {
 	#
 	set loop 10
 	set i 0
-	set entries 10
+	set entries 100
+	set archived 0
 	set start $niter
+	set init 0
 	while { $i < $loop } {
 		set nproced 0
 		set start [expr $start + $entries]
 		eval rep_test \
-		    $method $masterenv NULL $entries $start $start 0 0 $largs
+		    $method $masterenv $mdb $entries $start $start
 		incr start $entries
 		incr nproced [proc_msgs_once $envlist NONE err]
 		error_check_bad nproced $nproced 0
+		#
+		# If we are testing archiving, we need to make sure that
+		# the first_lsn for internal init (the last log file we
+		# have when we first enter init) is no longer available.
+		# So, the first time through we record init_log, and then
+		# on subsequent iterations we'll wait for the last log
+		# to move further.  Force a checkpoint and archive.
+		#
+		if { $testopt == "archive" && $archived == 0 } {
+			set clstat [exec $util_path/db_stat \
+			    -N -r -R A -h $clientdir]
+			if { $init == 0 && \
+			    [is_substr $clstat "REP_F_RECOVER_PAGE"] } {
+				set init_log [get_logfile $masterenv last]
+				set init 1
+			}
+			if { $init == 0 && \
+			    [is_substr $clstat "REP_F_RECOVER_LOG"] } {
+				set init_log [get_logfile $masterenv last]
+				set init 1
+			}
+			set last_master_log [get_logfile $masterenv last]
+			set first_master_log [get_logfile $masterenv first]
+			if { $init && $m_logtype == "on-disk" && \
+			    $last_master_log > $init_log } {
+				$masterenv txn_checkpoint -force
+				$masterenv test force noarchive_timeout
+				set res [eval exec  $util_path/db_archive \
+				    -d -h $masterdir]
+				set newlog [get_logfile $masterenv first]
+				set archived 1
+				error_check_good logs \
+				    [expr $newlog > $init_log] 1
+			} elseif { $init && $m_logtype == "in-memory" && \
+			    $first_master_log > $init_log } {
+				$masterenv txn_checkpoint -force
+				$masterenv test force noarchive_timeout
+				set archived 1
+			}
+		}
 		incr i
 	}
+	set cdb [eval {berkdb_open_noerr} -env $clientenv -auto_commit\
+	    -create -mode 0644 $omethod $dbargs $testfile]
+	error_check_good reptest_db [is_valid_db $cdb] TRUE
 	process_msgs $envlist
 
-	puts "\tRep$tnum.f: Verify logs and databases"
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	puts "\tRep$tnum.c: Verify logs and databases"
+	if { $testopt == "in-memdb" } {
+		rep038_verify_inmem $masterenv $clientenv $mdb $cdb
+	} else {
+		rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	}
 
 	# Add records to the master and update client.
-	puts "\tRep$tnum.g: Add more records and check again."
-	eval rep_test $method $masterenv NULL $entries $start $start 0 0 $largs
+	puts "\tRep$tnum.d: Add more records and check again."
+	eval rep_test $method $masterenv $mdb $entries $start $start
 	incr start $entries
 	process_msgs $envlist 0 NONE err
-
-	# Check again that master and client logs and dbs are identical.
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	if { $testopt == "in-memdb" } {
+		rep038_verify_inmem $masterenv $clientenv $mdb $cdb
+	} else {
+		rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	}
 
 	# Make sure log file are on-disk or not as expected.
 	check_log_location $masterenv
 	check_log_location $clientenv
 
+	error_check_good mdb_close [$mdb close] 0
+	error_check_good cdb_close [$cdb close] 0
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0
 	replclose $testdir/MSGQUEUEDIR
+}
+
+proc rep038_verify_inmem { masterenv clientenv mdb cdb } {
+	#
+	# Can't use rep_verify to compare the logs because each
+	# commit record from db_printlog shows the database name
+	# as text on the master and as the file uid on the client
+	# because the client cannot find the "file".  
+	#
+	# !!! Check the LSN first.  Otherwise the DB->stat for the
+	# number of records will write a log record on the master if
+	# the build is configured for debug_rop.  Work around that issue.
+	#
+	set mlsn [stat_field $masterenv rep_stat "Next LSN expected"]
+	set clsn [stat_field $clientenv rep_stat "Next LSN expected"]
+	error_check_good lsn $mlsn $clsn
+
+	set mrecs [stat_field $mdb stat "Number of records"]
+	set crecs [stat_field $cdb stat "Number of records"]
+	error_check_good recs $mrecs $crecs
 }

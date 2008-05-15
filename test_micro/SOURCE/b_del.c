@@ -1,31 +1,33 @@
 /*
- * $Id: b_del.c,v 1.10 2007/05/29 17:39:15 bostic Exp $
+ * $Id: b_del.c,v 1.15 2008/01/31 17:01:22 bostic Exp $
  */
 #include "bench.h"
 
-int usage(void);
+static int usage(void);
 
 int
-main(int argc, char *argv[])
+b_del(int argc, char *argv[])
 {
+	extern char *optarg;
+	extern int optind;
 	DB *dbp;
 	DBC *dbc;
 	DBT key, data;
 	DBTYPE type;
 	db_recno_t recno;
+	u_int32_t cachesize;
 	int ch, i, count, ret, use_cursor;
 	char *ts, buf[32];
 
-	cleanup_test_dir();
-
 	type = DB_BTREE;
+	cachesize = MEGABYTE;
 	count = 100000;
 	use_cursor = 0;
 	ts = "Btree";
-	while ((ch = getopt(argc, argv, "Cc:t:")) != EOF)
+	while ((ch = getopt(argc, argv, "C:c:t:w")) != EOF)
 		switch (ch) {
 		case 'C':
-			use_cursor = 1;
+			cachesize = (u_int32_t)atoi(optarg);
 			break;
 		case 'c':
 			count = atoi(optarg);
@@ -37,10 +39,14 @@ main(int argc, char *argv[])
 				type = DB_BTREE;
 				break;
 			case 'H': case 'h':
+				if (b_util_have_hash())
+					return (0);
 				ts = "Hash";
 				type = DB_HASH;
 				break;
 			case 'Q': case 'q':
+				if (b_util_have_queue())
+					return (0);
 				ts = "Queue";
 				type = DB_QUEUE;
 				break;
@@ -51,6 +57,9 @@ main(int argc, char *argv[])
 			default:
 				return (usage());
 			}
+			break;
+		case 'w':
+			use_cursor = 1;
 			break;
 		case '?':
 		default:
@@ -63,7 +72,7 @@ main(int argc, char *argv[])
 
 	/* Create the database. */
 	DB_BENCH_ASSERT(db_create(&dbp, NULL, 0) == 0);
-	DB_BENCH_ASSERT(dbp->set_cachesize(dbp, 0, 1048576 /* 1MB */, 0) == 0);
+	DB_BENCH_ASSERT(dbp->set_cachesize(dbp, 0, cachesize, 0) == 0);
 	dbp->set_errfile(dbp, stderr);
 
 	/* Set record length for Queue. */
@@ -72,9 +81,10 @@ main(int argc, char *argv[])
 
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 	DB_BENCH_ASSERT(
-	    dbp->open(dbp, NULL, "a", NULL, type, DB_CREATE, 0666) == 0);
+	    dbp->open(dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #else
-	DB_BENCH_ASSERT(dbp->open(dbp, "a", NULL, type, DB_CREATE, 0666) == 0);
+	DB_BENCH_ASSERT(
+	    dbp->open(dbp, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #endif
 
 	/* Initialize the data. */
@@ -96,7 +106,7 @@ main(int argc, char *argv[])
 		key.size = sizeof(recno);
 		break;
 	case DB_UNKNOWN:
-		abort();
+		b_util_abort();
 		break;
 	}
 
@@ -138,12 +148,15 @@ main(int argc, char *argv[])
 	    count, ts, use_cursor ? "a cursor" : "the key");
 	TIMER_DISPLAY(count);
 
+	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
+
 	return (0);
 }
 
-int
+static int
 usage()
 {
-	(void)fprintf(stderr, "usage: b_del [-C] [-c count] [-t type]\n");
+	(void)fprintf(stderr,
+	    "usage: b_del [-w] [-C cachesz] [-c count] [-t type]\n");
 	return (EXIT_FAILURE);
 }

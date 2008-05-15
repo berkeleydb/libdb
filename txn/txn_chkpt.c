@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn_chkpt.c,v 12.47 2007/06/08 17:34:57 bostic Exp $
+ * $Id: txn_chkpt.c,v 12.53 2008/04/23 15:39:56 alanb Exp $
  */
 
 #include "db_config.h"
@@ -46,7 +46,7 @@
 
 /*
  * __txn_checkpoint_pp --
- *	DB_ENV->txn_checkpoint pre/post processing.
+ *	ENV->txn_checkpoint pre/post processing.
  *
  * PUBLIC: int __txn_checkpoint_pp
  * PUBLIC:     __P((DB_ENV *, u_int32_t, u_int32_t, u_int32_t));
@@ -57,11 +57,13 @@ __txn_checkpoint_pp(dbenv, kbytes, minutes, flags)
 	u_int32_t kbytes, minutes, flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->tx_handle, "txn_checkpoint", DB_INIT_TXN);
+	env = dbenv->env;
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->tx_handle, "txn_checkpoint", DB_INIT_TXN);
 
 	/*
 	 * On a replication client, all transactions are read-only; therefore,
@@ -72,26 +74,26 @@ __txn_checkpoint_pp(dbenv, kbytes, minutes, flags)
 	 * to operate as it gets promoted or demoted between being a
 	 * master and a client.
 	 */
-	if (IS_REP_CLIENT(dbenv))
+	if (IS_REP_CLIENT(env))
 		return (0);
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv,
-	    (__txn_checkpoint(dbenv, kbytes, minutes, flags)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__txn_checkpoint(env, kbytes, minutes, flags)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __txn_checkpoint --
- *	DB_ENV->txn_checkpoint.
+ *	ENV->txn_checkpoint.
  *
  * PUBLIC: int __txn_checkpoint
- * PUBLIC:	__P((DB_ENV *, u_int32_t, u_int32_t, u_int32_t));
+ * PUBLIC:	__P((ENV *, u_int32_t, u_int32_t, u_int32_t));
  */
 int
-__txn_checkpoint(dbenv, kbytes, minutes, flags)
-	DB_ENV *dbenv;
+__txn_checkpoint(env, kbytes, minutes, flags)
+	ENV *env;
 	u_int32_t kbytes, minutes, flags;
 {
 	DB_LSN ckp_lsn, last_ckp;
@@ -103,12 +105,12 @@ __txn_checkpoint(dbenv, kbytes, minutes, flags)
 	u_int32_t bytes, id, logflags, mbytes, op;
 	int ret;
 
-	DB_ASSERT(dbenv, !IS_REP_CLIENT(dbenv));
+	DB_ASSERT(env, !IS_REP_CLIENT(env));
 	ret = 0;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	renv = infop->primary;
 	/*
 	 * No mutex is needed as envid is read-only once it is set.
@@ -120,7 +122,7 @@ __txn_checkpoint(dbenv, kbytes, minutes, flags)
 	 * it are complete.  Our first guess (corrected below based on the list
 	 * of active transactions) is the last-written LSN.
 	 */
-	if ((ret = __log_current_lsn(dbenv, &ckp_lsn, &mbytes, &bytes)) != 0)
+	if ((ret = __log_current_lsn(env, &ckp_lsn, &mbytes, &bytes)) != 0)
 		return (ret);
 
 	if (!LF_ISSET(DB_FORCE)) {
@@ -141,9 +143,9 @@ __txn_checkpoint(dbenv, kbytes, minutes, flags)
 		if (minutes != 0) {
 			(void)time(&now);
 
-			TXN_SYSTEM_LOCK(dbenv);
+			TXN_SYSTEM_LOCK(env);
 			last_ckp_time = region->time_ckp;
-			TXN_SYSTEM_UNLOCK(dbenv);
+			TXN_SYSTEM_UNLOCK(env);
 
 			if (now - last_ckp_time >= (time_t)(minutes * 60))
 				goto do_ckp;
@@ -166,8 +168,8 @@ __txn_checkpoint(dbenv, kbytes, minutes, flags)
 	 * then remove a log this checkpoint depends on.
 	 */
 do_ckp:
-	MUTEX_LOCK(dbenv, region->mtx_ckp);
-	if ((ret = __txn_getactive(dbenv, &ckp_lsn)) != 0)
+	MUTEX_LOCK(env, region->mtx_ckp);
+	if ((ret = __txn_getactive(env, &ckp_lsn)) != 0)
 		goto err;
 
 	/*
@@ -188,16 +190,16 @@ do_ckp:
 	 * clients can start flushing their cache in preparation for the
 	 * arrival of the checkpoint record.
 	 */
-	if (LOGGING_ON(dbenv) &&
-	    IS_REP_MASTER(dbenv) && dbenv->rep_handle->send != NULL)
-		(void)__rep_send_message(dbenv,
+	if (LOGGING_ON(env) &&
+	    IS_REP_MASTER(env) && env->rep_handle->send != NULL)
+		(void)__rep_send_message(env,
 		    DB_EID_BROADCAST, REP_START_SYNC, &ckp_lsn, NULL, 0, 0);
 
 	/* Flush the cache. */
-	if (MPOOL_ON(dbenv) &&
+	if (MPOOL_ON(env) &&
 	    (ret = __memp_sync_int(
-		dbenv, NULL, 0, DB_SYNC_CHECKPOINT, NULL, NULL)) != 0) {
-		__db_err(dbenv, ret,
+		env, NULL, 0, DB_SYNC_CHECKPOINT, NULL, NULL)) != 0) {
+		__db_err(env, ret,
 		    "txn_checkpoint: failed to flush the buffer cache");
 		goto err;
 	}
@@ -212,18 +214,15 @@ do_ckp:
 	 * record is logged, giving the replicas additional time to finish.
 	 *
 	 * !!!
-	 * We do not currently surface an API to modify this value,
-	 *
-	 * !!!
 	 * Currently turned off when testing, because it makes the test suite
 	 * take a long time to run.
 	 */
 #ifndef	CONFIG_TEST
-	if (LOGGING_ON(dbenv) &&
-	    IS_REP_MASTER(dbenv) && dbenv->rep_handle->send != NULL &&
+	if (LOGGING_ON(env) &&
+	    IS_REP_MASTER(env) && env->rep_handle->send != NULL &&
 	    !LF_ISSET(DB_CKP_INTERNAL) &&
-	    dbenv->rep_handle->region->chkpt_delay != 0)
-		__os_sleep(dbenv, dbenv->rep_handle->region->chkpt_delay, 0);
+	    env->rep_handle->region->chkpt_delay != 0)
+		__os_yield(env, 0, env->rep_handle->region->chkpt_delay);
 #endif
 
 	/*
@@ -231,10 +230,10 @@ do_ckp:
 	 * recovery (somewhat unusually) calls txn_checkpoint and expects
 	 * it to write a log message, LOGGING_ON is the correct macro here.
 	 */
-	if (LOGGING_ON(dbenv)) {
-		TXN_SYSTEM_LOCK(dbenv);
+	if (LOGGING_ON(env)) {
+		TXN_SYSTEM_LOCK(env);
 		last_ckp = region->last_ckp;
-		TXN_SYSTEM_UNLOCK(dbenv);
+		TXN_SYSTEM_UNLOCK(env);
 		/*
 		 * Put out records for the open files before we log
 		 * the checkpoint.  The records are certain to be at
@@ -251,24 +250,24 @@ do_ckp:
 		 * stay as DBREG_CHKPNT.
 		 */
 		op = DBREG_CHKPNT;
-		if (!IS_RECOVERING(dbenv))
+		if (!IS_RECOVERING(env))
 			logflags |= DB_FLUSH;
 		else if (region->stat.st_nrestores == 0)
 			op = DBREG_RCLOSE;
-		if ((ret = __dbreg_log_files(dbenv, op)) != 0 ||
-		    (ret = __txn_ckp_log(dbenv, NULL, &ckp_lsn, logflags,
+		if ((ret = __dbreg_log_files(env, op)) != 0 ||
+		    (ret = __txn_ckp_log(env, NULL, &ckp_lsn, logflags,
 		    &ckp_lsn, &last_ckp, (int32_t)time(NULL), id, 0)) != 0) {
-			__db_err(dbenv, ret,
+			__db_err(env, ret,
 			    "txn_checkpoint: log failed at LSN [%ld %ld]",
 			    (long)ckp_lsn.file, (long)ckp_lsn.offset);
 			goto err;
 		}
 
-		if ((ret = __txn_updateckp(dbenv, &ckp_lsn)) != 0)
+		if ((ret = __txn_updateckp(env, &ckp_lsn)) != 0)
 			goto err;
 	}
 
-err:	MUTEX_UNLOCK(dbenv, region->mtx_ckp);
+err:	MUTEX_UNLOCK(env, region->mtx_ckp);
 	return (ret);
 }
 
@@ -284,27 +283,27 @@ err:	MUTEX_UNLOCK(dbenv, region->mtx_ckp);
  *	 must be starting after we set the initial value of lsnp in the caller.
  *	 All txns must initalize their begin_lsn before writing to the log.
  *
- * PUBLIC: int __txn_getactive __P((DB_ENV *, DB_LSN *));
+ * PUBLIC: int __txn_getactive __P((ENV *, DB_LSN *));
  */
 int
-__txn_getactive(dbenv, lsnp)
-	DB_ENV *dbenv;
+__txn_getactive(env, lsnp)
+	ENV *env;
 	DB_LSN *lsnp;
 {
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
 		if (td->begin_lsn.file != 0 &&
 		    td->begin_lsn.offset != 0 &&
 		    LOG_COMPARE(&td->begin_lsn, lsnp) < 0)
 			*lsnp = td->begin_lsn;
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
 }
@@ -313,23 +312,23 @@ __txn_getactive(dbenv, lsnp)
  * __txn_getckp --
  *	Get the LSN of the last transaction checkpoint.
  *
- * PUBLIC: int __txn_getckp __P((DB_ENV *, DB_LSN *));
+ * PUBLIC: int __txn_getckp __P((ENV *, DB_LSN *));
  */
 int
-__txn_getckp(dbenv, lsnp)
-	DB_ENV *dbenv;
+__txn_getckp(env, lsnp)
+	ENV *env;
 	DB_LSN *lsnp;
 {
 	DB_LSN lsn;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	lsn = region->last_ckp;
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	if (IS_ZERO_LSN(lsn))
 		return (DB_NOTFOUND);
@@ -344,17 +343,17 @@ __txn_getckp(dbenv, lsnp)
  * at the end of a normal checkpoint and also when a replication client
  * receives a checkpoint record.
  *
- * PUBLIC: int __txn_updateckp __P((DB_ENV *, DB_LSN *));
+ * PUBLIC: int __txn_updateckp __P((ENV *, DB_LSN *));
  */
 int
-__txn_updateckp(dbenv, lsnp)
-	DB_ENV *dbenv;
+__txn_updateckp(env, lsnp)
+	ENV *env;
 	DB_LSN *lsnp;
 {
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
 	/*
@@ -363,12 +362,12 @@ __txn_updateckp(dbenv, lsnp)
 	 * __txn_ckp_log to finish in a different order from how they were
 	 * called.
 	 */
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	if (LOG_COMPARE(&region->last_ckp, lsnp) < 0) {
 		region->last_ckp = *lsnp;
 		(void)time(&region->time_ckp);
 	}
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
 }

@@ -1,5 +1,5 @@
-<!--$Id: config.so,v 10.21 2003/10/18 19:16:02 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: config.so,v 10.22 2008/04/23 14:50:45 margo Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></b></td>
 <td align=right><a href="../lock/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/max.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Configuring locking</h3>
+<p align=center><b>Configuring locking</b></p>
 <p>The <a href="../../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a> method specifies that the deadlock detector
 should be run whenever a lock is about to block.  This option provides
 for rapid detection of deadlocks at the expense of potentially frequent
@@ -22,6 +21,11 @@ invocations of the deadlock detector.  On a fast processor with a highly
 contentious application where response time is critical, this is a good
 choice.  An option argument to the <a href="../../api_c/env_set_lk_detect.html">DB_ENV-&gt;set_lk_detect</a> method
 indicates which lock requests should be rejected.</p>
+<p>The application can limit how long it blocks on a contested resource.
+The <a href="../../api_c/env_set_timeout.html">DB_ENV-&gt;set_timeout</a> method specifies the length of the timeout.
+This value is checked whenever deadlock detection is performed,
+so the accuracy of the timeout depends upon the frequency of
+deadlock detection.</p>
 <p>In general, when applications are not specifying lock and transaction
 timeout values, the <a href="../../api_c/env_set_lk_detect.html#DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a> option is probably the
 correct first choice, and other options should only be selected based
@@ -38,6 +42,6 @@ locking conflicts matrix.  This is an advanced configuration option,
 and is almost never necessary.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../lock/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/max.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

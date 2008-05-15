@@ -1,8 +1,8 @@
  / See the file LICENSE for redistribution information.
  /
- / Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ / Copyright (c) 1997,2008 Oracle.  All rights reserved.
  /
- / $Id: uts4_cc.s,v 12.5 2007/05/17 15:15:45 bostic Exp $
+ / $Id: uts4_cc.s,v 12.6 2008/01/08 20:58:43 bostic Exp $
  /
  / int uts_lock ( int *p, int i );
  /             Update the lock word pointed to by p with the

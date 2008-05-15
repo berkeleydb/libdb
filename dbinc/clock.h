@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: clock.h,v 12.5 2007/05/17 17:22:36 bostic Exp $
+ * $Id: clock.h,v 12.9 2008/01/08 20:58:17 bostic Exp $
  */
 /*
  * Copyright (c) 1982, 1986, 1993
@@ -68,6 +68,10 @@ typedef struct {
 	    ((tvp)->tv_nsec cmp (uvp)->tv_nsec) :			\
 	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
 #undef timespecadd
+/*
+ * Note that using timespecadd to add to yourself (i.e. doubling)
+ * must be supported.  
+ */
 #define	timespecadd(vvp, uvp)						\
 	do {								\
 		(vvp)->tv_sec += (uvp)->tv_sec;				\
@@ -88,18 +92,33 @@ typedef struct {
 		}							\
 	} while (0)
 
+#undef timespecset
+#define	timespecset(vvp, sec, nsec)					\
+	do {								\
+		(vvp)->tv_sec = (time_t)(sec);				\
+		(vvp)->tv_nsec = (long)(nsec);				\
+	} while (0)
+
 #define	DB_TIMEOUT_TO_TIMESPEC(t, vvp)					\
 	do {								\
 		(vvp)->tv_sec = (time_t)((t) / 1000000);		\
 		(vvp)->tv_nsec = (long)(((t) % 1000000) * 1000);	\
 	} while (0)
 
-#define	DB_TIMESPEC_TO_TIMEOUT(t, vvp)					\
+#define	DB_TIMESPEC_TO_TIMEOUT(t, vvp, prec)				\
 	do {								\
 		t = (u_long)((vvp)->tv_sec * 1000000);			\
 		t += (u_long)((vvp)->tv_nsec / 1000);			\
-		/* Add in 1 usec for lost nsec precision. */		\
-		t++;							\
+		/* Add in 1 usec for lost nsec precision if wanted. */	\
+		if (prec)						\
+			t++;						\
+	} while (0)
+
+#define TIMESPEC_ADD_DB_TIMEOUT(vvp, t) 			        \
+	do {							        \
+		db_timespec __tmp;				        \
+		DB_TIMEOUT_TO_TIMESPEC(t, &__tmp);		        \
+		timespecadd((vvp), &__tmp);			        \
 	} while (0)
 
 #if defined(__cplusplus)

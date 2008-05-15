@@ -1,4 +1,4 @@
-m4_comment([$Id: tune.so,v 11.24 2006/08/08 05:24:09 mjc Exp $])
+m4_comment([$Id: tune.so,v 11.25 2008/01/24 00:38:39 sarette Exp $])
 
 m4_ref_title(m4_tam Applications,
     Transaction tuning,
@@ -45,8 +45,8 @@ significantly increase application throughput.  In addition, limiting
 the lifetime of non-transactional cursors will reduce the length of
 times locks are held, thereby improving concurrency.])
 
-m4_tag([m4_ref(DB_DIRECT_DB), m4_ref(DB_DIRECT_LOG)], [dnl
-Consider using the m4_ref(DB_DIRECT_DB) and m4_ref(DB_DIRECT_LOG) flags.
+m4_tag([m4_ref(DB_DIRECT_DB), m4_ref(DB_LOG_DIRECT)], [dnl
+Consider using the m4_ref(DB_DIRECT_DB) and m4_ref(DB_LOG_DIRECT) flags.
 On some systems, avoiding caching in the operating system can improve
 write throughput and allow the creation of larger m4_db caches.])
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: db_server_cxxproc.cpp,v 12.18 2007/06/28 14:01:21 bostic Exp $
+ * $Id: db_server_cxxproc.cpp,v 12.22 2008/01/08 20:58:50 bostic Exp $
  */
 
 #include "db_config.h"
@@ -509,8 +509,8 @@ __env_txn_recover_proc(
 	dbenv = (DbEnv *)dbenv_ctp->ct_anyp;
 	*freep = 0;
 
-	if ((ret = __os_malloc(
-	    dbenv->get_DB_ENV(), count * sizeof(DbPreplist), &dbprep)) != 0)
+	if ((ret = __os_malloc(dbenv->get_ENV(),
+	    count * sizeof(DbPreplist), &dbprep)) != 0)
 		goto out;
 	if ((ret = dbenv->txn_recover(dbprep, count, &retcount, flags)) != 0)
 		goto out;
@@ -529,13 +529,13 @@ __env_txn_recover_proc(
 	 * We have our txn list.  Now we need to allocate the space for
 	 * the txn ID array and the GID array and set them up.
 	 */
-	if ((ret = __os_calloc(dbenv->get_DB_ENV(), retcount, sizeof(u_int32_t),
+	if ((ret = __os_calloc(dbenv->get_ENV(), retcount, sizeof(u_int32_t),
 	    &replyp->txn.txn_val)) != 0)
 		goto out;
 	replyp->txn.txn_len = retcount * sizeof(u_int32_t);
-	if ((ret = __os_calloc(dbenv->get_DB_ENV(), retcount, DB_XIDDATASIZE,
+	if ((ret = __os_calloc(dbenv->get_ENV(), retcount, DB_XIDDATASIZE,
 	    &replyp->gid.gid_val)) != 0) {
-		__os_free(dbenv->get_DB_ENV(), replyp->txn.txn_val);
+		__os_free(dbenv->get_ENV(), replyp->txn.txn_val);
 		goto out;
 	}
 	replyp->gid.gid_len = retcount * DB_XIDDATASIZE;
@@ -576,7 +576,7 @@ __env_txn_recover_proc(
 	*freep = 1;
 out:
 	if (dbprep != NULL)
-		__os_free(dbenv->get_DB_ENV(), dbprep);
+		__os_free(dbenv->get_ENV(), dbprep);
 	replyp->status = ret;
 	return;
 out2:
@@ -589,9 +589,9 @@ out2:
 		ctp = get_tableent(*txnidp);
 		__dbclear_ctp(ctp);
 	}
-	__os_free(dbenv->get_DB_ENV(), replyp->txn.txn_val);
-	__os_free(dbenv->get_DB_ENV(), replyp->gid.gid_val);
-	__os_free(dbenv->get_DB_ENV(), dbprep);
+	__os_free(dbenv->get_ENV(), replyp->txn.txn_val);
+	__os_free(dbenv->get_ENV(), replyp->gid.gid_val);
+	__os_free(dbenv->get_ENV(), dbprep);
 	replyp->status = ret;
 	return;
 }
@@ -893,31 +893,40 @@ __db_get_proc(
 	key.set_dlen(keydlen);
 	key.set_ulen(keyulen);
 	key.set_doff(keydoff);
-	/*
-	 * Ignore memory related flags on server.
-	 */
-	key.set_flags(DB_DBT_MALLOC | (keyflags & DB_DBT_PARTIAL));
 
 	Dbt data(datadata, datasize);
 	data.set_dlen(datadlen);
 	data.set_ulen(dataulen);
 	data.set_doff(datadoff);
+
 	/*
 	 * Ignore memory related flags on server.
 	 */
-	dataflags &= DB_DBT_PARTIAL;
-	if (flags & DB_MULTIPLE) {
-		if (data.get_data() == 0) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
-			    dataulen, &tmpdata);
-			if (ret != 0)
-				goto err;
-			data.set_data(tmpdata);
-		}
-		dataflags |= DB_DBT_USERMEM;
+	if (keyflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbp->get_ENV(),
+		    keyulen, &tmpdata)) != 0)
+			goto err;
+		if (keydata)
+			memcpy(tmpdata, keydata, (keysize < keyulen) ?
+			    keysize : keyulen);
+		key.set_data(tmpdata);
+		key.set_flags(DB_DBT_USERMEM | (keyflags & DB_DBT_PARTIAL));
 	} else
-		dataflags |= DB_DBT_MALLOC;
-	data.set_flags(dataflags);
+		key.set_flags(DB_DBT_MALLOC | (keyflags & DB_DBT_PARTIAL));
+
+	if (flags & (DB_MULTIPLE | DB_MULTIPLE_KEY) ||
+	    dataflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbp->get_ENV(),
+		    dataulen, &tmpdata)) != 0)
+			goto err;
+		if (datadata)
+			memcpy(tmpdata, datadata,
+			    (datasize < dataulen) ?
+			    datasize : dataulen);
+		data.set_data(tmpdata);
+		data.set_flags(DB_DBT_USERMEM | (dataflags & DB_DBT_PARTIAL));
+	} else
+		data.set_flags(DB_DBT_MALLOC | (dataflags & DB_DBT_PARTIAL));
 
 	/* Got all our stuff, now do the get */
 	ret = dbp->get(txnp, &key, &data, flags);
@@ -938,7 +947,7 @@ __db_get_proc(
 		 * Key
 		 */
 		if (key.get_data() == keydata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			    key.get_size(), &replyp->keydata.keydata_val);
 			if (ret != 0)
 				goto err;
@@ -953,7 +962,7 @@ __db_get_proc(
 		 * Data
 		 */
 		if (data.get_data() == datadata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			     data.get_size(), &replyp->datadata.datadata_val);
 			if (ret != 0)
 				goto err;
@@ -963,11 +972,9 @@ __db_get_proc(
 			replyp->datadata.datadata_val = (char *)data.get_data();
 		replyp->datadata.datadata_len = data.get_size();
 	} else {
-err:		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    key.get_data(), keydata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    data.get_data(), datadata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
+err:		FREE_IF_CHANGED(dbp->get_ENV(), key.get_data(), keydata);
+		FREE_IF_CHANGED(dbp->get_ENV(), data.get_data(), datadata);
+		FREE_IF_CHANGED(dbp->get_ENV(),
 		    replyp->keydata.keydata_val, key.get_data());
 		replyp->keydata.keydata_val = NULL;
 		replyp->keydata.keydata_len = 0;
@@ -1198,27 +1205,27 @@ __db_open_proc(
 		 * the DB itself.
 		 */
 		(void)dbp->get_byteswapped(&isswapped);
-		if (__db_byteorder(NULL, 1234) == 0) {
+		if (__db_isbigendian() == 0) {
 			if (isswapped == 0)
-				replyp->lorder = 1234;
-			else
 				replyp->lorder = 4321;
+			else
+				replyp->lorder = 1234;
 		} else {
 			if (isswapped == 0)
-				replyp->lorder = 4321;
-			else
 				replyp->lorder = 1234;
+			else
+				replyp->lorder = 4321;
 		}
 		dbp_ctp->ct_dbdp.type = dbtype;
 		dbp_ctp->ct_dbdp.dbflags = LF_ISSET(DB_SERVER_DBFLAGS);
 		if (name == NULL)
 			dbp_ctp->ct_dbdp.db = NULL;
-		else if ((ret = __os_strdup(dbp->get_DB()->dbenv, name,
+		else if ((ret = __os_strdup(dbp->get_ENV(), name,
 		    &dbp_ctp->ct_dbdp.db)) != 0)
 			goto out;
 		if (subdb == NULL)
 			dbp_ctp->ct_dbdp.subdb = NULL;
-		else if ((ret = __os_strdup(dbp->get_DB()->dbenv, subdb,
+		else if ((ret = __os_strdup(dbp->get_ENV(), subdb,
 		    &dbp_ctp->ct_dbdp.subdb)) != 0)
 			goto out;
 	}
@@ -1323,6 +1330,7 @@ __db_pget_proc(
 	Db *dbp;
 	DbTxn *txnp;
 	ct_entry *dbp_ctp, *txnp_ctp;
+	void *tmpdata;
 	int ret;
 
 	ACTIVATE_CTP(dbp_ctp, dbpcl_id, CT_DB);
@@ -1338,27 +1346,62 @@ __db_pget_proc(
 	replyp->datadata.datadata_val = NULL;
 	*freep = 0;
 
-	/*
-	 * Ignore memory related flags on server.
-	 */
-	/* Set up key and data */
+	/* Set up skey, pkey and data */
 	Dbt skey(skeydata, skeysize);
 	skey.set_dlen(skeydlen);
 	skey.set_ulen(skeyulen);
 	skey.set_doff(skeydoff);
-	skey.set_flags(DB_DBT_MALLOC | (skeyflags & DB_DBT_PARTIAL));
 
 	Dbt pkey(pkeydata, pkeysize);
 	pkey.set_dlen(pkeydlen);
 	pkey.set_ulen(pkeyulen);
 	pkey.set_doff(pkeydoff);
-	pkey.set_flags(DB_DBT_MALLOC | (pkeyflags & DB_DBT_PARTIAL));
 
 	Dbt data(datadata, datasize);
 	data.set_dlen(datadlen);
 	data.set_ulen(dataulen);
 	data.set_doff(datadoff);
-	data.set_flags(DB_DBT_MALLOC | (dataflags & DB_DBT_PARTIAL));
+
+	/*
+	 * Ignore memory related flags on server.
+	 */
+	if (skeyflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbp->get_ENV(),
+		    skeyulen, &tmpdata)) != 0)
+			goto err;
+		if (skeydata)
+			memcpy(tmpdata, skeydata, (skeysize < skeyulen) ?
+			    skeysize : skeyulen);
+		skey.set_data(tmpdata);
+		skey.set_flags(DB_DBT_USERMEM | (skeyflags & DB_DBT_PARTIAL));
+	} else
+		skey.set_flags(DB_DBT_MALLOC | (skeyflags & DB_DBT_PARTIAL));
+
+	if (pkeyflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbp->get_ENV(),
+		    pkeyulen, &tmpdata)) != 0)
+			goto err;
+		if (pkeydata)
+			memcpy(tmpdata, pkeydata, (pkeysize < pkeyulen) ?
+			    pkeysize : pkeyulen);
+		pkey.set_data(tmpdata);
+		pkey.set_flags(DB_DBT_USERMEM | (pkeyflags & DB_DBT_PARTIAL));
+	} else
+		pkey.set_flags(DB_DBT_MALLOC | (pkeyflags & DB_DBT_PARTIAL));
+
+	if (flags & (DB_MULTIPLE | DB_MULTIPLE_KEY) ||
+	    dataflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbp->get_ENV(),
+		    dataulen, &tmpdata)) != 0)
+			goto err;
+		if (datadata)
+			memcpy(tmpdata, datadata,
+			    (datasize < dataulen) ?
+			    datasize : dataulen);
+		data.set_data(tmpdata);
+		data.set_flags(DB_DBT_USERMEM | (dataflags & DB_DBT_PARTIAL));
+	} else
+		data.set_flags(DB_DBT_MALLOC | (dataflags & DB_DBT_PARTIAL));
 
 	/* Got all our stuff, now do the get */
 	ret = dbp->pget(txnp, &skey, &pkey, &data, flags);
@@ -1379,7 +1422,7 @@ __db_pget_proc(
 		 * Key
 		 */
 		if (skey.get_data() == skeydata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			    skey.get_size(), &replyp->skeydata.skeydata_val);
 			if (ret != 0)
 				goto err;
@@ -1394,7 +1437,7 @@ __db_pget_proc(
 		 * Primary key
 		 */
 		if (pkey.get_data() == pkeydata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			     pkey.get_size(), &replyp->pkeydata.pkeydata_val);
 			if (ret != 0)
 				goto err;
@@ -1408,7 +1451,7 @@ __db_pget_proc(
 		 * Data
 		 */
 		if (data.get_data() == datadata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			     data.get_size(), &replyp->datadata.datadata_val);
 			if (ret != 0)
 				goto err;
@@ -1418,17 +1461,14 @@ __db_pget_proc(
 			replyp->datadata.datadata_val = (char *)data.get_data();
 		replyp->datadata.datadata_len = data.get_size();
 	} else {
-err:		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    skey.get_data(), skeydata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    pkey.get_data(), pkeydata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    data.get_data(), datadata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
+err:		FREE_IF_CHANGED(dbp->get_ENV(), skey.get_data(), skeydata);
+		FREE_IF_CHANGED(dbp->get_ENV(), pkey.get_data(), pkeydata);
+		FREE_IF_CHANGED(dbp->get_ENV(), data.get_data(), datadata);
+		FREE_IF_CHANGED(dbp->get_ENV(),
 		    replyp->skeydata.skeydata_val, skey.get_data());
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
+		FREE_IF_CHANGED(dbp->get_ENV(),
 		    replyp->pkeydata.pkeydata_val, pkey.get_data());
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
+		FREE_IF_CHANGED(dbp->get_ENV(),
 		    replyp->datadata.datadata_val, data.get_data());
 		replyp->skeydata.skeydata_val = NULL;
 		replyp->skeydata.skeydata_len = 0;
@@ -1511,7 +1551,7 @@ __db_put_proc(
 		 * Key
 		 */
 		if (key.get_data() == keydata) {
-			ret = __os_umalloc(dbp->get_DB()->dbenv,
+			ret = __os_umalloc(dbp->get_ENV(),
 			    key.get_size(), &replyp->keydata.keydata_val);
 			if (ret != 0)
 				goto err;
@@ -1522,9 +1562,8 @@ __db_put_proc(
 
 		replyp->keydata.keydata_len = key.get_size();
 	} else {
-err:		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
-		    key.get_data(), keydata);
-		FREE_IF_CHANGED(dbp->get_DB()->dbenv,
+err:		FREE_IF_CHANGED(dbp->get_ENV(), key.get_data(), keydata);
+		FREE_IF_CHANGED(dbp->get_ENV(),
 		    replyp->keydata.keydata_val, key.get_data());
 		replyp->keydata.keydata_val = NULL;
 		replyp->keydata.keydata_len = 0;
@@ -1724,14 +1763,14 @@ __db_stat_proc(
 		len = sizeof(DB_BTREE_STAT);
 	replyp->stats.stats_len = len / sizeof(u_int32_t);
 
-	if ((ret = __os_umalloc(dbp->get_DB()->dbenv,
+	if ((ret = __os_umalloc(dbp->get_ENV(),
 	    len * replyp->stats.stats_len, &retsp)) != 0)
 		goto out;
 	for (i = 0, q = retsp, p = (u_int32_t *)sp; i < len;
 	    i++, q++, p++)
 		*q = *p;
 	replyp->stats.stats_val = retsp;
-	__os_ufree(dbp->get_DB()->dbenv, sp);
+	__os_ufree(dbp->get_ENV(), sp);
 	if (ret == 0)
 		*freep = 1;
 out:
@@ -1852,7 +1891,7 @@ __db_join_proc(
 		return;
 
 	size = (curslen + 1) * sizeof(Dbc *);
-	if ((ret = __os_calloc(dbp->get_DB()->dbenv,
+	if ((ret = __os_calloc(dbp->get_ENV(),
 	    curslen + 1, sizeof(Dbc *), &jcurs)) != 0) {
 		replyp->status = ret;
 		__dbclear_ctp(dbc_ctp);
@@ -1864,7 +1903,7 @@ __db_join_proc(
 	 * the same transaction, so just check the first.
 	 */
 	ctp = get_tableent(*curs);
-	DB_ASSERT(dbp->get_DB()->dbenv, ctp->ct_type == CT_CURSOR);
+	DB_ASSERT(dbp->get_ENV(), ctp->ct_type == CT_CURSOR);
 	/*
 	 * If we are using a transaction, set the join activity timer
 	 * to point to the parent transaction.
@@ -1887,7 +1926,7 @@ __db_join_proc(
 		 * we know they are part of a join list and we can distinguish
 		 * them and later restore them when the join cursor is closed.
 		 */
-		DB_ASSERT(dbp->get_DB()->dbenv, ctp->ct_type == CT_CURSOR);
+		DB_ASSERT(dbp->get_ENV(), ctp->ct_type == CT_CURSOR);
 		ctp->ct_type |= CT_JOIN;
 		ctp->ct_origp = ctp->ct_activep;
 		/*
@@ -1923,7 +1962,7 @@ __db_join_proc(
 
 	replyp->status = ret;
 out:
-	__os_free(dbp->get_DB()->dbenv, jcurs);
+	__os_free(dbp->get_ENV(), jcurs);
 	return;
 }
 
@@ -2054,25 +2093,40 @@ __dbc_get_proc(
 	key.set_dlen(keydlen);
 	key.set_ulen(keyulen);
 	key.set_doff(keydoff);
-	key.set_flags(DB_DBT_MALLOC | (keyflags & DB_DBT_PARTIAL));
 
 	Dbt data(datadata, datasize);
 	data.set_dlen(datadlen);
 	data.set_ulen(dataulen);
 	data.set_doff(datadoff);
-	dataflags &= DB_DBT_PARTIAL;
-	if (flags & DB_MULTIPLE || flags & DB_MULTIPLE_KEY) {
-		if (data.get_data() == NULL) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(),
-			    data.get_ulen(), &tmpdata);
-			if (ret != 0)
-				goto err;
-			data.set_data(tmpdata);
-		}
-		dataflags |= DB_DBT_USERMEM;
+
+	/*
+	 * Ignore memory related flags on server.
+	 */
+	if (keyflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(
+		    dbenv->get_ENV(), keyulen, &tmpdata)) != 0)
+			goto err;
+		if (keydata)
+			memcpy(tmpdata, keydata, (keysize < keyulen) ?
+			    keysize : keyulen);
+		key.set_data(tmpdata);
+		key.set_flags(DB_DBT_USERMEM | (keyflags & DB_DBT_PARTIAL));
 	} else
-		dataflags |= DB_DBT_MALLOC;
-	data.set_flags(dataflags);
+		key.set_flags(DB_DBT_MALLOC | (keyflags & DB_DBT_PARTIAL));
+
+	if (flags & (DB_MULTIPLE | DB_MULTIPLE_KEY) ||
+	    dataflags & DB_DBT_USERMEM) {
+		if ((ret = __os_umalloc(dbenv->get_ENV(),
+		    dataulen, &tmpdata)) != 0)
+			goto err;
+		if (datadata)
+			memcpy(tmpdata, datadata,
+			    (datasize < dataulen) ?
+			    datasize : dataulen);
+		data.set_data(tmpdata);
+		data.set_flags(DB_DBT_USERMEM | (dataflags & DB_DBT_PARTIAL));
+	} else
+		data.set_flags(DB_DBT_MALLOC | (dataflags & DB_DBT_PARTIAL));
 
 	/* Got all our stuff, now do the get */
 	ret = dbc->get(&key, &data, flags);
@@ -2094,7 +2148,7 @@ __dbc_get_proc(
 		 * Key
 		 */
 		if (key.get_data() == keydata) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(), key.get_size(),
+			ret = __os_umalloc(dbenv->get_ENV(), key.get_size(),
 			    &replyp->keydata.keydata_val);
 			if (ret != 0)
 				goto err;
@@ -2109,7 +2163,7 @@ __dbc_get_proc(
 		 * Data
 		 */
 		if (data.get_data() == datadata) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(), data.get_size(),
+			ret = __os_umalloc(dbenv->get_ENV(), data.get_size(),
 			    &replyp->datadata.datadata_val);
 			if (ret != 0)
 				goto err;
@@ -2119,13 +2173,13 @@ __dbc_get_proc(
 			replyp->datadata.datadata_val = (char *)data.get_data();
 		replyp->datadata.datadata_len = data.get_size();
 	} else {
-err:		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+err:		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    key.get_data(), keydata);
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    data.get_data(), datadata);
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    replyp->keydata.keydata_val, key.get_data());
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    replyp->datadata.datadata_val, data.get_data());
 		replyp->keydata.keydata_val = NULL;
 		replyp->keydata.keydata_len = 0;
@@ -2217,7 +2271,7 @@ __dbc_pget_proc(
 		 * Key
 		 */
 		if (skey.get_data() == skeydata) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(),
+			ret = __os_umalloc(dbenv->get_ENV(),
 			    skey.get_size(), &replyp->skeydata.skeydata_val);
 			if (ret != 0)
 				goto err;
@@ -2231,7 +2285,7 @@ __dbc_pget_proc(
 		 * Primary key
 		 */
 		if (pkey.get_data() == pkeydata) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(),
+			ret = __os_umalloc(dbenv->get_ENV(),
 			     pkey.get_size(), &replyp->pkeydata.pkeydata_val);
 			if (ret != 0)
 				goto err;
@@ -2245,7 +2299,7 @@ __dbc_pget_proc(
 		 * Data
 		 */
 		if (data.get_data() == datadata) {
-			ret = __os_umalloc(dbenv->get_DB_ENV(),
+			ret = __os_umalloc(dbenv->get_ENV(),
 			     data.get_size(), &replyp->datadata.datadata_val);
 			if (ret != 0)
 				goto err;
@@ -2255,17 +2309,17 @@ __dbc_pget_proc(
 			replyp->datadata.datadata_val = (char *)data.get_data();
 		replyp->datadata.datadata_len = data.get_size();
 	} else {
-err:		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+err:		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    skey.get_data(), skeydata);
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    pkey.get_data(), pkeydata);
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    data.get_data(), datadata);
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    replyp->skeydata.skeydata_val, skey.get_data());
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    replyp->pkeydata.pkeydata_val, pkey.get_data());
-		FREE_IF_CHANGED(dbenv->get_DB_ENV(),
+		FREE_IF_CHANGED(dbenv->get_ENV(),
 		    replyp->datadata.datadata_val, data.get_data());
 		replyp->skeydata.skeydata_val = NULL;
 		replyp->skeydata.skeydata_len = 0;

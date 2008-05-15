@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_getenv.c,v 12.7 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_getenv.c,v 12.9 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,11 +14,11 @@
  * __os_getenv --
  *	Retrieve an environment variable.
  *
- * PUBLIC: int __os_getenv __P((DB_ENV *, const char *, char **, size_t));
+ * PUBLIC: int __os_getenv __P((ENV *, const char *, char **, size_t));
  */
 int
-__os_getenv(dbenv, name, bpp, buflen)
-	DB_ENV *dbenv;
+__os_getenv(env, name, bpp, buflen)
+	ENV *env;
 	const char *name;
 	char **bpp;
 	size_t buflen;
@@ -43,13 +43,13 @@ __os_getenv(dbenv, name, bpp, buflen)
 		}
 
 		*bpp = NULL;
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: buffer too small to hold environment variable %s",
 		    name, p);
 		return (EINVAL);
 	}
 #else
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(name, NULL);
 	COMPQUIET(buflen, 0);
 #endif

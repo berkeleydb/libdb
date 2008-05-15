@@ -1,5 +1,5 @@
-<!--$Id: env_set_verbose.so,v 10.54 2006/10/20 15:32:29 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: env_set_verbose.so,v 10.56 2008/01/19 14:12:57 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::set_verbose</h3>
+<b>DbEnv::set_verbose</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
@@ -26,22 +26,22 @@ DbEnv::set_verbose(u_int32_t which, int onoff);
 <p>
 int
 DbEnv::get_verbose(u_int32_t which, int *onoffp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::set_verbose</h3>
+<b>Description: DbEnv::set_verbose</b>
 <p>The DbEnv::set_verbose method turns specific additional informational
 and debugging messages in the Berkeley DB message output on and off.  To see
 the additional messages, verbose messages must also be configured for
 the application.  For more information on verbose messages, see the
 <a href="../api_cxx/env_set_msgfile.html">DbEnv::set_msgfile</a> method.</p>
 <p>The database environment's messages may also be configured using the
-environment's <b>DB_CONFIG</b> file.  The syntax of the entry in that
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
 file is a single line with the string "set_verbose", one or more whitespace
 characters, and the method <b>which</b> parameter as a string; for example,
 "set_verbose DB_VERB_RECOVERY".
-Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.</p>
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
 <p>The DbEnv::set_verbose method configures operations performed using the specified
 <a href="../api_cxx/env_class.html">DbEnv</a> handle, not all operations performed on the underlying
 database environment.</p>
@@ -52,36 +52,45 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>onoff</b><dd>If the <b>onoff</b> parameter is set to non-zero, the additional
-messages are output.
-<dt><b>which</b><dd>The <b>which</b> parameter must be set to one of the following values:
-<dl compact>
-<dt><a name="DB_VERB_DEADLOCK">DB_VERB_DEADLOCK</a><dd>Display additional information when doing deadlock detection.
-<dt><a name="DB_VERB_FILEOPS">DB_VERB_FILEOPS</a><dd>Display additional information when performing filesystem operations
-such as open, close or rename.  May not be available on all platforms.
-<dt><a name="DB_VERB_FILEOPS_ALL">DB_VERB_FILEOPS_ALL</a><dd>Display additional information when performing all filesystem operations,
-including read and write.  May not be available on all platforms.
-<dt><a name="DB_VERB_RECOVERY">DB_VERB_RECOVERY</a><dd>Display additional information when performing recovery.
-<dt><a name="DB_VERB_REGISTER">DB_VERB_REGISTER</a><dd>Display additional information concerning support for the
-<a href="../api_cxx/env_open.html#DB_REGISTER">DB_REGISTER</a> flag to the <a href="../api_cxx/env_open.html">DbEnv::open</a> method.
-<dt><a name="DB_VERB_REPLICATION">DB_VERB_REPLICATION</a><dd>Display detailed information when processing replication messages.
-<dt><a name="DB_VERB_WAITSFOR">DB_VERB_WAITSFOR</a><dd>Display the waits-for table when doing deadlock detection.
-</dl>
-</dl>
-<h3>Errors</h3>
+<b>Parameters</b> <br>
+ <b>onoff</b><ul compact><li>If the <b>onoff</b> parameter is set to non-zero, the additional
+messages are output.</ul>
+ <b>which</b><ul compact><li>The <b>which</b> parameter must be set to one of the following values:
+<br>
+<b><a name="DB_VERB_DEADLOCK">DB_VERB_DEADLOCK</a></b><ul compact><li>Display additional information when doing deadlock detection.</ul>
+<b><a name="DB_VERB_FILEOPS">DB_VERB_FILEOPS</a></b><ul compact><li>Display additional information when performing filesystem operations
+such as open, close or rename.  May not be available on all platforms.</ul>
+<b><a name="DB_VERB_FILEOPS_ALL">DB_VERB_FILEOPS_ALL</a></b><ul compact><li>Display additional information when performing all filesystem operations,
+including read and write.  May not be available on all platforms.</ul>
+<b><a name="DB_VERB_RECOVERY">DB_VERB_RECOVERY</a></b><ul compact><li>Display additional information when performing recovery.</ul>
+<b><a name="DB_VERB_REGISTER">DB_VERB_REGISTER</a></b><ul compact><li>Display additional information concerning support for the
+<a href="../api_cxx/env_open.html#DB_REGISTER">DB_REGISTER</a> flag to the <a href="../api_cxx/env_open.html">DbEnv::open</a> method.</ul>
+<b><a name="DB_VERB_REPLICATION">DB_VERB_REPLICATION</a></b><ul compact><li>Display all detailed information about replication. This includes the
+information displayed by all of the other DB_VERB_REP_* and DB_VERB_REPMGR_*
+values.</ul>
+<b><a name="DB_VERB_REP_ELECT">DB_VERB_REP_ELECT</a></b><ul compact><li>Display detailed information about replication elections.</ul>
+<b><a name="DB_VERB_REP_LEASE">DB_VERB_REP_LEASE</a></b><ul compact><li>Display detailed information about replication master leases.</ul>
+<b><a name="DB_VERB_REP_MISC">DB_VERB_REP_MISC</a></b><ul compact><li>Display detailed information about general replication processing not
+covered by the other DB_VERB_REP_* values.</ul>
+<b><a name="DB_VERB_REP_MSGS">DB_VERB_REP_MSGS</a></b><ul compact><li>Display detailed information about replication message processing.</ul>
+<b><a name="DB_VERB_REP_SYNC">DB_VERB_REP_SYNC</a></b><ul compact><li>Display detailed information about replication client synchronization.</ul>
+<b><a name="DB_VERB_REPMGR_CONNFAIL">DB_VERB_REPMGR_CONNFAIL</a></b><ul compact><li>Display detailed information about Replication Manager connection failures.</ul>
+<b><a name="DB_VERB_REPMGR_MISC">DB_VERB_REPMGR_MISC</a></b><ul compact><li>Display detailed information about general Replication Manager processing.</ul>
+<b><a name="DB_VERB_WAITSFOR">DB_VERB_WAITSFOR</a></b><ul compact><li>Display the waits-for table when doing deadlock detection.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
 <p>The DbEnv::set_verbose method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: <a href="../api_cxx/env_set_verbose.html">DbEnv::get_verbose</a></h3>
+<b>Description: <a href="../api_cxx/env_set_verbose.html">DbEnv::get_verbose</a></b>
 <p>The <a href="../api_cxx/env_set_verbose.html">DbEnv::get_verbose</a> method returns whether the specified <b>which</b>
 parameter is currently set or not.</p>
 <p>The <a href="../api_cxx/env_set_verbose.html">DbEnv::get_verbose</a> method may be called at any time during the life of the
@@ -91,23 +100,22 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>which</b><dd>The <b>which</b> parameter is the message value for which configuration
-is being checked.
-<dt><b>onoffp</b><dd>The <b>onoffp</b> parameter references memory into which
- the configuration of the specified <b>which</b> parameter is copied. If the returned <b>onoff</b> value is zero, the parameter is off;
+<b>Parameters</b> <br>
+ <b>which</b><ul compact><li>The <b>which</b> parameter is the message value for which configuration
+is being checked.</ul>
+ <b>onoffp</b><ul compact><li>The <b>onoffp</b> parameter references memory into which
+ the configuration of the specified <b>which</b> parameter is copied.</ul> If the returned <b>onoff</b> value is zero, the parameter is off;
 otherwise on.
-</dl>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

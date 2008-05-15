@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_unlink.c,v 1.4 2007/05/17 15:15:47 bostic Exp $
+ * $Id: os_unlink.c,v 1.8 2008/02/18 19:34:22 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,21 +15,26 @@
  *	Remove a file.
  */
 int
-__os_unlink(dbenv, path)
-	DB_ENV *dbenv;
+__os_unlink(env, path, overwrite_test)
+	ENV *env;
 	const char *path;
+	int overwrite_test;
 {
 	IFileMgr *ifmp;
 	int ret;
 
-	FILE_MANAGER_CREATE(dbenv, ifmp, ret);
+	FILE_MANAGER_CREATE(env, ifmp, ret);
 	if (ret != 0)
 		return (ret);
 
+	LAST_PANIC_CHECK_BEFORE_IO(env);
+
 	if (IFILEMGR_Remove(ifmp, path) == EFAILED)
-		FILE_MANAGER_ERR(dbenv, ifmp, path, "IFILEMGR_Remove", ret);
+		FILE_MANAGER_ERR(env, ifmp, path, "IFILEMGR_Remove", ret);
 
 	IFILEMGR_Release(ifmp);
+
+	COMPQUIET(overwrite_test, 0);
 
 	return (ret);
 }

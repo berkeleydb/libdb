@@ -1,5 +1,5 @@
 <!--$Id: intro.so,v 10.32 2003/04/15 16:48:42 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></b></td>
 <td align=right><a href="../arch/utilities.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/create.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Database environment introduction</h3>
+<p align=center><b>Database environment introduction</b></p>
 <p>A Berkeley DB environment is an encapsulation of one or more databases, log
 files and region files.  Region files are the shared memory areas that
 contain information about the database environment such as memory pool
@@ -43,7 +42,7 @@ other's data as it resides in the shared regions, and they will share
 resources such as buffer space and locks.  At the same time, any
 applications using the same databases <b>must</b> share an environment
 if consistency is to be maintained between them.</p>
-<!--$Id: m4.methods,v 10.17 2006/08/25 16:40:00 bostic Exp $-->
+<!--$Id: m4.methods,v 10.18 2008/01/12 13:42:40 bostic Exp $-->
 <table border=1 align=center>
 <tr><th>Database Environment Operations</th><th>Description</th></tr>
 <!--DbEnv::--><tr><td><a href="../../api_c/env_class.html">db_env_create</a></td><td>Create an environment handle</td></tr>
@@ -76,6 +75,7 @@ if consistency is to be maintained between them.</p>
 <!--DbEnv::set_feedback--><tr><td><a href="../../api_c/env_set_feedback.html">DB_ENV-&gt;set_feedback</a></td><td>Set feedback callback</td></tr>
 <!--DbEnv::set_flags--><tr><td><a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a></td><td>Environment configuration</td></tr>
 <!--DbEnv::set_isalive--><tr><td><a href="../../api_c/env_set_isalive.html">DB_ENV-&gt;set_isalive</a></td><td>Set thread is-alive callback</td></tr>
+<!--DbEnv::set_intermediate_dir_mode--><tr><td><a href="../../api_c/env_set_intermediate_dir_mode.html">DB_ENV-&gt;set_intermediate_dir_mode</a></td><td>Set intermediate directory creation mode</td></tr>
 <!--DbEnv::set_rpc_server--><tr><td><a href="../../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a></td><td>Establish an RPC server connection</td></tr>
 <!--DbEnv::set_shm_key--><tr><td><a href="../../api_c/env_set_shm_key.html">DB_ENV-&gt;set_shm_key</a></td><td>Set system memory shared segment ID</td></tr>
 <!--DbEnv::set_thread_id--><tr><td><a href="../../api_c/env_set_thread_id.html">DB_ENV-&gt;set_thread_id</a></td><td>Set thread of control ID function</td></tr>
@@ -87,6 +87,6 @@ if consistency is to be maintained between them.</p>
 </table>
 <table width="100%"><tr><td><br></td><td align=right><a href="../arch/utilities.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/create.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

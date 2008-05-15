@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep017script.tcl,v 12.7 2007/05/17 15:15:55 bostic Exp $
+# $Id: rep017script.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # Rep017 script - concurrency with checkpoints.
 #
@@ -11,7 +11,7 @@
 # it finds in the message queue.  It requires a one-master
 # one-client setup.
 #
-# Usage: repscript masterdir clientdir
+# Usage: repscript masterdir clientdir rep_verbose verbose_type
 # masterdir: master env directory
 # clientdir: client env directory
 #
@@ -20,10 +20,10 @@ source $test_path/test.tcl
 source $test_path/testutils.tcl
 source $test_path/reputils.tcl
 
-set usage "repscript masterdir clientdir"
+set usage "repscript masterdir clientdir rep_verbose verbose_type"
 
 # Verify usage
-if { $argc != 2 } {
+if { $argc != 4 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -31,6 +31,12 @@ if { $argc != 2 } {
 # Initialize arguments
 set masterdir [ lindex $argv 0 ]
 set clientdir [ lindex $argv 1 ]
+set rep_verbose [ lindex $argv 2 ]
+set verbose_type [ lindex $argv 3 ]
+set verbargs "" 
+if { $rep_verbose == 1 } {
+	set verbargs " -verbose {$verbose_type on} "
+}
 
 # Join the queue env.  We assume the rep test convention of
 # placing the messages in $testdir/MSGQUEUEDIR.
@@ -44,22 +50,16 @@ repladd 1
 repladd 2
 
 # Join the master env.
-set ma_cmd "berkdb_env_noerr -home $masterdir \
+set ma_cmd "berkdb_env_noerr -home $masterdir $verbargs \
 	-txn -rep_master -rep_transport \[list 1 replsend\]"
-#set ma_cmd "berkdb_env_noerr -home $masterdir  \
-#	-verbose {rep on} -errfile /dev/stderr  \
-# 	-txn -rep_master -rep_transport \[list 1 replsend\]"
 set masterenv [eval $ma_cmd]
 error_check_good script_menv_open [is_valid_env $masterenv] TRUE
 
 puts "Master open"
 
 # Join the client env.
-set cl_cmd "berkdb_env_noerr -home $clientdir \
+set cl_cmd "berkdb_env_noerr -home $clientdir $verbargs \
 	-txn -rep_client -rep_transport \[list 2 replsend\]"
-#set cl_cmd "berkdb_env_noerr -home $clientdir \
-#	-verbose {rep on} -errfile /dev/stderr \
-#	-txn -rep_client -rep_transport \[list 2 replsend\]"
 set clientenv [eval $cl_cmd]
 error_check_good script_cenv_open [is_valid_env $clientenv] TRUE
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: BooleanBinding.java,v 12.6 2007/05/04 00:28:25 mark Exp $
+ * $Id: BooleanBinding.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
  */
 
 package com.sleepycat.bind.tuple;

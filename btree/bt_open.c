@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_open.c,v 12.18 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_open.c,v 12.25 2008/01/30 12:18:21 mjc Exp $
  */
 
 #include "db_config.h"
@@ -59,12 +59,13 @@ static void __bam_init_meta __P((DB *, BTMETA *, db_pgno_t, DB_LSN *));
  * __bam_open --
  *	Open a btree.
  *
- * PUBLIC: int __bam_open __P((DB *,
+ * PUBLIC: int __bam_open __P((DB *, DB_THREAD_INFO *,
  * PUBLIC:      DB_TXN *, const char *, db_pgno_t, u_int32_t));
  */
 int
-__bam_open(dbp, txn, name, base_pgno, flags)
+__bam_open(dbp, ip, txn, name, base_pgno, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name;
 	db_pgno_t base_pgno;
@@ -81,7 +82,7 @@ __bam_open(dbp, txn, name, base_pgno, flags)
 	 * comparison routine to get it right.
 	 */
 	if (t->bt_compare == __bam_defcmp && t->bt_prefix != __bam_defpfx) {
-		__db_errx(dbp->dbenv,
+		__db_errx(dbp->env,
 "prefix comparison may not be specified for default comparison routine");
 		return (EINVAL);
 	}
@@ -92,14 +93,14 @@ __bam_open(dbp, txn, name, base_pgno, flags)
 	 */
 	if (B_MINKEY_TO_OVFLSIZE(dbp, t->bt_minkey, dbp->pgsize) >
 	    B_MINKEY_TO_OVFLSIZE(dbp, DEFMINKEYPAGE, dbp->pgsize)) {
-		__db_errx(dbp->dbenv,
+		__db_errx(dbp->env,
 		    "bt_minkey value of %lu too high for page size of %lu",
 		    (u_long)t->bt_minkey, (u_long)dbp->pgsize);
 		return (EINVAL);
 	}
 
 	/* Start up the tree. */
-	return (__bam_read_root(dbp, txn, base_pgno, flags));
+	return (__bam_read_root(dbp, ip, txn, base_pgno, flags));
 }
 
 /*
@@ -113,11 +114,11 @@ __bam_metachk(dbp, name, btm)
 	const char *name;
 	BTMETA *btm;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	u_int32_t vers;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * At this point, all we know is that the magic number is for a Btree.
@@ -129,7 +130,7 @@ __bam_metachk(dbp, name, btm)
 	switch (vers) {
 	case 6:
 	case 7:
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: btree version %lu requires a version upgrade",
 		    name, (u_long)vers);
 		return (DB_OLD_VERSION);
@@ -137,13 +138,14 @@ __bam_metachk(dbp, name, btm)
 	case 9:
 		break;
 	default:
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: unsupported btree version: %lu", name, (u_long)vers);
 		return (EINVAL);
 	}
 
 	/* Swap the page if we need to. */
-	if (F_ISSET(dbp, DB_AM_SWAP) && (ret = __bam_mswap((PAGE *)btm)) != 0)
+	if (F_ISSET(dbp, DB_AM_SWAP) &&
+	    (ret = __bam_mswap(env, (PAGE *)btm)) != 0)
 		return (ret);
 
 	/*
@@ -151,7 +153,7 @@ __bam_metachk(dbp, name, btm)
 	 * and type based on metadata info.
 	 */
 	if ((ret =
-	    __db_fchk(dbenv, "DB->open", btm->dbmeta.flags, BTM_MASK)) != 0)
+	    __db_fchk(env, "DB->open", btm->dbmeta.flags, BTM_MASK)) != 0)
 		return (ret);
 
 	if (F_ISSET(&btm->dbmeta, BTM_RECNO)) {
@@ -170,7 +172,7 @@ __bam_metachk(dbp, name, btm)
 		F_SET(dbp, DB_AM_DUP);
 	else
 		if (F_ISSET(dbp, DB_AM_DUP)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		"%s: DB_DUP specified to open method but not set in database",
 			    name);
 			return (EINVAL);
@@ -181,12 +183,12 @@ __bam_metachk(dbp, name, btm)
 			goto wrong_type;
 		F_SET(dbp, DB_AM_RECNUM);
 
-		if ((ret = __db_fcchk(dbenv,
+		if ((ret = __db_fcchk(env,
 		    "DB->open", dbp->flags, DB_AM_DUP, DB_AM_RECNUM)) != 0)
 			return (ret);
 	} else
 		if (F_ISSET(dbp, DB_AM_RECNUM)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 	    "%s: DB_RECNUM specified to open method but not set in database",
 			    name);
 			return (EINVAL);
@@ -198,7 +200,7 @@ __bam_metachk(dbp, name, btm)
 		F_SET(dbp, DB_AM_FIXEDLEN);
 	} else
 		if (F_ISSET(dbp, DB_AM_FIXEDLEN)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 	"%s: DB_FIXEDLEN specified to open method but not set in database",
 			    name);
 			return (EINVAL);
@@ -210,7 +212,7 @@ __bam_metachk(dbp, name, btm)
 		F_SET(dbp, DB_AM_RENUMBER);
 	} else
 		if (F_ISSET(dbp, DB_AM_RENUMBER)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 	    "%s: DB_RENUMBER specified to open method but not set in database",
 			    name);
 			return (EINVAL);
@@ -220,7 +222,7 @@ __bam_metachk(dbp, name, btm)
 		F_SET(dbp, DB_AM_SUBDB);
 	else
 		if (F_ISSET(dbp, DB_AM_SUBDB)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 	    "%s: multiple databases specified but not supported by file",
 			    name);
 			return (EINVAL);
@@ -232,7 +234,7 @@ __bam_metachk(dbp, name, btm)
 		F_SET(dbp, DB_AM_DUPSORT);
 	} else
 		if (dbp->dup_compare != NULL) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		"%s: duplicate sort specified but not supported in database",
 			    name);
 			return (EINVAL);
@@ -248,10 +250,10 @@ __bam_metachk(dbp, name, btm)
 
 wrong_type:
 	if (dbp->type == DB_BTREE)
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "open method type is Btree, database type is Recno");
 	else
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "open method type is Recno, database type is Btree");
 	return (EINVAL);
 }
@@ -260,11 +262,13 @@ wrong_type:
  * __bam_read_root --
  *	Read the root page and check a tree.
  *
- * PUBLIC: int __bam_read_root __P((DB *, DB_TXN *, db_pgno_t, u_int32_t));
+ * PUBLIC: int __bam_read_root __P((DB *,
+ * PUBLIC:      DB_THREAD_INFO *, DB_TXN *, db_pgno_t, u_int32_t));
  */
 int
-__bam_read_root(dbp, txn, base_pgno, flags)
+__bam_read_root(dbp, ip, txn, base_pgno, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	db_pgno_t base_pgno;
 	u_int32_t flags;
@@ -285,14 +289,14 @@ __bam_read_root(dbp, txn, base_pgno, flags)
 	ret = 0;
 
 	/* Get a cursor.  */
-	if ((ret = __db_cursor(dbp, txn, &dbc, 0)) != 0)
+	if ((ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
 		return (ret);
 
 	/* Get the metadata page. */
 	if ((ret =
 	    __db_lget(dbc, 0, base_pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &base_pgno, dbc->txn, 0, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &base_pgno, ip, dbc->txn, 0, &meta)) != 0)
 		goto err;
 
 	/*
@@ -310,9 +314,11 @@ __bam_read_root(dbp, txn, base_pgno, flags)
 
 		t->bt_meta = base_pgno;
 		t->bt_root = meta->root;
+		if (PGNO(meta) == PGNO_BASE_MD && !F_ISSET(dbp, DB_AM_RECOVER))
+			__memp_set_last_pgno(mpf, meta->dbmeta.last_pgno);
 	} else {
-		DB_ASSERT(dbp->dbenv,
-		    IS_RECOVERING(dbp->dbenv) || F_ISSET(dbp, DB_AM_RECOVER));
+		DB_ASSERT(dbp->env,
+		    IS_RECOVERING(dbp->env) || F_ISSET(dbp, DB_AM_RECOVER));
 	}
 
 	/*
@@ -327,8 +333,8 @@ __bam_read_root(dbp, txn, base_pgno, flags)
 	t->bt_lpgno = PGNO_INVALID;
 
 err:	/* Put the metadata page back. */
-	if (meta != NULL &&
-	    (t_ret = __memp_fput(mpf, meta, dbc->priority)) != 0 && ret == 0)
+	if (meta != NULL && (t_ret = __memp_fput(mpf,
+	    ip, meta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -351,10 +357,10 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 	db_pgno_t pgno;
 	DB_LSN *lsnp;
 {
-	DB_ENV *dbenv;
 	BTREE *t;
+	ENV *env;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	t = dbp->bt_internal;
 
 	memset(meta, 0, sizeof(BTMETA));
@@ -366,9 +372,8 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 	if (F_ISSET(dbp, DB_AM_CHKSUM))
 		FLD_SET(meta->dbmeta.metaflags, DBMETA_CHKSUM);
 	if (F_ISSET(dbp, DB_AM_ENCRYPT)) {
-		meta->dbmeta.encrypt_alg =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->alg;
-		DB_ASSERT(dbenv, meta->dbmeta.encrypt_alg != 0);
+		meta->dbmeta.encrypt_alg = env->crypto_handle->alg;
+		DB_ASSERT(env, meta->dbmeta.encrypt_alg != 0);
 		meta->crypto_magic = meta->dbmeta.magic;
 	}
 	meta->dbmeta.type = P_BTREEMETA;
@@ -405,27 +410,29 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
  * memory or calls __memp_fget), 2) the initialization, and 3) the "put page"
  * chunk which either does a fop write or an __memp_fput.
  *
- * PUBLIC: int __bam_new_file __P((DB *, DB_TXN *, DB_FH *, const char *));
+ * PUBLIC: int __bam_new_file __P((DB *,
+ * PUBLIC:      DB_THREAD_INFO *, DB_TXN *, DB_FH *, const char *));
  */
 int
-__bam_new_file(dbp, txn, fhp, name)
+__bam_new_file(dbp, ip, txn, fhp, name)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DB_FH *fhp;
 	const char *name;
 {
 	BTMETA *meta;
-	DB_ENV *dbenv;
+	DBT pdbt;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
 	DB_PGINFO pginfo;
-	DBT pdbt;
+	ENV *env;
 	PAGE *root;
 	db_pgno_t pgno;
 	int ret, t_ret;
 	void *buf;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	root = NULL;
 	meta = NULL;
@@ -434,7 +441,7 @@ __bam_new_file(dbp, txn, fhp, name)
 	if (F_ISSET(dbp, DB_AM_INMEM)) {
 		/* Build the meta-data page. */
 		pgno = PGNO_BASE_MD;
-		if ((ret = __memp_fget(mpf, &pgno, txn,
+		if ((ret = __memp_fget(mpf, &pgno, ip, txn,
 		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 			return (ret);
 		LSN_NOT_LOGGED(lsn);
@@ -444,7 +451,7 @@ __bam_new_file(dbp, txn, fhp, name)
 		if ((ret =
 		    __db_log_page(dbp, txn, &lsn, pgno, (PAGE *)meta)) != 0)
 			goto err;
-		ret = __memp_fput(mpf, meta, dbp->priority);
+		ret = __memp_fput(mpf, ip, meta, dbp->priority);
 		meta = NULL;
 		if (ret != 0)
 			goto err;
@@ -452,7 +459,7 @@ __bam_new_file(dbp, txn, fhp, name)
 		/* Build the root page. */
 		pgno = 1;
 		if ((ret = __memp_fget(mpf, &pgno,
-		    txn, DB_MPOOL_CREATE, &root)) != 0)
+		    ip, txn, DB_MPOOL_CREATE, &root)) != 0)
 			goto err;
 		P_INIT(root, dbp->pgsize, 1, PGNO_INVALID, PGNO_INVALID,
 		    LEAFLEVEL, dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE);
@@ -460,7 +467,7 @@ __bam_new_file(dbp, txn, fhp, name)
 		if ((ret =
 		    __db_log_page(dbp, txn, &root->lsn, pgno, root)) != 0)
 			goto err;
-		ret = __memp_fput(mpf, root, dbp->priority);
+		ret = __memp_fput(mpf, ip, root, dbp->priority);
 		root = NULL;
 		if (ret != 0)
 			goto err;
@@ -474,16 +481,17 @@ __bam_new_file(dbp, txn, fhp, name)
 		pginfo.type = dbp->type;
 		pdbt.data = &pginfo;
 		pdbt.size = sizeof(pginfo);
-		if ((ret = __os_calloc(dbenv, 1, dbp->pgsize, &buf)) != 0)
+		if ((ret = __os_calloc(env, 1, dbp->pgsize, &buf)) != 0)
 			return (ret);
 		meta = (BTMETA *)buf;
 		LSN_NOT_LOGGED(lsn);
 		__bam_init_meta(dbp, meta, PGNO_BASE_MD, &lsn);
 		meta->root = 1;
 		meta->dbmeta.last_pgno = 1;
-		if ((ret = __db_pgout(dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
+		if ((ret = __db_pgout(
+		    dbp->dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(dbenv, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
 		    dbp->pgsize, 0, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -497,9 +505,10 @@ __bam_new_file(dbp, txn, fhp, name)
 		P_INIT(root, dbp->pgsize, 1, PGNO_INVALID, PGNO_INVALID,
 		    LEAFLEVEL, dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE);
 		LSN_NOT_LOGGED(root->lsn);
-		if ((ret = __db_pgout(dbenv, root->pgno, root, &pdbt)) != 0)
+		if ((ret =
+		    __db_pgout(dbp->dbenv, root->pgno, root, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(dbenv, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
 		    dbp->pgsize, 1, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -507,14 +516,14 @@ __bam_new_file(dbp, txn, fhp, name)
 	}
 
 err:	if (buf != NULL)
-		__os_free(dbenv, buf);
+		__os_free(env, buf);
 	else {
 		if (meta != NULL &&
-		    (t_ret = __memp_fput(mpf,
+		    (t_ret = __memp_fput(mpf, ip,
 		    meta, dbp->priority)) != 0 && ret == 0)
 			ret = t_ret;
 		if (root != NULL &&
-		    (t_ret = __memp_fput(mpf,
+		    (t_ret = __memp_fput(mpf, ip,
 		    root, dbp->priority)) != 0 && ret == 0)
 			ret = t_ret;
 	}
@@ -525,30 +534,31 @@ err:	if (buf != NULL)
  * __bam_new_subdb --
  *	Create a metadata page and a root page for a new btree.
  *
- * PUBLIC: int __bam_new_subdb __P((DB *, DB *, DB_TXN *));
+ * PUBLIC: int __bam_new_subdb __P((DB *, DB *, DB_THREAD_INFO *, DB_TXN *));
  */
 int
-__bam_new_subdb(mdbp, dbp, txn)
+__bam_new_subdb(mdbp, dbp, ip, txn)
 	DB *mdbp, *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 {
 	BTMETA *meta;
 	DBC *dbc;
-	DB_ENV *dbenv;
 	DB_LOCK metalock;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *root;
 	int ret, t_ret;
 
-	dbenv = mdbp->dbenv;
+	env = mdbp->env;
 	mpf = mdbp->mpf;
 	dbc = NULL;
 	meta = NULL;
 	root = NULL;
 
-	if ((ret = __db_cursor(mdbp, txn,
-	    &dbc, CDB_LOCKING(dbenv) ?  DB_WRITECURSOR : 0)) != 0)
+	if ((ret = __db_cursor(mdbp, ip, txn,
+	    &dbc, CDB_LOCKING(env) ?  DB_WRITECURSOR : 0)) != 0)
 		return (ret);
 
 	/* Get, and optionally create the metadata page. */
@@ -556,7 +566,7 @@ __bam_new_subdb(mdbp, dbp, txn)
 	    0, dbp->meta_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
 	if ((ret = __memp_fget(mpf, &dbp->meta_pgno,
-	    txn, DB_MPOOL_CREATE, &meta)) != 0)
+	    ip, txn, DB_MPOOL_CREATE, &meta)) != 0)
 		goto err;
 
 	/* Build meta-data page. */
@@ -572,7 +582,7 @@ __bam_new_subdb(mdbp, dbp, txn)
 		goto err;
 	root->level = LEAFLEVEL;
 
-	if (DBENV_LOGGING(dbenv) &&
+	if (DBENV_LOGGING(env) &&
 #if !defined(DEBUG_WOP)
 	    txn != NULL &&
 #endif
@@ -587,19 +597,19 @@ __bam_new_subdb(mdbp, dbp, txn)
 		goto err;
 
 	/* Release the metadata and root pages. */
-	if ((ret = __memp_fput(mpf, meta, dbc->priority)) != 0)
+	if ((ret = __memp_fput(mpf, ip, meta, dbc->priority)) != 0)
 		goto err;
 	meta = NULL;
-	if ((ret = __memp_fput(mpf, root, dbc->priority)) != 0)
+	if ((ret = __memp_fput(mpf, ip, root, dbc->priority)) != 0)
 		goto err;
 	root = NULL;
 err:
 	if (meta != NULL)
-		if ((t_ret = __memp_fput(mpf,
+		if ((t_ret = __memp_fput(mpf, ip,
 		meta, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
 	if (root != NULL)
-		if ((t_ret = __memp_fput(mpf,
+		if ((t_ret = __memp_fput(mpf, ip,
 		root, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
 	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)

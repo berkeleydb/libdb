@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: lock_stub.c,v 12.7 2007/05/17 15:15:43 bostic Exp $
+ * $Id: lock_stub.c,v 12.10 2008/01/08 20:58:41 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,18 +15,17 @@
  * If the library wasn't compiled with locking support, various routines
  * aren't available.  Stub them here, returning an appropriate error.
  */
-static int __db_nolocking __P((DB_ENV *));
+static int __db_nolocking __P((ENV *));
 
 /*
  * __db_nolocking --
  *	Error when a Berkeley DB build doesn't include the locking subsystem.
  */
 static int
-__db_nolocking(dbenv)
-	DB_ENV *dbenv;
+__db_nolocking(env)
+	ENV *env;
 {
-	__db_errx(dbenv,
-	    "library build did not include support for locking");
+	__db_errx(env, "library build did not include support for locking");
 	return (DB_OPNOTSUP);
 }
 
@@ -53,7 +52,7 @@ __lock_get_lk_conflicts(dbenv, lk_conflictsp, lk_modesp)
 {
 	COMPQUIET(lk_conflictsp, NULL);
 	COMPQUIET(lk_modesp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -62,7 +61,7 @@ __lock_get_lk_detect(dbenv, lk_detectp)
 	u_int32_t *lk_detectp;
 {
 	COMPQUIET(lk_detectp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -71,7 +70,7 @@ __lock_get_lk_max_lockers(dbenv, lk_maxp)
 	u_int32_t *lk_maxp;
 {
 	COMPQUIET(lk_maxp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -80,7 +79,7 @@ __lock_get_lk_max_locks(dbenv, lk_maxp)
 	u_int32_t *lk_maxp;
 {
 	COMPQUIET(lk_maxp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -89,7 +88,16 @@ __lock_get_lk_max_objects(dbenv, lk_maxp)
 	u_int32_t *lk_maxp;
 {
 	COMPQUIET(lk_maxp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
+}
+
+int
+__lock_get_lk_partitions(dbenv, lk_maxp)
+	DB_ENV *dbenv;
+	u_int32_t *lk_maxp;
+{
+	COMPQUIET(lk_maxp, NULL);
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -100,7 +108,7 @@ __lock_get_env_timeout(dbenv, timeoutp, flag)
 {
 	COMPQUIET(timeoutp, NULL);
 	COMPQUIET(flag, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -112,7 +120,7 @@ __lock_detect_pp(dbenv, flags, atype, abortp)
 	COMPQUIET(flags, 0);
 	COMPQUIET(atype, 0);
 	COMPQUIET(abortp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -128,7 +136,7 @@ __lock_get_pp(dbenv, locker, flags, obj, lock_mode, lock)
 	COMPQUIET(obj, NULL);
 	COMPQUIET(lock_mode, 0);
 	COMPQUIET(lock, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -137,7 +145,7 @@ __lock_id_pp(dbenv, idp)
 	u_int32_t *idp;
 {
 	COMPQUIET(idp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -146,7 +154,7 @@ __lock_id_free_pp(dbenv, id)
 	u_int32_t id;
 {
 	COMPQUIET(id, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -155,7 +163,7 @@ __lock_put_pp(dbenv, lock)
 	DB_LOCK *lock;
 {
 	COMPQUIET(lock, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -166,7 +174,7 @@ __lock_stat_pp(dbenv, statp, flags)
 {
 	COMPQUIET(statp, NULL);
 	COMPQUIET(flags, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -175,7 +183,7 @@ __lock_stat_print_pp(dbenv, flags)
 	u_int32_t flags;
 {
 	COMPQUIET(flags, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -190,7 +198,7 @@ __lock_vec_pp(dbenv, locker, flags, list, nlist, elistp)
 	COMPQUIET(list, NULL);
 	COMPQUIET(nlist, 0);
 	COMPQUIET(elistp, NULL);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -201,7 +209,7 @@ __lock_set_lk_conflicts(dbenv, lk_conflicts, lk_modes)
 {
 	COMPQUIET(lk_conflicts, NULL);
 	COMPQUIET(lk_modes, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -210,7 +218,7 @@ __lock_set_lk_detect(dbenv, lk_detect)
 	u_int32_t lk_detect;
 {
 	COMPQUIET(lk_detect, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -219,7 +227,7 @@ __lock_set_lk_max_locks(dbenv, lk_max)
 	u_int32_t lk_max;
 {
 	COMPQUIET(lk_max, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -228,7 +236,7 @@ __lock_set_lk_max_lockers(dbenv, lk_max)
 	u_int32_t lk_max;
 {
 	COMPQUIET(lk_max, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -237,7 +245,16 @@ __lock_set_lk_max_objects(dbenv, lk_max)
 	u_int32_t lk_max;
 {
 	COMPQUIET(lk_max, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
+}
+
+int
+__lock_set_lk_partitions(dbenv, lk_max)
+	DB_ENV *dbenv;
+	u_int32_t lk_max;
+{
+	COMPQUIET(lk_max, 0);
+	return (__db_nolocking(dbenv->env));
 }
 
 int
@@ -248,66 +265,65 @@ __lock_set_env_timeout(dbenv, timeout, flags)
 {
 	COMPQUIET(timeout, 0);
 	COMPQUIET(flags, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(dbenv->env));
 }
 
 int
-__lock_open(dbenv, create_ok)
-	DB_ENV *dbenv;
+__lock_open(env, create_ok)
+	ENV *env;
 	int create_ok;
 {
-	COMPQUIET(dbenv, NULL);
 	COMPQUIET(create_ok, 0);
-	return (__db_nolocking(dbenv));
+	return (__db_nolocking(env));
 }
 
 int
-__lock_id_free(dbenv, sh_locker)
-	DB_ENV *dbenv;
+__lock_id_free(env, sh_locker)
+	ENV *env;
 	DB_LOCKER *sh_locker;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(sh_locker, 0);
 	return (0);
 }
 
 int
-__lock_env_refresh(dbenv)
-	DB_ENV *dbenv;
+__lock_env_refresh(env)
+	ENV *env;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	return (0);
 }
 
 int
-__lock_stat_print(dbenv, flags)
-	DB_ENV *dbenv;
+__lock_stat_print(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(flags, 0);
 	return (0);
 }
 
 int
-__lock_put(dbenv, lock)
-	DB_ENV *dbenv;
+__lock_put(env, lock)
+	ENV *env;
 	DB_LOCK *lock;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(lock, NULL);
 	return (0);
 }
 
 int
-__lock_vec(dbenv, sh_locker, flags, list, nlist, elistp)
-	DB_ENV *dbenv;
+__lock_vec(env, sh_locker, flags, list, nlist, elistp)
+	ENV *env;
 	DB_LOCKER *sh_locker;
 	u_int32_t flags;
 	int nlist;
 	DB_LOCKREQ *list, **elistp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(sh_locker, 0);
 	COMPQUIET(flags, 0);
 	COMPQUIET(list, NULL);
@@ -317,15 +333,15 @@ __lock_vec(dbenv, sh_locker, flags, list, nlist, elistp)
 }
 
 int
-__lock_get(dbenv, locker, flags, obj, lock_mode, lock)
-	DB_ENV *dbenv;
+__lock_get(env, locker, flags, obj, lock_mode, lock)
+	ENV *env;
 	DB_LOCKER *locker;
 	u_int32_t flags;
 	const DBT *obj;
 	db_lockmode_t lock_mode;
 	DB_LOCK *lock;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(locker, NULL);
 	COMPQUIET(flags, 0);
 	COMPQUIET(obj, NULL);
@@ -335,36 +351,36 @@ __lock_get(dbenv, locker, flags, obj, lock_mode, lock)
 }
 
 int
-__lock_id(dbenv, idp, lkp)
-	DB_ENV *dbenv;
+__lock_id(env, idp, lkp)
+	ENV *env;
 	u_int32_t *idp;
 	DB_LOCKER **lkp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(idp, NULL);
 	COMPQUIET(lkp, NULL);
 	return (0);
 }
 
 int
-__lock_inherit_timeout(dbenv, parent, locker)
-	DB_ENV *dbenv;
+__lock_inherit_timeout(env, parent, locker)
+	ENV *env;
 	DB_LOCKER *parent, *locker;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(parent, NULL);
 	COMPQUIET(locker, NULL);
 	return (0);
 }
 
 int
-__lock_set_timeout(dbenv, locker, timeout, op)
-	DB_ENV *dbenv;
+__lock_set_timeout(env, locker, timeout, op)
+	ENV *env;
 	DB_LOCKER *locker;
 	db_timeout_t timeout;
 	u_int32_t op;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(locker, NULL);
 	COMPQUIET(timeout, 0);
 	COMPQUIET(op, 0);
@@ -372,11 +388,11 @@ __lock_set_timeout(dbenv, locker, timeout, op)
 }
 
 int
-__lock_addfamilylocker(dbenv, pid, id)
-	DB_ENV *dbenv;
+__lock_addfamilylocker(env, pid, id)
+	ENV *env;
 	u_int32_t pid, id;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(pid, 0);
 	COMPQUIET(id, 0);
 	return (0);
@@ -393,13 +409,13 @@ __lock_freefamilylocker(lt, sh_locker)
 }
 
 int
-__lock_downgrade(dbenv, lock, new_mode, flags)
-	DB_ENV *dbenv;
+__lock_downgrade(env, lock, new_mode, flags)
+	ENV *env;
 	DB_LOCK *lock;
 	db_lockmode_t new_mode;
 	u_int32_t flags;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(lock, NULL);
 	COMPQUIET(new_mode, 0);
 	COMPQUIET(flags, 0);
@@ -407,13 +423,13 @@ __lock_downgrade(dbenv, lock, new_mode, flags)
 }
 
 int
-__lock_locker_is_parent(dbenv, locker, child, retp)
-	DB_ENV *dbenv;
+__lock_locker_is_parent(env, locker, child, retp)
+	ENV *env;
 	DB_LOCKER *locker;
 	DB_LOCKER *child;
 	int *retp;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(locker, NULL);
 	COMPQUIET(child, NULL);
 
@@ -433,22 +449,22 @@ __lock_set_thread_id(lref, pid, tid)
 }
 
 int
-__lock_failchk(dbenv)
-	DB_ENV *dbenv;
+__lock_failchk(env)
+	ENV *env;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	return (0);
 }
 
 int
-__lock_get_list(dbenv, locker, flags, lock_mode, list)
-	DB_ENV *dbenv;
+__lock_get_list(env, locker, flags, lock_mode, list)
+	ENV *env;
 	DB_LOCKER *locker;
 	u_int32_t flags;
 	db_lockmode_t lock_mode;
 	DBT *list;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(locker, NULL);
 	COMPQUIET(flags, 0);
 	COMPQUIET(lock_mode, 0);
@@ -457,11 +473,11 @@ __lock_get_list(dbenv, locker, flags, lock_mode, list)
 }
 
 void
-__lock_list_print(dbenv, list)
-	DB_ENV *dbenv;
+__lock_list_print(env, list)
+	ENV *env;
 	DBT *list;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(list, NULL);
 }
 
@@ -472,19 +488,18 @@ __lock_getlocker(lt, locker, create, retp)
 	int create;
 	DB_LOCKER **retp;
 {
-	COMPQUIET(lt, NULL);
 	COMPQUIET(locker, 0);
 	COMPQUIET(create, 0);
 	COMPQUIET(retp, NULL);
-	return (__db_nolocking(lt->dbenv));
+	return (__db_nolocking(lt->env));
 }
 
 int
-__lock_id_set(dbenv, cur_id, max_id)
-	DB_ENV *dbenv;
+__lock_id_set(env, cur_id, max_id)
+	ENV *env;
 	u_int32_t cur_id, max_id;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(cur_id, 0);
 	COMPQUIET(max_id, 0);
 	return (0);

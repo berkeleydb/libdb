@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep075.tcl,v 12.5 2007/07/02 17:29:19 paula Exp $
+# $Id: rep075.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep075
 # TEST	Replication and prepared transactions.
@@ -65,11 +65,12 @@ proc rep075 { method { tnum "075" } args } {
 proc rep075_sub { method tnum logset prep op after largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 	global util_path
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 	env_cleanup $testdir
 

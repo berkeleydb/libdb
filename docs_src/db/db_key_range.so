@@ -1,4 +1,4 @@
-m4_comment([$Id: db_key_range.so,v 10.23 2004/08/13 03:38:55 bostic Exp $])
+m4_comment([$Id: db_key_range.so,v 10.24 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL, dbh_key_range)
 include(m4/m4.seealso)
@@ -64,7 +64,7 @@ life of the transaction, so estimates may not be repeatable.])
 m4_unusedflags
 m4_paramend
 
-m4_err(dbh_key_range, deadlock, repinval,
+m4_err(dbh_key_range, deadlock, rephandle, replockout,
 einval, [the underlying database was not of type Btree])
 
 m4_seealso(Db)

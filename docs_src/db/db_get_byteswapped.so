@@ -1,4 +1,4 @@
-m4_comment([$Id: db_get_byteswapped.so,v 10.23 2004/08/13 03:38:55 bostic Exp $])
+m4_comment([$Id: db_get_byteswapped.so,v 10.24 2007/09/21 20:06:01 bostic Exp $])
 
 define(M4PAGELOCAL, dbh_get_byteswapped)
 include(m4/m4.seealso)
@@ -21,7 +21,7 @@ machine, or vice versa). This information may be used to determine
 whether application data needs to be adjusted for this architecture or
 not.])
 
-m4_when_after_dbopen(dbh_get_byteswapped)
+m4_when(dbh_get_byteswapped, before, dbh_open)
 
 m4_return(dbh_get_byteswapped, std)
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_archive.c,v 12.12 2007/05/17 15:14:58 bostic Exp $
+ * $Id: db_archive.c,v 12.13 2008/01/08 20:58:11 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 int db_archive_main __P((int, char *[]));

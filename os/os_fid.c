@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: os_fid.c,v 12.17 2007/05/17 17:18:02 bostic Exp $
+ * $Id: os_fid.c,v 12.20 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,11 +14,11 @@
  * __os_fileid --
  *	Return a unique identifier for a file.
  *
- * PUBLIC: int __os_fileid __P((DB_ENV *, const char *, int, u_int8_t *));
+ * PUBLIC: int __os_fileid __P((ENV *, const char *, int, u_int8_t *));
  */
 int
-__os_fileid(dbenv, fname, unique_okay, fidp)
-	DB_ENV *dbenv;
+__os_fileid(env, fname, unique_okay, fidp)
+	ENV *env;
 	const char *fname;
 	int unique_okay;
 	u_int8_t *fidp;
@@ -44,13 +44,9 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	 * Clear the buffer.
 	 */
 	memset(fidp, 0, DB_FILE_ID_LEN);
-#ifdef HAVE_VXWORKS
-	RETRY_CHK((stat((char *)fname, &sb)), ret);
-#else
-	RETRY_CHK((stat(fname, &sb)), ret);
-#endif
+	RETRY_CHK((stat(CHAR_STAR_CAST fname, &sb)), ret);
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "stat: %s", fname);
+		__db_syserr(env, ret, "stat: %s", fname);
 		return (__os_posix_err(ret));
 	}
 
@@ -100,7 +96,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 
 	if (unique_okay) {
 		/* Add in 32-bits of (hopefully) unique number. */
-		__os_unique_id(dbenv, &tmp);
+		__os_unique_id(env, &tmp);
 		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 			*fidp++ = *p++;
 
@@ -124,7 +120,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 		 * base 2.
 		 */
 		if (DB_GLOBAL(fid_serial) == 0) {
-			__os_id(dbenv, &pid, NULL);
+			__os_id(env->dbenv, &pid, NULL);
 			DB_GLOBAL(fid_serial) = (u_int32_t)pid;
 		} else
 			DB_GLOBAL(fid_serial) += 100000;

@@ -1,6 +1,6 @@
-m4_comment([$Id: db_join.so,v 10.58 2007/05/31 18:52:36 bostic Exp $])
+m4_comment([$Id: db_join.so,v 10.60 2007/10/24 16:06:06 bostic Exp $])
 
-define(M4PAGELOCAL, [dbh_join, DB_JOIN_NOSORT, DB_SECONDARY_BAD])
+define(M4PAGELOCAL, [dbh_join, DB_JOIN_NOSORT])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(dbh_join),
@@ -108,7 +108,7 @@ m4_ref(dbh_join).])
 m4_tagend])
 m4_paramend
 
-m4_err(dbh_join, repinval, secondary_bad, einval,
+m4_err(dbh_join, rephandle, replockout, secondary_bad, einval,
 [cursor methods other than  m4_ref(dbc_get) or m4_ref(dbc_close) were
 called])
 

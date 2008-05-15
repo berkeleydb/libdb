@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: DataView.java,v 12.6 2007/05/04 00:28:25 mark Exp $
+ * $Id: DataView.java,v 12.8 2008/02/07 17:12:26 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -50,6 +50,7 @@ final class DataView implements Cloneable {
     CursorConfig cursorConfig;      // Used for all operations via this view
     boolean writeAllowed;           // Read-write view
     boolean ordered;                // Not a HASH Db
+    boolean keyRangesAllowed;       // BTREE only
     boolean recNumAllowed;          // QUEUE, RECNO, or BTREE-RECNUM Db
     boolean recNumAccess;           // recNumAllowed && using a rec num binding
     boolean btreeRecNumDb;          // BTREE-RECNUM Db
@@ -97,6 +98,7 @@ final class DataView implements Cloneable {
                 dbConfig = db.getConfig();
             }
             ordered = !DbCompat.isTypeHash(dbConfig);
+            keyRangesAllowed = DbCompat.isTypeBtree(dbConfig);
             recNumAllowed = DbCompat.isTypeQueue(dbConfig) ||
                             DbCompat.isTypeRecno(dbConfig) ||
                             DbCompat.getBtreeRecordNumbers(dbConfig);
@@ -272,6 +274,10 @@ final class DataView implements Cloneable {
                           Object endKey, boolean endInclusive)
         throws DatabaseException, KeyRangeException {
 
+        if ((beginKey != null || endKey != null) && !keyRangesAllowed) {
+            throw new UnsupportedOperationException
+                ("Key ranges allowed only for BTREE databases");
+        }
         KeyRange useRange = useSubRange();
         useRange = subRange
             (useRange, beginKey, beginInclusive, endKey, endInclusive);

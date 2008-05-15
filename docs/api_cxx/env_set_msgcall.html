@@ -1,5 +1,5 @@
 <!--$Id: env_set_msgcall.so,v 10.7 2006/05/17 20:47:46 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::set_msgcall</h3>
+<b>DbEnv::set_msgcall</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,13 +18,13 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 void DbEnv::set_msgcall(void (*db_msgcall_fcn)(const DbEnv *dbenv, const char *msg));
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::set_msgcall</h3>
+<b>Description: DbEnv::set_msgcall</b>
 <p>There are interfaces in the Berkeley DB library which either directly output
 informational messages or statistical information, or configure the
 library to output such messages when performing other operations, for
@@ -44,28 +44,27 @@ to display the messages via a C library FILE *.</p>
 database environment.</p>
 <p>The DbEnv::set_msgcall method may be called at any time during the life of the
 application.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>db_msgcall_fcn</b><dd>The <b>db_msgcall_fcn</b> parameter is the application-specified message
+<b>Parameters</b> <br>
+ <b>db_msgcall_fcn</b><ul compact><li>The <b>db_msgcall_fcn</b> parameter is the application-specified message
 reporting function.  The function takes two parameters:
-<dl compact>
-<dt><b>dbenv</b><dd>The <b>dbenv</b> parameter is the enclosing database environment.
-<dt><b>msg</b><dd>The <b>msg</b> parameter is the message string.
-</dl>
+<br>
+<b><b>dbenv</b></b><ul compact><li>The <b>dbenv</b> parameter is the enclosing database environment.</ul>
+<b><b>msg</b></b><ul compact><li>The <b>msg</b> parameter is the message string.</ul>
+<br></ul>
 <p>Berkeley DB is not re-entrant.  Callback functions should not attempt to make
 library calls (for example, to release locks or close open handles).
 Re-entering Berkeley DB is not guaranteed to work correctly, and the results
 are undefined.</p>
-</dl>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

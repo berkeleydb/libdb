@@ -1,16 +1,16 @@
-# $Id: win_exports.in,v 12.26 2007/06/29 14:11:26 alexg Exp $
+# $Id: win_exports.in,v 12.38 2008/03/06 00:02:46 alexg Exp $
 
 # Standard interfaces.
 	db_create
 	db_env_create
+	db_env_set_func_free
+	db_env_set_func_malloc
+	db_env_set_func_realloc
 	db_sequence_create
 	db_strerror
 	db_version
 	db_xa_switch
 	log_compare
-
-# Needed for application-specific logging and recovery routines.
-	__db_add_recovery
 
 # These are needed to link the tcl library.
 	__db_dbm_close
@@ -38,9 +38,9 @@
 	__db_ndbm_pagfno
 	__db_ndbm_rdonly
 	__db_ndbm_store
-	__db_panic
 	__db_win32_mutex_lock
 	__db_win32_mutex_unlock
+	__env_panic
 	__ham_func2
 	__ham_func3
 	__ham_func4
@@ -75,6 +75,7 @@
 	__bam_cadjust_read
 	__bam_cdel_read
 	__bam_curadj_read
+	__bam_merge_44_read
 	__bam_merge_read
 	__bam_pgin
 	__bam_pgno_read
@@ -91,10 +92,11 @@
 	__crdel_inmem_remove_read
 	__crdel_inmem_rename_read
 	__crdel_metasub_read
+	__db_Cstrsep
+	__db_add_recovery_int
 	__db_addrem_read
 	__db_big_read
 	__db_cksum_read
-	__db_ctime
 	__db_debug_read
 	__db_dispatch
 	__db_dl
@@ -108,7 +110,6 @@
 	__db_mkpath
 	__db_msg
 	__db_noop_read
-	__db_omode
 	__db_ovref_read
 	__db_pg_alloc_42_read
 	__db_pg_alloc_read
@@ -117,8 +118,6 @@
 	__db_pg_freedata_42_read
 	__db_pg_freedata_read
 	__db_pg_init_read
-	__db_pg_new_read
-	__db_pg_prepare_read
 	__db_pg_sort_read
 	__db_pgin
 	__db_pgout
@@ -157,18 +156,29 @@
 	__lock_list_print
 	__log_stat_pp
 	__mutex_set_wait_info
+	__os_abort
 	__os_abspath
+	__os_cpu_count
+	__os_ctime
 	__os_exists
+	__os_fdlock
+	__os_fileid 
+	__os_freeaddrinfo
 	__os_get_errno
+	__os_getaddrinfo
 	__os_gettime
 	__os_id
+	__os_io
+	__os_isroot
 	__os_mapfile
+	__os_physwrite
 	__os_seek
 	__os_set_errno
-	__os_sleep
-	__os_spin
+	__os_truncate
 	__os_ufree
+	__os_unique_id
 	__os_unmapfile
+	__os_urealloc
 	__os_yield
 	__qam_add_read
 	__qam_del_read

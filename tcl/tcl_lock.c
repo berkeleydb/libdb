@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_lock.c,v 12.12 2007/06/22 17:39:08 bostic Exp $
+ * $Id: tcl_lock.c,v 12.18 2008/05/07 12:27:36 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -32,11 +32,11 @@ static void	_LockPutInfo __P((Tcl_Interp *, db_lockop_t, DB_LOCK *,
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LockDetect(interp, objc, objv, envp)
+tcl_LockDetect(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	static const char *ldopts[] = {
 		"default",
@@ -113,7 +113,7 @@ tcl_LockDetect(interp, objc, objv, envp)
 	}
 
 	_debug_check();
-	ret = envp->lock_detect(envp, flag, policy, NULL);
+	ret = dbenv->lock_detect(dbenv, flag, policy, NULL);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "lock detect");
 	return (result);
 }
@@ -125,11 +125,11 @@ tcl_LockDetect(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LockGet(interp, objc, objv, envp)
+tcl_LockGet(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	static const char *lgopts[] = {
 		"-nowait",
@@ -191,14 +191,14 @@ tcl_LockGet(interp, objc, objv, envp)
 		}
 	}
 
-	result = _GetThisLock(interp, envp, lockid, flag, &obj, mode, newname);
+	result = _GetThisLock(interp, dbenv, lockid, flag, &obj, mode, newname);
 	if (result == TCL_OK) {
 		res = NewStringObj(newname, strlen(newname));
 		Tcl_SetObjResult(interp, res);
 	}
 out:
 	if (freeobj)
-		__os_free(envp, otmp);
+		__os_free(dbenv->env, otmp);
 	return (result);
 }
 
@@ -209,11 +209,11 @@ out:
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LockStat(interp, objc, objv, envp)
+tcl_LockStat(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	DB_LOCK_STAT *sp;
 	Tcl_Obj *res;
@@ -228,7 +228,7 @@ tcl_LockStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->lock_stat(envp, &sp, 0);
+	ret = dbenv->lock_stat(dbenv, &sp, 0);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "lock stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -248,12 +248,25 @@ tcl_LockStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Maximum lockers", sp->st_maxlockers);
 	MAKE_STAT_LIST("Maximum objects", sp->st_maxobjects);
 	MAKE_STAT_LIST("Lock modes", sp->st_nmodes);
+	MAKE_STAT_LIST("Number of lock table partitions", sp->st_partitions);
 	MAKE_STAT_LIST("Current number of locks", sp->st_nlocks);
 	MAKE_STAT_LIST("Maximum number of locks so far", sp->st_maxnlocks);
+	MAKE_STAT_LIST("Maximum number of locks in any hash bucket",
+	    sp->st_maxhlocks);
+	MAKE_STAT_LIST("Maximum number of lock steals for an empty partition",
+	    sp->st_locksteals);
+	MAKE_STAT_LIST("Maximum number lock steals in any partition",
+	    sp->st_maxlsteals);
 	MAKE_STAT_LIST("Current number of lockers", sp->st_nlockers);
 	MAKE_STAT_LIST("Maximum number of lockers so far", sp->st_maxnlockers);
 	MAKE_STAT_LIST("Current number of objects", sp->st_nobjects);
 	MAKE_STAT_LIST("Maximum number of objects so far", sp->st_maxnobjects);
+	MAKE_STAT_LIST("Maximum number of objects in any hash bucket",
+	    sp->st_maxhobjects);
+	MAKE_STAT_LIST("Maximum number of object steals for an empty partition",
+	    sp->st_objectsteals);
+	MAKE_STAT_LIST("Maximum number object steals in any partition",
+	    sp->st_maxosteals);
 	MAKE_STAT_LIST("Lock requests", sp->st_nrequests);
 	MAKE_STAT_LIST("Lock releases", sp->st_nreleases);
 	MAKE_STAT_LIST("Lock upgrades", sp->st_nupgrade);
@@ -272,18 +285,22 @@ tcl_LockStat(interp, objc, objv, envp)
 	    sp->st_lockers_wait);
 	MAKE_STAT_LIST("Number of locker allocation nowaits",
 	    sp->st_lockers_nowait);
-	MAKE_STAT_LIST("Number of lock allocation waits", sp->st_locks_wait);
-	MAKE_STAT_LIST(
-	    "Number of lock allocation nowaits", sp->st_locks_nowait);
 	MAKE_STAT_LIST("Maximum hash bucket length", sp->st_hash_len);
 	MAKE_STAT_LIST("Lock timeout value", sp->st_locktimeout);
 	MAKE_STAT_LIST("Number of lock timeouts", sp->st_nlocktimeouts);
 	MAKE_STAT_LIST("Transaction timeout value", sp->st_txntimeout);
 	MAKE_STAT_LIST("Number of transaction timeouts", sp->st_ntxntimeouts);
+	MAKE_STAT_LIST("Number lock partition mutex waits", sp->st_part_wait);
+	MAKE_STAT_LIST("Number lock partition mutex nowaits",
+	    sp->st_part_nowait);
+	MAKE_STAT_LIST("Maximum number waits on any lock partition mutex",
+	    sp->st_part_max_wait);
+	MAKE_STAT_LIST("Maximum number nowaits on any lock partition mutex",
+	    sp->st_part_max_nowait);
 #endif
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_ufree(envp, sp);
+	__os_ufree(dbenv->env, sp);
 	return (result);
 }
 
@@ -294,11 +311,11 @@ error:
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LockTimeout(interp, objc, objv, envp)
+tcl_LockTimeout(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	long timeout;
 	int result, ret;
@@ -314,7 +331,8 @@ tcl_LockTimeout(interp, objc, objv, envp)
 	if (result != TCL_OK)
 		return (result);
 	_debug_check();
-	ret = envp->set_timeout(envp, (u_int32_t)timeout, DB_SET_LOCK_TIMEOUT);
+	ret = dbenv->set_timeout(dbenv, (u_int32_t)timeout,
+	    DB_SET_LOCK_TIMEOUT);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "lock timeout");
 	return (result);
 }
@@ -337,7 +355,7 @@ lock_Cmd(clientData, interp, objc, objv)
 	enum lkcmds {
 		LKPUT
 	};
-	DB_ENV *env;
+	DB_ENV *dbenv;
 	DB_LOCK *lock;
 	DBTCL_INFO *lkip;
 	int cmdindex, result, ret;
@@ -356,7 +374,7 @@ lock_Cmd(clientData, interp, objc, objv)
 		return (TCL_ERROR);
 	}
 
-	env = NAME_TO_ENV(lkip->i_parent->i_name);
+	dbenv = NAME_TO_ENV(lkip->i_parent->i_name);
 	/*
 	 * No args for this.  Error if there are some.
 	 */
@@ -375,12 +393,12 @@ lock_Cmd(clientData, interp, objc, objv)
 	switch ((enum lkcmds)cmdindex) {
 	case LKPUT:
 		_debug_check();
-		ret = env->lock_put(env, lock);
+		ret = dbenv->lock_put(dbenv, lock);
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "lock put");
 		(void)Tcl_DeleteCommand(interp, lkip->i_name);
 		_DeleteInfo(lkip);
-		__os_free(env, lock);
+		__os_free(dbenv->env, lock);
 		break;
 	}
 	return (result);
@@ -392,11 +410,11 @@ lock_Cmd(clientData, interp, objc, objv)
  * PUBLIC: int tcl_LockVec __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LockVec(interp, objc, objv, envp)
+tcl_LockVec(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* environment pointer */
+	DB_ENV *dbenv;			/* environment pointer */
 {
 	static const char *lvopts[] = {
 		"-nowait",
@@ -509,7 +527,7 @@ tcl_LockVec(interp, objc, objv, envp)
 				return (result);
 			}
 			obj.data = otmp;
-			ret = _GetThisLock(interp, envp, lockid, flag,
+			ret = _GetThisLock(interp, dbenv, lockid, flag,
 			    &obj, list.mode, newname);
 			if (ret != 0) {
 				result = _ReturnSetup(interp, ret,
@@ -522,7 +540,7 @@ tcl_LockVec(interp, objc, objv, envp)
 			thisop = NewStringObj(newname, strlen(newname));
 			(void)Tcl_ListObjAppendElement(interp, res, thisop);
 			if (freeobj && otmp != NULL) {
-				__os_free(envp, otmp);
+				__os_free(dbenv->env, otmp);
 				freeobj = 0;
 			}
 			continue;
@@ -582,7 +600,7 @@ tcl_LockVec(interp, objc, objv, envp)
 		 * lock_vec.
 		 */
 		_debug_check();
-		ret = envp->lock_vec(envp, lockid, flag, &list, 1, NULL);
+		ret = dbenv->lock_vec(dbenv, lockid, flag, &list, 1, NULL);
 		/*
 		 * Now deal with whether or not the operation succeeded.
 		 * Get's were done above, all these are only puts.
@@ -593,7 +611,7 @@ tcl_LockVec(interp, objc, objv, envp)
 			result = _ReturnSetup(interp, ret,
 			    DB_RETOK_STD(ret), "lock put");
 		if (freeobj && otmp != NULL) {
-			__os_free(envp, otmp);
+			__os_free(dbenv->env, otmp);
 			freeobj = 0;
 		}
 		/*
@@ -689,21 +707,21 @@ _LockPutInfo(interp, op, lock, lockid, objp)
 }
 
 static int
-_GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
+_GetThisLock(interp, dbenv, lockid, flag, objp, mode, newname)
 	Tcl_Interp *interp;		/* Interpreter */
-	DB_ENV *envp;			/* Env handle */
+	DB_ENV *dbenv;			/* Env handle */
 	u_int32_t lockid;		/* Locker ID */
 	u_int32_t flag;			/* Lock flag */
 	DBT *objp;			/* Object to lock */
 	db_lockmode_t mode;		/* Lock mode */
 	char *newname;			/* New command name */
 {
-	DB_LOCK *lock;
 	DBTCL_INFO *envip, *ip;
+	DB_LOCK *lock;
 	int result, ret;
 
 	result = TCL_OK;
-	envip = _PtrToInfo((void *)envp);
+	envip = _PtrToInfo((void *)dbenv);
 	if (envip == NULL) {
 		Tcl_SetResult(interp, "Could not find env info\n", TCL_STATIC);
 		return (TCL_ERROR);
@@ -716,16 +734,16 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 		    TCL_STATIC);
 		return (TCL_ERROR);
 	}
-	ret = __os_malloc(envp, sizeof(DB_LOCK), &lock);
+	ret = __os_malloc(dbenv->env, sizeof(DB_LOCK), &lock);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->lock_get(envp, lockid, flag, objp, mode, lock);
+	ret = dbenv->lock_get(dbenv, lockid, flag, objp, mode, lock);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "lock get");
 	if (result == TCL_ERROR) {
-		__os_free(envp, lock);
+		__os_free(dbenv->env, lock);
 		_DeleteInfo(ip);
 		return (result);
 	}
@@ -733,12 +751,12 @@ _GetThisLock(interp, envp, lockid, flag, objp, mode, newname)
 	 * Success.  Set up return.  Set up new info
 	 * and command widget for this lock.
 	 */
-	ret = __os_malloc(envp, objp->size, &ip->i_lockobj.data);
+	ret = __os_malloc(dbenv->env, objp->size, &ip->i_lockobj.data);
 	if (ret != 0) {
 		Tcl_SetResult(interp, "Could not duplicate obj",
 		    TCL_STATIC);
-		(void)envp->lock_put(envp, lock);
-		__os_free(envp, lock);
+		(void)dbenv->lock_put(dbenv, lock);
+		__os_free(dbenv->env, lock);
 		_DeleteInfo(ip);
 		result = TCL_ERROR;
 		goto error;

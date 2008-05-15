@@ -1,10 +1,11 @@
-m4_comment([$Id: db_config.so,v 10.3 2004/11/18 01:57:39 bostic Exp $])
+m4_comment([$Id: db_config.so,v 10.4 2007/09/26 15:11:31 bostic Exp $])
 
 define(M4PAGELOCAL, DB_CONFIG)
 
 m4_ref_title(Environment, DB_CONFIG configuration file,
     [DB_CONFIG, database environment @configuration], env/error, env/naming)
 
+m4_idefz(DB_CONFIG)
 m4_p([dnl
 Almost all of the configuration information that can be specified to
 m4_ref(DbEnv) methods can also be specified using a configuration file.

@@ -1,5 +1,5 @@
 <!--$Id: log_file.so,v 10.34 2004/08/13 03:38:57 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::log_file</h3>
+<b>DbEnv::log_file</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 DbEnv::log_file(const DbLsn *lsn, char *namep, size_t len);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::log_file</h3>
+<b>Description: DbEnv::log_file</b>
 <p>The DbEnv::log_file method maps
 <a href="../api_cxx/lsn_class.html">DbLsn</a> objects
 to filenames, returning the name of the file containing the record named
@@ -42,37 +42,36 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>lsn</b><dd>The <b>lsn</b> parameter is the
+<b>Parameters</b> <br>
+ <b>lsn</b><ul compact><li>The <b>lsn</b> parameter is the
 <a href="../api_cxx/lsn_class.html">DbLsn</a> object
-for which a filename is wanted.
-<dt><b>namep</b><dd>The <b>namep</b> parameter references memory into which
- the name of the file containing the record named by <b>lsn</b> is copied. 
-<dt><b>len</b><dd>The <b>len</b> parameter is the length of the <b>namep</b> buffer in
+for which a filename is wanted.</ul>
+ <b>namep</b><ul compact><li>The <b>namep</b> parameter references memory into which
+ the name of the file containing the record named by <b>lsn</b> is copied.</ul> 
+ <b>len</b><ul compact><li>The <b>len</b> parameter is the length of the <b>namep</b> buffer in
 bytes.  If <b>namep</b> is too short to hold the filename,
 DbEnv::log_file will fail.  (Log filenames are normally quite short,
-on the order of 10 characters.)
-</dl>
-<h3>Errors</h3>
+on the order of 10 characters.)</ul>
+<br>
+<br><b>Errors</b>
 <p>The DbEnv::log_file method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If supplied buffer was too small to hold the log filename; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If supplied buffer was too small to hold the log filename; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/logc_class.html">DbLogc</a>, <a href="../api_cxx/lsn_class.html">DbLsn</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/log_list.html">Logging Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

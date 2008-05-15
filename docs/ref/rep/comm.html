@@ -1,5 +1,5 @@
 <!--$Id: comm.so,v 1.19 2007/03/20 20:20:27 alanb Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
 <td align=right><a href="../rep/base_meth.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/newsite.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Building the communications infrastructure</h3>
+<p align=center><b>Building the communications infrastructure</b></p>
 <p>Replication Manager provides a built-in communications
 infrastructure.</p>
 <p>For applications that use the Base replication API, which must provide
@@ -54,42 +53,42 @@ simultaneously, and from any arbitrary thread or process in the Berkeley DB
 environment.</p>
 <p>There are a number of informational returns from the
 <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> method:</p>
-<dl compact>
-<dt><a href="../../api_c/rep_message.html#DB_REP_DUPMASTER">DB_REP_DUPMASTER</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_DUPMASTER">DB_REP_DUPMASTER</a>, it means that
+<br>
+<b><a href="../../api_c/rep_message.html#DB_REP_DUPMASTER">DB_REP_DUPMASTER</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_DUPMASTER">DB_REP_DUPMASTER</a>, it means that
 another database environment in the replication group also believes
 itself to be the master.  The application should complete all active
 transactions, close all open database handles, reconfigure itself as
 a client using the <a href="../../api_c/rep_start.html">DB_ENV-&gt;rep_start</a> method, and then call for an election by
-calling the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.
-<dt><a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a>, it means
+calling the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.</ul>
+<b><a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_HOLDELECTION">DB_REP_HOLDELECTION</a>, it means
 that another database environment in the replication group has called
-for an election.  The application should call the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.
-<dt><a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a>, it means that
+for an election.  The application should call the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.</ul>
+<b><a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_IGNORE">DB_REP_IGNORE</a>, it means that
 this message cannot be processed.
 This is normally an indication that this message
 is irrelevant to the current replication state, such as a message
-from an old generation that arrived late.
-<dt><a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a>, it means a
+from an old generation that arrived late.</ul>
+<b><a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_ISPERM">DB_REP_ISPERM</a>, it means a
 permanent record, perhaps a message previously returned as
 <a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a> was successfully
 written to disk.  This record may have filled a gap in the log record that
 allowed additional records to be written.  The <b>ret_lsnp</b>
-contains the maximum LSN of the permanent records written.
-<dt><a href="../../api_c/rep_message.html#DB_REP_NEWSITE">DB_REP_NEWSITE</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_NEWSITE">DB_REP_NEWSITE</a>, it means that
+contains the maximum LSN of the permanent records written.</ul>
+<b><a href="../../api_c/rep_message.html#DB_REP_NEWSITE">DB_REP_NEWSITE</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_NEWSITE">DB_REP_NEWSITE</a>, it means that
 a message from a previously unknown member of the replication group has
 been received.  The application should reconfigure itself as necessary
-so it is able to send messages to this site.
-<dt><a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a><dd>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a>, it means a
+so it is able to send messages to this site.</ul>
+<b><a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a></b><ul compact><li>When <a href="../../api_c/rep_message.html">DB_ENV-&gt;rep_process_message</a> returns <a href="../../api_c/rep_message.html#DB_REP_NOTPERM">DB_REP_NOTPERM</a>, it means a
 message marked as <a href="../../api_c/rep_transport.html#DB_REP_PERMANENT">DB_REP_PERMANENT</a> was processed successfully
 but was not written to disk.  This is normally an indication that one
 or more messages, which should have arrived before this message, have
 not yet arrived.  This operation will be written to disk when the
 missing messages arrive.  The <b>ret_lsnp</b> argument will contain
 the LSN of this record.  The application should take whatever action
-is deemed necessary to retain its recoverability characteristics.
-</dl>
+is deemed necessary to retain its recoverability characteristics.</ul>
+<br>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/base_meth.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/newsite.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

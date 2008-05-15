@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_unlink.c,v 12.18 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_unlink.c,v 12.26 2008/05/07 12:27:35 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -11,49 +11,40 @@
 #include "db_int.h"
 
 /*
- * __os_region_unlink --
- *	Remove a shared memory object file.
- */
-int
-__os_region_unlink(dbenv, path)
-	DB_ENV *dbenv;
-	const char *path;
-{
-	if (dbenv != NULL &&
-	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: unlink %s", path);
-
-	if (F_ISSET(dbenv, DB_ENV_OVERWRITE))
-		(void)__db_file_multi_write(dbenv, path);
-
-	return (__os_unlink(dbenv, path));
-}
-
-/*
  * __os_unlink --
  *	Remove a file.
  */
 int
-__os_unlink(dbenv, path)
-	DB_ENV *dbenv;
+__os_unlink(env, path, overwrite_test)
+	ENV *env;
 	const char *path;
+	int overwrite_test;
 {
+	DB_ENV *dbenv;
 	HANDLE h;
 	_TCHAR *tpath, *orig_tpath, buf[DB_MAXPATHLEN];
 	u_int32_t id;
 	int ret, t_ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: unlink %s", path);
+		__db_msg(env, "fileops: unlink %s", path);
 
-	TO_TSTRING(dbenv, path, tpath, ret);
+	/* Optionally overwrite the contents of the file to enhance security. */
+	if (dbenv != NULL && overwrite_test && F_ISSET(dbenv, DB_ENV_OVERWRITE))
+		(void)__db_file_multi_write(env, path);
+
+	TO_TSTRING(env, path, tpath, ret);
 	if (ret != 0)
 		return (ret);
 	orig_tpath = tpath;
 
+	LAST_PANIC_CHECK_BEFORE_IO(env);
+
 	/*
-	 * Windows NT and its descendents allow removal of open files, but the
+	 * Windows NT and its descendants allow removal of open files, but the
 	 * DeleteFile Win32 system call isn't equivalent to a POSIX unlink.
 	 * Firstly, it only succeeds if FILE_SHARE_DELETE is set when the file
 	 * is opened.  Secondly, it leaves the file in a "zombie" state, where
@@ -68,14 +59,14 @@ __os_unlink(dbenv, path)
 	 * subsequent open may fail for no apparent reason.
 	 */
 	if (__os_is_winnt()) {
-		__os_unique_id(dbenv, &id);
+		__os_unique_id(env, &id);
 		_sntprintf(buf, DB_MAXPATHLEN, _T("%s.del.%010u"), tpath, id);
 		if (MoveFile(tpath, buf))
 			tpath = buf;
 		else {
 			ret = __os_get_syserr();
 			if (__os_posix_err(ret) != ENOENT)
-				__db_err(dbenv, ret,
+				__db_err(env, ret,
 				    "MoveFile: rename %s to temporary file",
 				    path);
 		}
@@ -84,8 +75,9 @@ __os_unlink(dbenv, path)
 		 * Try removing the file using the delete-on-close flag.  This
 		 * plays nicer with files that are still open than DeleteFile.
 		 */
-		h = CreateFile(tpath, 0, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-		    FILE_FLAG_DELETE_ON_CLOSE, 0);
+		h = CreateFile(tpath, 0, 
+		    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		    NULL, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		if (h != INVALID_HANDLE_VALUE) {
 			(void)CloseHandle (h);
 			if (GetFileAttributes(tpath) == INVALID_FILE_ATTRIBUTES)
@@ -96,19 +88,19 @@ __os_unlink(dbenv, path)
 	RETRY_CHK((!DeleteFile(tpath)), ret);
 
 skipdel:
-	FREE_STRING(dbenv, orig_tpath);
+	FREE_STRING(env, orig_tpath);
 
 	/*
 	 * XXX
 	 * We shouldn't be testing for an errno of ENOENT here, but ENOENT
 	 * signals that a file is missing, and we attempt to unlink things
-	 * (such as v. 2.x environment regions, in DB_ENV->remove) that we
+	 * (such as v. 2.x environment regions, in ENV->remove) that we
 	 * are expecting not to be there.  Reporting errors in these cases
 	 * is annoying.
 	 */
 	if (ret != 0) {
 		if ((t_ret = __os_posix_err(ret)) != ENOENT)
-			__db_syserr(dbenv, ret, "DeleteFile: %s", path);
+			__db_syserr(env, ret, "DeleteFile: %s", path);
 		ret = t_ret;
 	}
 

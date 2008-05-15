@@ -1,14 +1,14 @@
-<!--$Id: toc.html,v 10.295 2007/07/10 16:56:58 bostic Exp $-->
+<!--$Id: toc.html,v 10.301 2008/05/05 05:22:43 alexg Exp $-->
 <html>
 <head>
-<title>Berkeley DB Reference Guide (Version: 4.6.21)</title>
+<title>Berkeley DB Reference Guide (Version: 4.7.25)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,java,C,C++">
 </head>
 <body bgcolor=white>
 
 <center>
-<h2><b>Berkeley DB Reference Guide, Version 4.6.21</b></h2>
+<h2><b>Berkeley DB Reference Guide, Version 4.7.25</b></h2>
 </center>
 
 <ol>
@@ -177,6 +177,8 @@
     <li><a href="rep/init.html">Initializing a new site</a>
     <li><a href="rep/bulk.html">Bulk transfer</a>
     <li><a href="rep/trans.html">Transactional guarantees</a>
+    <li><a href="rep/lease.html">Master leases</a>
+    <li><a href="rep/clock_skew.html">Clock skew</a>
     <li><a href="rep/partition.html">Network partitions</a>
     <li><a href="rep/faq.html">Replication FAQ</a>
     <li><a href="rep/ex.html">Ex_rep: a replication example</a>
@@ -296,6 +298,7 @@
 <font size="+1"><li><a name="build_brew">Building Berkeley DB for S60</a></font>
     <ol>
     <li><a href="build_s60/intro.html">Building for S60</a>
+    <li><a href="build_s60/notes.html">S60 notes</a>
     </ol>
 <font size="+1"><li><a name="build_unix">Building Berkeley DB for UNIX/POSIX</a></font>
     <ol>
@@ -333,11 +336,11 @@
     <ol>
     <li><a href="build_wince/intro.html">Building for Windows CE</a>
     <li><a href="build_wince/notes.html">Windows CE notes</a>
-    <li><a href="build_wince/faq.html">Windows CE FAQ</a>
     </ol>
 <font size="+1"><li><a name="build_vxworks">Building Berkeley DB for VxWorks</a></font>
     <ol>
     <li><a href="build_vxworks/intro.html">Building for VxWorks 5.4 and 5.5</a>
+    <li><a href="build_vxworks/intro6x.html">Building for VxWorks6.x</a>
     <li><a href="build_vxworks/notes.html">VxWorks notes</a>
     <li><a href="build_vxworks/faq.html">VxWorks FAQ</a>
     </ol>
@@ -370,6 +373,8 @@
 	    Upgrading Berkeley DB 4.4 applications to Berkeley DB 4.5</a>
     <li><a href="upgrade.4.6/toc.html">
 	    Upgrading Berkeley DB 4.5 applications to Berkeley DB 4.6</a>
+    <li><a href="upgrade.4.7/toc.html">
+	    Upgrading Berkeley DB 4.6 applications to Berkeley DB 4.7</a>
     </ol>
 <font size="+1"><li><a name="test">Test Suite</a></font>
     <ol>

@@ -1,5 +1,5 @@
 <!--$Id: memp_fcreate.so,v 10.12 2004/08/13 03:38:58 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::memp_fcreate</h3>
+<b>DbEnv::memp_fcreate</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 DbEnv::memp_fcreate(DbMpoolFile **dbmfp, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::memp_fcreate</h3>
+<b>Description: DbEnv::memp_fcreate</b>
 <p>The DbEnv::memp_fcreate method creates a <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a> structure that
 is the handle for a Berkeley DB shared memory buffer pool file.  A pointer to
 this structure is returned in the memory to which <b>dbmfp</b> refers.
@@ -35,19 +35,18 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter is currently unused, and must be set to 0.
-</dl>
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter is currently unused, and must be set to 0.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -154,6 +154,7 @@ import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.LockDetectMode;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 ...
 
@@ -173,9 +174,9 @@ try {
     myEnv = new Environment(new File("/my/env/home"),
                               myEnvConfig);
 
-    // From here, you open your databases, proceed with your 
-    // database operations, and respond to deadlocks as 
-    // is normal (omitted for brevity).
+    // From here, you open your databases (or store), proceed with your 
+    // database or store operations, and respond to deadlocks as is 
+    // normal (omitted for brevity).
 
     ...</pre>
     </div>

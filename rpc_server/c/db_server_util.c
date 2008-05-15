@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: db_server_util.c,v 12.13 2007/05/17 15:15:52 bostic Exp $
+ * $Id: db_server_util.c,v 12.16 2008/03/14 20:00:18 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -209,6 +209,9 @@ __dbsrv_settimeout(ctp, to)
 		ctp->ct_timeout = to;
 }
 
+/*
+ * PUBLIC: void __dbsrv_timeout __P((int));
+ */
 void
 __dbsrv_timeout(force)
 	int force;
@@ -560,20 +563,21 @@ __db_close_int(id, flags)
 	int ret;
 	ct_entry *ctp;
 
-	ret = 0;
 	ctp = get_tableent(id);
 	if (ctp == NULL)
 		return (DB_NOSERVER_ID);
-	DB_ASSERT(ctp->ct_envp, ctp->ct_type == CT_DB);
+
 	if (__dbsrv_verbose && ctp->ct_refcount != 1)
 		printf("Deref'ing dbp id %ld, refcount %d\n",
 		    id, ctp->ct_refcount);
+
 	if (--ctp->ct_refcount != 0)
-		return (ret);
-	dbp = ctp->ct_dbp;
+		return (0);
+
 	if (__dbsrv_verbose)
 		printf("Closing dbp id %ld\n", id);
 
+	dbp = ctp->ct_dbp;
 	ret = dbp->close(dbp, flags);
 	if (ctp->ct_dbdp.db != NULL)
 		__os_free(NULL, ctp->ct_dbdp.db);
@@ -633,11 +637,10 @@ __env_close_int(id, flags, force)
 	int ret;
 	ct_entry *ctp, *dbctp, *nextctp;
 
-	ret = 0;
 	ctp = get_tableent(id);
 	if (ctp == NULL)
 		return (DB_NOSERVER_ID);
-	DB_ASSERT(ctp->ct_envp, ctp->ct_type == CT_ENV);
+
 	if (__dbsrv_verbose && ctp->ct_refcount != 1)
 		printf("Deref'ing env id %ld, refcount %d\n",
 		    id, ctp->ct_refcount);
@@ -646,7 +649,7 @@ __env_close_int(id, flags, force)
 	 * what the refcount.
 	 */
 	if (--ctp->ct_refcount != 0 && !force)
-		return (ret);
+		return (0);
 	dbenv = ctp->ct_envp;
 	if (__dbsrv_verbose)
 		printf("Closing env id %ld\n", id);

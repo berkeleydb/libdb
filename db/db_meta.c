@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_meta.c,v 12.47 2007/05/17 17:17:41 bostic Exp $
+ * $Id: db_meta.c,v 12.58 2008/05/07 12:27:32 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -47,11 +47,12 @@
 #include "dbinc/db_page.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
+#include "dbinc/txn.h"
 #include "dbinc/db_am.h"
 
 static void __db_init_meta __P((DB *, void *, db_pgno_t, u_int32_t));
 #ifdef HAVE_FTRUNCATE
-static void __db_freelist_sort __P((struct pglist *, u_int32_t));
+static void __db_freelist_sort __P((db_pglist_t *, u_int32_t));
 static int  __db_pglistcmp __P((const void *, const void *));
 static int  __db_truncate_freelist __P((DBC *, DBMETA *,
       PAGE *, db_pgno_t *, u_int32_t, u_int32_t));
@@ -70,8 +71,8 @@ __db_init_meta(dbp, p, pgno, pgtype)
 	db_pgno_t pgno;
 	u_int32_t pgtype;
 {
-	DB_LSN save_lsn;
 	DBMETA *meta;
+	DB_LSN save_lsn;
 
 	meta = (DBMETA *)p;
 	save_lsn = meta->lsn;
@@ -96,19 +97,19 @@ __db_new(dbc, type, pagepp)
 	u_int32_t type;
 	PAGE **pagepp;
 {
-	DB_ENV *dbenv;
-	DBMETA *meta;
 	DB *dbp;
+	DBMETA *meta;
 	DB_LOCK metalock;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	db_pgno_t last, *list, pgno, newnext;
 	int extend, ret, t_ret;
 
 	meta = NULL;
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	h = NULL;
 	newnext = PGNO_INVALID;
@@ -117,7 +118,7 @@ __db_new(dbc, type, pagepp)
 	if ((ret = __db_lget(dbc,
 	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+	if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 	    DB_MPOOL_DIRTY, &meta)) != 0)
 		goto err;
 	last = meta->last_pgno;
@@ -131,7 +132,7 @@ __db_new(dbc, type, pagepp)
 		extend = 1;
 	} else {
 		pgno = meta->free;
-		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 		    DB_MPOOL_DIRTY, &h)) != 0)
 			goto err;
 
@@ -143,13 +144,13 @@ __db_new(dbc, type, pagepp)
 		newnext = h->next_pgno;
 		lsn = h->lsn;
 		extend = 0;
-		DB_ASSERT(dbenv, TYPE(h) == P_INVALID);
+		DB_ASSERT(env, TYPE(h) == P_INVALID);
 
 		if (TYPE(h) != P_INVALID) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "%s page %lu is on free list with type %lu",
 				dbp->fname, (u_long)PGNO(h), (u_long)TYPE(h));
-			return (__db_panic(dbenv, EINVAL));
+			return (__env_panic(env, EINVAL));
 		}
 
 	}
@@ -172,17 +173,17 @@ __db_new(dbc, type, pagepp)
 	meta->free = newnext;
 
 	if (extend == 1) {
-		if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 		    DB_MPOOL_NEW, &h)) != 0)
 			goto err;
-		DB_ASSERT(dbenv, last == pgno);
+		DB_ASSERT(env, last == pgno);
 		meta->last_pgno = pgno;
 		ZERO_LSN(h->lsn);
 		h->pgno = pgno;
 	}
 	LSN(h) = LSN(meta);
 
-	ret = __memp_fput(mpf, meta, dbc->priority);
+	ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
 	meta = NULL;
 	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -209,7 +210,7 @@ __db_new(dbc, type, pagepp)
 		if ((ret = __memp_get_freelist(dbp->mpf, &nelems, &list)) != 0)
 			goto err;
 		if (nelems != 0) {
-			DB_ASSERT(dbenv, h->pgno == list[0]);
+			DB_ASSERT(env, h->pgno == list[0]);
 			memmove(list, &list[1], (nelems - 1) * sizeof(*list));
 			if ((ret = __memp_extend_freelist(
 			    dbp->mpf, nelems - 1, &list)) != 0)
@@ -239,9 +240,9 @@ __db_new(dbc, type, pagepp)
 	return (0);
 
 err:	if (h != NULL)
-		(void)__memp_fput(mpf, h, dbc->priority);
+		(void)__memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 	if (meta != NULL)
-		(void)__memp_fput(mpf, meta, dbc->priority);
+		(void)__memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
 	(void)__TLPUT(dbc, metalock);
 	return (ret);
 }
@@ -257,8 +258,8 @@ __db_free(dbc, h)
 	DBC *dbc;
 	PAGE *h;
 {
-	DBMETA *meta;
 	DB *dbp;
+	DBMETA *meta;
 	DBT ddbt, ldbt;
 	DB_LOCK metalock;
 	DB_LSN *lsnp;
@@ -300,7 +301,7 @@ __db_free(dbc, h)
 		goto err;
 
 	/* If we support truncate, we might not dirty the meta page. */
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
+	if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 #ifdef HAVE_FTRUNCATE
 	    0,
 #else
@@ -317,7 +318,7 @@ __db_free(dbc, h)
 	 */
 	lsnp = &LSN(meta);
 
-	DB_ASSERT(dbp->dbenv, h->pgno != next_pgno);
+	DB_ASSERT(dbp->env, h->pgno != next_pgno);
 
 #ifdef HAVE_FTRUNCATE
 	/*
@@ -341,7 +342,7 @@ __db_free(dbc, h)
 		if (nelem != 0) {
 			__db_freelist_pos(h->pgno, list, nelem, &position);
 
-			DB_ASSERT(dbp->dbenv, h->pgno != list[position]);
+			DB_ASSERT(dbp->env, h->pgno != list[position]);
 
 			/* Get the previous page if this is not the smallest. */
 			if (position != 0 || h->pgno > list[0])
@@ -372,13 +373,13 @@ __db_free(dbc, h)
 no_sort:
 	if (prev_pgno == PGNO_INVALID) {
 		if ((ret = __memp_dirty(mpf,
-		    &meta, dbc->txn, dbc->priority, 0)) != 0)
+		    &meta, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 			goto err1;
 		lsnp = &LSN(meta);
 	} else {
 		pgno = prev_pgno;
-		if ((ret = __memp_fget(mpf,
-		    &pgno, dbc->txn, DB_MPOOL_DIRTY, &prev)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno,
+		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &prev)) != 0)
 			goto err1;
 		next_pgno = NEXT_PGNO(prev);
 		lsnp = &LSN(prev);
@@ -399,12 +400,17 @@ no_sort:
 		 * the logging happens before the truncation.  If we
 		 * are truncating multiple pages we don't need to flush the
 		 * log here as it will be flushed by __db_truncate_freelist.
+		 * If we are zeroing pages rather than truncating we still
+		 * need to flush since they will not have valid LSNs.
 		 */
 		lflag = 0;
+
+		if (h->pgno == last_pgno
 #ifdef HAVE_FTRUNCATE
-		if (do_truncate == 0 && h->pgno == last_pgno)
-			lflag = DB_FLUSH;
+		    && do_truncate == 0
 #endif
+		)
+			lflag = DB_FLUSH;
 		switch (h->type) {
 		case P_HASH:
 		case P_IBTREE:
@@ -434,7 +440,7 @@ no_sort:
 			ldbt.size += OV_LEN(h);
 			break;
 		default:
-			DB_ASSERT(dbp->dbenv, h->type != P_QAMDATA);
+			DB_ASSERT(dbp->env, h->type != P_QAMDATA);
 		}
 
 		if ((ret = __db_pg_free_log(dbp,
@@ -452,29 +458,31 @@ logged:
 		ret = __db_truncate_freelist(
 		      dbc, meta, h, list, start, nelem);
 		h = NULL;
-	} else if (h->pgno == last_pgno) {
+	} else
+#endif
+	if (h->pgno == last_pgno) {
 		LSN(h) = *lsnp;
 		P_INIT(h, dbp->pgsize,
 		    h->pgno, PGNO_INVALID, next_pgno, 0, P_INVALID);
-		if ((ret = __memp_fput(mpf, h, DB_PRIORITY_VERY_LOW)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, DB_PRIORITY_VERY_LOW)) != 0)
 			goto err1;
 		h = NULL;
 		/* Give the page back to the OS. */
-		if ((ret = __memp_ftruncate(mpf, last_pgno, 0)) != 0)
+		if ((ret =
+		    __memp_ftruncate(mpf, dbc->thread_info, last_pgno, 0)) != 0)
 			goto err1;
-		DB_ASSERT(dbp->dbenv, meta->pgno == PGNO_BASE_MD);
+		DB_ASSERT(dbp->env, meta->pgno == PGNO_BASE_MD);
 		meta->last_pgno--;
 		h = NULL;
-	} else
-#endif
-	{
+	} else {
 		/*
 		 * If we are not truncating the page then we
 		 * reinitialize it and put it at the head of
 		 * the free list.
 		 */
 		if ((ret = __memp_dirty(mpf,
-		    &h, dbc->txn, dbc->priority, 0)) != 0)
+		    &h, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 			goto err1;
 		LSN(h) = *lsnp;
 		P_INIT(h, dbp->pgsize,
@@ -490,18 +498,18 @@ logged:
 	}
 
 	/* Discard the metadata or previous page. */
-err1:	if (meta != NULL && (t_ret =
-	     __memp_fput(mpf, (PAGE *)meta, dbc->priority)) != 0 && ret == 0)
+err1:	if (meta != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, (PAGE *)meta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
-	if (prev != (PAGE*) meta && prev != NULL &&
-	    (t_ret = __memp_fput(mpf, prev, dbc->priority)) != 0 && ret == 0)
+	if (prev != (PAGE*) meta && prev != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, prev, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the caller's page reference. */
-err:	if (h != NULL &&
-	     (t_ret = __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+err:	if (h != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/*
@@ -552,10 +560,10 @@ static int
 __db_pglistcmp(a, b)
 	const void *a, *b;
 {
-	struct pglist *ap, *bp;
+	db_pglist_t *ap, *bp;
 
-	ap = (struct pglist *)a;
-	bp = (struct pglist *)b;
+	ap = (db_pglist_t *)a;
+	bp = (db_pglist_t *)b;
 
 	return ((ap->pgno > bp->pgno) ? 1 : (ap->pgno < bp->pgno) ? -1: 0);
 }
@@ -565,41 +573,43 @@ __db_pglistcmp(a, b)
  */
 static void
 __db_freelist_sort(list, nelems)
-	struct pglist *list;
+	db_pglist_t *list;
 	u_int32_t nelems;
 {
-	qsort(list, (size_t)nelems, sizeof(struct pglist), __db_pglistcmp);
+	qsort(list, (size_t)nelems, sizeof(db_pglist_t), __db_pglistcmp);
 }
 
 /*
  * __db_pg_truncate -- sort the freelist and find the truncation point.
  *
  * PUBLIC: #ifdef HAVE_FTRUNCATE
- * PUBLIC: int __db_pg_truncate __P((DB *, DB_TXN *,
- * PUBLIC:    struct pglist *list, DB_COMPACT *, u_int32_t *, db_pgno_t *,
+ * PUBLIC: int __db_pg_truncate __P((DBC *, DB_TXN *,
+ * PUBLIC:    db_pglist_t *list, DB_COMPACT *, u_int32_t *, db_pgno_t *,
  * PUBLIC:    DB_LSN *, int));
  * PUBLIC: #endif
  */
 int
-__db_pg_truncate(dbp, txn, list, c_data, nelemp, last_pgno, lsnp, in_recovery)
-	DB *dbp;
+__db_pg_truncate(dbc, txn, list, c_data, nelemp, last_pgno, lsnp, in_recovery)
+	DBC *dbc;
 	DB_TXN *txn;
-	struct pglist *list;
+	db_pglist_t *list;
 	DB_COMPACT *c_data;
 	u_int32_t *nelemp;
 	db_pgno_t *last_pgno;
 	DB_LSN *lsnp;
 	int in_recovery;
 {
+	DB *dbp;
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	struct pglist *lp;
+	db_pglist_t *lp;
 	db_pgno_t pgno;
 	u_int32_t nelems;
 	int ret;
 
 	ret = 0;
 
+	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	nelems = *nelemp;
 	/* Sort the list */
@@ -623,7 +633,8 @@ __db_pg_truncate(dbp, txn, list, c_data, nelemp, last_pgno, lsnp, in_recovery)
 	 * these pages on the freelist, which we are about to relink.
 	 */
 	for (lp = list; lp < &list[nelems]; lp++) {
-		if ((ret = __memp_fget(mpf, &lp->pgno, txn, 0, &h)) != 0) {
+		if ((ret = __memp_fget(
+		    mpf, &lp->pgno, dbc->thread_info, txn, 0, &h)) != 0) {
 			/* Page may have been truncated later. */
 			if (in_recovery && ret == DB_PAGE_NOTFOUND) {
 				ret = 0;
@@ -632,25 +643,27 @@ __db_pg_truncate(dbp, txn, list, c_data, nelemp, last_pgno, lsnp, in_recovery)
 			goto err;
 		}
 		if (!in_recovery || LOG_COMPARE(&LSN(h), &lp->lsn) == 0) {
-			if ((ret = __memp_dirty(mpf,
-			    &h, txn, dbp->priority, 0)) != 0) {
-				(void)__memp_fput(mpf, h, dbp->priority);
+			if ((ret = __memp_dirty(mpf, &h,
+			    dbc->thread_info, txn, dbp->priority, 0)) != 0) {
+				(void)__memp_fput(mpf,
+				    dbc->thread_info, h, dbp->priority);
 				goto err;
 			}
 			if (lp == &list[nelems - 1])
 				NEXT_PGNO(h) = PGNO_INVALID;
 			else
 				NEXT_PGNO(h) = lp[1].pgno;
-			DB_ASSERT(mpf->dbenv, NEXT_PGNO(h) < *last_pgno);
+			DB_ASSERT(mpf->env, NEXT_PGNO(h) < *last_pgno);
 
 			LSN(h) = *lsnp;
 		}
-		if ((ret = __memp_fput(mpf, h, dbp->priority)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbp->priority)) != 0)
 			goto err;
 	}
 
 	if (pgno != *last_pgno) {
-		if ((ret = __memp_ftruncate(mpf,
+		if ((ret = __memp_ftruncate(mpf, dbc->thread_info,
 		    pgno + 1, in_recovery ? MP_TRUNC_RECOVER : 0)) != 0)
 			goto err;
 		if (c_data)
@@ -667,56 +680,58 @@ err:	return (ret);
  *	Truncate free pages at the end of the file.
  *
  * PUBLIC: #ifdef HAVE_FTRUNCATE
- * PUBLIC: int __db_free_truncate __P((DB *, DB_TXN *, u_int32_t,
- * PUBLIC:    DB_COMPACT *, struct pglist **, u_int32_t *, db_pgno_t *));
+ * PUBLIC: int __db_free_truncate __P((DB *, DB_THREAD_INFO *, DB_TXN *,
+ * PUBLIC:    u_int32_t, DB_COMPACT *, db_pglist_t **, u_int32_t *,
+ * PUBLIC:    db_pgno_t *));
  * PUBLIC: #endif
  */
 int
-__db_free_truncate(dbp, txn, flags, c_data, listp, nelemp, last_pgnop)
+__db_free_truncate(dbp, ip, txn, flags, c_data, listp, nelemp, last_pgnop)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	u_int32_t flags;
 	DB_COMPACT *c_data;
-	struct pglist **listp;
+	db_pglist_t **listp;
 	u_int32_t *nelemp;
 	db_pgno_t *last_pgnop;
 {
 	DBC *dbc;
-	DB_ENV *dbenv;
 	DBMETA *meta;
 	DBT ddbt;
 	DB_LOCK metalock;
 	DB_LSN null_lsn;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
+	db_pglist_t *list, *lp;
 	db_pgno_t pgno;
 	u_int32_t nelems;
-	struct pglist *list, *lp;
 	int ret, t_ret;
 	size_t size;
 
 	COMPQUIET(flags, 0);
 	list = NULL;
 	meta = NULL;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	h = NULL;
 	nelems = 0;
 	if (listp != NULL) {
 		*listp = NULL;
-		DB_ASSERT(dbenv, nelemp != NULL);
+		DB_ASSERT(env, nelemp != NULL);
 		*nelemp = 0;
 	}
 
-	if ((ret = __db_cursor(dbp, txn, &dbc, DB_WRITELOCK)) != 0)
+	if ((ret = __db_cursor(dbp, ip, txn, &dbc, DB_WRITELOCK)) != 0)
 		return (ret);
 
 	pgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc,
 	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
-	    DB_MPOOL_DIRTY, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn, 0,
+	    &meta)) != 0)
 		goto err;
 
 	if (last_pgnop != NULL)
@@ -725,29 +740,35 @@ __db_free_truncate(dbp, txn, flags, c_data, listp, nelemp, last_pgnop)
 		goto done;
 
 	size = 128;
-	if ((ret = __os_malloc(dbenv, size * sizeof(*list), &list)) != 0)
+	if ((ret = __os_malloc(env, size * sizeof(*list), &list)) != 0)
 		goto err;
 	lp = list;
 
 	do {
 		if (lp == &list[size]) {
 			size *= 2;
-			if ((ret = __os_realloc(dbenv,
+			if ((ret = __os_realloc(env,
 			    size * sizeof(*list), &list)) != 0)
 				goto err;
 			lp = &list[size / 2];
 		}
-		if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno,
+		     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 			goto err;
 
 		lp->pgno = pgno;
 		lp->lsn = LSN(h);
 		pgno = NEXT_PGNO(h);
-		if ((ret = __memp_fput(mpf, h, dbc->priority)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
 			goto err;
 		lp++;
 	} while (pgno != PGNO_INVALID);
 	nelems = (u_int32_t)(lp - list);
+
+	if ((ret = __memp_dirty(mpf,
+	    &meta, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
+		goto err;
 
 	/* Log the current state of the free list */
 	if (DBC_LOGGING(dbc)) {
@@ -761,7 +782,7 @@ __db_free_truncate(dbp, txn, flags, c_data, listp, nelemp, last_pgnop)
 	} else
 		LSN_NOT_LOGGED(LSN(meta));
 
-	if ((ret = __db_pg_truncate(dbp, txn, list, c_data,
+	if ((ret = __db_pg_truncate(dbc, txn, list, c_data,
 	    &nelems, &meta->last_pgno, &LSN(meta), 0)) != 0)
 		goto err;
 
@@ -788,9 +809,9 @@ done:	if (last_pgnop != NULL)
 	}
 
 err:	if (list != NULL)
-		__os_free(dbenv, list);
-	if (meta != NULL && (t_ret =
-	     __memp_fput(mpf, (PAGE *)meta, dbc->priority)) != 0 && ret == 0)
+		__os_free(env, list);
+	if (meta != NULL && (t_ret = __memp_fput(mpf,
+	     dbc->thread_info, (PAGE *)meta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -808,12 +829,12 @@ __db_truncate_freelist(dbc, meta, h, list, start, nelem)
 	u_int32_t start, nelem;
 {
 	DB *dbp;
+	DBT ddbt;
 	DB_LSN null_lsn;
 	DB_MPOOLFILE *mpf;
-	DBT ddbt;
 	PAGE *last_free, *pg;
 	db_pgno_t *lp;
-	struct pglist *plist, *pp;
+	db_pglist_t *plist, *pp;
 	int ret;
 
 	dbp = dbc->dbp;
@@ -822,23 +843,24 @@ __db_truncate_freelist(dbc, meta, h, list, start, nelem)
 	last_free = NULL;
 
 	if (start != 0 &&
-	    (ret = __memp_fget(mpf, &list[start - 1], dbc->txn,
-	    DB_MPOOL_DIRTY, &last_free)) != 0)
+	    (ret = __memp_fget(mpf, &list[start - 1],
+	    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &last_free)) != 0)
 		goto err;
 
 	if (DBC_LOGGING(dbc)) {
-		if ((ret = __os_malloc(dbp->dbenv,
+		if ((ret = __os_malloc(dbp->env,
 		     (nelem - start) * sizeof(*pp), &plist)) != 0)
 			goto err;
 
 		pp = plist;
 		for (lp = &list[start]; lp < &list[nelem]; lp++) {
 			pp->pgno = *lp;
-			if ((ret = __memp_fget(mpf, lp, dbc->txn, 0, &pg)) != 0)
+			if ((ret = __memp_fget(mpf, lp,
+			     dbc->thread_info, dbc->txn, 0, &pg)) != 0)
 				goto err;
 			pp->lsn = LSN(pg);
-			if ((ret =
-			    __memp_fput(mpf, pg, DB_PRIORITY_VERY_LOW)) != 0)
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, pg, DB_PRIORITY_VERY_LOW)) != 0)
 				goto err;
 			pp++;
 		}
@@ -859,10 +881,12 @@ __db_truncate_freelist(dbc, meta, h, list, start, nelem)
 	if (last_free != NULL)
 		LSN(last_free) = LSN(meta);
 
-	if ((ret = __memp_fput(mpf, h, DB_PRIORITY_VERY_LOW)) != 0)
+	if ((ret = __memp_fput(mpf,
+	    dbc->thread_info, h, DB_PRIORITY_VERY_LOW)) != 0)
 		goto err;
 	h = NULL;
-	if ((ret = __memp_ftruncate(mpf, list[start], 0)) != 0)
+	if ((ret =
+	    __memp_ftruncate(mpf, dbc->thread_info, list[start], 0)) != 0)
 		goto err;
 	meta->last_pgno = list[start] - 1;
 
@@ -870,7 +894,8 @@ __db_truncate_freelist(dbc, meta, h, list, start, nelem)
 		meta->free = PGNO_INVALID;
 	else {
 		NEXT_PGNO(last_free) = PGNO_INVALID;
-		if ((ret = __memp_fput(mpf, last_free, dbc->priority)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, last_free, dbc->priority)) != 0)
 			goto err;
 		last_free = NULL;
 	}
@@ -879,13 +904,14 @@ __db_truncate_freelist(dbc, meta, h, list, start, nelem)
 	ret = __memp_extend_freelist(mpf, start, &list);
 
 err:	if (plist != NULL)
-		__os_free(dbp->dbenv, plist);
+		__os_free(dbp->env, plist);
 
 	/* We need to put the page on error. */
 	if (h != NULL)
-		(void)__memp_fput(mpf, h, dbc->priority);
+		(void)__memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 	if (last_free != NULL)
-		(void)__memp_fput(mpf, last_free, dbc->priority);
+		(void)__memp_fput(mpf,
+		    dbc->thread_info, last_free, dbc->priority);
 
 	return (ret);
 }
@@ -902,16 +928,16 @@ int
 __db_lprint(dbc)
 	DBC *dbc;
 {
-	DB_ENV *dbenv;
 	DB *dbp;
 	DB_LOCKREQ req;
+	ENV *env;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	if (LOCKING_ON(dbenv)) {
+	if (LOCKING_ON(env)) {
 		req.op = DB_LOCK_DUMP;
-		(void)__lock_vec(dbenv, dbc->locker, 0, &req, 1, NULL);
+		(void)__lock_vec(env, dbc->locker, 0, &req, 1, NULL);
 	}
 	return (0);
 }
@@ -934,24 +960,24 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	DB_LOCK *lockp;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_LOCKREQ couple[3], *reqp;
 	DB_TXN *txn;
+	ENV *env;
 	int has_timeout, i, ret;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	txn = dbc->txn;
 
 	/*
 	 * We do not always check if we're configured for locking before
 	 * calling __db_lget to acquire the lock.
 	 */
-	if (CDB_LOCKING(dbenv) || !LOCKING_ON(dbenv) ||
+	if (CDB_LOCKING(env) || !LOCKING_ON(env) ||
 	    (MULTIVERSION(dbp) && mode == DB_LOCK_READ &&
 	    dbc->txn != NULL && F_ISSET(dbc->txn, TXN_SNAPSHOT)) ||
 	    F_ISSET(dbc, DBC_DONTLOCK) || (F_ISSET(dbc, DBC_RECOVER) &&
-	    (action != LCK_ROLLBACK || IS_REP_CLIENT(dbenv))) ||
+	    (action != LCK_ROLLBACK || IS_REP_CLIENT(env))) ||
 	    (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
 		LOCK_INIT(*lockp);
 		return (0);
@@ -963,8 +989,6 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	else
 		dbc->lock.type = DB_PAGE_LOCK;
 	lkflags &= ~DB_LOCK_RECORD;
-	if (action == LCK_ROLLBACK)
-		lkflags |= DB_LOCK_ABORT;
 
 	/*
 	 * If the transaction enclosing this cursor has DB_LOCK_NOWAIT set,
@@ -1007,8 +1031,8 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	switch (action) {
 	default:
 		if (has_timeout)
-			goto couple;
-		ret = __lock_get(dbenv,
+			goto do_couple;
+		ret = __lock_get(env,
 		    dbc->locker, lkflags, &dbc->lock_dbt, mode, lockp);
 		break;
 
@@ -1021,7 +1045,7 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 		i++;
 		/* FALLTHROUGH */
 	case LCK_COUPLE:
-couple:		couple[i].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
+do_couple:	couple[i].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 		couple[i].obj = &dbc->lock_dbt;
 		couple[i].mode = mode;
 		UMRW_SET(couple[i].timeout);
@@ -1035,7 +1059,7 @@ couple:		couple[i].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 			i++;
 		}
 
-		ret = __lock_vec(dbenv,
+		ret = __lock_vec(env,
 		    dbc->locker, lkflags, couple, i, &reqp);
 		if (ret == 0 || reqp == &couple[i - 1])
 			*lockp = i == 1 ? couple[0].lock : couple[i - 2].lock;
@@ -1044,8 +1068,8 @@ couple:		couple[i].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 
 	if (txn != NULL && ret == DB_LOCK_DEADLOCK)
 		F_SET(txn, TXN_DEADLOCK);
-	return ((ret == DB_LOCK_NOTGRANTED &&
-	     !F_ISSET(dbenv, DB_ENV_TIME_NOTGRANTED)) ? DB_LOCK_DEADLOCK : ret);
+	return ((ret == DB_LOCK_NOTGRANTED && !F_ISSET(env->dbenv,
+		 DB_ENV_TIME_NOTGRANTED)) ? DB_LOCK_DEADLOCK : ret);
 }
 
 /*
@@ -1059,8 +1083,8 @@ __db_lput(dbc, lockp)
 	DBC *dbc;
 	DB_LOCK *lockp;
 {
-	DB_ENV *dbenv;
 	DB_LOCKREQ couple[2], *reqp;
+	ENV *env;
 	int action, ret;
 
 	/*
@@ -1082,10 +1106,10 @@ __db_lput(dbc, lockp)
 	else
 		action = 0;
 
-	dbenv = dbc->dbp->dbenv;
+	env = dbc->env;
 	switch (action) {
 	case LCK_COUPLE:
-		ret = __lock_put(dbenv, lockp);
+		ret = __lock_put(env, lockp);
 		break;
 	case LCK_DOWNGRADE:
 		couple[0].op = DB_LOCK_GET;
@@ -1095,7 +1119,7 @@ __db_lput(dbc, lockp)
 		UMRW_SET(couple[0].timeout);
 		couple[1].op = DB_LOCK_PUT;
 		couple[1].lock = *lockp;
-		ret = __lock_vec(dbenv, dbc->locker, 0, couple, 2, &reqp);
+		ret = __lock_vec(env, dbc->locker, 0, couple, 2, &reqp);
 		if (ret == 0 || reqp == &couple[1])
 			*lockp = couple[0].lock;
 		break;

@@ -1,9 +1,9 @@
-m4_comment([$Id: intro.so,v 10.34 2007/07/06 17:12:01 bostic Exp $])
+m4_comment([$Id: intro.so,v 10.35 2007/10/31 18:02:52 bostic Exp $])
 
 m4_ref_title(Building m4_db for UNIX/POSIX systems,
     Building for UNIX/POSIX,
     [@building for UNIX, @building for QNX,
-    building for @UNIX, building for @QNX], build_s60/intro, build_unix/conf)
+    building for @UNIX, building for @QNX], build_s60/notes, build_unix/conf)
 
 m4_p([dnl
 The m4_db distribution builds up to four separate libraries: the base

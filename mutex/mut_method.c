@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_method.c,v 12.14 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_method.c,v 12.17 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -24,9 +24,10 @@ __mutex_alloc_pp(dbenv, flags, indxp)
 	db_mutex_t *indxp;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
+	env = dbenv->env;
 
 	switch (flags) {
 	case 0:
@@ -34,12 +35,12 @@ __mutex_alloc_pp(dbenv, flags, indxp)
 	case DB_MUTEX_SELF_BLOCK:
 		break;
 	default:
-		return (__db_ferr(dbenv, "DB_ENV->mutex_alloc", 0));
+		return (__db_ferr(env, "DB_ENV->mutex_alloc", 0));
 	}
 
-	ENV_ENTER(dbenv, ip);
-	ret = __mutex_alloc(dbenv, MTX_APPLICATION, flags, indxp);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	ret = __mutex_alloc(env, MTX_APPLICATION, flags, indxp);
+	ENV_LEAVE(env, ip);
 
 	return (ret);
 }
@@ -56,9 +57,10 @@ __mutex_free_pp(dbenv, indx)
 	db_mutex_t indx;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
+	env = dbenv->env;
 
 	if (indx == MUTEX_INVALID)
 		return (EINVAL);
@@ -69,9 +71,9 @@ __mutex_free_pp(dbenv, indx)
 	 * overwritten with MUTEX_INVALID.  We don't export MUTEX_INVALID,
 	 * so we don't export that part of the API, either.
 	 */
-	ENV_ENTER(dbenv, ip);
-	ret = __mutex_free(dbenv, &indx);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	ret = __mutex_free(env, &indx);
+	ENV_LEAVE(env, ip);
 
 	return (ret);
 }
@@ -87,12 +89,19 @@ __mutex_lock_pp(dbenv, indx)
 	DB_ENV *dbenv;
 	db_mutex_t indx;
 {
-	PANIC_CHECK(dbenv);
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
 
 	if (indx == MUTEX_INVALID)
 		return (EINVAL);
 
-	return (__mutex_lock(dbenv, indx));
+	ENV_ENTER(env, ip);
+	ret = __mutex_lock(env, indx);
+	ENV_LEAVE(env, ip);
+	return (ret);
 }
 
 /*
@@ -106,12 +115,19 @@ __mutex_unlock_pp(dbenv, indx)
 	DB_ENV *dbenv;
 	db_mutex_t indx;
 {
-	PANIC_CHECK(dbenv);
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
 
 	if (indx == MUTEX_INVALID)
 		return (EINVAL);
 
-	return (__mutex_unlock(dbenv, indx));
+	ENV_ENTER(env, ip);
+	ret = __mutex_unlock(env, indx);
+	ENV_LEAVE(env, ip);
+	return (ret);
 }
 
 /*
@@ -125,10 +141,15 @@ __mutex_get_align(dbenv, alignp)
 	DB_ENV *dbenv;
 	u_int32_t *alignp;
 {
-	if (MUTEX_ON(dbenv))
+	ENV *env;
+
+	env = dbenv->env;
+
+	if (MUTEX_ON(env)) {
+		/* Cannot be set after open, no lock required to read. */
 		*alignp = ((DB_MUTEXREGION *)
-		    dbenv->mutex_handle->reginfo.primary)->stat.st_mutex_align;
-	else
+		    env->mutex_handle->reginfo.primary)->stat.st_mutex_align;
+	} else
 		*alignp = dbenv->mutex_align;
 	return (0);
 }
@@ -144,10 +165,14 @@ __mutex_set_align(dbenv, align)
 	DB_ENV *dbenv;
 	u_int32_t align;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_mutex_align");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_mutex_align");
 
 	if (align == 0 || !POWER_OF_TWO(align)) {
-		__db_errx(dbenv,
+		__db_errx(env,
     "DB_ENV->mutex_set_align: alignment value must be a non-zero power-of-two");
 		return (EINVAL);
 	}
@@ -187,7 +212,11 @@ __mutex_set_increment(dbenv, increment)
 	DB_ENV *dbenv;
 	u_int32_t increment;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_mutex_increment");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_mutex_increment");
 
 	dbenv->mutex_cnt = 0;
 	dbenv->mutex_inc = increment;
@@ -205,10 +234,15 @@ __mutex_get_max(dbenv, maxp)
 	DB_ENV *dbenv;
 	u_int32_t *maxp;
 {
-	if (MUTEX_ON(dbenv))
+	ENV *env;
+
+	env = dbenv->env;
+
+	if (MUTEX_ON(env)) {
+		/* Cannot be set after open, no lock required to read. */
 		*maxp = ((DB_MUTEXREGION *)
-		    dbenv->mutex_handle->reginfo.primary)->stat.st_mutex_cnt;
-	else
+		    env->mutex_handle->reginfo.primary)->stat.st_mutex_cnt;
+	} else
 		*maxp = dbenv->mutex_cnt;
 	return (0);
 }
@@ -224,7 +258,11 @@ __mutex_set_max(dbenv, max)
 	DB_ENV *dbenv;
 	u_int32_t max;
 {
-	ENV_ILLEGAL_AFTER_OPEN(dbenv, "DB_ENV->set_mutex_max");
+	ENV *env;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_mutex_max");
 
 	dbenv->mutex_cnt = max;
 	dbenv->mutex_inc = 0;
@@ -242,10 +280,15 @@ __mutex_get_tas_spins(dbenv, tas_spinsp)
 	DB_ENV *dbenv;
 	u_int32_t *tas_spinsp;
 {
-	if (MUTEX_ON(dbenv))
-		*tas_spinsp = ((DB_MUTEXREGION *)dbenv->
+	ENV *env;
+
+	env = dbenv->env;
+
+	if (MUTEX_ON(env)) {
+		/* Cannot be set after open, no lock required to read. */
+		*tas_spinsp = ((DB_MUTEXREGION *)env->
 		    mutex_handle->reginfo.primary)->stat.st_mutex_tas_spins;
-	else
+	} else
 		*tas_spinsp = dbenv->mutex_tas_spins;
 	return (0);
 }
@@ -261,6 +304,10 @@ __mutex_set_tas_spins(dbenv, tas_spins)
 	DB_ENV *dbenv;
 	u_int32_t tas_spins;
 {
+	ENV *env;
+
+	env = dbenv->env;
+
 	/*
 	 * Bound the value -- less than 1 makes no sense, greater than 1M
 	 * makes no sense.
@@ -276,8 +323,8 @@ __mutex_set_tas_spins(dbenv, tas_spins)
 	 * reads out a bad spin count and spins until it gets the lock, but
 	 * that's awfully unlikely.
 	 */
-	if (MUTEX_ON(dbenv))
-		((DB_MUTEXREGION *)dbenv->mutex_handle
+	if (MUTEX_ON(env))
+		((DB_MUTEXREGION *)env->mutex_handle
 		    ->reginfo.primary)->stat.st_mutex_tas_spins = tas_spins;
 	else
 		dbenv->mutex_tas_spins = tas_spins;

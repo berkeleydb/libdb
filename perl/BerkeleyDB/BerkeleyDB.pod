@@ -227,6 +227,15 @@ This option requires Berkeley DB 3.1 or better.
 Use C<$env-E<gt>get_shm_key($id)> to find out the base segment ID used
 once the environment is open.
 
+=item -ThreadCount
+
+If present, this parameter declares the approximate number of threads that
+will be used in the database environment. This parameter is only necessary
+when the $env->failchk method will be used. It does not actually set the
+maximum number of threads but rather is used to determine memory sizing.
+
+This option requires Berkeley DB 4.4 or better. It is only supported on
+Unix/Linux.
 
 =item -Config
 
@@ -397,6 +406,48 @@ This option requires Berkeley DB 4.2 or better.
 
 Use the C<-SharedMemKey> option when opening the environemt to set the
 base segment ID.
+
+=item $env->set_isalive()
+
+Set the callback that determines if the thread of control, identified by
+the pid and tid arguments, is still running.  This method should only be
+used in combination with $env->failchk.
+
+This option requires Berkeley DB 4.4 or better.
+
+=item $env->failchk($flags)
+
+The $env->failchk method checks for threads of control (either a true
+thread or a process) that have exited while manipulating Berkeley DB
+library data structures, while holding a logical database lock, or with an
+unresolved transaction (that is, a transaction that was never aborted or
+committed).
+
+If $env->failchk determines a thread of control exited while holding
+database read locks, it will release those locks. If $env->failchk
+determines a thread of control exited with an unresolved transaction, the
+transaction will be aborted.
+
+Applications calling the $env->failchk method must have already called the
+$env->set_isalive method, on the same DB environement, and must have
+configured their database environment using the -ThreadCount flag. The
+ThreadCount flag cannot be used on an environment that wasn't previously
+initialized with it.
+
+This option requires Berkeley DB 4.4 or better.
+
+=item $env->lock_stat_print
+
+Prints locking subsystem statistics.
+
+This option requires Berkeley DB 4.3 or better.
+
+=item $env->mutex_stat_print
+
+Prints mutex subsystem statistics.
+
+This option requires Berkeley DB 4.4 or better.
+
 
 =item $env->set_timeout($timeout, $flags)
 
@@ -1928,7 +1979,7 @@ The most recent version of B<BerkeleyDB> can always be found
 on CPAN (see L<perlmod/CPAN> for details), in the directory
 F<modules/by-module/BerkeleyDB>.
 
-The official web site for Berkeley DB is F<http://www.sleepycat.com>.
+The official web site for Berkeley DB is F<http://www.oracle.com/technology/products/berkeley-db/db/index.html>.
 
 =head1 COPYRIGHT
 
@@ -1941,7 +1992,7 @@ makes use of, namely Berkeley DB, is not. Berkeley DB has its own
 copyright and its own license. Please take the time to read it.
 
 Here are few words taken from the Berkeley DB FAQ (at
-F<http://www.sleepycat.com>) regarding the license:
+F<http://www.oracle.com/technology/products/berkeley-db/db/index.html>) regarding the license:
 
     Do I have to license DB to use it in Perl scripts?
 
@@ -1961,7 +2012,6 @@ See L<"AUTHOR"> for details.
 
 Paul Marquess E<lt>pmqs@cpan.orgE<gt>.
 
-Questions about Berkeley DB may be addressed to E<lt>db@sleepycat.comE<gt>.
 
 =head1 SEE ALSO
 

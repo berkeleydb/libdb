@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_txn.cpp,v 12.7 2007/05/17 15:14:56 bostic Exp $
+ * $Id: cxx_txn.cpp,v 12.9 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -26,7 +26,7 @@ int DbTxn::_name _argspec						   \
 {									   \
 	int ret;							   \
 	DB_TXN *txn = unwrap(this);					   \
-	DbEnv *dbenv = DbEnv::get_DbEnv(txn->mgrp->dbenv);		   \
+	DbEnv *dbenv = DbEnv::get_DbEnv(txn->mgrp->env->dbenv);		   \
 									   \
 	ret = txn->_name _arglist;					   \
 	/* Weird, but safe if we don't access this again. */		   \

@@ -1,0 +1,57 @@
+m4_comment([$Id: intro6x.so,v 1.4 2008/05/05 17:42:49 carol Exp $])
+
+m4_ref_title(Building m4_db for VxWorks6.x systems,
+    Building for VxWorks 6.x, @building for VxWorks6.x,
+    build_vxworks/intro, build_vxworks/notes)
+
+m4_section([Building With Wind River Workbench using the Makefile])
+
+m4_p([dnl
+In VxWorks6.x, developers use Wind River Workbench for software
+development. Two makefiles are provided in the db/build_vxworks
+directory. Use them to build m4_db or m4_db small build, using 
+the build chain provided with Wind River Workbench. ])
+
+m4_p([dnl
+We assume that you have installed all necessary VxWorks6.x software 
+including the Wind River Workbench, and that you know how to use it. ])
+
+m4_p([Use the following steps to build m4_db: ])
+
+m4_p([dnl
+1. Setting variables in the Makefile.
+Open the Makefile and modify the BDB_ROOT variable to the path of your
+m4_db source tree's root directory. You may need to set other
+variables when you build on different platforms, such as BUILD_SPEC,
+DEBUG_MODE, PROJECT_TYPE, build tool flags and BUILD_SPEC specific settings.
+Please refer to the documentation of the Workbench for a complete list of
+available values of each variable. You can also find out the list of values
+by creating a project using the Workbench. Each variable's available values 
+will be listed in the GUI window which assigns values to that
+variable. ])
+
+m4_p([dnl
+2. Make sure "make" can be found.
+Basically you need to set the make utility's path to environment variables.
+])
+
+m4_p([dnl
+3. Start up the wrenv utility of the Wind River Workbench. ])
+
+m4_p([dnl
+4. In the command console, move to the $(BDB_ROOT)/build_vxworks/ directory,
+rename the target makefile (Makefile.6x or Makefile.6x.small) to "Makefile",
+and run "make".  The make process will start and create the directory 
+"bdbvxw". It will contain all intermediate object files as well as the
+final built image "bdbvxw.out". ])
+
+m4_p([dnl
+5. After the "bdbvxw.out" image is built, you can use command tools
+or the Workbench IDE to download and run it.])
+
+m4_p([dnl
+6. Test and Verification.
+There is a dbdemo and test_micro, which you can run to verify whether
+everything works fine.])
+
+m4_page_footer

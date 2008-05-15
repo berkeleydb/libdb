@@ -1,4 +1,4 @@
-m4_comment([$Id: lock_stat.so,v 10.68 2007/06/22 16:57:15 bostic Exp $])
+m4_comment([$Id: lock_stat.so,v 10.71 2008/03/21 18:20:27 ubell Exp $])
 
 define(M4PAGELOCAL, [lock_stat, lock_stat_print])
 include(m4/m4.seealso)
@@ -51,11 +51,24 @@ m4_field(u_int32_t, st_maxlockers,
 m4_field(u_int32_t, st_maxobjects,
 [The maximum number of lock objects possible.])
 
+m4_field(u_int32_t, st_partitions,
+[The number of lock table partitions.])
+
 m4_field(u_int32_t, st_nlocks,
 [The number of current locks.])
 
 m4_field(u_int32_t, st_maxnlocks,
-[The maximum number of locks at any one time.])
+[The maximum number of locks at any one time. Note that if there is more
+than one partition, this is the sum of the maximum across all partitions.])
+
+m4_field(u_int32_t, st_maxhlocks,
+[The maximum number of locks in any hash bucket at any one time.])
+
+m4_field(u_int32_t, st_locksteals,
+[The maximum number of locks stolen by for an empty partition.])
+
+m4_field(u_int32_t, st_maxlsteals,
+[The maximum number of lock steals for any one partition.])
 
 m4_field(u_int32_t, st_nlockers,
 [The number of current lockers.])
@@ -67,7 +80,17 @@ m4_field(u_int32_t, st_nobjects,
 [The number of current lock objects.])
 
 m4_field(u_int32_t, st_maxnobjects,
-[The maximum number of lock objects at any one time.])
+[The maximum number of lock objects at any one time. Note that if there is more
+than one partition this is the sum of the maximum across all partitions.])
+
+m4_field(u_int32_t, st_maxhobjects,
+[The maximum number of objects in any hash bucket at any one time.])
+
+m4_field(u_int32_t, st_objectsteals,
+[The maximum number of objects stolen by for an empty partition.])
+
+m4_field(u_int32_t, st_maxosteals,
+[The maximum number of object steals for any one partition.])
 
 m4_field(u_int32_t, st_nrequests,
 [The total number of locks requested.])
@@ -122,19 +145,27 @@ m4_field(u_int32_t, st_lockers_nowait,
 [The number of requests to allocate or deallocate a locker
 for which the thread of control did not wait.])
 
-m4_field(u_int32_t, st_locks_wait,
-[The number of requests to allocate or deallocate a lock structure
-for which the thread of control waited.])
-
-m4_field(u_int32_t, st_locks_nowait,
-[The number of requests to allocate or deallocate a lock structure
-for which the thread of control did not wait.])
-
 m4_field(u_int32_t, st_hash_len,
 [Maximum length of a lock hash bucket.])
 
 m4_field(roff_t, st_regsize,
 [The size of the lock region, in bytes.])
+
+m4_field(u_int32_t, st_part_wait,
+[The number of times that a thread of control was forced to wait before
+obtaining the lock partition mutex.])
+
+m4_field(u_int32_t, st_part_nowait,
+[The number of times that a thread of control was able to obtain
+the lock partition mutex without waiting.])
+
+m4_field(u_int32_t, st_part_max_wait,
+[The maximum number of times that a thread of control was forced to wait before
+obtaining any one lock partition mutex.])
+
+m4_field(u_int32_t, st_part_max_nowait,
+[The number of times that a thread of control was able to obtain
+any one lock partition mutex without waiting.])
 
 m4_field(u_int32_t, st_region_wait,
 [The number of times that a thread of control was forced to wait before
@@ -145,7 +176,7 @@ m4_field(u_int32_t, st_region_nowait,
 the lock region mutex without waiting.])
 m4_tagend
 
-m4_when_after_envopen(lock_stat)
+m4_when(lock_stat, before, dbenv_open)
 
 m4_return(lock_stat, std)
 

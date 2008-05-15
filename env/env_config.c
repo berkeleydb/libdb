@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: env_config.c,v 12.73 2007/05/17 15:15:11 bostic Exp $
+ * $Id: env_config.c,v 12.84 2008/02/12 15:34:06 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,17 +14,17 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-static int __config_parse __P((DB_ENV *, char *, int));
+static int __config_parse __P((ENV *, char *, int));
 
 /*
  * __env_read_db_config --
  *	Read the DB_CONFIG file.
  *
- * PUBLIC: int __env_read_db_config __P((DB_ENV *));
+ * PUBLIC: int __env_read_db_config __P((ENV *));
  */
 int
-__env_read_db_config(dbenv)
-	DB_ENV *dbenv;
+__env_read_db_config(env)
+	ENV *env;
 {
 	FILE *fp;
 	int lc, ret;
@@ -33,32 +33,33 @@ __env_read_db_config(dbenv)
 	/* Parse the config file. */
 	p = NULL;
 	if ((ret =
-	    __db_appname(dbenv, DB_APP_NONE, "DB_CONFIG", 0, NULL, &p)) != 0)
+	    __db_appname(env, DB_APP_NONE, "DB_CONFIG", 0, NULL, &p)) != 0)
 		return (ret);
 	if (p == NULL)
 		fp = NULL;
 	else {
 		fp = fopen(p, "r");
-		__os_free(dbenv, p);
+		__os_free(env, p);
 	}
 
 	if (fp == NULL)
 		return (0);
 
 	for (lc = 1; fgets(buf, sizeof(buf), fp) != NULL; ++lc) {
-		if ((p = strchr(buf, '\n')) != NULL)
-			*p = '\0';
-		else if (strlen(buf) + 1 == sizeof(buf)) {
-			__db_errx(dbenv, "DB_CONFIG: line too long");
+		if ((p = strchr(buf, '\n')) == NULL) {
+			__db_errx(env, "DB_CONFIG: line %d: illegal input", lc);
 			ret = EINVAL;
 			break;
 		}
-		for (p = buf; *p != '\0' || isspace((int)*p); ++p)
+		if (p > buf && p[-1] == '\r')
+			--p;
+		*p = '\0';
+		for (p = buf; *p != '\0' && isspace((int)*p); ++p)
 			;
-		if (buf[0] == '\0' || buf[0] == '#')
+		if (*p == '\0' || *p == '#')
 			continue;
 
-		if ((ret = __config_parse(dbenv, buf, lc)) != 0)
+		if ((ret = __config_parse(env, buf, lc)) != 0)
 			break;
 	}
 	(void)fclose(fp);
@@ -70,14 +71,14 @@ __env_read_db_config(dbenv)
 #define	CONFIG_GET_INT(s, vp) do {					\
 	int __ret;							\
 	if ((__ret =							\
-	    __db_getlong(dbenv, NULL, s, 0, INT_MAX, vp)) != 0)		\
+	    __db_getlong(env->dbenv, NULL, s, 0, INT_MAX, vp)) != 0)	\
 		return (__ret);						\
 } while (0)
 #undef	CONFIG_GET_LONG
 #define	CONFIG_GET_LONG(s, vp) do {					\
 	int __ret;							\
 	if ((__ret =							\
-	    __db_getlong(dbenv, NULL, s, 0, LONG_MAX, vp)) != 0)	\
+	    __db_getlong(env->dbenv, NULL, s, 0, LONG_MAX, vp)) != 0)	\
 		return (__ret);						\
 } while (0)
 #undef	CONFIG_INT
@@ -87,12 +88,12 @@ __env_read_db_config(dbenv)
 		if (nf != 2)						\
 			goto format;					\
 		CONFIG_GET_INT(argv[1], &__v);				\
-		return (f(dbenv, (int)__v));				\
+		return (f(env->dbenv, (int)__v));			\
 	}								\
 } while (0)
 #undef	CONFIG_GET_UINT32
 #define	CONFIG_GET_UINT32(s, vp) do {					\
-	if (__db_getulong(dbenv, NULL, s, 0, UINT32_MAX, vp) != 0)	\
+	if (__db_getulong(env->dbenv, NULL, s, 0, UINT32_MAX, vp) != 0)	\
 		return (EINVAL);					\
 } while (0)
 #undef	CONFIG_UINT32
@@ -102,7 +103,7 @@ __env_read_db_config(dbenv)
 		if (nf != 2)						\
 			goto format;					\
 		CONFIG_GET_UINT32(argv[1], &__v);			\
-		return (f(dbenv, (u_int32_t)__v));			\
+		return (f(env->dbenv, (u_int32_t)__v));			\
 	}								\
 } while (0)
 
@@ -114,19 +115,22 @@ __env_read_db_config(dbenv)
  *	Parse a single NAME VALUE pair.
  */
 static int
-__config_parse(dbenv, s, lc)
-	DB_ENV *dbenv;
+__config_parse(env, s, lc)
+	ENV *env;
 	char *s;
 	int lc;
 {
+	DB_ENV *dbenv;
 	u_long uv1, uv2;
 	u_int32_t flags;
 	long lv1, lv2;
 	int nf;
 	char *argv[CONFIG_SLOTS];
+
+	dbenv = env->dbenv;
 					/* Split the line by white-space. */
 	if ((nf = __config_split(s, argv)) < 2) {
-format:		__db_errx(dbenv,
+format:		__db_errx(env,
 		    "line %d: %s: incorrect name-value pair", lc, argv[0]);
 		return (EINVAL);
 	}
@@ -136,20 +140,127 @@ format:		__db_errx(dbenv,
 	CONFIG_UINT32("mutex_set_max", __mutex_set_max);
 	CONFIG_UINT32("mutex_set_tas_spins", __mutex_set_tas_spins);
 
+	if (strcasecmp(argv[0], "rep_set_clockskew") == 0) {
+		if (nf != 3)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		CONFIG_GET_UINT32(argv[2], &uv2);
+		return (__rep_set_clockskew(
+		    dbenv, (u_int32_t)uv1, (u_int32_t)uv2));
+	}
+
 	if (strcasecmp(argv[0], "rep_set_config") == 0) {
 		if (nf != 2)
 			goto format;
-		if (strcasecmp(argv[1], "rep_bulk") == 0)
+		if (strcasecmp(argv[1], "db_rep_conf_bulk") == 0)
 			return (__rep_set_config(dbenv,
 			    DB_REP_CONF_BULK, 1));
-		if (strcasecmp(argv[1], "rep_delayclient") == 0)
+		if (strcasecmp(argv[1], "db_rep_conf_delayclient") == 0)
 			return (__rep_set_config(dbenv,
 			    DB_REP_CONF_DELAYCLIENT, 1));
-		if (strcasecmp(argv[1], "rep_noautoinit") == 0)
+		if (strcasecmp(argv[1], "db_rep_conf_lease") == 0)
+			return (__rep_set_config(dbenv,
+			    DB_REP_CONF_LEASE, 1));
+		if (strcasecmp(argv[1], "db_rep_conf_noautoinit") == 0)
 			return (__rep_set_config(dbenv,
 			    DB_REP_CONF_NOAUTOINIT, 1));
-		if (strcasecmp(argv[1], "rep_nowait") == 0)
+		if (strcasecmp(argv[1], "db_rep_conf_nowait") == 0)
 			return (__rep_set_config(dbenv, DB_REP_CONF_NOWAIT, 1));
+		if (strcasecmp(argv[1], "db_repmgr_conf_2site_strict") == 0)
+			return (__rep_set_config(dbenv,
+			    DB_REPMGR_CONF_2SITE_STRICT, 1));
+		goto format;
+	}
+
+	if (strcasecmp(argv[0], "rep_set_limit") == 0) {
+		if (nf != 3)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		CONFIG_GET_UINT32(argv[2], &uv2);
+		return (__rep_set_limit(
+		    dbenv, (u_int32_t)uv1, (u_int32_t)uv2));
+	}
+
+	if (strcasecmp(argv[0], "rep_set_nsites") == 0) {
+		if (nf != 2)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		return (__rep_set_nsites(
+		    dbenv, (u_int32_t)uv1));
+	}
+
+	if (strcasecmp(argv[0], "rep_set_priority") == 0) {
+		if (nf != 2)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		return (__rep_set_priority(
+		    dbenv, (u_int32_t)uv1));
+	}
+
+	if (strcasecmp(argv[0], "rep_set_request") == 0) {
+		if (nf != 3)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		CONFIG_GET_UINT32(argv[2], &uv2);
+		return (__rep_set_request(
+		    dbenv, (u_int32_t)uv1, (u_int32_t)uv2));
+	}
+
+	if (strcasecmp(argv[0], "rep_set_timeout") == 0) {
+		if (nf != 3)
+			goto format;
+		CONFIG_GET_UINT32(argv[2], &uv2);
+		if (strcasecmp(argv[1], "db_rep_ack_timeout") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_ACK_TIMEOUT, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_checkpoint_delay") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_CHECKPOINT_DELAY, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_connection_retry") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_CONNECTION_RETRY, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_election_timeout") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_ELECTION_TIMEOUT, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_election_retry") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_ELECTION_RETRY, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_full_election_timeout") == 0)
+			return (__rep_set_timeout(dbenv,
+			    DB_REP_FULL_ELECTION_TIMEOUT, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_heartbeat_monitor") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_HEARTBEAT_MONITOR, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_heartbeat_send") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_HEARTBEAT_SEND, (u_int32_t)uv2));
+		if (strcasecmp(argv[1], "db_rep_lease_timeout") == 0)
+			return (__rep_set_timeout(
+			    dbenv, DB_REP_LEASE_TIMEOUT, (u_int32_t)uv2));
+		goto format;
+	}
+
+	if (strcasecmp(argv[0], "repmgr_set_ack_policy") == 0) {
+		if (nf != 2)
+			goto format;
+		if (strcasecmp(argv[1], "db_repmgr_acks_all") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_ALL));
+		if (strcasecmp(argv[1], "db_repmgr_acks_all_peers") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_ALL_PEERS));
+		if (strcasecmp(argv[1], "db_repmgr_acks_none") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_NONE));
+		if (strcasecmp(argv[1], "db_repmgr_acks_one") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_ONE));
+		if (strcasecmp(argv[1], "db_repmgr_acks_one_peer") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_ONE_PEER));
+		if (strcasecmp(argv[1], "db_repmgr_acks_quorum") == 0)
+			return (__repmgr_set_ack_policy(
+			    dbenv, DB_REPMGR_ACKS_QUORUM));
 		goto format;
 	}
 
@@ -169,12 +280,21 @@ format:		__db_errx(dbenv,
 			goto format;
 		return (__env_set_data_dir(dbenv, argv[1]));
 	}
-							/* Undocumented. */
+
+							/* Compatibility */
 	if (strcasecmp(argv[0], "set_intermediate_dir") == 0) {
 		if (nf != 2)
 			goto format;
 		CONFIG_GET_INT(argv[1], &lv1);
-		return (__env_set_intermediate_dir(dbenv, (int)lv1, 0));
+		if (lv1 <= 0)
+			goto format;
+		env->dir_mode = (int)lv1;
+		return (0);
+	}
+	if (strcasecmp(argv[0], "set_intermediate_dir_mode") == 0) {
+		if (nf != 2)
+			goto format;
+		return (__env_set_intermediate_dir_mode(dbenv, argv[1]));
 	}
 
 	if (strcasecmp(argv[0], "set_flags") == 0) {
@@ -186,16 +306,8 @@ format:		__db_errx(dbenv,
 			return (__env_set_flags(dbenv, DB_CDB_ALLDB, 1));
 		if (strcasecmp(argv[1], "db_direct_db") == 0)
 			return (__env_set_flags(dbenv, DB_DIRECT_DB, 1));
-		if (strcasecmp(argv[1], "db_direct_log") == 0)
-			return (__env_set_flags(dbenv, DB_DIRECT_LOG, 1));
 		if (strcasecmp(argv[1], "db_dsync_db") == 0)
 			return (__env_set_flags(dbenv, DB_DSYNC_DB, 1));
-		if (strcasecmp(argv[1], "db_dsync_log") == 0)
-			return (__env_set_flags(dbenv, DB_DSYNC_LOG, 1));
-		if (strcasecmp(argv[1], "db_log_autoremove") == 0)
-			return (__env_set_flags(dbenv, DB_LOG_AUTOREMOVE, 1));
-		if (strcasecmp(argv[1], "db_log_inmemory") == 0)
-			return (__env_set_flags(dbenv, DB_LOG_INMEMORY, 1));
 		if (strcasecmp(argv[1], "db_multiversion") == 0)
 			return (__env_set_flags(dbenv, DB_MULTIVERSION, 1));
 		if (strcasecmp(argv[1], "db_nolocking") == 0)
@@ -219,6 +331,29 @@ format:		__db_errx(dbenv,
 			    __env_set_flags(dbenv, DB_TXN_WRITE_NOSYNC, 1));
 		if (strcasecmp(argv[1], "db_yieldcpu") == 0)
 			return (__env_set_flags(dbenv, DB_YIELDCPU, 1));
+		if (strcasecmp(argv[1], "db_log_inmemory") == 0)
+			return (__log_set_config(dbenv, DB_LOG_IN_MEMORY, 1));
+		if (strcasecmp(argv[1], "db_direct_log") == 0)
+			return (__log_set_config(dbenv, DB_LOG_DIRECT, 1));
+		if (strcasecmp(argv[1], "db_dsync_log") == 0)
+			return (__log_set_config(dbenv, DB_LOG_DSYNC, 1));
+		if (strcasecmp(argv[1], "db_log_autoremove") == 0)
+			return (__log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1));
+		goto format;
+	}
+	if (strcasecmp(argv[0], "set_log_config") == 0) {
+		if (nf != 2)
+			goto format;
+		if (strcasecmp(argv[1], "db_log_auto_remove") == 0)
+			return (__log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1));
+		if (strcasecmp(argv[1], "db_log_direct") == 0)
+			return (__log_set_config(dbenv, DB_LOG_DIRECT, 1));
+		if (strcasecmp(argv[1], "db_log_dsync") == 0)
+			return (__log_set_config(dbenv, DB_LOG_DSYNC, 1));
+		if (strcasecmp(argv[1], "db_log_in_memory") == 0)
+			return (__log_set_config(dbenv, DB_LOG_IN_MEMORY, 1));
+		if (strcasecmp(argv[1], "db_log_zero") == 0)
+			return (__log_set_config(dbenv, DB_LOG_ZERO, 1));
 		goto format;
 	}
 
@@ -263,6 +398,7 @@ format:		__db_errx(dbenv,
 	CONFIG_UINT32("set_lk_max_locks", __lock_set_lk_max_locks);
 	CONFIG_UINT32("set_lk_max_lockers", __lock_set_lk_max_lockers);
 	CONFIG_UINT32("set_lk_max_objects", __lock_set_lk_max_objects);
+	CONFIG_UINT32("set_lk_partitions", __lock_set_lk_partitions);
 
 	if (strcasecmp(argv[0], "set_lock_timeout") == 0) {
 		if (nf != 2)
@@ -340,6 +476,20 @@ format:		__db_errx(dbenv,
 			flags = DB_VERB_REGISTER;
 		else if (strcasecmp(argv[1], "db_verb_replication") == 0)
 			flags = DB_VERB_REPLICATION;
+		else if (strcasecmp(argv[1], "db_verb_rep_elect") == 0)
+			flags = DB_VERB_REP_ELECT;
+		else if (strcasecmp(argv[1], "db_verb_rep_lease") == 0)
+			flags = DB_VERB_REP_LEASE;
+		else if (strcasecmp(argv[1], "db_verb_rep_misc") == 0)
+			flags = DB_VERB_REP_MISC;
+		else if (strcasecmp(argv[1], "db_verb_rep_msgs") == 0)
+			flags = DB_VERB_REP_MSGS;
+		else if (strcasecmp(argv[1], "db_verb_rep_sync") == 0)
+			flags = DB_VERB_REP_SYNC;
+		else if (strcasecmp(argv[1], "db_verb_repmgr_connfail") == 0)
+			flags = DB_VERB_REPMGR_CONNFAIL;
+		else if (strcasecmp(argv[1], "db_verb_repmgr_misc") == 0)
+			flags = DB_VERB_REPMGR_MISC;
 		else if (strcasecmp(argv[1], "db_verb_waitsfor") == 0)
 			flags = DB_VERB_WAITSFOR;
 		else
@@ -347,7 +497,7 @@ format:		__db_errx(dbenv,
 		return (__env_set_verbose(dbenv, flags, 1));
 	}
 
-	__db_errx(dbenv, "unrecognized name-value pair: %s", s);
+	__db_errx(env, "unrecognized name-value pair: %s", s);
 	return (EINVAL);
 }
 

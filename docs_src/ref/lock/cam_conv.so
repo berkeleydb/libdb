@@ -1,4 +1,4 @@
-m4_comment([$Id: cam_conv.so,v 10.14 2003/10/18 19:16:02 bostic Exp $])
+m4_comment([$Id: cam_conv.so,v 10.15 2007/10/26 15:02:17 bostic Exp $])
 
 m4_ref_title(Locking Subsystem,
     m4_cam locking conventions,
@@ -17,9 +17,9 @@ we use a four-lock set, consisting of the following:])
 
 m4_tagbegin
 m4_tag(DB_LOCK_NG, [not granted (always 0)])
-m4_tagns(DB_LOCK_READ, [read (shared)])
-m4_tagns(DB_LOCK_WRITE, [write (exclusive)])
-m4_tagns(DB_LOCK_IWRITE, [intention-to-write (shared with NG and READ, but conflicts with WRITE and IWRITE)])
+m4_tag(DB_LOCK_READ, [read (shared)])
+m4_tag(DB_LOCK_WRITE, [write (exclusive)])
+m4_tag(DB_LOCK_IWRITE, [intention-to-write (shared with NG and READ, but conflicts with WRITE and IWRITE)])
 m4_tagend
 
 m4_p([dnl

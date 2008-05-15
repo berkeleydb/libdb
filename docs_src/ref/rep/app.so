@@ -1,4 +1,4 @@
-m4_comment([$Id: app.so,v 1.31 2007/05/17 18:17:18 bostic Exp $])
+m4_comment([$Id: app.so,v 1.32 2008/04/23 15:49:17 alanb Exp $])
 
 m4_ref_title(m4_db Replication,
     Building replicated applications,, rep/pri, rep/mgr_meth)
@@ -27,13 +27,14 @@ may not be able to locate the databases, and applications that change
 their working directories may need to use absolute pathnames.])
 
 m4_p([dnl
-During application initialization, the application performs three
-additional tasks: first, it must specify the m4_ref(DB_INIT_REP) flag
-when opening its database environment; second, it must provide m4_db
-information about its communications infrastructure; and third, it must
-start the m4_db replication system.  Generally, a replicated application
-will do normal m4_db recovery and configuration, exactly like any other
-transactional application.])
+During application initialization, the application performs
+three additional tasks: first, it must specify the m4_ref(DB_INIT_REP)
+flag when opening its database environment and additionally, a
+Replication Manager application must also specify the m4_ref(DB_THREAD) flag;
+second, it must provide m4_db information about its communications
+infrastructure; and third, it must start the m4_db replication system.
+Generally, a replicated application will do normal m4_db recovery and
+configuration, exactly like any other transactional application.])
 
 m4_p([dnl
 Replication Manager applications configure the built-in communications

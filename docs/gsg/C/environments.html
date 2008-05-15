@@ -37,7 +37,7 @@
       <p>
         This manual is meant as an introduction to the Berkeley DB library.
         Consequently, it describes how to build a very simple, single-threaded
-        application. Consequently, this manual omits a great many powerful
+        application and so this manual omits a great many powerful
         aspects of the DB database engine that are not required by simple
         applications. One of these is important enough that it warrants a brief
         overview here: environments.
@@ -46,36 +46,32 @@
         While environments are frequently not used by applications running in
         embedded environments where every byte counts, they will be used by
         virtually any other DB application requiring anything other than
-        the bare minimum functionality. An <span class="emphasis"><em>environment</em></span> is
-        essentially an encapsulation of one or more databases. Essentially, you
+        the bare minimum functionality.
+    </p>
+      <span>
+    <p>
+        An <span class="emphasis"><em>environment</em></span> is
+        essentially an encapsulation of one or more databases. You
         open an environment and then you open databases in that environment.
         When you do so, the databases are created/located in a location relative
         to the environment's home directory.
     </p>
-      <p>
+    <p>
         Environments offer a great many features that a stand-alone DB
         database cannot offer:
     </p>
-      <div class="itemizedlist">
-        <ul type="disc">
-          <li>
-            <p>
+    <div class="itemizedlist"><ul type="disc"><li><p>
                 Multi-database files.
-            </p>
-            <p>
+            </p><p>
                 It is possible in DB to contain multiple databases in a
                 single physical file on disk. This is desirable for those
                 application that open more than a few handful of databases.
                 However, in order to have more than one database contained in 
                 a single physical file, your application 
                 <span class="emphasis"><em>must</em></span> use an environment. 
-            </p>
-          </li>
-          <li>
-            <p>
+            </p></li><li><p>
                 Multi-thread and multi-process support
-            </p>
-            <p>
+            </p><p>
                 When you use an environment, resources such as the in-memory
                 cache and locks can be shared by all of the databases opened in the
                 environment. The environment allows you to enable
@@ -83,50 +79,36 @@
                 processes to access DB databases. For example, you use an
                 environment to enable the concurrent data store (CDS), the
                 locking subsystem, and/or the shared memory buffer pool.
-            </p>
-          </li>
-          <li>
-            <p>
+            </p></li><li><p>
                 Transactional processing
-            </p>
-            <p>
+            </p><p>
                 DB offers a transactional subsystem that allows for full
                 ACID-protection of your database writes. You use environments to
                 enable the transactional subsystem, and then subsequently to obtain
                 transaction IDs.
-            </p>
-          </li>
-          <li>
-            <p>
+            </p></li><li><p>
                 High availability (replication) support
-            </p>
-            <p>
+            </p><p>
                 DB offers a replication subsystem that enables
                 single-master database replication with multiple read-only
                 copies of the replicated data. You use environments to enable
                 and then manage this subsystem.
-            </p>
-          </li>
-          <li>
-            <p>
+            </p></li><li><p>
                 Logging subsystem
-            </p>
-            <p>
+            </p><p>
                 DB offers write-ahead logging for applications that want to
                 obtain a high-degree of recoverability in the face of an
                 application or system crash. Once enabled, the logging subsystem
                 allows the application to perform two kinds of recovery
                 ("normal" and "catastrophic") through the use of the information
                 contained in the log files.
-            </p>
-          </li>
-        </ul>
-      </div>
-      <p>
+            </p></li></ul></div>
+    <p>
             For more information on these topics, see the
             <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide and the 
             <i class="citetitle">Berkeley DB Getting Started with Replicated Applications</i> guide.
     </p>
+</span>
     </div>
     <div class="navfooter">
       <hr />

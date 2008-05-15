@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_apprec.src,v 12.6 2007/05/17 15:15:13 bostic Exp $
+ * $Id: ex_apprec.src,v 12.8 2008/01/08 20:58:24 bostic Exp $
  */
 
 PREFIX	ex_apprec
+INCLUDE #include "ex_apprec.h"
 
 /*
  * This is the source file used to generate the application-specific recovery
@@ -20,15 +21,7 @@ PREFIX	ex_apprec
  *         -v header_file=../examples_c/ex_apprec/ex_apprec_auto.h         \
  *         -v template_file=../examples_c/ex_apprec/ex_apprec_template     \
  *         < ../examples_c/ex_apprec/ex_apprec.src
-
-INCLUDE #include <ctype.h>
-INCLUDE #include <errno.h>
-INCLUDE #include <stdlib.h>
-INCLUDE #include <string.h>
-INCLUDE
-INCLUDE #include <db.h>
-INCLUDE
-INCLUDE #include "ex_apprec.h"
+ */
 
 /*
  * mkdir: used to create a directory

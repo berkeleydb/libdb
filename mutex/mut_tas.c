@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_tas.c,v 12.27 2007/06/21 16:39:20 ubell Exp $
+ * $Id: mut_tas.c,v 12.36 2008/03/13 15:23:09 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -20,14 +20,15 @@
  * __db_tas_mutex_init --
  *	Initialize a test-and-set mutex.
  *
- * PUBLIC: int __db_tas_mutex_init __P((DB_ENV *, db_mutex_t, u_int32_t));
+ * PUBLIC: int __db_tas_mutex_init __P((ENV *, db_mutex_t, u_int32_t));
  */
 int
-__db_tas_mutex_init(dbenv, mutex, flags)
-	DB_ENV *dbenv;
+__db_tas_mutex_init(env, mutex, flags)
+	ENV *env;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
@@ -35,23 +36,24 @@ __db_tas_mutex_init(dbenv, mutex, flags)
 
 	COMPQUIET(flags, 0);
 
-	mtxmgr = dbenv->mutex_handle;
+	dbenv = env->dbenv;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 	/* Check alignment. */
 	if (((uintptr_t)mutexp & (dbenv->mutex_align - 1)) != 0) {
-		__db_errx(dbenv, "TAS: mutex not appropriately aligned");
+		__db_errx(env, "TAS: mutex not appropriately aligned");
 		return (EINVAL);
 	}
 
 	if (MUTEX_INIT(&mutexp->tas)) {
 		ret = __os_get_syserr();
-		__db_syserr(dbenv, ret, "TAS: mutex initialize");
+		__db_syserr(env, ret, "TAS: mutex initialize");
 		return (__os_posix_err(ret));
 	}
 #ifdef HAVE_MUTEX_HYBRID
-	if ((ret = __db_pthread_mutex_init(dbenv,
+	if ((ret = __db_pthread_mutex_init(env,
 	     mutex, flags | DB_MUTEX_SELF_BLOCK)) != 0)
 		return (ret);
 #endif
@@ -62,13 +64,14 @@ __db_tas_mutex_init(dbenv, mutex, flags)
  * __db_tas_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_tas_mutex_lock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_tas_mutex_lock __P((ENV *, db_mutex_t));
  */
 int
-__db_tas_mutex_lock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_tas_mutex_lock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
@@ -78,12 +81,16 @@ __db_tas_mutex_lock(dbenv, mutex)
 #else
 	u_long ms, max_ms;
 #endif
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
+
+	CHECK_MTX_THREAD(env, mutexp);
 
 #ifdef HAVE_STATISTICS
 	if (F_ISSET(mutexp, DB_MUTEX_LOCKED))
@@ -141,7 +148,6 @@ relock:
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			F_SET(mutexp, DB_MUTEX_LOCKED);
 			dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-			CHECK_MTX_THREAD(dbenv, mutexp);
 			goto relock;
 		}
 		/*
@@ -153,16 +159,15 @@ relock:
 #ifdef DIAGNOSTIC
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			char buf[DB_THREADID_STRLEN];
-			__db_errx(dbenv,
+			__db_errx(env,
 			      "TAS lock failed: lock currently in use: ID: %s",
 			      dbenv->thread_id_string(dbenv,
 			      mutexp->pid, mutexp->tid, buf));
-			return (__db_panic(dbenv, EACCES));
+			return (__env_panic(env, EACCES));
 		}
 #endif
 		F_SET(mutexp, DB_MUTEX_LOCKED);
 		dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-		CHECK_MTX_THREAD(dbenv, mutexp);
 
 #ifdef DIAGNOSTIC
 		/*
@@ -170,20 +175,25 @@ relock:
 		 * every time we get a mutex to ensure contention.
 		 */
 		if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-			__os_yield(dbenv);
+			__os_yield(env, 0, 0);
 #endif
 		return (0);
 	}
 
 	/* Wait for the lock to become available. */
 #ifdef HAVE_MUTEX_HYBRID
-	__os_yield(dbenv);
+	/*
+	 * By yielding here we can get the other thread to give up the
+	 * mutex before calling the more expensive library mutex call.
+	 * Tests have shown this to be a big win when there is contention.
+	 */
+	__os_yield(env, 0, 0);
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED))
 		goto loop;
-	if ((ret = __db_pthread_mutex_lock(dbenv, mutex)) != 0)
+	if ((ret = __db_pthread_mutex_lock(env, mutex)) != 0)
 		return (ret);
 #else
-	__os_sleep(dbenv, 0, ms * US_PER_MS);
+	__os_yield(env, 0, ms * US_PER_MS);
 	if ((ms <<= 1) > max_ms)
 		ms = max_ms;
 #endif
@@ -194,7 +204,7 @@ relock:
 	 * the environment.  Check to see if we're never going to get this
 	 * mutex.
 	 */
-	PANIC_CHECK(dbenv);
+	PANIC_CHECK(env);
 
 	goto loop;
 }
@@ -203,31 +213,33 @@ relock:
  * __db_tas_mutex_unlock --
  *	Release a mutex.
  *
- * PUBLIC: int __db_tas_mutex_unlock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_tas_mutex_unlock __P((ENV *, db_mutex_t));
  */
 int
-__db_tas_mutex_unlock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_tas_mutex_unlock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 #ifdef HAVE_MUTEX_HYBRID
 	int ret;
 #endif
+	dbenv = env->dbenv;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
-		__db_errx(dbenv, "TAS unlock failed: lock already unlocked");
-		return (__db_panic(dbenv, EACCES));
+		__db_errx(env, "TAS unlock failed: lock already unlocked");
+		return (__env_panic(env, EACCES));
 	}
 #endif
 
@@ -236,7 +248,7 @@ __db_tas_mutex_unlock(dbenv, mutex)
 	MUTEX_MEMBAR(mutexp->flags);
 
 	if (mutexp->wait &&
-	    (ret = __db_pthread_mutex_unlock(dbenv, mutex)) != 0)
+	    (ret = __db_pthread_mutex_unlock(env, mutex)) != 0)
 		return (ret);
 #endif
 	MUTEX_UNSET(&mutexp->tas);
@@ -248,11 +260,11 @@ __db_tas_mutex_unlock(dbenv, mutex)
  * __db_tas_mutex_destroy --
  *	Destroy a mutex.
  *
- * PUBLIC: int __db_tas_mutex_destroy __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_tas_mutex_destroy __P((ENV *, db_mutex_t));
  */
 int
-__db_tas_mutex_destroy(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_tas_mutex_destroy(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
 	DB_MUTEX *mutexp;
@@ -262,17 +274,17 @@ __db_tas_mutex_destroy(dbenv, mutex)
 	int ret;
 #endif
 
-	if (!MUTEX_ON(dbenv))
+	if (!MUTEX_ON(env))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 	MUTEX_DESTROY(&mutexp->tas);
 
 #ifdef HAVE_MUTEX_HYBRID
-	if ((ret = __db_pthread_mutex_destroy(dbenv, mutex)) != 0)
+	if ((ret = __db_pthread_mutex_destroy(env, mutex)) != 0)
 		return (ret);
 #endif
 

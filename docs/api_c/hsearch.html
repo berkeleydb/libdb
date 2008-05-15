@@ -1,5 +1,5 @@
 <!--$Id: hsearch.so,v 10.28 2004/09/28 15:04:20 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>hsearch</h3>
+<b>hsearch</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #define DB_DBM_HSEARCH    1
 #include &lt;db.h&gt;
 <p>
@@ -39,9 +39,9 @@ hcreate(size_t nelem);
 <p>
 void
 hdestroy(void);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: hsearch</h3>
+<b>Description: hsearch</b>
 <p>The hsearch functions are intended to provide a high-performance
 implementation and source code compatibility for applications written
 to the historic hsearch interface.  It is not recommended for any other
@@ -65,27 +65,27 @@ and retrieval.  The field <b>data</b> is declared to be of type
 <p>The hsearch function retrieves key/data pairs from, and stores
 key/data pairs into the database.</p>
 <p>The <b>action</b> parameter must be set to one of two values:</p>
-<dl compact>
-<dt>ENTER<dd>If the key does not already appear in the database, insert the key/data
+<br>
+<b>ENTER</b><ul compact><li>If the key does not already appear in the database, insert the key/data
 pair into the database.  If the key already appears in the database,
 return a reference to an <b>ENTRY</b> structure which refers to the
-existing key and its associated data element.
-<dt>FIND<dd>Retrieve the specified key/data pair from the database.
-</dl>
-<h3>Compatibility Notes</h3>
+existing key and its associated data element.</ul>
+<b>FIND</b><ul compact><li>Retrieve the specified key/data pair from the database.</ul>
+<br>
+<b>Compatibility Notes</b>
 <p>Historically, hsearch required applications to maintain the keys
 and data in the application's memory for as long as the <b>hsearch</b>
 database existed.  Because Berkeley DB handles key and data management
 internally, there is no requirement that applications maintain local
 copies of key and data items, although the only effect of doing so
 should be the allocation of additional memory.</p>
-<h3>Hsearch Diagnostics</h3>
+<b>Hsearch Diagnostics</b>
 <p>The <b>hcreate</b> function returns 0 on failure, setting
 <b>errno</b>, and non-zero on success.</p>
 <p>The <b>hsearch</b> function returns a pointer to an ENTRY structure on
 success, and NULL, setting <b>errno</b>, if the <b>action</b>
 specified was FIND and the item did not appear in the database.</p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The <b>hsearch</b> function will fail, setting <b>errno</b> to 0,
 if the <b>action</b> specified was FIND and the item did not appear in
 the database.</p>
@@ -96,6 +96,6 @@ system functions.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

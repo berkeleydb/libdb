@@ -1,5 +1,5 @@
 <!--$Id: db_set_h_ffactor.so,v 10.37 2004/09/28 15:04:19 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB-&gt;set_h_ffactor</h3>
+<b>DB-&gt;set_h_ffactor</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DB-&gt;set_h_ffactor(DB *db, u_int32_t h_ffactor);
 int
 <p>
 DB-&gt;get_h_ffactor(DB *db, u_int32_t *h_ffactorp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB-&gt;set_h_ffactor</h3>
+<b>Description: DB-&gt;set_h_ffactor</b>
 <p>Set the desired density within the hash table.  If no value is
 specified, the fill factor will be selected dynamically as pages are
 filled.</p>
@@ -43,25 +43,24 @@ be ignored.
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>h_ffactor</b><dd>The <b>h_ffactor</b> parameter is the desired density within the hash table.
+<b>Parameters</b> <br>
+ <b>h_ffactor</b><ul compact><li>The <b>h_ffactor</b> parameter is the desired density within the hash table.</ul>
 <p>The density is an approximation of the number of keys allowed to
 accumulate in any one bucket, determining when the hash table grows or
 shrinks.  If you know the average sizes of the keys and data in your
 data set, setting the fill factor can enhance performance.  A reasonable
 rule computing fill factor is to set it to the following:</p>
 <blockquote><pre>(pagesize - 32) / (average_key_size + average_data_size + 8)</pre></blockquote>
-</dl>
-<h3>Errors</h3>
+<br>
+<br><b>Errors</b>
 <p>The DB-&gt;set_h_ffactor method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If the method was called after <a href="../api_c/db_open.html">DB-&gt;open</a> was called; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If the method was called after <a href="../api_c/db_open.html">DB-&gt;open</a> was called; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB-&gt;get_h_ffactor</h3>
+<b>Description: DB-&gt;get_h_ffactor</b>
 <p>The DB-&gt;get_h_ffactor method returns the hash table density.</p>
 <p>The DB-&gt;get_h_ffactor method may be called at any time during the life of the
 application.</p>
@@ -69,20 +68,19 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>h_ffactorp</b><dd>The DB-&gt;get_h_ffactor method returns  the
-hash table density in <b>h_ffactorp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>h_ffactorp</b><ul compact><li>The DB-&gt;get_h_ffactor method returns  the
+hash table density in <b>h_ffactorp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/db_class.html">DB</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

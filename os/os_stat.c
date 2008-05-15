@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_stat.c,v 12.12 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_stat.c,v 12.16 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,31 +14,28 @@
  * __os_exists --
  *	Return if the file exists.
  *
- * PUBLIC: int __os_exists __P((DB_ENV *, const char *, int *));
+ * PUBLIC: int __os_exists __P((ENV *, const char *, int *));
  */
 int
-__os_exists(dbenv, path, isdirp)
-	DB_ENV *dbenv;
+__os_exists(env, path, isdirp)
+	ENV *env;
 	const char *path;
 	int *isdirp;
 {
+	DB_ENV *dbenv;
 	struct stat sb;
 	int ret;
 
-	COMPQUIET(dbenv, NULL);
+	dbenv = env == NULL ? NULL : env->dbenv;
 
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: stat %s", path);
+		__db_msg(env, "fileops: stat %s", path);
 
 	if (DB_GLOBAL(j_exists) != NULL)
 		return (DB_GLOBAL(j_exists)(path, isdirp));
 
-#ifdef HAVE_VXWORKS
-	RETRY_CHK((stat((char *)path, &sb)), ret);
-#else
-	RETRY_CHK((stat(path, &sb)), ret);
-#endif
+	RETRY_CHK((stat(CHAR_STAR_CAST path, &sb)), ret);
 	if (ret != 0)
 		return (__os_posix_err(ret));
 
@@ -61,12 +58,12 @@ __os_exists(dbenv, path, isdirp)
  *	Return file size and I/O size; abstracted to make it easier
  *	to replace.
  *
- * PUBLIC: int __os_ioinfo __P((DB_ENV *, const char *,
+ * PUBLIC: int __os_ioinfo __P((ENV *, const char *,
  * PUBLIC:    DB_FH *, u_int32_t *, u_int32_t *, u_int32_t *));
  */
 int
-__os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
-	DB_ENV *dbenv;
+__os_ioinfo(env, path, fhp, mbytesp, bytesp, iosizep)
+	ENV *env;
 	const char *path;
 	DB_FH *fhp;
 	u_int32_t *mbytesp, *bytesp, *iosizep;
@@ -78,11 +75,11 @@ __os_ioinfo(dbenv, path, fhp, mbytesp, bytesp, iosizep)
 		return (DB_GLOBAL(j_ioinfo)(path,
 		    fhp->fd, mbytesp, bytesp, iosizep));
 
-	DB_ASSERT(dbenv, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
+	DB_ASSERT(env, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
 
 	RETRY_CHK((fstat(fhp->fd, &sb)), ret);
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "fstat");
+		__db_syserr(env, ret, "fstat");
 		return (__os_posix_err(ret));
 	}
 

@@ -195,6 +195,13 @@ env015
 	in-memory named databases.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+env016
+	Replication settings and DB_CONFIG
+
+	Create a DB_CONFIG for various replication settings.  Use
+	rep_stat or getter functions to verify they're set correctly.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 fop001.tcl
 	Test file system operations, combined in a transaction. [#7363]
 
@@ -1092,16 +1099,6 @@ rep058
 	before it is a client.  Verify we cannot join repl group.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-rep059
-
-	Replication with multiple recycle records.
-
-	Mimic an application where a client has multiple recycle records
-	only in its log and then tries to synchronize.  This has been
-	a problem because there is real log, but no perm records to
-	match on.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep060
 	Test of normally running clients and internal initialization.
 	Have a client running normally, but slow/far behind the master.
@@ -1163,12 +1160,12 @@ rep065
 	This capability is introduced with 4.5.
 
 	Start a replication group of 1 master and N sites, all
-	running some historical version greater than or equal to 4.2.
-	Take down a client and bring it up again running 4.5.  Run
-	some upgrades, make sure everything works.
+	running some historical version greater than or equal to 4.4.
+	Take down a client and bring it up again running current.
+	Run some upgrades, make sure everything works.
 
 	Each site runs the tcllib of its own version, but uses
-	the 4.5 tcl code (e.g. test.tcl).
+	the current tcl code (e.g. test.tcl).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep066
@@ -1308,6 +1305,27 @@ rep078
 	and don't process on any client.  Try to read with
 	on the master and verify it fails.  Process the messages
 	to the clients and retry the read.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep079
+	Replication leases and invalid usage.
+
+	Open a client without leases.  Attempt to set leases after rep_start.
+	Attempt to declare as master without election.
+	Run an election with an nsites parameter value.
+	Elect a master with leases.  Put some data and send to clients.
+	Cleanly shutdown master env.  Restart without
+	recovery and verify leases are expired and refreshed.
+	Add a new client without leases to a group using leases.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep080
+	NOAUTOINIT with empty client logs.
+
+	Verify that a fresh client trying to join the group for
+	the first time observes the setting of DELAY_SYNC and NOAUTOINIT
+	properly.
+
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr001
@@ -2641,6 +2659,15 @@ test122
 	Tests of multi-version concurrency control.
 
 	MVCC and databases that turn multi-version on and off.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test123
+	Concurrent Data Store cdsgroup smoke test.
+
+	Open a CDS env with -cdb_alldb.
+	Start a "txn" with -cdsgroup.
+	Create two databases in the env, do a cursor put 
+	in both within the same txn.  This should succeed.  
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001

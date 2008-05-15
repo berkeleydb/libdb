@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: bt_method.c,v 12.8 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_method.c,v 12.10 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -37,7 +37,7 @@ __bam_db_create(dbp)
 	int ret;
 
 	/* Allocate and initialize the private btree structure. */
-	if ((ret = __os_calloc(dbp->dbenv, 1, sizeof(BTREE), &t)) != 0)
+	if ((ret = __os_calloc(dbp->env, 1, sizeof(BTREE), &t)) != 0)
 		return (ret);
 	dbp->bt_internal = t;
 
@@ -87,9 +87,9 @@ __bam_db_close(dbp)
 
 	/* Free any backing source file name. */
 	if (t->re_source != NULL)
-		__os_free(dbp->dbenv, t->re_source);
+		__os_free(dbp->env, t->re_source);
 
-	__os_free(dbp->dbenv, t);
+	__os_free(dbp->env, t);
 	dbp->bt_internal = NULL;
 
 	return (0);
@@ -168,7 +168,7 @@ __bam_set_flags(dbp, flagsp)
 	return (0);
 
 incompat:
-	return (__db_ferr(dbp->dbenv, "DB->set_flags", 1));
+	return (__db_ferr(dbp->env, "DB->set_flags", 1));
 }
 
 /*
@@ -238,7 +238,7 @@ __bam_set_bt_minkey(dbp, bt_minkey)
 	t = dbp->bt_internal;
 
 	if (bt_minkey < 2) {
-		__db_errx(dbp->dbenv, "minimum bt_minkey value is 2");
+		__db_errx(dbp->env, "minimum bt_minkey value is 2");
 		return (EINVAL);
 	}
 
@@ -505,5 +505,5 @@ __ram_set_re_source(dbp, re_source)
 
 	t = dbp->bt_internal;
 
-	return (__os_strdup(dbp->dbenv, re_source, &t->re_source));
+	return (__os_strdup(dbp->env, re_source, &t->re_source));
 }

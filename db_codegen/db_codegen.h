@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_codegen.h,v 1.4 2007/05/17 15:14:58 bostic Exp $
+ * $Id: db_codegen.h,v 1.5 2008/01/08 20:58:12 bostic Exp $
  */
 #include "db_config.h"
 

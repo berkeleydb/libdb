@@ -1,4 +1,4 @@
-m4_comment([$Id: m4.methods,v 1.10 2007/06/22 16:57:17 bostic Exp $])
+m4_comment([$Id: m4.methods,v 1.12 2007/10/26 15:43:11 bostic Exp $])
 
 m4_table_begin(, _center)
 
@@ -21,6 +21,7 @@ m4_comment([DbEnv::rep_sync])m4_table_element(m4_ref(rep_sync), Replication sync
 
 m4_table_header(Replication Configuration, _empty)
 m4_comment([DbEnv::rep_set_config])m4_table_element(m4_ref(rep_set_config), Configure the replication subsystem)
+m4_comment([DbEnv::rep_set_clockskew])m4_table_element(m4_ref(rep_set_clockskew), Configure master lease clock adjustment)
 m4_comment([DbEnv::rep_set_limit])m4_table_element(m4_ref(rep_set_limit), Limit data sent in response to a single message)
 m4_comment([DbEnv::rep_set_nsites])m4_table_element(m4_ref(rep_set_nsites), Configure replication group site count)
 m4_comment([DbEnv::rep_set_priority])m4_table_element(m4_ref(rep_set_priority), Configure replication site priority)

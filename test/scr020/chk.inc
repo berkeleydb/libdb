@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.inc,v 12.0 2004/11/17 03:44:51 bostic Exp $
+# $Id: chk.inc,v 12.1 2008/05/07 12:46:43 bschmeck Exp $
 #
 # Check for inclusion of db_config.h after "const" or other includes.
 
@@ -18,7 +18,8 @@ t2=__2
 (cd $d && find . -name '*.[chys]' -o -name '*.cpp' |
     xargs egrep -l '#include.*db_config.h') | tee /tmp/o |
     sed -e '/dbdemo.c$/d' \
-        -e '/db_java_wrap.c$/d' > $t1
+        -e '/db_java_wrap.c$/d' \
+	-e '/ex_apprec.c$/d' > $t1
 
 (for i in `cat $t1`; do
 	egrep -w 'db_config.h|const' /dev/null $d/$i | head -1

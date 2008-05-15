@@ -21,7 +21,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id793395"></a>Writing In-Memory Berkeley DB Applications</h1>
+            <h1 class="title"><a id="id793397"></a>Writing In-Memory Berkeley DB Applications</h1>
           </div>
           <div>
             <div class="legalnotice">
@@ -55,7 +55,7 @@
             </div>
           </div>
           <div>
-            <p class="pubdate">7/5/2007</p>
+            <p class="pubdate">4/25/2008</p>
           </div>
         </div>
         <div></div>
@@ -377,9 +377,13 @@
                         database(s) in-memory.
                         The first is to size your cache such that it is big
                         enough to hold all your data in-memory. If your
-                        cache fills up, then your application will
-                        encounter an unpredictable but almost certainly
-                        fatal condition.
+                        cache fills up, then DB will return
+                        <tt class="literal">ENOMEM</tt> on the next operation
+                        that requests additional pages in the cache. As with all errors while
+                        updating a database, the current transaction must be aborted. If the update
+                        was being done without a transaction, then the application must close its
+                        environment and database handles, reopen them, and then refresh the database
+                        from some backup data source.
                 </p>
         <p>
                         For information on setting the cache size, see
@@ -886,8 +890,8 @@ err:
                         configure your logs to be kept entirely in-memory. You
                         do this by setting a configuration option that prevents
                         DB from writing log data to disk.
-                        Do this by setting the <tt class="literal">DB_LOG_INMEMORY</tt> flag using the
-                        <tt class="methodname">DB_ENV-&gt;set_flags()</tt> method.
+                        Do this by setting the <tt class="literal">DB_LOG_IN_MEMORY</tt> flag using the
+                        <tt class="methodname">DB_ENV-&gt;log_set_config()</tt> method.
                 </p>
         <p>
                         In addition, you must configure your log buffer size so that it is capable
@@ -945,7 +949,7 @@ err:
 
        
     <b class="userinput"><tt>/* Specify in-memory logging */
-    ret = envp-&gt;set_flags(envp, DB_LOG_INMEMORY, 1);
+    ret = envp-&gt;log_set_config(envp, DB_LOG_IN_MEMORY, 1);
     if (ret != 0) {
         fprintf(stderr, "Error setting log subsystem to in-memory: %s\n",
             db_strerror(ret));
@@ -1054,7 +1058,7 @@ main(void)
                         * Instead, they are backed by heap memory.  */
 
     /* Specify in-memory logging */
-    ret = envp-&gt;set_flags(envp, DB_LOG_INMEMORY, 1);
+    ret = envp-&gt;log_set_config(envp, DB_LOG_IN_MEMORY, 1);
     if (ret != 0) {
         fprintf(stderr, "Error setting log subsystem to in-memory: %s\n",
             db_strerror(ret));

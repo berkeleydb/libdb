@@ -1,9 +1,18 @@
 /*
- * $Id: b_workload.c,v 1.13 2007/06/21 17:43:17 bostic Exp $
+ * $Id: b_workload.c,v 1.16 2008/04/14 02:21:47 david Exp $
  */
 
 #include "bench.h"
 #include "b_workload.h"
+
+static int   dump_verbose_stats __P((DB *, CONFIG *));
+static int   is_del_workload __P((int));
+static int   is_get_workload __P((int));
+static int   is_put_workload __P((int));
+static int   run_mixed_workload __P((DB *, CONFIG *));
+static int   run_std_workload __P((DB *, CONFIG *));
+static int   usage __P((void));
+static char *workload_str __P((int));
 
 /*
  * General TODO list:
@@ -12,17 +21,18 @@
  * * Think about doing automatic btree/hash comparison in here.
  */
 int
-main(argc, argv)
+b_workload(argc, argv)
 	int argc;
 	char *argv[];
 {
+	extern char *optarg;
+	extern int optind;
 	CONFIG conf;
 	DB *dbp;
 	DB_ENV *dbenv;
 	int ch, ffactor, ksz;
 
 	dbenv = NULL;
-	cleanup_test_dir();
 	memset(&conf, 0, sizeof(conf));
 	conf.seed = 124087;
 	srand(conf.seed);
@@ -76,6 +86,8 @@ main(argc, argv)
 				conf.type = DB_BTREE;
 				break;
 			case 'H': case 'h':
+				if (b_util_have_hash())
+					return (0);
 				conf.ts = "Hash";
 				conf.type = DB_HASH;
 				break;
@@ -152,9 +164,6 @@ main(argc, argv)
 	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE, 0666) == 0);
 #endif
 
-	/*
-	 * Create the database.
-	 */
 	DB_BENCH_ASSERT(db_create(&dbp, dbenv, 0) == 0);
 	if (conf.pagesz != 0)
 		DB_BENCH_ASSERT(
@@ -171,12 +180,11 @@ main(argc, argv)
 		    dbp->set_h_nelem(dbp, conf.pcount*10) == 0);
 	}
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
-	DB_BENCH_ASSERT(
-	    dbp->open(dbp, NULL, "a", NULL, conf.type,
-	    DB_CREATE | DB_TRUNCATE, 0666) == 0);
+	DB_BENCH_ASSERT(dbp->open(
+	    dbp, NULL, TESTFILE, NULL, conf.type, DB_CREATE, 0666) == 0);
 #else
-	DB_BENCH_ASSERT(
-	    dbp->open(dbp, "a", NULL, conf.type, DB_CREATE, 0666) == 0);
+	DB_BENCH_ASSERT(dbp->open(
+	    dbp, TESTFILE, NULL, conf.type, DB_CREATE, 0666) == 0);
 #endif
 
 	if (conf.workload == T_MIXED)
@@ -233,17 +241,6 @@ main(argc, argv)
 	return (0);
 }
 
-int
-s(dbp, pkey, pdata, skey)
-	DB *dbp;
-	const DBT *pkey, *pdata;
-	DBT *skey;
-{
-	skey->data = pkey->data;
-	skey->size = pkey->size;
-	return (0);
-}
-
 /*
  * The mixed workload is designed to simulate a somewhat real
  * usage scenario.
@@ -259,14 +256,14 @@ s(dbp, pkey, pdata, skey)
 #define	PUT_PROPORTION 7
 #define	DEL_PROPORTION 3
 
-int
+static int
 run_mixed_workload(dbp, config)
 	DB *dbp;
 	CONFIG *config;
 {
 	DBT key, data;
 	size_t next_op, i, ioff;
-	char kbuf[10];
+	char kbuf[KBUF_LEN];
 	struct bench_q operation_queue;
 
 	/* Having ordered insertion does not make sense here */
@@ -286,7 +283,7 @@ run_mixed_workload(dbp, config)
 	 * This should add some stability, and reduce the likelihood
 	 * of deleting all of the entries in the DB.
 	 */
-	for (i = 0; i < 100000; ++i) {
+	for (i = 0; i < 2 * config->pcount; ++i) {
 		GET_KEY_NEXT(key, config, kbuf, i);
 		BENCH_Q_TAIL_INSERT(operation_queue, kbuf);
 		DB_BENCH_ASSERT(dbp->put(dbp, NULL, &key, &data, 0) == 0);
@@ -318,15 +315,16 @@ run_mixed_workload(dbp, config)
 	return (0);
 }
 
-int
+static int
 run_std_workload(dbp, config)
 	DB *dbp;
 	CONFIG *config;
 {
 	DBT key, data;
 	DBC *dbc;
-	u_int32_t i, ret;
-	char kbuf[10];
+	u_int32_t i;
+	int ret;
+	char kbuf[KBUF_LEN];
 
 	/* Setup a key/data pair. */
 	INIT_KEY(key, config);
@@ -388,7 +386,7 @@ run_std_workload(dbp, config)
 	return (0);
 }
 
-int
+static int
 dump_verbose_stats(dbp, config)
 	DB *dbp;
 	CONFIG *config;
@@ -405,6 +403,7 @@ dump_verbose_stats(dbp, config)
 	DB_HASH_STAT *hstat;
 	DB_BTREE_STAT *bstat;
 	double free_prop;
+	char path[1024];
 
 #ifdef DB_BENCH_INCLUDE_CONFIG_SUMMARY
 	printf("Completed workload benchmark.\n");
@@ -455,10 +454,12 @@ dump_verbose_stats(dbp, config)
 		    (u_long)config->pcount, config->ts,
 		    (u_long)config->del_time.tv_sec, config->del_time.tv_nsec);
 
+	(void)snprintf(path, sizeof(path),
+	    "%s%c%s", TESTDIR, PATH_SEPARATOR[0], TESTFILE);
 #ifdef DB_WIN32
-	if (_stat("TESTDIR/a", &fstat) == 0) {
+	if (_stat(path, &fstat) == 0) {
 #else
-	if (stat("TESTDIR/a", &fstat) == 0) {
+	if (stat(path, &fstat) == 0) {
 #endif
 		printf("%s Size of db file (%s): %lu K\n",
 		    config->message[0] == '\0' ? "" : config->message,
@@ -504,7 +505,7 @@ dump_verbose_stats(dbp, config)
 	return (0);
 }
 
-char *
+static char *
 workload_str(workload)
 	int workload;
 {
@@ -545,7 +546,7 @@ workload_str(workload)
 	/* NOTREACHED */
 }
 
-int
+static int
 is_get_workload(workload)
 	int workload;
 {
@@ -559,7 +560,7 @@ is_get_workload(workload)
 	return 1;
 }
 
-int
+static int
 is_put_workload(workload)
 	int workload;
 {
@@ -573,7 +574,7 @@ is_put_workload(workload)
 	return 1;
 }
 
-int
+static int
 is_del_workload(workload)
 	int workload;
 {
@@ -587,7 +588,7 @@ is_del_workload(workload)
 	return 1;
 }
 
-int
+static int
 usage()
 {
 	(void)fprintf(stderr,

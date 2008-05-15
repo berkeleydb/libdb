@@ -1,4 +1,4 @@
-m4_comment([$Id: mastersync.so,v 1.13 2007/03/20 20:20:27 alanb Exp $])
+m4_comment([$Id: mastersync.so,v 1.14 2008/02/29 18:28:33 sue Exp $])
 
 m4_ref_title(m4_db Replication,
     Synchronizing with a master,, rep/elect, rep/init)
@@ -105,28 +105,20 @@ m4_section([Clients too far out-of-date to synchronize])
 
 m4_p([dnl
 Clients attempting to synchronize with the master may discover that
-synchronization is not possible because the client and master have been
-out of contact for too long.  By default, the master and client
-automatically detect this state and perform an internal initialization
+synchronization is not possible because the client no longer has any
+overlapping information with the master site.  By default, the master and
+client automatically detect this state and perform an internal initialization
 of the client.  Because internal initialization requires transfer of
 entire databases to the client, it can take a relatively long period of
 time and may require database handles to be reopened in the client
 applications.])
 
 m4_p([dnl
-Client applications which cannot wait and would prefer to postpone
-internal initialization until a more convenient time, or would prefer
+Client applications which cannot wait or would prefer
 to do a hot backup instead of performing internal initialization, should
 call the m4_refT(rep_set_config) with the m4_ref(DB_REP_CONF_NOAUTOINIT)
 flag.  This configuration flag causes m4_db to return
 m4_ref(DB_REP_JOIN_FAILURE) to the application instead of performing
 internal initialization.])
-
-m4_p([dnl
-Client applications choosing to delay synchronization in this manner are
-responsible for synchronizing the client with the master at some future
-time.  This can be accomplished by turning off the
-m4_ref(DB_REP_CONF_NOAUTOINIT) flag and calling the m4_refT(rep_sync),
-or by performing a hot backup.])
 
 m4_page_footer

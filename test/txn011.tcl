@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: txn011.tcl,v 12.7 2007/05/17 15:15:56 bostic Exp $
+# $Id: txn011.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	txn011
 # TEST	Test durable and non-durable txns.

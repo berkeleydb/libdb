@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2007 Oracle.  All rights reserved.
+# Copyright (c) 2000,2008 Oracle.  All rights reserved.
 #
-# $Id: wrap.tcl,v 12.7 2007/07/03 13:59:39 carol Exp $
+# $Id: wrap.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # Sentinel file wrapper for multi-process tests.  This is designed to avoid a
 # set of nasty bugs, primarily on Windows, where pid reuse causes watch_procs

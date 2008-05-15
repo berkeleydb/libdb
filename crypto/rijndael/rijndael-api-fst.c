@@ -162,20 +162,20 @@ __db_blockEncrypt(cipher, key, input, inputLen, outBuffer)
 
     case MODE_CFB1:
 		iv = cipher->IV;
-        for (i = numBlocks; i > 0; i--) {
+	for (i = numBlocks; i > 0; i--) {
 			memcpy(outBuffer, input, 16);
-            for (k = 0; k < 128; k++) {
+	    for (k = 0; k < 128; k++) {
 				__db_rijndaelEncrypt(key->ek, key->Nr, iv, block);
-                outBuffer[k >> 3] ^= (block[0] & (u_int)0x80) >> (k & 7);
-                for (t = 0; t < 15; t++) {
-                	iv[t] = (iv[t] << 1) | (iv[t + 1] >> 7);
-                }
-               	iv[15] = (iv[15] << 1) | ((outBuffer[k >> 3] >> (7 - (k & 7))) & 1);
-            }
-            outBuffer += 16;
-            input += 16;
-        }
-        break;
+		outBuffer[k >> 3] ^= (block[0] & (u_int)0x80) >> (k & 7);
+		for (t = 0; t < 15; t++) {
+			iv[t] = (iv[t] << 1) | (iv[t + 1] >> 7);
+		}
+		iv[15] = (iv[15] << 1) | ((outBuffer[k >> 3] >> (7 - (k & 7))) & 1);
+	    }
+	    outBuffer += 16;
+	    input += 16;
+	}
+	break;
 
 	default:
 		return BAD_CIPHER_STATE;
@@ -322,20 +322,20 @@ __db_blockDecrypt(cipher, key, input, inputLen, outBuffer)
 
     case MODE_CFB1:
 		iv = cipher->IV;
-        for (i = numBlocks; i > 0; i--) {
+	for (i = numBlocks; i > 0; i--) {
 			memcpy(outBuffer, input, 16);
-            for (k = 0; k < 128; k++) {
+	    for (k = 0; k < 128; k++) {
 				__db_rijndaelEncrypt(key->ek, key->Nr, iv, block);
-                for (t = 0; t < 15; t++) {
-                	iv[t] = (iv[t] << 1) | (iv[t + 1] >> 7);
-                }
-               	iv[15] = (iv[15] << 1) | ((input[k >> 3] >> (7 - (k & 7))) & 1);
-                outBuffer[k >> 3] ^= (block[0] & (u_int)0x80) >> (k & 7);
-            }
-            outBuffer += 16;
-            input += 16;
-        }
-        break;
+		for (t = 0; t < 15; t++) {
+			iv[t] = (iv[t] << 1) | (iv[t + 1] >> 7);
+		}
+		iv[15] = (iv[15] << 1) | ((input[k >> 3] >> (7 - (k & 7))) & 1);
+		outBuffer[k >> 3] ^= (block[0] & (u_int)0x80) >> (k & 7);
+	    }
+	    outBuffer += 16;
+	    input += 16;
+	}
+	break;
 
 	default:
 		return BAD_CIPHER_STATE;

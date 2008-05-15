@@ -1,8 +1,8 @@
 # Sel the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc002.tcl,v 12.8 2007/07/09 16:33:08 bostic Exp $
+# $Id: rpc002.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rpc002
 # TEST	Test invalid RPC functions and make sure we error them correctly
@@ -20,6 +20,7 @@ proc rpc002 { } {
 	# First start the server.
 	#
 	puts "Rpc002: Error and Unsupported interface test"
+	puts "Rpc002: Using $rpc_svc"
 	set dpid [rpc_server_start]
 	puts "\tRpc002.a: Started server, pid $dpid"
 

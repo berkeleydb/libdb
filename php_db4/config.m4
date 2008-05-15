@@ -1,10 +1,10 @@
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
 # http://www.apache.org/licenses/LICENSE-2.0.txt
 #
 
-dnl $Id: config.m4,v 12.8 2007/05/17 15:15:49 bostic Exp $
+dnl $Id: config.m4,v 12.11 2008/01/08 20:58:46 bostic Exp $
 dnl config.m4 for extension db4
 
 dnl Comments in this file start with the string 'dnl'.
@@ -19,7 +19,7 @@ PHP_ARG_WITH(mod_db4, whether to link against mod_db4,
 
 if test "$PHP_DB4" != "no"; then
   if test "$PHP_DB4" != "no"; then
-    for i in $PHP_DB4 /usr/local/BerkeleyDB.4.4 /usr/local /usr; do
+    for i in $PHP_DB4 /usr/local/BerkeleyDB.4.7 /usr/local /usr; do
       if test -f "$i/db4/db.h"; then
         THIS_PREFIX=$i
         INC_DIR=$i/db4

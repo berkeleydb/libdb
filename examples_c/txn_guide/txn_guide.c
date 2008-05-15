@@ -198,16 +198,16 @@ err:
 void *
 writer_thread(void *args)
 {
+    static char *key_strings[] = {
+	"key 1", "key 2", "key 3", "key 4", "key 5",
+	"key 6", "key 7", "key 8", "key 9", "key 10"
+    };
     DB *dbp;
     DB_ENV *envp;
-
     DBT key, value;
     DB_TXN *txn;
     int i, j, payload, ret, thread_num;
     int retry_count, max_retries = 20;   /* Max retry on a deadlock */
-    char *key_strings[] = {"key 1", "key 2", "key 3", "key 4",
-			   "key 5", "key 6", "key 7", "key 8",
-			   "key 9", "key 10"};
 
     dbp = (DB *)args;
     envp = dbp->get_env(dbp);

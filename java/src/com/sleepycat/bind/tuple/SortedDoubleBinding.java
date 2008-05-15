@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: SortedDoubleBinding.java,v 12.4 2007/05/04 00:28:25 mark Exp $
+ * $Id: SortedDoubleBinding.java,v 12.6 2008/02/07 17:12:25 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -22,7 +22,7 @@ import com.sleepycat.db.DatabaseEntry;
  * <ul>
  * <li>The byte array (stored) formats used by {@link DoubleBinding} and
  * {@link SortedDoubleBinding} are different and incompatible.  They are not
- * interchangable once data has been stored.</li>
+ * interchangeable once data has been stored.</li>
  * <li>An instance of {@link DoubleBinding}, not {@link SortedDoubleBinding},
  * is returned by {@link TupleBinding#getPrimitiveBinding} method.  Therefore,
  * to use {@link SortedDoubleBinding}, {@link TupleBinding#getPrimitiveBinding}

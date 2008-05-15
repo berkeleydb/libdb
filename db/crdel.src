@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: crdel.src,v 12.8 2007/05/17 15:14:56 bostic Exp $
+ * $Id: crdel.src,v 12.10 2008/01/08 20:58:09 bostic Exp $
  */
 
-PREFIX	__crdel
 DBPRIVATE
+PREFIX	__crdel
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"

@@ -3,32 +3,28 @@
 #include "db_config.h"
 
 #include <ctype.h>
-#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include <db.h>
-
+#include "db.h"
 #include "ex_apprec.h"
 /*
  * PUBLIC: int ex_apprec_mkdir_print __P((DB_ENV *, DBT *, DB_LSN *,
- * PUBLIC:     db_recops, void *));
+ * PUBLIC:     db_recops));
  */
 int
-ex_apprec_mkdir_print(dbenv, dbtp, lsnp, notused2, notused3)
+ex_apprec_mkdir_print(dbenv, dbtp, lsnp, notused2)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
-	void *notused3;
 {
 	ex_apprec_mkdir_args *argp;
+	int ex_apprec_mkdir_read __P((DB_ENV *, void *, ex_apprec_mkdir_args **));
 	u_int32_t i;
 	int ch;
 	int ret;
 
 	notused2 = DB_TXN_PRINT;
-	notused3 = NULL;
 
 	if ((ret = ex_apprec_mkdir_read(dbenv, dbtp->data, &argp)) != 0)
 		return (ret);
@@ -51,22 +47,18 @@ ex_apprec_mkdir_print(dbenv, dbtp, lsnp, notused2, notused3)
 }
 
 /*
- * PUBLIC: int ex_apprec_init_print __P((DB_ENV *, int (***)(DB_ENV *,
- * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
+ * PUBLIC: int ex_apprec_init_print __P((DB_ENV *, DB_DISTAB *));
  */
 int
-ex_apprec_init_print(dbenv, dtabp, dtabsizep)
+ex_apprec_init_print(dbenv, dtabp)
 	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+	DB_DISTAB *dtabp;
 {
-	int __db_add_recovery __P((DB_ENV *,
-	    int (***)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *),
-	    size_t *,
-	    int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops, void *), u_int32_t));
+	int __db_add_recovery __P((DB_ENV *, DB_DISTAB *,
+	    int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops), u_int32_t));
 	int ret;
 
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery(dbenv, dtabp,
 	    ex_apprec_mkdir_print, DB_ex_apprec_mkdir)) != 0)
 		return (ret);
 	return (0);

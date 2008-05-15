@@ -87,7 +87,7 @@ main(void)
         envp = new DbEnv(0);
 
         // Specify in-memory logging
-        envp->set_flags(DB_LOG_INMEMORY, 1);
+        envp->log_set_config(DB_LOG_IN_MEMORY, 1);
 
         // Specify the size of the in-memory log buffer.
         envp->set_lg_bsize(10 * 1024 * 1024);

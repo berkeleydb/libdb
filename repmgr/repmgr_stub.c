@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_stub.c,v 1.7 2007/05/17 15:15:51 bostic Exp $
+ * $Id: repmgr_stub.c,v 1.9 2008/01/08 20:58:48 bostic Exp $
  */
 
 #ifndef HAVE_REPLICATION_THREADS
@@ -25,21 +25,21 @@ static int
 __db_norepmgr(dbenv)
 	DB_ENV *dbenv;
 {
-	__db_errx(dbenv,
+	__db_errx(dbenv->env,
     "library build did not include support for the Replication Manager");
 	return (DB_OPNOTSUP);
 }
 
 /*
  * PUBLIC: #ifndef HAVE_REPLICATION_THREADS
- * PUBLIC: int __repmgr_close __P((DB_ENV *));
+ * PUBLIC: int __repmgr_close __P((ENV *));
  * PUBLIC: #endif
  */
 int
-__repmgr_close(dbenv)
-	DB_ENV *dbenv;
+__repmgr_close(env)
+	ENV *env;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	return (0);
 }
 
@@ -175,16 +175,16 @@ __repmgr_stat_print_pp(dbenv, flags)
 
 /*
  * PUBLIC: #ifndef HAVE_REPLICATION_THREADS
- * PUBLIC: int __repmgr_handle_event __P((DB_ENV *, u_int32_t, void *));
+ * PUBLIC: int __repmgr_handle_event __P((ENV *, u_int32_t, void *));
  * PUBLIC: #endif
  */
 int
-__repmgr_handle_event(dbenv, event, info)
-	DB_ENV *dbenv;
+__repmgr_handle_event(env, event, info)
+	ENV *env;
 	u_int32_t event;
 	void *info;
 {
-	COMPQUIET(dbenv, NULL);
+	COMPQUIET(env, NULL);
 	COMPQUIET(event, 0);
 	COMPQUIET(info, NULL);
 

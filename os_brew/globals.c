@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: globals.c,v 1.4 2007/05/17 15:15:47 bostic Exp $
+ * $Id: globals.c,v 1.6 2008/01/08 20:58:44 bostic Exp $
  */
 
 #include "db_config.h"
@@ -31,7 +31,7 @@ brew_bdb_begin()
 
 		((BDBApp *)GETAPPINSTANCE())->db_global_values = p;
 
-		TAILQ_INIT(&DB_GLOBAL(db_envq));
+		TAILQ_INIT(&DB_GLOBAL(envq));
 		DB_GLOBAL(db_line) =
 		    "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=";
 	}

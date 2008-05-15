@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_apprec_rec.c,v 12.5 2007/05/17 15:15:13 bostic Exp $
+ * $Id: ex_apprec_rec.c,v 12.7 2008/01/08 20:58:24 bostic Exp $
  */
 
 /*
@@ -13,11 +13,10 @@
  * significantly.
  */
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <db.h>
 
@@ -28,28 +27,23 @@
  *	Recovery function for mkdir.
  *
  * PUBLIC: int ex_apprec_mkdir_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
  */
 int
-ex_apprec_mkdir_recover(dbenv, dbtp, lsnp, op, info)
+ex_apprec_mkdir_recover(dbenv, dbtp, lsnp, op)
 	DB_ENV *dbenv;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
-	void *info;
 {
 	ex_apprec_mkdir_args *argp;
 	int ret;
 
 	argp = NULL;
 
-	/*
-	 * Shut up the compiler--"info" is used for the recovery functions
-	 * belonging to transaction meta-operations such as txn_create, and
-	 * need not concern us here either.
-	 */
-	info = NULL;
-
+#ifdef DEBUG_RECOVER
+	ex_apprec_mkdir_print(dbenv, dbtp, lsnp, op);
+#endif
 	if ((ret = ex_apprec_mkdir_read(dbenv, dbtp->data, &argp)) != 0)
 		goto out;
 

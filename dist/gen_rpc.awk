@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 12.13 2007/05/23 15:07:29 bostic Exp $
+# $Id: gen_rpc.awk,v 12.14 2007/11/18 14:15:41 bostic Exp $
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -693,10 +693,10 @@ END {
 		if (db_handle)
 			printf("\tdbenv = %s->dbenv;\n", args[db_idx]) >> CFILE
 		else if (dbc_handle)
-			printf("\tdbenv = %s->dbp->dbenv;\n", \
+			printf("\tdbenv = %s->dbenv;\n", \
 			    args[dbc_idx]) >> CFILE
 		else if (txn_handle)
-			printf("\tdbenv = %s->mgrp->dbenv;\n", \
+			printf("\tdbenv = %s->mgrp->env->dbenv;\n", \
 			    args[txn_idx]) >> CFILE
 		else
 			printf("\tdbenv = NULL;\n") >> CFILE
@@ -721,9 +721,10 @@ END {
 			continue;
 		printf("\tif (%s != NULL) {\n", args[i]) >> CFILE
 		if (!env_handle) {
-			printf("\t\t__db_errx(dbenv, ") >> CFILE
+			printf("\t\t__db_errx(dbenv->env, ") >> CFILE
 		} else {
-			printf("\t\t__db_errx(%s, ", args[env_idx]) >> CFILE
+			printf(\
+			    "\t\t__db_errx(%s->env, ", args[env_idx]) >> CFILE
 		}
 		printf("\"User functions not supported in RPC\");\n") >> CFILE
 		printf("\t\treturn (EINVAL);\n\t}\n") >> CFILE
@@ -799,9 +800,9 @@ END {
 				printf(";\n") >> CFILE
 			printf("\tif ((ret = __os_calloc(") >> CFILE
 			if (!env_handle)
-				printf("dbenv,\n") >> CFILE
+				printf("dbenv->env,\n") >> CFILE
 			else
-				printf("%s,\n", args[env_idx]) >> CFILE
+				printf("%s->env,\n", args[env_idx]) >> CFILE
 			printf("\t    msg.%s.%s_len,", \
 			    args[i], args[i]) >> CFILE
 			if (list_type[i] == "GID")
@@ -829,24 +830,16 @@ END {
 	printf("\n") >> CFILE
 	printf("\treplyp = __db_%s_%d%03d(&msg, cl);\n", name, major, minor) \
 	    >> CFILE
-	for (i = 0; i < nvars; ++i) {
-		if (rpc_type[i] == "LIST") {
-			printf("\t__os_free(") >> CFILE
-			if (!env_handle)
-				printf("dbenv, ") >> CFILE
-			else
-				printf("%s, ", args[env_idx]) >> CFILE
-			printf("msg.%s.%s_val);\n", args[i], args[i]) >> CFILE
-		}
-	}
+	for (i = 0; i < nvars; ++i)
+		if (rpc_type[i] == "LIST")
+			printf("\t__os_free(%s->env, msg.%s.%s_val);\n",
+			    env_handle ? args[env_idx] : "dbenv",
+			    args[i], args[i]) >> CFILE
+
 	printf("\tif (replyp == NULL) {\n") >> CFILE
-	if (!env_handle) {
-		printf("\t\t__db_errx(dbenv, ") >> CFILE
-		printf("clnt_sperror(cl, \"Berkeley DB\"));\n") >> CFILE
-	} else {
-		printf("\t\t__db_errx(%s, ", args[env_idx]) >> CFILE
-		printf("clnt_sperror(cl, \"Berkeley DB\"));\n") >> CFILE
-	}
+	printf("\t\t__db_errx(%s->env, clnt_sperror(cl, \"Berkeley DB\"));\n",
+	    env_handle ? args[env_idx] : "dbenv") >> CFILE
+
 	printf("\t\tret = DB_NOSERVER;\n") >> CFILE
 	printf("\t\tgoto out;\n") >> CFILE
 	printf("\t}\n") >> CFILE
@@ -1037,8 +1030,9 @@ function illegal_functions(OUTPUT)
 	printf("static int\n") >> OUTPUT
 	printf("__dbcl_noserver(dbenv)\n") >> OUTPUT
 	printf("\tDB_ENV *dbenv;\n") >> OUTPUT
-	printf("{\n\t__db_errx(dbenv,") >> OUTPUT
-	printf(" \"No Berkeley DB RPC server environment\");\n") >> OUTPUT
+	printf("{\n\t__db_errx(dbenv == NULL ? NULL : dbenv->env,") >> OUTPUT
+	printf(\
+	    "\n\t    \"No Berkeley DB RPC server environment\");\n") >> OUTPUT
 	printf("\treturn (DB_NOSERVER);\n") >> OUTPUT
 	printf("}\n\n") >> OUTPUT
 
@@ -1052,7 +1046,7 @@ function illegal_functions(OUTPUT)
 	printf("int\n") >> OUTPUT
 	printf("__dbcl_dbenv_illegal(dbenv)\n") >> OUTPUT
 	printf("\tDB_ENV *dbenv;\n") >> OUTPUT
-	printf("{\n\t__db_errx(dbenv,") >> OUTPUT
+	printf("{\n\t__db_errx(dbenv == NULL ? NULL : dbenv->env,") >> OUTPUT
 	printf("\n\t    \"Interface not supported by ") >> OUTPUT
 	printf("Berkeley DB RPC client environments\");\n") >> OUTPUT
 	printf("\treturn (DB_OPNOTSUP);\n") >> OUTPUT
@@ -1072,14 +1066,14 @@ function illegal_functions(OUTPUT)
 	printf(" */\n") >> OUTPUT
 	printf("static int\n__dbcl_txn_illegal(txn)\n") >> OUTPUT
 	printf("\tDB_TXN *txn;\n") >> OUTPUT
-	printf("{\n\treturn (__dbcl_dbenv_illegal(txn->mgrp->dbenv));\n")\
+	printf("{\n\treturn (__dbcl_dbenv_illegal(txn->mgrp->env->dbenv));\n")\
 	    >> OUTPUT
 	printf("}\n\n") >> OUTPUT
 	# If we ever need an "illegal" function for a DBC method.
 	# printf("static int\n") >> OUTPUT
 	# printf("__dbcl_dbc_illegal(dbc)\n") >> OUTPUT
 	# printf("\tDBC *dbc;\n") >> OUTPUT
-	# printf("{\n\treturn (__dbcl_dbenv_illegal(dbc->dbp->dbenv));\n") \
+	# printf("{\n\treturn (__dbcl_dbenv_illegal(dbc->dbenv));\n") \
 	#    >> OUTPUT
 	# printf("}\n\n") >> OUTPUT
 }

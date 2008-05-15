@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.offt,v 12.3 2007/04/20 13:57:50 bostic Exp $
+# $Id: chk.offt,v 12.4 2008/05/07 12:40:56 bschmeck Exp $
 #
 # Make sure that no off_t's have snuck into the release.
 
@@ -34,8 +34,8 @@ sed -e "/#undef off_t/d" \
     -e "/off_t because its size depends on/d" \
     -e "/os_ext.h/d" \
     -e "/os_flock.c/d" \
-    -e "/os_fzero.c:.*stat_offset/d" \
-    -e "/os_fzero.c:.*write_offset/d" \
+    -e "/zerofill.c:.*stat_offset/d" \
+    -e "/zerofill.c:.*write_offset/d" \
     -e "/os_map.c:.*(off_t)0))/d" \
     -e "/os_method.c/d" \
     -e "/os_rw.c:/d" \

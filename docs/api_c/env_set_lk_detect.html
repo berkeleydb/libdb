@@ -1,5 +1,5 @@
 <!--$Id: env_set_lk_detect.so,v 10.50 2006/02/27 14:51:30 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;set_lk_detect</h3>
+<b>DB_ENV-&gt;set_lk_detect</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,22 +26,22 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);
 <p>
 int
 DB_ENV-&gt;get_lk_detect(DB_ENV *dbenv, u_int32_t *lk_detectp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;set_lk_detect</h3>
+<b>Description: DB_ENV-&gt;set_lk_detect</b>
 <p>Set if the deadlock detector is to be run whenever a lock conflict
 occurs, and specify what lock request(s) should be rejected.  As
 transactions acquire locks on behalf of a single locker ID, rejecting a
 lock request associated with a transaction normally requires the
 transaction be aborted.</p>
 <p>The database environment's deadlock detector configuration may also be configured using the
-environment's <b>DB_CONFIG</b> file.  The syntax of the entry in that
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
 file is a single line with the string "set_lk_detect", one or more whitespace
 characters, and the method <b>detect</b> parameter as a string; for example,
 "set_lk_detect DB_LOCK_OLDEST".
-Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.</p>
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
 <p>The DB_ENV-&gt;set_lk_detect method configures a database environment, not only operations
 performed using the specified <a href="../api_c/env_class.html">DB_ENV</a> handle.</p>
 <p>The DB_ENV-&gt;set_lk_detect method may be called at any time during the life of the
@@ -50,34 +50,33 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>detect</b><dd>The <b>detect</b> parameter configures the deadlock detector.  The
+<b>Parameters</b> <br>
+ <b>detect</b><ul compact><li>The <b>detect</b> parameter configures the deadlock detector.  The
 specified value must be one of the following list:
-<dl compact>
-<dt><a name="DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a><dd>Use whatever lock policy was specified when the database environment
+<br>
+<b><a name="DB_LOCK_DEFAULT">DB_LOCK_DEFAULT</a></b><ul compact><li>Use whatever lock policy was specified when the database environment
 was created.  If no lock policy has yet been specified, set the lock
-policy to DB_LOCK_RANDOM.
-<dt><a name="DB_LOCK_EXPIRE">DB_LOCK_EXPIRE</a><dd>Reject lock requests which have timed out.  No other deadlock detection
-is performed.
-<dt><a name="DB_LOCK_MAXLOCKS">DB_LOCK_MAXLOCKS</a><dd>Reject the lock request for the locker ID with the most locks.
-<dt><a name="DB_LOCK_MAXWRITE">DB_LOCK_MAXWRITE</a><dd>Reject the lock request for the locker ID with the most write locks.
-<dt><a name="DB_LOCK_MINLOCKS">DB_LOCK_MINLOCKS</a><dd>Reject the lock request for the locker ID with the fewest locks.
-<dt><a name="DB_LOCK_MINWRITE">DB_LOCK_MINWRITE</a><dd>Reject the lock request for the locker ID with the fewest write locks.
-<dt><a name="DB_LOCK_OLDEST">DB_LOCK_OLDEST</a><dd>Reject the lock request for the locker ID with the oldest lock.
-<dt><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a><dd>Reject the lock request for a random locker ID.
-<dt><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a><dd>Reject the lock request for the locker ID with the youngest lock.
-</dl>
-</dl>
-<h3>Errors</h3>
+policy to DB_LOCK_RANDOM.</ul>
+<b><a name="DB_LOCK_EXPIRE">DB_LOCK_EXPIRE</a></b><ul compact><li>Reject lock requests which have timed out.  No other deadlock detection
+is performed.</ul>
+<b><a name="DB_LOCK_MAXLOCKS">DB_LOCK_MAXLOCKS</a></b><ul compact><li>Reject the lock request for the locker ID with the most locks.</ul>
+<b><a name="DB_LOCK_MAXWRITE">DB_LOCK_MAXWRITE</a></b><ul compact><li>Reject the lock request for the locker ID with the most write locks.</ul>
+<b><a name="DB_LOCK_MINLOCKS">DB_LOCK_MINLOCKS</a></b><ul compact><li>Reject the lock request for the locker ID with the fewest locks.</ul>
+<b><a name="DB_LOCK_MINWRITE">DB_LOCK_MINWRITE</a></b><ul compact><li>Reject the lock request for the locker ID with the fewest write locks.</ul>
+<b><a name="DB_LOCK_OLDEST">DB_LOCK_OLDEST</a></b><ul compact><li>Reject the lock request for the locker ID with the oldest lock.</ul>
+<b><a name="DB_LOCK_RANDOM">DB_LOCK_RANDOM</a></b><ul compact><li>Reject the lock request for a random locker ID.</ul>
+<b><a name="DB_LOCK_YOUNGEST">DB_LOCK_YOUNGEST</a></b><ul compact><li>Reject the lock request for the locker ID with the youngest lock.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;set_lk_detect method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;get_lk_detect</h3>
+<b>Description: DB_ENV-&gt;get_lk_detect</b>
 <p>The DB_ENV-&gt;get_lk_detect method returns the deadlock detector configuration.</p>
 <p>The DB_ENV-&gt;get_lk_detect method may be called at any time during the life of the
 application.</p>
@@ -85,20 +84,19 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>lk_detectp</b><dd>The DB_ENV-&gt;get_lk_detect method returns  the
-deadlock detector configuration in <b>lk_detectp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>lk_detectp</b><ul compact><li>The DB_ENV-&gt;get_lk_detect method returns  the
+deadlock detector configuration in <b>lk_detectp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/lock_class.html">DB_LOCK</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

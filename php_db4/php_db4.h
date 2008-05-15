@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  *
  * http://www.apache.org/licenses/LICENSE-2.0.txt
  * 
@@ -12,7 +12,7 @@
 extern zend_module_entry db4_module_entry;
 #define phpext_db4_ptr &db4_module_entry
 
-#ifdef PHP_WIN32
+#ifdef DB4_EXPORTS
 #define PHP_DB4_API __declspec(dllexport)
 #else
 #define PHP_DB4_API
@@ -24,16 +24,14 @@ extern zend_module_entry db4_module_entry;
 
 #include "db.h"
 
-zend_class_entry *db_txn_ce_get(void);
-zend_class_entry *dbc_ce_get(void);
-zend_class_entry *db_env_ce_get(void);
-zend_class_entry *db_ce_get(void);
-
-DB_ENV *php_db4_getDbEnvFromObj(zval *z);
-DB *php_db4_getDbFromObj(zval *z);
-DB_TXN *php_db4_getDbTxnFromObj(zval *z);
-DBC *php_db4_getDbcFromObj(zval *z);
-
+PHP_DB4_API zend_class_entry *db_txn_ce_get(void);
+PHP_DB4_API zend_class_entry *dbc_ce_get(void);
+PHP_DB4_API zend_class_entry *db_env_ce_get(void);
+PHP_DB4_API zend_class_entry *db_ce_get(void);
+PHP_DB4_API DB_ENV *php_db4_getDbEnvFromObj(zval *z TSRMLS_DC);
+PHP_DB4_API DB *php_db4_getDbFromObj(zval *z TSRMLS_DC);
+PHP_DB4_API DB_TXN *php_db4_getDbTxnFromObj(zval *z TSRMLS_DC);
+PHP_DB4_API DBC *php_db4_getDbcFromObj(zval *z TSRMLS_DC);
 /* 
   	Declare any global variables you may need between the BEGIN
 	and END macros here:     

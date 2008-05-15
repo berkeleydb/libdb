@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_split.c,v 12.24 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_split.c,v 12.29 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -183,14 +183,14 @@ __bam_root(dbc, cp)
 
 	/* Yeah, right. */
 	if (cp->page->level >= MAXBTREELEVEL) {
-		__db_errx(dbp->dbenv,
+		__db_errx(dbp->env,
 		    "Too many btree levels: %d", cp->page->level);
 		ret = ENOSPC;
 		goto err;
 	}
 
 	if ((ret = __memp_dirty(mpf,
-	    &cp->page, dbc->txn, dbc->priority, 0)) != 0)
+	    &cp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 		goto err;
 
 	/* Create new left and right pages for the split. */
@@ -236,16 +236,16 @@ __bam_root(dbc, cp)
 	ret = __bam_ca_split(dbc, cp->page->pgno, lp->pgno, rp->pgno, split, 1);
 
 	/* Success or error: release pages and locks. */
-err:	if ((t_ret =
-	     __memp_fput(mpf, cp->page, dbc->priority)) != 0 && ret == 0)
+err:	if ((t_ret = __memp_fput(mpf,
+	     dbc->thread_info, cp->page, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, cp->lock)) != 0 && ret == 0)
 		ret = t_ret;
-	if (lp != NULL &&
-	     (t_ret = __memp_fput(mpf, lp, dbc->priority)) != 0 && ret == 0)
+	if (lp != NULL && (t_ret = __memp_fput(mpf,
+	     dbc->thread_info, lp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
-	if (rp != NULL &&
-	     (t_ret = __memp_fput(mpf, rp, dbc->priority)) != 0 && ret == 0)
+	if (rp != NULL && (t_ret = __memp_fput(mpf,
+	     dbc->thread_info, rp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -261,12 +261,12 @@ __bam_page(dbc, pp, cp)
 	EPG *pp, *cp;
 {
 	BTREE_CURSOR *bc;
-	DBT log_dbt;
-	DB_LSN log_lsn;
 	DB *dbp;
+	DBT log_dbt;
 	DB_LOCK rplock, tplock;
-	DB_MPOOLFILE *mpf;
+	DB_LSN log_lsn;
 	DB_LSN save_lsn;
+	DB_MPOOLFILE *mpf;
 	PAGE *lp, *rp, *alloc_rp, *tp;
 	db_indx_t split;
 	u_int32_t opflags;
@@ -299,7 +299,7 @@ __bam_page(dbc, pp, cp)
 	 * up the tree badly, because we've violated the rule of always locking
 	 * down the tree, and never up.
 	 */
-	if ((ret = __os_malloc(dbp->dbenv, dbp->pgsize * 2, &lp)) != 0)
+	if ((ret = __os_malloc(dbp->env, dbp->pgsize * 2, &lp)) != 0)
 		goto err;
 	P_INIT(lp, dbp->pgsize, PGNO(cp->page),
 	    ISINTERNAL(cp->page) ?  PGNO_INVALID : PREV_PGNO(cp->page),
@@ -350,7 +350,7 @@ __bam_page(dbc, pp, cp)
 		    0, NEXT_PGNO(cp->page), DB_LOCK_WRITE, 0, &tplock)) != 0)
 			goto err;
 		if ((ret = __memp_fget(mpf, &NEXT_PGNO(cp->page),
-		    dbc->txn, DB_MPOOL_DIRTY, &tp)) != 0)
+		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &tp)) != 0)
 			goto err;
 	}
 
@@ -382,12 +382,12 @@ __bam_page(dbc, pp, cp)
 	PGNO(rp) = NEXT_PGNO(lp) = PGNO(alloc_rp);
 
 	if ((ret = __memp_dirty(mpf,
-	    &cp->page, dbc->txn, dbc->priority, 0)) != 0)
+	    &cp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 		goto err;
 
 	/* Actually update the parent page. */
 	if ((ret = __memp_dirty(mpf,
-	    &pp->page, dbc->txn, dbc->priority, 0)) != 0 ||
+	    &pp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0 ||
 	    (ret = __bam_pinsert(dbc, pp, split, lp, rp, 0)) != 0)
 		goto err;
 
@@ -449,7 +449,7 @@ __bam_page(dbc, pp, cp)
 	    PGNO(cp->page), PGNO(cp->page), PGNO(rp), split, 0)) != 0)
 		goto err;
 
-	__os_free(dbp->dbenv, lp);
+	__os_free(dbp->env, lp);
 
 	/*
 	 * Success -- write the real pages back to the store.  As we never
@@ -457,24 +457,24 @@ __bam_page(dbc, pp, cp)
 	 * releasing locks on the pages that reference it.  We're finished
 	 * modifying the page so it's not really necessary, but it's neater.
 	 */
-	if ((t_ret =
-	     __memp_fput(mpf, alloc_rp, dbc->priority)) != 0 && ret == 0)
+	if ((t_ret = __memp_fput(mpf,
+	    dbc->thread_info, alloc_rp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, rplock)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret =
-	     __memp_fput(mpf, pp->page, dbc->priority)) != 0 && ret == 0)
+	if ((t_ret = __memp_fput(mpf,
+	    dbc->thread_info, pp->page, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, pp->lock)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret =
-	     __memp_fput(mpf, cp->page, dbc->priority)) != 0 && ret == 0)
+	if ((t_ret = __memp_fput(mpf,
+	    dbc->thread_info, cp->page, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, cp->lock)) != 0 && ret == 0)
 		ret = t_ret;
 	if (tp != NULL) {
-		if ((t_ret =
-		     __memp_fput(mpf, tp, dbc->priority)) != 0 && ret == 0)
+		if ((t_ret = __memp_fput(mpf,
+		    dbc->thread_info, tp, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
 		if ((t_ret = __TLPUT(dbc, tplock)) != 0 && ret == 0)
 			ret = t_ret;
@@ -482,23 +482,24 @@ __bam_page(dbc, pp, cp)
 	return (ret);
 
 err:	if (lp != NULL)
-		__os_free(dbp->dbenv, lp);
+		__os_free(dbp->env, lp);
 	if (alloc_rp != NULL)
-		(void)__memp_fput(mpf, alloc_rp, dbc->priority);
+		(void)__memp_fput(mpf,
+		    dbc->thread_info, alloc_rp, dbc->priority);
 	if (tp != NULL)
-		(void)__memp_fput(mpf, tp, dbc->priority);
+		(void)__memp_fput(mpf, dbc->thread_info, tp, dbc->priority);
 
 	/* We never updated the new or next pages, we can release them. */
 	(void)__LPUT(dbc, rplock);
 	(void)__LPUT(dbc, tplock);
 
-	(void)__memp_fput(mpf, pp->page, dbc->priority);
+	(void)__memp_fput(mpf, dbc->thread_info, pp->page, dbc->priority);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, pp->lock);
 	else
 		(void)__TLPUT(dbc, pp->lock);
 
-	(void)__memp_fput(mpf, cp->page, dbc->priority);
+	(void)__memp_fput(mpf, dbc->thread_info, cp->page, dbc->priority);
 	if (ret == DB_NEEDSPLIT)
 		(void)__LPUT(dbc, cp->lock);
 	else
@@ -530,6 +531,7 @@ __bam_broot(dbc, rootp, split, lp, rp)
 	cp = (BTREE_CURSOR *)dbc->internal;
 	child_bo = NULL;
 	data.data = NULL;
+	memset(&bi, 0, sizeof(bi));
 
 	switch (TYPE(rootp)) {
 	case P_IBTREE:
@@ -541,7 +543,7 @@ __bam_broot(dbc, rootp, split, lp, rp)
 			B_TSET(bi.type, B_KEYDATA);
 			bi.pgno = rp->pgno;
 			DB_SET_DBT(hdr, &bi, SSZA(BINTERNAL, data));
-			if ((ret = __os_malloc(dbp->dbenv,
+			if ((ret = __os_malloc(dbp->env,
 			    child_bi->len, &data.data)) != 0)
 				return (ret);
 			memcpy(data.data, child_bi->data, child_bi->len);
@@ -575,7 +577,7 @@ __bam_broot(dbc, rootp, split, lp, rp)
 			B_TSET(bi.type, B_KEYDATA);
 			bi.pgno = rp->pgno;
 			DB_SET_DBT(hdr, &bi, SSZA(BINTERNAL, data));
-			if ((ret = __os_malloc(dbp->dbenv,
+			if ((ret = __os_malloc(dbp->env,
 			     child_bk->len, &data.data)) != 0)
 				return (ret);
 			memcpy(data.data, child_bk->data, child_bk->len);
@@ -588,13 +590,13 @@ __bam_broot(dbc, rootp, split, lp, rp)
 			bo.type = B_OVERFLOW;
 			bo.tlen = child_bo->tlen;
 			memset(&hdr, 0, sizeof(hdr));
-			if ((ret = __db_goff(dbp,
+			if ((ret = __db_goff(dbp, dbc->thread_info,
 			     dbc->txn, &hdr, child_bo->tlen,
 			     child_bo->pgno, &hdr.data, &hdr.size)) == 0)
 				ret = __db_poff(dbc, &hdr, &bo.pgno);
 
 			if (hdr.data != NULL)
-				__os_free(dbp->dbenv, hdr.data);
+				__os_free(dbp->env, hdr.data);
 			if (ret != 0)
 				return (ret);
 
@@ -610,7 +612,7 @@ __bam_broot(dbc, rootp, split, lp, rp)
 		}
 		break;
 	default:
-pgfmt:		return (__db_pgfmt(dbp->dbenv, rp->pgno));
+pgfmt:		return (__db_pgfmt(dbp->env, rp->pgno));
 	}
 	/*
 	 * If the root page was a leaf page, change it into an internal page.
@@ -627,7 +629,6 @@ pgfmt:		return (__db_pgfmt(dbp->dbenv, rp->pgno));
 	 * in.  Set the record count if necessary.
 	 */
 	memset(&bi0, 0, sizeof(bi0));
-	bi0.len = 0;
 	B_TSET(bi0.type, B_KEYDATA);
 	bi0.pgno = lp->pgno;
 	if (F_ISSET(cp, C_RECNUM)) {
@@ -643,7 +644,7 @@ pgfmt:		return (__db_pgfmt(dbp->dbenv, rp->pgno));
 	ret = __db_pitem(dbc, rootp, 1, BINTERNAL_SIZE(data.size), &hdr, &data);
 
 err:	if (data.data != NULL && child_bo == NULL)
-		__os_free(dbp->dbenv, data.data);
+		__os_free(dbp->env, data.data);
 	return (ret);
 }
 
@@ -881,13 +882,13 @@ noprefix:		if (P_FREESPACE(dbp, ppage) < nbytes)
 			bo.type = B_OVERFLOW;
 			bo.tlen = child_bo->tlen;
 			memset(&hdr, 0, sizeof(hdr));
-			if ((ret = __db_goff(dbp,
+			if ((ret = __db_goff(dbp, dbc->thread_info,
 			     dbc->txn, &hdr, child_bo->tlen,
 			     child_bo->pgno, &hdr.data, &hdr.size)) == 0)
 				ret = __db_poff(dbc, &hdr, &bo.pgno);
 
 			if (hdr.data != NULL)
-				__os_free(dbp->dbenv, hdr.data);
+				__os_free(dbp->env, hdr.data);
 			if (ret != 0)
 				return (ret);
 
@@ -926,7 +927,7 @@ noprefix:		if (P_FREESPACE(dbp, ppage) < nbytes)
 			return (ret);
 		break;
 	default:
-pgfmt:		return (__db_pgfmt(dbp->dbenv, PGNO(child->page)));
+pgfmt:		return (__db_pgfmt(dbp->env, PGNO(child->page)));
 	}
 
 	/*
@@ -1071,7 +1072,7 @@ __bam_psplit(dbc, cp, lp, rp, splitret)
 			nbytes += RINTERNAL_SIZE;
 			break;
 		default:
-			return (__db_pgfmt(dbp->dbenv, pp->pgno));
+			return (__db_pgfmt(dbp->env, pp->pgno));
 		}
 sort:	splitp = off;
 
@@ -1209,7 +1210,7 @@ __bam_copy(dbp, pp, cp, nxt, stop)
 			nbytes = RINTERNAL_SIZE;
 			break;
 		default:
-			return (__db_pgfmt(dbp->dbenv, pp->pgno));
+			return (__db_pgfmt(dbp->env, pp->pgno));
 		}
 		cinp[off] = HOFFSET(cp) -= nbytes;
 		if (off == 0 && nxt != 0 && TYPE(pp) == P_IBTREE) {

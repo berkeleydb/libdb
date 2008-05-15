@@ -1,4 +1,4 @@
-#	$Id: srcfiles.in,v 12.84 2007/07/06 16:29:16 bostic Exp $
+#	$Id: srcfiles.in,v 12.108 2008/05/06 03:03:36 david Exp $
 #
 # This is an input file for the s_windows_dsp and s_vxworks scripts.  It lists
 # the source files in the Berkeley DB tree and notes which are used to build
@@ -9,17 +9,15 @@
 # Each non-blank, non-comment line is of the form
 #   filename		module [ module ...]
 #
-# The possible modules, including the name of the project (.dsp) file:
+# The possible Windows modules, including the name of the project (.dsp) file:
 #
-#   app=NAME		Linked into application NAME.exe (db_NAME.dsp)
-#   dynamic		File is in the Windows DLL (db_dll.dsp)
-#   small		File is in the small Windows library (db_small.dsp)
-#   static		File is in the Windows static library (db_static.dsp)
-#   java		File is in the Windows Java DLL (db_java.dsp)
-#   tcl			File is in the Windows tcl DLL (db_tcl.dsp)
-#   testutil		File is used for Windows testing (db_test.dsp)
-#   vx			File is in the VxWorks library.
-#   vxsmall		File is in the small VxWorks library.
+#   app=NAME		Windows: Linked into application NAME.exe (db_NAME.dsp)
+#   dynamic		Windows: File is in the Windows DLL (db_dll.dsp)
+#   small		Windows: File is in the small Windows library (db_small.dsp)
+#   static		Windows: File is in the Windows static library (db_static.dsp)
+#   java		Windows: File is in the Windows Java DLL (db_java.dsp)
+#   tcl			Windows: File is in the Windows tcl DLL (db_tcl.dsp)
+#   testutil		Windows: File is used for Windows testing (db_test.dsp)
 
 btree/bt_compact.c						brew ce ce_small dynamic small static s60 vx vxsmall
 btree/bt_compare.c						brew ce ce_small dynamic small static s60 vx vxsmall
@@ -40,27 +38,40 @@ btree/bt_stat.c							brew ce ce_small dynamic small static s60 vx vxsmall
 btree/bt_upgrade.c						ce ce_small dynamic small static vx vxsmall
 btree/bt_verify.c						ce ce_small dynamic static vx
 btree/btree_auto.c						brew ce ce_small dynamic small static s60 vx vxsmall
-btree/btree_autop.c						app=db_printlog
-build_vxworks/db_archive/db_archive.c
-build_vxworks/db_checkpoint/db_checkpoint.c
-build_vxworks/db_deadlock/db_deadlock.c
-build_vxworks/db_dump/db_dump.c
-build_vxworks/db_hotbackup/db_hotbackup.c
-build_vxworks/db_load/db_load.c
-build_vxworks/db_printlog/db_printlog.c
-build_vxworks/db_recover/db_recover.c
-build_vxworks/db_stat/db_stat.c
-build_vxworks/db_upgrade/db_upgrade.c
-build_vxworks/db_verify/db_verify.c
-build_vxworks/dbdemo/dbdemo.c
+btree/btree_autop.c						app=db_printlog vx6
+build_vxworks/db_archive/db_archive.c				vx6
+build_vxworks/db_checkpoint/db_checkpoint.c			vx6
+build_vxworks/db_deadlock/db_deadlock.c				vx6
+build_vxworks/db_dump/db_dump.c					vx6
+build_vxworks/db_hotbackup/db_hotbackup.c			vx6
+build_vxworks/db_load/db_load.c					vx6
+build_vxworks/db_printlog/db_printlog.c				vx6
+build_vxworks/db_recover/db_recover.c				vx6
+build_vxworks/db_stat/db_stat.c					vx6
+build_vxworks/db_upgrade/db_upgrade.c				vx6
+build_vxworks/db_verify/db_verify.c				vx6
+build_vxworks/dbdemo/dbdemo.c					vx6
+build_vxworks/test_micro/b_curalloc.c				vx6
+build_vxworks/test_micro/b_curwalk.c				vx6
+build_vxworks/test_micro/b_del.c				vx6
+build_vxworks/test_micro/b_get.c				vx6
+build_vxworks/test_micro/b_inmem.c				vx6
+build_vxworks/test_micro/b_load.c				vx6
+build_vxworks/test_micro/b_open.c				vx6
+build_vxworks/test_micro/b_put.c				vx6
+build_vxworks/test_micro/b_recover.c				vx6
+build_vxworks/test_micro/b_txn.c				vx6
+build_vxworks/test_micro/b_txn_write.c				vx6
+build_vxworks/test_micro/b_uname.c				vx6
+build_vxworks/test_micro/b_util.c				vx6
+build_vxworks/test_micro/b_workload.c				vx6
+build_vxworks/test_micro/test_micro.c				vx6
 build_windows/dbkill.cpp					testutil
 build_windows/libdb.def						dynamic
 build_windows/libdb.rc						dynamic
 build_windows/libdb_tcl.def					tcl
 clib/atoi.c
 clib/atol.c							brew
-clib/ctime.c							dynamic small static s60 vx vxsmall
-clib/getaddrinfo.c						dynamic static
 clib/getcwd.c
 clib/getopt.c							vx vxsmall
 clib/isalpha.c							brew
@@ -85,6 +96,7 @@ clib/strrchr.c
 clib/strsep.c							brew ce ce_small dynamic small static s60 vx vxsmall
 clib/strtol.c							brew
 clib/strtoul.c
+clib/time.c							brew ce ce_small
 common/crypto_stub.c						brew ce_small small s60 vxsmall
 common/db_byteorder.c						brew ce ce_small dynamic small static s60 vx vxsmall
 common/db_err.c							brew ce ce_small dynamic small static s60 vx vxsmall
@@ -92,34 +104,38 @@ common/db_getlong.c						brew ce ce_small dynamic small static s60 vx vxsmall
 common/db_idspace.c						brew ce ce_small dynamic small static s60 vx vxsmall
 common/db_log2.c						brew ce ce_small dynamic small static s60 vx vxsmall
 common/db_shash.c						brew ce ce_small dynamic small static s60 vx vxsmall
+common/dbt.c							brew ce ce_small dynamic small static s60 vx vxsmall
 common/mkpath.c							brew ce ce_small dynamic small static s60 vx vxsmall
-common/util_arg.c						vx vxsmall
+common/openflags.c						dynamic static
+common/os_method.c						dynamic small static vx vxsmall
+common/util_arg.c						app=test_micro vx vxsmall
 common/util_cache.c						ce ce_small dynamic small static vx vxsmall
 common/util_log.c						ce ce_small dynamic small static vx vxsmall
 common/util_sig.c						dynamic small static vx vxsmall
+common/zerofill.c						brew ce ce_small dynamic small static s60 vx vxsmall
 crypto/aes_method.c						ce dynamic static vx
 crypto/crypto.c							ce dynamic static vx
 crypto/mersenne/mt19937db.c					ce dynamic static vx
 crypto/rijndael/rijndael-alg-fst.c				ce dynamic static vx
 crypto/rijndael/rijndael-api-fst.c				ce dynamic static vx
-cxx/cxx_db.cpp							dynamic small static
-cxx/cxx_dbc.cpp							dynamic small static
-cxx/cxx_dbt.cpp							dynamic small static
-cxx/cxx_env.cpp							dynamic small static
-cxx/cxx_except.cpp						dynamic small static
-cxx/cxx_lock.cpp						dynamic small static
-cxx/cxx_logc.cpp						dynamic small static
-cxx/cxx_mpool.cpp						dynamic small static
-cxx/cxx_multi.cpp						dynamic small static
-cxx/cxx_seq.cpp							dynamic small static
-cxx/cxx_txn.cpp							dynamic small static
+cxx/cxx_db.cpp							dynamic small static vx6
+cxx/cxx_dbc.cpp							dynamic small static vx6
+cxx/cxx_dbt.cpp							dynamic small static vx6
+cxx/cxx_env.cpp							dynamic small static vx6
+cxx/cxx_except.cpp						dynamic small static vx6
+cxx/cxx_lock.cpp						dynamic small static vx6
+cxx/cxx_logc.cpp						dynamic small static vx6
+cxx/cxx_mpool.cpp						dynamic small static vx6
+cxx/cxx_multi.cpp						dynamic small static vx6
+cxx/cxx_seq.cpp							dynamic small static vx6
+cxx/cxx_txn.cpp							dynamic small static vx6
 db/crdel_auto.c							brew ce ce_small dynamic small static s60 vx vxsmall
-db/crdel_autop.c						app=db_printlog
+db/crdel_autop.c						app=db_printlog vx6
 db/crdel_rec.c							brew ce ce_small dynamic small static s60 vx vxsmall
 db/db.c								brew ce ce_small dynamic small static s60 vx vxsmall
 db/db_am.c							brew ce ce_small dynamic small static s60 vx vxsmall
 db/db_auto.c							brew ce ce_small dynamic small static s60 vx vxsmall
-db/db_autop.c							app=db_printlog
+db/db_autop.c							app=db_printlog vx6
 db/db_cam.c							brew ce ce_small dynamic small static s60 vx vxsmall
 db/db_cds.c							brew ce ce_small dynamic small static s60 vx vxsmall
 db/db_conv.c							brew ce ce_small dynamic small static s60 vx vxsmall
@@ -169,7 +185,7 @@ db_verify/db_verify.c						app=db_verify
 dbm/dbm.c							dynamic static
 dbreg/dbreg.c							brew ce ce_small dynamic small static s60 vx vxsmall
 dbreg/dbreg_auto.c						brew ce ce_small dynamic small static s60 vx vxsmall
-dbreg/dbreg_autop.c						app=db_printlog
+dbreg/dbreg_autop.c						app=db_printlog vx6
 dbreg/dbreg_rec.c						brew ce ce_small dynamic small static s60 vx vxsmall
 dbreg/dbreg_stat.c						brew ce ce_small dynamic small static s60 vx vxsmall
 dbreg/dbreg_util.c						brew ce ce_small dynamic small static s60 vx vxsmall
@@ -184,6 +200,7 @@ env/env_open.c							brew ce ce_small dynamic small static s60 vx vxsmall
 env/env_recover.c						brew ce ce_small dynamic small static s60 vx vxsmall
 env/env_region.c						brew ce ce_small dynamic small static s60 vx vxsmall
 env/env_register.c						brew ce ce_small dynamic small static s60 vx vxsmall
+env/env_sig.c							brew ce ce_small dynamic small static s60 vx vxsmall
 env/env_stat.c							brew ce ce_small dynamic small static s60 vx vxsmall
 examples_c/bench_001.c
 examples_c/csv/DbRecord.c					app=ex_csvload app=ex_csvquery
@@ -236,14 +253,14 @@ examples_cxx/wce_tpcb/TpcbExample.cpp				app=wce_tpcb
 examples_cxx/wce_tpcb/TpcbUI.cpp				app=wce_tpcb
 examples_cxx/wce_tpcb/wce_tpcb.rc				app=wce_tpcb
 fileops/fileops_auto.c						brew ce ce_small dynamic small static s60 vx vxsmall
-fileops/fileops_autop.c						app=db_printlog
+fileops/fileops_autop.c						app=db_printlog vx6
 fileops/fop_basic.c						brew ce ce_small dynamic small static s60 vx vxsmall
 fileops/fop_rec.c						brew ce ce_small dynamic small static s60 vx vxsmall
 fileops/fop_util.c						brew ce ce_small dynamic small static s60 vx vxsmall
 gen_db_server.c
 hash/hash.c							ce dynamic static vx
 hash/hash_auto.c						ce dynamic static vx
-hash/hash_autop.c						app=db_printlog
+hash/hash_autop.c						app=db_printlog vx6
 hash/hash_conv.c						ce dynamic static vx
 hash/hash_dup.c							ce dynamic static vx
 hash/hash_func.c						brew ce ce_small dynamic small static s60 vx vxsmall
@@ -259,7 +276,7 @@ hash/hash_upgrade.c						ce dynamic static vx
 hash/hash_verify.c						ce dynamic static vx
 hmac/hmac.c							brew ce ce_small dynamic small static s60 vx vxsmall
 hmac/sha1.c							brew ce ce_small dynamic small static s60 vx vxsmall
-hsearch/hsearch.c						ce dynamic static vx
+hsearch/hsearch.c						dynamic static
 libdb_java/db_java_wrap.c					java
 lock/lock.c							ce ce_small dynamic small static s60 vx vxsmall
 lock/lock_deadlock.c						ce ce_small dynamic small static s60 vx vxsmall
@@ -308,37 +325,35 @@ mutex/mut_win32.c						ce ce_small dynamic small static
 mutex/test_mutex.c						app=test_mutex
 os/os_abort.c							ce ce_small dynamic small static s60 vx vxsmall tcl
 os/os_abs.c							s60
+os/os_addrinfo.c						dynamic static
 os/os_alloc.c							brew ce ce_small dynamic small static s60 vx vxsmall
-os/os_clock.c							brew s60 vx vxsmall
+os/os_clock.c							s60 vx vxsmall
 os/os_config.c
+os/os_cpu.c							brew s60 vx vxsmall
+os/os_ctime.c							dynamic small static s60 vx vxsmall
 os/os_dir.c							s60 vx vxsmall
 os/os_errno.c							s60 vx vxsmall
 os/os_fid.c							brew s60 vx vxsmall
 os/os_flock.c							brew s60 vx vxsmall
 os/os_fsync.c							s60 vx vxsmall
-os/os_fzero.c							brew ce ce_small dynamic small static s60 vx vxsmall
 os/os_getenv.c							brew s60 vx vxsmall
 os/os_handle.c							s60 vx vxsmall
 os/os_map.c							brew s60
-os/os_method.c							vx vxsmall
 os/os_mkdir.c							s60 vx vxsmall
-os/os_oflags.c							ce ce_small dynamic small static s60 vx vxsmall
 os/os_open.c							s60 vx vxsmall
 os/os_pid.c							ce ce_small dynamic small static s60 vx vxsmall
-os/os_region.c							brew ce ce_small dynamic small static s60 vx vxsmall
 os/os_rename.c							s60 vx vxsmall
 os/os_root.c							brew ce ce_small dynamic small static s60 vx vxsmall
 os/os_rpath.c							brew ce ce_small dynamic small static s60
 os/os_rw.c							s60 vx vxsmall
 os/os_seek.c							s60 vx vxsmall
-os/os_sleep.c							s60 vx vxsmall
-os/os_spin.c							s60 vx vxsmall
+os/os_stack.c							brew ce ce_small dynamic small static s60 vx vxsmall tcl
 os/os_stat.c							s60 vx vxsmall
 os/os_tmpdir.c							brew ce ce_small dynamic small static s60 vx vxsmall
 os/os_truncate.c						s60 vx vxsmall
 os/os_uid.c							brew ce ce_small dynamic small static s60 vx vxsmall
 os/os_unlink.c							s60 vx vxsmall
-os/os_yield.c							brew s60 vx vxsmall
+os/os_yield.c							s60
 os_brew/ctime.c							brew
 os_brew/fclose.c						brew
 os_brew/fgetc.c							brew
@@ -350,33 +365,34 @@ os_brew/globals.c						brew
 os_brew/localtime.c						brew
 os_brew/os_abort.c						brew
 os_brew/os_abs.c						brew
+os_brew/os_clock.c							brew
 os_brew/os_config.c						brew
 os_brew/os_dir.c						brew
 os_brew/os_errno.c						brew
 os_brew/os_handle.c						brew
 os_brew/os_mkdir.c						brew
-os_brew/os_oflags.c						brew
 os_brew/os_open.c						brew
 os_brew/os_pid.c						brew
 os_brew/os_rename.c						brew
 os_brew/os_rw.c							brew
 os_brew/os_seek.c						brew
-os_brew/os_sleep.c						brew
 os_brew/os_stat.c						brew
 os_brew/os_truncate.c						brew
 os_brew/os_unlink.c						brew
-os_brew/time.c							brew
+os_brew/os_yield.c						brew
+os_qnx/os_qnx_fsync.c
 os_qnx/os_qnx_open.c
 os_s60/os_config.c						s60
 os_vxworks/os_vx_abs.c						vx vxsmall
 os_vxworks/os_vx_config.c					vx vxsmall
 os_vxworks/os_vx_map.c						vx vxsmall
 os_vxworks/os_vx_rpath.c					vx vxsmall
+os_vxworks/os_vx_yield.c					vx vxsmall
 os_windows/ce_ctime.c						ce ce_small
-os_windows/ce_time.c						ce ce_small
 os_windows/os_abs.c						ce ce_small dynamic small static
 os_windows/os_clock.c						ce ce_small dynamic small static
 os_windows/os_config.c						ce ce_small dynamic small static
+os_windows/os_cpu.c						ce ce_small dynamic small static
 os_windows/os_dir.c						ce ce_small dynamic small static
 os_windows/os_errno.c						ce ce_small dynamic small static
 os_windows/os_fid.c						ce ce_small dynamic small static
@@ -390,15 +406,13 @@ os_windows/os_open.c						ce ce_small dynamic small static
 os_windows/os_rename.c						ce ce_small dynamic small static
 os_windows/os_rw.c						ce ce_small dynamic small static
 os_windows/os_seek.c						ce ce_small dynamic small static
-os_windows/os_sleep.c						ce ce_small dynamic small static
-os_windows/os_spin.c						ce ce_small dynamic small static
 os_windows/os_stat.c						ce ce_small dynamic small static
 os_windows/os_truncate.c					ce ce_small dynamic small static
 os_windows/os_unlink.c						ce ce_small dynamic small static
 os_windows/os_yield.c						ce ce_small dynamic small static
 qam/qam.c							ce dynamic static vx
 qam/qam_auto.c							ce dynamic static vx
-qam/qam_autop.c							app=db_printlog
+qam/qam_autop.c							app=db_printlog vx6
 qam/qam_conv.c							ce dynamic static vx
 qam/qam_files.c							ce dynamic static vx
 qam/qam_method.c						ce dynamic static vx
@@ -409,7 +423,6 @@ qam/qam_stub.c							brew ce_small small s60 vxsmall
 qam/qam_upgrade.c						ce dynamic static vx
 qam/qam_verify.c						ce dynamic static vx
 rep/rep_auto.c							dynamic static vx
-rep/rep_autop.c							app=db_printlog
 rep/rep_backup.c						dynamic static vx
 rep/rep_elect.c							dynamic static vx
 rep/rep_lease.c							dynamic static vx
@@ -421,6 +434,7 @@ rep/rep_stat.c							dynamic static vx
 rep/rep_stub.c							brew ce ce_small small s60 vxsmall
 rep/rep_util.c							dynamic static vx
 rep/rep_verify.c						dynamic static vx
+repmgr/repmgr_auto.c						dynamic static
 repmgr/repmgr_elect.c						dynamic static
 repmgr/repmgr_method.c						dynamic static
 repmgr/repmgr_msg.c						dynamic static
@@ -439,8 +453,8 @@ rpc_server/c/db_server_proc.c
 rpc_server/c/db_server_util.c
 rpc_server/cxx/db_server_cxxproc.cpp
 rpc_server/cxx/db_server_cxxutil.cpp
-sequence/seq_stat.c						ce ce_small dynamic small static
-sequence/sequence.c						ce ce_small dynamic small static
+sequence/seq_stat.c						ce ce_small dynamic small static vx6
+sequence/sequence.c						ce ce_small dynamic small static vx6
 tcl/tcl_compat.c						tcl
 tcl/tcl_db.c							tcl
 tcl/tcl_db_pkg.c						tcl
@@ -454,19 +468,21 @@ tcl/tcl_rep.c							tcl
 tcl/tcl_seq.c							tcl
 tcl/tcl_txn.c							tcl
 tcl/tcl_util.c							tcl
-test_micro/SOURCE/b_curalloc.c
-test_micro/SOURCE/b_curwalk.c
-test_micro/SOURCE/b_del.c
-test_micro/SOURCE/b_get.c
-test_micro/SOURCE/b_load.c
-test_micro/SOURCE/b_open.c
-test_micro/SOURCE/b_put.c
-test_micro/SOURCE/b_recover.c
-test_micro/SOURCE/b_txn.c
-test_micro/SOURCE/b_txn_write.c
-test_micro/SOURCE/b_workload.c
-test_micro/SOURCE/inmem.c
-test_micro/SOURCE/uname.c
+test_micro/source/b_curalloc.c					app=test_micro
+test_micro/source/b_curwalk.c					app=test_micro
+test_micro/source/b_del.c					app=test_micro
+test_micro/source/b_get.c					app=test_micro
+test_micro/source/b_inmem.c					app=test_micro
+test_micro/source/b_load.c					app=test_micro
+test_micro/source/b_open.c					app=test_micro
+test_micro/source/b_put.c					app=test_micro
+test_micro/source/b_recover.c					app=test_micro
+test_micro/source/b_txn.c					app=test_micro
+test_micro/source/b_txn_write.c					app=test_micro
+test_micro/source/b_uname.c					app=test_micro
+test_micro/source/b_util.c					app=test_micro
+test_micro/source/b_workload.c					app=test_micro
+test_micro/source/test_micro.c					app=test_micro
 test_perf/db_perf.c						app=db_perf
 test_perf/perf_checkpoint.c					app=db_perf
 test_perf/perf_config.c						app=db_perf
@@ -488,32 +504,9 @@ test_perf/perf_trickle.c					app=db_perf
 test_perf/perf_txn.c						app=db_perf
 test_perf/perf_util.c						app=db_perf
 test_perf/perf_vx.c
-test_rep/db_reptest.c						app=db_reptest
-test_rep/reptest_accept.c					app=db_reptest
-test_rep/reptest_client.c					app=db_reptest
-test_rep/reptest_config.c					app=db_reptest
-test_rep/reptest_dbs.c						app=db_reptest
-test_rep/reptest_debug.c					app=db_reptest
-test_rep/reptest_elect.c					app=db_reptest
-test_rep/reptest_env.c						app=db_reptest
-test_rep/reptest_exec.c						app=db_reptest
-test_rep/reptest_file.c						app=db_reptest
-test_rep/reptest_key.c						app=db_reptest
-test_rep/reptest_master.c					app=db_reptest
-test_rep/reptest_misc.c						app=db_reptest
-test_rep/reptest_msg_thread.c					app=db_reptest
-test_rep/reptest_op.c						app=db_reptest
-test_rep/reptest_parse.c					app=db_reptest
-test_rep/reptest_send.c						app=db_reptest
-test_rep/reptest_site.c						app=db_reptest
-test_rep/reptest_socket.c					app=db_reptest
-test_rep/reptest_spawn.c					app=db_reptest
-test_rep/reptest_thread.c					app=db_reptest
-test_rep/reptest_txn.c						app=db_reptest
-test_rep/reptest_util.c						app=db_reptest
 txn/txn.c							brew ce ce_small dynamic small static s60 vx vxsmall
 txn/txn_auto.c							brew ce ce_small dynamic small static s60 vx vxsmall
-txn/txn_autop.c							app=db_printlog
+txn/txn_autop.c							app=db_printlog vx6
 txn/txn_chkpt.c							brew ce ce_small dynamic small static s60 vx vxsmall
 txn/txn_failchk.c						brew ce ce_small dynamic small static s60 vx vxsmall
 txn/txn_method.c						brew ce ce_small dynamic small static s60 vx vxsmall

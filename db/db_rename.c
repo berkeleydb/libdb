@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: db_rename.c,v 12.26 2007/05/17 15:14:56 bostic Exp $
+ * $Id: db_rename.c,v 12.31 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -17,12 +17,14 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-static int __db_subdb_rename __P((DB *,
-	       DB_TXN *, const char *, const char *, const char *));
+static int __db_rename __P((DB *, DB_THREAD_INFO *,
+	     DB_TXN *, const char *, const char *, const char *));
+static int __db_subdb_rename __P((DB *, DB_THREAD_INFO *,
+	     DB_TXN *, const char *, const char *, const char *));
 
 /*
  * __env_dbrename_pp
- *	DB_ENV->dbrename pre/post processing.
+ *	ENV->dbrename pre/post processing.
  *
  * PUBLIC: int __env_dbrename_pp __P((DB_ENV *, DB_TXN *,
  * PUBLIC:     const char *, const char *, const char *, u_int32_t));
@@ -36,26 +38,27 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 {
 	DB *dbp;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret, txn_local;
 
+	env = dbenv->env;
 	dbp = NULL;
 	txn_local = 0;
 
-	PANIC_CHECK(dbenv);
-	ENV_ILLEGAL_BEFORE_OPEN(dbenv, "DB_ENV->dbrename");
+	ENV_ILLEGAL_BEFORE_OPEN(env, "DB_ENV->dbrename");
 
 	/*
 	 * The actual argument checking is simple, do it inline, outside of
 	 * the replication block.
 	 */
-	if ((ret = __db_fchk(dbenv, "DB->rename", flags, DB_AUTO_COMMIT)) != 0)
+	if ((ret = __db_fchk(env, "DB->rename", flags, DB_AUTO_COMMIT)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
-	if (handle_check && (ret = __env_rep_enter(dbenv, 1)) != 0) {
+	handle_check = IS_ENV_REPLICATED(env);
+	if (handle_check && (ret = __env_rep_enter(env, 1)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
@@ -64,23 +67,23 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 	 * Create local transaction as necessary, check for consistent
 	 * transaction usage.
 	 */
-	if (IS_ENV_AUTO_COMMIT(dbenv, txn, flags)) {
-		if ((ret = __db_txn_auto_init(dbenv, &txn)) != 0)
+	if (IS_ENV_AUTO_COMMIT(env, txn, flags)) {
+		if ((ret = __db_txn_auto_init(env, ip, &txn)) != 0)
 			goto err;
 		txn_local = 1;
 	} else
-		if (txn != NULL && !TXN_ON(dbenv) &&
-		    (!CDB_LOCKING(dbenv) || !F_ISSET(txn, TXN_CDSGROUP))) {
-			ret = __db_not_txn_env(dbenv);
+		if (txn != NULL && !TXN_ON(env) &&
+		    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_CDSGROUP))) {
+			ret = __db_not_txn_env(env);
 			goto err;
 		}
 
 	LF_CLR(DB_AUTO_COMMIT);
 
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		goto err;
 
-	ret = __db_rename_int(dbp, txn, name, subdb, newname);
+	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname);
 
 	if (txn_local) {
 		/*
@@ -102,7 +105,7 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 	}
 
 err:	if (txn_local && (t_ret =
-	    __db_txn_auto_resolve(dbenv, txn, 0, ret)) != 0 && ret == 0)
+	    __db_txn_auto_resolve(env, txn, 0, ret)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/*
@@ -120,14 +123,14 @@ err:	if (txn_local && (t_ret =
 			ret = t_ret;
 	} else {
 		if (dbp != NULL && (t_ret =
-		     __txn_closeevent(dbenv, txn, dbp)) != 0 && ret == 0)
+		     __txn_closeevent(env, txn, dbp)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -144,14 +147,12 @@ __db_rename_pp(dbp, name, subdb, newname, flags)
 	const char *name, *subdb, *newname;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	handle_check = 0;
-
-	PANIC_CHECK(dbenv);
 
 	/*
 	 * Validate arguments, continuing to destroy the handle on failure.
@@ -164,30 +165,30 @@ __db_rename_pp(dbp, name, subdb, newname, flags)
 	 * ever be able to close the database.
 	 */
 	if (F_ISSET(dbp, DB_AM_OPEN_CALLED))
-		return (__db_mi_open(dbenv, "DB->rename", 1));
+		return (__db_mi_open(env, "DB->rename", 1));
 
 	/* Validate arguments. */
-	if ((ret = __db_fchk(dbenv, "DB->rename", flags, 0)) != 0)
+	if ((ret = __db_fchk(env, "DB->rename", flags, 0)) != 0)
 		return (ret);
 
 	/* Check for consistent transaction usage. */
 	if ((ret = __db_check_txn(dbp, NULL, DB_LOCK_INVALIDID, 0)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check && (ret = __db_rep_enter(dbp, 1, 1, 0)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
 
 	/* Rename the file. */
-	ret = __db_rename(dbp, NULL, name, subdb, newname);
+	ret = __db_rename(dbp, ip, NULL, name, subdb, newname);
 
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -195,25 +196,24 @@ err:	ENV_LEAVE(dbenv, ip);
  * __db_rename
  *	DB->rename method.
  *
- * PUBLIC: int __db_rename
- * PUBLIC:     __P((DB *, DB_TXN *, const char *, const char *, const char *));
  */
-int
-__db_rename(dbp, txn, name, subdb, newname)
+static int
+__db_rename(dbp, ip, txn, name, subdb, newname)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
 {
 	int ret, t_ret;
 
-	ret = __db_rename_int(dbp, txn, name, subdb, newname);
+	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname);
 
 	if (txn == NULL) {
 		if ((t_ret = __db_close(dbp, txn, DB_NOSYNC)) != 0 && ret == 0)
 			ret = t_ret;
 	} else {
 		if ((t_ret =
-		     __txn_closeevent(dbp->dbenv, txn, dbp)) != 0 && ret == 0)
+		     __txn_closeevent(dbp->env, txn, dbp)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 
@@ -225,26 +225,27 @@ __db_rename(dbp, txn, name, subdb, newname)
  *	Worker function for DB->rename method; the close of the dbp is
  * left in the wrapper routine.
  *
- * PUBLIC: int __db_rename_int
- * PUBLIC:     __P((DB *, DB_TXN *, const char *, const char *, const char *));
+ * PUBLIC: int __db_rename_int __P((DB *, DB_THREAD_INFO *,
+ * PUBLIC:      DB_TXN *, const char *, const char *, const char *));
  */
 int
-__db_rename_int(dbp, txn, name, subdb, newname)
+__db_rename_int(dbp, ip, txn, name, subdb, newname)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 	char *old, *real_name;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	real_name = NULL;
 
 	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 
 	if (name == NULL && subdb == NULL) {
-		__db_errx(dbenv, "Rename on temporary files invalid");
+		__db_errx(env, "Rename on temporary files invalid");
 		ret = EINVAL;
 		goto err;
 	}
@@ -252,7 +253,7 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 	if (name == NULL)
 		MAKE_INMEM(dbp);
 	else if (subdb != NULL) {
-		ret = __db_subdb_rename(dbp, txn, name, subdb, newname);
+		ret = __db_subdb_rename(dbp, ip, txn, name, subdb, newname);
 		goto err;
 	}
 
@@ -265,7 +266,7 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 		old = (char *)subdb;
 		real_name = (char *)subdb;
 	} else {
-		if ((ret = __db_appname(dbenv,
+		if ((ret = __db_appname(env,
 		    DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
 			goto err;
 		old = (char *)name;
@@ -298,14 +299,14 @@ __db_rename_int(dbp, txn, name, subdb, newname)
 	 * I am pretty sure that we haven't gotten a dbreg id, so calling
 	 * dbreg_filelist_update is not necessary.
 	 */
-	DB_ASSERT(dbenv, dbp->log_filename == NULL ||
+	DB_ASSERT(env, dbp->log_filename == NULL ||
 	    dbp->log_filename->id == DB_LOGFILEID_INVALID);
 
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, newname);
 
 DB_TEST_RECOVERY_LABEL
 err:	if (!F_ISSET(dbp, DB_AM_INMEM) && real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 
 	return (ret);
 }
@@ -315,19 +316,20 @@ err:	if (!F_ISSET(dbp, DB_AM_INMEM) && real_name != NULL)
  *	Rename a subdatabase.
  */
 static int
-__db_subdb_rename(dbp, txn, name, subdb, newname)
+__db_subdb_rename(dbp, ip, txn, name, subdb, newname)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
 {
 	DB *mdbp;
-	DB_ENV *dbenv;
+	ENV *env;
 	PAGE *meta;
 	int ret, t_ret;
 
 	mdbp = NULL;
 	meta = NULL;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * We have not opened this dbp so it isn't marked as a subdb,
@@ -341,27 +343,27 @@ __db_subdb_rename(dbp, txn, name, subdb, newname)
 	 * read the meta-data page and obtain a handle lock.  Once we've
 	 * done that, we can proceed to do the rename in the master.
 	 */
-	if ((ret = __db_master_open(dbp, txn, name, 0, 0, &mdbp)) != 0)
+	if ((ret = __db_master_open(dbp, ip, txn, name, 0, 0, &mdbp)) != 0)
 		goto err;
 
-	if ((ret = __db_master_update(mdbp, dbp, txn, subdb, dbp->type,
+	if ((ret = __db_master_update(mdbp, dbp, ip, txn, subdb, dbp->type,
 	    MU_OPEN, NULL, 0)) != 0)
 		goto err;
 
 	if ((ret = __memp_fget(mdbp->mpf, &dbp->meta_pgno,
-	    txn, 0, &meta)) != 0)
+	    ip, txn, 0, &meta)) != 0)
 		goto err;
 	memcpy(dbp->fileid, ((DBMETA *)meta)->uid, DB_FILE_ID_LEN);
-	if ((ret = __fop_lock_handle(dbenv,
+	if ((ret = __fop_lock_handle(env,
 	    dbp, mdbp->locker, DB_LOCK_WRITE, NULL, NOWAIT_FLAG(txn))) != 0)
 		goto err;
 
-	ret = __memp_fput(mdbp->mpf, meta, dbp->priority);
+	ret = __memp_fput(mdbp->mpf, ip, meta, dbp->priority);
 	meta = NULL;
 	if (ret != 0)
 		goto err;
 
-	if ((ret = __db_master_update(mdbp, dbp, txn,
+	if ((ret = __db_master_update(mdbp, dbp, ip, txn,
 	    subdb, dbp->type, MU_RENAME, newname, 0)) != 0)
 		goto err;
 
@@ -370,7 +372,7 @@ __db_subdb_rename(dbp, txn, name, subdb, newname)
 DB_TEST_RECOVERY_LABEL
 err:
 	if (meta != NULL && (t_ret =
-	    __memp_fput(mdbp->mpf, meta, dbp->priority)) != 0 && ret == 0)
+	    __memp_fput(mdbp->mpf, ip, meta, dbp->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (txn == NULL) {
@@ -379,7 +381,7 @@ err:
 			ret = t_ret;
 	} else {
 		if (mdbp != NULL && (t_ret =
-		     __txn_closeevent(dbenv, txn, mdbp)) != 0 && ret == 0)
+		     __txn_closeevent(env, txn, mdbp)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 

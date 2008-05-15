@@ -1,14 +1,21 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd004.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd004.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd004
 # TEST	Big key test where big key gets elevated to internal page.
-proc recd004 { method {select 0} args} {
+proc recd004 { method {select 0} args } {
 	source ./include.tcl
 	global rand_init
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
@@ -22,14 +29,14 @@ proc recd004 { method {select 0} args} {
 		puts "Recd004 skipping for method $method"
 		return
 	}
-	puts "Recd004: $method big-key on internal page recovery tests"
+	puts "Recd004: $method big-key on internal page recovery tests ($envargs)"
 
 	berkdb srand $rand_init
 
 	env_cleanup $testdir
 	set testfile recd004.db
 	set testfile2 recd004-2.db
-	set eflags "-create -txn -home $testdir"
+	set eflags "-create -txn -home $testdir $envargs"
 	puts "\tRecd004.a: creating environment"
 	set env_cmd "berkdb_env $eflags"
 	set dbenv [eval $env_cmd]

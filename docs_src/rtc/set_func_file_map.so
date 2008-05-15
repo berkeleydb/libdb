@@ -1,0 +1,61 @@
+m4_comment([$Id: set_func_file_map.so,v 10.22 2008/01/17 03:26:52 bostic Exp $])
+
+define(M4PAGELOCAL, dbenv_set_func_file_map)
+include(m4/m4.seealso)
+
+m4_pf_header(m4_ref(dbenv_set_func_file_map),
+ifelse(M4API, C_API, [dnl
+int
+db_env_set_func_file_map(
+    int (*func_file_map)(DB_ENV *dbenv, char *path, size_t len, int is_rdonly, void **addr),
+    int (*func_file_unmap)(DB_ENV *dbenv, void *addr));
+]))
+
+m4_p([dnl
+The m4_db library optionally uses the ability to map a file into memory.])
+
+m4_scope_process(dbenv_set_func_file_map)
+
+m4_when_init(dbenv_set_func_file_map)
+
+m4_return(dbenv_set_func_file_map, std)
+
+m4_parambegin
+m4_param(func_file_map, [dnl
+The m4_arg(func_file_map) parameter is the function which maps a file
+into memory.  The function takes 5 parameters:
+m4_tagbegin
+m4_tag(m4_arg(dbenv), [dnl
+The m4_arg(dbenv) parameter is the enclosing database environment handle.])
+m4_tag(m4_arg(path), [dnl
+The m4_arg(path) parameter is the name of file.  Repeated requests for
+the mapping of the same name should return a reference to the same
+memory.])
+m4_tag(m4_arg(len), [dnl
+The m4_arg(len) parameter is the length, in bytes, of the file.])
+m4_tag(m4_arg(is_rdonly), [dnl
+The m4_arg(is_rdonly) parameter will be non-zero if the mapped file is
+read-only.])
+m4_tag(m4_arg(addr), [dnl
+The m4_arg(addr) parameter is the memory location into which a pointer
+to the mapped file is returned.])
+m4_tagend
+m4_ret_internal(func_file_map)])
+
+m4_param(func_file_unmap, [dnl
+The m4_arg(func_file_unmap) parameter is the function which unmaps a
+file from memory.  The function takes 2 parameters:
+m4_tagbegin
+m4_tag(m4_arg(dbenv), [dnl
+The m4_arg(dbenv) parameter is the enclosing database environment handle.])
+m4_tag(m4_arg(addr), [dnl
+The m4_arg(addr) parameter is the value returned by the
+m4_arg(func_file_map) function when the file or region was mapped into
+memory.])
+m4_tagend
+
+m4_ret_internal(func_file_unmap)])
+m4_paramend
+
+m4_rtc_seealso
+m4_page_footer

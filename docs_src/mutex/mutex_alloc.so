@@ -1,4 +1,4 @@
-m4_comment([$Id: mutex_alloc.so,v 10.2 2006/01/27 16:13:49 bostic Exp $])
+m4_comment([$Id: mutex_alloc.so,v 10.3 2007/09/21 20:06:03 bostic Exp $])
 
 define(M4PAGELOCAL, [mutex_alloc, DB_MUTEX_SELF_BLOCK])
 include(m4/m4.seealso)
@@ -17,7 +17,7 @@ m4_p([dnl
 The m4_refT(mutex_alloc) allocates a mutex and returns a reference to
 it into the memory specified by m4_arg(mutexp).])
 
-m4_when_after_envopen(mutex_alloc)
+m4_when(mutex_alloc, before, dbenv_open)
 
 m4_return(mutex_alloc, std)
 

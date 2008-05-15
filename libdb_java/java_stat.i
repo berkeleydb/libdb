@@ -170,7 +170,7 @@ JAVA_TYPEMAP(DB_TXN_STAT *, com.sleepycat.db.TransactionStats, jobject)
 			break;
 		}
 
-		__os_ufree(db->dbenv, $1);
+		__os_ufree(db->env, $1);
 	}
 %}
 

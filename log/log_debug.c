@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: log_debug.c,v 1.11 2007/05/17 15:15:44 bostic Exp $
+ * $Id: log_debug.c,v 1.15 2008/01/08 20:58:41 bostic Exp $
  */
 
 #include "db_config.h"
@@ -13,7 +13,7 @@
 #include "dbinc/db_am.h"
 #include "dbinc/log.h"
 
-static int __log_printf_int __P((DB_ENV *, DB_TXN *, const char *, va_list));
+static int __log_printf_int __P((ENV *, DB_TXN *, const char *, va_list));
 
 /*
  * __log_printf_capi --
@@ -66,24 +66,18 @@ __log_printf_pp(dbenv, txnid, fmt, ap)
 	va_list ap;
 {
 	DB_THREAD_INFO *ip;
-	int rep_check, ret, t_ret;
+	ENV *env;
+	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->lg_handle, "DB_ENV->log_printf", DB_INIT_LOG);
+	env = dbenv->env;
 
-	ENV_ENTER(dbenv, ip);
-	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
-	if (rep_check && (ret = __env_rep_enter(dbenv, 0)) != 0)
-		return (ret);
+	ENV_REQUIRES_CONFIG(env,
+	    env->lg_handle, "DB_ENV->log_printf", DB_INIT_LOG);
 
-	ret = __log_printf_int(dbenv, txnid, fmt, ap);
-
-	if (rep_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && (ret) == 0)
-		ret = t_ret;
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__log_printf_int(env, txnid, fmt, ap)), 0, ret);
 	va_end(ap);
-	ENV_LEAVE(dbenv, ip);
-
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -91,15 +85,15 @@ __log_printf_pp(dbenv, txnid, fmt, ap)
  * __log_printf --
  *	Write a printf-style format string into the DB log.
  *
- * PUBLIC: int __log_printf __P((DB_ENV *, DB_TXN *, const char *, ...))
+ * PUBLIC: int __log_printf __P((ENV *, DB_TXN *, const char *, ...))
  * PUBLIC:    __attribute__ ((__format__ (__printf__, 3, 4)));
  */
 int
 #ifdef STDC_HEADERS
-__log_printf(DB_ENV *dbenv, DB_TXN *txnid, const char *fmt, ...)
+__log_printf(ENV *env, DB_TXN *txnid, const char *fmt, ...)
 #else
-__log_printf(dbenv, txnid, fmt, va_alist)
-	DB_ENV *dbenv;
+__log_printf(env, txnid, fmt, va_alist)
+	ENV *env;
 	DB_TXN *txnid;
 	const char *fmt;
 	va_dcl
@@ -113,7 +107,7 @@ __log_printf(dbenv, txnid, fmt, va_alist)
 #else
 	va_start(ap);
 #endif
-	ret = __log_printf_int(dbenv, txnid, fmt, ap);
+	ret = __log_printf_int(env, txnid, fmt, ap);
 	va_end(ap);
 
 	return (ret);
@@ -124,8 +118,8 @@ __log_printf(dbenv, txnid, fmt, va_alist)
  *	Write a printf-style format string into the DB log (internal).
  */
 static int
-__log_printf_int(dbenv, txnid, fmt, ap)
-	DB_ENV *dbenv;
+__log_printf_int(env, txnid, fmt, ap)
+	ENV *env;
 	DB_TXN *txnid;
 	const char *fmt;
 	va_list ap;
@@ -134,8 +128,8 @@ __log_printf_int(dbenv, txnid, fmt, ap)
 	DB_LSN lsn;
 	char __logbuf[2048];	/* !!!: END OF THE STACK DON'T TRUST SPRINTF. */
 
-	if (!DBENV_LOGGING(dbenv)) {
-		__db_errx(dbenv, "Logging not currently permitted");
+	if (!DBENV_LOGGING(env)) {
+		__db_errx(env, "Logging not currently permitted");
 		return (EAGAIN);
 	}
 
@@ -148,5 +142,5 @@ __log_printf_int(dbenv, txnid, fmt, ap)
 	msgdbt.size = (u_int32_t)vsnprintf(__logbuf, sizeof(__logbuf), fmt, ap);
 
 	return (__db_debug_log(
-	    dbenv, txnid, &lsn, 0, &opdbt, -1, &msgdbt, NULL, 0));
+	    env, txnid, &lsn, 0, &opdbt, -1, &msgdbt, NULL, 0));
 }

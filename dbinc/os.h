@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os.h,v 12.25 2007/05/17 15:15:05 bostic Exp $
+ * $Id: os.h,v 12.31 2008/03/26 04:11:34 david Exp $
  */
 
 #ifndef _DB_OS_H_
@@ -77,11 +77,33 @@ extern "C" {
 #define	DB_OSO_TRUNC	0x0200		/* POSIX: O_TRUNC */
 
 /*
+ * File modes.
+ */
+#define	DB_MODE_400	(S_IRUSR)
+#define	DB_MODE_600	(S_IRUSR|S_IWUSR)
+#define	DB_MODE_660	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
+#define	DB_MODE_666	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#define	DB_MODE_700	(S_IRUSR|S_IWUSR|S_IXUSR)
+
+/*
  * We group certain seek/write calls into a single function so that we
  * can use pread(2)/pwrite(2) where they're available.
  */
 #define	DB_IO_READ	1
 #define	DB_IO_WRITE	2
+
+/*
+ * Make a last "panic" check.  Imagine a thread of control running in Berkeley
+ * DB, going to sleep.  Another thread of control decides to run recovery
+ * because the environment is broken.  The first thing recovery does is panic
+ * the existing environment, but we only check the panic flag when crossing the
+ * public API.  If the sleeping thread wakes up and writes something, we could
+ * have two threads of control writing the log files at the same time.  So,
+ * before reading or writing, make a last panic check.  Obviously, there's still
+ * a window, but it's very, very small.
+ */
+#define	LAST_PANIC_CHECK_BEFORE_IO(env)					\
+	PANIC_CHECK(env);
 
 /* DB filehandle. */
 struct __fh_t {
@@ -119,18 +141,32 @@ struct __fh_t {
 	u_int32_t pgsize;
 	u_int32_t offset;
 
+#ifdef HAVE_STATISTICS
+	u_int32_t seek_count;		/* I/O statistics */
+	u_int32_t read_count;
+	u_int32_t write_count;
+#endif
+
 #define	DB_FH_ENVLINK	0x01		/* We're linked on the DB_ENV. */
 #define	DB_FH_NOSYNC	0x02		/* Handle doesn't need to be sync'd. */
 #define	DB_FH_OPENED	0x04		/* Handle is valid. */
 #define	DB_FH_UNLINK	0x08		/* Unlink on close */
+#define	DB_FH_REGION	0x10		/* Opened to contain a region */
 	u_int8_t flags;
 };
 
-/* Standard 600 mode for __db_omode. */
-#define	OWNER_RW	"rw-------"
-
 /* Standard buffer size for ctime/ctime_r function calls. */
 #define	CTIME_BUFLEN	26
+
+/*
+ * VxWorks requires we cast (const char *) variables to (char *) in order to
+ * pass them to system calls like stat, read and write.
+ */
+#ifdef HAVE_VXWORKS
+#define	CHAR_STAR_CAST	(char *)
+#else
+#define	CHAR_STAR_CAST
+#endif
 
 #if defined(__cplusplus)
 }

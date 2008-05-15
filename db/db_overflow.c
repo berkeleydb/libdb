@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_overflow.c,v 12.21 2007/05/17 19:33:03 bostic Exp $
+ * $Id: db_overflow.c,v 12.26 2008/03/12 20:32:32 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -61,12 +61,13 @@
  * __db_goff --
  *	Get an offpage item.
  *
- * PUBLIC: int __db_goff __P((DB *, DB_TXN *, DBT *,
+ * PUBLIC: int __db_goff __P((DB *, DB_THREAD_INFO *, DB_TXN *, DBT *,
  * PUBLIC:     u_int32_t, db_pgno_t, void **, u_int32_t *));
  */
 int
-__db_goff(dbp, txn, dbt, tlen, pgno, bpp, bpsz)
+__db_goff(dbp, ip, txn, dbt, tlen, pgno, bpp, bpsz)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DBT *dbt;
 	u_int32_t tlen;
@@ -74,15 +75,15 @@ __db_goff(dbp, txn, dbt, tlen, pgno, bpp, bpsz)
 	void **bpp;
 	u_int32_t *bpsz;
 {
-	DB_ENV *dbenv;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	db_indx_t bytes;
 	u_int32_t curoff, needed, start;
 	u_int8_t *p, *src;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 
 	/*
@@ -114,20 +115,20 @@ __db_goff(dbp, txn, dbt, tlen, pgno, bpp, bpsz)
 			return (DB_BUFFER_SMALL);
 		}
 	} else if (F_ISSET(dbt, DB_DBT_MALLOC)) {
-		if ((ret = __os_umalloc(dbenv, needed, &dbt->data)) != 0)
+		if ((ret = __os_umalloc(env, needed, &dbt->data)) != 0)
 			return (ret);
 	} else if (F_ISSET(dbt, DB_DBT_REALLOC)) {
-		if ((ret = __os_urealloc(dbenv, needed, &dbt->data)) != 0)
+		if ((ret = __os_urealloc(env, needed, &dbt->data)) != 0)
 			return (ret);
 	} else if (bpsz != NULL && (*bpsz == 0 || *bpsz < needed)) {
-		if ((ret = __os_realloc(dbenv, needed, bpp)) != 0)
+		if ((ret = __os_realloc(env, needed, bpp)) != 0)
 			return (ret);
 		*bpsz = needed;
 		dbt->data = *bpp;
 	} else if (bpp != NULL)
 		dbt->data = *bpp;
 	else {
-		DB_ASSERT(dbenv,
+		DB_ASSERT(env,
 		    F_ISSET(dbt,
 		    DB_DBT_USERMEM | DB_DBT_MALLOC | DB_DBT_REALLOC) ||
 		    bpsz != NULL || bpp != NULL);
@@ -141,9 +142,9 @@ skip_alloc:
 	 */
 	dbt->size = needed;
 	for (curoff = 0, p = dbt->data; pgno != PGNO_INVALID && needed > 0;) {
-		if ((ret = __memp_fget(mpf, &pgno, txn, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, ip, txn, 0, &h)) != 0)
 			return (ret);
-		DB_ASSERT(dbenv, TYPE(h) == P_OVERFLOW);
+		DB_ASSERT(env, TYPE(h) == P_OVERFLOW);
 
 		/* Check if we need any bytes from this page. */
 		if (curoff + OV_LEN(h) >= start) {
@@ -162,10 +163,10 @@ skip_alloc:
 				 * needs to be taken if doing a partial copy
 				 * beginning at an offset other than 0.
 				 */
-				if ((ret = dbenv->dbt_usercopy(
+				if ((ret = env->dbt_usercopy(
 				    dbt, dbt->size - needed,
 				    src, bytes, DB_USERCOPY_SETDATA)) != 0) {
-					(void)__memp_fput(mpf,
+					(void)__memp_fput(mpf, ip,
 					     h, dbp->priority);
 					return (ret);
 				}
@@ -176,7 +177,7 @@ skip_alloc:
 		}
 		curoff += OV_LEN(h);
 		pgno = h->next_pgno;
-		(void)__memp_fput(mpf, h, dbp->priority);
+		(void)__memp_fput(mpf, ip, h, dbp->priority);
 	}
 	return (0);
 }
@@ -241,7 +242,7 @@ __db_poff(dbc, dbt, pgnop)
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
 			    &null_lsn)) != 0) {
 				if (lastp != NULL)
-					(void)__memp_fput(mpf,
+					(void)__memp_fput(mpf, dbc->thread_info,
 					     lastp, dbc->priority);
 				lastp = pagep;
 				break;
@@ -268,12 +269,13 @@ __db_poff(dbc, dbt, pgnop)
 		else {
 			lastp->next_pgno = PGNO(pagep);
 			pagep->prev_pgno = PGNO(lastp);
-			(void)__memp_fput(mpf, lastp, dbc->priority);
+			(void)__memp_fput(mpf,
+			    dbc->thread_info, lastp, dbc->priority);
 		}
 		lastp = pagep;
 	}
-	if (lastp != NULL && (t_ret =
-	    __memp_fput(mpf, lastp, dbc->priority)) != 0 && ret == 0)
+	if (lastp != NULL && (t_ret = __memp_fput(mpf,
+	     dbc->thread_info, lastp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -297,13 +299,15 @@ __db_ovref(dbc, pgno)
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, DB_MPOOL_DIRTY, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno,
+	     dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &h)) != 0)
 		return (ret);
 
 	if (DBC_LOGGING(dbc)) {
 		if ((ret = __db_ovref_log(dbp,
 		    dbc->txn, &LSN(h), 0, h->pgno, -1, &LSN(h))) != 0) {
-			(void)__memp_fput(mpf, h, dbc->priority);
+			(void)__memp_fput(mpf,
+			     dbc->thread_info, h, dbc->priority);
 			return (ret);
 		}
 	} else
@@ -320,7 +324,7 @@ __db_ovref(dbc, pgno)
 	 */
 	--OV_REF(h);
 
-	return (__memp_fput(mpf, h, dbc->priority));
+	return (__memp_fput(mpf, dbc->thread_info, h, dbc->priority));
 }
 
 /*
@@ -335,32 +339,35 @@ __db_doff(dbc, pgno)
 	db_pgno_t pgno;
 {
 	DB *dbp;
-	PAGE *pagep;
+	DBT tmp_dbt;
 	DB_LSN null_lsn;
 	DB_MPOOLFILE *mpf;
-	DBT tmp_dbt;
+	PAGE *pagep;
 	int ret;
 
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 
 	do {
-		if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &pagep)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno,
+		     dbc->thread_info, dbc->txn, 0, &pagep)) != 0)
 			return (ret);
 
-		DB_ASSERT(dbp->dbenv, TYPE(pagep) == P_OVERFLOW);
+		DB_ASSERT(dbp->env, TYPE(pagep) == P_OVERFLOW);
 		/*
 		 * If it's referenced by more than one key/data item,
 		 * decrement the reference count and return.
 		 */
 		if (OV_REF(pagep) > 1) {
-			(void)__memp_fput(mpf, pagep, dbc->priority);
+			(void)__memp_fput(mpf,
+			    dbc->thread_info, pagep, dbc->priority);
 			return (__db_ovref(dbc, pgno));
 		}
 
-		if ((ret = __memp_dirty(mpf,
-		    &pagep, dbc->txn, dbc->priority, 0)) != 0) {
-			(void)__memp_fput(mpf, pagep, dbc->priority);
+		if ((ret = __memp_dirty(mpf, &pagep,
+		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0) {
+			(void)__memp_fput(mpf,
+			    dbc->thread_info, pagep, dbc->priority);
 			return (ret);
 		}
 
@@ -373,7 +380,8 @@ __db_doff(dbc, pgno)
 			    PGNO(pagep), PREV_PGNO(pagep),
 			    NEXT_PGNO(pagep), &tmp_dbt,
 			    &LSN(pagep), &null_lsn, &null_lsn)) != 0) {
-				(void)__memp_fput(mpf, pagep, dbc->priority);
+				(void)__memp_fput(mpf,
+				    dbc->thread_info, pagep, dbc->priority);
 				return (ret);
 			}
 		} else
@@ -401,12 +409,14 @@ __db_doff(dbc, pgno)
  * ordering off page items. __db_moff matches an overflow DBT with an offpage
  * item. __db_coff compares two offpage items for lexicographic sort order.
  *
- * PUBLIC: int __db_moff __P((DB *, DB_TXN *, const DBT *, db_pgno_t, u_int32_t,
- * PUBLIC:     int (*)(DB *, const DBT *, const DBT *), int *));
+ * PUBLIC: int __db_moff __P((DB *,
+ * PUBLIC:     DB_THREAD_INFO *, DB_TXN *, const DBT *, db_pgno_t,
+ * PUBLIC:     u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
-__db_moff(dbp, txn, dbt, pgno, tlen, cmpfunc, cmpp)
+__db_moff(dbp, ip, txn, dbt, pgno, tlen, cmpfunc, cmpp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const DBT *dbt;
 	db_pgno_t pgno;
@@ -432,19 +442,19 @@ __db_moff(dbp, txn, dbt, pgno, tlen, cmpfunc, cmpp)
 		buf = NULL;
 		bufsize = 0;
 
-		if ((ret = __db_goff(dbp, txn,
+		if ((ret = __db_goff(dbp, ip, txn,
 		    &local_dbt, tlen, pgno, &buf, &bufsize)) != 0)
 			return (ret);
 		/* Pass the key as the first argument */
 		*cmpp = cmpfunc(dbp, dbt, &local_dbt);
-		__os_free(dbp->dbenv, buf);
+		__os_free(dbp->env, buf);
 		return (0);
 	}
 
 	/* While there are both keys to compare. */
 	for (*cmpp = 0, p1 = dbt->data,
 	    key_left = dbt->size; key_left > 0 && pgno != PGNO_INVALID;) {
-		if ((ret = __memp_fget(mpf, &pgno, txn, 0, &pagep)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno, ip, txn, 0, &pagep)) != 0)
 			return (ret);
 
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
@@ -457,7 +467,7 @@ __db_moff(dbp, txn, dbt, pgno, tlen, cmpfunc, cmpp)
 				break;
 			}
 		pgno = NEXT_PGNO(pagep);
-		if ((ret = __memp_fput(mpf, pagep, dbp->priority)) != 0)
+		if ((ret = __memp_fput(mpf, ip, pagep, dbp->priority)) != 0)
 			return (ret);
 		if (*cmpp != 0)
 			return (0);
@@ -486,12 +496,13 @@ __db_moff(dbp, txn, dbt, pgno, tlen, cmpfunc, cmpp)
  * require extracting the total length, and page number, dependent on the
  * DBT type.
  *
- * PUBLIC: int __db_coff __P((DB *, DB_TXN *, const DBT *, const DBT *,
- * PUBLIC:     int (*)(DB *, const DBT *, const DBT *), int *));
+ * PUBLIC: int __db_coff __P((DB *, DB_THREAD_INFO *, DB_TXN *, const DBT *,
+ * PUBLIC:     const DBT *, int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
-__db_coff(dbp, txn, dbt, match, cmpfunc, cmpp)
+__db_coff(dbp, ip, txn, dbt, match, cmpfunc, cmpp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const DBT *dbt, *match;
 	int (*cmpfunc) __P((DB *, const DBT *, const DBT *)), *cmpp;
@@ -511,8 +522,8 @@ __db_coff(dbp, txn, dbt, match, cmpfunc, cmpp)
 	*cmpp = 0;
 	dbt_buf = match_buf = NULL;
 
-	DB_ASSERT(dbp->dbenv, HPAGE_PTYPE(dbt->data) == H_OFFPAGE);
-	DB_ASSERT(dbp->dbenv, HPAGE_PTYPE(match->data) == H_OFFPAGE);
+	DB_ASSERT(dbp->env, HPAGE_PTYPE(dbt->data) == H_OFFPAGE);
+	DB_ASSERT(dbp->env, HPAGE_PTYPE(match->data) == H_OFFPAGE);
 
 	/* Extract potentially unaligned length and pgno fields from DBTs */
 	memcpy(&dbt_len, HOFFPAGE_TLEN(dbt->data), sizeof(u_int32_t));
@@ -531,31 +542,32 @@ __db_coff(dbp, txn, dbt, match, cmpfunc, cmpp)
 		dbt_buf = match_buf = NULL;
 		dbt_bufsz = match_bufsz = 0;
 
-		if ((ret = __db_goff(dbp, txn, &local_key, dbt_len,
+		if ((ret = __db_goff(dbp, ip, txn, &local_key, dbt_len,
 		    dbt_pgno, &dbt_buf, &dbt_bufsz)) != 0)
 			goto err1;
-		if ((ret = __db_goff(dbp, txn, &local_match, match_len,
+		if ((ret = __db_goff(dbp, ip, txn, &local_match, match_len,
 		    match_pgno, &match_buf, &match_bufsz)) != 0)
 			goto err1;
 		/* The key needs to be the first argument for sort order */
 		*cmpp = cmpfunc(dbp, &local_key, &local_match);
 
 err1:		if (dbt_buf != NULL)
-			__os_free(dbp->dbenv, dbt_buf);
+			__os_free(dbp->env, dbt_buf);
 		if (match_buf != NULL)
-			__os_free(dbp->dbenv, match_buf);
+			__os_free(dbp->env, match_buf);
 		return (ret);
 	}
 
 	/* Match the offpage DBTs a page at a time. */
 	while (dbt_pgno != PGNO_INVALID && match_pgno != PGNO_INVALID) {
 		if ((ret =
-		    __memp_fget(mpf, &dbt_pgno, txn, 0, &dbt_pagep)) != 0)
+		    __memp_fget(mpf, &dbt_pgno, ip, txn, 0, &dbt_pagep)) != 0)
 			return (ret);
 		if ((ret =
-		    __memp_fget(mpf, &match_pgno, txn, 0, &match_pagep)) != 0) {
+		    __memp_fget(mpf, &match_pgno,
+			ip, txn, 0, &match_pagep)) != 0) {
 			(void)__memp_fput(
-			    mpf, dbt_pagep, DB_PRIORITY_UNCHANGED);
+			    mpf, ip, dbt_pagep, DB_PRIORITY_UNCHANGED);
 			return (ret);
 		}
 		cmp_bytes = page_sz < max_data ? page_sz : max_data;
@@ -570,14 +582,14 @@ err1:		if (dbt_buf != NULL)
 		dbt_pgno = NEXT_PGNO(dbt_pagep);
 		match_pgno = NEXT_PGNO(match_pagep);
 		max_data -= page_sz;
-		if ((ret =
-		    __memp_fput(mpf, dbt_pagep, DB_PRIORITY_UNCHANGED)) != 0) {
-			(void)__memp_fput(
-			    mpf, match_pagep, DB_PRIORITY_UNCHANGED);
+		if ((ret = __memp_fput(mpf,
+		     ip, dbt_pagep, DB_PRIORITY_UNCHANGED)) != 0) {
+			(void)__memp_fput(mpf,
+			    ip, match_pagep, DB_PRIORITY_UNCHANGED);
 			return (ret);
 		}
-		if ((ret = __memp_fput(
-		    mpf, match_pagep, DB_PRIORITY_UNCHANGED)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    ip, match_pagep, DB_PRIORITY_UNCHANGED)) != 0)
 			return (ret);
 		if (*cmpp != 0)
 			return (0);

@@ -1,4 +1,4 @@
-m4_comment([$Id: db_deadlock.so,v 10.32 2006/10/05 01:06:08 bostic Exp $])
+m4_comment([$Id: db_deadlock.so,v 10.33 2007/10/26 15:02:55 bostic Exp $])
 
 include(m4/m4.utility)
 define(M4PAGELOCAL, db_deadlock)
@@ -27,11 +27,11 @@ m4_tagopt(a, [dnl
 When a deadlock is detected, abort the locker:
 m4_tagbegin
 m4_tag(m, [with the most locks])
-m4_tagns(n, [with the fewest locks])
-m4_tagns(o, [with the oldest lock])
-m4_tagns(W, [with the most write locks])
-m4_tagns(w, [with the fewest write locks])
-m4_tagns(y, [with the youngest lock])
+m4_tag(n, [with the fewest locks])
+m4_tag(o, [with the oldest lock])
+m4_tag(W, [with the most write locks])
+m4_tag(w, [with the fewest write locks])
+m4_tag(y, [with the youngest lock])
 m4_tagend])
 m4_p([dnl
 When lock or transaction timeouts have been specified:

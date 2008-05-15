@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep051.tcl,v 12.15 2007/07/11 14:50:17 paula Exp $
+# $Id: rep051.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep051
 # TEST	Test of compaction with replication.
@@ -64,10 +64,11 @@ proc rep051 { method { niter 5000 } { tnum "051" } args } {
 proc rep051_sub { method niter tnum envargs logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -158,9 +159,20 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 	error_check_good dbc_close [$dbc close] 0
 	error_check_good t_commit [$t commit] 0
 
+	# Open read-only handle on client, so we can call $db stat.
+	set client_db \
+	    [eval {berkdb_open_noerr} -env $clientenv -rdonly $testfile]
+ 	error_check_good client_open [is_valid_db $client_db] TRUE
+
+	# Check database size on both client and master.
+	process_msgs $envlist
+	set master_pages_before [stat_field $db stat "Page count"]
+	set client_pages_before [stat_field $client_db stat "Page count"]
+	error_check_good \
+	    pages_match_before $client_pages_before $master_pages_before
+
 	# Compact database.
 	puts "\tRep$tnum.d: Compact database."
-	set free1 [stat_field $db stat "Pages on freelist"]
 	set t [$masterenv txn]
 	error_check_good txn [is_valid_txn $t $masterenv] TRUE
 	set txn "-txn $t"
@@ -169,11 +181,21 @@ proc rep051_sub { method niter tnum envargs logset recargs largs } {
 
 	error_check_good t_commit [$t commit] 0
 	error_check_good db_sync [$db sync] 0
-	set free2 [stat_field $db stat "Pages on freelist"]
-	error_check_good more_free_pages [expr $free2 > $free1] 1
 
-	# Process messages.
+	# There will be fewer pages in use after the compact -freespace call.
+	set master_pages_after [stat_field $db stat "Page count"]
+	set page_reduction [expr $master_pages_before - $master_pages_after]
+	error_check_good page_reduction [expr $page_reduction > 0] 1
+	
+	# Process messages so the client sees the reduction in pages used.
 	process_msgs $envlist
+
+	set client_pages_after [stat_field $client_db stat "Page count"]
+	error_check_good \
+	    pages_match_after $client_pages_after $master_pages_after
+
+	# Close client handle.
+	error_check_good client_handle [$client_db close] 0
 
 	# Reverify.
 	puts "\tRep$tnum.b: Verifying client database contents."

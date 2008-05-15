@@ -1,5 +1,5 @@
-<!--$Id: process.so,v 1.15 2006/10/09 16:51:34 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: process.so,v 1.16 2008/03/17 16:10:24 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></b></td>
 <td align=right><a href="../upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../changelog/toc.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Upgrading Berkeley DB installations</h3>
+<p align=center><b>Upgrading Berkeley DB installations</b></p>
 <p>The following information describes the general process of upgrading
 Berkeley DB installations.  There are four areas to be considered when
 upgrading Berkeley DB applications and database environments: the application
@@ -140,23 +139,33 @@ utility, make sure to use the new version of the utility; that is, the
 version that came with the release of Berkeley DB to which you are upgrading.
 <li>Restart the application.
 </ol>
-<p>Finally, upgrading a Berkeley DB replication group requires a few additional
-steps.  To upgrade a replication group, you must:</p>
+<p>Finally, Berkeley DB supports the live upgrade of a replication
+group, by allowing mixed version operation (replication sites
+running at the newer software version can inter-operate with older
+version sites).  All client sites must be upgraded first; the
+master site must be upgraded last.  In other words, at all times
+the master must be running the lowest version of Berkeley DB.
+To upgrade a replication group, you must:</p>
 <ol>
 <p><li>Bring all clients up to date with the master (that is, all
 clients must be brought up to the most current log record as measured
 by the master's log sequence number (LSN)).
 <li>Perform the upgrade procedures described previously on each
 of the individual database environments that are part of the replication
-group.
-<li>Restart the replication group.
+group.  Each individual client may be upgraded and restarted to join
+the replication group.
+<li>Shut down the master site and upgrade that site last.
 </ol>
+<p>During live replication upgrade, while sites are running at different
+versions, adding new (empty) clients to the replication group is not
+allowed.  Those empty client environments must be added after the
+entire group is upgraded.</p>
 <p>Alternatively, it may be simpler to discard the contents of all of the
 client database environments, upgrade the master database environment,
 and then re-add all of the clients to the replication group using the
 standard replication procedures for new sites.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../upgrade/version.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../changelog/toc.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: log006.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: log006.tcl,v 12.9 2008/04/02 18:22:28 carol Exp $
 #
 # TEST	log006
 # TEST	Test log file auto-remove.
@@ -30,11 +30,13 @@ proc log006 { } {
 	log006_put $testdir $env
 
 	#
-	# Check log files.  Using the small log file size, we should
-	# have made a lot of log files, check that we have a reasonable
-	# number left, less than 25.
+	# Check log files.  Using the small log file size, we should have
+	# have made a lot of log files.  Check that we have only a few left.
+	# Dividing by 5 tests that at least 80% of the files are gone.
 	#
-	set log_expect 25
+	set log_number [stat_field $env log_stat "Current log file number"]
+	set log_expect [expr $log_number / 5]
+
 	puts "\tLog006.b: Check log files removed."
 	set lfiles [glob -nocomplain $testdir/log.*]
 	set remlen [llength $lfiles]
@@ -150,7 +152,7 @@ proc log006 { } {
 	error_check_good lfiles [lsearch $lfiles $testdir/log.0000000001] 0
 
 	puts "\tLog006.l: turn on auto remove and repopulate database."
-	error_check_good sf [$env set_flags -log_remove on] 0
+	error_check_good sf [$env log_config "autoremove on"] 0
 
 	log006_put $testdir $env
 
@@ -168,7 +170,7 @@ proc log006 { } {
 	puts "\tLog006.n: Test setting via DB_CONFIG."
 	# Open the environment, w/o remove flag, but DB_CONFIG.
 	set cid [open $testdir/DB_CONFIG w]
-	puts $cid "set_flags db_log_autoremove"
+	puts $cid "set_log_config db_log_auto_remove"
 	close $cid
 	set env [berkdb_env -recover \
 	    -create -home $testdir -log_buffer $lbuf -log_max $lmax -txn]

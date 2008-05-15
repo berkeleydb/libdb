@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: qam.src,v 12.7 2007/05/17 15:15:50 bostic Exp $
+ * $Id: qam.src,v 12.9 2008/01/08 20:58:47 bostic Exp $
  */
 
-PREFIX	__qam
 DBPRIVATE
+PREFIX	__qam
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"

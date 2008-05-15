@@ -1,4 +1,4 @@
-m4_comment([$Id: mgr_meth.so,v 1.8 2006/09/08 18:33:38 bostic Exp $])
+m4_comment([$Id: mgr_meth.so,v 1.10 2008/04/23 13:35:47 sue Exp $])
 
 m4_ref_title(m4_db Replication,
     Replication Manager methods,, rep/app, rep/base_meth)
@@ -53,7 +53,12 @@ the purpose of elections.])
 m4_tag(m4_ref(rep_set_timeout), [dnl
 This method optionally configures various timeout values.  Otherwise
 default timeout values as specified in m4_ref(rep_set_timeout) are
-used.])
+used.  In particular, Replication Manager client sites can be
+configured to monitor the health of the TCP/IP connection to the
+master site using heartbeat messages.  If the client receives no
+messages from the master for a certain amount of time, it considers
+the connection to be broken, and calls for an election to choose a new
+master.])
 
 m4_tag(m4_ref(dbenv_set_event_notify), [dnl
 Once configured and started, Replication Manager does virtually all of
@@ -73,7 +78,7 @@ m4_tagend
 m4_p([dnl
 In addition to the methods previously described, Replication Manager
 applications may also call the following methods, as needed:
-m4_ref(rep_set_config), m4_ref(rep_set_limit), m4_ref(rep_sync),
-m4_ref(rep_stat).])
+m4_ref(rep_set_config), m4_ref(rep_set_limit), m4_ref(rep_set_request),
+m4_ref(rep_sync), m4_ref(rep_stat).])
 
 m4_page_footer

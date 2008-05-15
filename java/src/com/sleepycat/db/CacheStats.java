@@ -1,217 +1,357 @@
 /*-
- * DO NOT EDIT: automatically built by dist/s_java_stat.
+ * Automatically built by dist/s_java_stat.
+ * Only the javadoc comments can be edited.
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  */
 
 package com.sleepycat.db;
 
+/**
+Cache statistics for a database environment.
+*/
 public class CacheStats {
     // no public constructor
     /* package */ CacheStats() {}
 
     private int st_gbytes;
+    /**
+    Gigabytes of cache (total cache size is st_gbytes + st_bytes).
+    */
     public int getGbytes() {
         return st_gbytes;
     }
 
     private int st_bytes;
+    /**
+    Bytes of cache (total cache size is st_gbytes + st_bytes).
+    */
     public int getBytes() {
         return st_bytes;
     }
 
     private int st_ncache;
+    /**
+    Number of caches.
+    */
     public int getNumCache() {
         return st_ncache;
     }
 
     private int st_max_ncache;
+    /**
+    Maximum number of caches, as configured with
+    {@link EnvironmentConfig#setCacheMax}.
+    */
     public int getMaxNumCache() {
         return st_max_ncache;
     }
 
     private int st_mmapsize;
+    /**
+    Maximum file size for mmap.
+     */
     public int getMmapSize() {
         return st_mmapsize;
     }
 
     private int st_maxopenfd;
+    /**
+    Maximum number of open file descriptors.
+     */
     public int getMaxOpenfd() {
         return st_maxopenfd;
     }
 
     private int st_maxwrite;
+    /**
+    The maximum number of sequential write operations scheduled by the library
+    when flushing dirty pages from the cache.
+     */
     public int getMaxWrite() {
         return st_maxwrite;
     }
 
     private int st_maxwrite_sleep;
+    /**
+    The number of microseconds the thread of control should pause before
+    scheduling further write operations.
+     */
     public int getMaxWriteSleep() {
         return st_maxwrite_sleep;
     }
 
     private int st_pages;
+    /**
+    Pages in the cache.
+    */
     public int getPages() {
         return st_pages;
     }
 
     private int st_map;
+    /**
+    Requested pages mapped into the process' address space (there is no
+    available information about whether or not this request caused disk I/O,
+    although examining the application page fault rate may be helpful).
+    */
     public int getMap() {
         return st_map;
     }
 
     private int st_cache_hit;
+    /**
+    Requested pages found in the cache.
+    */
     public int getCacheHit() {
         return st_cache_hit;
     }
 
     private int st_cache_miss;
+    /**
+    Requested pages not found in the cache.
+    */
     public int getCacheMiss() {
         return st_cache_miss;
     }
 
     private int st_page_create;
+    /**
+    Pages created in the cache.
+    */
     public int getPageCreate() {
         return st_page_create;
     }
 
     private int st_page_in;
+    /**
+    Pages read into the cache.
+    */
     public int getPageIn() {
         return st_page_in;
     }
 
     private int st_page_out;
+    /**
+    Pages written from the cache to the backing file.
+    */
     public int getPageOut() {
         return st_page_out;
     }
 
     private int st_ro_evict;
+    /**
+    Clean pages forced from the cache.
+    */
     public int getRoEvict() {
         return st_ro_evict;
     }
 
     private int st_rw_evict;
+    /**
+    Dirty pages forced from the cache.
+    */
     public int getRwEvict() {
         return st_rw_evict;
     }
 
     private int st_page_trickle;
+    /**
+    Dirty pages written using {@link com.sleepycat.db.Environment#trickleCacheWrite Environment.trickleCacheWrite}.
+    */
     public int getPageTrickle() {
         return st_page_trickle;
     }
 
     private int st_page_clean;
+    /**
+    Clean pages currently in the cache.
+    */
     public int getPageClean() {
         return st_page_clean;
     }
 
     private int st_page_dirty;
+    /**
+    Dirty pages currently in the cache.
+    */
     public int getPageDirty() {
         return st_page_dirty;
     }
 
     private int st_hash_buckets;
+    /**
+    Number of hash buckets in buffer hash table.
+    */
     public int getHashBuckets() {
         return st_hash_buckets;
     }
 
     private int st_hash_searches;
+    /**
+    Total number of buffer hash table lookups.
+    */
     public int getHashSearches() {
         return st_hash_searches;
     }
 
     private int st_hash_longest;
+    /**
+    The longest chain ever encountered in buffer hash table lookups.
+    */
     public int getHashLongest() {
         return st_hash_longest;
     }
 
     private int st_hash_examined;
+    /**
+    Total number of hash elements traversed during hash table lookups.
+    */
     public int getHashExamined() {
         return st_hash_examined;
     }
 
     private int st_hash_nowait;
+    /**
+    The number of times that a thread of control was able to obtain a
+    hash bucket lock without waiting.
+    */
     public int getHashNowait() {
         return st_hash_nowait;
     }
 
     private int st_hash_wait;
+    /**
+    The number of times that a thread of control was forced to wait
+    before obtaining a hash bucket lock.
+    */
     public int getHashWait() {
         return st_hash_wait;
     }
 
     private int st_hash_max_nowait;
+    /**
+    The number of times a thread of control was able to obtain the
+    hash bucket lock without waiting on the bucket which had the
+    maximum number of times that a thread of control needed to wait.
+    */
     public int getHashMaxNowait() {
         return st_hash_max_nowait;
     }
 
     private int st_hash_max_wait;
+    /**
+    The maximum number of times any hash bucket lock was waited for by
+    a thread of control.
+    */
     public int getHashMaxWait() {
         return st_hash_max_wait;
     }
 
     private int st_region_nowait;
+    /**
+    The number of times that a thread of control was able to obtain a
+    region lock without waiting.
+    */
     public int getRegionNowait() {
         return st_region_nowait;
     }
 
     private int st_region_wait;
+    /**
+    The number of times that a thread of control was forced to wait
+    before obtaining a region lock.
+    */
     public int getRegionWait() {
         return st_region_wait;
     }
 
     private int st_mvcc_frozen;
+    /**
+    Number of buffers frozen.
+    */
     public int getMultiversionFrozen() {
         return st_mvcc_frozen;
     }
 
     private int st_mvcc_thawed;
+    /**
+    Number of buffers thawed.
+    */
     public int getMultiversionThawed() {
         return st_mvcc_thawed;
     }
 
     private int st_mvcc_freed;
+    /**
+    Number of frozen buffers freed.
+    */
     public int getMultiversionFreed() {
         return st_mvcc_freed;
     }
 
     private int st_alloc;
+    /**
+    Number of page allocations.
+    */
     public int getAlloc() {
         return st_alloc;
     }
 
     private int st_alloc_buckets;
+    /**
+    Number of hash buckets checked during allocation.
+    */
     public int getAllocBuckets() {
         return st_alloc_buckets;
     }
 
     private int st_alloc_max_buckets;
+    /**
+    Maximum number of hash buckets checked during an allocation.
+    */
     public int getAllocMaxBuckets() {
         return st_alloc_max_buckets;
     }
 
     private int st_alloc_pages;
+    /**
+    Number of pages checked during allocation.
+    */
     public int getAllocPages() {
         return st_alloc_pages;
     }
 
     private int st_alloc_max_pages;
+    /**
+    Maximum number of pages checked during an allocation.
+    */
     public int getAllocMaxPages() {
         return st_alloc_max_pages;
     }
 
     private int st_io_wait;
+    /**
+    Number of operations blocked waiting for I/O to complete.
+    */
     public int getIoWait() {
         return st_io_wait;
     }
 
     private int st_regsize;
+    /**
+    Individual cache size.
+    */
     public int getRegSize() {
         return st_regsize;
     }
 
+    /**
+    For convenience, the CacheStats class has a toString method that
+    lists all the data fields.
+    */
     public String toString() {
         return "CacheStats:"
             + "\n  st_gbytes=" + st_gbytes

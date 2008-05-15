@@ -33,7 +33,7 @@
 BREW_HOME      =$(BREWDIR)
 ARM_HOME       =$(ARMHOME)
 TARGET         =D:\DB7588~1.BRE\BUILD_~1\bdb_brew
-OBJS           =bdbread.o AEEModGen.o AEEAppGen.o bt_compact.o bt_compare.o bt_conv.o bt_curadj.o bt_cursor.o bt_delete.o bt_method.o bt_open.o bt_put.o bt_rec.o bt_reclaim.o bt_recno.o bt_rsearch.o bt_search.o bt_split.o bt_stat.o btree_auto.o atol.o isalpha.o isdigit.o isprint.o isspace.o printf.o qsort.o rand.o strcasecmp.o strerror.o strncat.o strsep.o strtol.o crypto_stub.o db_byteorder.o db_err.o db_getlong.o db_idspace.o db_log2.o db_shash.o mkpath.o crdel_auto.o crdel_rec.o db.o db_am.o db_auto.o db_cam.o db_cds.o db_conv.o db_dispatch.o db_dup.o db_iface.o db_join.o db_meta.o db_method.o db_open.o db_overflow.o db_pr.o db_rec.o db_reclaim.o db_remove.o db_rename.o db_ret.o db_setid.o db_setlsn.o db_stati.o db_truncate.o db_upg.o db_vrfy_stub.o dbreg.o dbreg_auto.o dbreg_rec.o dbreg_stat.o dbreg_util.o env_alloc.o env_config.o env_failchk.o env_file.o env_method.o env_name.o env_open.o env_recover.o env_region.o env_register.o env_stat.o fileops_auto.o fop_basic.o fop_rec.o fop_util.o hash_func.o hash_stub.o hmac.o sha1.o lock_stub.o log.o log_archive.o log_compare.o log_debug.o log_get.o log_method.o log_put.o log_stat.o mp_alloc.o mp_bh.o mp_fget.o mp_fmethod.o mp_fopen.o mp_fput.o mp_fset.o mp_method.o mp_mvcc.o mp_region.o mp_register.o mp_resize.o mp_stat.o mp_sync.o mp_trickle.o mut_stub.o os_alloc.o os_clock.o os_fid.o os_flock.o os_fzero.o os_getenv.o os_map.o os_region.o os_root.o os_rpath.o os_tmpdir.o os_uid.o os_yield.o ctime.o fclose.o fgetc.o fgets.o fopen.o fwrite.o getcwd.o globals.o localtime.o os_abort.o os_abs.o os_config.o os_dir.o os_errno.o os_handle.o os_mkdir.o os_oflags.o os_open.o os_pid.o os_rename.o os_rw.o os_seek.o os_sleep.o os_stat.o os_truncate.o os_unlink.o time.o qam_stub.o rep_stub.o repmgr_stub.o txn.o txn_auto.o txn_chkpt.o txn_failchk.o txn_method.o txn_rec.o txn_recover.o txn_region.o txn_stat.o txn_util.o xa_stub.o
+OBJS           =bdbread.o AEEModGen.o AEEAppGen.o bt_compact.o bt_compare.o bt_conv.o bt_curadj.o bt_cursor.o bt_delete.o bt_method.o bt_open.o bt_put.o bt_rec.o bt_reclaim.o bt_recno.o bt_rsearch.o bt_search.o bt_split.o bt_stat.o btree_auto.o atol.o isalpha.o isdigit.o isprint.o isspace.o printf.o qsort.o rand.o strcasecmp.o strerror.o strncat.o strsep.o strtol.o time.o crypto_stub.o db_byteorder.o db_err.o db_getlong.o db_idspace.o db_log2.o db_shash.o dbt.o mkpath.o zerofill.o crdel_auto.o crdel_rec.o db.o db_am.o db_auto.o db_cam.o db_cds.o db_conv.o db_dispatch.o db_dup.o db_iface.o db_join.o db_meta.o db_method.o db_open.o db_overflow.o db_pr.o db_rec.o db_reclaim.o db_remove.o db_rename.o db_ret.o db_setid.o db_setlsn.o db_stati.o db_truncate.o db_upg.o db_vrfy_stub.o dbreg.o dbreg_auto.o dbreg_rec.o dbreg_stat.o dbreg_util.o env_alloc.o env_config.o env_failchk.o env_file.o env_method.o env_name.o env_open.o env_recover.o env_region.o env_register.o env_sig.o env_stat.o fileops_auto.o fop_basic.o fop_rec.o fop_util.o hash_func.o hash_stub.o hmac.o sha1.o lock_stub.o log.o log_archive.o log_compare.o log_debug.o log_get.o log_method.o log_put.o log_stat.o mp_alloc.o mp_bh.o mp_fget.o mp_fmethod.o mp_fopen.o mp_fput.o mp_fset.o mp_method.o mp_mvcc.o mp_region.o mp_register.o mp_resize.o mp_stat.o mp_sync.o mp_trickle.o mut_stub.o os_alloc.o os_cpu.o os_fid.o os_flock.o os_getenv.o os_map.o os_root.o os_rpath.o os_stack.o os_tmpdir.o os_uid.o ctime.o fclose.o fgetc.o fgets.o fopen.o fwrite.o getcwd.o globals.o localtime.o os_abort.o os_abs.o os_clock.o os_config.o os_dir.o os_errno.o os_handle.o os_mkdir.o os_open.o os_pid.o os_rename.o os_rw.o os_seek.o os_stat.o os_truncate.o os_unlink.o os_yield.o qam_stub.o rep_stub.o repmgr_stub.o txn.o txn_auto.o txn_chkpt.o txn_failchk.o txn_method.o txn_rec.o txn_recover.o txn_region.o txn_stat.o txn_util.o xa_stub.o
 APP_INCLUDES   =  -I ..\build_brew  -I ..
 
 #-------------------------------------------------------------------------------
@@ -446,6 +446,7 @@ strerror.o:	..\clib\strerror.c
 strncat.o:	..\clib\strncat.c
 strsep.o:	..\clib\strsep.c
 strtol.o:	..\clib\strtol.c
+time.o:	..\clib\time.c
 crypto_stub.o:	..\common\crypto_stub.c
 db_byteorder.o:	..\common\db_byteorder.c
 db_err.o:	..\common\db_err.c
@@ -453,7 +454,9 @@ db_getlong.o:	..\common\db_getlong.c
 db_idspace.o:	..\common\db_idspace.c
 db_log2.o:	..\common\db_log2.c
 db_shash.o:	..\common\db_shash.c
+dbt.o:	..\common\dbt.c
 mkpath.o:	..\common\mkpath.c
+zerofill.o:	..\common\zerofill.c
 crdel_auto.o:	..\db\crdel_auto.c
 crdel_rec.o:	..\db\crdel_rec.c
 db.o:	..\db\db.c
@@ -497,6 +500,7 @@ env_open.o:	..\env\env_open.c
 env_recover.o:	..\env\env_recover.c
 env_region.o:	..\env\env_region.c
 env_register.o:	..\env\env_register.c
+env_sig.o:	..\env\env_sig.c
 env_stat.o:	..\env\env_stat.c
 fileops_auto.o:	..\fileops\fileops_auto.c
 fop_basic.o:	..\fileops\fop_basic.c
@@ -532,18 +536,16 @@ mp_sync.o:	..\mp\mp_sync.c
 mp_trickle.o:	..\mp\mp_trickle.c
 mut_stub.o:	..\mutex\mut_stub.c
 os_alloc.o:	..\os\os_alloc.c
-os_clock.o:	..\os\os_clock.c
+os_cpu.o:	..\os\os_cpu.c
 os_fid.o:	..\os\os_fid.c
 os_flock.o:	..\os\os_flock.c
-os_fzero.o:	..\os\os_fzero.c
 os_getenv.o:	..\os\os_getenv.c
 os_map.o:	..\os\os_map.c
-os_region.o:	..\os\os_region.c
 os_root.o:	..\os\os_root.c
 os_rpath.o:	..\os\os_rpath.c
+os_stack.o:	..\os\os_stack.c
 os_tmpdir.o:	..\os\os_tmpdir.c
 os_uid.o:	..\os\os_uid.c
-os_yield.o:	..\os\os_yield.c
 ctime.o:	..\os_brew\ctime.c
 fclose.o:	..\os_brew\fclose.c
 fgetc.o:	..\os_brew\fgetc.c
@@ -555,22 +557,21 @@ globals.o:	..\os_brew\globals.c
 localtime.o:	..\os_brew\localtime.c
 os_abort.o:	..\os_brew\os_abort.c
 os_abs.o:	..\os_brew\os_abs.c
+os_clock.o:	..\os_brew\os_clock.c
 os_config.o:	..\os_brew\os_config.c
 os_dir.o:	..\os_brew\os_dir.c
 os_errno.o:	..\os_brew\os_errno.c
 os_handle.o:	..\os_brew\os_handle.c
 os_mkdir.o:	..\os_brew\os_mkdir.c
-os_oflags.o:	..\os_brew\os_oflags.c
 os_open.o:	..\os_brew\os_open.c
 os_pid.o:	..\os_brew\os_pid.c
 os_rename.o:	..\os_brew\os_rename.c
 os_rw.o:	..\os_brew\os_rw.c
 os_seek.o:	..\os_brew\os_seek.c
-os_sleep.o:	..\os_brew\os_sleep.c
 os_stat.o:	..\os_brew\os_stat.c
 os_truncate.o:	..\os_brew\os_truncate.c
 os_unlink.o:	..\os_brew\os_unlink.c
-time.o:	..\os_brew\time.c
+os_yield.o:	..\os_brew\os_yield.c
 qam_stub.o:	..\qam\qam_stub.c
 rep_stub.o:	..\rep\rep_stub.c
 repmgr_stub.o:	..\repmgr\repmgr_stub.c

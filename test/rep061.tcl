@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep061.tcl,v 1.11 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep061.tcl,v 1.14 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep061
 # TEST	Test of internal initialization multiple files and pagesizes
@@ -87,10 +87,11 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	global drop drop_msg
 	global startup_done
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -136,7 +137,11 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	# lower so we don't wait too long to request what we're
 	# missing.
 	#
-	$clientenv rep_request 2 8
+	#
+	# Set to 200/800 usecs.  An average ping to localhost should
+	# be a few 10s usecs.
+	#
+	$clientenv rep_request 200 800
 	# Bring the clients online by processing the startup messages.
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist
@@ -260,7 +265,7 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	# Since we are dropping frequent messages, we set the
 	# rerequest rate low to make sure the test finishes.
 	#
-	$clientenv rep_request 2 8
+	$clientenv rep_request 200 800
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist 0 NONE err
 	set done 0
@@ -282,7 +287,7 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 		# loop more times to allow rerequests to get through.
 		#
 		set max_drop_iter [expr $max_drop_iter * 2]
-		$clientenv rep_request 1 4
+		$clientenv rep_request 100 400
 	}
 	while { $done == 0 } {
 		puts "\tRep$tnum.e.1.$iter: Trigger log request"

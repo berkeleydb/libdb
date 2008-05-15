@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep041.tcl,v 12.18 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep041.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep041
 # TEST  Turn replication on and off at run-time.
@@ -68,10 +68,11 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -145,6 +146,7 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	$clientenv rep_limit 0 0
+	$clientenv rep_request 4000 128000
 
 	# Set up envlist for processing messages later.
 	set envlist "{$masterenv 1} {$clientenv 2}"

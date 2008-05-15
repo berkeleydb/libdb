@@ -1,5 +1,5 @@
 <!--$Id: intro.so,v 10.79 2006/01/27 20:01:45 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows systems</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for Windows systems</dl></b></td>
 <td align=right><a href="../build_unix/ultrix.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_win/small.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Building for Windows</h3>
+<p align=center><b>Building for Windows</b></p>
 <p>This page contains general instructions on building Berkeley DB for
 specific windows platforms using specific compilers. The
 <a href="../../ref/build_win/faq.html">Windows FAQ</a> also
@@ -28,7 +27,7 @@ project files for Microsoft Visual C++:</p>
 </table>
 <p>These project files can be used to build Berkeley DB for the following platforms:
 Windows NT/2K/XP/2003, Windows 98/ME and 64-bit Windows XP/2003.</p>
-<h3>Building Berkeley DB for Windows NT/2K/XP/2003</h3>
+<b>Building Berkeley DB for Windows NT/2K/XP/2003</b>
 <h4>Visual C++ .NET 2005</h4>
 <ol>
 <p><li>Choose <i>File -&gt; Open -&gt; Project/Solution...</i>.
@@ -70,16 +69,16 @@ examples, <b>build_windows\Release</b> or
 <b>build_windows\Debug</b>).</p>
 <p>When building your application during development, you should normally
 use compile options "Debug Multithreaded DLL" and link against
-<b>build_windows\Debug\libdb46d.lib</b>.  You can
+<b>build_windows\Debug\libdb47d.lib</b>.  You can
 also build using a release version of the Berkeley DB libraries and tools,
 which will be placed in
-<b>build_windows\Release\libdb46.lib</b>.  When
+<b>build_windows\Release\libdb47.lib</b>.  When
 linking against the release build, you should compile your code with
 the "Release Multithreaded DLL" compile option.  You will also need to
 add the <b>build_windows</b> directory to the list of include
 directories of your application's project, or copy the Berkeley DB include
 files to another location.</p>
-<h3>Building Berkeley DB for Windows 98/ME</h3>
+<b>Building Berkeley DB for Windows 98/ME</b>
 <p>By default on Windows, Berkeley DB supports internationalized filenames by
 treating all directory paths and filenames passed to Berkeley DB methods as
 UTF-8 encoded strings.  All paths are internally converted to wide
@@ -95,7 +94,7 @@ the instructions at
 <a href="http://www.microsoft.com/globaldev/handson/dev/mslu_announce.mspx">Microsoft's web site</a>.</p>
 <p>The ASCII builds will also work on Windows NT/2K/XP and 2003, but will
 not translate paths to wide character strings.</p>
-<h3>Building Berkeley DB for 64-bit Windows</h3>
+<b>Building Berkeley DB for 64-bit Windows</b>
 <p>The following procedure can be used on either to build natively on a
 64-bit system or to cross-compile from a 32-bit system.</p>
 <h4>x64 build with Visual Studio 2005</h4>
@@ -134,12 +133,12 @@ You should now have AMD64 binaries in the "Debug_AMD64" directory.</p>
 <p>To build a release, open the "Retail" window instead of the "Debug"
 window, and change Debug to Release in the above commands.  To build
 for Itanium, change AMD64 and x64 to IA64.</p>
-<h3>Building Berkeley DB with Cygwin</h3>
+<b>Building Berkeley DB with Cygwin</b>
 <p>To build Berkeley DB with Cygwin, follow the instructions in
 <a href="../../ref/build_unix/intro.html">Building for UNIX</a>.</p>
-<h3>Building the C++ API</h3>
+<b>Building the C++ API</b>
 <p>C++ support is built automatically on Windows.</p>
-<h3>Building the Java API</h3>
+<b>Building the Java API</b>
 <p>Java support is not built automatically.  The following instructions
 assume that you have installed the Sun Java Development Kit in
 <b>d:\java</b>.  Of course, if you installed elsewhere or have
@@ -182,7 +181,7 @@ javac.
 either the Debug or Release version of the db_java project.  Then
 press OK.
 <p><li>To build, select <i>Build -&gt; Build
-libdb_java46.dll</i>.  This builds the Java support
+libdb_java47.dll</i>.  This builds the Java support
 library for Berkeley DB and compiles all the java files, placing the
 resulting <b>db.jar</b> and <b>dbexamples.jar</b> files in the
 <b>build_windows\Release</b> or <b>build_windows\Debug</b>
@@ -200,7 +199,7 @@ as a test:</p>
 for 'Release' in the instructions above.  Make sure you use the Debug
 JAR file with the Debug DLL and the Release JAR with the Release
 DLL.</p>
-<h3>Building the Tcl API</h3>
+<b>Building the Tcl API</b>
 <p>Tcl support is not built automatically.  See
 <a href="../../ref/tcl/intro.html">Loading Berkeley DB with Tcl</a> for
 information on sites from which you can download Tcl and which Tcl
@@ -232,8 +231,8 @@ library is named in your distribution).
 tool bar.
 <p><li>To build, right-click on db_tcl and select Build.  This builds the Tcl
 support library for Berkeley DB, placing the result into
-<b>build_windows\Debug\libdb_tcl46d.dll</b> or
-<b>build_windows\Release\libdb_tcl46.dll</b>.
+<b>build_windows\Debug\libdb_tcl47d.dll</b> or
+<b>build_windows\Release\libdb_tcl47.dll</b>.
 </ol>
 <p>If you use a version different from Tcl 8.4.x you will
 need to change the name of the Tcl library used in the build (for
@@ -260,10 +259,10 @@ whatever the library is named in your distribution).
 either the Debug or Release version of the db_tcl project.  Then press
 OK.
 <p><li>To build, select <i>Build -&gt; Build
-libdb_tcl46.dll</i>.  This builds the Tcl support
+libdb_tcl47.dll</i>.  This builds the Tcl support
 library for Berkeley DB, placing the result into
-<b>build_windows\Debug\libdb_tcl46d.dll</b> or
-<b>build_windows\Release\libdb_tcl46.dll</b>.
+<b>build_windows\Debug\libdb_tcl47d.dll</b> or
+<b>build_windows\Release\libdb_tcl47.dll</b>.
 </ol>
 <p>If you use a version different from Tcl 8.4.x you will
 need to change the name of the Tcl library used in the build (for
@@ -273,7 +272,7 @@ appropriate name.  To do this, choose
 and change the Tcl library listed in the Object/Library modules
 <b>tcl84g.lib</b> to match the Tcl version
 you are using.</p>
-<h3>Distributing DLLs</h3>
+<b>Distributing DLLs</b>
 <p>When distributing applications linked against the DLL (not static)
 version of the library, the DLL files you need will be found in the
 <b>build_windows\Release</b> subdirectory, or
@@ -289,6 +288,6 @@ environment variable.  Check your compiler's license and documentation
 for specifics on redistributing runtime DLLs.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../build_unix/ultrix.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_win/small.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

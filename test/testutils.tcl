@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: testutils.tcl,v 12.36 2007/07/02 16:06:35 bostic Exp $
+# $Id: testutils.tcl,v 12.40 2008/04/02 02:45:02 moshen Exp $
 #
 # Test system utilities
 #
@@ -1815,7 +1815,7 @@ proc unpopulate { db txn num } {
 		set d [$c get -next] } {
 		$c del
 		incr i
-		if { $num != 0 && $ >= $num } {
+		if { $num != 0 && $i >= $num } {
 			break
 		}
 	}
@@ -2921,9 +2921,9 @@ proc db_compare { olddb newdb olddbname newdbname } {
 	error_check_good new_cursor($olddbname) \
 	    [is_valid_cursor $nc $newdb] TRUE
 
-	for { set odbt [$oc get -first] } { [llength $odbt] > 0 } \
-	    { set odbt [$oc get -next] } {
-		set ndbt [$nc get -get_both \
+	for { set odbt [$oc get -first -nolease] } { [llength $odbt] > 0 } \
+	    { set odbt [$oc get -next -nolease] } {
+		set ndbt [$nc get -get_both -nolease \
 		    [lindex [lindex $odbt 0] 0] [lindex [lindex $odbt 0] 1]]
 		if { [binary_compare $ndbt $odbt] == 1 } {
 			error_check_good oc_close [$oc close] 0
@@ -2933,9 +2933,9 @@ proc db_compare { olddb newdb olddbname newdbname } {
 		}
 	}
 
-	for { set ndbt [$nc get -first] } { [llength $ndbt] > 0 } \
-	    { set ndbt [$nc get -next] } {
-		set odbt [$oc get -get_both \
+	for { set ndbt [$nc get -first -nolease] } { [llength $ndbt] > 0 } \
+	    { set ndbt [$nc get -next -nolease] } {
+		set odbt [$oc get -get_both -nolease \
 		    [lindex [lindex $ndbt 0] 0] [lindex [lindex $ndbt 0] 1]]
 		if { [binary_compare $ndbt $odbt] == 1 } {
 			error_check_good oc_close [$oc close] 0
@@ -3632,11 +3632,7 @@ proc check_log_location { env } {
 	if { [catch {get_logfile $env first} res] } {
 		puts "FAIL: env $env not configured for logging"
 	}
-	set inmemory 0
-	set flags [$env get_flags]
-	if { [is_substr $flags -log_inmemory] == 1 } {
-		set inmemory 1
-	}
+	set inmemory [$env log_get_config inmemory]
 
 	set env_home [get_home $env]
 	set logfiles [glob -nocomplain $env_home/log.*]

@@ -1,4 +1,4 @@
-m4_comment([$Id: env_open.so,v 10.111 2006/08/02 17:39:47 bostic Exp $])
+m4_comment([$Id: env_open.so,v 10.114 2008/04/29 22:42:03 mbrey Exp $])
 
 define(M4PAGELOCAL,
 	[dbenv_open, dbenv_get_home, dbenv_get_open_flags, DB_CREATE,
@@ -233,7 +233,9 @@ threads in the address space.  The DB_THREAD flag should be specified
 if the m4_ref(DbEnv) handle will be concurrently used by more than one
 thread in the process, or if any m4_ref(Db) handles opened in the scope
 of the m4_ref(DbEnv) handle will be concurrently used by more than one
-thread in the process.])
+thread in the process.
+m4_p([dnl
+This flag is required when using the Replication Manager.])])
 
 m4_tagend])
 
@@ -265,7 +267,8 @@ filenotfound)
 m4_pf_getter(dbenv_get_home,
 database environment home directory, homep,, reference)
 
-m4_pf_getter(dbenv_get_open_flags, open method flags,, flagsp)
+m4_pf_getter(dbenv_get_open_flags,
+open method flags originally used to create the database environment,, flagsp)
 
 m4_seealso(DbEnv)
 m4_page_footer

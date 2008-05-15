@@ -1,4 +1,4 @@
-m4_comment([$Id: faq.so,v 10.26 2005/10/20 16:10:15 bostic Exp $])
+m4_comment([$Id: faq.so,v 10.28 2008/01/24 00:35:23 sarette Exp $])
 
 m4_ref_title(Access Methods,
     Access method FAQ, @access method FAQ, am_misc/tune, java/conf)
@@ -23,11 +23,14 @@ m4_ref(dbh_set_errfile) for ways to get additional information about
 error returns from m4_db.])])
 
 m4_nlist([dnl
-m4_bold([Are m4_db databases portable between architectures?])
+m4_bold([Are m4_db databases portable between architectures with
+different integer sizes and different byte orders ?])
 
 m4_p([dnl
-Yes.  See m4_link(M4RELDIR/ref/am_conf/byteorder, [Selecting a byte
-order]) for more information.])])
+Yes.  Specifically, databases can be moved between 32- and 64-bit
+machines, as well as between little- and big-endian machines.  See
+m4_link(M4RELDIR/ref/am_conf/byteorder, [Selecting a byte order]) for
+more information.])])
 
 m4_nlist([dnl
 m4_bold([I'm seeing database corruption when creating multiple databases
@@ -116,7 +119,7 @@ available for the file buffer cache, especially on systems without a
 unified buffer cache and VM system.])
 m4_p([dnl
 Finally, for operating systems that allow buffering to be turned off,
-specifying the m4_ref(DB_DIRECT_DB) and m4_ref(DB_DIRECT_LOG) flags
+specifying the m4_ref(DB_DIRECT_DB) and m4_ref(DB_LOG_DIRECT) flags
 will attempt to do so.])])
 
 m4_nlist([dnl

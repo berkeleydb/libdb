@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd001.tcl,v 12.6 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd001.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd001
 # TEST	Per-operation recovery tests for non-duplicate, non-split
@@ -21,15 +21,22 @@
 # TEST	original copy of the file.  In the second test, we restore the
 # TEST	original copy of the database and then run recovery and compare
 # TEST	this against the actual database.
-proc recd001 { method {select 0} args} {
+proc recd001 { method {select 0} args } {
 	global fixed_len
 	source ./include.tcl
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set orig_fixed_len $fixed_len
 	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Recd001: $method operation/transaction tests"
+	puts "Recd001: $method operation/transaction tests ($envargs)"
 
 	# Create the database and environment.
 	env_cleanup $testdir
@@ -47,7 +54,7 @@ proc recd001 { method {select 0} args} {
 	set testfile recd001.db
 	set testfile2 recd001-2.db
 
-	set flags "-create -txn -home $testdir"
+	set flags "-create -txn -home $testdir $envargs"
 
 	# For queue databases, we end up locking all records from one
 	# to the end of the queue, which depends on the default pagesize.

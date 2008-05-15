@@ -1,18 +1,18 @@
 /*
- * $Id: b_txn.c,v 1.10 2007/06/21 17:42:10 bostic Exp $
+ * $Id: b_txn.c,v 1.11 2007/12/21 13:58:30 bostic Exp $
  */
 #include "bench.h"
 
-int usage(void);
+static int usage(void);
 
 int
-main(int argc, char *argv[])
+b_txn(int argc, char *argv[])
 {
+	extern char *optarg;
+	extern int optind;
 	DB_ENV *dbenv;
 	DB_TXN *txn;
 	int tabort, ch, i, count;
-
-	cleanup_test_dir();
 
 	count = 1000;
 	tabort = 0;
@@ -36,14 +36,12 @@ main(int argc, char *argv[])
 	/* Create the environment. */
 	DB_BENCH_ASSERT(db_env_create(&dbenv, 0) == 0);
 	dbenv->set_errfile(dbenv, stderr);
-	DB_BENCH_ASSERT(
-	    dbenv->set_cachesize(dbenv, 0, 1048576 /* 1MB */, 0) == 0);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 1
-	DB_BENCH_ASSERT(dbenv->open(dbenv, "TESTDIR",
+	DB_BENCH_ASSERT(dbenv->open(dbenv, TESTDIR,
 	    NULL, DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_PRIVATE, 0666) == 0);
 #else
-	DB_BENCH_ASSERT(dbenv->open(dbenv, "TESTDIR",
+	DB_BENCH_ASSERT(dbenv->open(dbenv, TESTDIR,
 	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
 	    DB_INIT_MPOOL | DB_INIT_TXN | DB_PRIVATE, 0666) == 0);
 #endif
@@ -78,12 +76,14 @@ main(int argc, char *argv[])
 	    count, tabort ? "abort" : "commit");
 	TIMER_DISPLAY(count);
 
+	DB_BENCH_ASSERT(dbenv->close(dbenv, 0) == 0);
+
 	return (0);
 }
 
-int
+static int
 usage()
 {
-	(void)fprintf(stderr, "usage: b_txn [-c count]\n");
+	(void)fprintf(stderr, "usage: b_txn [-a] [-c count]\n");
 	return (EXIT_FAILURE);
 }

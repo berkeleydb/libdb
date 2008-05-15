@@ -9,7 +9,7 @@
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="previous" href="preface.html" title="Preface" />
-    <link rel="next" href="concepts.html" title="Berkeley DB Concepts" />
+    <link rel="next" href="javadplconcepts.html" title="Berkeley DB Concepts" />
   </head>
   <body>
     <div class="navheader">
@@ -20,7 +20,7 @@
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="preface.html">Prev</a> </td>
           <th width="60%" align="center"> </th>
-          <td width="20%" align="right"> <a accesskey="n" href="concepts.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="javadplconcepts.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -46,9 +46,48 @@
           </dt>
           <dt>
             <span class="sect1">
-              <a href="concepts.html">Berkeley DB Concepts</a>
+              <a href="javadplconcepts.html">Berkeley DB Concepts</a>
             </span>
           </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#dplenvconcepts">Environments</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#key-data">Key-Data Pairs</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#storing-intro">Storing Data</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#duplicatesintro">Duplicate Data</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#replacedeleteIntro">Replacing and Deleting Entries</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#secondary">Secondary Keys</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="javadplconcepts.html#whichapi">Which API Should You Use?</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
           <dt>
             <span class="sect1">
               <a href="accessmethods.html">Access Methods</a>
@@ -80,11 +119,6 @@
           </dt>
           <dt>
             <span class="sect1">
-              <a href="environments.html">Environments</a>
-            </span>
-          </dt>
-          <dt>
-            <span class="sect1">
               <a href="coreExceptions.html">Exception Handling</a>
             </span>
           </dt>
@@ -108,6 +142,26 @@
     gracefully scale from managing a few bytes to terabytes of data. For the most
     part, DB is limited only by your system's available physical resources.
   </p>
+      <p>
+         You use DB through a series of Java APIs which give you the
+          ability to read and write your data, manage your database(s), and
+          perform other more advanced activities such as managing
+          transactions. 
+            <span>
+            The Java APIs that you use to interact with DB
+            come in two basic flavors. The first is a high-level API that
+            allows you to make Java classes persistent. The second is a
+            lower-level API which provides additional flexibility when interacting
+            with DB databases.
+            </span>
+  </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+            For long-time users of DB, the lower-level API is the
+            traditional API that you are probably accustomed to using.
+          </p>
+      </div>
       <p>
     Because DB is an embedded database engine, it is extremely fast. You compile
     and link it into your application in the same way as you would any
@@ -161,9 +215,6 @@
         APIs required to store and retrieve your data as
         efficiently as possible.
    </p>
-        <span>
-    
-   </span>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -181,22 +232,26 @@
         introduction to DB's basic concepts and library usage. 
     </p>
         <p>
-        Specifically, this manual introduces DB environments, databases,
-        database records, and storage and retrieval of database records. This
-        book also introduces cursors and their usage, and it describes
-        secondary databases. 
-    </p>
-        <p>
-        For the most part, this manual focuses on the BTree access method. A
-        chapter is given at the end of this manual that describes some of the
-        concepts involving BTree usage, such as duplicate record management and comparison
-        routines.
+            Specifically, this manual introduces the high-level Java API
+            (the DPL), as well as the "base" Java API that the DPL
+            relies upon.  Regardless of the API set that you choose to use, there are a
+          series of concepts and APIs that are common across the product.
+          This manual starts by providing a high-level examination of
+          DB. It then describes the APIs you use regardless of the API
+          set that you choose to use. It then provides information on using the
+          Direct Persistence Layer (DPL) API, followed by information on using
+          the more extensive "base" API.
     </p>
         <p>
         Examples are given throughout this book that are designed to illustrate
-        API usage.  At the end of each chapter, a complete example is given that
-        is designed to reinforce the concepts covered in that chapter. In
-        addition to being presented in this book, these final programs are also 
+        API usage.  At the end of each 
+         
+        <span>chapter or section in this book,</span> 
+        a complete example is given that
+        is designed to reinforce the concepts covered in that 
+         
+        <span>chapter or section.</span> 
+        In addition to being presented in this book, these final programs are also 
         available in the DB software distribution. You can find them in
      </p>
         <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/db/GettingStarted</pre>
@@ -219,7 +274,7 @@
           <td width="20%" align="center">
             <a accesskey="u" href="index.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="concepts.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="javadplconcepts.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Preface </td>

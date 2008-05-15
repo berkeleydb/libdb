@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep002.tcl,v 12.16 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep002.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep002
 # TEST	Basic replication election test.
@@ -62,10 +62,11 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	set elect_timeout(default) 5000000
 
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -284,9 +285,9 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 			# open and close the new master, then reopen as a
 			# client for the next cycle.
 			#
-			puts "\t$m: Election $i: Alternate winner $altwin won."
 			error_check_good check_winner [is_substr \
 			    $res "expected 3, got [expr $altwin + 2]"] 1
+			puts "\t$m: Election $i: Alternate winner $altwin won."
 			error_check_good make_master \
 			    [$clientenv($altwin) rep_start -master] 0
 

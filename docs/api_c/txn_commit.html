@@ -1,5 +1,5 @@
 <!--$Id: txn_commit.so,v 10.49 2004/08/13 03:39:03 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_TXN-&gt;commit</h3>
+<b>DB_TXN-&gt;commit</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DB_TXN-&gt;commit(DB_TXN *tid, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_TXN-&gt;commit</h3>
+<b>Description: DB_TXN-&gt;commit</b>
 <p>The DB_TXN-&gt;commit method ends the transaction.</p>
 <p>In the case of nested transactions, if the transaction is a parent
 transaction, committing the parent transaction causes all unresolved
@@ -46,38 +46,37 @@ transaction are aborted.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or
 one of the following values:
-<dl compact>
-<dt><a name="DB_TXN_NOSYNC">DB_TXN_NOSYNC</a><dd>Do not synchronously flush the log.  This means the transaction will
+<br>
+<b><a name="DB_TXN_NOSYNC">DB_TXN_NOSYNC</a></b><ul compact><li>Do not synchronously flush the log.  This means the transaction will
 exhibit the ACI (atomicity, consistency, and isolation) properties, but
 not D (durability); that is, database integrity will be maintained, but
 it is possible that this transaction may be undone during recovery.
 <p>This behavior may be set for a Berkeley DB environment using the
 <a href="../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method or for a single transaction using the
 <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a> method.  Any value specified to this method overrides
-both of those settings.</p>
-<dt><a name="DB_TXN_SYNC">DB_TXN_SYNC</a><dd>Synchronously flush the log.  This means the transaction will exhibit
+both of those settings.</p></ul>
+<b><a name="DB_TXN_SYNC">DB_TXN_SYNC</a></b><ul compact><li>Synchronously flush the log.  This means the transaction will exhibit
 all of the ACID (atomicity, consistency, isolation, and durability)
 properties.
 <p>This behavior is the default for Berkeley DB environments unless the
 <a href="../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag was specified to the
 <a href="../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method.  This behavior may also be set for a single
 transaction using the <a href="../api_c/txn_begin.html">DB_ENV-&gt;txn_begin</a> method.  Any value specified to this
-method overrides both of those settings.</p>
-</dl>
-</dl>
+method overrides both of those settings.</p></ul>
+<br></ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/txn_class.html">DB_TXN</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/txn_list.html">Transaction Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

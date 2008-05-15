@@ -10,11 +10,11 @@
  *	Recovery function for create.
  *
  * PUBLIC: int __fop_create_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_create_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_create_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -24,11 +24,14 @@ __fop_create_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__fop_create_print);
-	REC_INTRO(__fop_create_read, 1);
+	REC_INTRO(__fop_create_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -72,11 +75,11 @@ out:	REC_CLOSE;
  *	Recovery function for remove.
  *
  * PUBLIC: int __fop_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_remove_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -86,11 +89,14 @@ __fop_remove_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__fop_remove_print);
-	REC_INTRO(__fop_remove_read, 1);
+	REC_INTRO(__fop_remove_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -134,11 +140,11 @@ out:	REC_CLOSE;
  *	Recovery function for write.
  *
  * PUBLIC: int __fop_write_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_write_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_write_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -148,11 +154,14 @@ __fop_write_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__fop_write_print);
-	REC_INTRO(__fop_write_read, 1);
+	REC_INTRO(__fop_write_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -196,11 +205,11 @@ out:	REC_CLOSE;
  *	Recovery function for rename.
  *
  * PUBLIC: int __fop_rename_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_rename_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_rename_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -210,11 +219,14 @@ __fop_rename_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__fop_rename_noundo_print);
-	REC_INTRO(__fop_rename_noundo_read, 1);
+	REC_INTRO(__fop_rename_noundo_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -258,11 +270,11 @@ out:	REC_CLOSE;
  *	Recovery function for file_remove.
  *
  * PUBLIC: int __fop_file_remove_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__fop_file_remove_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -272,11 +284,14 @@ __fop_file_remove_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__fop_file_remove_print);
-	REC_INTRO(__fop_file_remove_read, 1);
+	REC_INTRO(__fop_file_remove_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {

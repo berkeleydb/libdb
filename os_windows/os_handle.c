@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: os_handle.c,v 12.17 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_handle.c,v 12.22 2008/01/31 18:40:47 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Open a file, using POSIX 1003.1 open flags.
  */
 int
-__os_openhandle(dbenv, name, flags, mode, fhpp)
-	DB_ENV *dbenv;
+__os_openhandle(env, name, flags, mode, fhpp)
+	ENV *env;
 	const char *name;
 	int flags, mode;
 	DB_FH **fhpp;
@@ -38,16 +38,16 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 	 * can't unlink temporary files immediately, we use the name to unlink
 	 * the temporary file when the file handle is closed.
 	 *
-	 * Lock the DB_ENV handle and insert the new file handle on the list.
+	 * Lock the ENV handle and insert the new file handle on the list.
 	 */
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_FH), &fhp)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_FH), &fhp)) != 0)
 		return (ret);
-	if ((ret = __os_strdup(dbenv, name, &fhp->name)) != 0)
+	if ((ret = __os_strdup(env, name, &fhp->name)) != 0)
 		goto err;
-	if (dbenv != NULL) {
-		MUTEX_LOCK(dbenv, dbenv->mtx_env);
-		TAILQ_INSERT_TAIL(&dbenv->fdlist, fhp, q);
-		MUTEX_UNLOCK(dbenv, dbenv->mtx_env);
+	if (env != NULL) {
+		MUTEX_LOCK(env, env->mtx_env);
+		TAILQ_INSERT_TAIL(&env->fdlist, fhp, q);
+		MUTEX_UNLOCK(env, env->mtx_env);
 		F_SET(fhp, DB_FH_ENVLINK);
 	}
 
@@ -70,7 +70,7 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 			 * if we can't open a database, an inability to open a
 			 * log file is cause for serious dismay.
 			 */
-			__os_sleep(dbenv, nrepeat * 2, 0);
+			__os_yield(env, nrepeat * 2, 0);
 			break;
 		case EAGAIN:
 		case EBUSY:
@@ -94,7 +94,7 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 		return (0);
 	}
 
-err:	(void)__os_closehandle(dbenv, fhp);
+err:	(void)__os_closehandle(env, fhp);
 	return (ret);
 #endif
 }
@@ -104,27 +104,29 @@ err:	(void)__os_closehandle(dbenv, fhp);
  *	Close a file.
  */
 int
-__os_closehandle(dbenv, fhp)
-	DB_ENV *dbenv;
+__os_closehandle(env, fhp)
+	ENV *env;
 	DB_FH *fhp;
 {
+	DB_ENV *dbenv;
 	int ret, t_ret;
 
 	ret = 0;
 
-	if (dbenv != NULL) {
+	if (env != NULL) {
+		dbenv = env->dbenv;
 		if (fhp->name != NULL && FLD_ISSET(
 		    dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-			__db_msg(dbenv, "fileops: %s: close", fhp->name);
+			__db_msg(env, "fileops: %s: close", fhp->name);
 
 		if (F_ISSET(fhp, DB_FH_ENVLINK)) {
 			/*
-			 * Lock the DB_ENV handle and remove this file
+			 * Lock the ENV handle and remove this file
 			 * handle from the list.
 			 */
-			MUTEX_LOCK(dbenv, dbenv->mtx_env);
-			TAILQ_REMOVE(&dbenv->fdlist, fhp, q);
-			MUTEX_UNLOCK(dbenv, dbenv->mtx_env);
+			MUTEX_LOCK(env, env->mtx_env);
+			TAILQ_REMOVE(&env->fdlist, fhp, q);
+			MUTEX_UNLOCK(env, env->mtx_env);
 		}
 	}
 
@@ -146,18 +148,18 @@ __os_closehandle(dbenv, fhp)
 		}
 
 		if (ret != 0) {
-			__db_syserr(dbenv, ret, "CloseHandle");
+			__db_syserr(env, ret, "CloseHandle");
 			ret = __os_posix_err(ret);
 		}
 	}
 
 	/* Unlink the file if we haven't already done so. */
 	if (F_ISSET(fhp, DB_FH_UNLINK))
-		(void)__os_unlink(dbenv, fhp->name);
+		(void)__os_unlink(env, fhp->name, 0);
 
 	if (fhp->name != NULL)
-		__os_free(dbenv, fhp->name);
-	__os_free(dbenv, fhp);
+		__os_free(env, fhp->name);
+	__os_free(env, fhp);
 
 	return (ret);
 }

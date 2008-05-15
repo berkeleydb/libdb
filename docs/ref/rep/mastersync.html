@@ -1,5 +1,5 @@
-<!--$Id: mastersync.so,v 1.13 2007/03/20 20:20:27 alanb Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: mastersync.so,v 1.14 2008/02/29 18:28:33 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,17 +9,16 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
 <td align=right><a href="../rep/elect.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/init.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Synchronizing with a master</h3>
+<p align=center><b>Synchronizing with a master</b></p>
 <p>When a client detects a new replication group master, the client must
 synchronize with the new master before the client can process new
 database changes.  Synchronizing is a heavyweight operation which can
 place a burden on both the client and the master.  There are several
 controls an application can use to reduce the synchronization burden.</p>
-<h3>Delaying client synchronization</h3>
+<b>Delaying client synchronization</b>
 <p>When a replication group has a new master, either as specified by the
 application or as a result of winning an election, all clients in the
 replication group must synchronize with the new master.  This can
@@ -35,7 +34,7 @@ client will not proceed to synchronize with the new master.</p>
 <p>Client applications choosing to delay synchronization in this manner are
 responsible for synchronizing the client environment at some future time
 using the <a href="../../api_c/rep_sync.html">DB_ENV-&gt;rep_sync</a> method.</p>
-<h3>Client-to-client synchronization</h3>
+<b>Client-to-client synchronization</b>
 <p>Instead of synchronizing with the new master, it is sometimes possible
 for a client to synchronize with another client.  Berkeley DB initiates
 synchronization at the client by sending a request message via the
@@ -77,7 +76,7 @@ requests to site B, and B then bears the brunt of the work and
 network traffic for synchronization, making master site A available to
 handle the normal application load and any write requests paused by
 the election.</p>
-<h3>Blocked client operations</h3>
+<b>Blocked client operations</b>
 <p>Clients in the process of synchronizing with the master block access to
 Berkeley DB operations.  By default, most Berkeley DB methods will block until
 client synchronization is complete, and then the method call proceeds.</p>
@@ -87,29 +86,23 @@ error return instead of blocking, should call the
 configuration causes <a href="../../api_c/db_class.html">DB</a> method calls to immediately return a
 <a href="../../api_c/db_put.html#DB_REP_LOCKOUT">DB_REP_LOCKOUT</a> error instead of blocking, if the client is
 currently synchronizing with the master.</p>
-<h3>Clients too far out-of-date to synchronize</h3>
+<b>Clients too far out-of-date to synchronize</b>
 <p>Clients attempting to synchronize with the master may discover that
-synchronization is not possible because the client and master have been
-out of contact for too long.  By default, the master and client
-automatically detect this state and perform an internal initialization
+synchronization is not possible because the client no longer has any
+overlapping information with the master site.  By default, the master and
+client automatically detect this state and perform an internal initialization
 of the client.  Because internal initialization requires transfer of
 entire databases to the client, it can take a relatively long period of
 time and may require database handles to be reopened in the client
 applications.</p>
-<p>Client applications which cannot wait and would prefer to postpone
-internal initialization until a more convenient time, or would prefer
+<p>Client applications which cannot wait or would prefer
 to do a hot backup instead of performing internal initialization, should
 call the <a href="../../api_c/rep_config.html">DB_ENV-&gt;rep_set_config</a> method with the <a href="../../api_c/rep_config.html#DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a>
 flag.  This configuration flag causes Berkeley DB to return
 <a href="../../api_c/rep_message.html#DB_REP_JOIN_FAILURE">DB_REP_JOIN_FAILURE</a> to the application instead of performing
 internal initialization.</p>
-<p>Client applications choosing to delay synchronization in this manner are
-responsible for synchronizing the client with the master at some future
-time.  This can be accomplished by turning off the
-<a href="../../api_c/rep_config.html#DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a> flag and calling the <a href="../../api_c/rep_sync.html">DB_ENV-&gt;rep_sync</a> method,
-or by performing a hot backup.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/elect.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/init.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

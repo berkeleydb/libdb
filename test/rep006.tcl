@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep006.tcl,v 12.15 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep006.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep006
 # TEST	Replication and non-rep env handles.
@@ -49,10 +49,11 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global is_hp_test
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -119,17 +120,21 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 
 	# Determine whether this build is configured with --enable-debug_rop
 	# or --enable-debug_wop; we'll need to skip portions of the test if so.
+	# Also check for *not* configuring with diagnostic.  That similarly
+	# forces a different code path and we need to skip portions.
 	set conf [berkdb getconfig]
-	set debug_rop_wop 0
+	set skip_for_config 0
 	if { [is_substr $conf "debug_rop"] == 1 \
-	    || [is_substr $conf "debug_wop"] == 1 } {
-		set debug_rop_wop 1
+	    || [is_substr $conf "debug_wop"] == 1 \
+	    || [is_substr $conf "diagnostic"] == 0 } {
+		set skip_for_config 1
 	}
 
-	# Skip if configured with --enable-debug_rop or --enable-debug_wop,
+	# Skip if configured with --enable-debug_rop or --enable-debug_wop
+	# or without --enable-diagnostic,
 	# because the checkpoint won't fail in those cases.
-	if { $debug_rop_wop == 1 } {
-		puts "\tRep$tnum.c: Skipping for debug_rop/debug_wop."
+	if { $skip_for_config == 1 } {
+		puts "\tRep$tnum.c: Skipping based on configuration."
 	} else {
 		puts "\tRep$tnum.c: Verifying non-master db_checkpoint."
 		set stat \
@@ -143,8 +148,8 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 	# twice, and for debug_rop/debug_wop because the open won't fail.
 	if { $is_hp_test == 1 } {
 		puts "\tRep$tnum.d: Skipping for HP-UX."
-	} elseif { $debug_rop_wop == 1 } {
-		puts "\tRep$tnum.d: Skipping for debug_rop/debug_wop."
+	} elseif { $skip_for_config == 1 } {
+		puts "\tRep$tnum.d: Skipping based on configuration."
 	} else {
 		puts "\tRep$tnum.d: Verifying non-master access."
 

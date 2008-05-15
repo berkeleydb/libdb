@@ -1,4 +1,4 @@
-m4_comment([$Id: errorret.so,v 10.49 2006/08/25 18:22:01 bostic Exp $])
+m4_comment([$Id: errorret.so,v 10.50 2007/09/26 15:11:31 bostic Exp $])
 
 define(M4PAGELOCAL,
 	[DB_KEYEMPTY, DB_KEYEXIST, DB_LOCK_DEADLOCK, DB_LOCK_NOTGRANTED,
@@ -128,5 +128,11 @@ error.  Alternatively, applications can specify a fatal-error callback
 function using the m4_refT(dbenv_set_event_notify).  Applications with
 no cleanup processing of their own should simply exit from the callback
 function.])
+
+m4_section(m4_idef(DB_SECONDARY_BAD))
+m4_p([dnl
+A secondary index has been corrupted.  This is likely the result of an
+application operating on related databases without first associating
+them.])
 
 m4_page_footer

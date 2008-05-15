@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: StoredIterator.java,v 12.7 2007/05/04 00:28:25 mark Exp $
+ * $Id: StoredIterator.java,v 12.9 2008/02/07 17:12:26 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -378,6 +378,8 @@ public class StoredIterator implements BaseIterator, Cloneable {
             moveToCurrent();
             cursor.delete();
             setAndRemoveAllowed = false;
+            toNext = MOVE_NEXT;
+            toPrevious = MOVE_PREV;
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }
@@ -483,7 +485,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
         toPrevious = MOVE_PREV;
         toCurrent = 0;
         currentData = null;
-        /* 
+        /*
 	 * Initialize cursor at beginning to avoid "initial previous == last"
 	 * behavior when cursor is uninitialized.
 	 *

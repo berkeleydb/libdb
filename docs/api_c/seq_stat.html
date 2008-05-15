@@ -1,5 +1,5 @@
 <!--$Id: seq_stat.so,v 1.9 2007/06/22 16:57:17 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_SEQUENCE-&gt;stat</h3>
+<b>DB_SEQUENCE-&gt;stat</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DB_SEQUENCE-&gt;stat(DB_SEQUENCE *db, void *sp, u_int32_t flags);
 <p>
 int
 DB_SEQUENCE-&gt;stat_print(DB_SEQUENCE *db, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_SEQUENCE-&gt;stat</h3>
+<b>Description: DB_SEQUENCE-&gt;stat</b>
 <p>The DB_SEQUENCE-&gt;stat method creates a statistical structure and copies a
 pointer to it into user-specified memory locations.  Specifically, if
 <b>sp</b> is non-NULL, a pointer to the statistics for the database are
@@ -47,27 +47,26 @@ it should be called in a thread of control that has no open cursors or
 active transactions.</p>
 <p>The statistics are stored in a structure of type DB_SEQUENCE_STAT.  The
 following fields will be filled in:</p>
-<dl compact>
-<dt>u_int32_t st_wait;<dd>The number of times a thread of control was forced to wait on the
-handle mutex.
-<dt>u_int32_t st_nowait;<dd>The number of times that a thread of control was able to obtain handle
-mutex without waiting.
-<dt>db_seq_t st_current;<dd>The current value of the sequence in the database.
-<dt>db_seq_t st_value;<dd>The current cached value of the sequence.
-<dt>db_seq_t st_last_value;<dd>The last cached value of the sequence.
-<dt>db_seq_t st_min;<dd>The minimum permitted value of the sequence.
-<dt>db_seq_t st_max;<dd>The maximum permitted value of the sequence.
-<dt>int32_t st_cache_size;<dd>The number of values that will be cached in this handle.
-<dt>u_int32_t st_flags;<dd>The flags value for the sequence.
-</dl>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
+<br>
+<b>u_int32_t st_wait;</b><ul compact><li>The number of times a thread of control was forced to wait on the
+handle mutex.</ul>
+<b>u_int32_t st_nowait;</b><ul compact><li>The number of times that a thread of control was able to obtain handle
+mutex without waiting.</ul>
+<b>db_seq_t st_current;</b><ul compact><li>The current value of the sequence in the database.</ul>
+<b>db_seq_t st_value;</b><ul compact><li>The current cached value of the sequence.</ul>
+<b>db_seq_t st_last_value;</b><ul compact><li>The last cached value of the sequence.</ul>
+<b>db_seq_t st_min;</b><ul compact><li>The minimum permitted value of the sequence.</ul>
+<b>db_seq_t st_max;</b><ul compact><li>The maximum permitted value of the sequence.</ul>
+<b>int32_t st_cache_size;</b><ul compact><li>The number of values that will be cached in this handle.</ul>
+<b>u_int32_t st_flags;</b><ul compact><li>The flags value for the sequence.</ul>
+<br>
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values:
-<dl compact>
-<dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after printing their values.
-</dl>
-</dl>
+<br>
+<b><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a></b><ul compact><li>Reset statistics after printing their values.</ul>
+<br></ul>
+<br>
 <p>The DB_SEQUENCE-&gt;stat method may not be called before the <a href="../api_c/seq_open.html">DB_SEQUENCE-&gt;open</a> method has
 been called.</p>
 <p>The DB_SEQUENCE-&gt;stat method
@@ -75,26 +74,25 @@ returns a non-zero error value on failure
 and 0 on success.
 </p>
 <hr size=1 noshade>
-<h3>Description: DB_SEQUENCE-&gt;stat_print</h3>
+<b>Description: DB_SEQUENCE-&gt;stat_print</b>
 <p>The DB_SEQUENCE-&gt;stat_print method prints diagnostic information to the output
 channel described by the <a href="../api_c/env_set_msgfile.html">DB_ENV-&gt;set_msgfile</a> method.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set by bitwise inclusively <b>OR</b>'ing together one or more
 of the following values:
-<dl compact>
-<dt><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a><dd>Reset statistics after printing their values.
-</dl>
-</dl>
+<br>
+<b><a name="DB_STAT_CLEAR">DB_STAT_CLEAR</a></b><ul compact><li>Reset statistics after printing their values.</ul>
+<br></ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/seq_class.html">DB_SEQUENCE</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/seq_list.html">Sequences and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

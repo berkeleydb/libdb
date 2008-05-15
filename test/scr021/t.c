@@ -62,8 +62,11 @@ main(int argc, char *argv[])
 	int r;
 
 	for (r = 0; *++argv != NULL;) {
-		chk(*argv, "F_ISSET(");
+		chk(*argv, "FLD_CLR(");
+		chk(*argv, "FLD_ISSET(");
+		chk(*argv, "FLD_SET(");
 		chk(*argv, "F_CLR(");
+		chk(*argv, "F_ISSET(");
 		chk(*argv, "F_SET(");
 	}
 	return (0);

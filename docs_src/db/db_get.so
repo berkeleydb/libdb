@@ -1,8 +1,8 @@
-m4_comment([$Id: db_get.so,v 10.90 2007/05/31 18:52:36 bostic Exp $])
+m4_comment([$Id: db_get.so,v 10.95 2007/11/07 16:51:38 bostic Exp $])
 
 define(M4PAGELOCAL,
 	[dbh_get, dbh_pget, DB_CONSUME, DB_CONSUME_WAIT, DB_GET_BOTH,
-	DB_MULTIPLE, DB_SECONDARY_BAD, DB_SET_RECNO])
+	DB_IGNORE_LEASE, DB_MULTIPLE, DB_SET_RECNO])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(dbh_get),
@@ -57,12 +57,11 @@ m4_sf_zmust(1)
 m4_tagbegin
 m4_tag(m4_idef(DB_CONSUME), [dnl
 Return the record number and data from the available record closest to
-the head of the queue, and delete the record.  The cursor will be
-positioned on the deleted record.  The record number will be returned
-in m4_arg(key), as described in m4_ref(Dbt).  The data will be returned
-in the m4_arg(data) parameter.  A record is available if it is not
-deleted and is not currently locked.  The underlying database must be
-of type Queue for m4_ref(DB_CONSUME) to be specified.])
+the head of the queue, and delete the record.  The record number will
+be returned in m4_arg(key), as described in m4_ref(Dbt).  The data will
+be returned in the m4_arg(data) parameter.  A record is available if it
+is not deleted and is not currently locked.  The underlying database
+must be of type Queue for m4_ref(DB_CONSUME) to be specified.])
 
 m4_tag(m4_idef(DB_CONSUME_WAIT), [dnl
 The m4_ref(DB_CONSUME_WAIT) flag is the same as the m4_ref(DB_CONSUME)
@@ -108,6 +107,13 @@ m4_tagend
 m4_sf_or_add(1)
 
 m4_tagbegin
+m4_tag(m4_idef(DB_IGNORE_LEASE), [dnl
+Return the data item irrespective of the state of master leases.  The
+item will be returned under all conditions: if master leases are not
+configured, if the request is made to a client, if the request is made
+to a master with a valid lease, or if the request is made to a master
+without a valid lease.])
+
 m4_tag(m4_idef(DB_MULTIPLE), [dnl
 Return multiple data items in the buffer to which the m4_arg(data)
 parameter refers.
@@ -160,7 +166,7 @@ deadlock,
 locknotgranted,
 [m4_ref(DB_CONSUME_WAIT) flag was specified, lock or transaction
 timers were configured and the],
-repinval, secondary_bad, einval,
+rephandle, replease, replockout, secondary_bad, einval,
 [a record number of 0 was specified;
 the m4_ref(DB_THREAD) flag was specified to the m4_refT(dbh_open) and
 none of the m4_ref(DB_DBT_MALLOC), m4_ref(DB_DBT_REALLOC) or

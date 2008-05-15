@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: os_map.c,v 12.18 2007/05/17 17:18:02 bostic Exp $
+ * $Id: os_map.c,v 12.25 2008/05/07 12:27:35 bschmeck Exp $
  */
 
 #include "db_config.h"
@@ -11,16 +11,16 @@
 #include "db_int.h"
 
 static int __os_map
-  __P((DB_ENV *, char *, REGINFO *, DB_FH *, size_t, int, int, int, void **));
+  __P((ENV *, char *, REGINFO *, DB_FH *, size_t, int, int, int, void **));
 static int __os_unique_name __P((_TCHAR *, HANDLE, _TCHAR *, size_t));
 
 /*
- * __os_r_sysattach --
+ * __os_attach --
  *	Create/join a shared memory region.
  */
 int
-__os_r_sysattach(dbenv, infop, rp)
-	DB_ENV *dbenv;
+__os_attach(env, infop, rp)
+	ENV *env;
 	REGINFO *infop;
 	REGION *rp;
 {
@@ -32,8 +32,8 @@ __os_r_sysattach(dbenv, infop, rp)
 	 * share data correctly.  For this reason, we require that DB_PRIVATE
 	 * be specified on that platform.
 	 */
-	if (!F_ISSET(dbenv, DB_ENV_PRIVATE) && __os_is_winnt() == 0) {
-		__db_err(dbenv,
+	if (!F_ISSET(env, ENV_PRIVATE) && __os_is_winnt() == 0) {
+		__db_err(env,
 		    EINVAL, "Windows 9X systems must specify DB_PRIVATE");
 		return (EINVAL);
 	}
@@ -43,10 +43,10 @@ __os_r_sysattach(dbenv, infop, rp)
 	 * threads/processes attempting to simultaneously create the region are
 	 * properly ordered, our caller has already taken care of that.
 	 */
-	if ((ret = __os_open(dbenv, infop->name, 0, DB_OSO_REGION |
+	if ((ret = __os_open(env, infop->name, 0, DB_OSO_REGION |
 	    (F_ISSET(infop, REGION_CREATE_OK) ? DB_OSO_CREATE : 0),
-	    dbenv->db_mode, &fhp)) != 0) {
-		__db_err(dbenv, ret, "%s", infop->name);
+	    env->db_mode, &fhp)) != 0) {
+		__db_err(env, ret, "%s", infop->name);
 		return (ret);
 	}
 
@@ -56,27 +56,30 @@ __os_r_sysattach(dbenv, infop, rp)
 	 * calling code writes out the REGENV_REF structure to the primary
 	 * environment file.
 	 */
-	ret = __os_map(dbenv, infop->name, infop, fhp, rp->size,
-	   1, F_ISSET(dbenv, DB_ENV_SYSTEM_MEM), 0, &infop->addr);
-	if (ret == 0 && F_ISSET(dbenv, DB_ENV_SYSTEM_MEM))
+	ret = __os_map(env, infop->name, infop, fhp, rp->size,
+	   1, F_ISSET(env, ENV_SYSTEM_MEM), 0, &infop->addr);
+	if (ret == 0 && F_ISSET(env, ENV_SYSTEM_MEM))
 		rp->segid = 1;
 
-	(void)__os_closehandle(dbenv, fhp);
+	(void)__os_closehandle(env, fhp);
 
 	return (ret);
 }
 
 /*
- * __os_r_sysdetach --
+ * __os_detach --
  *	Detach from a shared memory region.
  */
 int
-__os_r_sysdetach(dbenv, infop, destroy)
-	DB_ENV *dbenv;
+__os_detach(env, infop, destroy)
+	ENV *env;
 	REGINFO *infop;
 	int destroy;
 {
+	DB_ENV *dbenv;
 	int ret, t_ret;
+
+	dbenv = env->dbenv;
 
 	if (infop->wnt_handle != NULL) {
 		(void)CloseHandle(infop->wnt_handle);
@@ -85,16 +88,13 @@ __os_r_sysdetach(dbenv, infop, destroy)
 
 	ret = !UnmapViewOfFile(infop->addr) ? __os_get_syserr() : 0;
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "UnmapViewOfFile");
+		__db_syserr(env, ret, "UnmapViewOfFile");
 		ret = __os_posix_err(ret);
 	}
 
-	if (!F_ISSET(dbenv, DB_ENV_SYSTEM_MEM) && destroy) {
-		if (F_ISSET(dbenv, DB_ENV_OVERWRITE))
-			(void)__db_file_multi_write(dbenv, infop->name);
-		if ((t_ret = __os_unlink(dbenv, infop->name)) != 0 && ret == 0)
-			ret = t_ret;
-	}
+	if (!F_ISSET(env, ENV_SYSTEM_MEM) && destroy &&
+	    (t_ret = __os_unlink(env, infop->name, 1)) != 0 && ret == 0)
+		ret = t_ret;
 
 	return (ret);
 }
@@ -104,19 +104,34 @@ __os_r_sysdetach(dbenv, infop, destroy)
  *	Map in a shared memory file.
  */
 int
-__os_mapfile(dbenv, path, fhp, len, is_rdonly, addr)
-	DB_ENV *dbenv;
+__os_mapfile(env, path, fhp, len, is_rdonly, addr)
+	ENV *env;
 	char *path;
 	DB_FH *fhp;
 	int is_rdonly;
 	size_t len;
 	void **addr;
 {
+#ifdef DB_WINCE
+	/*
+	 * Windows CE has special requirements for file mapping to work. 
+	 * * The input handle needs to be opened using CreateFileForMapping
+	 * * Concurrent access via a non mapped file is not supported. 
+	 * So we disable support for memory mapping files on Windows CE. It is
+	 * currently only used as an optimization in mpool for small read only 
+	 * databases.
+	 */
+	return (EFAULT);
+#else
+	DB_ENV *dbenv;
+
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: mmap %s", path);
-
-	return (__os_map(dbenv, path, NULL, fhp, len, 0, 0, is_rdonly, addr));
+		__db_msg(env, "fileops: mmap %s", path);
+	return (__os_map(env, path, NULL, fhp, len, 0, 0, is_rdonly, addr));
+#endif
 }
 
 /*
@@ -124,14 +139,18 @@ __os_mapfile(dbenv, path, fhp, len, is_rdonly, addr)
  *	Unmap the shared memory file.
  */
 int
-__os_unmapfile(dbenv, addr, len)
-	DB_ENV *dbenv;
+__os_unmapfile(env, addr, len)
+	ENV *env;
 	void *addr;
 	size_t len;
 {
+	DB_ENV *dbenv;
+
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: munmap");
+		__db_msg(env, "fileops: munmap");
 
 	return (!UnmapViewOfFile(addr) ? __os_posix_err(__os_get_syserr()) : 0);
 }
@@ -209,8 +228,8 @@ __os_unique_name(orig_path, hfile, result_path, result_path_len)
  *	The mmap(2) function for Windows.
  */
 static int
-__os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
-	DB_ENV *dbenv;
+__os_map(env, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
+	ENV *env;
 	REGINFO *infop;
 	char *path;
 	DB_FH *fhp;
@@ -244,16 +263,16 @@ __os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 	 */
 	if (use_pagefile) {
 #ifdef DB_WINCE
-		__db_errx(dbenv, "Unable to memory map regions using system "
+		__db_errx(env, "Unable to memory map regions using system "
 		    "memory on WinCE.");
 		return (EFAULT);
 #endif
-		TO_TSTRING(dbenv, path, tpath, ret);
+		TO_TSTRING(env, path, tpath, ret);
 		if (ret != 0)
 			return (ret);
 		ret = __os_unique_name(tpath, fhp->handle,
 		    shmem_name, sizeof(shmem_name));
-		FREE_STRING(dbenv, tpath);
+		FREE_STRING(env, tpath);
 		if (ret != 0)
 			return (ret);
 	}
@@ -308,16 +327,16 @@ __os_map(dbenv, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 
 	if (hMemory == NULL) {
 		ret = __os_get_syserr();
-		__db_syserr(dbenv, ret, "OpenFileMapping");
-		return (__db_panic(dbenv, __os_posix_err(ret)));
+		__db_syserr(env, ret, "OpenFileMapping");
+		return (__env_panic(env, __os_posix_err(ret)));
 	}
 
 	pMemory = MapViewOfFile(hMemory,
 	    (is_rdonly ? FILE_MAP_READ : FILE_MAP_ALL_ACCESS), 0, 0, len);
 	if (pMemory == NULL) {
 		ret = __os_get_syserr();
-		__db_syserr(dbenv, ret, "MapViewOfFile");
-		return (__db_panic(dbenv, __os_posix_err(ret)));
+		__db_syserr(env, ret, "MapViewOfFile");
+		return (__env_panic(env, __os_posix_err(ret)));
 	}
 
 	/*

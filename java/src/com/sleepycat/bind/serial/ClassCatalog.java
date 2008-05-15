@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: ClassCatalog.java,v 12.5 2007/05/04 00:28:24 mark Exp $
+ * $Id: ClassCatalog.java,v 12.6 2008/01/08 20:58:35 bostic Exp $
  */
 
 package com.sleepycat.bind.serial;

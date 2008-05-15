@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: Xindex,v 10.24 2007/05/17 15:15:11 bostic Exp $
+# $Id: Xindex,v 10.25 2008/01/08 20:58:22 bostic Exp $
 
 test -d $BDB_SRC -a -d $TARGET || {
 	echo "Xindex: \$BDB_SRC or \$TARGET not set"
@@ -37,7 +37,7 @@ build()
 
 	echo "</table>"
 	echo "</center>"
-	echo "<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>"
+	echo "<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>"
 	echo "</body>"
 	echo "</html>"
 }

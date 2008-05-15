@@ -1,13 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: fileops.src,v 12.10 2007/05/17 18:17:19 bostic Exp $
+ * $Id: fileops.src,v 12.13 2008/01/30 04:30:41 mjc Exp $
  */
 
-PREFIX	__fop
 DBPRIVATE
+PREFIX	__fop
 
 INCLUDE #include "db_int.h"
 INCLUDE #include "dbinc/crypto.h"
@@ -61,7 +61,7 @@ ARG	appname		u_int32_t	lu
 ARG	pgsize		u_int32_t	lu
 ARG	pageno		db_pgno_t	lu
 ARG	offset		u_int32_t	lu
-PGDBT	page		DBT		s
+DBT	page		DBT		s
 ARG	flag		u_int32_t	lu
 END
 

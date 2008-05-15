@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: log009.tcl,v 12.8 2007/05/17 15:15:55 bostic Exp $
+# $Id: log009.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	log009
 # TEST	Test of logging and getting log file version information.

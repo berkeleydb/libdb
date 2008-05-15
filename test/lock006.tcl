@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: lock006.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: lock006.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	lock006
 # TEST	Test lock_vec interface.  We do all the same things that

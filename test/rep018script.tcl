@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep018script.tcl,v 12.9 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep018script.tcl,v 12.11 2008/01/08 20:58:53 bostic Exp $
 #
 # Rep018 script - concurrency with checkpoints.
 #
@@ -12,16 +12,18 @@
 # clientdir: client env directory
 # niter: number of items in file
 # dbfile: name of database file
+# rep_verbose: Is the test doing verbose reporting?
+# verbose_type: What subset of verbose messages?
 #
 source ./include.tcl
 source $test_path/test.tcl
 source $test_path/testutils.tcl
 source $test_path/reputils.tcl
 
-set usage "repscript clientdir niter dbfile method"
+set usage "repscript clientdir niter dbfile method rep_verbose verbose_type"
 
 # Verify usage
-if { $argc != 4 } {
+if { $argc != 6 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -31,6 +33,12 @@ set clientdir [ lindex $argv 0 ]
 set niter [ lindex $argv 1 ]
 set dbfile [ lindex $argv 2 ]
 set method [ lindex $argv 3 ]
+set rep_verbose [ lindex $argv 4 ]
+set verbose_type [ lindex $argv 5 ]
+set verbargs ""
+if { $rep_verbose == 1 } {
+	set verbargs " -verbose {$verbose_type on} "
+}
 
 # Join the queue env.  We assume the rep test convention of
 # placing the messages in $testdir/MSGQUEUEDIR.
@@ -45,11 +53,8 @@ repladd 1
 repladd 2
 
 # Join the client env.
-set cl_cmd "berkdb_env_noerr -home $clientdir \
+set cl_cmd "berkdb_env_noerr -home $clientdir $verbargs -errpfx CHILD \
 	-txn -rep_client -rep_transport \[list 2 replsend\]"
-# set cl_cmd "berkdb_env_noerr -home $clientdir \
-# 	-verbose {rep on} -errfile /dev/stderr \
-# 	-txn -rep_client -rep_transport \[list 2 replsend\]"
 set clientenv [eval $cl_cmd]
 error_check_good script_cenv_open [is_valid_env $clientenv] TRUE
 

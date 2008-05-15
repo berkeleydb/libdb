@@ -1,6 +1,6 @@
-m4_comment([$Id: db_del.so,v 10.49 2006/09/13 14:30:52 mjc Exp $])
+m4_comment([$Id: db_del.so,v 10.51 2007/10/24 16:06:06 bostic Exp $])
 
-define(M4PAGELOCAL, [dbh_del, DB_SECONDARY_BAD])
+define(M4PAGELOCAL, [dbh_del])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(dbh_del),
@@ -36,7 +36,8 @@ m4_param_key
 m4_param_txn(dbh_del)
 m4_paramend
 
-m4_err(dbh_del, deadlock, repinval, secondary_bad, readonly, einval)
+m4_err(dbh_del,
+    deadlock, rephandle, replockout, secondary_bad, readonly, einval)
 
 m4_seealso(Db)
 m4_page_footer

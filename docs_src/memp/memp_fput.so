@@ -1,4 +1,4 @@
-m4_comment([$Id: memp_fput.so,v 10.34 2006/11/30 19:06:50 bostic Exp $])
+m4_comment([$Id: memp_fput.so,v 10.35 2007/10/26 15:01:55 bostic Exp $])
 
 define(M4PAGELOCAL, memp_fput)
 include(m4/m4.seealso)
@@ -33,13 +33,13 @@ returned by the m4_refT(memp_fget).])
 m4_param(priority, [dnl
 Set the page's m4_arg(priority) as follows:
 m4_tagbegin
-m4_tagns(m4_idef(DB_PRIORITY_UNCHANGED), [The priority is unchanged.])
+m4_tag(m4_idef(DB_PRIORITY_UNCHANGED), [The priority is unchanged.])
 m4_tag(m4_idef(DB_PRIORITY_VERY_LOW), [dnl
 The lowest priority: pages are the most likely to be discarded.])
-m4_tagns(m4_idef(DB_PRIORITY_LOW), [The next lowest priority.])
-m4_tagns(m4_idef(DB_PRIORITY_DEFAULT), [The default priority.])
-m4_tagns(m4_idef(DB_PRIORITY_HIGH), [The next highest priority.])
-m4_tagns(m4_idef(DB_PRIORITY_VERY_HIGH), [dnl
+m4_tag(m4_idef(DB_PRIORITY_LOW), [The next lowest priority.])
+m4_tag(m4_idef(DB_PRIORITY_DEFAULT), [The default priority.])
+m4_tag(m4_idef(DB_PRIORITY_HIGH), [The next highest priority.])
+m4_tag(m4_idef(DB_PRIORITY_VERY_HIGH), [dnl
 The highest priority: pages are the least likely to be discarded.])
 m4_tagend])
 

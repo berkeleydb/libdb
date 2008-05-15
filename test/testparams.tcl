@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2007 Oracle.  All rights reserved.
+# Copyright (c) 2000,2008 Oracle.  All rights reserved.
 #
-# $Id: testparams.tcl,v 12.104 2007/07/12 16:26:08 carol Exp $
+# $Id: testparams.tcl,v 12.119 2008/02/06 15:13:44 sue Exp $
 
 source ./include.tcl
 global is_freebsd_test
@@ -10,7 +10,8 @@ global tcl_platform
 global rpc_tests
 global one_test
 global serial_tests
-set serial_tests {rep002 rep005 rep016 rep020 rep022 rep026 rep031 rep063}
+set serial_tests {rep002 rep005 rep016 rep020 rep022 rep026 rep031 rep063 \
+    rep078 rep079}
 
 set subs {bigfile dead env fop lock log memp plat recd rep rpc rsrc\
 	sdb sdbtest sec si test txn}
@@ -22,7 +23,7 @@ set test_names(dead)    [list dead001 dead002 dead003 dead004 dead005 dead006 \
 set test_names(elect)	[list rep002 rep005 rep016 rep020 rep022 rep026 \
     rep063 rep067 rep069 rep076]
 set test_names(env)	[list env001 env002 env003 env004 env005 env006 \
-    env007 env008 env009 env010 env011 env012 env013 env014 env015]
+    env007 env008 env009 env010 env011 env012 env013 env014 env015 env016]
 set test_names(fop)	[list fop001 fop002 fop003 fop004 fop005 fop006 \
     fop007 fop008]
 set test_names(init)	[list rep029 rep030 rep031 rep033 rep037 rep038 rep039\
@@ -43,8 +44,9 @@ set test_names(rep)	[list rep001 rep002 rep003 rep005 rep006 rep007 \
     rep028 rep029 rep030 rep031 rep032 rep033 rep034 rep035 rep036 rep037 \
     rep038 rep039 rep040 rep041 rep042 rep043 rep044 rep045 rep046 rep047 \
     rep048 rep049 rep050 rep051 rep052 rep053 rep054 rep055 rep056 rep057 \
-    rep058 rep060 rep061 rep062 rep063 rep064 rep066 rep067 rep068 \
-    rep069 rep070 rep071 rep072 rep073 rep074 rep075 rep076 rep077 ]
+    rep058 rep060 rep061 rep062 rep063 rep064 rep065 rep066 rep067 \
+    rep068 rep069 rep070 rep071 rep072 rep073 rep074 rep075 rep076 rep077 \
+    rep078 rep079 rep080]
 set test_names(rpc)	[list rpc001 rpc002 rpc003 rpc004 rpc005 rpc006]
 set test_names(rsrc)	[list rsrc001 rsrc002 rsrc003 rsrc004]
 set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
@@ -66,7 +68,7 @@ set test_names(test)	[list test001 test002 test003 test004 test005 \
     test087 test088 test089 test090 test091 test092 test093 test094 test095 \
     test096 test097 test098 test099 test100 test101 test102 test103 test107 \
     test109 test110 test111 test112 test113 test114 test115 test116 test117 \
-    test119 test120 test121 test122]
+    test119 test120 test121 test122 test123]
 set test_names(txn)	[list txn001 txn002 txn003 txn004 txn005 txn006 \
     txn007 txn008 txn009 txn010 txn011 txn012 txn013 txn014]
 
@@ -248,6 +250,8 @@ set parms(rep075) {"075"}
 set parms(rep076) ""
 set parms(rep077) {"077"}
 set parms(rep078) {"078"}
+set parms(rep079) {"079"}
+set parms(rep080) {200 "080"}
 set parms(subdb001) ""
 set parms(subdb002) 10000
 set parms(subdb003) 1000
@@ -403,6 +407,7 @@ set parms(test119) {"119"}
 set parms(test120) {"120"}
 set parms(test121) {"121"}
 set parms(test122) {"122"}
+set parms(test123) ""
 
 # RPC server executables.  Each of these is tested (if it exists)
 # when running the RPC tests.
@@ -446,4 +451,6 @@ set shelltest_list {
 	{ scr031	chk.xa }
 	{ scr032	chk.rpc }
 	{ scr033	chk.codegen }
+	{ scr034	chk.mtx }
+	{ scr035	chk.osdir }
 }

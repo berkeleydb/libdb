@@ -34,7 +34,7 @@ public class ExampleDatabaseLoad {
 
     private static void usage() {
         System.out.println("ExampleDatabaseLoad [-h <database home>]");
-        System.out.println("      [-s <selections file>] [-v <vendors file>]");
+        System.out.println("      [-i <inventory file>] [-v <vendors file>]");
         System.exit(-1);
     }
 

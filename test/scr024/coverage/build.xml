@@ -1,5 +1,5 @@
-<!-- $Id: build.xml,v 12.2 2006/06/09 14:32:17 mark Exp $ -->
-<project name="clover" default="test" basedir=".">
+<!-- $Id: build.xml,v 12.4 2008/02/08 22:10:16 mark Exp $ -->
+<project name="clover" default="build" basedir=".">
 
   <property name="db" location="../../.."/>
   <property name="src" location="${db}/java/src"/>
@@ -38,58 +38,111 @@
   </path>
 
   <target name="build" depends="init">
-    <javac destdir="classes" debug="on" source="1.3">
+    <javac destdir="classes" debug="on" source="1.5" target="1.5">
       <src path="${src}"/>
       <src path="${test.src}"/>
       <src path="${examples.src}"/>
       <exclude name="com/sleepycat/**/release/**"/>
       <exclude name="com/sleepycat/xa/**"/>
     </javac>
+    <!-- Compile original version of TestSerial.java.original. -->
     <property name="testserialpath"
               value="com/sleepycat/collections/test/serial/TestSerial"/>
     <copy file="${test.src}/${testserialpath}.java.original"
           tofile="${testserialdir}/${testserialpath}.java"/>
-    <javac destdir="${testserialdir}" debug="on" source="1.3"
+    <javac destdir="${testserialdir}" debug="on" source="1.5" target="1.5"
            includeAntRuntime="true" srcdir="${testserialdir}">
       <include name="${testserialpath}.java"/>
+    </javac>
+    <!-- Compile original version of EvolveClasses. -->
+    <copy file=
+      "${test.src}/com/sleepycat/persist/test/EvolveClasses.java.original"
+          tofile=
+      "testevolvedir/com/sleepycat/persist/test/EvolveClasses.java"/>
+    <copy file=
+      "${test.src}/com/sleepycat/persist/test/EvolveCase.java"
+          tofile=
+      "testevolvedir/com/sleepycat/persist/test/EvolveCase.java"/>
+    <copy file=
+      "${test.src}/com/sleepycat/persist/test/PersistTestUtils.java"
+          tofile=
+      "testevolvedir/com/sleepycat/persist/test/PersistTestUtils.java"/>
+    <javac debug="on" source="1.5" target="1.5" classpath="classes">
+      <src path="testevolvedir"/>
     </javac>
   </target>
 
   <target name="test" depends="build">
 
-    <!-- Performs initialization needed before StoredClassCatalogTest is run in
-         the <batchtest> below.
-    -->
+    <!-- Determine which tests to run. -->
+    <condition property="dotestserial">
+      <or>
+        <not><isset property="testcase"/></not>
+        <equals arg1="${testcase}" arg2=
+         "com.sleepycat.collections.test.serial.StoredClassCatalogTest"/>
+      </or>
+    </condition>
+    <condition property="dotestevolve">
+      <or>
+        <not><isset property="testcase"/></not>
+        <equals arg1="${testcase}"
+                arg2="com.sleepycat.persist.test.EvolveTest"/>
+      </or>
+    </condition>
+
+    <!-- Performs initialization needed before StoredClassCatalogTest. -->
     <junit fork="yes" dir="." printsummary="on" haltonfailure="on"
            showoutput="on">
+      <jvmarg value="-ea"/>
       <classpath path="${testserialdir}"/> <!-- Must be first -->
       <classpath refid="classpath"/>
+      <sysproperty key="testdestdir" value="./tmp"/>
+      <sysproperty key="longtest" value="${longtest}"/>
       <formatter type="plain" usefile="false"/>
       <formatter type="xml"/>
-      <test
-      name="com.sleepycat.collections.test.serial.StoredClassCatalogTestInit"
-            todir="reports"/>
+      <test name=
+            "com.sleepycat.collections.test.serial.StoredClassCatalogTestInit"
+            todir="reports" if="dotestserial"/>
     </junit>
 
+    <!-- Performs initialization needed before persist EvolveTest. -->
     <junit fork="yes" dir="." printsummary="on" haltonfailure="on"
            showoutput="on">
-      <formatter type="xml"/>
+      <jvmarg value="-ea"/>
+      <classpath path="testevolvedir"/>
       <classpath refid="classpath"/>
+      <sysproperty key="testdestdir" value="./tmp"/>
       <sysproperty key="longtest" value="${longtest}"/>
-      <batchtest todir="reports">
+      <formatter type="plain" usefile="false"/>
+      <formatter type="xml"/>
+      <test name="com.sleepycat.persist.test.EvolveTestInit"
+            todir="reports" if="dotestevolve"/>
+    </junit>
+
+    <!-- Performs testcase if set, or batch tests. -->
+    <junit fork="yes" dir="." printsummary="on" haltonfailure="on"
+           showoutput="on">
+      <jvmarg value="-ea"/>
+      <classpath refid="classpath"/>
+      <sysproperty key="testdestdir" value="./tmp"/>
+      <sysproperty key="longtest" value="${longtest}"/>
+      <formatter type="plain" usefile="false"/>
+      <formatter type="xml"/>
+      <test name="${testcase}" todir="reports" if="testcase"/>
+      <batchtest todir="reports" unless="testcase">
         <fileset dir="classes" includes="**/*Test.class"/>
       </batchtest>
-      <!--
-      -->
-      <!--
-      <test name="com.sleepycat.collections.KeyRangeTest" todir="reports"/>
-      <test name="com.sleepycat.collections.test.TransactionTest" todir="reports"/>
-      <test name="com.sleepycat.collections.test.CollectionTest" todir="reports"/>
-      -->
     </junit>
   </target>
 
+  <target name="testevolve" depends="build">
+  </target>
+
   <target name="examples" depends="build">
+    <echo message="=== HelloDatabaseWorld ==="/>
+    <java dir="." fork="yes" classpathref="classpath"
+         classname="collections.hello.HelloDatabaseWorld"/>
+    <echo message=""/>
     <antcall target="one_shipment_example">
       <param name="param_name" value="basic"/>
     </antcall>
@@ -111,10 +164,22 @@
     <antcall target="one_shipment_example">
       <param name="param_name" value="factory"/>
     </antcall>
-    <echo message=""/>
-    <echo message="=== HelloDatabaseWorld ==="/>
-    <java dir="." fork="yes" classpathref="classpath"
-         classname="collections.hello.HelloDatabaseWorld"/>
+    <antcall target="one_persist_example">
+      <param name="param_name" value="CustomKeyOrderExample"/>
+    </antcall>
+    <antcall target="one_persist_example">
+      <param name="param_name" value="EventExample"/>
+    </antcall>
+    <antcall target="one_persist_example">
+      <param name="param_name" value="EventExampleDPL"/>
+    </antcall>
+    <antcall target="one_persist_example">
+      <param name="param_name" value="PersonExample"/>
+    </antcall>
+    <antcall target="DplDump">
+      <param name="home" value="tmp"/>
+      <param name="store" value="PersonStore"/>
+    </antcall>
   </target>
 
   <target name="one_shipment_example">
@@ -123,6 +188,26 @@
     <mkdir dir="tmp"/>
     <java dir="." fork="yes" classpathref="classpath"
      classname="collections.ship.${param_name}.Sample"/>
+  </target>
+
+  <target name="one_persist_example">
+    <echo message="=== ${param_name} ==="/>
+    <delete dir="tmp"/>
+    <mkdir dir="tmp"/>
+    <java fork="yes" dir="." classname="persist.${param_name}">
+      <jvmarg value="-ea"/>
+      <arg line="-h tmp"/>
+      <classpath refid="classpath"/>
+    </java>
+  </target>
+
+  <target name="DplDump">
+    <echo message="=== DplDump ${home} ${store} ==="/>
+    <java fork="yes" dir="." classname="persist.DplDump">
+      <jvmarg value="-ea"/>
+      <arg line="-h ${home} -s ${store}"/>
+      <classpath refid="classpath"/>
+    </java>
   </target>
 
     <!-- Using fork="yes" does not work for AccessExample, apparently because

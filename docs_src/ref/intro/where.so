@@ -1,4 +1,4 @@
-m4_comment([$Id: where.so,v 10.32 2003/05/26 16:04:06 bostic Exp $])
+m4_comment([$Id: where.so,v 10.33 2008/05/05 17:43:38 carol Exp $])
 
 m4_ref_title(Introduction,
     Where does m4_db run?,, intro/distrib, intro/products)
@@ -24,10 +24,9 @@ m4_link(M4RELDIR/ref/build_unix/intro, Building for UNIX systems) for
 more information.])
 
 m4_p([dnl
-The m4_db distribution includes support for VxWorks, via a workspace
-and project files for Tornado 2.0.  See
-m4_link(M4RELDIR/ref/build_vxworks/intro, Building for VxWorks) for more
-information.])
+The m4_db distribution includes support for VxWorks.  See
+m4_link(M4RELDIR/ref/build_vxworks/intro6x, Building for VxWorks 6.x) 
+for more information.])
 
 m4_p([dnl
 The m4_db distribution includes support for Windows/95, Windows/98,

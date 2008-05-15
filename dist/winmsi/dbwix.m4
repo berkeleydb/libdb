@@ -1,4 +1,4 @@
-<!-- $Id: dbwix.m4,v 1.8 2006/09/14 15:50:50 mjc Exp $
+<!-- $Id: dbwix.m4,v 1.9 2008/04/17 01:59:10 alexg Exp $
  - This file is included by WiX input files to define m4 macros.
  - m4 is tricky.  It has NO notion of XML comments, so
  - take care using these names in comments after they are defined,
@@ -361,14 +361,14 @@ To continue, click Next.')
 
 <!-- Takes a 4th parameter, a short product name, like "Berkeley DB" -->
 m4_define(`DIALOG_LICENSE', `
-      <RadioGroup Property="LicenseType">
+      <RadioButtonGroup Property="LicenseType">
         <RadioButton Value="Open"
            X="0" Y="0" Width="310" Height="15"
            Text="I qualify for the &amp;open source license shown above" />
         <RadioButton Value="Commercial"
            X="0" Y="15" Width="310" Height="15"
            Text="I will need a co&amp;mmercial license when I ship my product" />
-      </RadioGroup>
+      </RadioButtonGroup>
 
       <Dialog Id="`$1'" DIALOGPROP>
 
@@ -391,12 +391,12 @@ m4_define(`DIALOG_LICENSE', `
 
 m4_define(`DIALOG_TARGET', `
 
-      <RadioGroup Property="ApplicationUsers">
+      <RadioButtonGroup Property="ApplicationUsers">
         <RadioButton Value="AnyUser" X="0" Y="0" Width="270" Height="15"
             Text="&amp;Anyone who uses this computer (all users)" />
         <RadioButton Value="CurUser" X="0" Y="15" Width="270" Height="15"
             Text="Only for the current user" />
-      </RadioGroup>
+      </RadioButtonGroup>
 
       <Dialog Id="`$1'" DIALOGPROP>
 
@@ -710,8 +710,6 @@ m4_define(`DIALOG_SUCCESS', `
       <Dialog Id="`$1'" DIALOGPROP>
         BOTTOMSTRIPE()
         NEXTBUTTON_GENERIC(Finish, Cancel="yes",
-          <Publish Event="DoAction" Value="CleanUp">
-            <![CDATA[ISSCRIPTRUNNING="1"]]></Publish>
           <Publish Event="EndDialog" Value="Exit">
             <![CDATA[1]]></Publish>
         )
@@ -741,8 +739,6 @@ m4_define(`DIALOG_ADMIN_INTERRUPTED', `
 
         BOTTOMSTRIPE()
         NEXTBUTTON_GENERIC(Finish, Cancel="yes",
-          <Publish Event="DoAction" Value="CleanUp">
-            <![CDATA[ISSCRIPTRUNNING="1"]]></Publish>
           <Publish Event="EndDialog" Value="Exit">
             <![CDATA[1]]></Publish>
           <Condition Action="default">
@@ -795,8 +791,6 @@ m4_define(`DIALOG_ADMIN_CANCEL', `
 
         <Control Id="YesButton" Type="PushButton"
                   X="60" Y="60" Width="66" Height="17" Text="&amp;Yes">
-          <Publish Event="DoAction" Value="CleanUp">
-                 <![CDATA[ISSCRIPTRUNNING="1"]]></Publish>
           <Publish Event="EndDialog" Value="Exit"><![CDATA[1]]></Publish>
         </Control>
 

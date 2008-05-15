@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep015.tcl,v 12.12 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep015.tcl,v 12.14 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep015
 # TEST	Locking across multiple pages with replication.
@@ -64,10 +64,11 @@ proc rep015 { method { nentries 100 } { tnum "015" } { ndb 3 } args } {
 proc rep015_sub { method nentries tnum ndb logset recargs largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

@@ -71,7 +71,7 @@ import java.util.Comparator;
 	private ReplicationTransport rep_transport_handler;
 	private java.io.OutputStream error_stream;
 	private java.io.OutputStream message_stream;
-	private ThreadLocal errMsg;
+	private ThreadLocal errBuf;
 
 	public static class RepProcessMessage {
 		public int envid;
@@ -83,7 +83,7 @@ import java.util.Comparator;
 	 */
 	void initialize() {
 		dbenv_ref = db_java.initDbEnvRef0(this, this);
-		errMsg = new ThreadLocal();
+		errBuf = new ThreadLocal();
 		/* Start with System.err as the default error stream. */
 		set_error_stream(System.err);
 		set_message_stream(System.out);
@@ -169,27 +169,29 @@ import java.util.Comparator;
 	}
 
 	private final void handle_error(String msg) {
-		StringBuffer tbuf = (StringBuffer) errMsg.get();
-		/*
-		 * Populate the errMsg ThreadLocal on demand, since the
-		 * callback can be made from different threads.
-		 */
-		if (tbuf == null) {
-			tbuf = new StringBuffer();
-			errMsg.set(tbuf);
+		com.sleepycat.util.ErrorBuffer ebuf = (com.sleepycat.util.ErrorBuffer)errBuf.get();
+		if (ebuf == null) {
+			/*
+			 * Populate the errBuf ThreadLocal on demand, since the
+			 * callback can be made from different threads.
+			 */
+			ebuf = new com.sleepycat.util.ErrorBuffer(3);
+			errBuf.set(ebuf);
 		}
-		tbuf.append(msg);
+		ebuf.append(msg);
 		error_handler.error(wrapper, this.errpfx, msg);
 	}
 
 	private final String get_err_msg(String orig_msg) {
+		com.sleepycat.util.ErrorBuffer ebuf = (com.sleepycat.util.ErrorBuffer)errBuf.get();
 		String ret = null;
-		StringBuffer tbuf = (StringBuffer) errMsg.get();
-		if (tbuf != null) {
-			ret = tbuf.toString();
-			tbuf.delete(0, tbuf.length());
+		if (ebuf != null) {
+			ret = ebuf.get();
+			ebuf.clear();
 		}
-		return orig_msg + ": " + ret;
+		if (ret != null && ret.length() > 0)
+			return orig_msg + ": " + ret;
+		return orig_msg;
 	}
 
 	public ErrorHandler get_errcall() {
@@ -228,7 +230,7 @@ import java.util.Comparator;
 	public void lock_vec(/*u_int32_t*/ int locker, int flags,
 			     LockRequest[] list, int offset, int count)
 	    throws DatabaseException {
-		db_javaJNI.DbEnv_lock_vec(swigCPtr, locker, flags, list,
+		db_javaJNI.DbEnv_lock_vec(swigCPtr, this, locker, flags, list,
 		    offset, count);
 	}
 
@@ -301,6 +303,8 @@ import java.util.Comparator;
 	private Hasher h_hash_handler;
 	private SecondaryKeyCreator seckey_create_handler;
 	private SecondaryMultiKeyCreator secmultikey_create_handler;
+	private ForeignKeyNullifier foreignkey_nullify_handler;
+	private ForeignMultiKeyNullifier foreignmultikey_nullify_handler;
 
 	/* Called by the Db constructor */
 	private void initialize(DbEnv dbenv) {
@@ -400,6 +404,19 @@ import java.util.Comparator;
 		return h_hash_handler;
 	}
 
+	private final boolean handle_foreignkey_nullify(
+					       DatabaseEntry key,	
+					       DatabaseEntry data,	
+					       DatabaseEntry seckey)
+	    throws DatabaseException {
+		if (foreignmultikey_nullify_handler != null)
+			return foreignmultikey_nullify_handler.nullifyForeignKey(
+			    (SecondaryDatabase)wrapper, key, data, seckey);
+		else
+			return foreignkey_nullify_handler.nullifyForeignKey(
+			    (SecondaryDatabase)wrapper, data);
+	}
+
 	private final DatabaseEntry[] handle_seckey_create(
 					       DatabaseEntry key,
 					       DatabaseEntry data)
@@ -432,9 +449,13 @@ import java.util.Comparator;
 		return secmultikey_create_handler;
 	}
 
-	public void get_secmultikey_create(
+	public void set_secmultikey_create(
 	    SecondaryMultiKeyCreator secmultikey_create_handler) {
 		this.secmultikey_create_handler = secmultikey_create_handler;
+	}
+
+	public void set_foreignmultikey_nullifier(ForeignMultiKeyNullifier nullify){
+		this.foreignmultikey_nullify_handler = nullify;
 	}
 
 	public synchronized void remove(String file, String database, int flags)
@@ -620,31 +641,33 @@ import java.util.Comparator;
 %native(getDbEnv0) DB_ENV *getDbEnv0(DB *self);
 
 %{
-JNIEXPORT jlong JNICALL
+SWIGEXPORT jlong JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_initDbEnvRef0(
-    JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
+    JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobject jarg2) {
 	DB_ENV *self = *(DB_ENV **)(void *)&jarg1;
 	jlong ret;
 	COMPQUIET(jcls, NULL);
+	COMPQUIET(jarg1_, NULL);
 
 	DB_ENV_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
 	*(jobject *)(void *)&ret = (jobject)DB_ENV_INTERNAL(self);
 	return (ret);
 }
 
-JNIEXPORT jlong JNICALL
+SWIGEXPORT jlong JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_initDbRef0(
-    JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg2) {
+    JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobject jarg2) {
 	DB *self = *(DB **)(void *)&jarg1;
 	jlong ret;
 	COMPQUIET(jcls, NULL);
+	COMPQUIET(jarg1_, NULL);
 
 	DB_INTERNAL(self) = (void *)(*jenv)->NewGlobalRef(jenv, jarg2);
 	*(jobject *)(void *)&ret = (jobject)DB_INTERNAL(self);
 	return (ret);
 }
 
-JNIEXPORT void JNICALL
+SWIGEXPORT void JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_deleteRef0(
     JNIEnv *jenv, jclass jcls, jlong jarg1) {
 	jobject jref = *(jobject *)(void *)&jarg1;
@@ -654,20 +677,21 @@ Java_com_sleepycat_db_internal_db_1javaJNI_deleteRef0(
 		(*jenv)->DeleteGlobalRef(jenv, jref);
 }
 
-JNIEXPORT jlong JNICALL
+SWIGEXPORT jlong JNICALL
 Java_com_sleepycat_db_internal_db_1javaJNI_getDbEnv0(
-    JNIEnv *jenv, jclass jcls, jlong jarg1) {
+    JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
 	DB *self = *(DB **)(void *)&jarg1;
 	jlong ret;
 
 	COMPQUIET(jenv, NULL);
 	COMPQUIET(jcls, NULL);
+	COMPQUIET(jarg1_, NULL);
 
 	*(DB_ENV **)(void *)&ret = self->dbenv;
 	return (ret);
 }
 
-JNIEXPORT jboolean JNICALL
+SWIGEXPORT jboolean JNICALL
 Java_com_sleepycat_db_internal_DbUtil_is_1big_1endian(
     JNIEnv *jenv, jclass clazz)
 {

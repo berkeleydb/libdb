@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep025.tcl,v 12.18 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep025.tcl,v 12.20 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep025
 # TEST  Test of DB_REP_JOIN_FAILURE.
@@ -58,10 +58,11 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

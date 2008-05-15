@@ -1,4 +1,4 @@
-m4_comment([$Id: dbc_put.so,v 10.63 2007/05/03 15:20:37 bostic Exp $])
+m4_comment([$Id: dbc_put.so,v 10.64 2007/10/24 16:06:07 bostic Exp $])
 
 define(M4PAGELOCAL,
 	[dbc_put, DB_AFTER, DB_BEFORE, DB_CURRENT, DB_KEYFIRST,
@@ -121,7 +121,7 @@ m4_tagend])
 m4_param_key
 m4_paramend
 
-m4_err(dbc_put, deadlock, readonly, repinval, einval,
+m4_err(dbc_put, deadlock, rephandle, replockout, readonly, einval,
 [the m4_ref(DB_AFTER), m4_ref(DB_BEFORE) or m4_ref(DB_CURRENT) flags
 were specified and the cursor has not been initialized;
 the m4_ref(DB_AFTER) or m4_ref(DB_BEFORE) flags were specified and a

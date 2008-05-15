@@ -1,4 +1,4 @@
-m4_comment([$Id: logfile.so,v 11.9 2002/11/13 21:49:24 bostic Exp $])
+m4_comment([$Id: logfile.so,v 11.11 2008/02/28 23:11:44 mjc Exp $])
 
 m4_ref_title(m4_tam Applications,
     Log file removal,
@@ -48,8 +48,8 @@ m4_ref(DB_ARCH_REMOVE) flag, to remove any log files that are no longer
 needed at the time the call is made.])
 
 m4_nlist([dnl
-Call the m4_refT(dbenv_set_flags) from the application, with the
-m4_ref(DB_LOG_AUTOREMOVE) flag, to remove any log files that are no
+Call the m4_refT(dbenv_log_set_config) from the application, with the
+m4_ref(DB_LOG_AUTO_REMOVE) flag, to remove any log files that are no
 longer needed on an ongoing basis.  With this configuration, m4_db will
 automatically remove log files, and the application will not have an
 opportunity to copy the log files to backup media.])

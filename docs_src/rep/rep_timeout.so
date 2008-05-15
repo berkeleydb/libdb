@@ -1,10 +1,10 @@
-m4_comment([$Id: rep_timeout.so,v 1.5 2007/03/02 18:46:41 bostic Exp $])
+m4_comment([$Id: rep_timeout.so,v 1.12 2008/04/29 22:55:48 mbrey Exp $])
 
 define(M4PAGELOCAL,
 	[rep_set_timeout, rep_get_timeout, DB_REP_ACK_TIMEOUT,
 	DB_REP_CONNECTION_RETRY,
 	DB_REP_ELECTION_TIMEOUT, DB_REP_ELECTION_RETRY,
-	DB_REP_FULL_ELECTION_TIMEOUT])
+	DB_REP_FULL_ELECTION_TIMEOUT, DB_REP_LEASE_TIMEOUT])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(rep_set_timeout),
@@ -27,6 +27,12 @@ m4_p([dnl
 The m4_refT(rep_set_timeout) specifies a variety of replication timeout
 values.])
 
+m4_env_config(rep_set_timeout, replication subsystem, rep_set_timeout, [dnl
+the m4_arg(which) parameter specified as a string and the timeout
+specified as two parts.
+For example, "rep_set_timeout DB_REP_CONNECTION_RETRY 15000000"
+specifies the connection retry timeout for 15 seconds])
+
 m4_scope_env(rep_set_timeout)
 m4_when_any(rep_set_timeout)
 m4_return(rep_set_timeout, std)
@@ -42,10 +48,14 @@ function waits to collect enough acknowledgments from replication group
 clients, before giving up and returning a failure indication.  The
 default wait time is 1 second.])
 m4_tag(m4_idef(DB_REP_CHECKPOINT_DELAY), [dnl
-Configure the amount of time the replication manager will delay between
+Configure the amount of time a master site will delay between
 completing a checkpoint and writing a checkpoint record into the log.
 This delay allows clients to complete their own checkpoints before the
-master requires completion of them.  The default is 30 seconds.])
+master requires completion of them.  The default is 30 seconds.
+If all databases in the environment, and the environment's
+transaction log, are configured to reside in memory (never
+preserved to disk), then, although checkpoints are still
+necessary, the delay is not useful and should be set to 0.])
 m4_tag(m4_idef(DB_REP_CONNECTION_RETRY), [dnl
 Configure the amount of time the replication manager will wait before
 trying to re-establish a connection to another site after a communication
@@ -62,6 +72,24 @@ By default this option is turned off and normal election
 timeouts are used.
 (See the m4_link(M4RELDIR/ref/rep/elect, [Elections])
 section in the m4_db Reference Guide for more information.)])
+m4_tag(m4_idef(DB_REP_HEARTBEAT_MONITOR), [dnl
+The amount of time the replication manager, running at a client site,
+waits for some message activity on the connection from the master
+(heartbeats or other messages) before concluding that the connection
+has been lost.  When 0 (the default), no monitoring is performed.
+])
+m4_tag(m4_idef(DB_REP_HEARTBEAT_SEND), [dnl
+The frequency at which the replication manager, running at a master site,
+broadcasts a heartbeat message in an otherwise idle system.  When 0
+(the default), no heartbeat messages will be sent.])
+m4_tag(m4_idef(DB_REP_LEASE_TIMEOUT), [dnl
+Configure the amount of time a client grants its master lease
+to a master.  When using master leases all sites in a replication
+group must use the same lease timeout value.  There is no default
+value.  If leases are desired, this method must be called prior
+to calling m4_refT(rep_start).  See also m4_refT(rep_set_clockskew),
+m4_refT(rep_set_config) or
+m4_link(M4RELDIR/ref/rep/lease, [Master leases]).])
 m4_tagend
 
 m4_param(timeout, [dnl

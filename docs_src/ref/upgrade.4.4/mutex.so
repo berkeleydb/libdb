@@ -1,4 +1,4 @@
-m4_comment([$Id: mutex.so,v 1.3 2005/11/08 02:45:20 bostic Exp $])
+m4_comment([$Id: mutex.so,v 1.4 2007/09/26 15:11:32 bostic Exp $])
 
 m4_ref_title(Upgrading m4_db Applications,
     Release 4.4: mutexes,,
@@ -13,7 +13,7 @@ use the new method names.])
 
 m4_p([dnl
 For backward compatibility, the string "set_tas_spins" is still supported
-in DB_CONFIG files.])
+in m4_ref(DB_CONFIG) files.])
 
 m4_p([dnl
 The --with-mutexalign=ALIGNMENT compile-time configuration option has

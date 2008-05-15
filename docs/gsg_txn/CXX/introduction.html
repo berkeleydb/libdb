@@ -79,7 +79,7 @@
       </div>
       <p>
     This book provides a thorough introduction and discussion on transactions as
-    used with Berkeley DB (DB). It begins by offering a general overview to
+    used with Berkeley DB (DB).  It begins by offering a general overview to
     transactions, the guarantees they provide, and the general application
     infrastructure required to obtain full transactional protection for your
     data. 
@@ -272,6 +272,12 @@
                     Environments are optional for non-transactional
                     applications, but they are required for transactional
                     applications.
+                </p>
+                <p>
+                    Environments are optional for non-transactional
+                    applications that use the base API, but they are required for transactional
+                    applications. (Of course, applications that use the
+                    DPL always require the DPL.)
                 </p>
                 <p>
                     Environment usage is described in detail in 

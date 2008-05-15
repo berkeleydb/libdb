@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_mkdir.c,v 1.4 2007/05/17 15:15:47 bostic Exp $
+ * $Id: os_mkdir.c,v 1.6 2008/01/08 20:58:44 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Create a directory.
  */
 int
-__os_mkdir(dbenv, name, mode)
-	DB_ENV *dbenv;
+__os_mkdir(env, name, mode)
+	ENV *env;
 	const char *name;
 	int mode;
 {
@@ -25,14 +25,14 @@ __os_mkdir(dbenv, name, mode)
 
 	COMPQUIET(mode, 0);
 
-	FILE_MANAGER_CREATE(dbenv, ifmp, ret);
+	FILE_MANAGER_CREATE(env, ifmp, ret);
 	if (ret != 0)
 		return (ret);
 
 	if (IFILEMGR_MkDir(ifmp, name) == SUCCESS)
 		ret = 0;
 	else
-		FILE_MANAGER_ERR(dbenv, ifmp, name, "IFILEMGR_MkDir", ret);
+		FILE_MANAGER_ERR(env, ifmp, name, "IFILEMGR_MkDir", ret);
 
 	IFILEMGR_Release(ifmp);
 

@@ -1,0 +1,15 @@
+m4_comment([$Id: tcl.so,v 1.5 2008/01/12 13:42:41 bostic Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Release 4.7: Tcl API,,
+    upgrade.4.7/repapi, upgrade.4.7/interdir)
+
+m4_p([dnl
+The m4_db Tcl API does not attempt to avoid evaluating input as Tcl
+commands. For this reason, it may be dangerous to pass unreviewed user
+input through the m4_db Tcl API, as the input may subsequently be
+evaluated as a Tcl command.  To minimize the effectiveness of a Tcl
+injection attack, the m4_db Tcl API in the 4.7 release routine resets
+process' effective user and group IDs to the real user and group IDs.])
+
+m4_page_footer

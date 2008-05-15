@@ -1,4 +1,4 @@
-# $Id: README,v 1.5 2007/05/29 17:32:27 bostic Exp $
+# $Id: README,v 1.6 2007/12/21 19:22:01 bostic Exp $
 
 A simple framework for core Berkeley DB micro-benchmarks, intended for
 two purposes: to certify a port of Berkeley DB to a new platform, and
@@ -9,19 +9,20 @@ releases.
 To run the tests:
 
 1. Unpack and build the Berkeley DB releases you want to run against.
+(Note that test_micro is only known to work on release 4.0 and later.)
 
 2. Run the tests:
 
 	% sh test_micro
 
    By default, tests are run for all of the Berkeley DB builds found in
-   the current working directory.  A build is identified by its top-level
-   name, and is expected to be of the form:
+   the current working directory.  A build is identified by its
+   top-level name, and is expected to be of the form:
 
 	   db-<major>.<minor>.<patch>
 
    and the fact the Berkeley DB library has been built in the standard
-   location in that directory tree (for example, in "build_unix".
+   location in that directory tree (for example, "build_unix/libdb.a".
    Directories with other names and directories without a library will
    be ignored.
 
@@ -42,28 +43,27 @@ To run the tests:
 3. If you want to generate the micro-benchmark output build the HTML
    page after the run:
 
-	% sh test_micro html
+	% sh report
 
    The output of the tests and the web page are created in the directory
    RUN.hostname (for example, "RUN.abyssinian").  The tests are numeric
-   filenames (for example, "1", "2", "36").  The web page output is in the
-   file "test_micro.html".
+   filenames in that directory (for example, "1", "2", "36").  The web
+   page output is in the file "hostname.html".
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+To run different test configurations:
+
+1. Modify the configuration files in the configs/ directory to run the
+   tests you want to run.  The configuration file configs/run.std is the
+   tests that are run by the test_micro shell script.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 To add a new test program:
 
-1. Add a new file to the SOURCE directory.  If you're using gcc as your
-   compiler, the default compile line is:
-
-	gcc -O3 -Wall -lpthread -I. source.c -o t libdb.a
-
-   otherwise, the default compile line is
-
-	cc -O2 -I. source.c -o t libdb.a
-
-   If your compiler offers different or better optimization, and you're
-   running the script to output benchmark results, you should change the
-   run script to take advantage of your compiler's optimization options.
+1. Add a new file to the SOURCE directory, and build it as part of
+   building the test_micro program.   This will require changes to
+   the test_micro shell script, as well as the standard build rules
+   for all of the Berkeley DB systems, found in the dist/ directory.
 
    The file must output the following line on stdout:
 
@@ -76,17 +76,9 @@ To add a new test program:
 	3.0.55  29600.69
 	3.1.17  30438.25
 
-2. Add a new line to the "runone" function in the shell script "test_micro"
-   as follows:
+2. Modify the file test_micro/test_micro.c to exec your new command
+   (this should only require changing the cmdlist structure at the top
+   of that file).
 
-	#) runone $1 source-file "./t command-line";;
-
-   For example:
-
-	27) runone $1 b_curwalk.c "./t -c 100000 -t btree -w 100";;
-	28) runone $1 b_curwalk.c "./t -c 100000 -t hash" -w 100;;
-	29) runone $1 b_curwalk.c "./t -c 100000 -t queue" -w 100;;
-	30) runone $1 b_curwalk.c "./t -c 100000 -t recno" -w 100;;
-
-3. Update the value of the shell script "test_micro" variable "maxtest" to
-   be the new maximum test number.
+3. Modify the test_micro configuration files in the configs/ directory
+   to run your new command.

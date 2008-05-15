@@ -1,5 +1,5 @@
 <!--$Id: term.so,v 10.19 2005/09/23 16:26:40 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,56 +9,55 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></b></td>
 <td align=right><a href="../transapp/why.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/fail.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Terminology</h3>
+<p align=center><b>Terminology</b></p>
 <p>Here are some definitions that will be helpful in understanding
 transactions:</p>
-<dl compact>
-<dt>Thread of control<dd>Berkeley DB is indifferent to the type or style of threads being used by the
+<br>
+<b>Thread of control</b><ul compact><li>Berkeley DB is indifferent to the type or style of threads being used by the
 application; or, for that matter, if threads are being used at all --
 because Berkeley DB supports multiprocess access.  In the Berkeley DB documentation,
 any time we refer to a <i>thread of control</i>, it can be read as
 a true thread (one of many in an application's address space) or a
-process.
-<dt>Free-threaded<dd>A Berkeley DB handle that can be used by multiple threads simultaneously
+process.</ul>
+<b>Free-threaded</b><ul compact><li>A Berkeley DB handle that can be used by multiple threads simultaneously
 without any application-level synchronization is called
-<i>free-threaded</i>.
-<dt>Transaction<dd>A <i>transaction</i> is a one or more operations on one or more
+<i>free-threaded</i>.</ul>
+<b>Transaction</b><ul compact><li>A <i>transaction</i> is a one or more operations on one or more
 databases that should be treated as a single unit of work.  For example,
 changes to a set of databases, in which either all of the changes must be
 applied to the database(s) or none of them should.  Applications specify
 when each transaction starts, what database operations are included in
-it, and when it ends.
-<dt>Transaction abort/commit<dd>Every transaction ends by <i>committing</i> or <i>aborting</i>.
+it, and when it ends.</ul>
+<b>Transaction abort/commit</b><ul compact><li>Every transaction ends by <i>committing</i> or <i>aborting</i>.
 If a transaction commits, Berkeley DB guarantees that any database changes
 included in the transaction will never be lost, even after system or
 application failure.  If a transaction aborts, or is uncommitted when
 the system or application fails, then the changes involved will never
-appear in the database.
-<dt>System or application failure<dd><i>System or application failure</i> is the phrase we use to
+appear in the database.</ul>
+<b>System or application failure</b><ul compact><li><i>System or application failure</i> is the phrase we use to
 describe something bad happening near your data.  It can be an
 application dumping core, being interrupted by a signal, the disk
 filling up, or the entire system crashing.  In any case, for whatever
 reason, the application can no longer make forward progress, and its
-databases are left in an unknown state.
-<dt>Recovery<dd><i>Recovery</i> is what makes the database consistent after a system
+databases are left in an unknown state.</ul>
+<b>Recovery</b><ul compact><li><i>Recovery</i> is what makes the database consistent after a system
 or application failure.  The recovery process includes review of log
 files and databases to ensure that the changes from each committed
 transaction appear in the database, and that no changes from an
 unfinished (or aborted) transaction do.  Whenever system or application
-failure occurs, applications must usually run recovery.
-<dt>Deadlock<dd><i>Deadlock</i>, in its simplest form, happens when one thread of
+failure occurs, applications must usually run recovery.</ul>
+<b>Deadlock</b><ul compact><li><i>Deadlock</i>, in its simplest form, happens when one thread of
 control owns resource A, but needs resource B; while another thread of
 control owns resource B, but needs resource A.  Neither thread of
 control can make progress, and so one has to give up and release all
 its resources, at which time the remaining thread of control can make
-forward progress.
-</dl>
+forward progress.</ul>
+<br>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/why.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/fail.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

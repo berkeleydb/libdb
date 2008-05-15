@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: bigfile001.tcl,v 12.6 2007/05/17 15:15:55 bostic Exp $
+# $Id: bigfile001.tcl,v 12.8 2008/04/22 09:39:29 winter Exp $
 #
 # TEST	bigfile001
 # TEST	Create a database greater than 4 GB in size.  Close, verify.
@@ -16,7 +16,11 @@ proc bigfile001 { { itemsize 4096 } \
 	set method "btree"
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
-
+	global is_fat32
+	if { $is_fat32 } {
+		puts "Skipping bigfile001 for FAT32 file system."
+		return
+	}
 	puts "Bigfile001: $method ($args) $nitems * $itemsize bytes of data"
 
 	env_cleanup $testdir

@@ -1,5 +1,5 @@
-<!--$Id: log.so,v 1.2 2004/09/28 14:13:09 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: log.so,v 1.3 2008/04/30 15:29:34 mbrey Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></b></td>
 <td align=right><a href="../upgrade.4.3/verb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.3/fileopen.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Release 4.3: Logging</h3>
+<p align=center><b>Release 4.3: Logging</b></p>
 <p>In previous releases, the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method flag
 DB_TXN_NOT_DURABLE specified that transactions for the entire database
 environment were not durable.  However, it was not possible to set this
@@ -21,12 +20,11 @@ flag in environments that were part of replication groups, and physical
 log files were still created.  The 4.3 release adds support for true
 in-memory logging for both replication and non-replicated sites.</p>
 <p>Existing applications setting the DB_TXN_NOT_DURABLE flag for database
-environments should be upgraded to set the <a href="../../api_c/env_set_flags.html#DB_LOG_INMEMORY">DB_LOG_INMEMORY</a> flag
-instead.</p>
+environments should be upgraded to set the DB_LOG_INMEMORY flag instead.</p>
 <p>In previous releases, log buffer sizes were restricted to be less than
 or equal to the log file size; this restriction is no longer required.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.4.3/verb.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.3/fileopen.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

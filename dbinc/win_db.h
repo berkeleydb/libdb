@@ -1,16 +1,9 @@
 /*-
- * $Id: win_db.h,v 12.25 2007/06/29 14:11:25 alexg Exp $
+ * $Id: win_db.h,v 12.26 2008/03/19 07:18:07 alexg Exp $
  *
  * The following provides the information necessary to build Berkeley
  * DB on native Windows, and other Windows environments such as MinGW.
  */
-
-/*
- * Avoid warnings with Visual Studio 8.
- */
-#ifndef _CRT_SECURE_NO_DEPRECATE
-#define	_CRT_SECURE_NO_DEPRECATE 1
-#endif
 
 /*
  * Windows NT 4.0 and later required for the replication manager.

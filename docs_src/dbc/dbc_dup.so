@@ -1,4 +1,4 @@
-m4_comment([$Id: dbc_dup.so,v 10.33 2006/10/24 13:26:50 bostic Exp $])
+m4_comment([$Id: dbc_dup.so,v 10.34 2007/10/24 16:06:07 bostic Exp $])
 
 define(M4PAGELOCAL, [dbc_dup, DB_POSITION])
 include(m4/m4.seealso)
@@ -36,7 +36,7 @@ using m4_ref(dbh_cursor).])
 m4_tagend])
 m4_paramend
 
-m4_err(dbc_dup, repinval, einval)
+m4_err(dbc_dup, rephandle, replockout, einval)
 
 m4_seealso(Dbc)
 m4_page_footer

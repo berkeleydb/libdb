@@ -1,4 +1,4 @@
-m4_comment([$Id: db_put.so,v 10.59 2006/09/13 14:30:52 mjc Exp $])
+m4_comment([$Id: db_put.so,v 10.60 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL, [dbh_put, DB_APPEND, DB_NODUPDATA, DB_NOOVERWRITE])
 include(m4/m4.seealso)
@@ -72,7 +72,7 @@ m4_paramend
 
 m4_idefz(DB_REP_HANDLE_DEAD)
 m4_idefz(DB_REP_LOCKOUT)
-m4_err(dbh_put, deadlock, readonly, repinval, einval,
+m4_err(dbh_put, deadlock, rephandle, replockout, readonly, einval,
 [a record number of 0 was specified;
 an attempt was made to add a record to a fixed-length database that was too
 large to fit;

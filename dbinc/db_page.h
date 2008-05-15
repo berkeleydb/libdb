@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_page.h,v 12.13 2007/05/17 15:15:05 bostic Exp $
+ * $Id: db_page.h,v 12.15 2008/01/10 17:44:45 bostic Exp $
  */
 
 #ifndef _DB_PAGE_H_
@@ -657,10 +657,10 @@ typedef struct _rinternal {
 #define	RINTERNAL_PSIZE							\
 	(RINTERNAL_SIZE + sizeof(db_indx_t))
 
-struct pglist {
+typedef struct __pglist {
 	db_pgno_t pgno;
 	DB_LSN lsn;
-};
+} db_pglist_t;
 
 #if defined(__cplusplus)
 }

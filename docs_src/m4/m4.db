@@ -1,4 +1,4 @@
-dnl $Id: m4.db,v 10.188 2007/07/12 18:27:43 bostic Exp $
+dnl $Id: m4.db,v 10.194 2008/01/23 21:15:45 sarette Exp $
 
 include(m4/m4.init)
 include(m4/m4.html)
@@ -96,7 +96,7 @@ environment variable m4_envvar(DB_HOME) may be used as the path of the
 database environment home.])
 m4_p([m4_ref($1) is affected by any database directory specified using
 the m4_refT(dbenv_set_data_dir), or by setting the "set_data_dir" string
-in the environment's m4_path(DB_CONFIG) file.])])
+in the environment's m4_ref(DB_CONFIG) file.])])
 
 dnl When the method has a corresponding DB_CONFIG file entry.
 dnl	#1: method
@@ -106,13 +106,13 @@ dnl	#4: syntax
 dnl	#5: "no" if doesn't overrule other configuration.
 define(m4_env_config, [m4_p([dnl
 The database environment's $2 may also be configured using the
-environment's m4_path(DB_CONFIG) file.  The syntax of the entry in that
+environment's m4_ref(DB_CONFIG) file.  The syntax of the entry in that
 file is a single line with the string "$3", one or more whitespace
 characters, and $4.
 ifelse([$5], no,, [dnl
-Because the m4_path(DB_CONFIG) file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.])])])
+Because the m4_ref(DB_CONFIG) file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.])])])
 
 define(m4_env_flags, [dnl
 m4_idefz([use @environment constants in naming])
@@ -131,6 +131,14 @@ are used can create security problems, if the
 DB_USE_ENVIRON_ROOT flag is set, environment information will
 be used for file naming only for users with appropriate permissions (for
 example, users with a user-ID of 0 on UNIX systems).])])
+
+define(m4_env_flags_any, [m4_p([dnl
+The m4_ref($1) flag may be used to configure m4_db at any time during
+the life of the application.])])
+
+define(m4_env_flags_open, [m4_p([dnl
+The m4_ref($1) flag may be used to configure m4_db only $2 the
+m4_refT(dbenv_open) is called.])])
 
 dnl ###################################################################
 dnl DOCUMENT AN UNDERLYING FUNCTION:
@@ -205,7 +213,8 @@ The information is printed to a specified output channel (see the
 m4_refT(dbenv_set_msgfile) for more information), or passed to an
 application callback function (see the m4_refT(dbenv_set_msgcall) for
 more information).])
-ifelse($1, dbh_stat_print, m4_when_after_dbopen($1), m4_when_after_envopen($1))
+ifelse($1, dbh_stat_print,
+    m4_when($1, before, dbh_open), m4_when($1, before, dbenv_open))
 m4_return($1, std)
 m4_parambegin
 m4_param(flags, [dnl
@@ -223,13 +232,13 @@ ifelse($1, dbh_stat_print,, [dnl
 m4_tag(m4_idef(DB_STAT_CLEAR), [dnl
 Reset statistics after displaying their values.])])
 ifelse($1, lock_stat_print, [dnl
-m4_tagns(m4_idef(DB_STAT_LOCK_CONF), [dnl
+m4_tag(m4_idef(DB_STAT_LOCK_CONF), [dnl
 Display the lock conflict matrix.])
-m4_tagns(m4_idef(DB_STAT_LOCK_LOCKERS), [dnl
+m4_tag(m4_idef(DB_STAT_LOCK_LOCKERS), [dnl
 Display the lockers within hash chains.])
-m4_tagns(m4_idef(DB_STAT_LOCK_OBJECTS), [dnl
+m4_tag(m4_idef(DB_STAT_LOCK_OBJECTS), [dnl
 Display the lock objects within hash chains.])
-m4_tagns(m4_idef(DB_STAT_LOCK_PARAMS), [dnl
+m4_tag(m4_idef(DB_STAT_LOCK_PARAMS), [dnl
 Display the locking subsystem parameters.])])
 ifelse($1, memp_stat_print, [dnl
 m4_tag(m4_idef(DB_STAT_MEMP_HASH), [dnl
@@ -264,6 +273,19 @@ database environment.])])
 define(m4_scope_env, [m4_p([dnl
 The m4_refT($1) configures a database environment, not only operations
 performed using the specified m4_ref(DbEnv) handle.])])
+define(m4_scope_env_flags, [m4_p([dnl
+Calling m4_ref($1) with the m4_ref($2) flag affects the
+database environment, including all threads of control accessing the
+database environment.])])
+define(m4_scope_dbenv_flags, [m4_p([dnl
+Calling m4_ref($1) with the m4_ref($2) flag only affects
+the specified m4_ref(DbEnv) handle (and any other m4_db handles opened
+within the scope of that handle).
+ifelse($3, config, [dnl
+For consistent behavior across the environment, all m4_ref(DbEnv)
+handles opened in the environment must either set the m4_ref($2) flag
+or the flag should be specified in the m4_ref(DB_CONFIG) configuration
+file.])])])
 define(m4_scope_mpf, [m4_p([dnl
 The m4_refT($1) configures a file in the memory pool, not only
 operations performed using the specified m4_ref(DbMpoolFile) handle.])])
@@ -283,7 +305,19 @@ transaction, not only operations performed using the specified
 m4_ref(DbTxn) handle.])])
 
 dnl ###################################################################
-dnl When the configuration methods can be called.
+dnl When methods can be called -- general purpose.
+dnl	#1: our method name
+dnl	#2: before/after
+dnl	#3: method name we're scheduling against.
+dnl ###################################################################
+define(m4_when, [m4_p([dnl
+The m4_refT($1) may not be called $2 the m4_refT($3) is called.])])
+define(m4_when_two, [m4_p([dnl
+The m4_refT($1) may not be called $2 the m4_ref($3) or m4_refT($4)s are
+called.])])
+
+dnl ###################################################################
+dnl When methods can be called -- specific.
 dnl	#1: method
 dnl	#2: what happens if config info doesn't match existing object.
 dnl	    (error, ignored, corrupt, overwrite)
@@ -312,10 +346,6 @@ m4_ref(dbenv_open) is called, the information specified to m4_ref($1)
 must be consistent with the existing environment or corruption can
 occur.])])])
 
-define(m4_when_after_envopen, [m4_p([dnl
-The m4_refT($1) may not be called before the m4_refT(dbenv_open) has
-been called.])])
-
 define(m4_when_mpfopen, [m4_p([dnl
 The m4_refT($1) may not be called after the m4_refT(memp_fopen) is
 called.
@@ -337,14 +367,6 @@ m4_ref(dbh_open) is called, the information specified to m4_ref($1) must
 be the same as that historically used to create the database or
 corruption can occur.])])])
 
-define(m4_when_after_dbopen, [m4_p([dnl
-The m4_refT($1) may not be called before the m4_refT(dbh_open) has been
-called.])])
-
-define(m4_when_before_repmgr_start, [m4_p([dnl
-The m4_refT($1) must be called before the m4_refT(repmgr_start) has been
-called.])])
-
 dnl ###################################################################
 dnl Common getter language.
 dnl	#1 method name
@@ -360,8 +382,8 @@ m4_getter([$1], [$2], [$3], [$4], [$5])])
 define(m4_getter, [dnl
 m4_p([The m4_refT($1) returns the [$2].])
 ifelse(
-[$1], dbenv_get_open_flags, m4_when_after_envopen([$1]),
-[$1], dbh_get_open_flags, m4_when_after_dbopen([$1]), m4_when_any($1))
+[$1], dbenv_get_open_flags, m4_when([$1], before, dbenv_open),
+[$1], dbh_get_open_flags, m4_when([$1], before, dbh_open), m4_when_any($1))
 ifelse([$4],,, [dnl
 ifelse([$1], dbh_getenv,, [m4_return($1, std)])
 m4_parambegin
@@ -376,7 +398,7 @@ dnl	#1 C/C++ type
 dnl	#2 field name
 dnl	#3 description
 dnl ###################################################################
-define(m4_field, [m4_tagns([$1] [$2];, [$3])])
+define(m4_field, [m4_tag([$1] [$2];, [$3])])
 
 dnl ###################################################################
 dnl Parameters:
@@ -386,13 +408,9 @@ dnl m4_param
 dnl	#1 C/C++ argument name
 dnl	#2 description
 dnl ###################################################################
-define(m4_parambegin, [dnl
-m4_section(Parameters)
-m4_tagbegin])
+define(m4_parambegin, [m4_section(Parameters) m4_tagbegin])
+define(m4_param, [define([__paramname], [$1]) m4_tag(__paramname, [$2])])
 define(m4_paramend, m4_tagend)
-define(m4_param, [dnl
-define([__paramname], [$1])
-m4_tag(m4_arg(__paramname), [$2])])
 
 dnl ###################################################################
 dnl File/Directory parameters get standard Windows UTF-8 language.

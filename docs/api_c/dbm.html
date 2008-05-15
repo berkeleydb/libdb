@@ -1,5 +1,5 @@
 <!--$Id: dbm.so,v 10.26 2003/10/18 19:15:48 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>dbm/ndbm</h3>
+<b>dbm/ndbm</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #define DB_DBM_HSEARCH    1
 #include &lt;db.h&gt;
 <p>
@@ -27,7 +27,7 @@ typedef struct {
 	int dsize;
 } datum;
 <hr size=1 noshade>
-<h3>Dbm Functions</h3>
+<b>Dbm Functions</b>
 int
 dbminit(char *file);
 <p>
@@ -49,7 +49,7 @@ firstkey(void);
 datum
 nextkey(datum key);
 <hr size=1 noshade>
-<h3>Ndbm Functions</h3>
+<b>Ndbm Functions</b>
 DBM *
 dbm_open(char *file, int flags, int mode);
 <p>
@@ -76,9 +76,9 @@ dbm_error(DBM *db);
 <p>
 int
 dbm_clearerr(DBM *db);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: dbm/ndbm</h3>
+<b>Description: dbm/ndbm</b>
 <p>The dbm functions are intended to provide high-performance
 implementations and source code compatibility for applications written
 to historic interfaces.  They are not recommended for any other purpose.
@@ -97,7 +97,7 @@ with the following two lines:</p>
 <b>datum</b> typedef.  A <b>datum</b> specifies a string of
 <b>dsize</b> bytes pointed to by <b>dptr</b>.  Arbitrary binary data,
 as well as normal text strings, are allowed.</p>
-<h3>Dbm Functions</h3>
+<b>Dbm Functions</b>
 <p>Before a database can be accessed, it must be opened by dbminit.
 This will open and/or create the database <b>file</b>.db.  If created,
 the database file is created read/write by owner only (as described in
@@ -119,7 +119,7 @@ key in the database.</p>
     key.dptr != NULL; key = nextkey(key)) {
 	...
 }</pre></blockquote>
-<h3>Ndbm Functions</h3>
+<b>Ndbm Functions</b>
 <p>Before a database can be accessed, it must be opened by dbm_open.
 This will open and/or create the database file <b>file.db</b>, depending
 on the flags parameter (see <b>open</b>(2)).  If created, the database
@@ -143,7 +143,7 @@ dbm_nextkey method will return the next key in the database.</p>
     key.dptr != NULL; key = dbm_nextkey(db)) {
 	...
 }</pre></blockquote>
-<h3>Compatibility Notes</h3>
+<b>Compatibility Notes</b>
 <p>The historic dbm library created two underlying database files,
 traditionally named <b>file.dir</b> and <b>file.pag</b>.  The Berkeley DB
 library creates a single database file named <b>file.db</b>.
@@ -164,7 +164,7 @@ closing the database, it may lose updates because the Berkeley DB library
 buffers writes to underlying databases.  Such applications will require
 additional source code modifications to work correctly with the Berkeley DB
 library.</p>
-<h3>Dbm Diagnostics</h3>
+<b>Dbm Diagnostics</b>
 <p>The dbminit function returns -1 on failure, setting <b>errno</b>,
 and 0 on success.</p>
 <p>The fetch function sets the <b>dptr</b> field of the returned
@@ -180,11 +180,11 @@ and returns a non-NULL <b>dptr</b> on success.</p>
 <p>The nextkey function sets the <b>dptr</b> field of the returned
 <b>datum</b> to NULL on failure, setting <b>errno</b>,
 and returns a non-NULL <b>dptr</b> on success.</p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The dbminit, fetch, store, delete, firstkey, and nextkey functions may
 fail and return an error for errors specified for other Berkeley DB and C
 library or system functions.</p>
-<h3>Ndbm Diagnostics</h3>
+<b>Ndbm Diagnostics</b>
 <p>The dbm_close method returns non-zero when an error has occurred reading or
 writing the database.</p>
 <p>The dbm_close method resets the error condition on the named database.</p>
@@ -208,7 +208,7 @@ and returns a non-NULL <b>dptr</b> on success.</p>
 and 0 on success.</p>
 <p>The dbm_close function returns -1 on failure, setting <b>errno</b>,
 and 0 on success.</p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The dbm_open, dbm_close, dbm_fetch, dbm_store, dbm_delete, dbm_firstkey,
 and dbm_nextkey functions may fail and return an error for errors
 specified for other Berkeley DB and C library or system functions.</p>
@@ -216,6 +216,6 @@ specified for other Berkeley DB and C library or system functions.</p>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

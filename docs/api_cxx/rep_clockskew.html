@@ -1,0 +1,108 @@
+<!--$Id: rep_clockskew.so,v 1.12 2008/02/01 18:53:41 bostic Exp $-->
+FOOO
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB: DbEnv::rep_set_clockskew</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>DbEnv::rep_set_clockskew</b>
+</td>
+<td align=right>
+<a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
+<a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;db_cxx.h&gt;
+<p>
+int
+DbEnv::rep_set_clockskew(u_int32_t fast_clock, u_int32_t slow_clock);
+<p>
+DbEnv::rep_get_clockskew(u_int32_t *fast_clockp, u_in32_t *slow_clockp);
+</pre></b>
+<hr size=1 noshade>
+<b>Description: DbEnv::rep_set_clockskew</b>
+<p>The DbEnv::rep_set_clockskew method sets the clock skew ratio among
+replication group members based on the fastest and slowest measurements
+among the group for use with master leases.  Calling this method is
+optional, the default values for clock skew assume no skew.  The user
+must also configure leases via the <a href="../api_cxx/rep_config.html">DbEnv::rep_set_config</a> method.
+Additionally, the user must also set the master lease timeout via the
+<a href="../api_cxx/rep_timeout.html">DbEnv::rep_set_timeout</a> method and the number of sites in the replication
+group via the <a href="../api_cxx/rep_nsites.html">DbEnv::rep_set_nsites</a> method.  These methods may be called in
+any order.  For a description of the clock skew values, see
+<a href="../ref/rep/clock_skew.html">Clock skew</a>.  For a description
+of master leases, see <a href="../ref/rep/lease.html">Master
+leases</a>.</p>
+<p>These arguments can be used to express either raw measurements of a
+clock timing experiment or a percentage across machines.  For instance
+a group of sites have a 2% variance, then <b>fast_clock</b> should be
+given as 102, and <b>slow_clock</b> should be set at 100.  Or, for a
+0.03% difference, you can use 10003 and 10000 respectively.</p>
+<p>The database environment's replication subsystem may also be configured using the
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
+file is a single line with the string "rep_set_clockskew", one or more whitespace
+characters, and the clockskew specified in two parts: the fast_clock and the slow_clock.
+For example, "rep_set_clockskew 102 100".
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
+<p>The DbEnv::rep_set_clockskew method configures a database environment, not only operations
+performed using the specified <a href="../api_cxx/env_class.html">DbEnv</a> handle.</p>
+<p>The DbEnv::rep_set_clockskew method may not be called after the <a href="../api_cxx/repmgr_start.html">DbEnv::repmgr_start</a> or <a href="../api_cxx/rep_start.html">DbEnv::rep_start</a> methods are
+called.</p>
+<p>The DbEnv::rep_set_clockskew method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<b>Parameters</b> <br>
+ <b>fast_clock</b><ul compact><li>The value, relative to the <b>slow_clock</b>, of the fastest clock
+in the group of sites.</ul>
+ <b>slow_clock</b><ul compact><li>The value of the slowest clock in the group of sites.</ul>
+<br>
+<br><b>Errors</b>
+<p>The DbEnv::rep_set_clockskew method
+may fail and throw
+<a href="../api_cxx/except_class.html">DbException</a>,
+encapsulating one of the following non-zero errors, or return one of
+the following non-zero errors:</p>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: DbEnv::rep_get_clockskew</b>
+<p>The DbEnv::rep_get_clockskew method returns the current clock skew values.</p>
+<p>The DbEnv::rep_get_clockskew method may be called at any time during the life of the
+application.</p>
+<p>The DbEnv::rep_get_clockskew method
+either returns a non-zero error value
+or throws an exception that encapsulates a non-zero error value on
+failure, and returns 0 on success.
+</p>
+<b>Parameters</b> <br>
+ <b>fast_clockp</b><ul compact><li>The <b>fast_clockp</b> parameter references memory into which
+ the value for the fastest clock in the group of sites is copied.</ul> 
+ <b>slow_clockp</b><ul compact><li>The <b>slow_clockp</b> parameter references memory into which
+ the value for the slowest clock in the group of sites is copied.</ul> 
+<br>
+<hr size=1 noshade>
+<br><b>Class</b>
+<a href="../api_cxx/env_class.html">DbEnv</a>
+<br><b>See Also</b>
+<a href="../api_cxx/rep_list.html">Replication and Related Methods</a>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

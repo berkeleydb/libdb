@@ -1,4 +1,4 @@
-m4_comment([$Id: config.so,v 10.19 2002/07/22 05:11:58 bostic Exp $])
+m4_comment([$Id: config.so,v 10.20 2008/04/23 14:50:46 margo Exp $])
 
 m4_ref_title(Transaction Subsystem,
     Configuring transactions, @transaction configuration, txn/intro, txn/limits)
@@ -10,6 +10,17 @@ m4_refT(dbenv_set_tx_max).  This will also set the size of the
 underlying transaction subsystem's region.  When the number of
 outstanding transactions is reached, additional calls to
 m4_ref(txn_begin) will fail until some active transactions complete.])
+
+m4_p([dnl
+The application can limit how long a transaction runs or blocks on
+contested resources.
+The m4_refT(dbenv_set_timeout) specifies the length of the timeout.
+This value is checked whenever deadlock detection is performed or
+when the transaction is about to block on a lock that cannot be
+immediately granted.
+Because timeouts are only checked at these times, the accuracy of the
+timeout depends on how often deadlock detection is performed or how
+frequently the transaction blocks.])
 
 m4_p([dnl
 There is an additional parameter used in configuring transactions; the

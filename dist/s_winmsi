@@ -1,5 +1,5 @@
 #!/bin/bash -
-#	$Id: s_winmsi,v 1.8 2005/12/01 03:04:20 bostic Exp $
+#	$Id: s_winmsi,v 1.10 2008/03/25 12:22:31 mjc Exp $
 #
 # Note: The s_winmsi script in Berkeley DB core closely parallels the
 # s_winmsi script in Berkeley DB/XML.  If you change one,
@@ -10,10 +10,10 @@
 #   Usage: s_winmsi [ options ]
 #
 # See the Usage() function in s_winmsi.fcn for a full list of options.
-# By default, this script expects a db-X.Y.Z.NC.zip file
+# By default, this script expects a db-X.Y.Z.zip file
 # to be in this directory, and uses it to build all binaries
 # needed for an Windows install, and finally builds the an
-# output db-X.Y.Z.NC.msi file that can be installed on
+# output db-X.Y.Z.msi file that can be installed on
 # Windows XP and 2000.
 #
 # The major other inputs to this script are these files:
@@ -56,7 +56,7 @@ SetupErrorLog
 
 # Do this before parsing options, we need the version number
 . ./RELEASE
-dbver=db-$DB_VERSION.NC
+dbver=db-$DB_VERSION
 
 # Set variables used by functions to customize this installer
 PRODUCT_NAME="Berkeley DB"
@@ -69,8 +69,8 @@ PRODUCT_SRCDIR="${PRODUCT_STAGE}/$dbver"
 PRODUCT_DBBUILDDIR="${PRODUCT_STAGE}/$dbver/build_unix"
 PRODUCT_SHARED_WINMSIDIR=`pwd`/winmsi
 PRODUCT_IMAGEDIR=$PRODUCT_SHARED_WINMSIDIR/images
-PRODUCT_ZIP_FILEFMT="db-X.Y.Z.NC.zip"
-PRODUCT_MSI_FILEFMT="db-X.Y.Z.NC.msi"
+PRODUCT_ZIP_FILEFMT="db-X.Y.Z.zip"
+PRODUCT_MSI_FILEFMT="db-X.Y.Z.msi"
 
 PRODUCT_MAJOR=`echo "$PRODUCT_VERSION" | \
     sed -e 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\1/'`

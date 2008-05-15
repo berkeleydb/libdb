@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep055.tcl,v 1.14 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep055.tcl,v 1.16 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep055
 # TEST	Test of internal initialization and log archiving.
@@ -61,10 +61,11 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	global passwd
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

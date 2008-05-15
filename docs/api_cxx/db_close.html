@@ -1,5 +1,5 @@
 <!--$Id: db_close.so,v 10.55 2004/08/13 03:38:55 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db::close</h3>
+<b>Db::close</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
 Db::close(u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db::close</h3>
+<b>Description: Db::close</b>
 <p>The Db::close method flushes any cached database information to disk,
 closes any open cursors, frees any allocated resources, and closes any
 underlying files.</p>
@@ -50,12 +50,11 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
 or more of the following values:
-<dl compact>
-<dt><a name="DB_NOSYNC">DB_NOSYNC</a><dd>Do not flush cached information to disk.  The <a href="../api_cxx/db_close.html#DB_NOSYNC">DB_NOSYNC</a> flag is
+<br>
+<b><a name="DB_NOSYNC">DB_NOSYNC</a></b><ul compact><li>Do not flush cached information to disk.  The <a href="../api_cxx/db_close.html#DB_NOSYNC">DB_NOSYNC</a> flag is
 a dangerous option.  It should be set only if the application is doing
 logging (with transactions) so that the database is recoverable after
 a system or application crash, or if the database is always generated
@@ -69,28 +68,28 @@ use transactions and logging with automatic recovery; use logging and
 application-specific recovery; or edit a copy of the database, and once
 all applications using the database have successfully called
 Db::close, atomically replace the original database with the
-updated copy.</p>
-</dl>
-</dl>
-<h3>Errors</h3>
+updated copy.</p></ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
 <p>The Db::close method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/db_class.html">Db</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

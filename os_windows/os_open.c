@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_open.c,v 12.24 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_open.c,v 12.29 2008/03/26 04:11:35 david Exp $
  */
 
 #include "db_config.h"
@@ -15,13 +15,14 @@
  *	Open a file descriptor (including page size and log size information).
  */
 int
-__os_open(dbenv, name, page_size, flags, mode, fhpp)
-	DB_ENV *dbenv;
+__os_open(env, name, page_size, flags, mode, fhpp)
+	ENV *env;
 	const char *name;
 	u_int32_t page_size, flags;
 	int mode;
 	DB_FH **fhpp;
 {
+	DB_ENV *dbenv;
 	DB_FH *fhp;
 #ifndef DB_WINCE
 	DWORD cluster_size, sector_size, free_clusters, total_clusters;
@@ -30,21 +31,22 @@ __os_open(dbenv, name, page_size, flags, mode, fhpp)
 	int access, attr, createflag, nrepeat, ret, share;
 	_TCHAR *tname;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	*fhpp = NULL;
 	tname = NULL;
 
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: open %s", name);
+		__db_msg(env, "fileops: open %s", name);
 
 #define	OKFLAGS								\
 	(DB_OSO_ABSMODE | DB_OSO_CREATE | DB_OSO_DIRECT | DB_OSO_DSYNC |\
 	DB_OSO_EXCL | DB_OSO_RDONLY | DB_OSO_REGION |	DB_OSO_SEQ |	\
 	DB_OSO_TEMP | DB_OSO_TRUNC)
-	if ((ret = __db_fchk(dbenv, "__os_open", flags, OKFLAGS)) != 0)
+	if ((ret = __db_fchk(env, "__os_open", flags, OKFLAGS)) != 0)
 		return (ret);
 
-	TO_TSTRING(dbenv, name, tname, ret);
+	TO_TSTRING(env, name, tname, ret);
 	if (ret != 0)
 		goto err;
 
@@ -54,16 +56,16 @@ __os_open(dbenv, name, page_size, flags, mode, fhpp)
 	 * can't unlink temporary files immediately, we use the name to unlink
 	 * the temporary file when the file handle is closed.
 	 *
-	 * Lock the DB_ENV handle and insert the new file handle on the list.
+	 * Lock the ENV handle and insert the new file handle on the list.
 	 */
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_FH), &fhp)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_FH), &fhp)) != 0)
 		return (ret);
-	if ((ret = __os_strdup(dbenv, name, &fhp->name)) != 0)
+	if ((ret = __os_strdup(env, name, &fhp->name)) != 0)
 		goto err;
-	if (dbenv != NULL) {
-		MUTEX_LOCK(dbenv, dbenv->mtx_env);
-		TAILQ_INSERT_TAIL(&dbenv->fdlist, fhp, q);
-		MUTEX_UNLOCK(dbenv, dbenv->mtx_env);
+	if (env != NULL) {
+		MUTEX_LOCK(env, env->mtx_env);
+		TAILQ_INSERT_TAIL(&env->fdlist, fhp, q);
+		MUTEX_UNLOCK(env, env->mtx_env);
 		F_SET(fhp, DB_FH_ENVLINK);
 	}
 
@@ -212,19 +214,21 @@ __os_open(dbenv, name, page_size, flags, mode, fhpp)
 			    nrepeat > 3)
 				goto err;
 
-			__os_sleep(dbenv, nrepeat * 2, 0);
+			__os_yield(env, nrepeat * 2, 0);
 		} else
 			break;
 	}
 
-	FREE_STRING(dbenv, tname);
+	FREE_STRING(env, tname);
 
+	if (LF_ISSET(DB_OSO_REGION))
+		F_SET(fhp, DB_FH_REGION);
 	F_SET(fhp, DB_FH_OPENED);
 	*fhpp = fhp;
 	return (0);
 
-err:	FREE_STRING(dbenv, tname);
+err:	FREE_STRING(env, tname);
 	if (fhp != NULL)
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 	return (ret);
 }

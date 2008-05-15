@@ -1,10 +1,10 @@
                                   DB_File
 
-                               Version 1.815
+                               Version 1.817
 
-                             4th February 2007
+                              27th March 2008
 
-     Copyright (c) 1995-2007 Paul Marquess. All rights reserved. This
+     Copyright (c) 1995-2008 Paul Marquess. All rights reserved. This
       program is free software; you can redistribute it and/or modify
                   it under the same terms as Perl itself.
 
@@ -46,10 +46,12 @@ your system:
 
     * Berkeley DB.
 
-      The official web site for Berkeley DB is http://www.sleepycat.com.
+      The official web site for Berkeley DB is 
+
+        http://www.oracle.com/technology/products/berkeley-db/db/index.html
+
       The latest version of Berkeley DB is always available there. It
-      is recommended that you use the most recent version available at
-      the Sleepycat site.
+      is recommended that you use the most recent version available.
 
       The one exception to this advice is where you want to use DB_File
       to access database files created by a third-party application, like
@@ -212,8 +214,8 @@ when you run the test harness:
   -I/home/paul/perl/install/5.005_60/lib/5.00560 -e 'use Test::Harness
   qw(&runtests $verbose); $verbose=0; runtests @ARGV;' t/*.t
   t/db-btree..........
-  DB_File needs compatible versions of libdb & db.h
-          you have db.h version 2.3.7 and libdb version 2.7.5
+  DB_File was build with libdb version 2.3.7
+  but you are attempting to run it with libdb version 2.7.5
   BEGIN failed--compilation aborted at t/db-btree.t line 21.
   ...
 
@@ -530,19 +532,23 @@ When reporting any problem, I need the information requested below.
 
       $VERSION = "1.20" ;
 
- 3. The version of Berkeley DB you are using.
+ 3. The version of Berkeley DB used to build DB_File and the version
+    that is used at runtime. (These are usually the same)
+
     If you are using a version older than 1.85, think about upgrading. One
     point to note if you are considering upgrading Berkeley DB - the
     file formats for 1.85, 1.86, 2.0, 3.0 & 3.1 are all different.
 
-    If you have successfully installed DB_File, this command will display
-    the version of Berkeley DB it was built with:
+    If you have successfully installed DB_File, these commands will display
+    the versions I need
 
-       perl -e 'use DB_File; print qq{Berkeley DB ver $DB_File::db_ver\n}'
+       perl -MDB_File -e 'print qq{Built with Berkeley DB ver $DB_File::db_ver\n}'
+       perl -MDB_File -e 'print qq{Running with Berkeley DB ver $DB_File::db_version\n}'
 
     If you are running windows use this
 
-       perl -e "use DB_File; print qq{Berkeley DB ver $DB_File::db_ver\n}"
+       perl -e "use DB_File; print qq{Built with Berkeley DB ver $DB_File::db_ver\n}"
+       perl -e "use DB_File; print qq{Running Berkeley DB ver $DB_File::db_version\n}"
     
  4. A copy the file config.in from the DB_File main source directory.
 

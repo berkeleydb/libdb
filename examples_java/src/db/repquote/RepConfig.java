@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: RepConfig.java,v 1.7 2007/05/17 15:15:37 bostic Exp $
+ * $Id: RepConfig.java,v 1.9 2008/01/08 20:58:32 bostic Exp $
  */
 
 package db.repquote;
@@ -12,6 +12,7 @@ import java.util.Vector;
 
 import com.sleepycat.db.ReplicationHostAddress;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
+import com.sleepycat.db.ReplicationManagerSiteInfo;
 
 public class RepConfig
 {
@@ -73,31 +74,33 @@ public class RepConfig
     public void addOtherHost(String host, int port, boolean peer)
     {
         ReplicationHostAddress newInfo =
-		    new ReplicationHostAddress(host, port, peer, false);
-        otherHosts.add(newInfo);
+		    new ReplicationHostAddress(host, port);
+	RepRemoteHost newHost = new RepRemoteHost(newInfo, peer);
+        otherHosts.add(newHost);
     }
 
-    public ReplicationHostAddress getFirstOtherHost()
+    public RepRemoteHost getFirstOtherHost()
     {
         currOtherHost = 0;
         if (otherHosts.size() == 0)
             return null;
-        return (ReplicationHostAddress)otherHosts.get(currOtherHost);
+        return (RepRemoteHost)otherHosts.get(currOtherHost);
     }
 
-    public ReplicationHostAddress getNextOtherHost()
+    public RepRemoteHost getNextOtherHost()
     {
         currOtherHost++;
         if (currOtherHost >= otherHosts.size())
             return null;
-        return (ReplicationHostAddress)otherHosts.get(currOtherHost);
+        return (RepRemoteHost)otherHosts.get(currOtherHost);
     }
 
-    public ReplicationHostAddress getOtherHost(int i)
+    public RepRemoteHost getOtherHost(int i)
     {
         if (i >= otherHosts.size())
             return null;
-        return (ReplicationHostAddress)otherHosts.get(i);
+        return (RepRemoteHost)otherHosts.get(i);
     }
+
 }
 

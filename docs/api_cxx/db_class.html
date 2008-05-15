@@ -1,5 +1,5 @@
-<!--$Id: db_class.so,v 10.52 2005/12/01 02:02:58 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: db_class.so,v 10.53 2007/10/26 14:52:37 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Db</h3>
+<b>Db</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 class Db {
@@ -32,9 +32,9 @@ public:
 	static const Db *Db::get_const_Db(const DB *db);
 	...
 };
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Db</h3>
+<b>Description: Db</b>
 <p>The Db handle is the handle for a Berkeley DB database, which may or
 may not be part of a database environment.</p>
 <p>Db handles are free-threaded if the <a href="../api_cxx/env_open.html#DB_THREAD">DB_THREAD</a> flag is
@@ -65,20 +65,19 @@ the associated const Db object, if there is one.</p>
 <p>These methods may be useful for Berkeley DB applications including  both C
 and C++ language software.  It should not be necessary to use these
 calls in a purely C++ application.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>dbenv</b><dd>If no <b>dbenv</b> value is specified, the database is standalone; that
+<b>Parameters</b> <br>
+ <b>dbenv</b><ul compact><li>If no <b>dbenv</b> value is specified, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
 <p>If a <b>dbenv</b> value is specified, the database is created within
 the specified Berkeley DB environment. The database access methods
 automatically make calls to the other subsystems in Berkeley DB based on the
 enclosing environment. For example, if the environment has been
 configured to use locking, the access methods will automatically acquire
-the correct locks when reading and writing pages of the database.</p>
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+the correct locks when reading and writing pages of the database.</p></ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
 or more of the following values:
-<dl compact>
-<dt><a name="DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a><dd>The Berkeley DB C++ API supports two different error behaviors.  By default,
+<br>
+<b><a name="DB_CXX_NO_EXCEPTIONS">DB_CXX_NO_EXCEPTIONS</a></b><ul compact><li>The Berkeley DB C++ API supports two different error behaviors.  By default,
 whenever an error occurs, an exception is thrown that encapsulates the
 error information.  This generally allows for cleaner logic for
 transaction processing because a try block can surround a single
@@ -86,24 +85,24 @@ transaction.  However, if DB_CXX_NO_EXCEPTIONS is specified,
 exceptions are not thrown; instead, each individual function returns an
 error code.
 <p>If <b>dbenv</b> is not null, this flag is ignored, and the error behavior
-of the specified environment is used instead.</p>
-<dt><a name="DB_XA_CREATE">DB_XA_CREATE</a><dd>Instead of creating a standalone database, create a database intended to
-be accessed via applications running under a X/Open conformant Transaction
-Manager.  The database will be opened in the environment specified by the
-OPENINFO parameter of the GROUPS section of the ubbconfig file.  See the
-<a href="../ref/xa/intro.html">XA Resource Manager</a> chapter in the
-Reference Guide for more information.
-</dl>
-</dl>
+of the specified environment is used instead.</p></ul>
+<b><a name="DB_XA_CREATE">DB_XA_CREATE</a></b><ul compact><li>Instead of creating a standalone database, create a database intended
+to be accessed via applications running under an X/Open conformant
+Transaction Manager.  The database will be opened in the environment
+specified by the OPENINFO parameter of the GROUPS section of the
+ubbconfig file.  See the <a href="../ref/xa/xa_intro.html">XA
+Introduction</a> section in the Berkeley DB Reference Guide for more information.</ul>
+<br></ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 Db
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

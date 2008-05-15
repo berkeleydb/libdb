@@ -12,6 +12,7 @@ APPMALLOC
 AUTOREMOVE
 Aclop
 Architecting
+Atomicity
 BDB
 BTREE
 BerkeleyDB
@@ -21,6 +22,7 @@ CDB
 CHKSUM
 CONF
 CONFIG
+CONNFAIL
 CXX
 Callback
 CandidateDocuments
@@ -160,9 +162,11 @@ METADATA
 MFT
 MINLOCKS
 MINWRITE
+MISC
 MMDDhhmm
 MPOOL
 MPOOLFILE
+MSGS
 MULTIVERSION
 MUTEX
 Mailto
@@ -226,6 +230,7 @@ Pflag
 PicGif
 Prev
 ProcessingInstruction
+Programmatic
 QNAME
 QNX
 QName
@@ -273,6 +278,7 @@ Tcl
 TempFolder
 TestResolver
 Torvalds
+Transactionally
 UI
 UNAVAIL
 UNREF
@@ -371,6 +377,7 @@ asString
 asattribute
 asdocument
 asnodelist
+atomicity
 attr
 attribute's
 atype
@@ -429,6 +436,8 @@ ckp
 cl
 clearNamespaces
 clearerr
+clockp
+clockskew
 clr
 cnt
 cntp
@@ -791,6 +800,7 @@ lockmode
 lockng
 locknotgranted
 lockop
+locksteals
 locktimeout
 logc
 lookupIndex
@@ -810,13 +820,17 @@ margo
 materialised
 maxToRead
 maxcommitperflush
+maxhlocks
+maxhobjects
 maxid
 maxlockers
 maxlocks
+maxlsteals
 maxnactive
 maxnlockers
 maxnlocks
 maxnobjects
+maxosteals
 maxnsnapshot
 maxobjects
 maxopenfd
@@ -871,6 +885,7 @@ myQuery
 myQueryContext
 mycontainer
 mydata
+mydatabase
 mydoc
 myenv
 nTV
@@ -909,6 +924,7 @@ nlocktimeouts
 nmodes
 nobjects
 noframes
+nondestructive
 nontransactional
 nooverwrite
 noshade
@@ -929,6 +945,7 @@ nupgrade
 nvotes
 nwrotep
 obj
+objectsteals
 objs
 offsetp
 ol
@@ -964,6 +981,7 @@ parsexpathexpression
 passwd
 patchp
 pathsubst
+paula
 pf
 pg
 pgaddr
@@ -991,6 +1009,7 @@ pri
 printf
 printlog
 priorityp
+programmatic
 pthread
 pthreads
 ptr
@@ -1032,10 +1051,13 @@ removeContainer
 removeMetaData
 removeNamespace
 renameContainer
+rephandle
 repinval
 repl
 replaceDefaultIndex
 replaceIndex
+replease
+replockout
 repmgr
 req
 rerequests
@@ -1061,11 +1083,16 @@ rt
 rtc
 runrec
 rw
+rwx
+rwxr
+rwxrwx
 sarette
+scalep
 schemaLocation
 scount
 se
 secondaryKeyCreate
+secs
 sed
 seealso
 selectionExpr
@@ -1160,6 +1187,7 @@ toModify
 toString
 toc
 tr
+transactionally
 transapp
 translit
 tt
@@ -1188,6 +1216,7 @@ underfunc
 undivert
 unix
 unmap
+unmapping
 untypedAtomic
 unusedflags
 updateDocument
@@ -1195,6 +1224,7 @@ upgradeContainer
 uri
 url
 usec
+usecs
 usr
 utf
 util

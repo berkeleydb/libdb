@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: rep065script.tcl,v 12.15 2007/07/05 15:43:29 sue Exp $
+# $Id: rep065script.tcl,v 12.19 2008/04/14 14:29:39 sue Exp $
 #
 # rep065script - procs to use at each replication site in the
 # replication upgrade test.
@@ -26,16 +26,16 @@
 proc rep065scr_elect { repenv oplist } {
 	set ver [lindex $oplist 1]
 	set pri [lindex $oplist 2]
-	if { [is_substr $ver "db-4.2"] } {
-	}
 }
 
 proc rep065scr_reptest { repenv oplist markerdb } {
+
 	set method [lindex $oplist 1]
 	set niter [lindex $oplist 2]
 	set loop [lindex $oplist 3]
 	set start 0
 	puts "REPTEST: method $method, niter $niter, loop $loop"
+
 	for {set n 0} {$n < $loop} {incr n} {
 		puts "REPTEST: call rep_test_upg $n"
 		eval rep_test_upg $method $repenv NULL $niter $start $start 0 0
@@ -185,6 +185,7 @@ proc rep065scr_starttest { role oplist envid msgdir mydir allids markerfile } {
 		rep065scr_elect $repenv $oplist $markerdb
 	}
 	puts "Closing env"
+	$repenv mpool_sync
 	error_check_good envclose [$repenv close] 0
 
 }
@@ -199,19 +200,15 @@ proc rep065scr_msgs { role envid msgdir mydir allids markerfile } {
 	# process from the writer and we cannot share an env because
 	# we might be a different BDB release version.
 	#
-puts "$mydir: ID $envid: Open create/btree marker: $markerfile"
 	set markerdb [berkdb_open -create -btree $markerfile]
 	error_check_good marker [is_valid_db $markerdb] TRUE
-puts "$mydir: ID $envid: Open marker: $markerfile"
 	set s [$markerdb get START$envid]
-puts "$mydir: Looking for START$envid.  Got $s"
 	while { [llength $s] == 0 } {
 		error_check_good marker_close [$markerdb close] 0
 		tclsleep 1
 		set markerdb [berkdb_open $markerfile]
 		error_check_good marker [is_valid_db $markerdb] TRUE
 		set s [$markerdb get START$envid]
-puts "$mydir: Loop: Looking for START$envid.  Got $s"
 	}
 
 	puts "repladd_noenv $allids"
@@ -263,11 +260,18 @@ puts "$mydir: Loop: Looking for START$envid.  Got $s"
 	}
 	#
 	# Process messages in case there are a few more stragglers.
+	# Just because the main test is done doesn't mean that all
+	# the messaging is done.  Loop for messages as long as
+	# progress is being made.
 	#
-	process_msgs $envlist 0 NONE NONE 1
-	tclsleep 1
-	process_msgs $envlist 0 NONE NONE 1
-	tclsleep 1
+	set nummsg 1
+	while { $nummsg != 0 } {
+		process_msgs $envlist 0 NONE NONE 1
+		tclsleep 1
+		# First look at messages from us
+		set nummsg [replmsglen_noenv $envid from]
+		puts "Still have $nummsg not yet processed by others"
+	}
 	error_check_good marker_close [$markerdb close] 0
 	replclear_noenv $envid from
 	tclsleep 1
@@ -276,10 +280,11 @@ puts "$mydir: Loop: Looking for START$envid.  Got $s"
 	error_check_good envclose [$repenv close] 0
 }
 
-proc rep065scr_verify { oplist mydir } {
+proc rep065scr_verify { oplist mydir id } {
 	global util_path
 
-	set rep_env_cmd "berkdb_env_noerr -home $mydir"
+	set rep_env_cmd "berkdb_env_noerr -home $mydir -txn \
+	    -rep_transport \[list $id replnoop\]"
 
 	# Change directories to where this will run.
 	# !!!
@@ -299,7 +304,6 @@ proc rep065scr_verify { oplist mydir } {
 			error_check_good dbopen [is_valid_db $db] TRUE
 			set txn ""
 			set method [$db get_type]
-puts "Dumping database to $mydir/VERIFY/dbdump"
 			if { [is_record_based $method] == 1 } {
 				dump_file $db $txn $mydir/VERIFY/dbdump \
 				    rep_test_upg.recno.check
@@ -372,9 +376,6 @@ if { $stat != 0 } {
 }
 source ./include.tcl
 source $test_path/test.tcl
-if { [is_substr $histdir "db-4.2"] } {
-	source $ctldir/$test_path/testutils42.tcl
-}
 
 # The global variable noenv_messaging must be set after sourcing
 # test.tcl or its value will be wrong.
@@ -387,9 +388,6 @@ source $reputils_path/reputils.tcl
 source $reputils_path/reputilsnoenv.tcl
 
 set markerdir $msgtestdir/MARKER
-if { [file exists $markerdir] == 0 } {
-	file mkdir $markerdir
-}
 set markerfile $markerdir/marker.db
 
 puts "Calling proc for type $type"
@@ -398,10 +396,8 @@ if { $type == "START" } {
 } elseif { $type == "PROCMSGS" } {
 	rep065scr_msgs $role $envid $msgtestdir $mydir $allids $markerfile
 } elseif { $type == "VERIFY" } {
-puts "Making VERIFY dir"
 	file mkdir $mydir/VERIFY
-puts "Call rep065scr_verify with $op and $mydir"
-	rep065scr_verify $op $mydir
+	rep065scr_verify $op $mydir $envid
 } else {
 	puts "FAIL: unknown type $type"
 	return

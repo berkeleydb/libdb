@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_method.c,v 12.50 2007/06/01 18:32:44 bostic Exp $
+ * $Id: mp_method.c,v 12.61 2008/03/13 15:21:21 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -69,14 +69,17 @@ __memp_get_cachesize(dbenv, gbytesp, bytesp, ncachep)
 	u_int32_t *gbytesp, *bytesp;
 	int *ncachep;
 {
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_cachesize", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_cachesize", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
 		/* Cannot be set after open, no lock required to read. */
-		mp = dbenv->mp_handle->reginfo[0].primary;
+		mp = env->mp_handle->reginfo[0].primary;
 		if (gbytesp != NULL)
 			*gbytesp = mp->stat.st_gbytes;
 		if (bytesp != NULL)
@@ -106,7 +109,10 @@ __memp_set_cachesize(dbenv, gbytes, bytes, arg_ncache)
 	u_int32_t gbytes, bytes;
 	int arg_ncache;
 {
+	ENV *env;
 	u_int ncache;
+
+	env = dbenv->env;
 
 	/* Normalize the cache count. */
 	ncache = arg_ncache <= 0 ? 1 : (u_int)arg_ncache;
@@ -130,14 +136,14 @@ __memp_set_cachesize(dbenv, gbytes, bytes, arg_ncache)
 	 * wrapping in the calculation of the number of hash buckets.  See
 	 * __memp_open for details.
 	 */
-	if (!F_ISSET(dbenv, DB_ENV_OPEN_CALLED)) {
+	if (!F_ISSET(env, ENV_OPEN_CALLED)) {
 		if (sizeof(roff_t) <= 4 && gbytes / ncache >= 4) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "individual cache size too large: maximum is 4GB");
 			return (EINVAL);
 		}
 		if (gbytes / ncache > 10000) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "individual cache size too large: maximum is 10TB");
 			return (EINVAL);
 		}
@@ -161,8 +167,8 @@ __memp_set_cachesize(dbenv, gbytes, bytes, arg_ncache)
 			bytes = ncache * DB_CACHESIZE_MIN;
 	}
 
-	if (F_ISSET(dbenv, DB_ENV_OPEN_CALLED))
-		return (__memp_resize(dbenv->mp_handle, gbytes, bytes));
+	if (F_ISSET(env, ENV_OPEN_CALLED))
+		return (__memp_resize(env->mp_handle, gbytes, bytes));
 
 	dbenv->mp_gbytes = gbytes;
 	dbenv->mp_bytes = bytes;
@@ -184,16 +190,19 @@ __memp_set_config(dbenv, which, on)
 	int on;
 {
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->memp_set_config", DB_INIT_MPOOL);
+	env = dbenv->env;
+
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->memp_set_config", DB_INIT_MPOOL);
 
 	switch (which) {
 	case DB_MEMP_SUPPRESS_WRITE:
 	case DB_MEMP_SYNC_INTERRUPT:
-		if (MPOOL_ON(dbenv)) {
-			dbmp = dbenv->mp_handle;
+		if (MPOOL_ON(env)) {
+			dbmp = env->mp_handle;
 			mp = dbmp->reginfo[0].primary;
 			if (on)
 				FLD_SET(mp->config_flags, which);
@@ -220,16 +229,19 @@ __memp_get_config(dbenv, which, onp)
 	int *onp;
 {
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "DB_ENV->memp_get_config", DB_INIT_MPOOL);
+	env = dbenv->env;
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "DB_ENV->memp_get_config", DB_INIT_MPOOL);
 
 	switch (which) {
 	case DB_MEMP_SUPPRESS_WRITE:
 	case DB_MEMP_SYNC_INTERRUPT:
-		if (MPOOL_ON(dbenv)) {
-			dbmp = dbenv->mp_handle;
+		if (MPOOL_ON(env)) {
+			dbmp = env->mp_handle;
 			mp = dbmp->reginfo[0].primary;
 			*onp = FLD_ISSET(mp->config_flags, which) ? 1 : 0;
 		} else
@@ -250,17 +262,23 @@ __memp_get_mp_max_openfd(dbenv, maxopenfdp)
 	int *maxopenfdp;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_openfd", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_openfd", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		*maxopenfdp = mp->mp_maxopenfd;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else
 		*maxopenfdp = dbenv->mp_maxopenfd;
 	return (0);
@@ -277,17 +295,23 @@ __memp_set_mp_max_openfd(dbenv, maxopenfd)
 	int maxopenfd;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->set_mp_max_openfd", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->set_mp_max_openfd", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		mp->mp_maxopenfd = maxopenfd;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else
 		dbenv->mp_maxopenfd = maxopenfd;
 	return (0);
@@ -303,18 +327,24 @@ __memp_get_mp_max_write(dbenv, maxwritep, maxwrite_sleepp)
 	db_timeout_t *maxwrite_sleepp;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_write", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_write", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		*maxwritep = mp->mp_maxwrite;
 		*maxwrite_sleepp = mp->mp_maxwrite_sleep;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else {
 		*maxwritep = dbenv->mp_maxwrite;
 		*maxwrite_sleepp = dbenv->mp_maxwrite_sleep;
@@ -335,18 +365,24 @@ __memp_set_mp_max_write(dbenv, maxwrite, maxwrite_sleep)
 	db_timeout_t maxwrite_sleep;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_write", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_write", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		mp->mp_maxwrite = maxwrite;
 		mp->mp_maxwrite_sleep = maxwrite_sleep;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else {
 		dbenv->mp_maxwrite = maxwrite;
 		dbenv->mp_maxwrite_sleep = maxwrite_sleep;
@@ -363,17 +399,23 @@ __memp_get_mp_mmapsize(dbenv, mp_mmapsizep)
 	size_t *mp_mmapsizep;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_mmapsize", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_mmapsize", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		*mp_mmapsizep = mp->mp_mmapsize;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else
 		*mp_mmapsizep = dbenv->mp_mmapsize;
 	return (0);
@@ -391,17 +433,23 @@ __memp_set_mp_mmapsize(dbenv, mp_mmapsize)
 	size_t mp_mmapsize;
 {
 	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	MPOOL *mp;
 
-	ENV_NOT_CONFIGURED(dbenv,
-	    dbenv->mp_handle, "DB_ENV->get_mp_max_mmapsize", DB_INIT_MPOOL);
+	env = dbenv->env;
 
-	if (MPOOL_ON(dbenv)) {
-		dbmp = dbenv->mp_handle;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->get_mp_max_mmapsize", DB_INIT_MPOOL);
+
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
 		mp = dbmp->reginfo[0].primary;
-		MPOOL_SYSTEM_LOCK(dbenv);
+		ENV_ENTER(env, ip);
+		MPOOL_SYSTEM_LOCK(env);
 		mp->mp_mmapsize = mp_mmapsize;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
+		ENV_LEAVE(env, ip);
 	} else
 		dbenv->mp_mmapsize = mp_mmapsize;
 	return (0);
@@ -411,15 +459,15 @@ __memp_set_mp_mmapsize(dbenv, mp_mmapsize)
  * __memp_nameop
  *	Remove or rename a file in the pool.
  *
- * PUBLIC: int __memp_nameop __P((DB_ENV *,
+ * PUBLIC: int __memp_nameop __P((ENV *,
  * PUBLIC:     u_int8_t *, const char *, const char *, const char *, int));
  *
  * XXX
  * Undocumented interface: DB private.
  */
 int
-__memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
-	DB_ENV *dbenv;
+__memp_nameop(env, fileid, newname, fullold, fullnew, inmem)
+	ENV *env;
 	u_int8_t *fileid;
 	const char *newname, *fullold, *fullnew;
 	int inmem;
@@ -448,10 +496,10 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 	p = NULL;
 	locked = ret = 0;
 
-	if (!MPOOL_ON(dbenv))
+	if (!MPOOL_ON(env))
 		goto fsop;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	hp = R_ADDR(dbmp->reginfo, mp->ftab);
 
@@ -476,7 +524,7 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 	 * are locking two buckets lock them in ascending order.
 	 */
 	if (inmem) {
-		DB_ASSERT(dbenv, fullold != NULL);
+		DB_ASSERT(env, fullold != NULL);
 		hp += FNBUCKET(fullold, strlen(fullold));
 		if (!op_is_remove) {
 			bucket = FNBUCKET(newname, nlen);
@@ -487,10 +535,10 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 		hp += FNBUCKET(fileid, DB_FILE_ID_LEN);
 
 	if (nhp != NULL && nhp < hp)
-		MUTEX_LOCK(dbenv, nhp->mtx_hash);
-	MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MUTEX_LOCK(env, nhp->mtx_hash);
+	MUTEX_LOCK(env, hp->mtx_hash);
 	if (nhp != NULL && nhp > hp)
-		MUTEX_LOCK(dbenv, nhp->mtx_hash);
+		MUTEX_LOCK(env, nhp->mtx_hash);
 	locked = 1;
 
 	if (!op_is_remove && inmem) {
@@ -531,7 +579,7 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 	}
 
 	if (op_is_remove) {
-		MUTEX_LOCK(dbenv, mfp->mutex);
+		MUTEX_LOCK(env, mfp->mutex);
 		/*
 		 * In-memory dbs have an artificially incremented ref count so
 		 * they do not get reclaimed as long as they exist.  Since we
@@ -540,7 +588,7 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 		if (mfp->no_backing_file)
 			mfp->mpf_cnt--;
 		mfp->deadfile = 1;
-		MUTEX_UNLOCK(dbenv, mfp->mutex);
+		MUTEX_UNLOCK(env, mfp->mutex);
 	} else {
 		/*
 		 * Else, it's a rename.  We've allocated memory for the new
@@ -551,7 +599,7 @@ __memp_nameop(dbenv, fileid, newname, fullold, fullnew, inmem)
 		mfp->path_off = newname_off;
 
 		if (inmem && hp != nhp) {
-			DB_ASSERT(dbenv, nhp != NULL);
+			DB_ASSERT(env, nhp != NULL);
 			SH_TAILQ_REMOVE(&hp->hash_bucket, mfp, q, __mpoolfile);
 			mfp->bucket = bucket;
 			SH_TAILQ_INSERT_TAIL(&nhp->hash_bucket, mfp, q);
@@ -569,19 +617,19 @@ fsop:	/*
 			 * Replication may ask us to unlink a file that's been
 			 * renamed.  Don't complain if it doesn't exist.
 			 */
-			if ((ret = __os_unlink(dbenv, fullold)) == ENOENT)
+			if ((ret = __os_unlink(env, fullold, 0)) == ENOENT)
 				ret = 0;
 		} else {
 			/*
 			 * Defensive only, fullnew should never be
 			 * NULL.
 			 */
-			DB_ASSERT(dbenv, fullnew != NULL);
+			DB_ASSERT(env, fullnew != NULL);
 			if (fullnew == NULL) {
 				ret = EINVAL;
 				goto err;
 			}
-			ret = __os_rename(dbenv, fullold, fullnew, 1);
+			ret = __os_rename(env, fullold, fullnew, 1);
 		}
 	}
 
@@ -591,50 +639,51 @@ err:	if (p != NULL)
 
 	/* If we have buckets locked, unlock them when done moving files. */
 	if (locked == 1) {
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 		if (nhp != NULL && nhp != hp)
-			MUTEX_UNLOCK(dbenv, nhp->mtx_hash);
+			MUTEX_UNLOCK(env, nhp->mtx_hash);
 	}
 	return (ret);
 }
 
-#ifdef HAVE_FTRUNCATE
 /*
  * __memp_ftruncate __
  *	Truncate the file.
  *
- * PUBLIC: int __memp_ftruncate __P((DB_MPOOLFILE *, db_pgno_t, u_int32_t));
+ * PUBLIC: int __memp_ftruncate __P((DB_MPOOLFILE *,
+ * PUBLIC:     DB_THREAD_INFO *, db_pgno_t, u_int32_t));
  */
 int
-__memp_ftruncate(dbmfp, pgno, flags)
+__memp_ftruncate(dbmfp, ip, pgno, flags)
 	DB_MPOOLFILE *dbmfp;
+	DB_THREAD_INFO *ip;
 	db_pgno_t pgno;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *pagep;
 	db_pgno_t last_pgno, pg;
 	int ret;
 
-	dbenv = dbmfp->dbenv;
+	env = dbmfp->env;
 	mfp = dbmfp->mfp;
 
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	MUTEX_LOCK(env, mfp->mutex);
 	last_pgno = mfp->last_pgno;
-	MUTEX_UNLOCK(dbenv, mfp->mutex);
+	MUTEX_UNLOCK(env, mfp->mutex);
 
 	if (pgno > last_pgno) {
 		if (LF_ISSET(MP_TRUNC_RECOVER))
 			return (0);
-		__db_errx(dbenv, "Truncate beyond the end of file");
+		__db_errx(env, "Truncate beyond the end of file");
 		return (EINVAL);
 	}
 
 	pg = pgno;
 	do {
-		if ((ret =
-		    __memp_fget(dbmfp, &pg, NULL, DB_MPOOL_FREE, &pagep)) != 0)
+		if ((ret = __memp_fget(dbmfp, &pg,
+		    ip, NULL, DB_MPOOL_FREE, &pagep)) != 0)
 			return (ret);
 	} while (pg++ < last_pgno);
 
@@ -645,11 +694,16 @@ __memp_ftruncate(dbmfp, pgno, flags)
 	 * whose log records are not yet flushed [#14031].  In addition if
 	 * we are out of disk space we can generate an error [#12743].
 	 */
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	MUTEX_LOCK(env, mfp->mutex);
 	if (!F_ISSET(mfp, MP_TEMP) &&
 	    !mfp->no_backing_file && pgno <= mfp->last_flushed_pgno)
-		ret = __os_truncate(dbenv,
+#ifdef HAVE_FTRUNCATE
+		ret = __os_truncate(env,
 		    dbmfp->fhp, pgno, mfp->stat.st_pagesize);
+#else
+		ret = __db_zero_extend(env,
+		    dbmfp->fhp, pgno, mfp->last_pgno, mfp->stat.st_pagesize);
+#endif
 
 	/*
 	 * This set could race with another thread of control that extending
@@ -661,18 +715,20 @@ __memp_ftruncate(dbmfp, pgno, flags)
 		if (mfp->last_flushed_pgno > mfp->last_pgno)
 			mfp->last_flushed_pgno = mfp->last_pgno;
 	}
-	MUTEX_UNLOCK(dbenv, mfp->mutex);
+	MUTEX_UNLOCK(env, mfp->mutex);
 
 	return (ret);
 }
 
+#ifdef HAVE_FTRUNCATE
 /*
- * Support routines for maintaining a sorted freelist
- * while we try to rearrange and truncate the file.
+ * Support routines for maintaining a sorted freelist while we try to rearrange
+ * and truncate the file.
  */
 
 /*
- * __memp_alloc_freelist -- allocate mpool space for the freelist.
+ * __memp_alloc_freelist --
+ *	Allocate mpool space for the freelist.
  *
  * PUBLIC: int __memp_alloc_freelist __P((DB_MPOOLFILE *,
  * PUBLIC:	 u_int32_t, db_pgno_t **));
@@ -683,14 +739,14 @@ __memp_alloc_freelist(dbmfp, nelems, listp)
 	u_int32_t nelems;
 	db_pgno_t **listp;
 {
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *retp;
 	int ret;
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
 	mfp = dbmfp->mfp;
 
 	*listp = NULL;
@@ -718,7 +774,8 @@ __memp_alloc_freelist(dbmfp, nelems, listp)
 }
 
 /*
- * __memp_free_freelist -- free the list.
+ * __memp_free_freelist --
+ *	Free the list.
  *
  * PUBLIC: int __memp_free_freelist __P((DB_MPOOLFILE *));
  */
@@ -726,23 +783,23 @@ int
 __memp_free_freelist(dbmfp)
 	DB_MPOOLFILE *dbmfp;
 {
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOLFILE *mfp;
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
 	mfp = dbmfp->mfp;
 
-	DB_ASSERT(dbenv, mfp->free_ref > 0);
+	DB_ASSERT(env, mfp->free_ref > 0);
 	if (--mfp->free_ref > 0)
 		return (0);
 
-	DB_ASSERT(dbenv, mfp->free_size != 0);
+	DB_ASSERT(env, mfp->free_size != 0);
 
-	MPOOL_SYSTEM_LOCK(dbenv);
+	MPOOL_SYSTEM_LOCK(env);
 	__memp_free(dbmp->reginfo, NULL, R_ADDR(dbmp->reginfo, mfp->free_list));
-	MPOOL_SYSTEM_UNLOCK(dbenv);
+	MPOOL_SYSTEM_UNLOCK(env);
 
 	mfp->free_cnt = 0;
 	mfp->free_list = 0;
@@ -751,7 +808,8 @@ __memp_free_freelist(dbmfp)
 }
 
 /*
- * __memp_get_freelst -- return current list.
+ * __memp_get_freelst --
+ *	Return current list.
  *
  * PUBLIC: int __memp_get_freelist __P((
  * PUBLIC:	DB_MPOOLFILE *, u_int32_t *, db_pgno_t **));
@@ -762,12 +820,12 @@ __memp_get_freelist(dbmfp, nelemp, listp)
 	u_int32_t *nelemp;
 	db_pgno_t **listp;
 {
-	MPOOLFILE *mfp;
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	ENV *env;
+	MPOOLFILE *mfp;
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
 	mfp = dbmfp->mfp;
 
 	if (mfp->free_size == 0) {
@@ -782,7 +840,8 @@ __memp_get_freelist(dbmfp, nelemp, listp)
 }
 
 /*
- * __memp_extend_freelist -- extend the list.
+ * __memp_extend_freelist --
+ *	Extend the list.
  *
  * PUBLIC: int __memp_extend_freelist __P((
  * PUBLIC:	DB_MPOOLFILE *, u_int32_t , db_pgno_t **));
@@ -793,14 +852,14 @@ __memp_extend_freelist(dbmfp, count, listp)
 	u_int32_t count;
 	db_pgno_t **listp;
 {
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
+	ENV *env;
 	MPOOLFILE *mfp;
 	int ret;
 	void *retp;
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
 	mfp = dbmfp->mfp;
 
 	if (mfp->free_size == 0)
@@ -816,9 +875,9 @@ __memp_extend_freelist(dbmfp, count, listp)
 
 		memcpy(retp, *listp, mfp->free_cnt * sizeof(db_pgno_t));
 
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MPOOL_SYSTEM_LOCK(env);
 		__memp_free(dbmp->reginfo, NULL, *listp);
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
 	}
 
 	mfp->free_cnt = count;
@@ -827,3 +886,16 @@ __memp_extend_freelist(dbmfp, count, listp)
 	return (0);
 }
 #endif
+
+/*
+ * __memp_set_last_pgno -- set the last page of the file
+ *
+ * PUBLIC: void __memp_set_last_pgno __P((DB_MPOOLFILE *, db_pgno_t));
+ */
+void
+__memp_set_last_pgno(dbmfp, pgno)
+	DB_MPOOLFILE *dbmfp;
+	db_pgno_t pgno;
+{
+	dbmfp->mfp->last_pgno = pgno;
+}

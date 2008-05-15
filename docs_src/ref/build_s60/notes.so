@@ -1,0 +1,24 @@
+m4_comment([$Id: notes.so,v 1.2 2007/10/31 18:08:31 bostic Exp $])
+
+m4_ref_title(Building m4_db for S60,
+    S60 notes, @S60 notes,
+    build_s60/intro, build_unix/intro)
+
+m4_nlistbegin
+
+m4_nlist([dnl
+The stack size on the S60 is small by default, and the application will
+silently fail if the stack is too small.  Setting EPOCSTACKSIZE to an
+appropriate value in the application's mmp file will resolve this
+problem.])
+
+m4_nlist([dnl
+The m4_db build on the S60 is a "small build", disabling some of the
+m4_db library features.  This build is equivalent to the
+m4_arg(--enable-smallbuild) configuration option described in
+m4_link(M4RELDIR/ref/build_unix/small, Building a small memory footprint
+library).])
+
+m4_nlistend
+
+m4_page_footer

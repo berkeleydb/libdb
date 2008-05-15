@@ -49,5 +49,5 @@ strcat(char *s, const char *append)
 
 	for (; *s; ++s);
 	while ((*s++ = *append++));
-	return(save);
+	return (save);
 }

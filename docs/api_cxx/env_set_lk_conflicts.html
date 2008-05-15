@@ -1,5 +1,5 @@
 <!--$Id: env_set_lk_conflicts.so,v 10.43 2004/09/28 15:04:20 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::set_lk_conflicts</h3>
+<b>DbEnv::set_lk_conflicts</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DbEnv::set_lk_conflicts(u_int8_t *conflicts, int nmodes);
 <p>
 int
 DbEnv::get_lk_conflicts(const u_int8_t **lk_conflictsp, int *lk_modesp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::set_lk_conflicts</h3>
+<b>Description: DbEnv::set_lk_conflicts</b>
 <p>Set the locking conflicts matrix.</p>
 <p>If DbEnv::set_lk_conflicts is never called, a standard conflicts
 array is used; see <a href="../ref/lock/stdmode.html">Standard Lock
@@ -46,31 +46,30 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>conflicts</b><dd>The <b>conflicts</b> parameter is the new locking conflicts matrix.
+<b>Parameters</b> <br>
+ <b>conflicts</b><ul compact><li>The <b>conflicts</b> parameter is the new locking conflicts matrix.
 The <b>conflicts</b> parameter is an <b>nmodes</b> by <b>nmodes</b>
 array.  A non-0 value for the array element indicates that
 requested_mode and held_mode conflict:
 <blockquote><pre>conflicts[requested_mode][held_mode]</pre></blockquote>
-<p>The <i>not-granted</i> mode must be represented by 0.</p>
-<dt><b>nmodes</b><dd>The <b>nmodes</b> parameter is the size of the lock conflicts matrix.
-</dl>
-<h3>Errors</h3>
+<p>The <i>not-granted</i> mode must be represented by 0.</p></ul>
+ <b>nmodes</b><ul compact><li>The <b>nmodes</b> parameter is the size of the lock conflicts matrix.</ul>
+<br>
+<br><b>Errors</b>
 <p>The DbEnv::set_lk_conflicts method
 may fail and throw
 <a href="../api_cxx/except_class.html">DbException</a>,
 encapsulating one of the following non-zero errors, or return one of
 the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If the method was called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If the method was called after <a href="../api_cxx/env_open.html">DbEnv::open</a> was called; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <p>If the conflicts array could not be copied, the DbEnv::set_lk_conflicts method will fail and
 either return ENOMEM or
 throw a DbMemoryException.</p>
 <hr size=1 noshade>
-<h3>Description: dbenv_get_lk_conflicts</h3>
+<b>Description: dbenv_get_lk_conflicts</b>
 <p>The DbEnv::get_lk_conflicts method returns the current conflicts array.</p>
 <p>The DbEnv::get_lk_conflicts method may be called at any time during the life of the
 application.</p>
@@ -79,22 +78,21 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>lk_conflictsp</b><dd>The <b>lk_conflictsp</b> parameter references memory into which
-a pointer to the current conflicts array is copied. 
-<dt><b>lk_modesp</b><dd>The <b>lk_modesp</b> parameter references memory into which
- the size of the current conflicts array is copied. 
-</dl>
+<b>Parameters</b> <br>
+ <b>lk_conflictsp</b><ul compact><li>The <b>lk_conflictsp</b> parameter references memory into which
+a pointer to the current conflicts array is copied.</ul> 
+ <b>lk_modesp</b><ul compact><li>The <b>lk_modesp</b> parameter references memory into which
+ the size of the current conflicts array is copied.</ul> 
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/lock_class.html">DbLock</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/lock_list.html">Locking Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

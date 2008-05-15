@@ -1,4 +1,4 @@
-m4_comment([$Id: env_failchk.so,v 10.6 2006/10/12 21:37:42 bostic Exp $])
+m4_comment([$Id: env_failchk.so,v 10.7 2007/09/21 20:06:01 bostic Exp $])
 
 define(M4PAGELOCAL, [dbenv_failchk])
 include(m4/m4.seealso)
@@ -58,7 +58,7 @@ Concurrent Data Store applications), and
 m4_link(M4RELDIR/ref/transapp/fail, Handling failure in Transactional
 Data Store applications).])
 
-m4_when_after_envopen(dbenv_failchk)
+m4_when(dbenv_failchk, before, dbenv_open)
 
 m4_return(dbenv_failchk, std)
 

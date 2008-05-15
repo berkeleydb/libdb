@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: csv.h,v 1.18 2007/05/17 17:26:05 bostic Exp $
+ * $Id: csv.h,v 1.20 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -67,7 +67,7 @@ typedef enum { EQ=1, NEQ, GT, GTEQ, LT, LTEQ, WC, NWC } OPERATOR;
 /*
  * Supported data types.
  */
-typedef enum { NOTSET=1, DOUBLE, STRING, ULONG } datatype;
+typedef enum { NOTSET=1, DOUBLE, STRING, UNSIGNED_LONG } datatype;
 
 /*
  * C structure that describes the csv fields.

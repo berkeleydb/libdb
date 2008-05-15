@@ -1,5 +1,5 @@
 <!--$Id: env_set_mp_mmapsize.so,v 10.40 2004/09/28 15:04:21 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;set_mp_mmapsize</h3>
+<b>DB_ENV-&gt;set_mp_mmapsize</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DB_ENV-&gt;set_mp_mmapsize(DB_ENV *dbenv, size_t mp_mmapsize);
 <p>
 int
 DB_ENV-&gt;get_mp_mmapsize(DB_ENV *dbenv, size_t *mp_mmapsizep);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;set_mp_mmapsize</h3>
+<b>Description: DB_ENV-&gt;set_mp_mmapsize</b>
 <p>Files that are opened read-only in the pool (and that satisfy a few
 other criteria) are, by default, mapped into the process address space
 instead of being copied into the local cache.  This can result in
@@ -41,12 +41,12 @@ in immense process sizes in the presence of large databases.</p>
 for a file to be mapped into the process address space.  If no value is
 specified, it defaults to 10MB.</p>
 <p>The database environment's maximum mapped file size may also be configured using the
-environment's <b>DB_CONFIG</b> file.  The syntax of the entry in that
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
 file is a single line with the string "set_mp_mmapsize", one or more whitespace
 characters, and the size in bytes.
-Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.</p>
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
 <p>The DB_ENV-&gt;set_mp_mmapsize method configures a database environment, not only operations
 performed using the specified <a href="../api_c/env_class.html">DB_ENV</a> handle.</p>
 <p>The DB_ENV-&gt;set_mp_mmapsize method may be called at any time during the life of the
@@ -55,20 +55,19 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>mp_mmapsize</b><dd>The <b>mp_mmapsize</b> parameter is the maximum file size, in bytes,
-for a file to be mapped into the process address space.
-</dl>
-<h3>Errors</h3>
+<b>Parameters</b> <br>
+ <b>mp_mmapsize</b><ul compact><li>The <b>mp_mmapsize</b> parameter is the maximum file size, in bytes,
+for a file to be mapped into the process address space.</ul>
+<br>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;set_mp_mmapsize method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If the method was called after <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> was called; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If the method was called after <a href="../api_c/env_open.html">DB_ENV-&gt;open</a> was called; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;get_mp_mmapsize</h3>
+<b>Description: DB_ENV-&gt;get_mp_mmapsize</b>
 <p>The DB_ENV-&gt;get_mp_mmapsize method returns the maximum file map size.</p>
 <p>The DB_ENV-&gt;get_mp_mmapsize method may be called at any time during the life of the
 application.</p>
@@ -76,20 +75,19 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>mp_mmapsizep</b><dd>The DB_ENV-&gt;get_mp_mmapsize method returns  the
-maximum file map size in <b>mp_mmapsizep</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>mp_mmapsizep</b><ul compact><li>The DB_ENV-&gt;get_mp_mmapsize method returns  the
+maximum file map size in <b>mp_mmapsizep</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/mempfile_class.html">DB_MPOOLFILE</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

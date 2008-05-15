@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep034.tcl,v 12.22 2007/06/21 16:32:24 alanb Exp $
+# $Id: rep034.tcl,v 12.26 2008/01/18 18:51:46 sue Exp $
 #
 # TEST	rep034
 # TEST	Test of STARTUPDONE notification.
@@ -49,11 +49,12 @@ proc rep034_sub { method niter tnum logset largs } {
 	global testdir
 	global startup_done
 	global rep_verbose
+	global verbose_type
 	global rep034_got_allreq
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -226,7 +227,9 @@ proc rep034_sub { method niter tnum logset largs } {
 		return
 	}
 	puts "\tRep$tnum.e: Check no STARTUPDONE when c2c server is behind."
+	$clientenv log_flush
 	$clientenv close
+	$client2env log_flush
 	$client2env close
 	
 	set anywhere 0
@@ -267,7 +270,11 @@ proc rep034_sub { method niter tnum logset largs } {
 	$client2env rep_stat -clear
 	replclear 2
 	set clientenv [eval $cl_envcmd -recover]
-	$clientenv rep_request 4 4
+	#
+	# Set to 400 usecs.  An average ping to localhost should
+	# be a few 10s usecs.
+	#
+	$clientenv rep_request 400 400
 	set envlist "{$masterenv 1} {$clientenv 2} {$client2env 3}"
 
 	while {[rep034_proc_msgs_once $masterenv $clientenv $client2env] > 0} {}

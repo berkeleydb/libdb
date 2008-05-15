@@ -19,12 +19,16 @@ static void __dbj_error(const DB_ENV *dbenv,
 {
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	jobject jmsg;
 
 	COMPQUIET(prefix, NULL);
 
-	if (jdbenv != NULL)
+	if (jdbenv != NULL){
+		jmsg = (*jenv)->NewStringUTF(jenv, msg);
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
-		    errcall_method, (*jenv)->NewStringUTF(jenv, msg));
+		    errcall_method, jmsg);
+		(*jenv)->DeleteLocalRef(jenv, jmsg);
+	}
 }
 
 static void __dbj_env_feedback(DB_ENV *dbenv, int opcode, int percent)
@@ -41,10 +45,14 @@ static void __dbj_message(const DB_ENV *dbenv, const char *msg)
 {
 	JNIEnv *jenv = __dbj_get_jnienv();
 	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	jobject jmsg;
 
-	if (jdbenv != NULL)
+	if (jdbenv != NULL){
+		jmsg = (*jenv)->NewStringUTF(jenv, msg);
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
-		    msgcall_method, (*jenv)->NewStringUTF(jenv, msg));
+		    msgcall_method, jmsg);
+		(*jenv)->DeleteLocalRef(jenv, jmsg);
+	}
 }
 
 static void __dbj_panic(DB_ENV *dbenv, int err)
@@ -138,7 +146,7 @@ static void __dbj_event_notify(DB_ENV *dbenv, u_int32_t event_id, void * info)
 		break;
 	default:
                 dbenv->errx(dbenv, "Unhandled event callback in the Java API");
-                DB_ASSERT(dbenv, 0);
+                DB_ASSERT(dbenv->env, 0);
 	}
 }
 
@@ -183,6 +191,89 @@ static int __dbj_rep_transport(DB_ENV *dbenv,
 		(*jenv)->DeleteLocalRef(jenv, jlsn);
 
 	return (ret);
+}
+
+static int __dbj_foreignkey_nullify(DB *db, 
+    const DBT *key, DBT *data, const DBT *skey, int *changed)
+{
+	DBT_LOCKED lresult;
+	JNIEnv *jenv = __dbj_get_jnienv();
+	jobject jdb = (jobject)DB_INTERNAL(db);
+	jobject jkey, jdata, jskey;
+	jbyteArray jkeyarr, jdataarr, jskeyarr;
+	jboolean jresult;
+	int ret;
+
+	if (jdb == NULL)
+		return (EINVAL);
+
+	jkey = (key->app_data != NULL) ?
+	    ((DBT_LOCKED *)key->app_data)->jdbt :
+	    (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
+	jdata = (data->app_data != NULL) ?
+	    ((DBT_LOCKED *)data->app_data)->jdbt :
+	    (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
+	jskey = (skey->app_data != NULL) ?
+	    ((DBT_LOCKED *)skey->app_data)->jdbt :
+	    (*jenv)->NewObject(jenv, dbt_class, dbt_construct);
+	if (jkey == NULL || jdata == NULL || jskey == NULL)
+		return (ENOMEM); /* An exception is pending */
+
+	if (key->app_data == NULL) {
+		__dbj_dbt_copyout(jenv, key, &jkeyarr, jkey);
+		if (jkeyarr == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+	if (data->app_data == NULL) {
+		__dbj_dbt_copyout(jenv, data, &jdataarr, jdata);
+		if (jdataarr == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+	if (skey->app_data == NULL) {
+		__dbj_dbt_copyout(jenv, skey, &jskeyarr, jskey);
+		if (jskeyarr == NULL)
+			return (ENOMEM); /* An exception is pending */
+	}
+
+	jresult = (*jenv)->CallNonvirtualBooleanMethod(jenv, jdb, db_class, foreignkey_nullify_method, jkey, jdata, jskey);
+
+	if ((*jenv)->ExceptionOccurred(jenv)) {
+		/* The exception will be thrown, so this could be any error. */
+		ret = EINVAL;
+		goto err;
+	}
+
+	if (jresult == JNI_FALSE)
+		*changed = ret = 0;
+	else{
+		*changed = 1;
+		/* copy jdata into data */
+		if ((ret = __dbj_dbt_copyin(jenv, &lresult, NULL, jdata, 0)) != 0)
+			goto err;
+		if (lresult.dbt.size != 0){
+			data->size = lresult.dbt.size;
+			if ((ret = __os_umalloc(
+			    NULL, data->size, &data->data)) != 0)
+				goto err;
+			if ((ret = __dbj_dbt_memcopy(&lresult.dbt, 0, 
+			    data->data, data->size, DB_USERCOPY_GETDATA)) != 0)
+				goto err;
+			__dbj_dbt_release(jenv, jdata,  &lresult.dbt, &lresult);
+			(*jenv)->DeleteLocalRef(jenv, lresult.jarr);
+			F_SET(data, DB_DBT_APPMALLOC);
+		} 
+	}			
+
+err:	if (key->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jkeyarr);
+		(*jenv)->DeleteLocalRef(jenv, jkey);
+	}
+	if (data->app_data == NULL) {
+		(*jenv)->DeleteLocalRef(jenv, jdataarr);
+		(*jenv)->DeleteLocalRef(jenv, jdata);
+	}
+
+	return ret;
 }
 
 static int __dbj_seckey_create(DB *db,
@@ -232,7 +323,7 @@ static int __dbj_seckey_create(DB *db,
 		memset(result, 0, sizeof (DBT));
 		tresult = result;
 	} else {
-		if ((ret = __os_umalloc(db->dbenv,
+		if ((ret = __os_umalloc(db->env,
 		    num_skeys * sizeof (DBT), &result->data)) != 0)
 			goto err;
 		memset(result->data, 0, num_skeys * sizeof (DBT));
@@ -550,6 +641,11 @@ JAVA_CALLBACK(int (*callback)(DB *, const DBT *, const DBT *, DBT *),
 %typemap(javain) int (*callback)(DB *, const DBT *, const DBT *, DBT *)
     %{ (secondary.seckey_create_handler = $javainput) != null ||
 	(secondary.secmultikey_create_handler != null) %}
+JAVA_CALLBACK(int (*callback)(DB *, const DBT *, DBT *, const DBT *, int *),
+    com.sleepycat.db.ForeignKeyNullifier, foreignkey_nullify)
+%typemap(javain) int (*callback)(DB *, const DBT *, DBT *, const DBT *, int *)
+    %{ (primary.foreignkey_nullify_handler = $javainput) != null ||
+	(primary.foreignmultikey_nullify_handler != null) %}
 
 JAVA_CALLBACK(int (*db_append_recno_fcn)(DB *, DBT *, db_recno_t),
     com.sleepycat.db.RecordNumberAppender, append_recno)

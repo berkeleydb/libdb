@@ -1,4 +1,4 @@
-m4_comment([$Id: conf.so,v 10.66 2007/04/05 20:36:38 bostic Exp $])
+m4_comment([$Id: conf.so,v 10.68 2008/01/28 23:59:31 sarette Exp $])
 
 m4_ref_title(Building m4_db for UNIX/POSIX systems,
     Configuring m4_db,
@@ -103,18 +103,6 @@ location of javac to determine the location of the Java include files
 (for example, jni.h). On some systems, additional include directories
 may be needed to process jni.h; see m4_link(flags, Changing compile or
 load options) for more information.])
-
-m4_idefz(configuring the fine-grained lock manager)
-m4_tag([m4_idef(--enable-fine_grained_lock_manager)], [dnl
-For highly concurrent m4_db applications on multithreaded, multi-core
-architectures (for example, Sun Microsystem's Niagara systems), it may
-be advantageous to configure m4_db for finer-grained locking behavior
-in the lock manager subsystem.  To build with m4_db with finer-grained
-locking behavior in the lock manager subsystem, enter
---enable-fine_grained_lock_manager as an argument to configure.  This
-option should not be configured without performance testing to confirm
-the finer-grained locking behavior increases overall throughput, as this
-option will decrease overall throughput for some applications.])
 
 m4_tag([m4_idef(--enable-posixmutexes)], [dnl
 To force m4_db to use the POSIX pthread mutex interfaces for underlying
@@ -221,7 +209,7 @@ the x86 GNU gcc compiler based test-and-set assembly mutexes.  This is
 rarely necessary and should be done only when the default configuration
 selects the wrong mutex implementation.  A list of available mutex
 implementations can be found in the distribution file
-m4_path(dist/aclocal/mutex.ac).])
+m4_path(dist/aclocal/mutex.m4).])
 
 m4_tag([m4_idef(--with-tcl=DIR)], [dnl
 To build the m4_db Tcl API, enter --with-tcl=DIR, replacing DIR with

@@ -1,4 +1,4 @@
-m4_comment([$Id: m4.methods,v 1.6 2006/08/08 05:15:56 mjc Exp $])
+m4_comment([$Id: m4.methods,v 1.7 2008/01/28 23:59:30 sarette Exp $])
 
 m4_table_begin(, _center)
 
@@ -21,6 +21,7 @@ m4_comment([DbEnv::set_lk_max_detect])m4_table_element(m4_ref(dbenv_set_lk_detec
 m4_comment([DbEnv::set_lk_max_lockers])m4_table_element(m4_ref(dbenv_set_lk_max_lockers), Set maximum number of lockers)
 m4_comment([DbEnv::set_lk_max_locks])m4_table_element(m4_ref(dbenv_set_lk_max_locks), Set maximum number of locks)
 m4_comment([DbEnv::set_lk_max_objects])m4_table_element(m4_ref(dbenv_set_lk_max_objects), Set maximum number of lock objects)
+m4_comment([DbEnv::set_lk_partitions])m4_table_element(m4_ref(dbenv_set_lk_partitions), Set number of lock partitions)
 m4_comment([DbEnv::set_timeout])m4_table_element(m4_ref(dbenv_set_timeout), Set lock and transaction timeout)
 
 m4_table_end

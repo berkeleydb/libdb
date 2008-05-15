@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep029.tcl,v 12.24 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep029.tcl,v 12.27 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep029
 # TEST	Test of internal initialization.
@@ -97,10 +97,11 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 	global passwd
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -181,11 +182,17 @@ proc rep029_sub { method niter tnum envargs logset recargs opts inmem largs } {
 
 	set stop 0
 	while { $stop == 0 } {
-		# Run rep_test in the master (don't update client).
+		# Run rep_test in the master (don't update client).  Each time
+		# through the loop, start at the same $start value (i.e., don't
+		# increment $start).  Since all we're trying to do is to fill up
+		# the log, it doesn't matter whether we insert new records or
+		# rewrite existing ones.  But if we insert new records we might
+		# fill up the cache, which is fatal in the in-memory database
+		# case.
+		# 
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 	 	eval rep_test \
 		    $method $masterenv NULL $niter $start $start 0 $inmem $largs
-		incr start $niter
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."

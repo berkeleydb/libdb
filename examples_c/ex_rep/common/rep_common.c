@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2006,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_common.c,v 12.20 2007/05/17 17:29:27 bostic Exp $
+ * $Id: rep_common.c,v 12.23 2008/04/04 21:16:36 alanb Exp $
  */
 
 #include <errno.h>
@@ -147,6 +147,14 @@ doloop(dbenv, shared_data)
 					dbp = NULL;
 					continue;
 				}
+				if (ret == DB_REP_HANDLE_DEAD ||
+				    ret == DB_LOCK_DEADLOCK) {
+					dbenv->err(dbenv, ret,
+					    "please retry the operation");
+					dbp->close(dbp, DB_NOSYNC);
+					dbp = NULL;
+					continue;
+				}
 				dbenv->err(dbenv, ret, "DB->open");
 				goto err;
 			}
@@ -155,10 +163,11 @@ doloop(dbenv, shared_data)
 		if (first == NULL)
 			switch ((ret = print_stocks(dbp))) {
 			case 0:
-				continue;
+				break;
 			case DB_REP_HANDLE_DEAD:
 				(void)dbp->close(dbp, DB_NOSYNC);
 				dbp = NULL;
+				break;
 			default:
 				dbp->err(dbp, ret, "Error traversing data");
 				goto err;

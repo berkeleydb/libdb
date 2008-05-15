@@ -1,4 +1,4 @@
-m4_comment([$Id: db_get_type.so,v 10.27 2004/08/13 03:38:55 bostic Exp $])
+m4_comment([$Id: db_get_type.so,v 10.28 2007/09/21 20:06:01 bostic Exp $])
 
 define(M4PAGELOCAL, dbh_get_type)
 include(m4/m4.seealso)
@@ -20,7 +20,7 @@ DB_RECNO, or DB_QUEUE.  This value may be used to determine the type of
 the database after a return from m4_ref(dbh_open) with the m4_arg(type)
 parameter set to DB_UNKNOWN.])
 
-m4_when_after_dbopen(dbh_get_type)
+m4_when(dbh_get_type, before, dbh_open)
 
 m4_return(dbh_get_type, std)
 

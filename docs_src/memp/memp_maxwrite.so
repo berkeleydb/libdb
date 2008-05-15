@@ -1,4 +1,4 @@
-m4_comment([$Id: memp_maxwrite.so,v 10.5 2006/11/29 21:37:17 bostic Exp $])
+m4_comment([$Id: memp_maxwrite.so,v 10.6 2007/11/08 16:28:12 bostic Exp $])
 
 define(M4PAGELOCAL, [memp_get_max_write, memp_set_max_write])
 include(m4/m4.seealso)
@@ -23,6 +23,13 @@ m4_p([dnl
 The m4_refT(memp_set_max_write) limits the number of sequential write
 operations scheduled by the library when flushing dirty pages from the
 cache.])
+
+m4_env_config(memp_set_max_write,
+[maximum number of sequential write operations], set_mp_max_write,
+[the maximum number of sequential writes and the number of microseconds
+to sleep, also separated by whitespace characters])
+
+m4_scope_env(memp_set_max_write)
 
 m4_return(memp_set_max_write, std)
 

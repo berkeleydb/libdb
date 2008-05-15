@@ -1,5 +1,5 @@
 <!--$Id: env_set_thread_id.so,v 10.9 2006/08/24 16:32:23 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;set_thread_id</h3>
+<b>DB_ENV-&gt;set_thread_id</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,15 +18,15 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DB_ENV-&gt;set_thread_id(DB_ENV *dbenv,
     void (*thread_id)(DB_ENV *dbenv, pid_t *pid, db_threadid_t *tid));
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;set_thread_id</h3>
+<b>Description: DB_ENV-&gt;set_thread_id</b>
 <p>Declare a function that returns a unique identifier pair for the current
 thread of control.  The DB_ENV-&gt;set_thread_id method supports the
 <a href="../api_c/env_failchk.html">DB_ENV-&gt;failchk</a> method.  For more information, see
@@ -41,23 +41,22 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>thread_id</b><dd>The <b>thread_id</b> parameter is a function which returns a unique
+<b>Parameters</b> <br>
+ <b>thread_id</b><ul compact><li>The <b>thread_id</b> parameter is a function which returns a unique
 identifier pair for a thread of control in a Berkeley DB application.  The
-function takes three arguments:
-<dl compact>
-<dt><b>dbenv</b><dd>The <b>dbenv</b> parameter is the enclosing database environment
+function takes three arguments:</ul>
+<br>
+<b><b>dbenv</b></b><ul compact><li>The <b>dbenv</b> parameter is the enclosing database environment
 handle, allowing application access to the application-private fields
-of that object.
-<dt><b>pid</b><dd>The <b>pid</b> points to a memory location of type pid_t.  The
+of that object.</ul>
+<b><b>pid</b></b><ul compact><li>The <b>pid</b> points to a memory location of type pid_t.  The
 process ID of the current thread of control may be returned in
-this memory location.
-<dt><b>tid</b><dd>The <b>tid</b> points to a memory location of type db_threadid_t.  The
+this memory location.</ul>
+<b><b>tid</b></b><ul compact><li>The <b>tid</b> points to a memory location of type db_threadid_t.  The
 thread ID of the current thread of control may be returned in this
-memory location.
-</dl>
-</dl>
+memory location.</ul>
+<br>
+<br>
 <p>The standard system library calls to return process and thread IDs are
 often sufficient for this purpose (for example, getpid() and
 pthread_self() on POSIX systems or GetCurrentThreadID on Windows
@@ -101,22 +100,22 @@ the getpid() and pthread_self() calls when the Berkeley DB library has been
 configured for POSIX pthreads or Solaris LWP threads, the getpid() and
 thr_self() calls when the Berkeley DB library has been configured for UI
 threads, and otherwise getpid().</p>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;set_thread_id method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

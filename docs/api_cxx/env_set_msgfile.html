@@ -1,5 +1,5 @@
 <!--$Id: env_set_msgfile.so,v 10.7 2006/02/10 22:54:59 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::set_msgfile</h3>
+<b>DbEnv::set_msgfile</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 void
@@ -26,9 +26,9 @@ DbEnv::set_msgfile(FILE *msgfile);
 <p>
 void
 DbEnv::get_msgfile(FILE **msgfilep);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::set_msgfile</h3>
+<b>Description: DbEnv::set_msgfile</b>
 <p>There are interfaces in the Berkeley DB library which either directly output
 informational messages or statistical information, or configure the
 library to output such messages when performing other operations, for
@@ -48,13 +48,12 @@ approaches.</p>
 database environment.</p>
 <p>The DbEnv::set_msgfile method may be called at any time during the life of the
 application.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>msgfile</b><dd>The <b>msgfile</b> parameter is a C library FILE * to be used for
-displaying messages.
-</dl>
+<b>Parameters</b> <br>
+ <b>msgfile</b><ul compact><li>The <b>msgfile</b> parameter is a C library FILE * to be used for
+displaying messages.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbEnv::get_msgfile</h3>
+<b>Description: DbEnv::get_msgfile</b>
 <p>The DbEnv::get_msgfile method returns the FILE *.</p>
 <p>The DbEnv::get_msgfile method may be called at any time during the life of the
 application.</p>
@@ -63,20 +62,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>msgfilep</b><dd>The DbEnv::get_msgfile method returns  the
-FILE * in <b>msgfilep</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>msgfilep</b><ul compact><li>The DbEnv::get_msgfile method returns  the
+FILE * in <b>msgfilep</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep022.tcl,v 12.16 2007/06/08 15:10:05 sue Exp $
+# $Id: rep022.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep022
 # TEST	Replication elections - test election generation numbers
@@ -52,10 +52,11 @@ proc rep022 { method args } {
 proc rep022_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -118,7 +119,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 		set crash($i) 0
 		if { $rep_verbose == 1 } {
 			$clientenv($i) errpfx CLIENT$i
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			$clientenv($i) errfile /dev/stderr
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT$i -errfile /dev/stderr"]
@@ -141,7 +142,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	setpriority pri $nclients $winner
 	set elector [berkdb random_int 0 [expr $nclients - 1]]
 	run_election env_cmd envlist err_cmd pri crash \
-	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0
+	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	set msg "Rep$tnum.c"
 	puts "\t$msg: Close and reopen client 2 with recovery."
@@ -203,7 +204,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	setpriority pri $nclients $winner 2
 	set elector [berkdb random_int 2 4]
 	run_election env_cmd envlist err_cmd pri crash \
-	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0
+	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	# Note egens for all the clients.
 	set envlist $origlist
@@ -265,7 +266,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	setpriority pri $nclients $winner
 	set elector [berkdb random_int 0 [expr $nclients - 1]]
 	run_election env_cmd envlist err_cmd pri crash \
-	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0
+	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	# Pull out new egens.
 	foreach pair $envlist {

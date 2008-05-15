@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: StoredMap.java,v 12.9 2007/05/04 00:28:25 mark Exp $
+ * $Id: StoredMap.java,v 12.11 2008/02/07 17:12:26 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -89,7 +89,7 @@ public class StoredMap extends StoredContainer implements Map {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredMap(Database database, EntryBinding keyBinding,
-                     EntryBinding valueBinding, 
+                     EntryBinding valueBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
@@ -147,7 +147,7 @@ public class StoredMap extends StoredContainer implements Map {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredMap(Database database, EntryBinding keyBinding,
-                     EntityBinding valueEntityBinding, 
+                     EntityBinding valueEntityBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -179,7 +179,7 @@ public class StoredMap extends StoredContainer implements Map {
     private void initView() {
 
         /* entrySet */
-        if (isOrdered()) {
+        if (areKeyRangesAllowed()) {
             entrySet = new StoredSortedEntrySet(view);
         } else {
             entrySet = new StoredEntrySet(view);
@@ -187,7 +187,7 @@ public class StoredMap extends StoredContainer implements Map {
 
         /* keySet */
         DataView newView = view.keySetView();
-        if (isOrdered()) {
+        if (areKeyRangesAllowed()) {
             keySet = new StoredSortedKeySet(newView);
         } else {
             keySet = new StoredKeySet(newView);
@@ -195,7 +195,7 @@ public class StoredMap extends StoredContainer implements Map {
 
         /* valueSet */
         newView = view.valueSetView();
-        if (isOrdered() && newView.canDeriveKeyFromValue()) {
+        if (areKeyRangesAllowed() && newView.canDeriveKeyFromValue()) {
             valueSet = new StoredSortedValueSet(newView);
         } else {
             valueSet = new StoredValueSet(newView);
@@ -207,7 +207,7 @@ public class StoredMap extends StoredContainer implements Map {
      * duplicates are allowed, this method returns the first duplicate, in the
      * order in which duplicates are configured, that maps to the specified
      * key.
-     * 
+     *
      * This method conforms to the {@link Map#get} interface.
      *
      * @throws RuntimeExceptionWrapper if a {@link
@@ -362,9 +362,9 @@ public class StoredMap extends StoredContainer implements Map {
 
     /**
      * Returns a set view of the keys contained in this map.  A {@link
-     * java.util.SortedSet} is returned if the map is ordered.  The returned
-     * collection will be read-only if the map is read-only.  This method
-     * conforms to the {@link Map#keySet()} interface.
+     * java.util.SortedSet} is returned if the map supports key ranges.  The
+     * returned collection will be read-only if the map is read-only.  This
+     * method conforms to the {@link Map#keySet()} interface.
      *
      * <p>Note that the return value is a StoredCollection and must be treated
      * as such; for example, its iterators must be explicitly closed.</p>
@@ -375,7 +375,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      *
-     * @see #isOrdered
+     * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
     public Set keySet() {
@@ -385,9 +385,9 @@ public class StoredMap extends StoredContainer implements Map {
 
     /**
      * Returns a set view of the mappings contained in this map.  A {@link
-     * java.util.SortedSet} is returned if the map is ordered.  The returned
-     * collection will be read-only if the map is read-only.  This method
-     * conforms to the {@link Map#entrySet()} interface.
+     * java.util.SortedSet} is returned if the map supports key ranges.  The
+     * returned collection will be read-only if the map is read-only.  This
+     * method conforms to the {@link Map#entrySet()} interface.
      *
      * <p>Note that the return value is a StoredCollection and must be treated
      * as such; for example, its iterators must be explicitly closed.</p>
@@ -398,7 +398,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      *
-     * @see #isOrdered
+     * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
     public Set entrySet() {
@@ -408,7 +408,7 @@ public class StoredMap extends StoredContainer implements Map {
 
     /**
      * Returns a collection view of the values contained in this map.  A {@link
-     * java.util.SortedSet} is returned if the map is ordered and the
+     * java.util.SortedSet} is returned if the map supports key ranges and the
      * value/entity binding can be used to derive the map's key from its
      * value/entity object.  The returned collection will be read-only if the
      * map is read-only.  This method conforms to the {@link Map#values()}
@@ -423,7 +423,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      *
-     * @see #isOrdered
+     * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
     public Collection values() {
@@ -484,7 +484,7 @@ public class StoredMap extends StoredContainer implements Map {
     public Map duplicatesMap(Object secondaryKey,
                              EntryBinding primaryKeyBinding) {
         try {
-            DataView newView = 
+            DataView newView =
                 view.duplicatesView(secondaryKey, primaryKeyBinding);
             if (isOrdered()) {
                 return new StoredSortedMap(newView);

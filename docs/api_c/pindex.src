@@ -18,6 +18,7 @@ __APIREL__/api_c/db_get.html__OCT__DB_CONSUME DB-__GT__get@DB_CONSUME
 __APIREL__/api_c/db_get.html__OCT__DB_CONSUME_WAIT DB-__GT__get@DB_CONSUME_WAIT
 __APIREL__/api_c/db_get.html__OCT__DB_GET_BOTH DB-__GT__get@DB_GET_BOTH
 __APIREL__/api_c/db_get.html__OCT__DB_SET_RECNO DB-__GT__get@DB_SET_RECNO
+__APIREL__/api_c/db_get.html__OCT__DB_IGNORE_LEASE DB-__GT__get@DB_IGNORE_LEASE
 __APIREL__/api_c/db_get.html__OCT__DB_MULTIPLE DB-__GT__get@DB_MULTIPLE
 __APIREL__/api_c/db_get.html__OCT__DB_READ_COMMITTED DB-__GT__get@DB_READ_COMMITTED
 __APIREL__/api_c/db_get.html__OCT__DB_READ_UNCOMMITTED DB-__GT__get@DB_READ_UNCOMMITTED
@@ -124,6 +125,7 @@ __APIREL__/api_c/dbc_get.html__OCT__DB_PREV_NODUP DBcursor-__GT__get@DB_PREV_NOD
 __APIREL__/api_c/dbc_get.html__OCT__DB_SET DBcursor-__GT__get@DB_SET
 __APIREL__/api_c/dbc_get.html__OCT__DB_SET_RANGE DBcursor-__GT__get@DB_SET_RANGE
 __APIREL__/api_c/dbc_get.html__OCT__DB_SET_RECNO DBcursor-__GT__get@DB_SET_RECNO
+__APIREL__/api_c/dbc_get.html__OCT__DB_IGNORE_LEASE DBcursor-__GT__get@DB_IGNORE_LEASE
 __APIREL__/api_c/dbc_get.html__OCT__DB_READ_UNCOMMITTED DBcursor-__GT__get@DB_READ_UNCOMMITTED
 __APIREL__/api_c/dbc_get.html__OCT__DB_MULTIPLE DBcursor-__GT__get@DB_MULTIPLE
 __APIREL__/api_c/dbc_get.html__OCT__DB_MULTIPLE_KEY DBcursor-__GT__get@DB_MULTIPLE_KEY
@@ -184,37 +186,28 @@ __APIREL__/api_c/env_set_flags.html__OCT__2 configure @locking for Berkeley DB C
 __APIREL__/api_c/env_set_flags.html__OCT__DB_CDB_ALLDB DB_ENV-__GT__set_flags@DB_CDB_ALLDB
 __APIREL__/api_c/env_set_flags.html__OCT__3 turn off system @buffering for database files
 __APIREL__/api_c/env_set_flags.html__OCT__DB_DIRECT_DB DB_ENV-__GT__set_flags@DB_DIRECT_DB
-__APIREL__/api_c/env_set_flags.html__OCT__4 turn off system @buffering for log files
-__APIREL__/api_c/env_set_flags.html__OCT__DB_DIRECT_LOG DB_ENV-__GT__set_flags@DB_DIRECT_LOG
-__APIREL__/api_c/env_set_flags.html__OCT__5 turn off system @buffering for database files
+__APIREL__/api_c/env_set_flags.html__OCT__4 turn off system @buffering for database files
 __APIREL__/api_c/env_set_flags.html__OCT__DB_DSYNC_DB DB_ENV-__GT__set_flags@DB_DSYNC_DB
-__APIREL__/api_c/env_set_flags.html__OCT__6 turn off system @buffering for log files
-__APIREL__/api_c/env_set_flags.html__OCT__DB_DSYNC_LOG DB_ENV-__GT__set_flags@DB_DSYNC_LOG
-__APIREL__/api_c/env_set_flags.html__OCT__7 automatic @log file removal
-__APIREL__/api_c/env_set_flags.html__OCT__DB_LOG_AUTOREMOVE DB_ENV-__GT__set_flags@DB_LOG_AUTOREMOVE
-__APIREL__/api_c/env_set_flags.html__OCT__8 in memory @logs
-__APIREL__/api_c/env_set_flags.html__OCT__DB_LOG_INMEMORY DB_ENV-__GT__set_flags@DB_LOG_INMEMORY
-__APIREL__/api_c/env_set_flags.html__OCT__DB_LOG_BUFFER_FULL DB_ENV-__GT__set_flags@DB_LOG_BUFFER_FULL
 __APIREL__/api_c/env_set_flags.html__OCT__DB_MULTIVERSION DB_ENV-__GT__set_flags@DB_MULTIVERSION
-__APIREL__/api_c/env_set_flags.html__OCT__9 ignore @locking
+__APIREL__/api_c/env_set_flags.html__OCT__5 ignore @locking
 __APIREL__/api_c/env_set_flags.html__OCT__DB_NOLOCKING DB_ENV-__GT__set_flags@DB_NOLOCKING
-__APIREL__/api_c/env_set_flags.html__OCT__10 turn off database file @memory mapping
+__APIREL__/api_c/env_set_flags.html__OCT__6 turn off database file @memory mapping
 __APIREL__/api_c/env_set_flags.html__OCT__DB_NOMMAP DB_ENV-__GT__set_flags@DB_NOMMAP
-__APIREL__/api_c/env_set_flags.html__OCT__11 ignore database environment @panic
+__APIREL__/api_c/env_set_flags.html__OCT__7 ignore database environment @panic
 __APIREL__/api_c/env_set_flags.html__OCT__DB_NOPANIC DB_ENV-__GT__set_flags@DB_NOPANIC
 __APIREL__/api_c/env_set_flags.html__OCT__DB_OVERWRITE DB_ENV-__GT__set_flags@DB_OVERWRITE
-__APIREL__/api_c/env_set_flags.html__OCT__12 turn off access to a database @environment
+__APIREL__/api_c/env_set_flags.html__OCT__8 turn off access to a database @environment
 __APIREL__/api_c/env_set_flags.html__OCT__DB_PANIC_ENVIRONMENT DB_ENV-__GT__set_flags@DB_PANIC_ENVIRONMENT
-__APIREL__/api_c/env_set_flags.html__OCT__13 fault database @environment in during open
+__APIREL__/api_c/env_set_flags.html__OCT__9 fault database @environment in during open
 __APIREL__/api_c/env_set_flags.html__OCT__DB_REGION_INIT DB_ENV-__GT__set_flags@DB_REGION_INIT
 __APIREL__/api_c/env_set_flags.html__OCT__DB_TIME_NOTGRANTED DB_ENV-__GT__set_flags@DB_TIME_NOTGRANTED
-__APIREL__/api_c/env_set_flags.html__OCT__14 turn off synchronous @transaction commit
+__APIREL__/api_c/env_set_flags.html__OCT__10 turn off synchronous @transaction commit
 __APIREL__/api_c/env_set_flags.html__OCT__DB_TXN_NOSYNC DB_ENV-__GT__set_flags@DB_TXN_NOSYNC
 __APIREL__/api_c/env_set_flags.html__OCT__DB_TXN_NOWAIT DB_ENV-__GT__set_flags@DB_TXN_NOWAIT
 __APIREL__/api_c/env_set_flags.html__OCT__DB_TXN_SNAPSHOT DB_ENV-__GT__set_flags@DB_TXN_SNAPSHOT
-__APIREL__/api_c/env_set_flags.html__OCT__15 turn off synchronous @transaction commit
+__APIREL__/api_c/env_set_flags.html__OCT__11 turn off synchronous @transaction commit
 __APIREL__/api_c/env_set_flags.html__OCT__DB_TXN_WRITE_NOSYNC DB_ENV-__GT__set_flags@DB_TXN_WRITE_NOSYNC
-__APIREL__/api_c/env_set_flags.html__OCT__16 configure for @stress testing
+__APIREL__/api_c/env_set_flags.html__OCT__12 configure for @stress testing
 __APIREL__/api_c/env_set_flags.html__OCT__DB_YIELDCPU DB_ENV-__GT__set_flags@DB_YIELDCPU
 __APIREL__/api_c/env_set_isalive.html__OCT__DB_MUTEX_PROCESS_ONLY DB_ENV-__GT__set_isalive@DB_MUTEX_PROCESS_ONLY
 __APIREL__/api_c/env_set_rpc_server.html__OCT__DB_NOSERVER DB_ENV-__GT__set_rpc_server@DB_NOSERVER
@@ -222,7 +215,7 @@ __APIREL__/api_c/env_set_rpc_server.html__OCT__DB_NOSERVER_ID DB_ENV-__GT__set_r
 __APIREL__/api_c/env_set_rpc_server.html__OCT__DB_NOSERVER_HOME DB_ENV-__GT__set_rpc_server@DB_NOSERVER_HOME
 __APIREL__/api_c/env_set_rpc_server.html__OCT__2 @DB_NOSERVER
 __APIREL__/api_c/env_set_rpc_server.html__OCT__3 @DB_NOSERVER_ID
-__APIREL__/api_c/env_set_thread_id_string.html__OCT__2 @DB_NOSERVER
+__APIREL__/api_c/env_set_thread_id_string.html__OCT__2 @DB_THREADID_STRLEN
 __APIREL__/api_c/env_set_timeout.html__OCT__DB_SET_LOCK_TIMEOUT DB_ENV-__GT__set_timeout@DB_SET_LOCK_TIMEOUT
 __APIREL__/api_c/env_set_timeout.html__OCT__DB_SET_TXN_TIMEOUT DB_ENV-__GT__set_timeout@DB_SET_TXN_TIMEOUT
 __APIREL__/api_c/env_set_timeout.html__OCT__DB_SET_LOCK_TIMEOUT DB_ENV-__GT__set_timeout@DB_SET_LOCK_TIMEOUT
@@ -234,10 +227,18 @@ __APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_FILEOPS_ALL DB_ENV-__GT__set
 __APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_RECOVERY DB_ENV-__GT__set_verbose@DB_VERB_RECOVERY
 __APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REGISTER DB_ENV-__GT__set_verbose@DB_VERB_REGISTER
 __APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REPLICATION DB_ENV-__GT__set_verbose@DB_VERB_REPLICATION
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REP_ELECT DB_ENV-__GT__set_verbose@DB_VERB_REP_ELECT
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REP_LEASE DB_ENV-__GT__set_verbose@DB_VERB_REP_LEASE
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REP_MISC DB_ENV-__GT__set_verbose@DB_VERB_REP_MISC
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REP_MSGS DB_ENV-__GT__set_verbose@DB_VERB_REP_MSGS
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REP_SYNC DB_ENV-__GT__set_verbose@DB_VERB_REP_SYNC
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REPMGR_CONNFAIL DB_ENV-__GT__set_verbose@DB_VERB_REPMGR_CONNFAIL
+__APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_REPMGR_MISC DB_ENV-__GT__set_verbose@DB_VERB_REPMGR_MISC
 __APIREL__/api_c/env_set_verbose.html__OCT__DB_VERB_WAITSFOR DB_ENV-__GT__set_verbose@DB_VERB_WAITSFOR
 __APIREL__/api_c/env_stat.html__OCT__DB_STAT_ALL DB_ENV-__GT__stat_print@DB_STAT_ALL
 __APIREL__/api_c/env_stat.html__OCT__DB_STAT_CLEAR DB_ENV-__GT__stat_print@DB_STAT_CLEAR
 __APIREL__/api_c/env_stat.html__OCT__DB_STAT_SUBSYSTEM DB_ENV-__GT__stat_print@DB_STAT_SUBSYSTEM
+__APIREL__/api_c/env_cdsgroup_begin.html__OCT__2 allocate a @locker ID for Berkeley DB Concurrent Data Store
 __APIREL__/api_c/env_set_lk_detect.html__OCT__DB_LOCK_DEFAULT DB_ENV-__GT__set_lk_detect@DB_LOCK_DEFAULT
 __APIREL__/api_c/env_set_lk_detect.html__OCT__DB_LOCK_EXPIRE DB_ENV-__GT__set_lk_detect@DB_LOCK_EXPIRE
 __APIREL__/api_c/env_set_lk_detect.html__OCT__DB_LOCK_MAXLOCKS DB_ENV-__GT__set_lk_detect@DB_LOCK_MAXLOCKS
@@ -280,6 +281,17 @@ __APIREL__/api_c/lock_vec.html__OCT__DB_LOCK_IWRITE DB_ENV-__GT__lock_vec@DB_LOC
 __APIREL__/api_c/lock_vec.html__OCT__DB_LOCK_IREAD DB_ENV-__GT__lock_vec@DB_LOCK_IREAD
 __APIREL__/api_c/lock_vec.html__OCT__DB_LOCK_IWR DB_ENV-__GT__lock_vec@DB_LOCK_IWR
 __APIREL__/api_c/lock_vec.html__OCT__obj DB_ENV-__GT__lock_vec@obj
+__APIREL__/api_c/env_log_set_config.html__OCT__2 turn off system @buffering for log files
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_DIRECT DB_ENV-__GT__log_set_config@DB_LOG_DIRECT
+__APIREL__/api_c/env_log_set_config.html__OCT__3 turn off system @buffering for log files
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_DSYNC DB_ENV-__GT__log_set_config@DB_LOG_DSYNC
+__APIREL__/api_c/env_log_set_config.html__OCT__4 automatic @log file removal
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_AUTO_REMOVE DB_ENV-__GT__log_set_config@DB_LOG_AUTO_REMOVE
+__APIREL__/api_c/env_log_set_config.html__OCT__5 in memory @logs
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_IN_MEMORY DB_ENV-__GT__log_set_config@DB_LOG_IN_MEMORY
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_BUFFER_FULL DB_ENV-__GT__log_set_config@DB_LOG_BUFFER_FULL
+__APIREL__/api_c/env_log_set_config.html__OCT__6 pre-zero @log files
+__APIREL__/api_c/env_log_set_config.html__OCT__DB_LOG_ZERO DB_ENV-__GT__log_set_config@DB_LOG_ZERO
 __APIREL__/api_c/log_archive.html__OCT__DB_ARCH_ABS DB_ENV-__GT__log_archive@DB_ARCH_ABS
 __APIREL__/api_c/log_archive.html__OCT__DB_ARCH_DATA DB_ENV-__GT__log_archive@DB_ARCH_DATA
 __APIREL__/api_c/log_archive.html__OCT__DB_ARCH_LOG DB_ENV-__GT__log_archive@DB_ARCH_LOG
@@ -331,8 +343,11 @@ __APIREL__/api_c/mutex_stat.html__OCT__DB_STAT_ALL DB_ENV-__GT__mutex_stat@DB_ST
 __APIREL__/api_c/mutex_stat.html__OCT__DB_STAT_CLEAR DB_ENV-__GT__mutex_stat@DB_STAT_CLEAR
 __APIREL__/api_c/rep_config.html__OCT__DB_REP_CONF_BULK DB_ENV-__GT__rep_set_config@DB_REP_CONF_BULK
 __APIREL__/api_c/rep_config.html__OCT__DB_REP_CONF_DELAYCLIENT DB_ENV-__GT__rep_set_config@DB_REP_CONF_DELAYCLIENT
+__APIREL__/api_c/rep_config.html__OCT__DB_REP_CONF_LEASE DB_ENV-__GT__rep_set_config@DB_REP_CONF_LEASE
+__APIREL__/api_c/rep_config.html__OCT__DB_REP_LEASE_EXPIRED DB_ENV-__GT__rep_set_config@DB_REP_LEASE_EXPIRED
 __APIREL__/api_c/rep_config.html__OCT__DB_REP_CONF_NOAUTOINIT DB_ENV-__GT__rep_set_config@DB_REP_CONF_NOAUTOINIT
 __APIREL__/api_c/rep_config.html__OCT__DB_REP_CONF_NOWAIT DB_ENV-__GT__rep_set_config@DB_REP_CONF_NOWAIT
+__APIREL__/api_c/rep_config.html__OCT__DB_REPMGR_CONF_2SITE_STRICT DB_ENV-__GT__rep_set_config@DB_REPMGR_CONF_2SITE_STRICT
 __APIREL__/api_c/rep_elect.html__OCT__2 @DB_REP_UNAVAIL
 __APIREL__/api_c/rep_message.html__OCT__DB_REP_DUPMASTER DB_ENV-__GT__rep_process_message@DB_REP_DUPMASTER
 __APIREL__/api_c/rep_message.html__OCT__DB_REP_HOLDELECTION DB_ENV-__GT__rep_process_message@DB_REP_HOLDELECTION
@@ -352,7 +367,9 @@ __APIREL__/api_c/rep_timeout.html__OCT__DB_REP_CONNECTION_RETRY DB_ENV-__GT__rep
 __APIREL__/api_c/rep_timeout.html__OCT__DB_REP_ELECTION_TIMEOUT DB_ENV-__GT__rep_set_timeout@DB_REP_ELECTION_TIMEOUT
 __APIREL__/api_c/rep_timeout.html__OCT__DB_REP_ELECTION_RETRY DB_ENV-__GT__rep_set_timeout@DB_REP_ELECTION_RETRY
 __APIREL__/api_c/rep_timeout.html__OCT__DB_REP_FULL_ELECTION_TIMEOUT DB_ENV-__GT__rep_set_timeout@DB_REP_FULL_ELECTION_TIMEOUT
-__APIREL__/api_c/rep_transport.html__OCT__2 @DB_EID_BROADCAST
+__APIREL__/api_c/rep_timeout.html__OCT__DB_REP_HEARTBEAT_MONITOR DB_ENV-__GT__rep_set_timeout@DB_REP_HEARTBEAT_MONITOR
+__APIREL__/api_c/rep_timeout.html__OCT__DB_REP_HEARTBEAT_SEND DB_ENV-__GT__rep_set_timeout@DB_REP_HEARTBEAT_SEND
+__APIREL__/api_c/rep_timeout.html__OCT__DB_REP_LEASE_TIMEOUT DB_ENV-__GT__rep_set_timeout@DB_REP_LEASE_TIMEOUT
 __APIREL__/api_c/rep_transport.html__OCT__DB_REP_ANYWHERE DB_ENV-__GT__rep_set_transport@DB_REP_ANYWHERE
 __APIREL__/api_c/rep_transport.html__OCT__DB_REP_NOBUFFER DB_ENV-__GT__rep_set_transport@DB_REP_NOBUFFER
 __APIREL__/api_c/rep_transport.html__OCT__DB_REP_PERMANENT DB_ENV-__GT__rep_set_transport@DB_REP_PERMANENT
@@ -470,6 +487,7 @@ __APIREL__/ref/arch/apis.html__OCT__2 programmatic @APIs
 __APIREL__/ref/arch/utilities.html__OCT__2 @utilities
 __APIREL__/ref/build_brew/intro.html__OCT__2 @building for BREW
 __APIREL__/ref/build_s60/intro.html__OCT__2 @building for S60
+__APIREL__/ref/build_s60/notes.html__OCT__2 @S60 notes
 __APIREL__/ref/build_unix/aix.html__OCT__2 @AIX
 __APIREL__/ref/build_unix/conf.html__OCT__2 @configuring Berkeley DB for UNIX systems
 __APIREL__/ref/build_unix/conf.html__OCT__3 configuring Berkeley DB for @UNIX systems
@@ -491,17 +509,15 @@ __APIREL__/ref/build_unix/conf.html__OCT__9 building a utility to dump Berkeley 
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-dump185 Configuring Berkeley DB@--enable-dump185
 __APIREL__/ref/build_unix/conf.html__OCT__10 configuring the @Java API
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-java Configuring Berkeley DB@--enable-java
-__APIREL__/ref/build_unix/conf.html__OCT__11 @configuring the fine-grained lock manager
-__APIREL__/ref/build_unix/conf.html__OCT__--enable-fine_grained_lock_manager Configuring Berkeley DB@--enable-fine_grained_lock_manager
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-posixmutexes Configuring Berkeley DB@--enable-posixmutexes
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-pthread_api Configuring Berkeley DB@--enable-pthread_api
-__APIREL__/ref/build_unix/conf.html__OCT__12 configuring a @RPC client/server
+__APIREL__/ref/build_unix/conf.html__OCT__11 configuring a @RPC client/server
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-rpc Configuring Berkeley DB@--enable-rpc
-__APIREL__/ref/build_unix/conf.html__OCT__13 configuring a small memory @footprint library
+__APIREL__/ref/build_unix/conf.html__OCT__12 configuring a small memory @footprint library
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-smallbuild Configuring Berkeley DB@--enable-smallbuild
-__APIREL__/ref/build_unix/conf.html__OCT__14 configuring the @Tcl API
+__APIREL__/ref/build_unix/conf.html__OCT__13 configuring the @Tcl API
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-tcl Configuring Berkeley DB@--enable-tcl
-__APIREL__/ref/build_unix/conf.html__OCT__15 configuring the @test suite
+__APIREL__/ref/build_unix/conf.html__OCT__14 configuring the @test suite
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-test Configuring Berkeley DB@--enable-test
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-uimutexes Configuring Berkeley DB@--enable-uimutexes
 __APIREL__/ref/build_unix/conf.html__OCT__--enable-umrw Configuring Berkeley DB@--enable-umrw
@@ -541,6 +557,7 @@ __APIREL__/ref/build_unix/ultrix.html__OCT__2 @Ultrix
 __APIREL__/ref/build_vxworks/faq.html__OCT__2 @building for VxWorks FAQ
 __APIREL__/ref/build_vxworks/faq.html__OCT__3 building for @VxWorks FAQ
 __APIREL__/ref/build_vxworks/intro.html__OCT__2 @building for VxWorks
+__APIREL__/ref/build_vxworks/intro6x.html__OCT__2 @building for VxWorks6.x
 __APIREL__/ref/build_vxworks/introae.html__OCT__2 @building for VxWorks AE
 __APIREL__/ref/build_vxworks/notes.html__OCT__2 @VxWorks notes
 __APIREL__/ref/build_win/faq.html__OCT__2 @building for Windows FAQ
@@ -550,8 +567,6 @@ __APIREL__/ref/build_win/intro.html__OCT__2 @building for Windows
 __APIREL__/ref/build_win/notes.html__OCT__2 @Windows notes
 __APIREL__/ref/build_win/test.html__OCT__2 running the @test suite under Windows
 __APIREL__/ref/build_win/test.html__OCT__3 running the test suite under @Windows
-__APIREL__/ref/build_wince/faq.html__OCT__2 @building for Windows CE FAQ
-__APIREL__/ref/build_wince/faq.html__OCT__3 building for @Windows CE FAQ
 __APIREL__/ref/build_wince/intro.html__OCT__2 @building for Windows CE
 __APIREL__/ref/build_wince/notes.html__OCT__2 @Windows CE notes
 __APIREL__/ref/cam/intro.html__OCT__2 @Concurrent Data Store
@@ -562,6 +577,7 @@ __APIREL__/ref/dumpload/utility.html__OCT__2 dumping/loading @text to/from datab
 __APIREL__/ref/env/create.html__OCT__2 database @environment
 __APIREL__/ref/env/db_config.html__OCT__2 @DB_CONFIG
 __APIREL__/ref/env/db_config.html__OCT__3 database environment @configuration
+__APIREL__/ref/env/db_config.html__OCT__4 @DB_CONFIG
 __APIREL__/ref/env/encrypt.html__OCT__2 @encryption
 __APIREL__/ref/env/faq.html__OCT__2 database @environment FAQ
 __APIREL__/ref/env/intro.html__OCT__2 introduction to database @environments
@@ -618,12 +634,15 @@ __APIREL__/ref/program/errorret.html__OCT__4 @DB_LOCK_DEADLOCK
 __APIREL__/ref/program/errorret.html__OCT__DB_LOCK_DEADLOCK Error returns to applications@DB_LOCK_DEADLOCK
 __APIREL__/ref/program/errorret.html__OCT__DB_LOCK_NOTGRANTED Error returns to applications@DB_LOCK_NOTGRANTED
 __APIREL__/ref/program/errorret.html__OCT__DB_RUNRECOVERY Error returns to applications@DB_RUNRECOVERY
+__APIREL__/ref/program/errorret.html__OCT__DB_SECONDARY_BAD Error returns to applications@DB_SECONDARY_BAD
 __APIREL__/ref/program/faq.html__OCT__2 task/thread @priority
 __APIREL__/ref/program/mt.html__OCT__2 building @threaded applications
 __APIREL__/ref/program/namespace.html__OCT__2 Berkeley DB library @name spaces
 __APIREL__/ref/program/ram.html__OCT__2 @Flash memory configurations
 __APIREL__/ref/program/scope.html__OCT__2 Berkeley DB handle @scope
 __APIREL__/ref/program/scope.html__OCT__3 Berkeley DB @free-threaded handles
+__APIREL__/ref/rep/id.html__OCT__2 @DB_EID_BROADCAST
+__APIREL__/ref/rep/id.html__OCT__3 @DB_EID_INVALID
 __APIREL__/ref/rep/intro.html__OCT__2 introduction to @replication
 __APIREL__/ref/rpc/client.html__OCT__2 @RPC client
 __APIREL__/ref/rpc/faq.html__OCT__2 @RPC FAQ
@@ -680,6 +699,7 @@ __APIREL__/ref/upgrade.4.3/toc.html__OCT__2 @Upgrading to release 4.3
 __APIREL__/ref/upgrade.4.4/toc.html__OCT__2 @Upgrading to release 4.4
 __APIREL__/ref/upgrade.4.5/toc.html__OCT__2 @Upgrading to release 4.5
 __APIREL__/ref/upgrade.4.6/toc.html__OCT__2 @Upgrading to release 4.6
+__APIREL__/ref/upgrade.4.7/toc.html__OCT__2 @Upgrading to release 4.7
 __APIREL__/ref/xa/build.html__OCT__2 @Transaction Manager
 __APIREL__/ref/xa/intro.html__OCT__2 @Distributed Transactions
 __APIREL__/ref/xa/intro.html__OCT__3 @Resource Manager

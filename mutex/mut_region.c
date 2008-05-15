@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_region.c,v 12.25 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_region.c,v 12.30 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,37 +15,44 @@
 #include "dbinc/txn.h"
 #include "dbinc/mutex_int.h"
 
-static size_t __mutex_align_size __P((DB_ENV *));
-static int __mutex_region_init __P((DB_ENV *, DB_MUTEXMGR *));
-static size_t __mutex_region_size __P((DB_ENV *));
+static size_t __mutex_align_size __P((ENV *));
+static int __mutex_region_init __P((ENV *, DB_MUTEXMGR *));
+static size_t __mutex_region_size __P((ENV *));
 
 /*
  * __mutex_open --
  *	Open a mutex region.
  *
- * PUBLIC: int __mutex_open __P((DB_ENV *, int));
+ * PUBLIC: int __mutex_open __P((ENV *, int));
  */
 int
-__mutex_open(dbenv, create_ok)
-	DB_ENV *dbenv;
+__mutex_open(env, create_ok)
+	ENV *env;
 	int create_ok;
 {
+	DB_ENV *dbenv;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	db_mutex_t mutex;
+	u_int32_t cpu_count;
 	u_int i;
 	int ret;
 
+	dbenv = env->dbenv;
+
 	/*
-	 * Initialize the DB_ENV handle information if not already initialized.
+	 * Initialize the ENV handle information if not already initialized.
 	 *
 	 * Align mutexes on the byte boundaries specified by the application.
 	 */
 	if (dbenv->mutex_align == 0)
 		dbenv->mutex_align = MUTEX_ALIGN;
-	if (dbenv->mutex_tas_spins == 0 &&
-	    ((ret = __mutex_set_tas_spins(dbenv, __os_spin(dbenv))) != 0))
-		return (ret);
+	if (dbenv->mutex_tas_spins == 0) {
+		cpu_count = __os_cpu_count();
+		if ((ret = __mutex_set_tas_spins(dbenv, cpu_count == 1 ?
+		    cpu_count : cpu_count * MUTEX_SPINS_PER_PROCESSOR)) != 0)
+			return (ret);
+	}
 
 	/*
 	 * If the user didn't set an absolute value on the number of mutexes
@@ -56,30 +63,30 @@ __mutex_open(dbenv, create_ok)
 	 */
 	if (dbenv->mutex_cnt == 0)
 		dbenv->mutex_cnt =
-		    __lock_region_mutex_count(dbenv) +
-		    __log_region_mutex_count(dbenv) +
-		    __memp_region_mutex_count(dbenv) +
-		    __txn_region_mutex_count(dbenv) +
+		    __lock_region_mutex_count(env) +
+		    __log_region_mutex_count(env) +
+		    __memp_region_mutex_count(env) +
+		    __txn_region_mutex_count(env) +
 		    dbenv->mutex_inc + 100;
 
 	/* Create/initialize the mutex manager structure. */
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_MUTEXMGR), &mtxmgr)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_MUTEXMGR), &mtxmgr)) != 0)
 		return (ret);
 
 	/* Join/create the mutex region. */
-	mtxmgr->reginfo.dbenv = dbenv;
+	mtxmgr->reginfo.env = env;
 	mtxmgr->reginfo.type = REGION_TYPE_MUTEX;
 	mtxmgr->reginfo.id = INVALID_REGION_ID;
 	mtxmgr->reginfo.flags = REGION_JOIN_OK;
 	if (create_ok)
 		F_SET(&mtxmgr->reginfo, REGION_CREATE_OK);
-	if ((ret = __env_region_attach(dbenv,
-	    &mtxmgr->reginfo, __mutex_region_size(dbenv))) != 0)
+	if ((ret = __env_region_attach(env,
+	    &mtxmgr->reginfo, __mutex_region_size(env))) != 0)
 		goto err;
 
 	/* If we created the region, initialize it. */
 	if (F_ISSET(&mtxmgr->reginfo, REGION_CREATE))
-		if ((ret = __mutex_region_init(dbenv, mtxmgr)) != 0)
+		if ((ret = __mutex_region_init(env, mtxmgr)) != 0)
 			goto err;
 
 	/* Set the local addresses. */
@@ -87,24 +94,24 @@ __mutex_open(dbenv, create_ok)
 	    R_ADDR(&mtxmgr->reginfo, mtxmgr->reginfo.rp->primary);
 	mtxmgr->mutex_array = R_ADDR(&mtxmgr->reginfo, mtxregion->mutex_off);
 
-	dbenv->mutex_handle = mtxmgr;
+	env->mutex_handle = mtxmgr;
 
 	/* Allocate initial queue of mutexes. */
-	if (dbenv->mutex_iq != NULL) {
-		DB_ASSERT(dbenv, F_ISSET(&mtxmgr->reginfo, REGION_CREATE));
-		for (i = 0; i < dbenv->mutex_iq_next; ++i) {
+	if (env->mutex_iq != NULL) {
+		DB_ASSERT(env, F_ISSET(&mtxmgr->reginfo, REGION_CREATE));
+		for (i = 0; i < env->mutex_iq_next; ++i) {
 			if ((ret = __mutex_alloc_int(
-			    dbenv, 0, dbenv->mutex_iq[i].alloc_id,
-			    dbenv->mutex_iq[i].flags, &mutex)) != 0)
+			    env, 0, env->mutex_iq[i].alloc_id,
+			    env->mutex_iq[i].flags, &mutex)) != 0)
 				goto err;
 			/*
 			 * Confirm we allocated the right index, correcting
 			 * for avoiding slot 0 (MUTEX_INVALID).
 			 */
-			DB_ASSERT(dbenv, mutex == i + 1);
+			DB_ASSERT(env, mutex == i + 1);
 		}
-		__os_free(dbenv, dbenv->mutex_iq);
-		dbenv->mutex_iq = NULL;
+		__os_free(env, env->mutex_iq);
+		env->mutex_iq = NULL;
 
 		/*
 		 * This is the first place we can test mutexes and we need to
@@ -116,11 +123,11 @@ __mutex_open(dbenv, create_ok)
 		 */
 		mutex = MUTEX_INVALID;
 		if ((ret =
-		    __mutex_alloc(dbenv, MTX_MUTEX_TEST, 0, &mutex) != 0) ||
-		    (ret = __mutex_lock(dbenv, mutex)) != 0 ||
-		    (ret = __mutex_unlock(dbenv, mutex)) != 0 ||
-		    (ret = __mutex_free(dbenv, &mutex)) != 0) {
-			__db_errx(dbenv,
+		    __mutex_alloc(env, MTX_MUTEX_TEST, 0, &mutex) != 0) ||
+		    (ret = __mutex_lock(env, mutex)) != 0 ||
+		    (ret = __mutex_unlock(env, mutex)) != 0 ||
+		    (ret = __mutex_free(env, &mutex)) != 0) {
+			__db_errx(env,
 		    "Unable to acquire/release a mutex; check configuration");
 			goto err;
 		}
@@ -128,11 +135,11 @@ __mutex_open(dbenv, create_ok)
 
 	return (0);
 
-err:	dbenv->mutex_handle = NULL;
+err:	env->mutex_handle = NULL;
 	if (mtxmgr->reginfo.addr != NULL)
-		(void)__env_region_detach(dbenv, &mtxmgr->reginfo, 0);
+		(void)__env_region_detach(env, &mtxmgr->reginfo, 0);
 
-	__os_free(dbenv, mtxmgr);
+	__os_free(env, mtxmgr);
 	return (ret);
 }
 
@@ -141,21 +148,24 @@ err:	dbenv->mutex_handle = NULL;
  *	Initialize a mutex region in shared memory.
  */
 static int
-__mutex_region_init(dbenv, mtxmgr)
-	DB_ENV *dbenv;
+__mutex_region_init(env, mtxmgr)
+	ENV *env;
 	DB_MUTEXMGR *mtxmgr;
 {
-	DB_MUTEXREGION *mtxregion;
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
+	DB_MUTEXREGION *mtxregion;
 	db_mutex_t i;
 	int ret;
 	void *mutex_array;
+
+	dbenv = env->dbenv;
 
 	COMPQUIET(mutexp, NULL);
 
 	if ((ret = __env_alloc(&mtxmgr->reginfo,
 	    sizeof(DB_MUTEXREGION), &mtxmgr->reginfo.primary)) != 0) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "Unable to allocate memory for the mutex region");
 		return (ret);
 	}
@@ -165,10 +175,10 @@ __mutex_region_init(dbenv, mtxmgr)
 	memset(mtxregion, 0, sizeof(*mtxregion));
 
 	if ((ret = __mutex_alloc(
-	    dbenv, MTX_MUTEX_REGION, 0, &mtxregion->mtx_region)) != 0)
+	    env, MTX_MUTEX_REGION, 0, &mtxregion->mtx_region)) != 0)
 		return (ret);
 
-	mtxregion->mutex_size = __mutex_align_size(dbenv);
+	mtxregion->mutex_size = __mutex_align_size(env);
 
 	mtxregion->stat.st_mutex_align = dbenv->mutex_align;
 	mtxregion->stat.st_mutex_cnt = dbenv->mutex_cnt;
@@ -191,7 +201,7 @@ __mutex_region_init(dbenv, mtxmgr)
 	    mtxregion->stat.st_mutex_align +
 	    (mtxregion->stat.st_mutex_cnt + 1) * mtxregion->mutex_size,
 	    &mutex_array)) != 0) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "Unable to allocate memory for mutexes from the region");
 		return (ret);
 	}
@@ -228,18 +238,18 @@ __mutex_region_init(dbenv, mtxmgr)
  * __mutex_env_refresh --
  *	Clean up after the mutex region on a close or failed open.
  *
- * PUBLIC: int __mutex_env_refresh __P((DB_ENV *));
+ * PUBLIC: int __mutex_env_refresh __P((ENV *));
  */
 int
-__mutex_env_refresh(dbenv)
-	DB_ENV *dbenv;
+__mutex_env_refresh(env)
+	ENV *env;
 {
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	REGINFO *reginfo;
 	int ret;
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	reginfo = &mtxmgr->reginfo;
 	mtxregion = mtxmgr->reginfo.primary;
 
@@ -248,13 +258,13 @@ __mutex_env_refresh(dbenv)
 	 * filesystem-backed or system shared memory regions, that memory isn't
 	 * owned by any particular process.
 	 */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
+	if (F_ISSET(env, ENV_PRIVATE)) {
 #ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 		/*
 		 * If destroying the mutex region, return any system resources
 		 * to the system.
 		 */
-		__mutex_resource_return(dbenv, reginfo);
+		__mutex_resource_return(env, reginfo);
 #endif
 		/* Discard the mutex array. */
 		__env_alloc_free(
@@ -262,11 +272,11 @@ __mutex_env_refresh(dbenv)
 	}
 
 	/* Detach from the region. */
-	ret = __env_region_detach(dbenv, reginfo, 0);
+	ret = __env_region_detach(env, reginfo, 0);
 
-	__os_free(dbenv, mtxmgr);
+	__os_free(env, mtxmgr);
 
-	dbenv->mutex_handle = NULL;
+	env->mutex_handle = NULL;
 
 	return (ret);
 }
@@ -277,10 +287,14 @@ __mutex_env_refresh(dbenv)
  *	are to be properly aligned, individually, within the array.
  */
 static size_t
-__mutex_align_size(dbenv)
-	DB_ENV *dbenv;
+__mutex_align_size(env)
+	ENV *env;
 {
-	return ((size_t)DB_ALIGN(sizeof(DB_MUTEX), (dbenv)->mutex_align));
+	DB_ENV *dbenv;
+
+	dbenv = env->dbenv;
+
+	return ((size_t)DB_ALIGN(sizeof(DB_MUTEX), dbenv->mutex_align));
 }
 
 /*
@@ -288,16 +302,19 @@ __mutex_align_size(dbenv)
  *	 Return the amount of space needed for the mutex region.
  */
 static size_t
-__mutex_region_size(dbenv)
-	DB_ENV *dbenv;
+__mutex_region_size(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
 	size_t s;
+
+	dbenv = env->dbenv;
 
 	s = sizeof(DB_MUTEXMGR) + 1024;
 
 	/* We discard one mutex for the OOB slot. */
 	s += __env_alloc_size(
-	    (dbenv->mutex_cnt + 1) *__mutex_align_size(dbenv));
+	    (dbenv->mutex_cnt + 1) *__mutex_align_size(env));
 
 	return (s);
 }
@@ -307,11 +324,11 @@ __mutex_region_size(dbenv)
  * __mutex_resource_return
  *	Return any system-allocated mutex resources to the system.
  *
- * PUBLIC: void __mutex_resource_return __P((DB_ENV *, REGINFO *));
+ * PUBLIC: void __mutex_resource_return __P((ENV *, REGINFO *));
  */
 void
-__mutex_resource_return(dbenv, infop)
-	DB_ENV *dbenv;
+__mutex_resource_return(env, infop)
+	ENV *env;
 	REGINFO *infop;
 {
 	DB_MUTEX *mutexp;
@@ -351,13 +368,13 @@ __mutex_resource_return(dbenv, infop)
 	 *
 	 * The OOB mutex (MUTEX_INVALID) is 0, skip it.
 	 */
-	orig_handle = dbenv->mutex_handle;
-	dbenv->mutex_handle = mtxmgr;
+	orig_handle = env->mutex_handle;
+	env->mutex_handle = mtxmgr;
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
 		mutexp = MUTEXP_SET(i);
 		if (F_ISSET(mutexp, DB_MUTEX_ALLOCATED))
-			(void)__mutex_destroy(dbenv, i);
+			(void)__mutex_destroy(env, i);
 	}
-	dbenv->mutex_handle = orig_handle;
+	env->mutex_handle = orig_handle;
 }
 #endif

@@ -1,11 +1,11 @@
 #!/bin/sh -
-#	$Id: s_java_const,v 12.0 2004/11/17 03:43:35 bostic Exp $
+#	$Id: s_java_const,v 12.3 2008/02/07 17:10:13 mark Exp $
 #
 # Build the Java files.
 
 msgjava="/* DO NOT EDIT: automatically built by dist/s_java_const. */"
 
-. RELEASE
+. ./RELEASE
 
 t=/tmp/__java
 trap 'rm -f $t; exit 0' 0 1 2 3 13 15
@@ -17,15 +17,21 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
  echo 'public interface DbConstants' &&
  echo '{' &&
  for i in `egrep '^DB_.*J$' pubdef.in | awk '{print $1}'`; do \
-     egrep -w "^#define[	 ]$i|^[	 ][	 ]*$i" ../dbinc/db.in; \
+     sed -e ':a' -e '/\\$/N;s/\\\n[	 ]*/ /;ta' \
+         ../dbinc_auto/api_flags.in ../dbinc/db.in | \
+     egrep -w "^#define[	 ]$i|^[	 ][	 ]*$i" ;
  done |
  sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
      -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/" \
      -e "s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/" \
      -e 's/^#define[	 ][	 ]*//' \
      -e 's/[()=,]/ /g' \
-     -e 's/\/\*/ /' | \
- awk '{ print "    int " $1 " = " $2 ";" }' &&
+     -e 's/\/\*.*$//' \
+     -e 's/^[	 ]*//' \
+     -e 's/[	 ]*$//g' \
+     -e 's/[	 ][	 ]*/ /g' \
+     -e 's/ / = /' | \
+ awk '{ print "    int " $0 ";" }' &&
  echo '}' &&
  echo &&
  echo '// end of DbConstants.java') > $t

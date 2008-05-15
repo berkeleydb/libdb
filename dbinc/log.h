@@ -1,13 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: log.h,v 12.31 2007/06/13 18:21:31 ubell Exp $
+ * $Id: log.h,v 12.39 2008/01/30 04:30:37 mjc Exp $
  */
 
 #ifndef _DB_LOG_H_
 #define	_DB_LOG_H_
+
+#include "dbinc/db_swap.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -34,11 +36,13 @@ typedef	struct __db_entry {
 struct __fname {
 	SH_TAILQ_ENTRY q;		/* File name queue. */
 
+	pid_t	  pid;			/* Process that owns this. */
 	int32_t   id;			/* Logging file id. */
 	int32_t   old_id;		/* Saved logging file id. */
 	DBTYPE	  s_type;		/* Saved DB type. */
 
-	roff_t	  name_off;		/* Name offset. */
+	roff_t	  fname_off;		/* File name offset. */
+	roff_t	  dname_off;		/* Database name offset. */
 	db_pgno_t meta_pgno;		/* Page number of the meta page. */
 	u_int8_t  ufid[DB_FILE_ID_LEN];	/* Unique file id. */
 
@@ -47,7 +51,8 @@ struct __fname {
 					 * we can log it at register time.
 					 */
 	db_mutex_t mutex;		/* mutex from db handle. */
-	u_int32_t txn_ref;		/* number of txn referencing. */
+			/* number of txn referencing + 1 for the db handle. */
+	u_int32_t txn_ref;
 
 #define	DB_FNAME_CLOSED		0x01	/* DBP was closed. */
 #define	DB_FNAME_DURABLE	0x02	/* File is durable. */
@@ -116,13 +121,18 @@ struct __db_log {
 	u_int8_t *bufp;			/* Region buffer. */
 
 	/* These fields are not thread protected. */
-	DB_ENV	 *dbenv;		/* Reference to error information. */
+	ENV	 *env;			/* Environment */
 	REGINFO	  reginfo;		/* Region information. */
 
-#define	DBLOG_FORCE_OPEN	0x01	/* Force the DB open even if it appears
+#define DBLOG_AUTOREMOVE	0x01	/* Autoremove log files. */
+#define DBLOG_DIRECT		0x02	/* Do direct I/O on the log. */
+#define DBLOG_DSYNC		0x04	/* Set OS_DSYNC on the log. */
+#define	DBLOG_FORCE_OPEN	0x08	/* Force the DB open even if it appears
 					 * to be deleted. */
-#define	DBLOG_OPENFILES		0x02	/* Prepared files need to be open. */
-#define	DBLOG_RECOVER		0x04	/* We are in recovery. */
+#define DBLOG_INMEMORY		0x10	/* Logging is in memory. */
+#define	DBLOG_OPENFILES		0x20	/* Prepared files need to be open. */
+#define	DBLOG_RECOVER		0x40	/* We are in recovery. */
+#define	DBLOG_ZERO		0x80	/* Zero fill the log. */
 	u_int32_t flags;
 };
 
@@ -175,12 +185,12 @@ struct __log_persist {
 };
 
 /* Macros to lock/unlock the log region as a whole. */
-#define	LOG_SYSTEM_LOCK(dbenv)						\
-	MUTEX_LOCK(dbenv, ((LOG *)					\
-	    (dbenv)->lg_handle->reginfo.primary)->mtx_region)
-#define	LOG_SYSTEM_UNLOCK(dbenv)					\
-	MUTEX_UNLOCK(dbenv, ((LOG *)					\
-	    (dbenv)->lg_handle->reginfo.primary)->mtx_region)
+#define	LOG_SYSTEM_LOCK(env)						\
+	MUTEX_LOCK(env, ((LOG *)					\
+	    (env)->lg_handle->reginfo.primary)->mtx_region)
+#define	LOG_SYSTEM_UNLOCK(env)						\
+	MUTEX_UNLOCK(env, ((LOG *)					\
+	    (env)->lg_handle->reginfo.primary)->mtx_region)
 
 /*
  * LOG --
@@ -245,11 +255,10 @@ struct __log {
 
 	/*
 	 * !!!
-	 * NOTE: the next 12 fields, waiting_lsn, verify_lsn, max_wait_lsn,
-	 * max_perm_lsn, max_lease_ts, wait_recs, rcvd_recs, ready_lsn and
-	 * bulk_* are NOT protected by the log region lock.  They are protected
-	 * by REP->mtx_clientdb.  If you need access to both, you must acquire
-	 * REP->mtx_clientdb before acquiring the log region lock.
+	 * NOTE: the next group of fields are NOT protected by the log
+	 * region lock.  They are protected by REP->mtx_clientdb.  If you
+	 * need access to both, you must acquire REP->mtx_clientdb
+	 * before acquiring the log region lock.
 	 *
 	 * The waiting_lsn is used by the replication system.  It is the
 	 * first LSN that we are holding without putting in the log, because
@@ -264,13 +273,15 @@ struct __log {
 	 * in the __db.rep.db.  If we requested only a single record, then
 	 * the max_wait_lsn has the LSN of that record we requested.
 	 */
+	/* BEGIN fields protected by rep->mtx_clientdb. */
 	DB_LSN	  waiting_lsn;		/* First log record after a gap. */
 	DB_LSN	  verify_lsn;		/* LSN we are waiting to verify. */
 	DB_LSN	  max_wait_lsn;		/* Maximum LSN requested. */
 	DB_LSN	  max_perm_lsn;		/* Maximum PERMANENT LSN processed. */
 	db_timespec max_lease_ts;	/* Maximum Lease timestamp seen. */
-	u_int32_t wait_recs;		/* Records to wait before requesting. */
-	u_int32_t rcvd_recs;		/* Records received while waiting. */
+	db_timespec wait_ts;		/* Time to wait before requesting. */
+	db_timespec rcvd_ts;		/* Initial received time to wait. */
+	db_timespec last_ts;		/* Last time of insert in temp db. */
 	/*
 	 * The ready_lsn is also used by the replication system.  It is the
 	 * next LSN we expect to receive.  It's normally equal to "lsn",
@@ -289,6 +300,7 @@ struct __log {
 	uintptr_t bulk_off;		/* Current offset into bulk buffer. */
 	u_int32_t bulk_len;		/* Length of buffer. */
 	u_int32_t bulk_flags;		/* Bulk buffer flags. */
+	/* END fields protected by rep->mtx_clientdb. */
 
 	/*
 	 * During initialization, the log system walks forward through the
@@ -350,15 +362,13 @@ struct __db_commit {
  * We ignore NOT LOGGED LSNs.  The user did an unlogged update.
  * We should eventually see a log record that matches and continue
  * forward.
- * If truncate is supported then a ZERO LSN implies a page that was
- * allocated prior to the recovery start pont and then truncated
- * later in the log.  An allocation of a page after this
- * page will extend the file, leaving a hole.  We want to
+ * A ZERO LSN implies a page that was allocated prior to the recovery
+ * start point and then truncated later in the log.  An allocation of a
+ * page after this page will extend the file, leaving a hole.  We want to
  * ignore this page until it is truncated again.
  *
  */
 
-#ifdef HAVE_FTRUNCATE
 #define	CHECK_LSN(e, redo, cmp, lsn, prev)				\
 	if (DB_REDO(redo) && (cmp) < 0 &&				\
 	    ((!IS_NOT_LOGGED_LSN(*(lsn)) && !IS_ZERO_LSN(*(lsn))) ||	\
@@ -366,14 +376,6 @@ struct __db_commit {
 		ret = __db_check_lsn(e, lsn, prev);			\
 		goto out;						\
 	}
-#else
-#define	CHECK_LSN(e, redo, cmp, lsn, prev)				\
-	if (DB_REDO(redo) && (cmp) < 0 &&				\
-	    (!IS_NOT_LOGGED_LSN(*(lsn)) || IS_REP_CLIENT(e))) {		\
-		ret = __db_check_lsn(e, lsn, prev);			\
-		goto out;						\
-	}
-#endif
 
 /*
  * Helper for in-memory logs -- check whether an offset is in range

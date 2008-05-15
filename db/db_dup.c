@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_dup.c,v 12.11 2007/05/17 15:14:56 bostic Exp $
+ * $Id: db_dup.c,v 12.14 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -32,8 +32,8 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	u_int8_t *from;
 
 	dbp = dbc->dbp;
-	DB_ASSERT(dbp->dbenv, IS_DIRTY(pagep));
-	DB_ASSERT(dbp->dbenv, indx < NUM_ENT(pagep));
+	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
+	DB_ASSERT(dbp->env, indx < NUM_ENT(pagep));
 
 	if (DBC_LOGGING(dbc)) {
 		ldbt.data = P_ENTRY(dbp, pagep, indx);
@@ -61,7 +61,7 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	 * memmove(3), the regions may overlap.
 	 */
 	from = (u_int8_t *)pagep + HOFFSET(pagep);
-	DB_ASSERT(dbp->dbenv, inp[indx] >= HOFFSET(pagep));
+	DB_ASSERT(dbp->env, inp[indx] >= HOFFSET(pagep));
 	memmove(from + nbytes, from, inp[indx] - HOFFSET(pagep));
 	HOFFSET(pagep) += nbytes;
 
@@ -95,18 +95,18 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	u_int32_t nbytes;
 	DBT *hdr, *data;
 {
-	DB *dbp;
 	BKEYDATA bk;
+	DB *dbp;
 	DBT thdr;
 	db_indx_t *inp;
 	int ret;
 	u_int8_t *p;
 
 	dbp = dbc->dbp;
-	DB_ASSERT(dbp->dbenv, IS_DIRTY(pagep));
+	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
 
 	if (nbytes > P_FREESPACE(dbp, pagep)) {
-		DB_ASSERT(dbp->dbenv, nbytes <= P_FREESPACE(dbp, pagep));
+		DB_ASSERT(dbp->env, nbytes <= P_FREESPACE(dbp, pagep));
 		return (EINVAL);
 	}
 	/*

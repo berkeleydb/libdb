@@ -1,9 +1,9 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: db_join.c,v 12.18 2007/05/17 15:14:56 bostic Exp $
+ * $Id: db_join.c,v 12.27 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -20,7 +20,7 @@ static int __db_join_del __P((DBC *, u_int32_t));
 static int __db_join_get __P((DBC *, DBT *, DBT *, u_int32_t));
 static int __db_join_get_pp __P((DBC *, DBT *, DBT *, u_int32_t));
 static int __db_join_getnext __P((DBC *, DBT *, DBT *, u_int32_t, u_int32_t));
-static int __db_join_primget __P((DB *,
+static int __db_join_primget __P((DB *, DB_THREAD_INFO *,
     DB_TXN *, DB_LOCKER *, DBT *, DBT *, u_int32_t));
 static int __db_join_put __P((DBC *, DBT *, DBT *, u_int32_t));
 
@@ -73,24 +73,24 @@ __db_join(primary, curslist, dbcp, flags)
 	DBC **curslist, **dbcp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DBC *dbc;
+	ENV *env;
 	JOIN_CURSOR *jc;
 	size_t ncurs, nslots;
 	u_int32_t i;
 	int ret;
 
-	dbenv = primary->dbenv;
+	env = primary->env;
 	dbc = NULL;
 	jc = NULL;
 
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DBC), &dbc)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DBC), &dbc)) != 0)
 		goto err;
 
-	if ((ret = __os_calloc(dbenv, 1, sizeof(JOIN_CURSOR), &jc)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(JOIN_CURSOR), &jc)) != 0)
 		goto err;
 
-	if ((ret = __os_malloc(dbenv, 256, &jc->j_key.data)) != 0)
+	if ((ret = __os_malloc(env, 256, &jc->j_key.data)) != 0)
 		goto err;
 	jc->j_key.ulen = 256;
 	F_SET(&jc->j_key, DB_DBT_USERMEM);
@@ -154,16 +154,16 @@ __db_join(primary, curslist, dbcp, flags)
 	jc->j_fdupcurs = NULL;
 	jc->j_exhausted = NULL;
 
-	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(env, nslots, sizeof(DBC *),
 	    &jc->j_curslist)) != 0)
 		goto err;
-	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(env, nslots, sizeof(DBC *),
 	    &jc->j_workcurs)) != 0)
 		goto err;
-	if ((ret = __os_calloc(dbenv, nslots, sizeof(DBC *),
+	if ((ret = __os_calloc(env, nslots, sizeof(DBC *),
 	    &jc->j_fdupcurs)) != 0)
 		goto err;
-	if ((ret = __os_calloc(dbenv, nslots, sizeof(u_int8_t),
+	if ((ret = __os_calloc(env, nslots, sizeof(u_int8_t),
 	    &jc->j_exhausted)) != 0)
 		goto err;
 	for (i = 0; curslist[i] != NULL; i++) {
@@ -209,28 +209,28 @@ __db_join(primary, curslist, dbcp, flags)
 
 	*dbcp = dbc;
 
-	MUTEX_LOCK(dbenv, primary->mutex);
+	MUTEX_LOCK(env, primary->mutex);
 	TAILQ_INSERT_TAIL(&primary->join_queue, dbc, links);
-	MUTEX_UNLOCK(dbenv, primary->mutex);
+	MUTEX_UNLOCK(env, primary->mutex);
 
 	return (0);
 
 err:	if (jc != NULL) {
 		if (jc->j_curslist != NULL)
-			__os_free(dbenv, jc->j_curslist);
+			__os_free(env, jc->j_curslist);
 		if (jc->j_workcurs != NULL) {
 			if (jc->j_workcurs[0] != NULL)
 				(void)__dbc_close(jc->j_workcurs[0]);
-			__os_free(dbenv, jc->j_workcurs);
+			__os_free(env, jc->j_workcurs);
 		}
 		if (jc->j_fdupcurs != NULL)
-			__os_free(dbenv, jc->j_fdupcurs);
+			__os_free(env, jc->j_fdupcurs);
 		if (jc->j_exhausted != NULL)
-			__os_free(dbenv, jc->j_exhausted);
-		__os_free(dbenv, jc);
+			__os_free(env, jc->j_exhausted);
+		__os_free(env, jc);
 	}
 	if (dbc != NULL)
-		__os_free(dbenv, dbc);
+		__os_free(env, dbc);
 	return (ret);
 }
 
@@ -242,19 +242,17 @@ static int
 __db_join_close_pp(dbc)
 	DBC *dbc;
 {
-	DB_ENV *dbenv;
-	DB_THREAD_INFO *ip;
 	DB *dbp;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	PANIC_CHECK(dbenv);
+	ENV_ENTER(env, ip);
 
-	ENV_ENTER(dbenv, ip);
-
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check &&
 	    (ret = __db_rep_enter(dbp, 1, 0, dbc->txn != NULL)) != 0) {
 		handle_check = 0;
@@ -263,10 +261,10 @@ __db_join_close_pp(dbc)
 
 	ret = __db_join_close(dbc);
 
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -277,8 +275,7 @@ __db_join_put(dbc, key, data, flags)
 	DBT *data;
 	u_int32_t flags;
 {
-	PANIC_CHECK(dbc->dbp->dbenv);
-
+	COMPQUIET(dbc, NULL);
 	COMPQUIET(key, NULL);
 	COMPQUIET(data, NULL);
 	COMPQUIET(flags, 0);
@@ -290,8 +287,7 @@ __db_join_del(dbc, flags)
 	DBC *dbc;
 	u_int32_t flags;
 {
-	PANIC_CHECK(dbc->dbp->dbenv);
-
+	COMPQUIET(dbc, NULL);
 	COMPQUIET(flags, 0);
 	return (EINVAL);
 }
@@ -307,22 +303,20 @@ __db_join_get_pp(dbc, key, data, flags)
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	u_int32_t handle_check, save_flags;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/* Save the original flags value. */
 	save_flags = flags;
 
-	PANIC_CHECK(dbenv);
-
 	if (LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW)) {
-		if (!LOCKING_ON(dbenv))
-			return (__db_fnl(dbenv, "DBC->get"));
+		if (!LOCKING_ON(env))
+			return (__db_fnl(env, "DBC->get"));
 		LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW);
 	}
 
@@ -331,7 +325,7 @@ __db_join_get_pp(dbc, key, data, flags)
 	case DB_JOIN_ITEM:
 		break;
 	default:
-		return (__db_ferr(dbenv, "DBC->get", 0));
+		return (__db_ferr(env, "DBC->get", 0));
 	}
 
 	/*
@@ -346,14 +340,14 @@ __db_join_get_pp(dbc, key, data, flags)
 	 * and causes us no headaches, so we permit it.
 	 */
 	if (F_ISSET(key, DB_DBT_PARTIAL)) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "DB_DBT_PARTIAL may not be set on key during join_get");
 		return (EINVAL);
 	}
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check &&
 	    (ret = __db_rep_enter(dbp, 1, 0, dbc->txn != NULL)) != 0) {
 		handle_check = 0;
@@ -365,11 +359,11 @@ __db_join_get_pp(dbc, key, data, flags)
 
 	ret = __db_join_get(dbc, key, data, flags);
 
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-err:	ENV_LEAVE(dbenv, ip);
-	__dbt_userfree(dbenv, key, NULL, NULL);
+err:	ENV_LEAVE(env, ip);
+	__dbt_userfree(env, key, NULL, NULL);
 	return (ret);
 }
 
@@ -382,13 +376,13 @@ __db_join_get(dbc, key_arg, data_arg, flags)
 	DB *dbp;
 	DBC *cp;
 	DBT *key_n, key_n_mem;
-	DB_ENV *dbenv;
+	ENV *env;
 	JOIN_CURSOR *jc;
 	int db_manage_data, ret;
 	u_int32_t i, j, operation, opmods;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	jc = (JOIN_CURSOR *)dbc->internal;
 
 	operation = LF_ISSET(DB_OPFLAGS_MASK);
@@ -433,7 +427,7 @@ retry:	ret = __dbc_get(jc->j_workcurs[0], &jc->j_key, key_n,
 
 	if (ret == DB_BUFFER_SMALL) {
 		jc->j_key.ulen <<= 1;
-		if ((ret = __os_realloc(dbenv,
+		if ((ret = __os_realloc(env,
 		    jc->j_key.ulen, &jc->j_key.data)) != 0)
 			goto mem_err;
 		goto retry;
@@ -477,7 +471,7 @@ retry:	ret = __dbc_get(jc->j_workcurs[0], &jc->j_key, key_n,
 
 	/* We have the first element; now look for it in the other cursors. */
 	for (i = 1; i < jc->j_ncurs; i++) {
-		DB_ASSERT(dbenv, jc->j_curslist[i] != NULL);
+		DB_ASSERT(env, jc->j_curslist[i] != NULL);
 		if (jc->j_workcurs[i] == NULL)
 			/* If this is NULL, we need to dup curslist into it. */
 			if ((ret = __dbc_dup(jc->j_curslist[i],
@@ -580,9 +574,9 @@ retry2:		cp = jc->j_workcurs[i];
 
 		if (ret == DB_BUFFER_SMALL) {
 			jc->j_key.ulen <<= 1;
-			if ((ret = __os_realloc(dbenv, jc->j_key.ulen,
+			if ((ret = __os_realloc(env, jc->j_key.ulen,
 			    &jc->j_key.data)) != 0) {
-mem_err:			__db_errx(dbenv,
+mem_err:			__db_errx(env,
 				    "Allocation failed for join key, len = %lu",
 				    (u_long)jc->j_key.ulen);
 				goto err;
@@ -641,12 +635,12 @@ samekey:	/*
 	 * back into the dbt we were given for the key; call __db_retcopy.
 	 * Otherwise, assert that we do not need to copy anything and proceed.
 	 */
-	DB_ASSERT(dbenv, F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC |
+	DB_ASSERT(env, F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC |
 	    DB_DBT_USERCOPY) || key_n == key_arg);
 
 	if ((F_ISSET(key_arg, DB_DBT_USERMEM | DB_DBT_MALLOC |
 	    DB_DBT_USERCOPY)) &&
-	    (ret = __db_retcopy(dbenv,
+	    (ret = __db_retcopy(env,
 	    key_arg, key_n->data, key_n->size, NULL, NULL)) != 0) {
 		/*
 		 * The retcopy failed, most commonly because we have a user
@@ -679,7 +673,7 @@ samekey:	/*
 		db_manage_data = 1;
 	else
 		db_manage_data = 0;
-	if ((ret = __db_join_primget(jc->j_primary,
+	if ((ret = __db_join_primget(jc->j_primary, dbc->thread_info,
 	    jc->j_curslist[0]->txn, jc->j_curslist[0]->locker, key_n,
 	    db_manage_data ? &jc->j_rdata : data_arg, opmods)) != 0) {
 		if (ret == DB_NOTFOUND) {
@@ -723,14 +717,15 @@ __db_join_close(dbc)
 	DBC *dbc;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
+	DB_THREAD_INFO *ip;
+	ENV *env;
 	JOIN_CURSOR *jc;
 	int ret, t_ret;
 	u_int32_t i;
 
 	jc = (JOIN_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ret = t_ret = 0;
 
 	/*
@@ -738,12 +733,11 @@ __db_join_close(dbc)
 	 * must happen before any action that can fail and return, or else
 	 * __db_close may loop indefinitely.
 	 */
-	MUTEX_LOCK(dbenv, dbp->mutex);
+	MUTEX_LOCK(env, dbp->mutex);
 	TAILQ_REMOVE(&dbp->join_queue, dbc, links);
-	MUTEX_UNLOCK(dbenv, dbp->mutex);
+	MUTEX_UNLOCK(env, dbp->mutex);
 
-	PANIC_CHECK(dbenv);
-
+	ENV_ENTER(env, ip);
 	/*
 	 * Close any open scratch cursors.  In each case, there may
 	 * not be as many outstanding as there are cursors in
@@ -763,16 +757,17 @@ __db_join_close(dbc)
 		    (t_ret = __dbc_close(jc->j_fdupcurs[i])) != 0)
 			ret = t_ret;
 	}
+	ENV_LEAVE(env, ip);
 
-	__os_free(dbenv, jc->j_exhausted);
-	__os_free(dbenv, jc->j_curslist);
-	__os_free(dbenv, jc->j_workcurs);
-	__os_free(dbenv, jc->j_fdupcurs);
-	__os_free(dbenv, jc->j_key.data);
+	__os_free(env, jc->j_exhausted);
+	__os_free(env, jc->j_curslist);
+	__os_free(env, jc->j_workcurs);
+	__os_free(env, jc->j_fdupcurs);
+	__os_free(env, jc->j_key.data);
 	if (jc->j_rdata.data != NULL)
-		__os_ufree(dbenv, jc->j_rdata.data);
-	__os_free(dbenv, jc);
-	__os_free(dbenv, dbc);
+		__os_ufree(env, jc->j_rdata.data);
+	__os_free(env, jc);
+	__os_free(env, dbc);
 
 	return (ret);
 }
@@ -824,10 +819,10 @@ __db_join_getnext(dbc, key, data, exhausted, opmods)
 			 * it into data, then free the buffer we malloc'ed
 			 * above.
 			 */
-			if ((ret = __db_retcopy(dbp->dbenv, data, ldata.data,
+			if ((ret = __db_retcopy(dbp->env, data, ldata.data,
 			    ldata.size, &data->data, &data->size)) != 0)
 				return (ret);
-			__os_ufree(dbp->dbenv, ldata.data);
+			__os_ufree(dbp->env, ldata.data);
 			return (0);
 		}
 
@@ -836,7 +831,7 @@ __db_join_getnext(dbc, key, data, exhausted, opmods)
 		 * dups.  We just forget about ldata and free
 		 * its buffer--data contains the value we're searching for.
 		 */
-		__os_ufree(dbp->dbenv, ldata.data);
+		__os_ufree(dbp->env, ldata.data);
 		/* FALLTHROUGH */
 	case 1:
 		ret = __dbc_get(dbc, key, data, opmods | DB_GET_BOTHC);
@@ -876,8 +871,9 @@ __db_join_cmp(a, b)
  * locker ID if we're doing CDB locking.
  */
 static int
-__db_join_primget(dbp, txn, locker, key, data, flags)
+__db_join_primget(dbp, ip, txn, locker, key, data, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DB_LOCKER  *locker;
 	DBT *key, *data;
@@ -887,7 +883,7 @@ __db_join_primget(dbp, txn, locker, key, data, flags)
 	u_int32_t rmw;
 	int ret, t_ret;
 
-	if ((ret = __db_cursor_int(dbp,
+	if ((ret = __db_cursor_int(dbp, ip,
 	    txn, dbp->type, PGNO_INVALID, 0, locker, &dbc)) != 0)
 		return (ret);
 
@@ -907,7 +903,7 @@ __db_join_primget(dbp, txn, locker, key, data, flags)
 		F_SET(dbc, DBC_READ_COMMITTED);
 
 	LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW);
-	DB_ASSERT(dbp->dbenv, flags == 0);
+	DB_ASSERT(dbp->env, flags == 0);
 
 	F_SET(dbc, DBC_TRANSIENT);
 
@@ -928,8 +924,7 @@ __db_join_primget(dbp, txn, locker, key, data, flags)
 
 /*
  * __db_secondary_corrupt --
- *	Report that a secondary index appears corrupt, as it has a record
- * that does not correspond to a record in the primary or vice versa.
+ *	Report primary/secondary inconsistencies.
  *
  * PUBLIC: int __db_secondary_corrupt __P((DB *));
  */
@@ -937,7 +932,9 @@ int
 __db_secondary_corrupt(dbp)
 	DB *dbp;
 {
-	__db_errx(dbp->dbenv,
-	    "Secondary index corrupt: not consistent with primary");
+	__db_err(dbp->env, DB_SECONDARY_BAD, "%s%s%s",
+	    dbp->fname == NULL ? "unnamed" : dbp->fname,
+	    dbp->dname == NULL ? "" : "/",
+	    dbp->dname == NULL ? "" : dbp->dname);
 	return (DB_SECONDARY_BAD);
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2007 Oracle.  All rights reserved.
+# Copyright (c) 2005,2008 Oracle.  All rights reserved.
 #
-# $Id: rep043.tcl,v 1.15 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep043.tcl,v 1.17 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep043
 # TEST
@@ -61,10 +61,11 @@ proc rep043 { method { rotations 25 } { tnum "043" } args } {
 proc rep043_sub { method rotations tnum logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

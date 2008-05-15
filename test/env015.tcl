@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: env015.tcl,v 12.7 2007/05/17 15:15:55 bostic Exp $
+# $Id: env015.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	env015
 # TEST	Rename the underlying directory of an env, make sure everything

@@ -1,0 +1,41 @@
+<!--$Id: rtc.so,v 1.4 2008/01/17 03:26:51 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Release 4.7: Run-time configuration</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Upgrading Berkeley DB Applications</dl></b></td>
+<td align=right><a href="../upgrade.4.7/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.7/repapi.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Release 4.7: Run-time configuration</b></p>
+<p>In historic Berkeley DB releases, there were separate sleep and yield
+functions to be configured at run-time using the db_env_set_func_sleep
+and <a href="../../api_c/set_func_yield.html">db_env_set_func_yield</a> functions.  These functions have been
+merged in the Berkeley DB 4.7 release.  The replacement function should always
+yield the processor, and optionally wait for some period of time before
+allowing the thread to run again.</p>
+<p>Applications using the Berkeley DB run-time configuration interfaces should
+merge the functionality of their sleep and yield functions into a single
+configuration function.</p>
+<p>In the 4.7 Berkeley DB release, the db_env_set_func_map  and
+db_env_set_func_unmap functions have been replaced.  This change fixes
+problems where applications using the Berkeley DB run-time configuration
+interfaces could not open multiple <a href="../../api_c/env_class.html">DB_ENV</a> handles for the same
+database environment in a single application or join existing database
+environments from within multiple processes.</p>
+<p>Applications wanting to replace the Berkeley DB region creation functionality
+should replace their db_env_set_func_map and db_env_set_func_unmap calls
+with a call to the <a href="../../api_c/set_func_region_map.html">db_env_set_func_region_map</a> function.
+Applications wanting to replace the Berkeley DB region file mapping functionality
+should replace their db_env_set_func_map and db_env_set_func_unmap calls
+with a call to the <a href="../../api_c/set_func_file_map.html">db_env_set_func_file_map</a> function.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.4.7/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.4.7/repapi.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

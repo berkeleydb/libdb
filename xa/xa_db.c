@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: xa_db.c,v 12.10 2007/05/17 15:16:00 bostic Exp $
+ * $Id: xa_db.c,v 12.12 2008/01/08 20:59:00 bostic Exp $
  */
 
 #include "db_config.h"
@@ -42,10 +42,10 @@ __xa_set_txn(dbp, txnpp, no_xa_txn)
 	DB_TXN **txnpp;
 	int no_xa_txn;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * It doesn't make sense for a server to specify a DB_TXN handle.
@@ -55,13 +55,13 @@ __xa_set_txn(dbp, txnpp, no_xa_txn)
 	 * Disallow specified DB_TXN handles.
 	 */
 	if (*txnpp != NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
     "transaction handles should not be directly specified to XA interfaces");
 		return (EINVAL);
 	}
 
 	/* See if the TM has declared a transaction. */
-	if ((ret = __xa_get_txn(dbenv, txnpp, 0)) != 0)
+	if ((ret = __xa_get_txn(env, txnpp, 0)) != 0)
 		return (ret);
 	if ((*txnpp)->txnid != TXN_INVALID)
 		return (0);
@@ -77,7 +77,7 @@ __xa_set_txn(dbp, txnpp, no_xa_txn)
 		return (0);
 	}
 
-	__db_errx(dbenv, "no XA transaction declared");
+	__db_errx(env, "no XA transaction declared");
 	return (EINVAL);
 }
 
@@ -98,7 +98,7 @@ __db_xa_create(dbp)
 	 * Allocate the XA internal structure, and wrap the open and close
 	 * calls.
 	 */
-	if ((ret = __os_calloc(dbp->dbenv, 1, sizeof(XA_METHODS), &xam)) != 0)
+	if ((ret = __os_calloc(dbp->env, 1, sizeof(XA_METHODS), &xam)) != 0)
 		return (ret);
 
 	dbp->xa_internal = xam;
@@ -187,7 +187,7 @@ __xa_close(dbp, flags)
 
 	real_close = ((XA_METHODS *)dbp->xa_internal)->close;
 
-	__os_free(dbp->dbenv, dbp->xa_internal);
+	__os_free(dbp->env, dbp->xa_internal);
 	dbp->xa_internal = NULL;
 
 	return (real_close(dbp, flags));

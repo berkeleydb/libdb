@@ -1,4 +1,4 @@
-m4_comment([$Id: repmgr_stat.so,v 10.1 2007/06/22 16:57:17 bostic Exp $])
+m4_comment([$Id: repmgr_stat.so,v 10.2 2007/09/21 20:06:04 bostic Exp $])
 
 define(M4PAGELOCAL, [repmgr_stat, repmgr_stat_print])
 include(m4/m4.seealso)
@@ -59,7 +59,7 @@ The number of times an attempt to open a new TCP/IP connection failed.])
 
 m4_tagend
 
-m4_when_after_envopen(repmgr_stat)
+m4_when(repmgr_stat, before, dbenv_open)
 
 m4_return(repmgr_stat, std)
 

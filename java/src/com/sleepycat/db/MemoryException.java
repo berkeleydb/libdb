@@ -1,14 +1,26 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: MemoryException.java,v 12.6 2007/05/17 15:15:41 bostic Exp $
+ * $Id: MemoryException.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
  */
 package com.sleepycat.db;
 
 import com.sleepycat.db.internal.DbEnv;
 
+/**
+This exception is thrown when a {@link com.sleepycat.db.DatabaseEntry DatabaseEntry}
+passed to a {@link com.sleepycat.db.Database Database} or {@link com.sleepycat.db.Cursor Cursor} method is not large
+enough to hold a value being returned.  This only applies to
+{@link com.sleepycat.db.DatabaseEntry DatabaseEntry} objects configured with the
+{@link com.sleepycat.db.DatabaseEntry#setUserBuffer DatabaseEntry.setUserBuffer} method.
+In a Java Virtual Machine, there are usually separate heaps for memory
+allocated by native code and for objects allocated in Java code.  If the
+Java heap is exhausted, the JVM will throw an
+{@link java.lang.OutOfMemoryError}, so you may see that exception
+rather than this one.
+*/
 public class MemoryException extends DatabaseException {
     private DatabaseEntry dbt = null;
     private String message;
@@ -22,10 +34,15 @@ public class MemoryException extends DatabaseException {
         this.dbt = dbt;
     }
 
+    /**
+    Returns the {@link com.sleepycat.db.DatabaseEntry DatabaseEntry} object with insufficient memory
+    to complete the operation to complete the operation.
+    */
     public DatabaseEntry getDatabaseEntry() {
         return dbt;
     }
 
+    /** {@inheritDoc} */
     public String toString() {
         return message;
     }

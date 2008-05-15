@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: env007.tcl,v 12.16 2007/05/17 15:15:55 bostic Exp $
+# $Id: env007.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	env007
 # TEST	Test DB_CONFIG config file options for berkdb env.
@@ -42,7 +42,7 @@ proc env007 { } {
 	{ " -txn_max " "set_tx_max" "19" "31"
 	    "Env007.a1: Txn Max" "txn_stat"
 	    "Maximum txns" "0" "get_tx_max" }
-	{ " -lock_max_locks " "set_lk_max_locks" "17" "29"
+	{ " -lock_max_locks " "set_lk_max_locks" "1070" "1290"
 	    "Env007.a2: Lock Max" "lock_stat"
 	    "Maximum locks" "0" "get_lk_max_locks" }
 	{ " -lock_max_lockers " "set_lk_max_lockers" "1500" "2000"
@@ -182,9 +182,6 @@ proc env007 { } {
 	{ "set_flags" "db_auto_commit" "get_flags" "-auto_commit" }
 	{ "set_flags" "db_cdb_alldb" "get_flags" "-cdb_alldb" }
 	{ "set_flags" "db_direct_db" "get_flags" "-direct_db" }
-	{ "set_flags" "db_direct_log" "get_flags" "-direct_log" }
-	{ "set_flags" "db_dsync_log" "get_flags" "-dsync_log" }
-	{ "set_flags" "db_log_autoremove" "get_flags" "-log_remove" }
 	{ "set_flags" "db_nolocking" "get_flags" "-nolock" }
 	{ "set_flags" "db_nommap" "get_flags" "-nommap" }
 	{ "set_flags" "db_nopanic" "get_flags" "-nopanic" }
@@ -206,7 +203,7 @@ proc env007 { } {
 	{ "set_lk_detect" "db_lock_random" "get_lk_detect" "random" }
 	{ "set_lk_detect" "db_lock_youngest" "get_lk_detect" "youngest" }
 	{ "set_lk_max_lockers" "1500" "get_lk_max_lockers" "1500" }
-	{ "set_lk_max_locks" "29" "get_lk_max_locks" "29" }
+	{ "set_lk_max_locks" "1290" "get_lk_max_locks" "1290" }
 	{ "set_lk_max_objects" "1500" "get_lk_max_objects" "1500" }
 	{ "set_lock_timeout" "100" "get_timeout lock" "100" }
 	{ "set_mp_mmapsize" "12582912" "get_mp_mmapsize" "12582912" }
@@ -229,7 +226,7 @@ proc env007 { } {
 
 	env_cleanup $testdir
 	set e "berkdb_env_noerr -create -mode 0644 -home $testdir -txn"
-	set directlist {db_direct_db db_direct_log}
+	set directlist {db_direct_db}
 
 	foreach item $cfglist {
 		env_cleanup $testdir
@@ -264,13 +261,13 @@ proc env007 { } {
 	puts "\tEnv007.c: Test berkdb env options using getters and env open."
 	# The envopenlist variable contains options that can be set using
 	# berkdb env.  We always set -mpool.
+#	{ "-system_mem" "-shm_key 1" "-system_mem" "get_open_flags" }
 	set envopenlist {
 	{ "-cdb" "" "-cdb" "get_open_flags" }
 	{ "-errpfx" "FOO" "FOO" "get_errpfx" }
 	{ "-lock" "" "-lock" "get_open_flags" }
 	{ "-log" "" "-log" "get_open_flags" }
 	{ "" "" "-mpool" "get_open_flags" }
-	{ "-system_mem" "-shm_key 1" "-system_mem" "get_open_flags" }
 	{ "-txn" "" "-txn" "get_open_flags" }
 	{ "-recover" "-txn" "-recover" "get_open_flags" }
 	{ "-recover_fatal" "-txn" "-recover_fatal" "get_open_flags" }
@@ -354,9 +351,6 @@ proc env007 { } {
 	# $env set_flags.
 	set flaglist {
 	{ "-direct_db" }
-	{ "-direct_log" }
-	{ "-dsync_log" }
-	{ "-log_remove" }
 	{ "-nolock" }
 	{ "-nommap" }
 	{ "-nopanic" }
@@ -366,7 +360,7 @@ proc env007 { } {
 	{ "-wrnosync" }
 	}
 	set e "berkdb_env_noerr -create -mode 0644 -home $testdir"
-	set directlist {-direct_db -direct_log}
+	set directlist {-direct_db}
 	foreach item $flaglist {
 		set flag [lindex $item 0]
 		env_cleanup $testdir
@@ -406,6 +400,63 @@ proc env007 { } {
 		set get_retval [eval $env get_flags]
 		if { [is_substr $get_retval $flag] == 1 } {
 			puts "FAIL: $flag should not be in $get_retval"
+			error_check_good env_close [$env close] 0
+			continue
+		}
+
+		error_check_good envclose [$env close] 0
+	}
+	puts "\tEnv007.d1: Test berkdb env options using set_log_config and getters."
+
+	# The flaglist variable contains options that can be set using
+	# $env log_config.
+	set flaglist {
+	{ "autoremove" }
+	{ "direct" }
+	{ "dsync" }
+	{ "zero" }
+	}
+	set e "berkdb_env_noerr -create -txn -mode 0644 -home $testdir"
+	set directlist {direct}
+	foreach item $flaglist {
+		set flag [lindex $item 0]
+		env_cleanup $testdir
+
+		# Set up env
+		set env [eval $e]
+		error_check_good envopen [is_valid_env $env] TRUE
+
+		# Use set_flags to turn on new env characteristics.
+		#
+		# Unconfigured/unsupported direct I/O is not reported
+		# as a failure.
+		if {[catch { $env log_config "$flag on" } res ]} {
+			if { [lsearch $directlist $flag] != -1 && \
+			    [is_substr $res $directmsg] == 1 } {
+				error_check_good env_close [$env close] 0
+				continue
+			} else {
+				puts "FAIL: $res"
+				error_check_good env_close [$env close] 0
+				continue
+			}
+		} else {
+			error_check_good "flag $flag on" $res 0
+		}
+
+		# Check that getter retrieves expected retval.
+		set get_retval [eval $env log_get_config $flag]
+		if { $get_retval != 1 } {
+			puts "FAIL: $flag is not on"
+			error_check_good env_close [$env close] 0
+			continue
+		}
+		# Use set_flags to turn off env characteristics, make sure
+		# they are gone.
+		error_check_good "flag $flag off" [$env log_config "$flag off"] 0
+		set get_retval [eval $env log_get_config $flag]
+		if { $get_retval == 1 } {
+			puts "FAIL: $flag should off"
 			error_check_good env_close [$env close] 0
 			continue
 		}

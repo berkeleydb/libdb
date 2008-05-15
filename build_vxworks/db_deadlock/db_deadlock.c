@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_deadlock.c,v 12.18 2007/05/17 17:17:42 bostic Exp $
+ * $Id: db_deadlock.c,v 12.22 2008/01/08 20:58:13 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 int db_deadlock_main __P((int, char *[]));
@@ -42,7 +42,7 @@ db_deadlock_main(argc, argv)
 {
 	extern char *optarg;
 	extern int optind, __db_getopt_reset;
-	DB_ENV  *dbenv;
+	DB_ENV *dbenv;
 	u_int32_t atype;
 	time_t now;
 	u_long secs, usecs;
@@ -181,7 +181,7 @@ db_deadlock_main(argc, argv)
 		if (verbose) {
 			(void)time(&now);
 			dbenv->errx(dbenv,
-			    "running at %.24s", __db_ctime(&now, time_buf));
+			    "running at %.24s", __os_ctime(&now, time_buf));
 		}
 
 		if ((ret =
@@ -195,7 +195,7 @@ db_deadlock_main(argc, argv)
 		/* Make a pass every "secs" secs and "usecs" usecs. */
 		if (secs == 0 && usecs == 0)
 			break;
-		__os_sleep(dbenv, secs, usecs);
+		__os_yield(dbenv->env, secs, usecs);
 	}
 
 	if (0) {

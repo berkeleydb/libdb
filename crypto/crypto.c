@@ -1,12 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield
  * -- astubble@rice.edu
  *
- * $Id: crypto.c,v 12.20 2007/05/17 15:14:55 bostic Exp $
+ * $Id: crypto.c,v 12.24 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -20,37 +20,39 @@
  *	Initialize crypto.
  */
 int
-__crypto_region_init(dbenv)
-	DB_ENV *dbenv;
+__crypto_region_init(env)
+	ENV *env;
 {
-	REGENV *renv;
-	REGINFO *infop;
 	CIPHER *cipher;
 	DB_CIPHER *db_cipher;
+	DB_ENV *dbenv;
+	REGENV *renv;
+	REGINFO *infop;
 	char *sh_passwd;
 	int ret;
 
-	db_cipher = dbenv->crypto_handle;
-
-	ret = 0;
-	infop = dbenv->reginfo;
+	dbenv = env->dbenv;
+	infop = env->reginfo;
 	renv = infop->primary;
+	db_cipher = env->crypto_handle;
+	ret = 0;
+
 	if (renv->cipher_off == INVALID_ROFF) {
-		if (!CRYPTO_ON(dbenv))
+		if (!CRYPTO_ON(env))
 			return (0);
 		if (!F_ISSET(infop, REGION_CREATE)) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "Joining non-encrypted environment with encryption key");
 			return (EINVAL);
 		}
 		if (F_ISSET(db_cipher, CIPHER_ANY)) {
-			__db_errx(dbenv, "Encryption algorithm not supplied");
+			__db_errx(env, "Encryption algorithm not supplied");
 			return (EINVAL);
 		}
 		/*
 		 * Must create the shared information.  We need: Shared cipher
 		 * information that contains the passwd.  After we copy the
-		 * passwd, we smash and free the one in the dbenv.
+		 * passwd, we smash and free the one in the env.
 		 */
 		if ((ret = __env_alloc(infop, sizeof(CIPHER), &cipher)) != 0)
 			return (ret);
@@ -67,8 +69,8 @@ __crypto_region_init(dbenv)
 		memcpy(sh_passwd, dbenv->passwd, cipher->passwd_len);
 		renv->cipher_off = R_OFFSET(infop, cipher);
 	} else {
-		if (!CRYPTO_ON(dbenv)) {
-			__db_errx(dbenv,
+		if (!CRYPTO_ON(env)) {
+			__db_errx(env,
 		    "Encrypted environment: no encryption key supplied");
 			return (EINVAL);
 		}
@@ -76,12 +78,12 @@ __crypto_region_init(dbenv)
 		sh_passwd = R_ADDR(infop, cipher->passwd);
 		if ((cipher->passwd_len != dbenv->passwd_len) ||
 		    memcmp(dbenv->passwd, sh_passwd, cipher->passwd_len) != 0) {
-			__db_errx(dbenv, "Invalid password");
+			__db_errx(env, "Invalid password");
 			return (EPERM);
 		}
 		if (!F_ISSET(db_cipher, CIPHER_ANY) &&
 		    db_cipher->alg != cipher->flags) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "Environment encrypted using a different algorithm");
 			return (EINVAL);
 		}
@@ -91,19 +93,19 @@ __crypto_region_init(dbenv)
 			 * env.  Setup our cipher structure for whatever
 			 * algorithm this env has.
 			 */
-			if ((ret = __crypto_algsetup(dbenv, db_cipher,
+			if ((ret = __crypto_algsetup(env, db_cipher,
 			    cipher->flags, 0)) != 0)
 				return (ret);
 	}
-	ret = db_cipher->init(dbenv, db_cipher);
+	ret = db_cipher->init(env, db_cipher);
 
 	/*
 	 * On success, no matter if we allocated it or are using the already
-	 * existing one, we are done with the passwd in the dbenv.  We smash
+	 * existing one, we are done with the passwd in the env.  We smash
 	 * N-1 bytes so that we don't overwrite the nul.
 	 */
 	memset(dbenv->passwd, 0xff, dbenv->passwd_len-1);
-	__os_free(dbenv, dbenv->passwd);
+	__os_free(env, dbenv->passwd);
 	dbenv->passwd = NULL;
 	dbenv->passwd_len = 0;
 
@@ -112,33 +114,36 @@ __crypto_region_init(dbenv)
 
 /*
  * __crypto_env_close --
- *	Crypto-specific destruction of DB_ENV structure.
+ *	Crypto-specific destruction of ENV structure.
  *
- * PUBLIC: int __crypto_env_close __P((DB_ENV *));
+ * PUBLIC: int __crypto_env_close __P((ENV *));
  */
 int
-__crypto_env_close(dbenv)
-	DB_ENV *dbenv;
+__crypto_env_close(env)
+	ENV *env;
 {
 	DB_CIPHER *db_cipher;
+	DB_ENV *dbenv;
 	int ret;
+
+	dbenv = env->dbenv;
 
 	if (dbenv->passwd != NULL) {
 		memset(dbenv->passwd, 0xff, dbenv->passwd_len-1);
-		__os_free(dbenv, dbenv->passwd);
+		__os_free(env, dbenv->passwd);
 		dbenv->passwd = NULL;
 	}
 
-	if (!CRYPTO_ON(dbenv))
+	if (!CRYPTO_ON(env))
 		return (0);
 
 	ret = 0;
-	db_cipher = dbenv->crypto_handle;
+	db_cipher = env->crypto_handle;
 	if (!F_ISSET(db_cipher, CIPHER_ANY))
-		ret = db_cipher->close(dbenv, db_cipher->data);
-	__os_free(dbenv, db_cipher);
+		ret = db_cipher->close(env, db_cipher->data);
+	__os_free(env, db_cipher);
 
-	dbenv->crypto_handle = NULL;
+	env->crypto_handle = NULL;
 	return (ret);
 }
 
@@ -146,11 +151,11 @@ __crypto_env_close(dbenv)
  * __crypto_env_refresh --
  *	Clean up after the crpto system on a close or failed open.
  *
- * PUBLIC: int __crypto_env_refresh __P((DB_ENV *));
+ * PUBLIC: int __crypto_env_refresh __P((ENV *));
  */
 int
-__crypto_env_refresh(dbenv)
-	DB_ENV *dbenv;
+__crypto_env_refresh(env)
+	ENV *env;
 {
 	CIPHER *cipher;
 	REGENV *renv;
@@ -161,8 +166,8 @@ __crypto_env_refresh(dbenv)
 	 * filesystem-backed or system shared memory regions, that memory isn't
 	 * owned by any particular process.
 	 */
-	if (F_ISSET(dbenv, DB_ENV_PRIVATE)) {
-		infop = dbenv->reginfo;
+	if (F_ISSET(env, ENV_PRIVATE)) {
+		infop = env->reginfo;
 		renv = infop->primary;
 		if (renv->cipher_off != INVALID_ROFF) {
 			cipher = R_ADDR(infop, renv->cipher_off);
@@ -178,11 +183,11 @@ __crypto_env_refresh(dbenv)
  *	Given a db_cipher structure and a valid algorithm flag, call
  * the specific algorithm setup function.
  *
- * PUBLIC: int __crypto_algsetup __P((DB_ENV *, DB_CIPHER *, u_int32_t, int));
+ * PUBLIC: int __crypto_algsetup __P((ENV *, DB_CIPHER *, u_int32_t, int));
  */
 int
-__crypto_algsetup(dbenv, db_cipher, alg, do_init)
-	DB_ENV *dbenv;
+__crypto_algsetup(env, db_cipher, alg, do_init)
+	ENV *env;
 	DB_CIPHER *db_cipher;
 	u_int32_t alg;
 	int do_init;
@@ -190,22 +195,22 @@ __crypto_algsetup(dbenv, db_cipher, alg, do_init)
 	int ret;
 
 	ret = 0;
-	if (!CRYPTO_ON(dbenv)) {
-		__db_errx(dbenv, "No cipher structure given");
+	if (!CRYPTO_ON(env)) {
+		__db_errx(env, "No cipher structure given");
 		return (EINVAL);
 	}
 	F_CLR(db_cipher, CIPHER_ANY);
 	switch (alg) {
 	case CIPHER_AES:
 		db_cipher->alg = CIPHER_AES;
-		ret = __aes_setup(dbenv, db_cipher);
+		ret = __aes_setup(env, db_cipher);
 		break;
 	default:
-		ret = __db_panic(dbenv, EINVAL);
+		ret = __env_panic(env, EINVAL);
 		break;
 	}
 	if (ret == 0 && do_init)
-		ret = db_cipher->init(dbenv, db_cipher);
+		ret = db_cipher->init(env, db_cipher);
 	return (ret);
 }
 
@@ -213,18 +218,18 @@ __crypto_algsetup(dbenv, db_cipher, alg, do_init)
  * __crypto_decrypt_meta --
  *	Perform decryption on a metapage if needed.
  *
- * PUBLIC:  int __crypto_decrypt_meta __P((DB_ENV *, DB *, u_int8_t *, int));
+ * PUBLIC:  int __crypto_decrypt_meta __P((ENV *, DB *, u_int8_t *, int));
  */
 int
-__crypto_decrypt_meta(dbenv, dbp, mbuf, do_metachk)
-	DB_ENV *dbenv;
+__crypto_decrypt_meta(env, dbp, mbuf, do_metachk)
+	ENV *env;
 	DB *dbp;
 	u_int8_t *mbuf;
 	int do_metachk;
 {
-	DB_CIPHER *db_cipher;
 	DB dummydb;
 	DBMETA *meta;
+	DB_CIPHER *db_cipher;
 	size_t pg_off;
 	int ret;
 	u_int8_t *iv;
@@ -278,10 +283,10 @@ __crypto_decrypt_meta(dbenv, dbp, mbuf, do_metachk)
 	 * location, but not in DBMETA, use BTMETA.
 	 */
 	if (meta->encrypt_alg != 0) {
-		db_cipher = (DB_CIPHER *)dbenv->crypto_handle;
+		db_cipher = env->crypto_handle;
 		if (!F_ISSET(dbp, DB_AM_ENCRYPT)) {
-			if (!CRYPTO_ON(dbenv)) {
-				__db_errx(dbenv,
+			if (!CRYPTO_ON(env)) {
+				__db_errx(env,
     "Encrypted database: no encryption flag specified");
 				return (EINVAL);
 			}
@@ -297,14 +302,14 @@ __crypto_decrypt_meta(dbenv, dbp, mbuf, do_metachk)
 		 * This was checked in set_flags when DB_AM_ENCRYPT was set.
 		 * So it better still be true here.
 		 */
-		DB_ASSERT(dbenv, CRYPTO_ON(dbenv));
+		DB_ASSERT(env, CRYPTO_ON(env));
 		if (!F_ISSET(db_cipher, CIPHER_ANY) &&
 		    meta->encrypt_alg != db_cipher->alg) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "Database encrypted using a different algorithm");
 			return (EINVAL);
 		}
-		DB_ASSERT(dbenv, F_ISSET(dbp, DB_AM_CHKSUM));
+		DB_ASSERT(env, F_ISSET(dbp, DB_AM_CHKSUM));
 		iv = ((BTMETA *)mbuf)->iv;
 		/*
 		 * For ALL pages, we do not encrypt the beginning of the page
@@ -318,13 +323,13 @@ alg_retry:
 		 * use it.  Otherwise walk through those we know.
 		 */
 		if (!F_ISSET(db_cipher, CIPHER_ANY)) {
-			if (do_metachk && (ret = db_cipher->decrypt(dbenv,
+			if (do_metachk && (ret = db_cipher->decrypt(env,
 			    db_cipher->data, iv, mbuf + pg_off,
 			    DBMETASIZE - pg_off)))
 				return (ret);
 			if (((BTMETA *)meta)->crypto_magic !=
 			    meta->magic) {
-				__db_errx(dbenv, "Invalid password");
+				__db_errx(env, "Invalid password");
 				return (EINVAL);
 			}
 			/*
@@ -339,7 +344,7 @@ alg_retry:
 		/*
 		 * If we get here, CIPHER_ANY must be set.
 		 */
-		ret = __crypto_algsetup(dbenv, db_cipher, meta->encrypt_alg, 1);
+		ret = __crypto_algsetup(env, db_cipher, meta->encrypt_alg, 1);
 		goto alg_retry;
 	} else if (F_ISSET(dbp, DB_AM_ENCRYPT)) {
 		/*
@@ -362,7 +367,7 @@ alg_retry:
 		 * Therefore, asking for encryption with a database that
 		 * was not encrypted is an error.
 		 */
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "Unencrypted database with a supplied encryption key");
 		return (EINVAL);
 	}
@@ -374,23 +379,23 @@ alg_retry:
  *	Get the password from the shared region; and set it in a new
  * environment handle.  Use this to duplicate environment handles.
  *
- * PUBLIC: int __crypto_set_passwd __P((DB_ENV *, DB_ENV *));
+ * PUBLIC: int __crypto_set_passwd __P((ENV *, ENV *));
  */
 int
-__crypto_set_passwd(dbenv_src, dbenv_dest)
-	DB_ENV *dbenv_src, *dbenv_dest;
+__crypto_set_passwd(env_src, env_dest)
+	ENV *env_src, *env_dest;
 {
 	CIPHER *cipher;
 	REGENV *renv;
 	REGINFO *infop;
 	char *sh_passwd;
 
-	infop = dbenv_src->reginfo;
+	infop = env_src->reginfo;
 	renv = infop->primary;
 
-	DB_ASSERT(dbenv_src, CRYPTO_ON(dbenv_src));
+	DB_ASSERT(env_src, CRYPTO_ON(env_src));
 
 	cipher = R_ADDR(infop, renv->cipher_off);
 	sh_passwd = R_ADDR(infop, cipher->passwd);
-	return (__env_set_encrypt(dbenv_dest, sh_passwd, DB_ENCRYPT_AES));
+	return (__env_set_encrypt(env_dest->dbenv, sh_passwd, DB_ENCRYPT_AES));
 }

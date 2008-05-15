@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: Shipment.java,v 12.6 2007/05/17 15:15:35 bostic Exp $
+ * $Id: Shipment.java,v 12.7 2008/01/08 20:58:31 bostic Exp $
  */
 
 package collections.ship.sentity;

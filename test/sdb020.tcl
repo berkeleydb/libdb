@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: sdb020.tcl,v 12.8 2007/05/17 15:15:56 bostic Exp $
+# $Id: sdb020.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	sdb020
 # TEST	Tests in-memory subdatabases.

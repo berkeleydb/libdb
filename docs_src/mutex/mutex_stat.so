@@ -1,4 +1,4 @@
-m4_comment([$Id: mutex_stat.so,v 10.3 2007/06/22 16:57:16 bostic Exp $])
+m4_comment([$Id: mutex_stat.so,v 10.4 2007/09/21 20:06:03 bostic Exp $])
 
 define(M4PAGELOCAL, [mutex_stat, mutex_stat_print])
 include(m4/m4.seealso)
@@ -63,7 +63,7 @@ m4_field(u_int32_t, st_region_nowait,
 the mutex region mutex without waiting.])
 m4_tagend
 
-m4_when_after_envopen(mutex_stat)
+m4_when(mutex_stat, before, dbenv_open)
 
 m4_return(mutex_stat, std)
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: hash_meta.c,v 12.11 2007/05/17 15:15:38 bostic Exp $
+ * $Id: hash_meta.c,v 12.13 2008/01/08 20:58:34 bostic Exp $
  */
 
 #include "db_config.h"
@@ -38,8 +38,8 @@ __ham_get_meta(dbc)
 	     hashp->meta_pgno, DB_LOCK_READ, 0, &hcp->hlock)) != 0)
 		return (ret);
 
-	if ((ret = __memp_fget(mpf, &hashp->meta_pgno, dbc->txn,
-	    DB_MPOOL_CREATE, &hcp->hdr)) != 0)
+	if ((ret = __memp_fget(mpf, &hashp->meta_pgno,
+	    dbc->thread_info, dbc->txn, DB_MPOOL_CREATE, &hcp->hdr)) != 0)
 		(void)__LPUT(dbc, hcp->hlock);
 
 	return (ret);
@@ -62,7 +62,8 @@ __ham_release_meta(dbc)
 	hcp = (HASH_CURSOR *)dbc->internal;
 
 	if (hcp->hdr != NULL) {
-		if ((ret = __memp_fput(mpf, hcp->hdr, dbc->priority)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, hcp->hdr, dbc->priority)) != 0)
 			return (ret);
 		hcp->hdr = NULL;
 	}
@@ -94,5 +95,5 @@ __ham_dirty_meta(dbc, flags)
 		return (ret);
 
 	return (__memp_dirty(dbp->mpf,
-	    &hcp->hdr, dbc->txn, dbc->priority, flags));
+	    &hcp->hdr, dbc->thread_info, dbc->txn, dbc->priority, flags));
 }

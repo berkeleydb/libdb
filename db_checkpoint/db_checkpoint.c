@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_checkpoint.c,v 12.18 2007/05/17 15:14:58 bostic Exp $
+ * $Id: db_checkpoint.c,v 12.22 2008/01/08 20:58:11 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 int	 main __P((int, char *[]));
@@ -159,7 +159,7 @@ main(argc, argv)
 		if (verbose) {
 			(void)time(&now);
 			dbenv->errx(dbenv,
-		    "checkpoint begin: %s", __db_ctime(&now, time_buf));
+		    "checkpoint begin: %s", __os_ctime(&now, time_buf));
 		}
 
 		if ((ret = dbenv->txn_checkpoint(dbenv,
@@ -171,13 +171,13 @@ main(argc, argv)
 		if (verbose) {
 			(void)time(&now);
 			dbenv->errx(dbenv,
-		    "checkpoint complete: %s", __db_ctime(&now, time_buf));
+		    "checkpoint complete: %s", __os_ctime(&now, time_buf));
 		}
 
 		if (once)
 			break;
 
-		__os_sleep(dbenv, seconds, 0);
+		__os_yield(dbenv->env, seconds, 0);
 	}
 
 	if (0) {

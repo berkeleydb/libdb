@@ -1,4 +1,4 @@
-m4_comment([$Id: rep_elect.so,v 1.26 2007/03/20 20:20:26 alanb Exp $])
+m4_comment([$Id: rep_elect.so,v 1.28 2007/12/03 21:01:23 sue Exp $])
 
 define(M4PAGELOCAL, [rep_elect, DB_REP_UNAVAIL])
 include(m4/m4.seealso)
@@ -7,11 +7,11 @@ m4_pf_header(m4_ref(rep_elect),
 ifelse(M4API, C_API, [dnl
 int
 DB_ENV-__GT__rep_elect(DB_ENV *env,
-    int nsites, int nvotes, u_int32_t flags);
+    u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);
 ])
 ifelse(M4API, CXX_API, [dnl
 int
-DbEnv::rep_elect(int nsites, int nvotes, u_int32_t flags);
+DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);
 ]))
 
 m4_p([dnl
@@ -41,15 +41,17 @@ The m4_arg(nsites) parameter specifies the number of replication sites
 expected to participate in the election.  Once the current site has
 election information from that many sites, it will short-circuit the
 election and immediately cast its vote for a new master. The
-m4_arg(nsites) parameter must be a positive integer, no less than
+m4_arg(nsites) parameter must be no less than
 m4_arg(nvotes), or 0 if the election should use the value previously set
-using the m4_refT(rep_set_nsites).])
+using the m4_refT(rep_set_nsites).  If an application is using master
+leases, then the value m4_bold(must) be 0 and the value from
+m4_refT(rep_set_nsites) must be used.])
 
 m4_param(nvotes, [dnl
 The m4_arg(nvotes) parameter specifies the minimum number of replication
 sites from which the current site must have election information, before
 the current site will cast a vote for a new master.  The m4_arg(nvotes)
-parameter must be a positive integer and no greater than m4_arg(nsites),
+parameter must be no greater than m4_arg(nsites),
 or 0 if the election should use the value ((m4_arg(nsites) / 2) + 1) as
 the m4_arg(nvotes) argument.])
 

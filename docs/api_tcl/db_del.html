@@ -1,6 +1,6 @@
 <!--$Id: db_del.so,v 11.15 2004/12/16 19:13:04 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.28 2004/12/16 19:13:05 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3><i>db</i> <b>del</b></h3>
+<b><i>db</i> <b>del</b></b>
 </td>
 <td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,34 +19,34 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>db del
+<b><pre>db del
 	[-glob]
 	[-txn txnid]
 	key
-</pre></h3>
-<h3>Description(db del)</h3>
+</pre></b>
+<b>Description(db del)</b>
 <p>The <i>db</i> <b>del</b> command removes key/data pairs from the database.</p>
 <p>In the presence of duplicate key values, all records associated with the
 designated key will be discarded.</p>
 <p>The options are as follows:</p>
-<dl compact>
-<dt>-glob<dd>The specified key is a wildcard pattern, and all keys matching that
+<br>
+<b>-glob</b><ul compact><li>The specified key is a wildcard pattern, and all keys matching that
 pattern are discarded from the database.  The pattern is a simple
 wildcard, any characters after the wildcard character are ignored.
-This option only works on databases using the Btree access method.
-<dt>-txn txnid<dd>If the operation is part of an application-specified transaction, the
+This option only works on databases using the Btree access method.</ul>
+<b>-txn txnid</b><ul compact><li>If the operation is part of an application-specified transaction, the
 <b>txnid</b> parameter is a transaction handle returned from
 <i>env</i> <b>txn</b>.  If no transaction handle is specified, but the
 operation occurs in a transactional
 database,
-the operation will be implicitly transaction protected.
-</dl>
+the operation will be implicitly transaction protected.</ul>
+<br>
 <p>The <i>db</i> <b>del</b> command returns 0 on success, and in the case of error, a Tcl error
 is thrown.</p>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -120,6 +120,11 @@
               <a href="fmwrkconnectretry.html">Managing Connection Retries</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect1">
+              <a href="heartbeats.html">Managing Heartbeats</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -362,7 +367,8 @@
      * Add a site to the list of replication environments known to this
      * application. 
      */
-    if (dbenv-&gt;repmgr_add_remote_site(dbenv, other_host, other_port) != 0) {
+     if (dbenv-&gt;repmgr_add_remote_site(dbenv, other_host, other_port, 
+                                       NULL, 0) != 0) {
         fprintf(stderr, "Could not add site %s.\n", other_host);
         goto err;
     }
@@ -372,7 +378,7 @@
      * necessary so that elections and permanent message handling can be
      * performed correctly.
      */
-    if (dbenv-&gt;repmgr_add_nsites(dbenv, 2) != 0) {
+    if (dbenv-&gt;repmgr_set_nsites(dbenv, 2) != 0) {
         fprintf(stderr, "Could not set the number of sites.\n";
         goto err;
     }

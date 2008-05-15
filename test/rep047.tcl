@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep047.tcl,v 12.16 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep047.tcl,v 12.21 2008/04/04 20:22:40 carol Exp $
 #
 # TEST  rep047
 # TEST	Replication and log gap bulk transfers.
@@ -54,10 +54,11 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	global util_path
 	global overflowword1 overflowword2
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set overflowword1 "0"
@@ -86,6 +87,10 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 	set c2_txnargs [adjust_txnargs $c2_logtype]
+
+	set in_memory_log \
+	    [expr { $m_logtype == "in-memory" || $c_logtype == "in-memory" || \
+	    $c2_logtype == "in-memory" }]
 
 	# Open a master.
 	repladd 1
@@ -129,7 +134,7 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	puts "\tRep$tnum.b: Basic long running txn"
 	rep_test_bulk $method $masterenv $masterdb $niter 0 0 0
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv $in_memory_log
 
 	# Clean up after rep_verify: remove the temporary "prlog" file.  Now
 	# that a newly joining client uses internal init, when the master scans
@@ -182,11 +187,12 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	set envlist "{$masterenv 1} {$clientenv 2} {$clientenv2 3}"
 
 	# Since we're relying on the client to detect a gap and request missing
-	# records, reset gap parameters to their defaults.  Otherwise,
+	# records, reset gap parameters to small values.  Otherwise,
 	# "wait_recs" is still set at its maximum "high" value, due to this
 	# client having been through an internal init.
 	#
-	$clientenv2 rep_request 4 128
+	$clientenv2 rep_request 4000 128000
+	tclsleep 1
 	process_msgs $envlist
 	#
 	# We know we added 2*$niter items to the database so there should be
@@ -207,10 +213,10 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	#
 	error_check_good set_bulk [$masterenv rep_config {bulk off}] 0
 
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv $in_memory_log
 	# Process messages again in case we are running with debug_rop.
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $clientdir2 $clientenv2
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 $in_memory_log
 
 	error_check_good dbclose [$masterdb close] 0
 	error_check_good mclose [$masterenv close] 0

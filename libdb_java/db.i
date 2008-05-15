@@ -96,7 +96,7 @@ struct Db
 		DB *self = NULL;
 		errno = db_create(&self, dbenv, flags);
 		if (errno == 0 && dbenv == NULL)
-			self->dbenv->dbt_usercopy = __dbj_dbt_memcopy;
+			self->env->dbt_usercopy = __dbj_dbt_memcopy;
 		return self;
 	}
 
@@ -105,6 +105,11 @@ struct Db
 	    int (*callback)(DB *, const DBT *, const DBT *, DBT *),
 	    u_int32_t flags) {
 		return self->associate(self, txnid, secondary, callback, flags);
+	}
+
+	db_ret_t associate_foreign(DB *primary, 
+	    int (*callback)(DB *, const DBT *, DBT *, const DBT *, int *), u_int32_t flags) {
+		return self->associate_foreign(self, primary, callback, flags);
 	}
 
 	db_ret_t compact(DB_TXN *txnid, DBT *start, DBT *stop,
@@ -583,7 +588,7 @@ struct DbEnv
 		DB_ENV *self = NULL;
 		errno = db_env_create(&self, flags);
 		if (errno == 0)
-			self->dbt_usercopy = __dbj_dbt_memcopy;
+			self->env->dbt_usercopy = __dbj_dbt_memcopy;
 		return self;
 	}
 
@@ -703,6 +708,12 @@ struct DbEnv
 		return ret;
 	}
 
+	const char *get_intermediate_dir_mode() {
+		const char *ret;
+		errno = self->get_intermediate_dir_mode(self, &ret);
+		return ret;
+	}
+
 	u_int32_t get_open_flags() {
 		u_int32_t ret;
 		errno = self->get_open_flags(self, &ret);
@@ -763,8 +774,8 @@ struct DbEnv
 		return self->set_data_dir(self, dir);
 	}
 
-	db_ret_t set_intermediate_dir(int mode, u_int32_t flags) {
-		return self->set_intermediate_dir(self, mode, flags);
+	db_ret_t set_intermediate_dir_mode(const char *mode) {
+		return self->set_intermediate_dir_mode(self, mode);
 	}
 
 	db_ret_t set_encrypt(const char *passwd, u_int32_t flags) {
@@ -896,7 +907,7 @@ struct DbEnv
 	DB_LOCK *lock_get(u_int32_t locker,
 	    u_int32_t flags, const DBT *object, db_lockmode_t lock_mode) {
 		DB_LOCK *lock = NULL;
-		if ((errno = __os_malloc(self, sizeof (DB_LOCK), &lock)) == 0)
+		if ((errno = __os_malloc(self->env, sizeof (DB_LOCK), &lock)) == 0)
 			errno = self->lock_get(self, locker, flags, object,
 			    lock_mode, lock);
 		return lock;
@@ -1018,12 +1029,24 @@ struct DbEnv
 		return self->log_flush(self, lsn_or_null);
 	}
 
+	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
+	int_bool log_get_config(u_int32_t which) {
+		int ret;
+		errno = self->log_get_config(self, which, &ret);
+		return ret;
+	}
+
+	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
 	db_ret_t log_put(DB_LSN *lsn, const DBT *data, u_int32_t flags) {
 		return self->log_put(self, lsn, data, flags);
 	}
 
 	db_ret_t log_print(DB_TXN *txn, const char *msg) {
 		return self->log_printf(self, txn, "%s", msg);
+	}
+
+	db_ret_t log_set_config(u_int32_t which, int_bool onoff) {
+		return self->log_set_config(self, which, onoff);
 	}
 
 	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
@@ -1205,13 +1228,13 @@ struct DbEnv
 		long retcount;
 
 		/* Add a NULL element to terminate the array. */
-		if ((errno = __os_malloc(self,
+		if ((errno = __os_malloc(self->env,
 		    (count + 1) * sizeof(DB_PREPLIST), &preplist)) != 0)
 			return NULL;
 
 		if ((errno = self->txn_recover(self, preplist, count,
 		    &retcount, flags)) != 0) {
-			__os_free(self, preplist);
+			__os_free(self->env, preplist);
 			return NULL;
 		}
 
@@ -1233,7 +1256,7 @@ struct DbEnv
 	}
 
 	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
-	db_ret_t rep_elect(int nsites, int nvotes, u_int32_t flags) {
+	db_ret_t rep_elect(u_int32_t nsites, int nvotes, u_int32_t flags) {
 		return self->rep_elect(self, nsites, nvotes, flags);
 	}
  
@@ -1253,10 +1276,24 @@ struct DbEnv
 		return self->rep_set_config(self, which, onoff);
 	}
 
-	db_ret_t rep_set_lease(u_int32_t clock_scale_factor, u_int32_t flags) {
-		return self->rep_set_lease(self, clock_scale_factor, flags);
+	db_ret_t rep_set_clockskew(u_int32_t fast_clock, u_int32_t slow_clock) {
+		return self->rep_set_clockskew(self, fast_clock, slow_clock);
 	}
 
+	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
+	u_int32_t rep_get_clockskew_fast() {
+		u_int32_t fast_clock, slow_clock;
+		errno = self->rep_get_clockskew(self, &fast_clock, &slow_clock);
+		return fast_clock;
+	}
+
+	u_int32_t rep_get_clockskew_slow() {
+		u_int32_t fast_clock, slow_clock;
+		errno = self->rep_get_clockskew(self, &fast_clock, &slow_clock);
+		return slow_clock;
+	}
+
+	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
 	db_ret_t rep_start(DBT *cdata, u_int32_t flags) {
 		return self->rep_start(self, cdata, flags);
 	}
@@ -1285,8 +1322,22 @@ struct DbEnv
 		    (u_int32_t)(bytes % GIGABYTE));
 	}
 
-	db_ret_t set_rep_request(u_int32_t min, u_int32_t max) {
-		return self->set_rep_request(self, min, max);
+	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
+	u_int32_t rep_get_request_min(){
+		u_int32_t min, max;
+		errno = self->rep_get_request(self, &min, &max);
+		return min;
+	}
+
+	u_int32_t rep_get_request_max(){
+		u_int32_t min, max;
+		errno = self->rep_get_request(self, &min, &max);
+		return max;
+	}
+
+	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
+	db_ret_t rep_set_request(u_int32_t min, u_int32_t max) {
+		return self->rep_set_request(self, min, max);
 	}
 
 	db_ret_t rep_set_transport(int envid,
@@ -1297,14 +1348,14 @@ struct DbEnv
 
 	/* Advanced replication functions. */
 	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
-	int rep_get_nsites() {
-		int ret;
+	u_int32_t rep_get_nsites() {
+		u_int32_t ret;
 		errno = self->rep_get_nsites(self, &ret);
 		return ret;
 	}
 
-	int rep_get_priority() {
-		int ret;
+	u_int32_t rep_get_priority() {
+		u_int32_t ret;
 		errno = self->rep_get_priority(self, &ret);
 		return ret;
 	}
@@ -1316,11 +1367,11 @@ struct DbEnv
 	}
 
 	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
-	db_ret_t rep_set_nsites(int number) {
+	db_ret_t rep_set_nsites(u_int32_t number) {
 		return self->rep_set_nsites(self, number);
 	}
 
-	db_ret_t rep_set_priority(int priority) {
+	db_ret_t rep_set_priority(u_int32_t priority) {
 		return self->rep_set_priority(self, priority);
 	}
 

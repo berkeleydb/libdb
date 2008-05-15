@@ -1,4 +1,4 @@
-m4_comment([$Id: repmgr_start.so,v 1.6 2006/11/30 21:19:38 bostic Exp $])
+m4_comment([$Id: repmgr_start.so,v 1.7 2007/09/21 20:06:04 bostic Exp $])
 
 define(M4PAGELOCAL,
 	[repmgr_start, DB_REP_MASTER, DB_REP_CLIENT, DB_REP_ELECTION,
@@ -62,7 +62,7 @@ more information on building advanced replication applications, please
 see the "Advanced Replication Applications Guide" included in the m4_db
 documentation.])
 
-m4_when_after_envopen(repmgr_start)
+m4_when(repmgr_start, before, dbenv_open)
 m4_return(repmgr_start, std)
 
 m4_parambegin

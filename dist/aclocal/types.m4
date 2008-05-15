@@ -1,4 +1,4 @@
-# $Id: types.m4,v 12.5 2007/04/18 14:28:20 bostic Exp $
+# $Id: types.m4,v 12.8 2008/03/10 13:40:15 mjc Exp $
 
 # Check the sizes we know about, and see if any of them match what's needed.
 #
@@ -176,7 +176,7 @@ AC_CHECK_TYPE(int64_t,,
 #
 # We require them, we don't try to substitute our own if we can't find them.
 AC_SUBST(FILE_t_decl)
-AC_CHECK_TYPE(FILE,, AC_MSG_ERROR([No FILE type.]), $db_includes)
+AC_CHECK_TYPE(FILE *,, AC_MSG_ERROR([No FILE type.]), $db_includes)
 AC_SUBST(off_t_decl)
 AC_CHECK_TYPE(off_t,, AC_MSG_ERROR([No off_t type.]), $db_includes)
 AC_SUBST(pid_t_decl)
@@ -194,7 +194,7 @@ AC_CHECK_TYPE(ssize_t,,
     [AM_SEARCH_SSIZES(ssize_t_decl, ssize_t, $ac_cv_sizeof_size_t)],
     $db_includes)
 
-# Check for uintmax_t -- if none exists, first the largest unsigned integral
+# Check for uintmax_t -- if none exists, find the largest unsigned integral
 # type available.
 AC_SUBST(uintmax_t_decl)
 AC_CHECK_TYPE(uintmax_t,, [AC_CHECK_TYPE(unsigned long long,
@@ -206,4 +206,6 @@ AC_CHECK_TYPE(uintmax_t,, [AC_CHECK_TYPE(unsigned long long,
 AC_SUBST(uintptr_t_decl)
 AC_CHECK_TYPE(uintptr_t,,
     [AM_SEARCH_USIZES(uintptr_t_decl, uintptr_t, $ac_cv_sizeof_char_p)])
+
+AM_SOCKLEN_T
 ])

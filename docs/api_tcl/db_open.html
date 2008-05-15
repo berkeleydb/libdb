@@ -1,6 +1,6 @@
 <!--$Id: db_open.so,v 11.34 2004/12/16 19:13:04 bostic Exp $-->
 <!--$Id: m4.tcl,v 11.28 2004/12/16 19:13:05 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3><b>berkdb open</b></h3>
+<b><b>berkdb open</b></b>
 </td>
 <td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,7 +19,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>berkdb open
+<b><pre>berkdb open
 	[-auto_commit]
 	[-btree | -hash | -recno | -queue | -unknown]
 	[-cachesize {gbytes bytes ncache}]
@@ -49,31 +49,31 @@
 	[-txn txnid]
 	[--]
 	[file [database]]
-</pre></h3>
-<h3>Description(berkdb open)</h3>
+</pre></b>
+<b>Description(berkdb open)</b>
 <p>The <b>berkdb open</b> command opens and optionally creates a database.
 The returned database handle is bound to a Tcl command of the form
 <b>dbN</b>, where N is an integer starting at 0 (for example, db0 and
 db1).  It is through this Tcl command that the script accesses the
 database methods.</p>
 <p>The options are as follows:</p>
-<dl compact>
-<dt>-auto_commit<dd>Enclose the call within a transaction.  If the call succeeds, the open
+<br>
+<b>-auto_commit</b><ul compact><li>Enclose the call within a transaction.  If the call succeeds, the open
 operation will be recoverable and all subsequent database modification
 operations based on this handle will be transactionally protected.  If
-the call fails, no database will have been created.
-<dt>-btree<dd>Open/create a database of type Btree.  The Btree format
-is a representation of a sorted, balanced tree structure.
-<dt>-hash<dd>Open/create a database of type Hash.  The Hash format is
-an extensible, dynamic hashing scheme.
-<dt>-queue<dd>Open/create a database of type Queue.  The Queue format
+the call fails, no database will have been created.</ul>
+<b>-btree</b><ul compact><li>Open/create a database of type Btree.  The Btree format
+is a representation of a sorted, balanced tree structure.</ul>
+<b>-hash</b><ul compact><li>Open/create a database of type Hash.  The Hash format is
+an extensible, dynamic hashing scheme.</ul>
+<b>-queue</b><ul compact><li>Open/create a database of type Queue.  The Queue format
 supports fast access to fixed-length records accessed by sequentially or
-logical record number.
-<dt>-recno<dd>Open/create a database of type Recno.  The Recno format
+logical record number.</ul>
+<b>-recno</b><ul compact><li>Open/create a database of type Recno.  The Recno format
 supports fixed- or variable-length records, accessed sequentially or by
-logical record number, and optionally retrieved from a flat text file.
-<dt>-unknown<dd>The database is of an unknown type, and must already exist.
-<dt>-cachesize {gbytes bytes ncache}<dd>Set the size of the database's shared memory buffer pool (that is, the
+logical record number, and optionally retrieved from a flat text file.</ul>
+<b>-unknown</b><ul compact><li>The database is of an unknown type, and must already exist.</ul>
+<b>-cachesize {gbytes bytes ncache}</b><ul compact><li>Set the size of the database's shared memory buffer pool (that is, the
 cache), to <b>gbytes</b> gigabytes plus <b>bytes</b>.  The cache
 should be the size of the normal working data set of the application,
 with some small amount of additional memory for unusual situations.
@@ -94,44 +94,44 @@ separate pieces of memory.</p>
 <a href="../ref/am_conf/cachesize.html">Selecting a cache size</a>.</p>
 <p>Because databases opened within Berkeley DB environments use the cache
 specified to the environment, it is an error to attempt to set a cache
-in a database created within an environment.</p>
-<dt>-create<dd>Create any underlying files, as necessary. If the files do not already
+in a database created within an environment.</p></ul>
+<b>-create</b><ul compact><li>Create any underlying files, as necessary. If the files do not already
 exist and the <b>-create</b> argument is not specified, the call will
-fail.
-<dt>-delim delim<dd>Set the delimiting byte used to mark the end of a record in the backing
+fail.</ul>
+<b>-delim delim</b><ul compact><li>Set the delimiting byte used to mark the end of a record in the backing
 source file for the Recno access method.
 <p>This byte is used for variable length records if the <b>-source</b>
 argument file is specified.  If the <b>-source</b> argument file is
 specified and no delimiting byte was specified, &lt;newline&gt;
 characters (that is, ASCII 0x0a) are interpreted as end-of-record
-markers.</p>
-<dt>-dup<dd>Permit duplicate data items in the tree, that is, insertion when the
+markers.</p></ul>
+<b>-dup</b><ul compact><li>Permit duplicate data items in the tree, that is, insertion when the
 key of the key/data pair being inserted already exists in the tree will
 be successful.  The ordering of duplicates in the tree is determined by
 the order of insertion unless the ordering is otherwise specified by
-use of a cursor or a duplicate comparison function.  <p>error to specify both <b>-dup</b> and <b>-recnum</b>.</p>
-<dt>-dupsort<dd>Sort duplicates within a set of data items.  A default lexical
+use of a cursor or a duplicate comparison function.  <p>error to specify both <b>-dup</b> and <b>-recnum</b>.</p></ul>
+<b>-dupsort</b><ul compact><li>Sort duplicates within a set of data items.  A default lexical
 comparison will be used.  Specifying that duplicates are to be sorted
 changes the behavior of the <i>db</i> <b>put</b> operation as well as the
 <i>dbc</i> <b>put</b> operation when the <b>-keyfirst</b>, <b>-keylast</b>
-and <b>-current</b> options are specified.
-<dt>-encrypt<dd>Specify the database in an environment should be encrypted with the
-same password that is being used in the environment.
-<dt>-encryptaes passwd<dd>Specify the database should be encrypted with the given password
+and <b>-current</b> options are specified.</ul>
+<b>-encrypt</b><ul compact><li>Specify the database in an environment should be encrypted with the
+same password that is being used in the environment.</ul>
+<b>-encryptaes passwd</b><ul compact><li>Specify the database should be encrypted with the given password
 using the Rijndael/AES (also known as the Advanced Encryption Standard
-and Federal Information Processing Standard (FIPS) 197) algorithm.
-<dt>-encryptany passwd<dd>Specify the already existing database should be opened
+and Federal Information Processing Standard (FIPS) 197) algorithm.</ul>
+<b>-encryptany passwd</b><ul compact><li>Specify the already existing database should be opened
 with the given password.  This option is used if the database is
-known to be encrypted, but the specific algorithm used is not known.
-<dt>-env env<dd>If no <b>-env</b> argument is given, the database is standalone; that
+known to be encrypted, but the specific algorithm used is not known.</ul>
+<b>-env env</b><ul compact><li>If no <b>-env</b> argument is given, the database is standalone; that
 is, it is not part of any Berkeley DB environment.
 <p>If a <b>-env</b> argument is given, the database is created within the
 specified Berkeley DB environment. The database access methods automatically
 make calls to the other subsystems in Berkeley DB, based on the enclosing
 environment. For example, if the environment has been configured to use
 locking, the access methods will automatically acquire the correct locks
-when reading and writing pages of the database.</p>
-<dt>-errfile filename<dd><p>When an error occurs in the Berkeley DB library, a Berkeley DB error or an error
+when reading and writing pages of the database.</p></ul>
+<b>-errfile filename</b><ul compact><li><p>When an error occurs in the Berkeley DB library, a Berkeley DB error or an error
 return value is returned by the function. In some cases, however, the
 errno value may be insufficient to completely describe the cause of the
 error especially during initial application debugging.</p>
@@ -150,18 +150,18 @@ increase application size, and may be run during normal operation as well
 as during application debugging.</p>
 <p>For database handles opened inside of Berkeley DB environments, specifying the
 <b>-errfile</b> argument affects the entire environment and is equivalent
-to specifying the same argument to the <b>berkdb env</b> command.</p>
-<dt>-excl<dd>Return an error if the database already exists.
-<dt>-extent size<dd>Set the size of the extents of the Queue database; the size is specified
+to specifying the same argument to the <b>berkdb env</b> command.</p></ul>
+<b>-excl</b><ul compact><li>Return an error if the database already exists.</ul>
+<b>-extent size</b><ul compact><li>Set the size of the extents of the Queue database; the size is specified
 as the number of pages in an extent.  Each extent is created as a
 separate physical file. If no extent size is set, the default behavior
-is to create only a single underlying database file.
+is to create only a single underlying database file.</ul>
 <p>For information on tuning the extent size, see
 <a href="../ref/am_conf/extentsize.html">Selecting a extent size</a>.</p>
-<dt>-ffactor density<dd>Set the desired density within the hash table.
+<b>-ffactor density</b><ul compact><li>Set the desired density within the hash table.
 <p>The density is an approximation of the number of keys allowed to
-accumulate in any one bucket
-<dt>-len len<dd>For the Queue access method, specify that the records are of length
+accumulate in any one bucket</ul>
+<b>-len len</b><ul compact><li>For the Queue access method, specify that the records are of length
 <b>len</b>.
 <p>For the Recno access method, specify that the records are fixed-length,
 not byte-delimited, and are of length <b>len</b>.</p>
@@ -170,33 +170,33 @@ long are automatically padded (see the <b>-pad</b> argument for more
 information).</p>
 <p>Any attempt to insert records into the database that are greater than
 <b>len</b> bytes long will cause the call to fail immediately and return
-an error.</p>
-<dt>-mode mode<dd><p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by the access methods
+an error.</p></ul>
+<b>-mode mode</b><ul compact><li><p>On UNIX systems, or in IEEE/ANSI Std 1003.1 (POSIX) environments, all files created by the access methods
 are created with mode <b>mode</b> (as described in <b>chmod</b>(2)) and
 modified by the process' umask value at the time of creation (see
 <b>umask</b>(2)).  The group ownership of created files is based on
 the system and directory defaults, and is not further specified by Berkeley DB.
 If <b>mode</b> is 0, files are created readable and writable by both
-owner and group.  On Windows systems, the mode argument is ignored.</p>
-<dt>-nelem size<dd>Set an estimate of the final size of the hash table.
+owner and group.  On Windows systems, the mode argument is ignored.</p></ul>
+<b>-nelem size</b><ul compact><li>Set an estimate of the final size of the hash table.
 <p>If not set or set too low, hash tables will still expand gracefully as
 keys are entered, although a slight performance degradation may be
-noticed.</p>
-<dt>-pad pad<dd>Set the padding character for short, fixed-length records for the Queue
+noticed.</p></ul>
+<b>-pad pad</b><ul compact><li>Set the padding character for short, fixed-length records for the Queue
 and Recno access methods.
 <p>If no pad character is specified, &lt;space&gt; characters (that is,
-ASCII 0x20) are used for padding.</p>
-<dt>-pagesize pagesize<dd>Set the size of the pages used to hold items in the database, in bytes.
+ASCII 0x20) are used for padding.</p></ul>
+<b>-pagesize pagesize</b><ul compact><li>Set the size of the pages used to hold items in the database, in bytes.
 The minimum page size is 512 bytes, and the maximum page size is 64K
 bytes.  If the page size is not explicitly set, one is selected based
 on the underlying filesystem I/O block size.  The automatically selected
 size has a lower limit of 512 bytes and an upper limit of 16K bytes.
 <p>For information on tuning the Berkeley DB page size, see
-<a href="../ref/am_conf/pagesize.html">Selecting a page size</a>.</p>
-<dt>-rdonly<dd>Open the database for reading only. Any attempt to modify items in the
+<a href="../ref/am_conf/pagesize.html">Selecting a page size</a>.</p></ul>
+<b>-rdonly</b><ul compact><li>Open the database for reading only. Any attempt to modify items in the
 database will fail, regardless of the actual permissions of any
-underlying files.
-<dt>-recnum<dd>Support retrieval from the Btree using record numbers.
+underlying files.</ul>
+<b>-recnum</b><ul compact><li>Support retrieval from the Btree using record numbers.
 <p>Logical record numbers in Btree databases are mutable in the face of
 record insertion or deletion. See the <b>-renumber</b> argument for
 further discussion.</p>
@@ -206,8 +206,8 @@ addition, the entire tree must be locked during both insertions and
 deletions, effectively single-threading the tree for those operations.
 Specifying <b>-recnum</b> can result in serious performance degradation
 for some applications and data sets.</p>
-<p>It is an error to specify both <b>-dup</b> and <b>-recnum</b>.</p>
-<dt>-renumber<dd>Specifying the <b>-renumber</b> argument causes the logical record
+<p>It is an error to specify both <b>-dup</b> and <b>-recnum</b>.</p></ul>
+<b>-renumber</b><ul compact><li>Specifying the <b>-renumber</b> argument causes the logical record
 numbers to be mutable, and change as records are added to and deleted from
 the database.  For example, the deletion of record number 4 causes records
 numbered 5 and greater to be renumbered downward by one. If a cursor was
@@ -229,11 +229,11 @@ number 8 or greater before the insertion, it will be shifted upward one
 logical record, continuing to refer to the same record as it did before.</p>
 <p>For these reasons, concurrent access to a Recno database with the
 <b>-renumber</b> flag specified may be largely meaningless, although it
-is supported.</p>
-<dt>-snapshot<dd>This argument specifies that any specified <b>-source</b> file be read
+is supported.</p></ul>
+<b>-snapshot</b><ul compact><li>This argument specifies that any specified <b>-source</b> file be read
 in its entirety when the database is opened. If this argument is not
-specified, the <b>-source</b> file may be read lazily.
-<dt>-source file<dd>Set the underlying source file for the Recno access method.  The purpose
+specified, the <b>-source</b> file may be read lazily.</ul>
+<b>-source file</b><ul compact><li>Set the underlying source file for the Recno access method.  The purpose
 of the <b>-source</b> file is to provide fast access and modification
 to databases that are normally stored as flat text files.
 <p>If the <b>-source</b> argument is give, it specifies an underlying flat
@@ -277,22 +277,22 @@ they will be silently discarded.</p>
 <p>For all of the previous reasons, the <b>-source</b> file is generally
 used to specify databases that are read-only for Berkeley DB applications,
 and that are either generated on the fly by software tools, or modified
-using a different mechanism such as a text editor.</p>
-<dt>-truncate<dd>Physically truncate the underlying file, discarding all previous databases
+using a different mechanism such as a text editor.</p></ul>
+<b>-truncate</b><ul compact><li>Physically truncate the underlying file, discarding all previous databases
 it might have held.  Underlying filesystem primitives are used to
 implement this flag.  For this reason, it is only applicable to the
 physical file and cannot be used to discard databases within a file.
 <p>The <b>-truncate</b> argument cannot be transaction-protected, and it is
-an error to specify it in a transaction-protected environment.</p>
-<dt>-txn txnid<dd>If the operation is part of an application-specified transaction, the
+an error to specify it in a transaction-protected environment.</p></ul>
+<b>-txn txnid</b><ul compact><li>If the operation is part of an application-specified transaction, the
 <b>txnid</b> parameter is a transaction handle returned from
 <i>env</i> <b>txn</b>.  If no transaction handle is specified, but the
 -auto_commit flag is specified,
-the operation will be implicitly transaction protected.
-<dt>--<dd>Mark the end of the command arguments.
-<dt>file<dd>The name of a single physical file on disk that will be used to back the
-database.
-<dt>database<dd>The <b>database</b> argument allows applications to have multiple
+the operation will be implicitly transaction protected.</ul>
+<b>--</b><ul compact><li>Mark the end of the command arguments.</ul>
+<b>file</b><ul compact><li>The name of a single physical file on disk that will be used to back the
+database.</ul>
+<b>database</b><ul compact><li>The <b>database</b> argument allows applications to have multiple
 databases inside of a single physical file.  This is useful when the
 databases are both numerous and reasonably small, in order to avoid
 creating a large number of underlying files.  It is an error to attempt
@@ -301,14 +301,14 @@ to open a second database file that was not initially created using a
 <p>Applications opening multiple databases in a single file will almost
 certainly need to create a shared database environment.  See
 <a href="../ref/am/opensub.html">Opening multiple databases in a single
-file</a> for more information.</p>
-</dl>
+file</a> for more information.</p></ul>
+<br>
 <p>The <b>berkdb open</b> command returns a database handle on success.</p>
 <p>In the case of error, a Tcl error is thrown.</p>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_tcl/api_tcl.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

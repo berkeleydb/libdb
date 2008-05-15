@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: dbreg_stat.c,v 12.12 2007/05/17 15:15:07 bostic Exp $
+ * $Id: dbreg_stat.c,v 12.17 2008/03/12 20:46:37 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -15,23 +15,23 @@
 #include "dbinc/txn.h"
 
 #ifdef HAVE_STATISTICS
-static int __dbreg_print_dblist __P((DB_ENV *, u_int32_t));
+static int __dbreg_print_dblist __P((ENV *, u_int32_t));
 
 /*
  * __dbreg_stat_print --
  *	Print the dbreg statistics.
  *
- * PUBLIC: int __dbreg_stat_print __P((DB_ENV *, u_int32_t));
+ * PUBLIC: int __dbreg_stat_print __P((ENV *, u_int32_t));
  */
 int
-__dbreg_stat_print(dbenv, flags)
-	DB_ENV *dbenv;
+__dbreg_stat_print(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	int ret;
 
 	if (LF_ISSET(DB_STAT_ALL) &&
-	    (ret = __dbreg_print_dblist(dbenv, flags)) != 0)
+	    (ret = __dbreg_print_dblist(env, flags)) != 0)
 		return (ret);
 
 	return (0);
@@ -41,11 +41,11 @@ __dbreg_stat_print(dbenv, flags)
  * __dbreg_print_fname --
  *	Display the contents of an FNAME structure.
  *
- * PUBLIC: void __dbreg_print_fname __P((DB_ENV *, FNAME *));
+ * PUBLIC: void __dbreg_print_fname __P((ENV *, FNAME *));
  */
 void
-__dbreg_print_fname(dbenv, fnp)
-	DB_ENV *dbenv;
+__dbreg_print_fname(env, fnp)
+	ENV *env;
 	FNAME *fnp;
 {
 	static const FN fn[] = {
@@ -54,22 +54,22 @@ __dbreg_print_fname(dbenv, fnp)
 		{ 0,			NULL }
 	};
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "DB handle FNAME contents:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "DB handle FNAME contents:");
 	STAT_LONG("log ID", fnp->id);
 	STAT_ULONG("Meta pgno", fnp->meta_pgno);
-	__db_print_fileid(dbenv, fnp->ufid, "\tFile ID");
+	__db_print_fileid(env, fnp->ufid, "\tFile ID");
 	STAT_ULONG("create txn", fnp->create_txnid);
-	__db_prflags(dbenv, NULL, fnp->flags, fn, NULL, "\tFlags");
+	__db_prflags(env, NULL, fnp->flags, fn, NULL, "\tFlags");
 }
 
 /*
  * __dbreg_print_dblist --
- *	Display the DB_ENV's list of files.
+ *	Display the ENV's list of files.
  */
 static int
-__dbreg_print_dblist(dbenv, flags)
-	DB_ENV *dbenv;
+__dbreg_print_dblist(env, flags)
+	ENV *env;
 	u_int32_t flags;
 {
 	DB *dbp;
@@ -77,42 +77,43 @@ __dbreg_print_dblist(dbenv, flags)
 	FNAME *fnp;
 	LOG *lp;
 	int del, first;
-	char *name;
 
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	__db_msg(dbenv, "LOG FNAME list:");
+	__db_msg(env, "LOG FNAME list:");
 	__mutex_print_debug_single(
-	    dbenv, "File name mutex", lp->mtx_filelist, flags);
+	    env, "File name mutex", lp->mtx_filelist, flags);
 
 	STAT_LONG("Fid max", lp->fid_max);
 
-	MUTEX_LOCK(dbenv, lp->mtx_filelist);
+	MUTEX_LOCK(env, lp->mtx_filelist);
 	first = 1;
 	SH_TAILQ_FOREACH(fnp, &lp->fq, q, __fname) {
 		if (first) {
 			first = 0;
-			__db_msg(dbenv,
-			    "ID\tName\tType\tPgno\tTxnid\tDBP-info");
+			__db_msg(env,
+		    "ID\tName\t\tType\tPgno\tPid\tTxnid\tFlags\tDBP-info");
 		}
-		if (fnp->name_off == INVALID_ROFF)
-			name = "";
-		else
-			name = R_ADDR(&dblp->reginfo, fnp->name_off);
-
 		dbp = fnp->id >= dblp->dbentry_cnt ? NULL :
 		    dblp->dbentry[fnp->id].dbp;
 		del = fnp->id >= dblp->dbentry_cnt ? 0 :
 		    dblp->dbentry[fnp->id].deleted;
-		__db_msg(dbenv, "%ld\t%s\t%s\t%lu\t%lx\t%s %d %lx %lx",
-		    (long)fnp->id, name,
+		__db_msg(env,
+		    "%ld\t%-8s%s%-8s%s\t%lu\t%lu\t%lx\t%lx\t%s (%d %lx %lx)",
+		    (long)fnp->id,
+		    fnp->fname_off == INVALID_ROFF ?
+			"" : (char *)R_ADDR(&dblp->reginfo, fnp->fname_off),
+		    fnp->dname_off == INVALID_ROFF ? "" : ":",
+		    fnp->dname_off == INVALID_ROFF ?
+			"" : (char *)R_ADDR(&dblp->reginfo, fnp->dname_off),
 		    __db_dbtype_to_string(fnp->s_type),
-		    (u_long)fnp->meta_pgno, (u_long)fnp->create_txnid,
+		    (u_long)fnp->meta_pgno, (u_long)fnp->pid,
+		    (u_long)fnp->create_txnid, (u_long)fnp->flags,
 		    dbp == NULL ? "No DBP" : "DBP", del, P_TO_ULONG(dbp),
 		    (u_long)(dbp == NULL ? 0 : dbp->flags));
 	}
-	MUTEX_UNLOCK(dbenv, lp->mtx_filelist);
+	MUTEX_UNLOCK(env, lp->mtx_filelist);
 
 	return (0);
 }

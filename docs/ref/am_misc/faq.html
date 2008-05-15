@@ -1,5 +1,5 @@
-<!--$Id: faq.so,v 10.26 2005/10/20 16:10:15 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: faq.so,v 10.28 2008/01/24 00:35:23 sarette Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am_misc/tune.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../java/conf.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Access method FAQ</h3>
+<p align=center><b>Access method FAQ</b></p>
 <ol>
 <p><li><b>Is a Berkeley DB database the same as a "table"?</b>
 <p>Yes; "tables" are databases, "rows" are key/data pairs, and "columns"
@@ -25,9 +24,12 @@ figure out what the library is complaining about.</b>
 <p>See <a href="../../api_c/env_set_errcall.html">DB_ENV-&gt;set_errcall</a>, <a href="../../api_c/env_set_errfile.html">DB_ENV-&gt;set_errfile</a> and
 <a href="../../api_c/db_set_errfile.html">DB-&gt;set_errfile</a> for ways to get additional information about
 error returns from Berkeley DB.</p>
-<p><li><b>Are Berkeley DB databases portable between architectures?</b>
-<p>Yes.  See <a href="../../ref/am_conf/byteorder.html">Selecting a byte
-order</a> for more information.</p>
+<p><li><b>Are Berkeley DB databases portable between architectures with
+different integer sizes and different byte orders ?</b>
+<p>Yes.  Specifically, databases can be moved between 32- and 64-bit
+machines, as well as between little- and big-endian machines.  See
+<a href="../../ref/am_conf/byteorder.html">Selecting a byte order</a> for
+more information.</p>
 <p><li><b>I'm seeing database corruption when creating multiple databases
 in a single physical file.</b>
 <p>This problem is usually the result of <a href="../../api_c/db_class.html">DB</a> handles not sharing an
@@ -86,7 +88,7 @@ memory (or heap memory), can often make additional system memory
 available for the file buffer cache, especially on systems without a
 unified buffer cache and VM system.</p>
 <p>Finally, for operating systems that allow buffering to be turned off,
-specifying the <a href="../../api_c/env_set_flags.html#DB_DIRECT_DB">DB_DIRECT_DB</a> and <a href="../../api_c/env_set_flags.html#DB_DIRECT_LOG">DB_DIRECT_LOG</a> flags
+specifying the <a href="../../api_c/env_set_flags.html#DB_DIRECT_DB">DB_DIRECT_DB</a> and <a href="../../api_c/env_log_set_config.html#DB_LOG_DIRECT">DB_LOG_DIRECT</a> flags
 will attempt to do so.</p>
 <p><li><b>I'm seeing database corruption when I run out of disk space.</b>
 <p>Berkeley DB can continue to run when when out-of-disk-space errors occur, but
@@ -115,6 +117,6 @@ data members or methods.</p>
 </ol>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am_misc/tune.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../java/conf.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

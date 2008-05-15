@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: os_fid.c,v 12.16 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_fid.c,v 12.20 2008/01/11 20:50:02 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Return a unique identifier for a file.
  */
 int
-__os_fileid(dbenv, fname, unique_okay, fidp)
-	DB_ENV *dbenv;
+__os_fileid(env, fname, unique_okay, fidp)
+	ENV *env;
 	const char *fname;
 	int unique_okay;
 	u_int8_t *fidp;
@@ -38,7 +38,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	BY_HANDLE_FILE_INFORMATION fi;
 	BOOL retval = FALSE;
 
-	DB_ASSERT(dbenv, fname != NULL);
+	DB_ASSERT(env, fname != NULL);
 
 	/* Clear the buffer. */
 	memset(fidp, 0, DB_FILE_ID_LEN);
@@ -47,14 +47,14 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 	 * First we open the file, because we're not given a handle to it.
 	 * If we can't open it, we're in trouble.
 	 */
-	if ((ret = __os_open(dbenv, fname, 0,
-	    DB_OSO_RDONLY, __db_omode("r--------"), &fhp)) != 0)
+	if ((ret = __os_open(env, fname, 0,
+	    DB_OSO_RDONLY, DB_MODE_400, &fhp)) != 0)
 		return (ret);
 
 	/* File open, get its info */
 	if ((retval = GetFileInformationByHandle(fhp->handle, &fi)) == FALSE)
 		ret = __os_get_syserr();
-	(void)__os_closehandle(dbenv, fhp);
+	(void)__os_closehandle(env, fhp);
 
 	if (retval == FALSE)
 		return (__os_posix_err(ret));
@@ -90,7 +90,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 
 	if (unique_okay) {
 		/* Add in 32-bits of (hopefully) unique number. */
-		__os_unique_id(dbenv, &tmp);
+		__os_unique_id(env, &tmp);
 		for (p = (u_int8_t *)&tmp, i = sizeof(u_int32_t); i > 0; --i)
 			*fidp++ = *p++;
 
@@ -114,7 +114,7 @@ __os_fileid(dbenv, fname, unique_okay, fidp)
 		 * base 2.
 		 */
 		if (DB_GLOBAL(fid_serial) == 0) {
-			__os_id(dbenv, &pid, NULL);
+			__os_id(env->dbenv, &pid, NULL);
 			DB_GLOBAL(fid_serial) = (u_int32_t)pid;
 		} else
 			DB_GLOBAL(fid_serial) += 100000;

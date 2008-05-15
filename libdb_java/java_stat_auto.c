@@ -1,9 +1,10 @@
 /*-
- * DO NOT EDIT: automatically built by dist/s_java_stat.
+ * Automatically built by dist/s_java_stat.
+ * Only the javadoc comments can be edited.
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  */
 static int __dbj_fill_bt_stat(JNIEnv *jnienv,
     jobject jobj, struct __db_bt_stat *statp) {
@@ -71,13 +72,20 @@ static int __dbj_fill_lock_stat(JNIEnv *jnienv,
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxlocks_fid, statp, st_maxlocks);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxlockers_fid, statp, st_maxlockers);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxobjects_fid, statp, st_maxobjects);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_partitions_fid, statp, st_partitions);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nmodes_fid, statp, st_nmodes);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nlockers_fid, statp, st_nlockers);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nlocks_fid, statp, st_nlocks);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxnlocks_fid, statp, st_maxnlocks);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxhlocks_fid, statp, st_maxhlocks);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_locksteals_fid, statp, st_locksteals);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxlsteals_fid, statp, st_maxlsteals);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxnlockers_fid, statp, st_maxnlockers);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nobjects_fid, statp, st_nobjects);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxnobjects_fid, statp, st_maxnobjects);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxhobjects_fid, statp, st_maxhobjects);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_objectsteals_fid, statp, st_objectsteals);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_maxosteals_fid, statp, st_maxosteals);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nrequests_fid, statp, st_nrequests);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nreleases_fid, statp, st_nreleases);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nupgrade_fid, statp, st_nupgrade);
@@ -89,12 +97,14 @@ static int __dbj_fill_lock_stat(JNIEnv *jnienv,
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_nlocktimeouts_fid, statp, st_nlocktimeouts);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_txntimeout_fid, statp, st_txntimeout);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_ntxntimeouts_fid, statp, st_ntxntimeouts);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_part_wait_fid, statp, st_part_wait);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_part_nowait_fid, statp, st_part_nowait);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_part_max_wait_fid, statp, st_part_max_wait);
+	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_part_max_nowait_fid, statp, st_part_max_nowait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_objs_wait_fid, statp, st_objs_wait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_objs_nowait_fid, statp, st_objs_nowait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_lockers_wait_fid, statp, st_lockers_wait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_lockers_nowait_fid, statp, st_lockers_nowait);
-	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_locks_wait_fid, statp, st_locks_wait);
-	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_locks_nowait_fid, statp, st_locks_nowait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_region_wait_fid, statp, st_region_wait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_region_nowait_fid, statp, st_region_nowait);
 	JAVADB_STAT_INT(jnienv, jobj, lock_stat_st_hash_len_fid, statp, st_hash_len);
@@ -221,6 +231,7 @@ static int __dbj_fill_rep_stat(JNIEnv *jnienv,
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_status_fid, statp, st_status);
 	JAVADB_STAT_LSN(jnienv, jobj, rep_stat_st_next_lsn_fid, statp, st_next_lsn);
 	JAVADB_STAT_LSN(jnienv, jobj, rep_stat_st_waiting_lsn_fid, statp, st_waiting_lsn);
+	JAVADB_STAT_LSN(jnienv, jobj, rep_stat_st_max_perm_lsn_fid, statp, st_max_perm_lsn);
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_next_pg_fid, statp, st_next_pg);
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_waiting_pg_fid, statp, st_waiting_pg);
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_dupmasters_fid, statp, st_dupmasters);
@@ -269,6 +280,8 @@ static int __dbj_fill_rep_stat(JNIEnv *jnienv,
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_election_votes_fid, statp, st_election_votes);
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_election_sec_fid, statp, st_election_sec);
 	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_election_usec_fid, statp, st_election_usec);
+	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_max_lease_sec_fid, statp, st_max_lease_sec);
+	JAVADB_STAT_INT(jnienv, jobj, rep_stat_st_max_lease_usec_fid, statp, st_max_lease_usec);
 	return (0);
 }
 static int __dbj_fill_repmgr_stat(JNIEnv *jnienv,

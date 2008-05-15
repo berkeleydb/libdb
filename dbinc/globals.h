@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: globals.h,v 12.7 2007/05/17 15:15:05 bostic Exp $
+ * $Id: globals.h,v 12.12 2008/01/17 03:26:48 bostic Exp $
  */
 
 #ifndef _DB_GLOBALS_H_
@@ -31,7 +31,7 @@ typedef struct __db_globals {
 	SEM_ID db_global_lock;		/* VxWorks: global semaphore */
 #endif
 					/* XA: list of opened environments. */
-	TAILQ_HEAD(__db_envq, __db_env) db_envq;
+	TAILQ_HEAD(__envq, __env) envq;
 
 	char *db_line;			/* DB display string. */
 
@@ -55,19 +55,20 @@ typedef struct __db_globals {
 	int	(*j_ioinfo) __P((const char *,
 		    int, u_int32_t *, u_int32_t *, u_int32_t *));
 	void   *(*j_malloc) __P((size_t));
-	int	(*j_map) __P((char *, size_t, int, int, void **));
+	int	(*j_file_map) __P((DB_ENV *, char *, size_t, int, void **));
+	int	(*j_file_unmap) __P((DB_ENV *, void *));
 	int	(*j_open) __P((const char *, int, ...));
 	ssize_t	(*j_pread) __P((int, void *, size_t, off_t));
 	ssize_t	(*j_pwrite) __P((int, const void *, size_t, off_t));
 	ssize_t	(*j_read) __P((int, void *, size_t));
 	void   *(*j_realloc) __P((void *, size_t));
+	int	(*j_region_map) __P((DB_ENV *, char *, size_t, int *, void **));
+	int	(*j_region_unmap) __P((DB_ENV *, void *));
 	int	(*j_rename) __P((const char *, const char *));
 	int	(*j_seek) __P((int, off_t, int));
-	int	(*j_sleep) __P((u_long, u_long));
 	int	(*j_unlink) __P((const char *));
-	int	(*j_unmap) __P((void *, size_t));
 	ssize_t	(*j_write) __P((int, const void *, size_t));
-	int	(*j_yield) __P((void));
+	int	(*j_yield) __P((u_long, u_long));
 } DB_GLOBALS;
 
 #ifdef HAVE_BREW
@@ -81,7 +82,7 @@ DB_GLOBALS __db_global_values = {
 	NULL,				/* VxWorks: global semaphore */
 #endif
 					/* XA: list of opened environments. */
-	{NULL, &__db_global_values.db_envq.tqh_first},
+	{NULL, &__db_global_values.envq.tqh_first},
 
 	"=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=",
 	{ 0 },
@@ -89,6 +90,7 @@ DB_GLOBALS __db_global_values = {
 	0,
 	0,
 	0,
+	NULL,
 	NULL,
 	NULL,
 	NULL,

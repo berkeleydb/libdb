@@ -1,0 +1,15 @@
+m4_comment([$Id: repapi.so,v 1.1 2007/12/12 13:46:25 sue Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Release 4.7: Replication API,,
+    upgrade.4.7/rtc, upgrade.4.7/tcl)
+
+m4_p([dnl
+The m4_db base replication API m4_ref(rep_elect), m4_ref(rep_get_nsites),
+m4_ref(rep_set_nsites), m4_ref(rep_get_priority) and
+m4_refT(rep_set_priority)s now take arguments of type u_int32_t
+rather than int.  Applications may need to change the types of
+arguments to these methods, or cast arguments to these methods to
+avoid compiler warnings.])
+
+m4_page_footer

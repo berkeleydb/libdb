@@ -1,5 +1,5 @@
-<!--$Id: max.so,v 10.11 2006/01/05 16:51:59 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: max.so,v 10.13 2008/04/29 22:46:51 mbrey Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,15 +10,15 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Locking Subsystem</dl></b></td>
 <td align=right><a href="../lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Configuring locking: sizing the system</h3>
-<p>The lock system is sized using the following three methods:</p>
+<p align=center><b>Configuring locking: sizing the system</b></p>
+<p>The lock system is sized using the following four methods:</p>
 <blockquote><pre><a href="../../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>
 <a href="../../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>
-<a href="../../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a></pre></blockquote>
+<a href="../../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a>
+<a href="../../api_c/env_set_lk_partitions.html">DB_ENV-&gt;set_lk_partitions</a></pre></blockquote>
 <p>The <a href="../../api_c/env_set_lk_max_locks.html">DB_ENV-&gt;set_lk_max_locks</a>, <a href="../../api_c/env_set_lk_max_lockers.html">DB_ENV-&gt;set_lk_max_lockers</a>,
 and <a href="../../api_c/env_set_lk_max_objects.html">DB_ENV-&gt;set_lk_max_objects</a> methods specify the maximum number of
 locks, lockers, and locked objects supported by the lock subsystem,
@@ -35,6 +35,23 @@ to err in the direction of allocating too many locks, lockers, and
 objects because increasing the number of locks does not require large
 amounts of additional resources.   The default values are 1000 of
 each type of object.</p>
+<p>The <a href="../../api_c/env_set_lk_partitions.html">DB_ENV-&gt;set_lk_partitions</a> method specifies the number of lock
+table partitions.  Each partition may be accessed independently by
+a thread and more partitions can lead to higher levels of concurrency.
+The default is to set the number of partitions to be 10 times the number
+of cpus that the operating system reports at the time the environment is
+created.
+Having more than one partition when there is only one cpu is not beneficial and
+the locking system is more efficient when there is a single partition.
+Operating systems (Linux, Solaris) may report thread contexts as cpus and it
+may be necessary to override the default to force a single partition on
+a single hyperthreaded cpu system.
+Objects and locks are divided among the partitions so it best to allocate
+several locks and objects per partition.  The system will force there
+to be at least one per partition.
+If a partition runs out of locks or objects it will steal what is needed
+from the other partitions.  This operation could impact performance if
+it occurs too often.</p>
 <p>When configuring a Berkeley DB Concurrent Data Store application, the number of lock objects needed
 is two per open database (one for the database lock, and one for the
 cursor lock when the <a href="../../api_c/env_set_flags.html#DB_CDB_ALLDB">DB_CDB_ALLDB</a> option is not specified).  The
@@ -98,6 +115,6 @@ applications are unlikely to actually need that many locks.  Reviewing
 the Lock subsystem statistics is the best way to determine this value.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../lock/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../lock/stdmode.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

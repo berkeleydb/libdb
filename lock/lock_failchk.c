@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: lock_failchk.c,v 12.13 2007/05/17 15:15:43 bostic Exp $
+ * $Id: lock_failchk.c,v 12.18 2008/01/08 20:58:40 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,14 +14,19 @@
 
 /*
  * __lock_failchk --
- *	Check for locks held by dead threads of control.
+ *	Check for locks held by dead threads of control and release
+ *	read locks.  If any write locks were held by dead non-trasnactional
+ *	lockers then we must abort and run recovery.  Otherwise we release
+ *	read locks for lockers owned by dead threads.  Write locks for
+ *	dead transactional lockers will be freed when we abort the transaction.
  *
- * PUBLIC: int __lock_failchk __P((DB_ENV *));
+ * PUBLIC: int __lock_failchk __P((ENV *));
  */
 int
-__lock_failchk(dbenv)
-	DB_ENV *dbenv;
+__lock_failchk(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
 	DB_LOCKER *lip;
 	DB_LOCKREGION *lrp;
 	DB_LOCKREQ request;
@@ -30,21 +35,25 @@ __lock_failchk(dbenv)
 	int ret;
 	char buf[DB_THREADID_STRLEN];
 
-	lt = dbenv->lk_handle;
+	dbenv = env->dbenv;
+	lt = env->lk_handle;
 	lrp = lt->reginfo.primary;
 
-retry:	LOCK_SYSTEM_LOCK(dbenv);
-	LOCK_LOCKERS(dbenv, lrp);
+retry:	LOCK_LOCKERS(env, lrp);
 
 	ret = 0;
 	for (i = 0; i < lrp->locker_t_size; i++)
 		SH_TAILQ_FOREACH(lip, &lt->locker_tab[i], links, __db_locker) {
 			/*
-			 * If the locker is transactional, we can ignore it;
-			 * __txn_failchk aborts any transactions the locker
-			 * is involved in.
+			 * Skip lockers that have no locks.  Check the heldby
+			 * list rather then nlocks since a lock may be PENDING.
+			 * If the locker is transactional, we can ignore it if
+			 * it has no read lock or has no locks at all;
+			 * __txn_failchk aborts any transactional lockers.
 			 */
-			if (lip->id >= TXN_MINIMUM)
+			if (SH_LIST_EMPTY(&lip->heldby) ||
+			     (lip->id >= TXN_MINIMUM &&
+			     lip->nlocks == lip->nwrites))
 				continue;
 
 			/* If the locker is still alive, it's not a problem. */
@@ -52,13 +61,13 @@ retry:	LOCK_SYSTEM_LOCK(dbenv);
 				continue;
 
 			/*
-			 * We can only deal with read locks.  If the locker
-			 * holds write locks we have to assume a Berkeley DB
-			 * operation was interrupted with only 1-of-N pages
-			 * modified.
+			 * We can only deal with read locks.  If a
+			 * non-transactional locker holds write locks we
+			 * have to assume a Berkeley DB operation was
+			 * interrupted with only 1-of-N pages modified.
 			 */
-			if (lip->nwrites != 0) {
-				ret = __db_failed(dbenv,
+			if (lip->id < TXN_MINIMUM && lip->nwrites != 0) {
+				ret = __db_failed(env,
 				     "locker has write locks",
 				     lip->pid, lip->tid);
 				break;
@@ -67,14 +76,13 @@ retry:	LOCK_SYSTEM_LOCK(dbenv);
 			/*
 			 * Discard the locker and its read locks.
 			 */
-			__db_msg(dbenv, "Freeing locks for locker %#lx: %s",
+			__db_msg(env, "Freeing read locks for locker %#lx: %s",
 			    (u_long)lip->id, dbenv->thread_id_string(
 			    dbenv, lip->pid, lip->tid, buf));
-			LOCK_SYSTEM_UNLOCK(dbenv);
-			UNLOCK_LOCKERS(dbenv, lrp);
+			UNLOCK_LOCKERS(env, lrp);
 			memset(&request, 0, sizeof(request));
-			request.op = DB_LOCK_PUT_ALL;
-			if ((ret = __lock_vec(dbenv,
+			request.op = DB_LOCK_PUT_READ;
+			if ((ret = __lock_vec(env,
 			    lip, 0, &request, 1, NULL)) != 0)
 				return (ret);
 
@@ -85,13 +93,13 @@ retry:	LOCK_SYSTEM_LOCK(dbenv);
 			 * but we assume the dead thread will never release
 			 * it.
 			 */
-			if ((ret = __lock_freefamilylocker(lt, lip)) != 0)
+			if (lip->id < TXN_MINIMUM &&
+			    (ret = __lock_freefamilylocker(lt, lip)) != 0)
 				return (ret);
 			goto retry;
 		}
 
-	LOCK_SYSTEM_UNLOCK(dbenv);
-	UNLOCK_LOCKERS(dbenv, lrp);
+	UNLOCK_LOCKERS(env, lrp);
 
 	return (ret);
 }

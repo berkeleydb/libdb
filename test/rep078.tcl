@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep078.tcl,v 12.2 2007/07/02 15:56:56 sue Exp $
+# $Id: rep078.tcl,v 12.12 2008/04/30 19:12:50 carol Exp $
 #
 # TEST  rep078
 # TEST
@@ -22,7 +22,9 @@ proc rep078 { method { tnum "078" } args } {
 		return
 	}
 
-	# Valid for all access methods.
+	# Valid for all access methods.  Other lease tests limit the
+	# test because there is nothing method-specific being tested.
+	# Use all methods for this basic test.
 	if { $checking_valid_methods } {
 		return "ALL"
 	}
@@ -33,6 +35,13 @@ proc rep078 { method { tnum "078" } args } {
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
+	#
+	# Also skip the case where the master is in-memory and at least
+	# one of the clients is on-disk.  If the master is in-memory,
+	# the wrong site gets elected because on-disk envs write a log 
+	# record when they create the env and in-memory ones do not
+	# and the test wants to control which env gets elected.
+	#
 	foreach r $test_recopts {
 		foreach l $logsets {
 			set logindex [lsearch -exact $l "in-memory"]
@@ -41,10 +50,20 @@ proc rep078 { method { tnum "078" } args } {
 				    with in-memory logs."
 				continue
 			}
+			set master_logs [lindex $l 0]
+			if { $master_logs == "in-memory" } {
+				set client_logs [lsearch -exact $l "on-disk"]
+				if { $client_logs != -1 } {
+					puts "Skipping for in-memory master\
+					    and on-disk client."
+					continue
+				}
+			}
+
 			puts "Rep$tnum ($method $r):\
 			    Replication and basic master leases."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
-			puts "Rep$tnum: Client logs are [lindex $l 1]"
+			puts "Rep$tnum: Client 1 logs are [lindex $l 1]"
 			puts "Rep$tnum: Client 2 logs are [lindex $l 2]"
 			rep078_sub $method $tnum $l $r $args
 		}
@@ -52,12 +71,14 @@ proc rep078 { method { tnum "078" } args } {
 }
 
 proc rep078_sub { method tnum logset recargs largs } {
+	source ./include.tcl
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -77,7 +98,8 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set c_logtype [lindex $logset 1]
 	set c2_logtype [lindex $logset 2]
 
-	# In-memory logs cannot be used with -txn nosync.
+	# In-memory logs require a large log buffer, and cannot
+	# be used with -txn nosync.
 	set m_logargs [adjust_logargs $m_logtype]
 	set c_logargs [adjust_logargs $c_logtype]
 	set c2_logargs [adjust_logargs $c2_logtype]
@@ -85,11 +107,13 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set c_txnargs [adjust_txnargs $c_logtype]
 	set c2_txnargs [adjust_txnargs $c2_logtype]
 
-	# Set leases for 3 sites, 1 second timeout, 1% clock skew
+	# Set leases for 3 sites, 3 second timeout, 0% clock skew
 	set nsites 3
-	set lease_to 1000000
+	set lease_to 3000000
 	set lease_tosec [expr $lease_to / 1000000]
-	set lease_skew 0
+	set clock_fast 0
+	set clock_slow 0
+	set testfile test.db
 	#
 	# Since we have to use elections, the election code
 	# assumes a 2-off site id scheme.
@@ -98,9 +122,14 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set err_cmd(0) "none"
 	set crash(0) 0
 	set pri(0) 100
+	#
+	# Note that using the default clock skew should be the same
+	# as specifying "no skew" through the API.  We want to
+	# test both API usages here.
+	#
 	set envcmd(0) "berkdb_env -create $m_txnargs $m_logargs \
 	    $verbargs -errpfx MASTER -home $masterdir \
-	    -rep_lease \[list $nsites $lease_to $lease_skew\] \
+	    -rep_lease \[list $nsites $lease_to\] \
 	    -event rep_event \
 	    -rep_client -rep_transport \[list 2 replsend\]"
 	set masterenv [eval $envcmd(0) $recargs]
@@ -113,7 +142,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set pri(1) 10
 	set envcmd(1) "berkdb_env -create $c_txnargs $c_logargs \
 	    $verbargs -errpfx CLIENT -home $clientdir \
-	    -rep_lease \[list $nsites $lease_to $lease_skew\] \
+	    -rep_lease \[list $nsites $lease_to $clock_fast $clock_slow\] \
 	    -event rep_event \
 	    -rep_client -rep_transport \[list 3 replsend\]"
 	set clientenv [eval $envcmd(1) $recargs]
@@ -125,7 +154,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set pri(2) 10
 	set envcmd(2) "berkdb_env -create $c2_txnargs $c2_logargs \
 	    $verbargs -errpfx CLIENT2 -home $clientdir2 \
-	    -rep_lease \[list $nsites $lease_to $lease_skew\] \
+	    -rep_lease \[list $nsites $lease_to\] \
 	    -event rep_event \
 	    -rep_client -rep_transport \[list 4 replsend\]"
 	set clientenv2 [eval $envcmd(2) $recargs]
@@ -152,30 +181,59 @@ proc rep078_sub { method tnum logset recargs largs } {
 	# require that the nsites arg to rep_elect be 0.
 	#
 	run_election envcmd envlist err_cmd pri crash $qdir $msg \
-	    $elector 0 $nvotes $nsites $winner 0
+	    $elector 0 $nvotes $nsites $winner 0 NULL
 
-	puts "\tRep$tnum.b: Create and open master database."
-	set testfile "test.db"
-	set omethod [convert_method $method]
-	set masterdb [eval {berkdb_open_noerr -env $masterenv -auto_commit \
-	    -create -mode 0644} $largs $omethod $testfile]
+	puts "\tRep$tnum.b: Spawn a child tclsh to do txn work."
+	set pid [exec $tclsh_path $test_path/wrap.tcl \
+	    rep078script.tcl $testdir/rep078script.log \
+		   $masterdir $testfile $method &]
+
+	# Let child run, create database and put a txn into it.
+	# Process messages while we wait for the child to complete
+	# its txn so that the clients can grant leases.
+	puts "\tRep$tnum.c: Wait for child to write txn."
+	while { 1 } {
+		if { [file exists $testdir/marker.db] == 0  } {
+			tclsleep 1
+		} else {
+			set markerenv [berkdb_env -home $testdir -txn]
+			error_check_good markerenv_open \
+			    [is_valid_env $markerenv] TRUE
+			set marker [berkdb_open -unknown -env $markerenv \
+			    -auto_commit marker.db]
+			set kd [$marker get CHILD1]
+			while { [llength $kd] == 0 } {
+				process_msgs $envlist
+				tclsleep 1
+				set kd [$marker get CHILD1]
+			}
+			process_msgs $envlist
+			#
+			# Child sends us the key it used as the data
+			# of the CHILD1 key.
+			#
+			set key [lindex [lindex $kd 0] 1]
+			break
+		}
+	}
+	set masterdb [eval \
+	    {berkdb_open_noerr -env $masterenv -rdonly $testfile}]
 	error_check_good dbopen [is_valid_db $masterdb] TRUE
 
 	process_msgs $envlist
-
-	#
-	# Just use numeric key so we don't have to worry about method.
-	#
-	set key 1
-	puts "\tRep$tnum.c: Put some data to master database."
-	do_leaseop $masterenv $masterdb $method $key $envlist
+	set omethod [convert_method $method]
+	set clientdb [eval {berkdb_open_noerr \
+	    -env $clientenv $omethod -rdonly $testfile}]
+	error_check_good dbopen [is_valid_db $clientdb] TRUE
 
 	set uselease ""
 	set ignorelease "-nolease"
 	puts "\tRep$tnum.d.0: Read with leases."
 	check_leaseget $masterdb $key $uselease 0
+	check_leaseget $clientdb $key $uselease 0
 	puts "\tRep$tnum.d.1: Read ignoring leases."
 	check_leaseget $masterdb $key $ignorelease 0
+	check_leaseget $clientdb $key $ignorelease 0
 	#
 	# This should fail because the lease is expired and all
 	# attempts by master to refresh it will not be processed.
@@ -183,35 +241,77 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set sleep [expr $lease_tosec + 1]
 	puts "\tRep$tnum.e.0: Sleep $sleep secs to expire leases and read again."
 	tclsleep $sleep
+	#
+	# Verify the master gets REP_LEASE_EXPIRED.  Verify that the
+	# read on the client ignores leases and succeeds.
+	#
 	check_leaseget $masterdb $key $uselease REP_LEASE_EXPIRED
+	check_leaseget $clientdb $key $uselease 0
 	puts "\tRep$tnum.e.1: Read ignoring leases."
 	check_leaseget $masterdb $key $ignorelease 0
-	incr key
+	check_leaseget $clientdb $key $ignorelease 0
 
+	error_check_good timestamp_done \
+	    [$marker put PARENT1 [timestamp -r]] 0
+
+	set kd [$marker get CHILD2]
+	while { [llength $kd] == 0 } {
+		process_msgs $envlist
+		tclsleep 1
+		set kd [$marker get CHILD2]
+	}
+	process_msgs $envlist
 	#
-	# This will fail because when we try to read the data
-	# none of the clients will have processed the messages.
-	# Sending in the 0 to do_leaseop means we don't process
-	# the messages there.
+	# Child sends us the key it used as the data
+	# of the CHILD2 key.
 	#
-	puts "\tRep$tnum.f: Put data to master, verify read fails."
-	do_leaseop $masterenv $masterdb $method $key $envlist 0
+	set key [lindex [lindex $kd 0] 1]
+
+	puts "\tRep$tnum.f: Child writes txn + ckp. Don't process msgs."
+	#
+	# Child has committed the txn and we have processed it.  Now
+	# signal the child process to put a checkpoint, which we
+	# will not process.  That will invalidate leases.
+	error_check_good timestamp_done \
+	    [$marker put PARENT2 [timestamp -r]] 0
+
+	set kd [$marker get CHILD3]
+	while { [llength $kd] == 0 } {
+		tclsleep 1
+		set kd [$marker get CHILD3]
+	}
+
+	puts "\tRep$tnum.f.0: Read using leases fails."
 	check_leaseget $masterdb $key $uselease REP_LEASE_EXPIRED
-	puts "\tRep$tnum.f.0: Read ignoring leases."
+	puts "\tRep$tnum.f.1: Read ignoring leases."
 	check_leaseget $masterdb $key $ignorelease 0
-
 	puts "\tRep$tnum.g: Process messages to clients."
 	process_msgs $envlist
 	puts "\tRep$tnum.h: Verify read with leases now succeeds."
 	check_leaseget $masterdb $key $uselease 0
-	process_msgs $envlist
 
+	watch_procs $pid 5
+
+	process_msgs $envlist
 	rep_verify $masterdir $masterenv $clientdir $clientenv
+	process_msgs $envlist
 	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 0 1 0
 
-	error_check_good dbclose [$masterdb close] 0
-	error_check_good mclose [$masterenv close] 0
-	error_check_good cclose [$clientenv close] 0
-	error_check_good c2close [$clientenv2 close] 0
+	# Clean up.
+	error_check_good marker_db_close [$marker close] 0
+	error_check_good marker_env_close [$markerenv close] 0
+	error_check_good masterdb_close [$masterdb close] 0
+	error_check_good masterdb_close [$clientdb close] 0
+	error_check_good masterenv_close [$masterenv close] 0
+	error_check_good clientenv_close [$clientenv close] 0
+	error_check_good clientenv_close [$clientenv2 close] 0
+
 	replclose $testdir/MSGQUEUEDIR
+
+	# Check log file for failures.
+	set errstrings [eval findfail $testdir/rep078script.log]
+	foreach str $errstrings {
+		puts "FAIL: error message in rep078 log file: $str"
+	}
 }
+

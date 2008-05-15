@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: ce_ctime.c,v 12.4 2007/05/17 15:15:49 bostic Exp $
+ * $Id: ce_ctime.c,v 12.6 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -13,11 +13,11 @@
 static void  __os_windows_ct_numb __P((char *, int));
 
 /*
- * __db_ctime --
+ * __os_ctime --
  *	Format a time-stamp.
  */
 char *
-__db_ctime(tod, time_buf)
+__os_ctime(tod, time_buf)
 	const time_t *tod;
 	char *time_buf;
 {
@@ -72,8 +72,8 @@ static const __int64 SECS_TO_100NS = 10000000; /* 10^7 */
 }
 
 /*
- * ct_numb --
- *	Used by asctime.
+ * __os_windows_ct_numb --
+ *	Append ASCII representations for two digits to a string.
  */
 static void
 __os_windows_ct_numb(cp, n)

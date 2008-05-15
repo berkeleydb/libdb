@@ -1,4 +1,4 @@
-m4_comment([$Id: db_class.so,v 10.52 2005/12/01 02:02:58 bostic Exp $])
+m4_comment([$Id: db_class.so,v 10.53 2007/10/26 14:52:37 bostic Exp $])
 
 define(M4PAGELOCAL, [dbh_create, Db, DB_CXX_NO_EXCEPTIONS])
 include(m4/m4.seealso)
@@ -23,6 +23,15 @@ m4_blank
 	static const Db *Db::get_const_Db(const DB *db);
 	...
 };])])
+
+define(xa_create_tag, [dnl
+m4_tag(m4_idef(DB_XA_CREATE), [dnl
+Instead of creating a standalone database, create a database intended
+to be accessed via applications running under an X/Open conformant
+Transaction Manager.  The database will be opened in the environment
+specified by the OPENINFO parameter of the GROUPS section of the
+ubbconfig file.  See the m4_link(M4RELDIR/ref/xa/xa_intro, [XA
+Introduction]) section in the m4_db Reference Guide for more information.])])
 
 m4_p([dnl
 The m4_ref(Db) handle is the handle for a m4_db database, which may or
@@ -78,16 +87,10 @@ m4_param(flags, [dnl
 m4_sf_zmust(0)
 
 m4_tagbegin
-m4_tag(m4_idef(DB_XA_CREATE), [dnl
-Instead of creating a standalone database, create a database intended
-to be accessed via applications running under an X/Open conformant
-Transaction Manager.  The database will be opened in the environment
-specified by the OPENINFO parameter of the GROUPS section of the
-ubbconfig file.  See the m4_link(M4RELDIR/ref/xa/xa_intro, [XA
-Introduction]) section in the m4_db Reference Guide for more information.])
+xa_create_tag
 m4_tagend])
-
 m4_paramend
+
 m4_err(dbh_create, einval)],[dnl
 m4_p([dnl
 The constructor creates a m4_ref(Db) object that is the handle for a
@@ -95,7 +98,6 @@ m4_db database.  The constructor allocates memory internally; calling
 the m4_ref(dbh_close), m4_ref(dbh_remove) or m4_refT(dbh_rename)s will
 free that memory.])
 
-ifelse(M4API, CXX_API, [dnl
 m4_p([dnl
 Each m4_ref(Db) object has an associated m4_refc(Db) struct, which is
 used by the underlying implementation of m4_db and its C-language API.
@@ -114,7 +116,7 @@ the associated const m4_ref(Db) object, if there is one.])
 m4_p([dnl
 These methods may be useful for m4_db applications including  both C
 and C++ language software.  It should not be necessary to use these
-calls in a purely C++ application.])])
+calls in a purely C++ application.])
 
 m4_parambegin
 m4_param(dbenv, [dnl
@@ -131,7 +133,6 @@ the correct locks when reading and writing pages of the database.])])
 m4_param(flags, [dnl
 m4_sf_or_may
 m4_tagbegin
-ifelse(M4API, CXX_API, [dnl
 m4_tag(m4_idef(DB_CXX_NO_EXCEPTIONS), [dnl
 The m4_db C++ API supports two different error behaviors.  By default,
 whenever an error occurs, an exception is thrown that encapsulates the
@@ -142,15 +143,9 @@ exceptions are not thrown; instead, each individual function returns an
 error code.
 m4_p([dnl
 If m4_arg(dbenv) is not null, this flag is ignored, and the error behavior
-of the specified environment is used instead.])])])
+of the specified environment is used instead.])])
 
-m4_tag(m4_idef(DB_XA_CREATE), [dnl
-Instead of creating a standalone database, create a database intended to
-be accessed via applications running under a X/Open conformant Transaction
-Manager.  The database will be opened in the environment specified by the
-OPENINFO parameter of the GROUPS section of the ubbconfig file.  See the
-m4_link(M4RELDIR/ref/xa/intro, [XA Resource Manager]) chapter in the
-Reference Guide for more information.])
+xa_create_tag
 m4_tagend])
 m4_paramend])
 

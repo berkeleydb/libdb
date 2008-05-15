@@ -254,21 +254,6 @@ qam_autop.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../../rep/rep_autop.c_dependDone
-FALSE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../../rep/rep_autop.c_dependencies
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../../rep/rep_autop.c_objects
-rep_autop.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../../rep/rep_autop.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> FILE_$(PRJ_DIR)/../../txn/txn_autop.c_dependDone
 FALSE
 <END>
@@ -293,7 +278,6 @@ $(PRJ_DIR)/../../dbreg/dbreg_autop.c \
 $(PRJ_DIR)/../../fileops/fileops_autop.c \
 $(PRJ_DIR)/../../hash/hash_autop.c \
 $(PRJ_DIR)/../../qam/qam_autop.c \
-$(PRJ_DIR)/../../rep/rep_autop.c \
 $(PRJ_DIR)/../../txn/txn_autop.c
 <END>
 

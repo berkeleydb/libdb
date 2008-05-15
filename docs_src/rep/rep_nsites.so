@@ -1,4 +1,4 @@
-m4_comment([$Id: rep_nsites.so,v 1.2 2006/06/23 01:28:47 alanb Exp $])
+m4_comment([$Id: rep_nsites.so,v 1.6 2008/01/30 20:14:30 sue Exp $])
 
 define(M4PAGELOCAL, [rep_set_nsites, rep_get_nsites])
 include(m4/m4.seealso)
@@ -6,17 +6,17 @@ include(m4/m4.seealso)
 m4_pf_header(m4_ref(rep_set_nsites),
 ifelse(M4API, C_API, [dnl
 int
-DB_ENV-__GT__rep_set_nsites(DB_ENV *env, int nsites);
+DB_ENV-__GT__rep_set_nsites(DB_ENV *env, u_int32_t nsites);
 m4_blank
 int
-DB_ENV-__GT__rep_get_nsites(DB_ENV *env, int *nsitesp);
+DB_ENV-__GT__rep_get_nsites(DB_ENV *env, u_int32_t *nsitesp);
 ])
 ifelse(M4API, CXX_API, [dnl
 int
-DbEnv::rep_set_nsites(int nsites);
+DbEnv::rep_set_nsites(u_int32_t nsites);
 m4_blank
 int
-DbEnv::rep_get_nsites(int *nsitesp);
+DbEnv::rep_get_nsites(u_int32_t *nsitesp);
 ]))
 
 m4_p([dnl
@@ -29,13 +29,17 @@ use the m4_db library "replication manager" support.  (However, see
 also the m4_ref(rep_elect) man page, the description of the m4_arg(nsites)
 parameter.)])
 
+m4_env_config(rep_set_nsites, replication subsystem, rep_set_nsites, [dnl
+the number of sites specified.
+For example, "rep_set_nsites 5" sets the number of sites to 5])
+
 m4_scope_env(rep_set_nsites)
-m4_when_any(rep_set_nsites)
+m4_when(rep_set_nsites, before, rep_start)
 m4_return(rep_set_nsites, std)
 
 m4_parambegin
 m4_param(nsites, [dnl
-A positive integer specifying the total number of sites in the replication
+An integer specifying the total number of sites in the replication
 group.])
 m4_paramend
 

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc003.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: rpc003.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rpc003
 # TEST	Test RPC and secondary indices.
@@ -17,6 +17,7 @@ proc rpc003 { } {
 	# RPC.  Then run checking over RPC.
 	#
 	puts "Rpc003: Secondary indices over RPC"
+	puts "Rpc003: Using $rpc_svc"
 	if { [string compare $rpc_server "localhost"] != 0 } {
 		puts "Cannot run to non-local RPC server.  Skipping."
 		return

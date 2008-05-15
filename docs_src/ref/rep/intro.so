@@ -1,4 +1,4 @@
-m4_comment([$Id: intro.so,v 1.11 2006/11/13 18:05:02 bostic Exp $])
+m4_comment([$Id: intro.so,v 1.12 2007/12/15 01:15:54 alanb Exp $])
 
 m4_ref_title(m4_db Replication, Replication introduction,
     introduction to @replication, transapp/faq, rep/id)
@@ -13,10 +13,8 @@ and writes; client environments support only database reads.  If the
 master environment fails, applications may upgrade a client to be the
 new master.  The database environments might be on separate computers,
 on separate hardware partitions in a non-uniform memory access (NUMA)
-system, or on separate disks in a single server.  The only constraint
-is that all the participants in a replication group all be on machines
-of the same endianness.  (We expect this constraint to be removed in a
-future release.)  As always with m4_db environments, any number of
+system, or on separate disks in a single server.
+As always with m4_db environments, any number of
 concurrent processes or threads may access a database environment.  In
 the case of a master environment, any number of threads of control may
 read and write the environment, and in the case of a client environment,

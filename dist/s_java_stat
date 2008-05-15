@@ -1,22 +1,24 @@
 #!/bin/sh -
-#	$Id: s_java_stat,v 12.20 2007/07/06 00:22:52 mjc Exp $
+#	$Id: s_java_stat,v 12.27 2008/04/25 14:50:06 bschmeck Exp $
 #
 # Build the Java files.
 
 msgjava="/*-
- * DO NOT EDIT: automatically built by dist/s_java_stat.
+ * Automatically built by dist/s_java_stat.
+ * Only the javadoc comments can be edited.
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  */"
 
 s=/tmp/__java.sed
 t=/tmp/__java
+t0=/tmp/__java0
 c=/tmp/__javajnic
 u1=/tmp/__javautil1
 u2=/tmp/__javautil2
-trap 'rm -f $s $t $c $u1 $u2; exit 0' 0 1 2 3 13 15
+trap 'rm -f $s $t $t0 $c $u1 $u2; exit 0' 0 1 2 3 13 15
 
 # Script to convert DB C structure declarations into Java declarations.
 jclass()
@@ -72,6 +74,14 @@ $2    }/p
 $2    private byte[] \1;\\
 $2    public byte[] get_\1() {\\
 $2        return \1;\\
+$2    }/p
+		d
+	}
+	/u_int32_t.*startup_complete/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/\\
+$2    private int \1;\\
+$2    public boolean get_\1() {\\
+$2        return (\1 != 0);\\
 $2    }/p
 		d
 	}
@@ -243,6 +253,10 @@ jclass_toString()
 		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/$3            + \"\\\\n$3  \1=\" + DbUtil.byteArrayToString(\1)/p
 		d
 	}
+	/u_int32_t.*startup_complete/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/$3            + \"\\\\n$3  \1=\" + (\1 != 0)/p
+		d
+	}
 	s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/$3            + \"\\\\n$3  \1=\" + \1/p
 }
 EOF
@@ -259,21 +273,26 @@ stat_class()
 	c_struct=__db_$1
 	j_class=$2
 	extends=$3
+	imports=$4
+	extradecls=$5
 
-	(echo "$msgjava"
-	 echo
-	 echo 'package com.sleepycat.db;'
-	 echo
-	 echo "public class $j_class$extends {"
-	 echo "    // no public constructor"
-	 echo "    /* package */ $j_class() {}"
+	(cat <<EOF
+$msgjava
+
+package com.sleepycat.db;
+$imports
+public class $j_class$extends {
+    // no public constructor
+    /* package */ $j_class() {}$extradecls
+EOF
 	 jclass $1
 	 jclass_toString $1 $2
-	 echo '}') > $t
-	jclass_jni $1 $2
+	 echo '}') > $t0
 	f=../java/src/com/sleepycat/db/$j_class.java
+	./s_javadoc_merge $f $t0 > $t
 	cmp $t $f > /dev/null 2>&1 ||
 	    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+	jclass_jni $1 $2
 }
 
 echo "$msgjava" > $c
@@ -284,32 +303,34 @@ stat_class bt_stat BtreeStats " extends DatabaseStats"
 
 # Build CompactStats.java - not purely a statistics class, but close enough to
 # share this code.
-(echo "$msgjava"
- echo
- echo 'package com.sleepycat.db;'
- echo
- echo 'import com.sleepycat.db.internal.DbUtil;'
- echo
- echo "public class CompactStats"
- echo '{'
- echo "    // no public constructor"
- echo "    /* package */ CompactStats() {}"
- echo
- echo "    /* package */"
- echo "    CompactStats(int fillpercent, int timeout, int pages) {"
- echo "        this.compact_fillpercent = fillpercent;"
- echo "        this.compact_timeout = timeout;"
- echo "        this.compact_pages = pages;"
- echo "    }"
+(cat <<EOF
+$msgjava
+
+package com.sleepycat.db;
+
+import com.sleepycat.db.internal.DbUtil;
+
+public class CompactStats
+{
+    // no public constructor
+    /* package */ CompactStats() {}
+
+    /* package */
+    CompactStats(int fillpercent, int timeout, int pages) {
+        this.compact_fillpercent = fillpercent;
+        this.compact_timeout = timeout;
+        this.compact_pages = pages;
+    }
+EOF
  jclass compact
  jclass_toString compact CompactStats
- echo '}'
- echo '// end of TransactionStats.java') |
-   psed 's,public int get\(FillPercent\|Pages(\|Timeout\|Truncate\),/* package */ int get\1,g'> $t
-jclass_jni compact __dbj_fill_compact
+ echo '}') |
+   psed 's,public int get\(FillPercent\|Pages(\|Timeout\|Truncate\),/* package */ int get\1,g'> $t0
 f=../java/src/com/sleepycat/db/CompactStats.java
+./s_javadoc_merge $f $t0 > $t
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+jclass_jni compact __dbj_fill_compact
 
 stat_class h_stat HashStats " extends DatabaseStats"
 stat_class lock_stat LockStats
@@ -318,7 +339,15 @@ stat_class mpool_fstat CacheFileStats
 stat_class mpool_stat CacheStats
 stat_class mutex_stat MutexStats
 stat_class qam_stat QueueStats " extends DatabaseStats"
-stat_class rep_stat ReplicationStats
+stat_class rep_stat ReplicationStats "" "
+import com.sleepycat.db.internal.DbConstants;
+" "
+    public static final int REP_CLIENT = DbConstants.DB_REP_CLIENT;
+
+    public static final int REP_MASTER = DbConstants.DB_REP_MASTER;
+
+    public static final int REP_NONE = 0;"
+
 stat_class repmgr_stat ReplicationManagerStats
 stat_class seq_stat SequenceStats
 
@@ -329,26 +358,26 @@ stat_class seq_stat SequenceStats
  echo
  echo 'import com.sleepycat.db.internal.DbUtil;'
  echo
- echo "public class TransactionStats"
+ echo 'public class TransactionStats'
  echo '{'
  echo "    // no public constructor"
  echo "    /* package */ TransactionStats() {}"
  echo
- echo -n "    public static class Active {"
- echo    "        // no public constructor"
- echo    "        /* package */ Active() {}"
+ echo "    public static class Active {"
+ echo "        // no public constructor"
+ echo "        /* package */ Active() {}"
  jclass txn_active "    "
  jclass_toString txn_active Active "    "
  echo '    };'
  jclass txn_stat
  jclass_toString txn_stat TransactionStats
- echo '}'
- echo '// end of TransactionStats.java') > $t
-jclass_jni txn_stat __dbj_fill_txn_stat
-jclass_jni txn_active __dbj_fill_txn_active
+ echo '}') > $t0
 f=../java/src/com/sleepycat/db/TransactionStats.java
+./s_javadoc_merge $f $t0 > $t
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+jclass_jni txn_stat __dbj_fill_txn_stat
+jclass_jni txn_active __dbj_fill_txn_active
 
 mv $c $t
 f=../libdb_java/java_stat_auto.c

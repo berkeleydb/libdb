@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2007 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2008 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -1326,6 +1326,8 @@ db_errcall_cb(const DB_ENV* dbenv, const char * db_errpfx, const char * buffer)
 db_errcall_cb(const char * db_errpfx, char * buffer)
 #endif
 {
+    SV * sv;
+
     Trace(("In errcall_cb \n")) ;
 #if 0
 
@@ -1344,7 +1346,7 @@ db_errcall_cb(const char * db_errpfx, char * buffer)
 
 #endif
 
-    SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
+    sv = perl_get_sv(ERR_BUFF, FALSE) ;
     if (sv) {
         if (db_errpfx)
 	    sv_setpvf(sv, "%s: %s", db_errpfx, buffer) ;
@@ -1352,6 +1354,18 @@ db_errcall_cb(const char * db_errpfx, char * buffer)
             sv_setpv(sv, buffer) ;
     }
 }
+
+#if defined(AT_LEAST_DB_4_4) && ! defined(_WIN32)
+
+int
+db_isalive_cb(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, u_int32_t flags)
+{
+  bool processAlive = ( kill(pid, 0) == 0 ) || ( errno != ESRCH );
+  return processAlive;
+}
+
+#endif
+
 
 static SV *
 readHash(HV * hash, char * key)
@@ -1952,6 +1966,7 @@ _db_appinit(self, ref, errfile=NULL)
 	    int		cachesize = 0 ;
 	    int		lk_detect = 0 ;
 	    long	shm_key = 0 ;
+        int     thread_count = 0 ;
 	    SV *	errprefix = NULL;
 	    DB_ENV *	env ;
 	    int status ;
@@ -1969,6 +1984,7 @@ _db_appinit(self, ref, errfile=NULL)
 	    SetValue_iv(cachesize, "Cachesize") ;
 	    SetValue_iv(lk_detect, "LockDetect") ;
 	    SetValue_iv(shm_key,   "SharedMemKey") ;
+		SetValue_iv(thread_count,   "ThreadCount") ;
 #ifndef AT_LEAST_DB_3_2
 	    if (setflags)
 	        softCrash("-SetFlags needs Berkeley DB 3.x or better") ;
@@ -1983,6 +1999,14 @@ _db_appinit(self, ref, errfile=NULL)
 	    if (enc_passwd)
 	        softCrash("-Encrypt needs Berkeley DB 4.x or better") ;
 #endif /* ! AT_LEAST_DB_4_1 */
+#ifdef _WIN32
+		if (thread_count)
+			softCrash("-ThreadCount not supported on Windows") ;
+#endif /* ! AT_LEAST_DB_4_4 */
+#ifndef AT_LEAST_DB_4_4
+		if (thread_count)
+			softCrash("-ThreadCount needs Berkeley DB 4.4 or better") ;
+#endif /* ! AT_LEAST_DB_4_4 */
 	    Trace(("_db_appinit(config=[%d], home=[%s],errprefix=[%s],flags=[%d]\n",
 			config, home, errprefix, flags)) ;
 #ifdef TRACE
@@ -2112,6 +2136,15 @@ _db_appinit(self, ref, errfile=NULL)
 	  					my_db_strerror(status))) ;
 	  }
 #endif
+#if defined(AT_LEAST_DB_4_4) && ! defined(_WIN32)
+	  if (thread_count && status == 0)
+	  {
+		  status = env->set_thread_count(env, thread_count);
+		  Trace(("ENV->set_thread_count value = %d returned %s\n", thread_count,
+						my_db_strerror(status))) ;
+	  }
+#endif
+
 	  if (status == 0)
 	  {
 	    int		mode = 0 ;
@@ -2686,6 +2719,77 @@ get_timeout(env, timeout, flags=0)
 	    RETVAL
 	    timeout
 
+int
+lock_stat_print(env, flags=0)
+	BerkeleyDB::Env  env
+	u_int32_t    flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4_3
+		softCrash("$env->lock_stat_print needs Berkeley DB 4.3 or better") ;
+#else
+		RETVAL = env->Status = env->Env->lock_stat_print(env->Env, flags);
+#endif
+	OUTPUT:
+		RETVAL
+
+int
+mutex_stat_print(env, flags=0)
+	BerkeleyDB::Env  env
+	u_int32_t    flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4_4
+		softCrash("$env->mutex_stat_print needs Berkeley DB 4.4 or better") ;
+#else
+		RETVAL = env->Status = env->Env->mutex_stat_print(env->Env, flags);
+#endif
+	OUTPUT:
+		RETVAL
+
+int
+failchk(env, flags=0)
+	BerkeleyDB::Env  env
+	u_int32_t    flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#if ! defined(AT_LEAST_DB_4_4) || defined(_WIN32)
+#ifndef AT_LEAST_DB_4_4
+		softCrash("$env->failchk needs Berkeley DB 4.4 or better") ;
+#endif
+#ifdef _WIN32
+		softCrash("$env->failchk not supported on Windows") ;
+#endif
+#else
+		RETVAL = env->Status = env->Env->failchk(env->Env, flags);
+#endif
+	OUTPUT:
+		RETVAL
+
+int
+set_isalive(env)
+	BerkeleyDB::Env  env
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#if ! defined(AT_LEAST_DB_4_4) || defined(_WIN32)
+#ifndef AT_LEAST_DB_4_4
+		softCrash("$env->set_isalive needs Berkeley DB 4.4 or better") ;
+#endif
+#ifdef _WIN32
+		softCrash("$env->set_isalive not supported on Windows") ;
+#endif
+#else
+		RETVAL = env->Status = env->Env->set_isalive(env->Env, db_isalive_cb);
+#endif
+	OUTPUT:
+		RETVAL
+
+            
+        
 
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 

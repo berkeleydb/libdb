@@ -1,4 +1,4 @@
-m4_comment([$Id: config.so,v 10.21 2003/10/18 19:16:02 bostic Exp $])
+m4_comment([$Id: config.so,v 10.22 2008/04/23 14:50:45 margo Exp $])
 
 m4_ref_title(Locking Subsystem,
     Configuring locking, @locking configuration, lock/intro, lock/max)
@@ -11,6 +11,13 @@ invocations of the deadlock detector.  On a fast processor with a highly
 contentious application where response time is critical, this is a good
 choice.  An option argument to the m4_refT(dbenv_set_lk_detect)
 indicates which lock requests should be rejected.])
+
+m4_p([dnl
+The application can limit how long it blocks on a contested resource.
+The m4_refT(dbenv_set_timeout) specifies the length of the timeout.
+This value is checked whenever deadlock detection is performed,
+so the accuracy of the timeout depends upon the frequency of
+deadlock detection.])
 
 m4_p([dnl
 In general, when applications are not specifying lock and transaction

@@ -1,14 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: TransactionTest.java,v 12.9 2007/05/04 00:28:29 mark Exp $
+ * $Id: TransactionTest.java,v 12.11 2008/02/07 17:12:31 mark Exp $
  */
 
 package com.sleepycat.collections.test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
@@ -36,6 +37,8 @@ import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.Transaction;
 import com.sleepycat.db.TransactionConfig;
 import com.sleepycat.util.RuntimeExceptionWrapper;
+import com.sleepycat.util.test.SharedTestUtils;
+import com.sleepycat.util.test.TestEnv;
 
 /**
  * @author Mark Hayes
@@ -97,7 +100,7 @@ public class TransactionTest extends TestCase {
     public void setUp()
         throws Exception {
 
-        DbTestUtil.printTestName(DbTestUtil.qualifiedTestName(this));
+        SharedTestUtils.printTestName(SharedTestUtils.qualifiedTestName(this));
         env = TestEnv.TXN.open("TransactionTests");
         currentTxn = CurrentTransaction.getInstance(env);
         store = testStore.open(env, dbName(0));
@@ -202,9 +205,8 @@ public class TransactionTest extends TestCase {
         DatabaseConfig dbConfig = new DatabaseConfig();
         DbCompat.setTypeBtree(dbConfig);
         dbConfig.setAllowCreate(true);
-        Database db = DbCompat.openDatabase(env, null, 
-                                            dbName(1), null,
-                                            dbConfig);
+        Database db = DbCompat.testOpenDatabase
+            (env, null, dbName(1), null, dbConfig);
         map = new StoredSortedMap(db, testStore.getKeyBinding(),
                                       testStore.getValueBinding(), true);
         assertTrue(!map.isTransactional());
@@ -216,8 +218,8 @@ public class TransactionTest extends TestCase {
         //
         dbConfig.setTransactional(true);
         currentTxn.beginTransaction(null);
-        db = DbCompat.openDatabase(env, currentTxn.getTransaction(), 
-                                   dbName(2), null, dbConfig);
+        db = DbCompat.testOpenDatabase
+            (env, currentTxn.getTransaction(), dbName(2), null, dbConfig);
         currentTxn.commitTransaction();
         map = new StoredSortedMap(db, testStore.getKeyBinding(),
                                       testStore.getValueBinding(), true);
@@ -583,6 +585,74 @@ public class TransactionTest extends TestCase {
         assertNull(currentTxn.getTransaction());
     }
 
+    /**
+     * Tests that the CurrentTransaction static WeakHashMap does indeed allow
+     * GC to reclaim tine environment when it is closed.  At one point this was
+     * not working because the value object in the map has a reference to the
+     * environment.  This was fixed by wrapping the Environment in a
+     * WeakReference.  [#15444]
+     *
+     * This test only succeeds intermittently, probably due to its reliance
+     * on the GC call.
+     */
+    public void testCurrentTransactionGC()
+        throws Exception {
+
+        /*
+         * This test can have indeterminate results because it depends on
+         * a finalize count, so it's not part of the default run.
+         */
+        if (!SharedTestUtils.runLongTests()) {
+            return;
+        }
+
+        final StringBuffer finalizedFlag = new StringBuffer();
+
+        class MyEnv extends Environment {
+
+            MyEnv(File home, EnvironmentConfig config)
+                throws IOException, DatabaseException {
+
+                super(home, config);
+            }
+
+            protected void finalize() {
+                finalizedFlag.append('.');
+            }
+        }
+
+        MyEnv myEnv = new MyEnv(env.getHome(), env.getConfig());
+        CurrentTransaction myCurrTxn = CurrentTransaction.getInstance(myEnv);
+
+        store.close();
+        store = null;
+        map = null;
+
+        env.close();
+        env = null;
+
+        myEnv.close();
+        myEnv = null;
+
+        myCurrTxn = null;
+        currentTxn = null;
+
+        for (int i = 0; i < 10; i += 1) {
+            byte[] x = null;
+            try {
+                 x = new byte[Integer.MAX_VALUE - 1];
+            } catch (OutOfMemoryError expected) {
+            }
+            assertNull(x);
+            System.gc();
+        }
+
+        for (int i = 0; i < 10; i += 1) {
+            System.gc();
+        }
+
+        assertTrue(finalizedFlag.length() > 0);
+    }
 
     private synchronized void doReadUncommitted(StoredSortedMap dirtyMap)
         throws Exception {

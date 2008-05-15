@@ -1,5 +1,5 @@
 <!--$Id: terrain.so,v 10.4 2001/05/05 01:49:26 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></b></td>
 <td align=right><a href="../intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Mapping the terrain: theory and practice</h3>
+<p align=center><b>Mapping the terrain: theory and practice</b></p>
 <p>The first step in selecting a database system is figuring out what the
 choices are. Decades of research and real-world deployment have produced
 countless systems. We need to organize them somehow to reduce the number
@@ -29,7 +28,7 @@ systems that work in a certain way.</p>
 provide a few common services.  All of them store data, for example.
 We'll begin by exploring the common services that all systems provide,
 and then examine the differences among the different kinds of systems.</p>
-<h3>Data access and data management</h3>
+<b>Data access and data management</b>
 <p>Fundamentally, database systems provide two services.</p>
 <p>The first service is <i>data access</i>. Data access means adding
 new data to the database (inserting), finding data of interest
@@ -122,7 +121,7 @@ access and data management services that your application needs.  Berkeley DB
 is an embedded database that supports fairly simple data access with a
 rich set of data management services. To highlight its strengths and
 weaknesses, we can compare it to other database system categories.</p>
-<h3>Relational databases</h3>
+<b>Relational databases</b>
 <p>Relational databases are probably the best-known database variant,
 because of the success of companies like Oracle. Relational databases
 are based on the mathematical field of set theory.  The term "relation"
@@ -151,7 +150,7 @@ and they do not need expensive programmers to find the data they need.
 Learning SQL requires some effort, but it's much simpler than a
 full-blown high-level programming language for most purposes. And there
 are a lot of programmers who have already learned SQL.</p>
-<h3>Object-oriented databases</h3>
+<b>Object-oriented databases</b>
 <p>Object-oriented databases are less common than relational systems, but
 are still fairly widespread. Most object-oriented databases were
 originally conceived as persistent storage systems closely wedded to
@@ -174,7 +173,7 @@ systems, many of the object-oriented systems have added support for
 query languages very much like SQL. In practice, though, object-oriented
 databases are mostly used for persistent storage of objects in C++ and
 Java programs.</p>
-<h3>Network databases</h3>
+<b>Network databases</b>
 <p>The "network model" is a fairly old technique for managing and
 navigating application data. Network databases are designed to make
 pointer traversal very fast. Every record stored in a network database
@@ -206,7 +205,7 @@ databases, since adding and deleting records over time will consume
 space that cannot be reclaimed without reorganizing. Without periodic
 reorganization to compact network databases, they can end up with a
 considerable amount of wasted space.</p>
-<h3>Clients and servers</h3>
+<b>Clients and servers</b>
 <p>Database vendors have two choices for system architecture. They can
 build a server to which remote clients connect, and do all the database
 management inside the server. Alternatively, they can provide a module
@@ -243,6 +242,6 @@ application creates new opportunity for installation mistakes and
 run-time problems.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../intro/data.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/dbis.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

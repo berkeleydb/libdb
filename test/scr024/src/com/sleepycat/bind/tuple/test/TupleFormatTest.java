@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: TupleFormatTest.java,v 12.7 2007/05/04 00:28:28 mark Exp $
+ * $Id: TupleFormatTest.java,v 12.9 2008/02/07 17:12:30 mark Exp $
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -17,8 +17,8 @@ import junit.framework.TestSuite;
 import com.sleepycat.bind.tuple.TupleBinding;
 import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.bind.tuple.TupleOutput;
-import com.sleepycat.collections.test.DbTestUtil;
 import com.sleepycat.db.DatabaseEntry;
+import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
@@ -56,7 +56,7 @@ public class TupleFormatTest extends TestCase {
 
     public void setUp() {
 
-        DbTestUtil.printTestName("TupleFormatTest." + getName());
+        SharedTestUtils.printTestName("TupleFormatTest." + getName());
         buffer = new DatabaseEntry();
         out = new TupleOutput();
     }

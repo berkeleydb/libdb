@@ -1,0 +1,36 @@
+m4_comment([$Id: rtc.so,v 1.4 2008/01/17 03:26:51 bostic Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Release 4.7: Run-time configuration,,
+    upgrade.4.7/intro, upgrade.4.7/repapi)
+
+m4_p([dnl
+In historic m4_db releases, there were separate sleep and yield
+functions to be configured at run-time using the db_env_set_func_sleep
+and m4_ref(dbenv_set_func_yield) functions.  These functions have been
+merged in the m4_db 4.7 release.  The replacement function should always
+yield the processor, and optionally wait for some period of time before
+allowing the thread to run again.])
+
+m4_p([dnl
+Applications using the m4_db run-time configuration interfaces should
+merge the functionality of their sleep and yield functions into a single
+configuration function.])
+
+m4_p([dnl
+In the 4.7 m4_db release, the db_env_set_func_map  and
+db_env_set_func_unmap functions have been replaced.  This change fixes
+problems where applications using the m4_db run-time configuration
+interfaces could not open multiple m4_ref(DbEnv) handles for the same
+database environment in a single application or join existing database
+environments from within multiple processes.])
+
+m4_p([dnl
+Applications wanting to replace the m4_db region creation functionality
+should replace their db_env_set_func_map and db_env_set_func_unmap calls
+with a call to the m4_ref(dbenv_set_func_region_map) function.
+Applications wanting to replace the m4_db region file mapping functionality
+should replace their db_env_set_func_map and db_env_set_func_unmap calls
+with a call to the m4_ref(dbenv_set_func_file_map) function.])
+
+m4_page_footer

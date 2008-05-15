@@ -36,8 +36,9 @@
       </div>
       <p>
             If you are retrieving 
-                <span>a record from the database</span>
                 
+                
+                <span>a record from the database or a class from the store</span>
             for the purpose of modifying or deleting it, you should declare 
             a read-modify-write cycle at the time that you read the 
                     <span>record.</span>
@@ -65,7 +66,9 @@
                 specify 
                     <tt class="classname">com.sleepycat.db.LockMode.RMW</tt>
                     
-                to the database or cursor get method.
+                    to the database, cursor,
+                    <tt class="classname">PrimaryIndex</tt>, or
+                    <tt class="classname">SecondaryIndex</tt> get method.
             </span>
         </p>
       <p>
@@ -92,6 +95,40 @@ while (retry_count &lt; MAX_DEADLOCK_RETRIES) {
         myDatabase.put(txn, key, data);
         txn.commit();
         return 0;
+    } catch (DeadlockException de) {
+        // Deadlock detection and exception handling omitted
+        // for brevity
+        ... </pre>
+      <p>
+        Or, with the DPL:
+</p>
+      <pre class="programlisting">// Begin the deadlock retry loop as is normal
+        while (retry_count &lt; MAX_DEADLOCK_RETRIES) {
+    try {
+        txn = myEnv.beginTransaction(null, null);
+
+        ...
+        // 'store' is an EntityStore and 'Inventory' is an entity class
+        // Their usage and implementation is omitted for brevity.
+        ...
+
+        // Read the data, using the PrimaryIndex for the entity object
+        PrimaryIndex&lt;String,Inventory&gt; pi = 
+                store.getPrimaryIndex(String.class, Inventory.class);
+        Inventory iv = pi.get(txn, "somekey", LockMode.RMW);
+
+        // Do something to the retreived object
+
+
+        // Put the object. Note that you do not have to provide any 
+        // additional flags here due to the read/modify/write 
+        // cycle. Simply put the data and perform your deadlock 
+        // detection as normal.
+
+        pi.put(txn, iv);
+        txn.commit();
+        return 0;
+
     } catch (DeadlockException de) {
         // Deadlock detection and exception handling omitted
         // for brevity

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: os_uid.c,v 12.27 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_uid.c,v 12.31 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,25 +14,28 @@
  * __os_unique_id --
  *	Return a unique 32-bit value.
  *
- * PUBLIC: void __os_unique_id __P((DB_ENV *, u_int32_t *));
+ * PUBLIC: void __os_unique_id __P((ENV *, u_int32_t *));
  */
 void
-__os_unique_id(dbenv, idp)
-	DB_ENV *dbenv;
+__os_unique_id(env, idp)
+	ENV *env;
 	u_int32_t *idp;
 {
+	DB_ENV *dbenv;
 	db_timespec v;
 	pid_t pid;
 	u_int32_t id;
 
 	*idp = 0;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	/*
 	 * Our randomized value is comprised of our process ID, the current
 	 * time of day and a stack address, all XOR'd together.
 	 */
 	__os_id(dbenv, &pid, NULL);
-	__os_gettime(dbenv, &v);
+	__os_gettime(env, &v, 1);
 
 	id = (u_int32_t)pid ^
 	    (u_int32_t)v.tv_sec ^ (u_int32_t)v.tv_nsec ^ P_TO_UINT32(&pid);

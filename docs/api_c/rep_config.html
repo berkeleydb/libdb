@@ -1,5 +1,5 @@
-<!--$Id: rep_config.so,v 1.4 2007/02/13 19:32:52 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: rep_config.so,v 1.10 2008/01/19 14:12:59 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;rep_set_config</h3>
+<b>DB_ENV-&gt;rep_set_config</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,19 +26,19 @@ DB_ENV-&gt;rep_set_config(DB_ENV *env, u_int32_t which, int onoff);
 <p>
 int
 DB_ENV-&gt;rep_get_config(DB_ENV *dbenv, u_int32_t which, int *onoffp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;rep_set_config</h3>
+<b>Description: DB_ENV-&gt;rep_set_config</b>
 <p>The DB_ENV-&gt;rep_set_config method method configures the Berkeley DB replication
 subsystem.</p>
 <p>The database environment's replication subsystem may also be configured using the
-environment's <b>DB_CONFIG</b> file.  The syntax of the entry in that
+environment's <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.  The syntax of the entry in that
 file is a single line with the string "rep_set_config", one or more whitespace
 characters, and the method <b>which</b> parameter as a string; for example,
-"rep_set_config REP_CONF_NOWAIT".
-Because the <b>DB_CONFIG</b> file is read when the database
-environment is opened, it will silently overrule configuration done
-before that time.</p>
+"rep_set_config DB_REP_CONF_NOWAIT".
+Because the <a href="../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is read when the database environment
+is opened, it will silently overrule configuration done before that
+time.</p>
 <p>The DB_ENV-&gt;rep_set_config method configures a database environment, not only operations
 performed using the specified <a href="../api_c/env_class.html">DB_ENV</a> handle.</p>
 <p>The DB_ENV-&gt;rep_set_config method may be called at any time during the life of the
@@ -47,32 +47,46 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>onoff</b><dd>If the <b>onoff</b> parameter is zero, the configuration flag is turned
-off.  Otherwise, it is turned on.
-<dt><b>which</b><dd>The <b>which</b> parameter must be set to one of the following values:
-<dl compact>
-<dt><a name="DB_REP_CONF_BULK">DB_REP_CONF_BULK</a><dd>The replication master sends groups of records to the clients in a
-single network transfer (defaults to off).
-<dt><a name="DB_REP_CONF_DELAYCLIENT">DB_REP_CONF_DELAYCLIENT</a><dd>The client should delay synchronizing to a newly declared master
+<b>Parameters</b> <br>
+ <b>onoff</b><ul compact><li>If the <b>onoff</b> parameter is zero, the configuration flag is turned
+off.  Otherwise, it is turned on.</ul>
+ <b>which</b><ul compact><li>The <b>which</b> parameter must be set to one of the following values:
+<br>
+<b><a name="DB_REP_CONF_BULK">DB_REP_CONF_BULK</a></b><ul compact><li>The replication master sends groups of records to the clients in a
+single network transfer (defaults to off).</ul>
+<b><a name="DB_REP_CONF_DELAYCLIENT">DB_REP_CONF_DELAYCLIENT</a></b><ul compact><li>The client should delay synchronizing to a newly declared master
 (defaults to off).  Clients configured in this way will remain
-unsynchronized until the application calls the <a href="../api_c/rep_sync.html">DB_ENV-&gt;rep_sync</a> method.
-<dt><a name="DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a><dd>The replication master will not automatically re-initialize outdated
-clients (defaults to off).
-<dt><a name="DB_REP_CONF_NOWAIT">DB_REP_CONF_NOWAIT</a><dd>Berkeley DB method calls that would normally block while clients are in
-recovery will return errors immediately (defaults to off).
-</dl>
-</dl>
-<h3>Errors</h3>
+unsynchronized until the application calls the <a href="../api_c/rep_sync.html">DB_ENV-&gt;rep_sync</a> method.</ul>
+<b><a name="DB_REP_CONF_LEASE">DB_REP_CONF_LEASE</a></b><ul compact><li>Master leases will be used for this site (defaults to off).
+<p>Configuring this option may result in <a name="DB_REP_LEASE_EXPIRED">DB_REP_LEASE_EXPIRED</a>
+error returns from the <a href="../api_c/db_get.html">DB-&gt;get</a> and <a href="../api_c/dbc_get.html">DBcursor-&gt;get</a> methods when
+attempting to read entries from a database after the site's master lease
+has expired.</p>
+<p>The DB_ENV-&gt;rep_set_config method may not be called after the <a href="../api_c/repmgr_start.html">DB_ENV-&gt;repmgr_start</a> or <a href="../api_c/rep_start.html">DB_ENV-&gt;rep_start</a> methods are
+called.</p>
+Once this option is turned on, it may never be turned off.</ul>
+<b><a name="DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a></b><ul compact><li>The replication master will not automatically re-initialize outdated
+clients (defaults to off).</ul>
+<b><a name="DB_REP_CONF_NOWAIT">DB_REP_CONF_NOWAIT</a></b><ul compact><li>Berkeley DB method calls that would normally block while clients are in
+recovery will return errors immediately (defaults to off).</ul>
+<b><a name="DB_REPMGR_CONF_2SITE_STRICT">DB_REPMGR_CONF_2SITE_STRICT</a></b><ul compact><li>Replication Manager observes the strict "majority" rule in managing
+elections, even in a group with only 2 sites.  This means the client in
+a 2-site group will be unable to take over as master if the original
+master fails or becomes disconnected.  (See the
+<a href="../ref/rep/elect.html">Elections</a> section in the Berkeley DB
+Reference Guide for more information.)  Both sites in the replication
+group should have the same value for this parameter.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;rep_set_config method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>An
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>An
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;rep_get_config</h3>
+<b>Description: DB_ENV-&gt;rep_get_config</b>
 <p>The DB_ENV-&gt;rep_get_config method returns whether the specified <b>which</b>
 parameter is currently set or not.</p>
 <p>The DB_ENV-&gt;rep_get_config method may be called at any time during the life of the
@@ -81,23 +95,22 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>which</b><dd>The <b>which</b> parameter is the message value for which configuration
-is being checked.
-<dt><b>onoffp</b><dd>The <b>onoffp</b> parameter references memory into which
- the configuration of the specified <b>which</b> parameter is copied. If the returned <b>onoff</b> value is zero, the parameter is off;
+<b>Parameters</b> <br>
+ <b>which</b><ul compact><li>The <b>which</b> parameter is the message value for which configuration
+is being checked.</ul>
+ <b>onoffp</b><ul compact><li>The <b>onoffp</b> parameter references memory into which
+ the configuration of the specified <b>which</b> parameter is copied.</ul> If the returned <b>onoff</b> value is zero, the parameter is off;
 otherwise on.
-</dl>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/rep_list.html">Replication and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

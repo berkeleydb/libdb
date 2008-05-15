@@ -4,7 +4,8 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Opening a Transactional Environment and
-            Database
+            
+            Store or Database
             
         </title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
@@ -19,7 +20,8 @@
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">Opening a Transactional Environment and
-            Database
+            
+            Store or Database
             
         </th>
         </tr>
@@ -36,7 +38,8 @@
         <div>
           <div>
             <h2 class="title" style="clear: both"><a id="envopen"></a>Opening a Transactional Environment and
-            <span>Database</span>
+            
+            <span>Store or Database</span>
             
         </h2>
           </div>
@@ -48,8 +51,54 @@
             transactional subsystem. Note that doing this also initializes the
             logging subsystem. In addition, you must initialize the memory pool
             (in-memory cache). Frequently, but not always, you will also 
-            initialize the locking subsystem.  For example:
+            initialize the locking subsystem.  
+            
+            
+            
+            <span>
+                For example, to do this with the DPL:
+            </span>
         </p>
+      <pre class="programlisting">package persist.txn;
+                                                                                                                                     
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.StoreConfig;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+                                                                                                                                     
+...
+                                                                                                                                     
+Environment myEnv = null;
+EntityStore myStore = null;
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    StoreConfig storeConfig = new StoreConfig();
+
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+    myEnvConfig.setTransactional(true);
+
+    storeConfig.setTransactional(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    myStore = new EntityStore(myEnv, "EntityStore", storeConfig);
+
+} catch (DatabaseException de) {
+    // Exception handling goes here
+} catch (FileNotFoundException fnfe) {
+     // Exception handling goes here
+}</pre>
+      <p>
+            And when using the base API:
+    </p>
       <pre class="programlisting">package db.txn;
                                                                                                                                      
 import com.sleepycat.db.DatabaseException;
@@ -130,7 +179,8 @@ try {
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
-            Never close a database that has active transactions. Make sure
+                Never close a database <span> or
+                        store </span> that has active transactions. Make sure
             all transactions are resolved (either committed or aborted)
             before closing the database.
         </p>

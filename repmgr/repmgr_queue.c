@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2006,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_queue.c,v 1.9 2007/05/17 15:15:51 bostic Exp $
+ * $Id: repmgr_queue.c,v 1.12 2008/01/08 20:58:48 bostic Exp $
  */
 
 #include "db_config.h"
@@ -18,17 +18,17 @@ struct __repmgr_queue {
 };
 
 /*
- * PUBLIC: int __repmgr_queue_create __P((DB_ENV *, DB_REP *));
+ * PUBLIC: int __repmgr_queue_create __P((ENV *, DB_REP *));
  */
 int
-__repmgr_queue_create(dbenv, db_rep)
-	DB_ENV *dbenv;
+__repmgr_queue_create(env, db_rep)
+	ENV *env;
 	DB_REP *db_rep;
 {
 	REPMGR_QUEUE *q;
 	int ret;
 
-	if ((ret = __os_calloc(dbenv, 1, sizeof(REPMGR_QUEUE), &q)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(REPMGR_QUEUE), &q)) != 0)
 		return (ret);
 	q->size = 0;
 	STAILQ_INIT(&q->header);
@@ -40,28 +40,28 @@ __repmgr_queue_create(dbenv, db_rep)
  * Frees not only the queue header, but also any messages that may be on it,
  * along with their data buffers.
  *
- * PUBLIC: void __repmgr_queue_destroy __P((DB_ENV *));
+ * PUBLIC: void __repmgr_queue_destroy __P((ENV *));
  */
 void
-__repmgr_queue_destroy(dbenv)
-	DB_ENV *dbenv;
+__repmgr_queue_destroy(env)
+	ENV *env;
 {
-	REPMGR_QUEUE *q;
 	REPMGR_MESSAGE *m;
+	REPMGR_QUEUE *q;
 
-	if ((q = dbenv->rep_handle->input_queue) == NULL)
+	if ((q = env->rep_handle->input_queue) == NULL)
 		return;
 
 	while (!STAILQ_EMPTY(&q->header)) {
 		m = STAILQ_FIRST(&q->header);
 		STAILQ_REMOVE_HEAD(&q->header, entries);
-		__os_free(dbenv, m);
+		__os_free(env, m);
 	}
-	__os_free(dbenv, q);
+	__os_free(env, q);
 }
 
 /*
- * PUBLIC: int __repmgr_queue_get __P((DB_ENV *, REPMGR_MESSAGE **));
+ * PUBLIC: int __repmgr_queue_get __P((ENV *, REPMGR_MESSAGE **));
  *
  * Get the first input message from the queue and return it to the caller.  The
  * caller hereby takes responsibility for the entire message buffer, and should
@@ -72,17 +72,17 @@ __repmgr_queue_destroy(dbenv)
  * it's already necessary to be holding the mutex.
  */
 int
-__repmgr_queue_get(dbenv, msgp)
-	DB_ENV *dbenv;
+__repmgr_queue_get(env, msgp)
+	ENV *env;
 	REPMGR_MESSAGE **msgp;
 {
 	DB_REP *db_rep;
-	REPMGR_QUEUE *q;
 	REPMGR_MESSAGE *m;
+	REPMGR_QUEUE *q;
 	int ret;
 
 	ret = 0;
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	q = db_rep->input_queue;
 
 	LOCK_MUTEX(db_rep->mutex);
@@ -119,20 +119,20 @@ err:
 }
 
 /*
- * PUBLIC: int __repmgr_queue_put __P((DB_ENV *, REPMGR_MESSAGE *));
+ * PUBLIC: int __repmgr_queue_put __P((ENV *, REPMGR_MESSAGE *));
  *
  * !!!
  * Caller must hold repmgr->mutex.
  */
 int
-__repmgr_queue_put(dbenv, msg)
-	DB_ENV *dbenv;
+__repmgr_queue_put(env, msg)
+	ENV *env;
 	REPMGR_MESSAGE *msg;
 {
 	DB_REP *db_rep;
 	REPMGR_QUEUE *q;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	q = db_rep->input_queue;
 
 	STAILQ_INSERT_TAIL(&q->header, msg, entries);
@@ -142,14 +142,14 @@ __repmgr_queue_put(dbenv, msg)
 }
 
 /*
- * PUBLIC: int __repmgr_queue_size __P((DB_ENV *));
+ * PUBLIC: int __repmgr_queue_size __P((ENV *));
  *
  * !!!
  * Caller must hold repmgr->mutex.
  */
 int
-__repmgr_queue_size(dbenv)
-	DB_ENV *dbenv;
+__repmgr_queue_size(env)
+	ENV *env;
 {
-	return (dbenv->rep_handle->input_queue->size);
+	return (env->rep_handle->input_queue->size);
 }

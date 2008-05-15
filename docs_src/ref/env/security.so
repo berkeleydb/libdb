@@ -1,4 +1,4 @@
-m4_comment([$Id: security.so,v 10.17 2002/02/04 17:52:38 bostic Exp $])
+m4_comment([$Id: security.so,v 10.18 2007/07/30 19:26:29 bostic Exp $])
 
 m4_ref_title(Environment, Security, @security, env/region, env/encrypt)
 
@@ -44,6 +44,15 @@ directories from improper access.  To be absolutely safe, applications
 storing sensitive data in unnamed databases should use the
 m4_ref(dbenv_set_tmp_dir) method to specify a temporary directory with
 known permissions.])
+
+m4_tag(Tcl API, [dnl
+The m4_db Tcl API does not attempt to avoid evaluating input as Tcl
+commands.  For this reason, it may be dangerous to pass unreviewed user
+input through the m4_db Tcl API, as the input may subsequently be
+evaluated as a Tcl command.  Additionally, the m4_db Tcl API
+initialization routine resets process' effective user and group IDs to
+the real user and group IDs, to minimize the effectiveness of a Tcl
+injection attack.])
 
 m4_tagend
 

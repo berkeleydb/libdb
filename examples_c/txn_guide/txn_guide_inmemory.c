@@ -90,7 +90,7 @@ main(void)
       DB_THREAD;       /* Cause the environment to be free-threaded */
 
     /* Specify in-memory logging */
-    ret = envp->set_flags(envp, DB_LOG_INMEMORY, 1);
+    ret = envp->log_set_config(envp, DB_LOG_IN_MEMORY, 1);
     if (ret != 0) {
 	fprintf(stderr, "Error setting log subsystem to in-memory: %s\n",
 	    db_strerror(ret));
@@ -199,15 +199,16 @@ err:
 void *
 writer_thread(void *args)
 {
+    static char *key_strings[] = {
+	"key 1", "key 2", "key 3", "key 4", "key 5",
+	"key 6", "key 7", "key 8", "key 9", "key 10"
+    };
     DB *dbp;
     DB_ENV *envp;
     DBT key, value;
     DB_TXN *txn;
     int i, j, payload, ret, thread_num;
     int retry_count, max_retries = 20;   /* Max retry on a deadlock */
-    char *key_strings[] = {"key 1", "key 2", "key 3", "key 4",
-			   "key 5", "key 6", "key 7", "key 8",
-			   "key 9", "key 10"};
 
     dbp = (DB *)args;
     envp = dbp->get_env(dbp);

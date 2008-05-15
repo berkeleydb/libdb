@@ -12,13 +12,6 @@ int atoi __P((const char *));
 #ifndef HAVE_ATOL
 long atol __P((const char *));
 #endif
-char *__db_ctime __P((const time_t *, char *));
-#if defined(HAVE_REPLICATION_THREADS)
-int __db_getaddrinfo __P((DB_ENV *, const char *, u_int, const char *, const ADDRINFO *, ADDRINFO **));
-#endif
-#if defined(HAVE_REPLICATION_THREADS)
-void __db_freeaddrinfo __P((DB_ENV *, ADDRINFO *));
-#endif
 #ifndef HAVE_GETCWD
 char *getcwd __P((char *, size_t));
 #endif
@@ -106,6 +99,9 @@ long strtol __P((const char *, char **, int));
 #endif
 #ifndef HAVE_STRTOUL
 unsigned long strtoul __P((const char *, char **, int));
+#endif
+#ifndef HAVE_TIME
+time_t time __P((time_t *));
 #endif
 
 #if defined(__cplusplus)

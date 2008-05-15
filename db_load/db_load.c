@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_load.c,v 12.23 2007/05/17 17:17:42 bostic Exp $
+ * $Id: db_load.c,v 12.26 2008/01/11 20:49:57 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 typedef struct {			/* XXX: Globals. */
@@ -395,8 +395,8 @@ retry_db:
 
 	/* Open the DB file. */
 	if ((ret = dbp->open(dbp, NULL, name, subdb, dbtype,
-	    DB_CREATE | (TXN_ON(dbenv) ? DB_AUTO_COMMIT : 0),
-	    __db_omode("rw-rw-rw-"))) != 0) {
+	    DB_CREATE | (TXN_ON(dbenv->env) ? DB_AUTO_COMMIT : 0),
+	    DB_MODE_666)) != 0) {
 		dbp->err(dbp, ret, "DB->open: %s", name);
 		goto err;
 	}
@@ -437,7 +437,7 @@ key_data:	if ((readp->data = malloc(readp->ulen = 1024)) == NULL) {
 		goto err;
 	}
 
-	if (TXN_ON(dbenv) &&
+	if (TXN_ON(dbenv->env) &&
 	    (ret = dbenv->txn_begin(dbenv, NULL, &txn, 0)) != 0)
 		goto err;
 
@@ -524,7 +524,6 @@ retry:		if (txn != NULL)
 		}
 	}
 done:	rval = 0;
-	DB_ASSERT(dbenv, ctxn == NULL);
 	if (txn != NULL && (ret = txn->commit(txn, 0)) != 0) {
 		txn = NULL;
 		goto err;
@@ -532,7 +531,6 @@ done:	rval = 0;
 
 	if (0) {
 err:		rval = 1;
-		DB_ASSERT(dbenv, ctxn == NULL);
 		if (txn != NULL)
 			(void)txn->abort(txn);
 	}

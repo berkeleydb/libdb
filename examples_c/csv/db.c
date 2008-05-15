@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: db.c,v 1.16 2007/05/17 15:15:13 bostic Exp $
+ * $Id: db.c,v 1.18 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include "csv.h"
@@ -167,7 +167,7 @@ csv_secondary_open()
 		case DOUBLE:
 			fcmp = compare_double;
 			break;
-		case ULONG:
+		case UNSIGNED_LONG:
 			fcmp = compare_ulong;
 			break;
 		case NOTSET:

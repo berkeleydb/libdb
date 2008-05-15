@@ -1,26 +1,37 @@
 #!/bin/sh -
-#	$Id: s_all,v 12.8 2007/07/06 16:29:16 bostic Exp $
+#	$Id: s_all,v 12.11 2008/01/17 13:59:11 bostic Exp $
 
 sh s_perm		# permissions.
 sh s_symlink		# symbolic links.
 sh s_readme		# distribution README file.
 
-#
-# The following order is important, s_include must run last.
-#
 sh s_config		# autoconf.
-sh s_recover		# logging/recovery files.
+sh s_apiflags		# API flags.
 sh s_rpc		# RPC files.
+sh s_sig		# Structure signature.
+sh s_recover		# logging/recovery files.
+sh s_message		# replication and repmgr message files.
+
+#############################################################
+# The following order is important, s_include must run after
+# the other source files have been created.
+#############################################################
 sh s_include		# standard include files.
 
 sh s_java		# Java support.
 sh s_test		# Test suite support.
 sh s_tags		# Tags files.
 
-# We only build the Cscope file for releases, it's too big to commit
-# into the CVS tree.
+#############################################################
+# We only build the Cscope file for releases, it's too big to
+# commit into the CVS tree.
+#############################################################
 #sh s_cscope		# Cscope files.
 
+#############################################################
+# Create the build environments last, they use files created
+# by previous steps.
+#############################################################
 sh s_brew		# BREW support.
 sh s_brew_dsp		# BREW support: build environment.
 sh s_s60		# S60 support.

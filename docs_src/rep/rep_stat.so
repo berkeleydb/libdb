@@ -1,4 +1,4 @@
-m4_comment([$Id: rep_stat.so,v 10.42 2007/06/22 16:57:17 bostic Exp $])
+m4_comment([$Id: rep_stat.so,v 10.46 2007/12/05 13:39:41 sue Exp $])
 
 define(M4PAGELOCAL, [rep_stat, rep_stat_print])
 include(m4/m4.seealso)
@@ -67,7 +67,7 @@ of the application's m4_arg(send) function may be sent to another client
 instead.)])
 
 m4_field(u_int32_t, st_dupmasters,
-[The number of duplicate master conditions detected.])
+[The number of duplicate master conditions originally detected at this site.])
 
 m4_field(u_int32_t, st_egen,
 [The current election generation number.])
@@ -146,6 +146,18 @@ m4_field(u_int32_t, st_master,
 m4_field(u_int32_t, st_master_changes,
 [The number of times the master has changed.])
 
+m4_field(u_int32_t, st_max_lease_sec,
+[The number of seconds of the longest lease (the total lease time
+is m4_arg(st_max_lease_sec) plus m4_arg(st_max_lease_usec)).])
+
+m4_field(u_int32_t, st_max_lease_usec,
+[The number of microseconds of the longest lease (the total lease
+time is m4_arg(st_max_lease_sec) plus m4_arg(st_max_lease_usec)).])
+
+m4_field(DB_LSN, st_max_perm_lsn,
+[The LSN of the maximum permanent log record, or 0 if there are no
+permanent log records.])
+
 m4_field(u_int32_t, st_msgs_badgen,
 [The number of messages received with a bad generation number.])
 
@@ -171,7 +183,7 @@ In replication environments configured as clients, the next LSN to be used.])
 m4_field(u_int32_t, st_next_pg,
 [The next page number we expect to receive.])
 
-m4_field(int, st_nsites,
+m4_field(u_int32_t, st_nsites,
 [The number of sites used in the last election.])
 
 m4_field(u_int32_t, st_nthrottles,
@@ -219,7 +231,7 @@ being waited for, or 0 if no pages are currently missing.])
 
 m4_tagend
 
-m4_when_after_envopen(rep_stat)
+m4_when(rep_stat, before, dbenv_open)
 
 m4_return(rep_stat, std)
 

@@ -51,8 +51,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "NDEBUG" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192  /GF /O2 /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_EMU/libdb46s.lib"
-# ADD LIB32 /nologo /out:"Release_EMU/libdb46s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_EMU/libdb47s.lib"
+# ADD LIB32 /nologo /out:"Release_EMU/libdb47s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -78,8 +78,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192  /GF /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_EMU/libdb46sd.lib"
-# ADD LIB32 /nologo /out:"Debug_EMU/libdb46sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_EMU/libdb47sd.lib"
+# ADD LIB32 /nologo /out:"Debug_EMU/libdb47sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -105,8 +105,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "NDEBUG" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /O2 /M$(CECrtMT)  /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_ARMV4/libdb46s.lib"
-# ADD LIB32 /nologo /out:"Release_ARMV4/libdb46s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_ARMV4/libdb47s.lib"
+# ADD LIB32 /nologo /out:"Release_ARMV4/libdb47s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -132,8 +132,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /M$(CECrtMTDebug)  /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_ARMV4/libdb46sd.lib"
-# ADD LIB32 /nologo /out:"Debug_ARMV4/libdb46sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_ARMV4/libdb47sd.lib"
+# ADD LIB32 /nologo /out:"Debug_ARMV4/libdb47sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -236,6 +236,10 @@ SOURCE=..\clib\strsep.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\clib\time.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\common\db_byteorder.c
 # End Source File
 # Begin Source File
@@ -260,6 +264,10 @@ SOURCE=..\common\db_shash.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\common\dbt.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\common\mkpath.c
 # End Source File
 # Begin Source File
@@ -269,6 +277,10 @@ SOURCE=..\common\util_cache.c
 # Begin Source File
 
 SOURCE=..\common\util_log.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\zerofill.c
 # End Source File
 # Begin Source File
 
@@ -480,6 +492,10 @@ SOURCE=..\env\env_register.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\env\env_sig.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\env\env_stat.c
 # End Source File
 # Begin Source File
@@ -561,10 +577,6 @@ SOURCE=..\hmac\hmac.c
 # Begin Source File
 
 SOURCE=..\hmac\sha1.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\hsearch\hsearch.c
 # End Source File
 # Begin Source File
 
@@ -732,19 +744,7 @@ SOURCE=..\os\os_alloc.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os\os_fzero.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os\os_oflags.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\os\os_pid.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os\os_region.c
 # End Source File
 # Begin Source File
 
@@ -753,6 +753,10 @@ SOURCE=..\os\os_root.c
 # Begin Source File
 
 SOURCE=..\os\os_rpath.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os\os_stack.c
 # End Source File
 # Begin Source File
 
@@ -768,10 +772,6 @@ SOURCE=..\os_windows\ce_ctime.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\os_windows\ce_time.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\os_windows\os_abs.c
 # End Source File
 # Begin Source File
@@ -781,6 +781,10 @@ SOURCE=..\os_windows\os_clock.c
 # Begin Source File
 
 SOURCE=..\os_windows\os_config.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\os_windows\os_cpu.c
 # End Source File
 # Begin Source File
 
@@ -833,14 +837,6 @@ SOURCE=..\os_windows\os_rw.c
 # Begin Source File
 
 SOURCE=..\os_windows\os_seek.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os_windows\os_sleep.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\os_windows\os_spin.c
 # End Source File
 # Begin Source File
 

@@ -1,4 +1,4 @@
-m4_comment([$Id: build.so,v 10.11 2003/10/18 19:16:21 bostic Exp $])
+m4_comment([$Id: build.so,v 10.12 2007/09/26 15:11:32 bostic Exp $])
 
 m4_ref_title(Distributed Transactions,
     Building a Global Transaction Manager, [Transaction Manager],
@@ -112,15 +112,15 @@ is, conventional recovery, via m4_ref(db_recover) or by specifying the
 m4_ref(DB_RECOVER) flag to m4_ref(dbenv_open) should be run).  If the
 m4_ref(db_recover) utility is used, then the -e option must be
 specified.  In this case, the application will almost certainly want to
-specify environmental parameters via a DB_CONFIG file in the
+specify environmental parameters via a m4_ref(DB_CONFIG) file in the
 environment's home directory, so that m4_ref(db_recover) can create an
 appropriately configured environment.  If the m4_ref(db_recover) utility
-is not used, then m4_ref(DB_PRIVATE) should not be specified, unless
-all processing including recovery, calls to m4_ref(txn_recover), and
-calls to finish prepared, but not yet complete transactions take place
-using the same database environment handle.  The GTM should then issue
-a m4_ref(txn_recover) call to the environment.  This call will return
-a list of prepared, but not yet committed or aborted transactions.  For
+is not used, then m4_ref(DB_PRIVATE) should not be specified, unless all
+processing including recovery, calls to m4_ref(txn_recover), and calls
+to finish prepared, but not yet complete transactions take place using
+the same database environment handle.  The GTM should then issue a
+m4_ref(txn_recover) call to the environment.  This call will return a
+list of prepared, but not yet committed or aborted transactions.  For
 each transaction, the GTM should look up the GID in its local store to
 determine if the transaction should commit or abort.])
 

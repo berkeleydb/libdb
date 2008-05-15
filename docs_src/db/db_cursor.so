@@ -1,4 +1,4 @@
-m4_comment([$Id: db_cursor.so,v 10.54 2007/05/31 18:52:36 bostic Exp $])
+m4_comment([$Id: db_cursor.so,v 10.55 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL, dbh_cursor)
 include(m4/m4.seealso)
@@ -70,7 +70,7 @@ specifies the transaction context in which the cursor may be used.])
 
 m4_paramend
 
-m4_err(dbh_cursor, repinval, einval)
+m4_err(dbh_cursor, rephandle, replockout, einval)
 
 m4_seealso(Dbc)
 m4_page_footer

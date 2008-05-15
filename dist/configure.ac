@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 12.64 2007/05/08 21:16:46 bostic Exp $
+# $Id: configure.ac,v 12.81 2008/05/06 03:03:36 david Exp $
 # Process this file with autoconf to produce a configure script.
 
 PACKAGE=db
@@ -37,6 +37,7 @@ AC_SUBST(CPPFLAGS)
 AC_SUBST(CRYPTO_OBJS)
 AC_SUBST(CXX)
 AC_SUBST(CXXFLAGS)
+AC_SUBST(DB_CONST)
 AC_SUBST(DB_PROTO1)
 AC_SUBST(DB_PROTO2)
 AC_SUBST(DEFAULT_LIB)
@@ -158,7 +159,9 @@ aix4.3.*|aix5*)
 	aix4.3.*)
 		CPPFLAGS="$CPPFLAGS -D_LINUX_SOURCE_COMPAT";;
 	esac
-	optimize_debug="-O2"
+	# Trying to optimize too aggressively on AIX leads to problems, the 
+	# compiler (xlc 8.0) seems to reorder code when it shouldn't.
+	optimize_debug="-O0"
 	CC=${CC-"xlc_r"}
 	CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE"
 	LDFLAGS="$LDFLAGS -Wl,-brtl";;
@@ -232,25 +235,19 @@ AC_C_CONST
 AC_C_INLINE
 
 # We use prototypes and the keyword "const" in db.h which doesn't include
-# db_config.h, so we have to figure out what to do there.   We don't have
-# much choice, we look at internal autoconf variables.
-AC_SUBST(DB_CONST)
+# db_config.h, so we have to figure out what to do there.
+#
+# There is an autoconf AC_C_PROTOTYPES macro, but as all it does is define
+# db_config.h variables, it doesn't help us.
+#
+# We don't have much choice, we look at internal autoconf variables.
 if test "$ac_cv_c_const" != "yes"; then
 	DB_CONST="#define const"
 fi
 
-# Now prototypes.
-#
-# There is an autoconf AC_C_PROTOTYPES macro, but it doesn't set internal
-# variables, so it doesn't help us at all -- use the internal variable for
-# STDC compilers instead.
-#
-# First, clear __P, some other systems use it too.
+# Clear __P, some other systems use it too.
 DB_PROTO1="#undef __P"
-
-# AC_PROG_CC_STDC only sets ac_cv_prog_cc_stdc if the test fails, so
-# check for "no", not "yes".
-if test "$ac_cv_prog_cc_stdc" = "no"; then
+if test "$ac_cv_prog_cc_c89" = "no"; then
 	DB_PROTO2="#define	__P(protos)	()"
 else
 	DB_PROTO2="#define	__P(protos)	protos"
@@ -366,12 +363,13 @@ fi
 case "$host_os" in
     darwin*)
         LIBTSO_MODULE=""
-        LIBTSO_MODSUFFIX=".dylib"
-    ;;
+        LIBTSO_MODSUFFIX=".dylib";;
+    *qnx*)
+        LIBTSO_MODULE=""
+        LIBTSO_MODSUFFIX=$MODSUFFIX;;
     *)
         LIBTSO_MODULE="-module"
-        LIBTSO_MODSUFFIX=$MODSUFFIX
-    ;;
+        LIBTSO_MODSUFFIX=$MODSUFFIX;;
 esac
 
 # C API.
@@ -411,7 +409,11 @@ if test "$db_cv_java" = "yes"; then
 	fi
 
         # A classpath that includes . is needed to check for Java
-	CLASSPATH=".:$CLASSPATH"
+	# Since Cygwin uses Windows' javac, we need Windows path separators
+	case "$host_os" in 
+	cygwin*)	CLASSPATH=".;$CLASSPATH";;
+	*)		CLASSPATH=".:$CLASSPATH";;
+	esac
 	export CLASSPATH
 	AC_PROG_JAVAC
 	AC_PROG_JAR
@@ -469,10 +471,9 @@ fi
 AC_HEADER_STAT
 AC_HEADER_TIME
 AC_HEADER_DIRENT
-AC_CHECK_HEADERS(sys/select.h sys/socket.h sys/time.h)
+AC_CHECK_HEADERS(execinfo.h sys/select.h sys/socket.h sys/time.h)
 AC_CHECK_MEMBERS([struct stat.st_blksize])
 AM_TYPES
-AM_SOCKLEN_T
 
 AC_CACHE_CHECK([for ANSI C exit success/failure values], db_cv_exit_defines, [
 AC_TRY_COMPILE([#include <stdlib.h>], return (EXIT_SUCCESS);,
@@ -480,7 +481,16 @@ AC_TRY_COMPILE([#include <stdlib.h>], return (EXIT_SUCCESS);,
 if test "$db_cv_exit_defines" = "yes"; then
 	AC_DEFINE(HAVE_EXIT_SUCCESS)
 	AH_TEMPLATE(HAVE_EXIT_SUCCESS,
-    [Define to 1 if you have EXIT_SUCCESS/EXIT_FAILURE #defines.])
+	    [Define to 1 if platform has EXIT_SUCCESS/EXIT_FAILURE #defines.])
+fi
+
+AC_CACHE_CHECK([for getopt optreset variable], db_cv_optreset, [
+AC_TRY_LINK([#include <unistd.h>], extern int optreset; optreset = 1;,
+    [db_cv_optreset=yes], [db_cv_optreset=no])])
+if test "$db_cv_optreset" = "yes"; then
+	AC_DEFINE(HAVE_GETOPT_OPTRESET)
+	AH_TEMPLATE(HAVE_GETOPT_OPTRESET,
+	    [Define to 1 if getopt supports the optreset variable.])
 fi
 
 # Check for mutexes.
@@ -528,47 +538,25 @@ AC_REPLACE_FUNCS(\
 
 # Check for system functions we optionally use.
 AC_CHECK_FUNCS(\
-	_fstati64 directio fchmod fclose fcntl fdatasync fgetc fgets\
-	fopen fwrite getaddrinfo getrusage gettimeofday getuid hstrerror\
-	localtime mprotect pstat_getdynamic pthread_yield sched_yield\
-	select sigaction snprintf stat strftime sysconf time vsnprintf\
-	yield)
+	_fstati64 backtrace backtrace_symbols directio fchmod fclose\
+	fcntl fdatasync fgetc fgets fopen fwrite getgid\
+	getrusage getuid hstrerror mprotect pstat_getdynamic\
+	pthread_yield sched_yield select setgid setuid sigaction\
+	snprintf stat sysconf vsnprintf yield)
 
-# Replication can't run correctly if ftruncate isn't available.
-AC_CHECK_FUNCS(ftruncate)
-if test \
-    "$db_cv_build_replication" = "yes" -a "$ac_cv_func_ftruncate" = "no"; then
-	db_cv_build_replication=no
-	AC_MSG_WARN([replication requires ftruncate, replication disabled.])
-fi
+AC_TIMERS
 
-# AIX 4.3 will link applications with calls to clock_gettime, but the
-# calls always fail.
+# Ftruncate.
+# We've run into a problem with ftruncate on Alpha/Tru64, the issue is that
+# after a truncate the last page of the file mmaps as all zeros.  So just don't
+# use ftruncate.
 case "$host_os" in
-aix4.3.*)
-	;;
+osf*)
+	AC_MSG_WARN(
+	    [ftruncate ignored on $host_os-$host_vendor.]);;
 *)
-	AC_CHECK_FUNCS(clock_gettime);;
+	AC_CHECK_FUNCS(ftruncate);;
 esac
-
-# ctime_r --
-#
-# There are two versions of ctime_r, one of which takes a buffer length as a
-# third argument, and one which only takes two arguments.  (There is also a
-# difference in return values, but we handle that in the code itself.)
-AC_CHECK_FUNCS(ctime_r)
-if test "$ac_cv_func_ctime_r" = "yes"; then
-AC_CACHE_CHECK([for 2 or 3 argument version of ctime_r], db_cv_ctime_r_3arg, [
-AC_TRY_LINK([
-#include <time.h>], [
-	ctime_r(NULL, NULL, 100);
-],  [db_cv_ctime_r_3arg="3-argument"], [db_cv_ctime_r_3arg="2-argument"])])
-fi
-if test "$db_cv_ctime_r_3arg" = "3-argument"; then
-	AC_DEFINE(HAVE_CTIME_R_3ARG)
-	AH_TEMPLATE(HAVE_CTIME_R_3ARG,
-	    [Define to 1 if ctime_r takes a buffer length as a third argument.])
-fi
 
 # Pread/pwrite.
 # HP-UX has pread/pwrite, but it doesn't work with largefile support.
@@ -581,7 +569,22 @@ hpux*|sysv4.3*-ncr)
 	AC_CHECK_FUNCS(pread pwrite);;
 esac
 
-# Check for fcntl(2) to deny child process access to file descriptors.
+# Check for getaddrinfo; do the test explicitly instead of using AC_CHECK_FUNCS
+# because <netdb.h> isn't a standard include file.
+AC_CACHE_CHECK([for getaddrinfo], db_cv_getaddrinfo, [
+AC_TRY_LINK([
+#include <sys/types.h>
+#include <netdb.h>], [
+	getaddrinfo(0, 0, 0, 0);
+], [db_cv_getaddrinfo=yes], [db_cv_getaddrinfo=no])])
+if test "$db_cv_getaddrinfo" = "yes"; then
+	AC_DEFINE(HAVE_GETADDRINFO)
+	AH_TEMPLATE(HAVE_GETADDRINFO,
+	    [Define to 1 if you have the `getaddrinfo' function.])
+fi
+
+# Check for the fcntl F_SETFD flag to deny child process access to file
+# descriptors.
 AC_CACHE_CHECK([for fcntl/F_SETFD], db_cv_fcntl_f_setfd, [
 AC_TRY_LINK([
 #include <sys/types.h>
@@ -655,7 +658,22 @@ sunos*)
 	AC_MSG_WARN([shmget(2) interface ignored on $host_os-$host_vendor.]);;
 *)
 	shmget_ok=yes
-	AC_CHECK_FUNCS(shmget, , shmget_ok=no);;
+	AC_CHECK_FUNCS(shmget, , shmget_ok=no)
+
+	# Check for shmctl to lock down shared memory segments.
+	AC_CACHE_CHECK([for shmctl], db_cv_shmctl_shm_lock, [
+	AC_TRY_LINK([
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdio.h>], [
+		shmctl(0, SHM_LOCK, NULL);
+	], [db_cv_shmctl_shm_lock=yes], [db_cv_shmctl_shm_lock=no])])
+	if test "$db_cv_shmctl_shm_lock" = "yes"; then
+		AC_DEFINE(HAVE_SHMCTL_SHM_LOCK)
+		AH_TEMPLATE(HAVE_SHMCTL_SHM_LOCK,
+	    [Define to 1 if shmctl/SHM_LOCK locks down shared memory segments.])
+	fi;;
 esac
 
 # We require either mmap/munmap(2) or shmget(2).
@@ -778,7 +796,7 @@ fi
 
 # If building for QNX, we need additional OS files.
 if test "$qnx_build" = "yes"; then
-	ADDITIONAL_OBJS="$ADDITIONAL_OBJS os_qnx_open${o}"
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS os_qnx_fsync${o} os_qnx_open${o}"
 fi
 
 # We need to add the additional object files into the Makefile with the correct
@@ -810,10 +828,10 @@ CREATE_LIST="Makefile
 # to do DB_VERSION_UNIQUE_NAME substitution.
 if test "$db_cv_uniquename" = "yes"; then
 	CREATE_LIST="$CREATE_LIST
-	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/ext_def.in:$srcdir/../dbinc_auto/ext_prot.in"
+	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/api_flags.in:$srcdir/../dbinc_auto/ext_def.in:$srcdir/../dbinc_auto/ext_prot.in"
 else
 	CREATE_LIST="$CREATE_LIST
-	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/ext_prot.in"
+	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/api_flags.in:$srcdir/../dbinc_auto/ext_prot.in"
 fi
 
 # If configured for unique names, create the db_int_uext.h file (which

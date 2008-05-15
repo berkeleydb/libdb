@@ -1,0 +1,131 @@
+<!--$Id: lease.so,v 1.6 2007/11/27 19:36:55 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Master Leases</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
+<td align=right><a href="../rep/trans.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/clock_skew.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Master Leases</b></p>
+<p>Some applications have strict requirements about the consistency
+of data read on a master site.  Berkeley DB provides a mechanism
+called master leases to provide such consistency.
+Without master leases, it is sometimes possible for
+Berkeley DB to return old data to an application when newer data is
+available due to unfortunate scheduling as illustrated below:</p>
+<ol>
+<p><li><b>Application on master site</b>:   Read data item
+<i>foo</i> via Berkeley DB <a href="../../api_c/db_get.html">DB-&gt;get</a> or <a href="../../api_c/dbc_get.html">DBcursor-&gt;get</a> call.
+<p><li><b>Application on master site</b>: sleep, get descheduled, etc.
+<p><li><b>System</b>: Master changes role, becomes a client.
+<p><li><b>System</b>: New site is elected master.
+<p><li><b>System</b>: New master modifies data item <i>foo</i>.
+<p><li><b>Application</b>: Berkeley DB returns old data for <i>foo</i>
+to application.
+</ol>
+<p>By using master leases, Berkeley DB can provide guarantees about the
+consistency of data read on a master site.  The master site
+can be considered a recognized authority for the data and
+consequently can provide authoritative reads.  Clients grant master
+leases to a master site.  By doing so, clients acknowledge
+the right of that site to retain the role of master
+for a period of time.
+During that period of time, clients cannot elect a new
+master, become master, nor grant their lease to another site.</p>
+<p>By holding a collection of granted leases, a master site can
+guarantee to the application that the data returned is the
+current, authoritative value.  As a master performs operations,
+it continually requests updated grants from the clients.
+When a read operation is required, the master guarantees
+that it holds a valid collection of lease grants from clients
+before returning data to the application.  By holding leases,
+Berkeley DB provides several guarantees to the application:</p>
+<ol>
+<p><li>Authoritative reads: A guarantee that the data being read by the
+application is the current value.
+<p><li>Durability from rollback: A guarantee that the data being written or read by the
+application is permanent across a majority of client sites and will
+never be rolled back.
+<p>The rollback guarantee also depends on the <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag.
+The guarantee is effective as long as there isn't total
+replication group failure while clients have granted leases
+but are holding the updates in their cache.
+The application must weigh the performance impact of synchronous
+transactions against the risk of total replication group failure.
+If clients grant a lease while holding updated data in cache,
+and total failure occurs, then the data is no longer present
+on the clients and rollback can occur if the master also crashes.</p>
+<p>The guarantee that data will not be rolled back applies only
+to data successfully committed on a master.
+Data read on a client, or read while ignoring leases
+can be rolled back.</p>
+<p><li>Freshness: A guarantee that the data being read by the application
+on the <i>master</i> is up-to-date and has not been
+modified or removed during the read.
+<p>The read authority is only on the master.  Read operations on a client
+always ignore leases and consequently, that operation can return stale data.</p>
+<p><li>Master viability: A guarantee that a current master with valid
+leases cannot encounter a duplicate master situation.
+<p>Leases remove the possibility of a duplicate master situation that
+forces the current master to downgrade to a client.  However, it is
+still possible that old masters with expired leases can discover a later
+master and return <a href="../../api_c/rep_message.html#DB_REP_DUPMASTER">DB_REP_DUPMASTER</a> to the application.</p>
+</ol>
+<p>There are several requirements of the application using leases:</p>
+<ol>
+<p><li>Replication Manager applications must configure a majority (or larger)
+acknowledgement policy via the <a href="../../api_c/repmgr_ack_policy.html">DB_ENV-&gt;repmgr_set_ack_policy</a> method.  Base API
+users must implement and enforce such a policy on their own.
+<p><li>Base API users must return an error from the send callback function when
+the majority acknowledgement policy is not met for permanent records
+marked with <a href="../../api_c/rep_transport.html#DB_REP_PERMANENT">DB_REP_PERMANENT</a>.  Note that the Replication Manager
+automatically fulfills this requirement.
+<p><li>Applications must set the number of sites in the group using the
+<a href="../../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a> method before starting replication and cannot
+change it during operation.
+<p><li>Using leases in a replication group is all or none.  Behavior is
+undefined when some sites configure leases and others do not.
+Use the <a href="../../api_c/rep_config.html">DB_ENV-&gt;rep_set_config</a> method to turn on leases.
+<p><li>The configured lease timeout value must be the same on all sites
+in a replication group, set via the <a href="../../api_c/rep_timeout.html">DB_ENV-&gt;rep_set_timeout</a> method.
+<p><li>The configured clock_scale_factor value must be the same on all sites
+in a replication group.  This value defaults to no skew, but can
+be set via the <a href="../../api_c/rep_clockskew.html">DB_ENV-&gt;rep_set_clockskew</a> method.
+<p><li>Applications that care about read guarantees must perform all read
+operations on the master.  Reading on a client does not guarantee
+freshness.
+<p><li>The application must use elections to choose a master site.  It must
+never simply declare a master without having won an election (as is
+allowed without Master Leases).
+</ol>
+<p>Master leases are based on timeouts.  Berkeley DB assumes that time
+always runs forward.  Users who change the system clock on
+either client or master sites when leases are in use void all
+guarantees and can get undefined behavior.  See the
+<a href="../../api_c/rep_timeout.html">DB_ENV-&gt;rep_set_timeout</a> method for more information.</p>
+<p>Read operations on a master that should not be subject to
+leases can use the <a href="../../api_c/db_get.html#DB_IGNORE_LEASE">DB_IGNORE_LEASE</a> flag to the
+<a href="../../api_c/db_get.html">DB-&gt;get</a> method or the <a href="../../api_c/dbc_get.html">DBcursor-&gt;get</a> method.  Read
+operations on a client always imply leases are ignored.</p>
+<p>Clients are forbidden from participating in elections while
+they have an outstanding lease granted to a master.
+Therefore, if the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method is called, then Berkeley DB will
+block, waiting until its lease grant expires before participating in
+any election.  While it waits, the client attempts to
+contact the current master.  If the client finds a current
+master, then it returns from the <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> method.
+When leases are configured and the
+lease has never yet been granted (on start-up), clients
+must wait a full lease timeout before participating in
+an election.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../rep/trans.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/clock_skew.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_rsearch.c,v 12.14 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_rsearch.c,v 12.17 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -133,7 +133,8 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 				 * eliminate any concurrency.  A possible fix
 				 * would be to lock the last leaf page instead.
 				 */
-				ret = __memp_fput(mpf, h, dbc->priority);
+				ret = __memp_fput(mpf,
+				    dbc->thread_info, h, dbc->priority);
 				if ((t_ret =
 				    __TLPUT(dbc, lock)) != 0 && ret == 0)
 					ret = t_ret;
@@ -170,6 +171,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 					if (!LF_ISSET(SR_PAST_EOF) ||
 					    recno > t_recno + 1) {
 						ret = __memp_fput(mpf,
+						    dbc->thread_info,
 						    h, dbc->priority);
 						h = NULL;
 						if ((t_ret = __TLPUT(dbc,
@@ -187,7 +189,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			}
 
 			/* Correct from 1-based to 0-based for a page offset. */
-			BT_STK_ENTER(dbp->dbenv,
+			BT_STK_ENTER(dbp->env,
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
@@ -206,7 +208,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 
 			/* Correct from 1-based to 0-based for a page offset. */
 			--recno;
-			BT_STK_ENTER(dbp->dbenv,
+			BT_STK_ENTER(dbp->env,
 			    cp, h, recno, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
@@ -221,20 +223,20 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			pg = ri->pgno;
 			break;
 		default:
-			return (__db_pgfmt(dbp->dbenv, h->pgno));
+			return (__db_pgfmt(dbp->env, h->pgno));
 		}
 		--indx;
 
 		/* Return if this is the lowest page wanted. */
 		if (stop == LEVEL(h)) {
-			BT_STK_ENTER(dbp->dbenv,
+			BT_STK_ENTER(dbp->env,
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
 			return (0);
 		}
 		if (stack) {
-			BT_STK_PUSH(dbp->dbenv,
+			BT_STK_PUSH(dbp->env,
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
@@ -255,7 +257,8 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			    (LEVEL(h) - 1) == LEAFLEVEL)
 				stack = 1;
 
-			if ((ret = __memp_fput(mpf, h, dbc->priority)) != 0)
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority)) != 0)
 				goto err;
 			h = NULL;
 
@@ -273,13 +276,14 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 			}
 		}
 
-		if ((ret = __memp_fget(mpf, &pg, dbc->txn, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pg,
+		     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 			goto err;
 	}
 	/* NOTREACHED */
 
-err:	if (h != NULL &&
-	    (t_ret = __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+err:	if (h != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	BT_STK_POP(cp);
@@ -316,8 +320,8 @@ __bam_adjust(dbc, adjust)
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
 		h = epg->page;
 		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
-			if ((ret = __memp_dirty(mpf,
-			    &h, dbc->txn, dbc->priority, 0)) != 0)
+			if ((ret = __memp_dirty(mpf, &h,
+			    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 				return (ret);
 			epg->page = h;
 			if (DBC_LOGGING(dbc)) {
@@ -368,12 +372,13 @@ __bam_nrecs(dbc, rep)
 	pgno = dbc->internal->root;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno,
+	     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 		return (ret);
 
 	*rep = RE_NREC(h);
 
-	ret = __memp_fput(mpf, h, dbc->priority);
+	ret = __memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 

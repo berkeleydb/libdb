@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: SequenceConfig.java,v 12.5 2007/05/17 15:15:41 bostic Exp $
+ * $Id: SequenceConfig.java,v 12.7 2008/01/17 05:04:53 mjc Exp $
  */
 
 package com.sleepycat.db;
@@ -13,11 +13,18 @@ import com.sleepycat.db.internal.DbConstants;
 import com.sleepycat.db.internal.DbSequence;
 import com.sleepycat.db.internal.DbTxn;
 
+/**
+Specify the attributes of a sequence.
+*/
 public class SequenceConfig implements Cloneable {
     /*
      * For internal use, final to allow null as a valid value for
      * the config parameter.
      */
+    /**
+    Default configuration used if null is passed to methods that create a
+    cursor.
+    */
     public static final SequenceConfig DEFAULT = new SequenceConfig();
 
     /* package */
@@ -38,74 +45,240 @@ public class SequenceConfig implements Cloneable {
     private boolean autoCommitNoSync = false;
     private boolean wrap = false;
 
+    /**
+    An instance created using the default constructor is initialized with
+    the system's default settings.
+    */
     public SequenceConfig() {
     }
 
+    /**
+Configure the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method to
+    create the sequence if it does not already exist.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param allowCreate
+If true,
+configure the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method to
+    create the sequence if it does not already exist.
+    */
     public void setAllowCreate(final boolean allowCreate) {
         this.allowCreate = allowCreate;
     }
 
+    /**
+Return true if the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method is configured
+    to create the sequence if it does not already exist.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method is configured
+    to create the sequence if it does not already exist.
+    */
     public boolean getAllowCreate() {
         return allowCreate;
     }
 
+    /**
+Set the
+Configure the number of elements cached by a sequence handle.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param cacheSize
+The Configure the number of elements cached by a sequence handle.
+    */
     public void setCacheSize(final int cacheSize) {
         this.cacheSize = cacheSize;
     }
 
+    /**
+Return the number of elements cached by a sequence handle..
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The number of elements cached by a sequence handle..
+    */
     public int getCacheSize() {
         return cacheSize;
     }
 
+    /**
+Specify that the sequence should be decremented.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param decrement
+If true,
+specify that the sequence should be decremented.
+    */
     public void setDecrement(boolean decrement) {
         this.decrement = decrement;
     }
 
+    /**
+Return true if the sequence is configured to decrement.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the sequence is configured to decrement.
+    */
     public boolean getDecrement() {
          return decrement;
     }
 
+    /**
+Configure the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method to
+    fail if the database already exists.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param exclusiveCreate
+If true,
+configure the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method to
+    fail if the database already exists.
+    */
     public void setExclusiveCreate(final boolean exclusiveCreate) {
         this.exclusiveCreate = exclusiveCreate;
     }
 
+    /**
+Return true if the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method is configured to
+    fail if the database already exists.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the {@link com.sleepycat.db.Database#openSequence Database.openSequence} method is configured to
+    fail if the database already exists.
+    */
     public boolean getExclusiveCreate() {
         return exclusiveCreate;
     }
 
+    /**
+Set the
+Set the initial value for a sequence.
+<p>This call is only
+    effective when the sequence is being created.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param initialValue
+The Set the initial value for a sequence.
+    */
     public void setInitialValue(long initialValue) {
         this.initialValue = initialValue;
     }
 
+    /**
+Return the initial value for a sequence..
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The initial value for a sequence..
+    */
     public long getInitialValue() {
         return initialValue;
     }
 
+    /**
+Configure auto-commit operations on the sequence to not flush
+    the transaction log.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param autoCommitNoSync
+If true,
+configure auto-commit operations on the sequence to not flush
+    the transaction log.
+    */
     public void setAutoCommitNoSync(final boolean autoCommitNoSync) {
         this.autoCommitNoSync = autoCommitNoSync;
     }
 
+    /**
+Return true if the auto-commit operations on the sequence are configure to not
+    flush the transaction log..
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the auto-commit operations on the sequence are configure to not
+    flush the transaction log..
+    */
     public boolean getAutoCommitNoSync() {
         return autoCommitNoSync;
     }
 
+    /**
+    Configure a sequence range.  This call is only effective when the
+    sequence is being created.
+    <p>
+    @param min
+    The minimum value for the sequence.
+    @param max
+    The maximum value for the sequence.
+    */
     public void setRange(final long min, final long max) {
         this.rangeMin = min;
         this.rangeMax = max;
     }
 
+    /**
+Return the minimum value for the sequence.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The minimum value for the sequence.
+    */
     public long getRangeMin() {
         return rangeMin;
     }
 
+    /**
+Return the maximum value for the sequence.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The maximum value for the sequence.
+    */
     public long getRangeMax() {
         return rangeMax;
     }
 
+    /**
+Specify that the sequence should wrap around when it is
+    incremented (decremented) past the specified maximum (minimum) value.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@param wrap
+If true,
+specify that the sequence should wrap around when it is
+    incremented (decremented) past the specified maximum (minimum) value.
+    */
     public void setWrap(final boolean wrap) {
         this.wrap = wrap;
     }
 
+    /**
+Return true if the sequence will wrap around when it is incremented
+    (decremented) past the specified maximum (minimum) value.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the sequence will wrap around when it is incremented
+    (decremented) past the specified maximum (minimum) value.
+    */
     public boolean getWrap() {
         return wrap;
     }

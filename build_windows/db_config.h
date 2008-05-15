@@ -36,6 +36,12 @@
 /* Define to 1 if you have the `atol' function. */
 #define HAVE_ATOL 1
 
+/* Define to 1 if you have the `backtrace' function. */
+/* #undef HAVE_BACKTRACE */
+
+/* Define to 1 if you have the `backtrace_symbols' function. */
+/* #undef HAVE_BACKTRACE_SYMBOLS */
+
 /* Define to 1 if building BREW. */
 /* #undef HAVE_BREW */
 
@@ -44,6 +50,9 @@
 
 /* Define to 1 if you have the `clock_gettime' function. */
 /* #undef HAVE_CLOCK_GETTIME */
+
+/* Define to 1 if clock_gettime supports CLOCK_MONOTONIC. */
+/* #undef HAVE_CLOCK_MONOTONIC */
 
 /* Define to 1 if Berkeley DB release includes strong cryptography. */
 #ifndef HAVE_SMALLBUILD
@@ -65,6 +74,9 @@
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 /* #undef HAVE_DLFCN_H */
+
+/* Define to 1 if you have the <execinfo.h> header file. */
+/* #undef HAVE_EXECINFO_H */
 
 /* Define to 1 if you have EXIT_SUCCESS/EXIT_FAILURE #defines. */
 #define HAVE_EXIT_SUCCESS 1
@@ -93,9 +105,6 @@
 /* Define to 1 if allocated filesystem blocks are not zeroed. */
 #define HAVE_FILESYSTEM_NOTZERO 1
 
-/* Define to 1 to build Berkeley DB with a fine-grained lock manager. */
-/* #undef HAVE_FINE_GRAINED_LOCK_MANAGER */
-
 /* Define to 1 if you have the `fopen' function. */
 #define HAVE_FOPEN 1
 
@@ -114,12 +123,18 @@
 /* Define to 1 if you have the `getenv' function. */
 #define HAVE_GETENV 1
 
+/* Define to 1 if you have the `getgid' function. */
+/* #undef HAVE_GETGID */
+
 /* Define to 1 if you have the `getopt' function. */
 /*
  * Windows does not have the getopt function, but as Berkeley DB example
  * programs require getopt, we handle it outside of this configuration.
  */
 #define	HAVE_GETOPT 1
+
+/* Define to 1 if getopt supports the optreset variable. */
+#define HAVE_GETOPT_OPTRESET 1
 
 /* Define to 1 if you have the `getrusage' function. */
 /* #undef HAVE_GETRUSAGE */
@@ -356,6 +371,15 @@
 /* Define to 1 if you have the `select' function. */
 /* #undef HAVE_SELECT */
 
+/* Define to 1 if you have the `setgid' function. */
+/* #undef HAVE_SETGID */
+
+/* Define to 1 if you have the `setuid' function. */
+#define HAVE_SETUID 1
+
+/* Define to 1 if shmctl/SHM_LOCK locks down shared memory segments. */
+/* #undef HAVE_SHMCTL_SHM_LOCK */
+
 /* Define to 1 if you have the `shmget' function. */
 /* #undef HAVE_SHMGET */
 
@@ -490,13 +514,13 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 4.6.21"
+#define PACKAGE_STRING "Berkeley DB 4.7.25"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-4.6.21"
+#define PACKAGE_TARNAME "db-4.7.25"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.6.21"
+#define PACKAGE_VERSION "4.7.25"
 
 /* The size of a `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */

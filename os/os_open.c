@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_open.c,v 12.22 2007/05/17 15:15:46 bostic Exp $
+ * $Id: os_open.c,v 12.29 2008/03/26 04:11:35 david Exp $
  */
 
 #include "db_config.h"
@@ -14,34 +14,36 @@
  * __os_open --
  *	Open a file descriptor (including page size and log size information).
  *
- * PUBLIC: int __os_open __P((DB_ENV *,
+ * PUBLIC: int __os_open __P((ENV *,
  * PUBLIC:     const char *, u_int32_t, u_int32_t, int, DB_FH **));
  */
 int
-__os_open(dbenv, name, page_size, flags, mode, fhpp)
-	DB_ENV *dbenv;
+__os_open(env, name, page_size, flags, mode, fhpp)
+	ENV *env;
 	const char *name;
 	u_int32_t page_size, flags;
 	int mode;
 	DB_FH **fhpp;
 {
+	DB_ENV *dbenv;
 	DB_FH *fhp;
 	int oflags, ret;
 
 	COMPQUIET(page_size, 0);
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	*fhpp = NULL;
 	oflags = 0;
 
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: open %s", name);
+		__db_msg(env, "fileops: open %s", name);
 
 #define	OKFLAGS								\
 	(DB_OSO_ABSMODE | DB_OSO_CREATE | DB_OSO_DIRECT | DB_OSO_DSYNC |\
 	DB_OSO_EXCL | DB_OSO_RDONLY | DB_OSO_REGION | DB_OSO_SEQ |	\
 	DB_OSO_TEMP | DB_OSO_TRUNC)
-	if ((ret = __db_fchk(dbenv, "__os_open", flags, OKFLAGS)) != 0)
+	if ((ret = __db_fchk(env, "__os_open", flags, OKFLAGS)) != 0)
 		return (ret);
 
 #if defined(O_BINARY)
@@ -87,14 +89,22 @@ __os_open(dbenv, name, page_size, flags, mode, fhpp)
 	 * directories whenever a file is opened.
 	 */
 	if (dbenv != NULL &&
-	    dbenv->dir_mode != 0 && LF_ISSET(DB_OSO_CREATE) &&
-	    (ret = __db_mkpath(dbenv, name)) != 0)
+	    env->dir_mode != 0 && LF_ISSET(DB_OSO_CREATE) &&
+	    (ret = __db_mkpath(env, name)) != 0)
 		return (ret);
 
 	/* Open the file. */
-	if ((ret = __os_openhandle(dbenv, name, oflags, mode, &fhp)) != 0)
+#ifdef HAVE_QNX
+	if (LF_ISSET(DB_OSO_REGION))
+		ret = __os_qnx_region_open(env, name, oflags, mode, &fhp);
+	else
+#endif
+	ret = __os_openhandle(env, name, oflags, mode, &fhp);
+	if (ret != 0)
 		return (ret);
 
+	if (LF_ISSET(DB_OSO_REGION))
+		F_SET(fhp, DB_FH_REGION);
 #ifdef HAVE_FCHMOD
 	/*
 	 * If the code using Berkeley DB is a library, that code may not be able
@@ -141,7 +151,7 @@ __os_open(dbenv, name, page_size, flags, mode, fhpp)
 #if defined(HAVE_UNLINK_WITH_OPEN_FAILURE) || defined(CONFIG_TEST)
 		F_SET(fhp, DB_FH_UNLINK);
 #else
-		(void)__os_unlink(dbenv, name);
+		(void)__os_unlink(env, name, 0);
 #endif
 	}
 

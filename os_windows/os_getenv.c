@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_getenv.c,v 1.7 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_getenv.c,v 1.9 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Retrieve an environment variable.
  */
 int
-__os_getenv(dbenv, name, bpp, buflen)
-	DB_ENV *dbenv;
+__os_getenv(env, name, bpp, buflen)
+	ENV *env;
 	const char *name;
 	char **bpp;
 	size_t buflen;
@@ -46,7 +46,7 @@ __os_getenv(dbenv, name, bpp, buflen)
 		goto small_buf;
 	}
 
-	TO_TSTRING(dbenv, name, tname, ret);
+	TO_TSTRING(env, name, tname, ret);
 	if (ret != 0)
 		return (ret);
 	/*
@@ -56,7 +56,7 @@ __os_getenv(dbenv, name, bpp, buflen)
 	 * malloc the tbuf memory.
 	 */
 	ret = GetEnvironmentVariable(tname, tbuf, sizeof(tbuf));
-	FREE_STRING(dbenv, tname);
+	FREE_STRING(env, tname);
 
 	/*
 	 * If GetEnvironmentVariable succeeds, the return value is the number
@@ -73,20 +73,20 @@ __os_getenv(dbenv, name, bpp, buflen)
 			*bpp = NULL;
 			return (0);
 		}
-		__db_syserr(dbenv, ret, "GetEnvironmentVariable");
+		__db_syserr(env, ret, "GetEnvironmentVariable");
 		return (__os_posix_err(ret));
 	}
 	if (ret > (int)sizeof(tbuf))
 		goto small_buf;
 
-	FROM_TSTRING(dbenv, tbuf, p, ret);
+	FROM_TSTRING(env, tbuf, p, ret);
 	if (ret != 0)
 		return (ret);
 	if (strlen(p) < buflen)
 		(void)strcpy(*bpp, p);
 	else
 		*bpp = NULL;
-	FREE_STRING(dbenv, p);
+	FREE_STRING(env, p);
 	if (*bpp == NULL)
 		goto small_buf;
 
@@ -94,7 +94,7 @@ __os_getenv(dbenv, name, bpp, buflen)
 
 small_buf:
 	*bpp = NULL;
-	__db_errx(dbenv,
+	__db_errx(env,
 	    "%s: buffer too small to hold environment variable %s",
 	    name, p);
 	return (EINVAL);

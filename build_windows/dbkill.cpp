@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: dbkill.cpp,v 12.6 2007/05/17 15:14:54 bostic Exp $
+ * $Id: dbkill.cpp,v 12.7 2008/01/08 20:58:07 bostic Exp $
  */
 /*
  * Kill -

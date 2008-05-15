@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep035.tcl,v 12.17 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep035.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep035
 # TEST	Test sync-up recovery in replication.
@@ -48,10 +48,11 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 	source ./include.tcl
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

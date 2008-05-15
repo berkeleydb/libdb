@@ -9,7 +9,7 @@
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="previous" href="logconfig.html" title="Configuring the Logging Subsystem" />
-    <link rel="next" href="txnexample_java.html" title="Transaction Example" />
+    <link rel="next" href="txnexample_java.html" title="Base API Transaction Example" />
   </head>
   <body>
     <div class="navheader">
@@ -46,7 +46,7 @@
           </dt>
           <dt>
             <span class="sect1">
-              <a href="txnexample_java.html">Transaction Example</a>
+              <a href="txnexample_java.html">Base API Transaction Example</a>
             </span>
           </dt>
           <dd>
@@ -70,7 +70,31 @@
           </dd>
           <dt>
             <span class="sect1">
-              <a href="inmem_txnexample_java.html">In-Memory Transaction Example</a>
+              <a href="txnexample_dpl.html">DPL Transaction Example</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="txnexample_dpl.html#txnguideexample_dpl">TxnGuide.java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="txnexample_dpl.html#payloaddataentity">PayloadDataEntity.java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="txnexample_dpl.html#storewriter">StoreWriter.java</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="inmem_txnexample_java.html">Base API In-Memory Transaction Example</a>
             </span>
           </dt>
         </dl>
@@ -149,7 +173,9 @@
             </li>
             <li>
               <p>
-                Open whatever database handles that you need.
+                If you are using the base API, open whatever database handles
+                that you need. Otherwise, open your store such that it is
+                configured for transactions.
             </p>
             </li>
             <li>
@@ -157,8 +183,7 @@
                 Spawn off worker threads. How many of these you need and
                 how they split their DB workload is entirely up to your
                 application's requirements. However, any worker threads
-                that perform write operations against your databases will do
-                the following:
+                that perform write operations will do the following:
             </p>
               <div class="orderedlist">
                 <ol type="a">
@@ -170,7 +195,7 @@
                   <li>
                     <p>
                         Perform one or more read and write
-                        operations against your databases.
+                        operations.
                     </p>
                   </li>
                   <li>
@@ -212,7 +237,7 @@
                   </li>
                   <li>
                     <p>
-                        Close your databases
+                            Close your databases or store.
                     </p>
                   </li>
                   <li>
@@ -228,7 +253,7 @@
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
-            Robust applications should monitor their database worker threads to
+                Robust DB applications should monitor their worker threads to
             make sure they have not died unexpectedly. If a thread does
             terminate abnormally, you must shutdown all your worker threads
             and then run normal recovery (you will have to reopen your
@@ -294,7 +319,7 @@
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Transaction Example</td>
+          <td width="40%" align="right" valign="top"> Base API Transaction Example</td>
         </tr>
       </table>
     </div>

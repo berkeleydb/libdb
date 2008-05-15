@@ -1,14 +1,14 @@
 <!--DO NOT EDIT: automatically built by build script.-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
-<title>Berkeley DB: Berkeley DB: C++ Handle Methods (version 4.6.21)</title>
+<title>Berkeley DB: Berkeley DB: C++ Handle Methods (version 4.7.25)</title>
 <meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
 <meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
 </head>
 <body bgcolor=white>
-<h3 align=center>Berkeley DB: C++ Handle Methods (version 4.6.21)</h3>
+<p align=center><b>Berkeley DB: C++ Handle Methods (version 4.7.25)</b></p>
 <table border=1 align=center>
 <tr><th>C++ Handle Methods</th><th>Description</th></tr>
 <!--Db::--><tr><td><a href="../api_cxx/db_class.html">Db</a></td><td>Create a database handle</td></tr>
@@ -92,6 +92,7 @@
 <!--DbEnv::log_flush--><tr><td><a href="../api_cxx/log_flush.html">DbEnv::log_flush</a></td><td>Flush log records</td></tr>
 <!--DbEnv::log_printf--><tr><td><a href="../api_cxx/log_printf.html">DbEnv::log_printf</a></td><td>Append informational message to the log</td></tr>
 <!--DbEnv::log_put--><tr><td><a href="../api_cxx/log_put.html">DbEnv::log_put</a></td><td>Write a log record</td></tr>
+<!--DbEnv::log_set_config--><tr><td><a href="../api_cxx/env_log_set_config.html">DbEnv::log_set_config</a></td><td>Configure the logging subsystem</td></tr>
 <!--DbEnv::log_stat--><tr><td><a href="../api_cxx/log_stat.html">DbEnv::log_stat</a></td><td>Return log subsystem statistics</td></tr>
 <!--DbEnv::lsn_reset--><tr><td><a href="../api_cxx/env_lsn_reset.html">DbEnv::lsn_reset</a></td><td>Reset database file LSNs</td></tr>
 <!--DbEnv::memp_fcreate--><tr><td><a href="../api_cxx/memp_fcreate.html">DbEnv::memp_fcreate</a></td><td>Create a memory pool file handle</td></tr>
@@ -112,6 +113,7 @@
 <!--DbEnv::remove--><tr><td><a href="../api_cxx/env_remove.html">DbEnv::remove</a></td><td>Remove an environment</td></tr>
 <!--DbEnv::rep_elect--><tr><td><a href="../api_cxx/rep_elect.html">DbEnv::rep_elect</a></td><td>Hold a replication election</td></tr>
 <!--DbEnv::rep_process_message--><tr><td><a href="../api_cxx/rep_message.html">DbEnv::rep_process_message</a></td><td>Process a replication message</td></tr>
+<!--DbEnv::rep_set_clockskew--><tr><td><a href="../api_cxx/rep_clockskew.html">DbEnv::rep_set_clockskew</a></td><td>Configure master lease clock adjustment</td></tr>
 <!--DbEnv::rep_set_config--><tr><td><a href="../api_cxx/rep_config.html">DbEnv::rep_set_config</a></td><td>Configure the replication subsystem</td></tr>
 <!--DbEnv::rep_set_limit--><tr><td><a href="../api_cxx/rep_limit.html">DbEnv::rep_set_limit</a></td><td>Limit data sent in response to a single message</td></tr>
 <!--DbEnv::rep_set_nsites--><tr><td><a href="../api_cxx/rep_nsites.html">DbEnv::rep_set_nsites</a></td><td>Configure replication group site count</td></tr>
@@ -141,6 +143,7 @@
 <!--DbEnv::set_event_notify--><tr><td><a href="../api_cxx/env_event_notify.html">DbEnv::set_event_notify</a></td><td>Set event notification callback</td></tr>
 <!--DbEnv::set_feedback--><tr><td><a href="../api_cxx/env_set_feedback.html">DbEnv::set_feedback</a></td><td>Set feedback callback</td></tr>
 <!--DbEnv::set_flags--><tr><td><a href="../api_cxx/env_set_flags.html">DbEnv::set_flags</a></td><td>Environment configuration</td></tr>
+<!--DbEnv::set_intermediate_dir_mode--><tr><td><a href="../api_cxx/env_set_intermediate_dir_mode.html">DbEnv::set_intermediate_dir_mode</a></td><td>Set intermediate directory creation mode</td></tr>
 <!--DbEnv::set_isalive--><tr><td><a href="../api_cxx/env_set_isalive.html">DbEnv::set_isalive</a></td><td>Set thread is-alive callback</td></tr>
 <!--DbEnv::set_lg_bsize--><tr><td><a href="../api_cxx/env_set_lg_bsize.html">DbEnv::set_lg_bsize</a></td><td>Set log buffer size</td></tr>
 <!--DbEnv::set_lg_dir--><tr><td><a href="../api_cxx/env_set_lg_dir.html">DbEnv::set_lg_dir</a></td><td>Set the environment logging directory</td></tr>
@@ -152,6 +155,7 @@
 <!--DbEnv::set_lk_max_lockers--><tr><td><a href="../api_cxx/env_set_lk_max_lockers.html">DbEnv::set_lk_max_lockers</a></td><td>Set maximum number of lockers</td></tr>
 <!--DbEnv::set_lk_max_locks--><tr><td><a href="../api_cxx/env_set_lk_max_locks.html">DbEnv::set_lk_max_locks</a></td><td>Set maximum number of locks</td></tr>
 <!--DbEnv::set_lk_max_objects--><tr><td><a href="../api_cxx/env_set_lk_max_objects.html">DbEnv::set_lk_max_objects</a></td><td>Set maximum number of lock objects</td></tr>
+<!--DbEnv::set_lk_partitions--><tr><td><a href="../api_cxx/env_set_lk_partitions.html">DbEnv::set_lk_partitions</a></td><td>Set number of lock partitions</td></tr>
 <!--DbEnv::set_mp_max_openfd--><tr><td><a href="../api_cxx/memp_openfd.html">DbEnv::set_mp_max_openfd</a></td><td>Set the maximum number of open file descriptors</td></tr>
 <!--DbEnv::set_mp_max_write--><tr><td><a href="../api_cxx/memp_maxwrite.html">DbEnv::set_mp_max_write</a></td><td>Set the maximum number of sequential disk writes</td></tr>
 <!--DbEnv::set_mp_mmapsize--><tr><td><a href="../api_cxx/env_set_mp_mmapsize.html">DbEnv::set_mp_mmapsize</a></td><td>Set maximum mapped-in database file size</td></tr>
@@ -216,6 +220,6 @@
 <!--db_version--><tr><td><a href="../api_cxx/env_version.html">DbEnv::version</a></td><td>Return version information</td></tr>
 <!--log_compare--><tr><td><a href="../api_cxx/log_compare.html">DbEnv::log_compare</a></td><td>Compare two Log Sequence Numbers</td></tr>
 </table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: txn_util.c,v 12.18 2007/06/13 18:21:32 ubell Exp $
+ * $Id: txn_util.c,v 12.25 2008/01/31 18:40:48 bostic Exp $
  */
 
 #include "db_config.h"
@@ -46,11 +46,11 @@ struct __txn_event {
  * Creates a close event that can be added to the [so-called] commit list, so
  * that we can redo a failed DB handle close once we've aborted the transaction.
  *
- * PUBLIC: int __txn_closeevent __P((DB_ENV *, DB_TXN *, DB *));
+ * PUBLIC: int __txn_closeevent __P((ENV *, DB_TXN *, DB *));
  */
 int
-__txn_closeevent(dbenv, txn, dbp)
-	DB_ENV *dbenv;
+__txn_closeevent(env, txn, dbp)
+	ENV *env;
 	DB_TXN *txn;
 	DB *dbp;
 {
@@ -58,7 +58,7 @@ __txn_closeevent(dbenv, txn, dbp)
 	TXN_EVENT *e;
 
 	e = NULL;
-	if ((ret = __os_calloc(dbenv, 1, sizeof(TXN_EVENT), &e)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(TXN_EVENT), &e)) != 0)
 		return (ret);
 
 	e->u.c.dbp = dbp;
@@ -73,12 +73,12 @@ __txn_closeevent(dbenv, txn, dbp)
  *
  * Creates a remove event that can be added to the commit list.
  *
- * PUBLIC: int __txn_remevent __P((DB_ENV *,
+ * PUBLIC: int __txn_remevent __P((ENV *,
  * PUBLIC:       DB_TXN *, const char *, u_int8_t *, int));
  */
 int
-__txn_remevent(dbenv, txn, name, fileid, inmem)
-	DB_ENV *dbenv;
+__txn_remevent(env, txn, name, fileid, inmem)
+	ENV *env;
 	DB_TXN *txn;
 	const char *name;
 	u_int8_t *fileid;
@@ -88,14 +88,14 @@ __txn_remevent(dbenv, txn, name, fileid, inmem)
 	TXN_EVENT *e;
 
 	e = NULL;
-	if ((ret = __os_calloc(dbenv, 1, sizeof(TXN_EVENT), &e)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(TXN_EVENT), &e)) != 0)
 		return (ret);
 
-	if ((ret = __os_strdup(dbenv, name, &e->u.r.name)) != 0)
+	if ((ret = __os_strdup(env, name, &e->u.r.name)) != 0)
 		goto err;
 
 	if (fileid != NULL) {
-		if ((ret = __os_calloc(dbenv,
+		if ((ret = __os_calloc(env,
 		    1, DB_FILE_ID_LEN, &e->u.r.fileid)) != 0)
 			return (ret);
 		memcpy(e->u.r.fileid, fileid, DB_FILE_ID_LEN);
@@ -108,7 +108,7 @@ __txn_remevent(dbenv, txn, name, fileid, inmem)
 	return (0);
 
 err:	if (e != NULL)
-		__os_free(dbenv, e);
+		__os_free(env, e);
 
 	return (ret);
 }
@@ -118,11 +118,11 @@ err:	if (e != NULL)
  *	Remove a remove event because the remove has been superceeded,
  * by a create of the same name, for example.
  *
- * PUBLIC: void __txn_remrem __P((DB_ENV *, DB_TXN *, const char *));
+ * PUBLIC: void __txn_remrem __P((ENV *, DB_TXN *, const char *));
  */
 void
-__txn_remrem(dbenv, txn, name)
-	DB_ENV *dbenv;
+__txn_remrem(env, txn, name)
+	ENV *env;
 	DB_TXN *txn;
 	const char *name;
 {
@@ -133,10 +133,10 @@ __txn_remrem(dbenv, txn, name)
 		if (e->op != TXN_REMOVE || strcmp(name, e->u.r.name) != 0)
 			continue;
 		TAILQ_REMOVE(&txn->events, e, links);
-		__os_free(dbenv, e->u.r.name);
+		__os_free(env, e->u.r.name);
 		if (e->u.r.fileid != NULL)
-			__os_free(dbenv, e->u.r.fileid);
-		__os_free(dbenv, e);
+			__os_free(env, e->u.r.fileid);
+		__os_free(env, e);
 	}
 
 	return;
@@ -148,12 +148,12 @@ __txn_remrem(dbenv, txn, name)
  * Add a lockevent to the commit-queue.  The lock event indicates a locker
  * trade.
  *
- * PUBLIC: int __txn_lockevent __P((DB_ENV *,
+ * PUBLIC: int __txn_lockevent __P((ENV *,
  * PUBLIC:     DB_TXN *, DB *, DB_LOCK *, DB_LOCKER *));
  */
 int
-__txn_lockevent(dbenv, txn, dbp, lock, locker)
-	DB_ENV *dbenv;
+__txn_lockevent(env, txn, dbp, lock, locker)
+	ENV *env;
 	DB_TXN *txn;
 	DB *dbp;
 	DB_LOCK *lock;
@@ -162,11 +162,11 @@ __txn_lockevent(dbenv, txn, dbp, lock, locker)
 	int ret;
 	TXN_EVENT *e;
 
-	if (!LOCKING_ON(dbenv))
+	if (!LOCKING_ON(env))
 		return (0);
 
 	e = NULL;
-	if ((ret = __os_calloc(dbenv, 1, sizeof(TXN_EVENT), &e)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(TXN_EVENT), &e)) != 0)
 		return (ret);
 
 	e->u.t.locker = locker;
@@ -184,11 +184,11 @@ __txn_lockevent(dbenv, txn, dbp, lock, locker)
  *	Remove a lock event because the locker is going away.  We can remove
  * by lock (using offset) or by locker_id (or by both).
  *
- * PUBLIC: void __txn_remlock __P((DB_ENV *, DB_TXN *, DB_LOCK *, DB_LOCKER *));
+ * PUBLIC: void __txn_remlock __P((ENV *, DB_TXN *, DB_LOCK *, DB_LOCKER *));
  */
 void
-__txn_remlock(dbenv, txn, lock, locker)
-	DB_ENV *dbenv;
+__txn_remlock(env, txn, lock, locker)
+	ENV *env;
 	DB_TXN *txn;
 	DB_LOCK *lock;
 	DB_LOCKER *locker;
@@ -201,7 +201,7 @@ __txn_remlock(dbenv, txn, lock, locker)
 		    (e->u.t.lock.off != lock->off && e->u.t.locker != locker))
 			continue;
 		TAILQ_REMOVE(&txn->events, e, links);
-		__os_free(dbenv, e);
+		__os_free(env, e);
 	}
 
 	return;
@@ -212,13 +212,13 @@ __txn_remlock(dbenv, txn, lock, locker)
  * Process the list of events associated with a transaction.  On commit,
  * apply the events; on abort, just toss the entries.
  *
- * PUBLIC: int __txn_doevents __P((DB_ENV *, DB_TXN *, int, int));
+ * PUBLIC: int __txn_doevents __P((ENV *, DB_TXN *, int, int));
  */
 #define	DO_TRADE do {							\
 	memset(&req, 0, sizeof(req));					\
 	req.lock = e->u.t.lock;						\
 	req.op = DB_LOCK_TRADE;						\
-	t_ret = __lock_vec(dbenv, e->u.t.locker, 0, &req, 1, NULL);	\
+	t_ret = __lock_vec(env, e->u.t.locker, 0, &req, 1, NULL);	\
 	if (t_ret == 0)	{						\
 		e->u.t.dbp->cur_locker = e->u.t.locker;			\
 		e->u.t.dbp->cur_txn = NULL;				\
@@ -230,8 +230,8 @@ __txn_remlock(dbenv, txn, lock, locker)
 } while (0)
 
 int
-__txn_doevents(dbenv, txn, opcode, preprocess)
-	DB_ENV *dbenv;
+__txn_doevents(env, txn, opcode, preprocess)
+	ENV *env;
 	DB_TXN *txn;
 	int opcode, preprocess;
 {
@@ -263,7 +263,7 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 	 * Prepare should only cause a preprocess, since the transaction
 	 * isn't over.
 	 */
-	DB_ASSERT(dbenv, opcode != TXN_PREPARE);
+	DB_ASSERT(env, opcode != TXN_PREPARE);
 	while ((e = TAILQ_FIRST(&txn->events)) != NULL) {
 		TAILQ_REMOVE(&txn->events, e, links);
 		/*
@@ -283,12 +283,12 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 			break;
 		case TXN_REMOVE:
 			if (e->u.r.fileid != NULL) {
-				if ((t_ret = __memp_nameop(dbenv,
+				if ((t_ret = __memp_nameop(env,
 				    e->u.r.fileid, NULL, e->u.r.name,
 				    NULL, e->u.r.inmem)) != 0 && ret == 0)
 					ret = t_ret;
 			} else if ((t_ret =
-			    __os_unlink(dbenv, e->u.r.name)) != 0 && ret == 0)
+			    __os_unlink(env, e->u.r.name, 0)) != 0 && ret == 0)
 				ret = t_ret;
 			break;
 		case TXN_TRADE:
@@ -296,47 +296,48 @@ __txn_doevents(dbenv, txn, opcode, preprocess)
 			/* Fall through */
 		case TXN_TRADED:
 			/* Downgrade the lock. */
-			if ((t_ret = __lock_downgrade(dbenv,
+			if ((t_ret = __lock_downgrade(env,
 			    &e->u.t.lock, DB_LOCK_READ, 0)) != 0 && ret == 0)
 				ret = t_ret;
 			break;
 		default:
 			/* This had better never happen. */
-			DB_ASSERT(dbenv, 0);
+			DB_ASSERT(env, 0);
 		}
 dofree:
 		/* Free resources here. */
 		switch (e->op) {
 		case TXN_REMOVE:
 			if (e->u.r.fileid != NULL)
-				__os_free(dbenv, e->u.r.fileid);
-			__os_free(dbenv, e->u.r.name);
+				__os_free(env, e->u.r.fileid);
+			__os_free(env, e->u.r.name);
 			break;
 		case TXN_TRADE:
 			if (opcode == TXN_ABORT)
 				e->u.t.dbp->cur_txn = NULL;
+			break;
 		case TXN_CLOSE:
 		case TXN_TRADED:
 		default:
 			break;
 		}
-		__os_free(dbenv, e);
+		__os_free(env, e);
 	}
 
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_record_fname __P((DB_ENV *, DB_TXN *, FNAME *));
+ * PUBLIC: int __txn_record_fname __P((ENV *, DB_TXN *, FNAME *));
  */
 int
-__txn_record_fname(dbenv, txn, fname)
-	DB_ENV *dbenv;
+__txn_record_fname(env, txn, fname)
+	ENV *env;
 	DB_TXN *txn;
 	FNAME *fname;
 {
-	DB_TXNMGR *mgr;
 	DB_LOG *dblp;
+	DB_TXNMGR *mgr;
 	TXN_DETAIL *td;
 	roff_t fname_off;
 	roff_t *np, *ldbs;
@@ -345,8 +346,8 @@ __txn_record_fname(dbenv, txn, fname)
 
 	if ((td = txn->td) == NULL)
 		return (0);
-	mgr = dbenv->tx_handle;
-	dblp = dbenv->lg_handle;
+	mgr = env->tx_handle;
+	dblp = env->lg_handle;
 	fname_off = R_OFFSET(&dblp->reginfo, fname);
 
 	/* See if we already have a ref to this DB handle. */
@@ -356,7 +357,7 @@ __txn_record_fname(dbenv, txn, fname)
 			return (0);
 
 	if (td->nlog_slots <= td->nlog_dbs) {
-		TXN_SYSTEM_LOCK(dbenv);
+		TXN_SYSTEM_LOCK(env);
 		if ((ret = __env_alloc(&mgr->reginfo,
 		    sizeof(roff_t) * (td->nlog_slots << 1), &np)) != 0)
 			return (ret);
@@ -364,7 +365,7 @@ __txn_record_fname(dbenv, txn, fname)
 		if (td->nlog_slots > TXN_NSLOTS)
 			__env_alloc_free(&mgr->reginfo, ldbs);
 
-		TXN_SYSTEM_UNLOCK(dbenv);
+		TXN_SYSTEM_UNLOCK(env);
 		td->log_dbs = R_OFFSET(&mgr->reginfo, np);
 		ldbs = np;
 		td->nlog_slots = td->nlog_slots << 1;
@@ -382,15 +383,15 @@ __txn_record_fname(dbenv, txn, fname)
  *	Either pass the fname to our parent txn or decrement the refcount
  * and close the fileid if it goes to zero.
  *
- * PUBLIC: int __txn_dref_fname __P((DB_ENV *, DB_TXN *));
+ * PUBLIC: int __txn_dref_fname __P((ENV *, DB_TXN *));
  */
 int
-__txn_dref_fname(dbenv, txn)
-	DB_ENV *dbenv;
+__txn_dref_fname(env, txn)
+	ENV *env;
 	DB_TXN *txn;
 {
-	DB_TXNMGR *mgr;
 	DB_LOG *dblp;
+	DB_TXNMGR *mgr;
 	FNAME *fname;
 	roff_t *np;
 	TXN_DETAIL *ptd, *td;
@@ -402,8 +403,8 @@ __txn_dref_fname(dbenv, txn)
 	if (td->nlog_dbs == 0)
 		return (0);
 
-	mgr = dbenv->tx_handle;
-	dblp = dbenv->lg_handle;
+	mgr = env->tx_handle;
+	dblp = env->lg_handle;
 	ret = 0;
 
 	ptd = txn->parent != NULL ? txn->parent->td : NULL;
@@ -411,19 +412,19 @@ __txn_dref_fname(dbenv, txn)
 	np = R_ADDR(&mgr->reginfo, td->log_dbs);
 	for (i = 0; i < td->nlog_dbs; i++, np++) {
 		fname = R_ADDR(&dblp->reginfo, *np);
-		MUTEX_LOCK(dbenv, fname->mutex);
+		MUTEX_LOCK(env, fname->mutex);
 		if (ptd != NULL) {
+			ret = __txn_record_fname(env, txn->parent, fname);
 			fname->txn_ref--;
-			ret = __txn_record_fname(dbenv, txn->parent, fname);
-			MUTEX_UNLOCK(dbenv, fname->mutex);
+			MUTEX_UNLOCK(env, fname->mutex);
 		} else if (fname->txn_ref == 1) {
-			MUTEX_UNLOCK(dbenv, fname->mutex);
-			DB_ASSERT(dbenv, fname->txn_ref != 0);
+			MUTEX_UNLOCK(env, fname->mutex);
+			DB_ASSERT(env, fname->txn_ref != 0);
 			ret = __dbreg_close_id_int(
-			    dbenv, fname, DBREG_CLOSE, 0);
+			    env, fname, DBREG_CLOSE, 0);
 		} else {
 			fname->txn_ref--;
-			MUTEX_UNLOCK(dbenv, fname->mutex);
+			MUTEX_UNLOCK(env, fname->mutex);
 		}
 		if (ret != 0)
 			break;

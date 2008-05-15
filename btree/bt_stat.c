@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: bt_stat.c,v 12.17 2007/06/01 16:30:27 bostic Exp $
+ * $Id: bt_stat.c,v 12.22 2008/03/11 21:07:19 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -32,15 +32,15 @@ __bam_stat(dbc, spp, flags)
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_BTREE_STAT *sp;
-	DB_ENV *dbenv;
 	DB_LOCK lock, metalock;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	db_pgno_t pgno;
 	int ret, t_ret, write_meta;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	meta = NULL;
 	t = dbp->bt_internal;
@@ -54,7 +54,7 @@ __bam_stat(dbc, spp, flags)
 	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/* Allocate and clear the structure. */
-	if ((ret = __os_umalloc(dbenv, sizeof(*sp), &sp)) != 0)
+	if ((ret = __os_umalloc(env, sizeof(*sp), &sp)) != 0)
 		goto err;
 	memset(sp, 0, sizeof(*sp));
 
@@ -62,7 +62,8 @@ __bam_stat(dbc, spp, flags)
 	pgno = PGNO_BASE_MD;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno,
+	     dbc->thread_info, dbc->txn, 0, &meta)) != 0)
 		goto err;
 
 	if (flags == DB_FAST_STAT)
@@ -72,11 +73,13 @@ __bam_stat(dbc, spp, flags)
 	for (sp->bt_free = 0, pgno = meta->dbmeta.free; pgno != PGNO_INVALID;) {
 		++sp->bt_free;
 
-		if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &h)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno,
+		     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 			goto err;
 
 		pgno = h->next_pgno;
-		if ((ret = __memp_fput(mpf, h, dbc->priority)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
 			goto err;
 		h = NULL;
 	}
@@ -85,14 +88,15 @@ __bam_stat(dbc, spp, flags)
 	pgno = cp->root;
 	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &h)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno,
+	     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 		goto err;
 
 	/* Get the levels from the root page. */
 	sp->bt_levels = h->level;
 
 	/* Discard the root page. */
-	ret = __memp_fput(mpf, h, dbc->priority);
+	ret = __memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 	h = NULL;
 	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -112,7 +116,7 @@ __bam_stat(dbc, spp, flags)
 	    (!MULTIVERSION(dbp) || dbc->txn != NULL);
 meta_only:
 	if (t->bt_meta != PGNO_BASE_MD || write_meta) {
-		ret = __memp_fput(mpf, meta, dbc->priority);
+		ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
 		meta = NULL;
 		if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
 			ret = t_ret;
@@ -123,7 +127,8 @@ meta_only:
 		    0, t->bt_meta, write_meta ? DB_LOCK_WRITE : DB_LOCK_READ,
 		    0, &metalock)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &t->bt_meta, dbc->txn,
+		if ((ret = __memp_fget(mpf, &t->bt_meta,
+		     dbc->thread_info, dbc->txn,
 		    write_meta ? DB_MPOOL_DIRTY : 0, &meta)) != 0)
 			goto err;
 	}
@@ -133,8 +138,8 @@ meta_only:
 			if ((ret = __db_lget(dbc, 0,
 			    cp->root, DB_LOCK_READ, 0, &lock)) != 0)
 				goto err;
-			if ((ret = __memp_fget(mpf, &cp->root, dbc->txn,
-			    0, &h)) != 0)
+			if ((ret = __memp_fget(mpf, &cp->root,
+			     dbc->thread_info, dbc->txn, 0, &h)) != 0)
 				goto err;
 
 			sp->bt_nkeys = RE_NREC(h);
@@ -156,7 +161,7 @@ meta_only:
 	 * a subdatabase.  (Yes, I read the primary database meta-data page
 	 * earlier in this function, but I'm asking the underlying cache so the
 	 * code for the Hash and Btree methods is the same.)
-	 */ 
+	 */
 	if ((ret = __memp_get_last_pgno(dbp->mpf, &pgno)) != 0)
 		goto err;
 	sp->bt_pagecnt = pgno + 1;
@@ -174,19 +179,19 @@ meta_only:
 err:	/* Discard the second page. */
 	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
-	if (h != NULL &&
-	     (t_ret = __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+	if (h != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Discard the metadata page. */
 	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
-	if (meta != NULL &&
-	    (t_ret = __memp_fput(mpf, meta, dbc->priority)) != 0 && ret == 0)
+	if (meta != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, meta, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (ret != 0 && sp != NULL) {
-		__os_ufree(dbenv, sp);
+		__os_ufree(env, sp);
 		*(DB_BTREE_STAT **)spp = NULL;
 	}
 
@@ -216,23 +221,23 @@ __bam_stat_print(dbc, flags)
 	};
 	DB *dbp;
 	DB_BTREE_STAT *sp;
-	DB_ENV *dbenv;
+	ENV *env;
 	int lorder, ret;
 	const char *s;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	if ((ret = __bam_stat(dbc, &sp, LF_ISSET(DB_FAST_STAT))) != 0)
 		return (ret);
 
 	if (LF_ISSET(DB_STAT_ALL)) {
-		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-		__db_msg(dbenv, "Default Btree/Recno database information:");
+		__db_msg(env, "%s", DB_GLOBAL(db_line));
+		__db_msg(env, "Default Btree/Recno database information:");
 	}
 
-	__db_msg(dbenv, "%lx\tBtree magic number", (u_long)sp->bt_magic);
-	__db_msg(dbenv, "%lu\tBtree version number", (u_long)sp->bt_version);
+	__db_msg(env, "%lx\tBtree magic number", (u_long)sp->bt_magic);
+	__db_msg(env, "%lu\tBtree version number", (u_long)sp->bt_version);
 
 	(void)__db_get_lorder(dbp, &lorder);
 	switch (lorder) {
@@ -246,58 +251,58 @@ __bam_stat_print(dbc, flags)
 		s = "Unrecognized byte order";
 		break;
 	}
-	__db_msg(dbenv, "%s\tByte order", s);
-	__db_prflags(dbenv, NULL, sp->bt_metaflags, fn, NULL, "\tFlags");
+	__db_msg(env, "%s\tByte order", s);
+	__db_prflags(env, NULL, sp->bt_metaflags, fn, NULL, "\tFlags");
 	if (dbp->type == DB_BTREE)
-		__db_dl(dbenv, "Minimum keys per-page", (u_long)sp->bt_minkey);
+		__db_dl(env, "Minimum keys per-page", (u_long)sp->bt_minkey);
 	if (dbp->type == DB_RECNO) {
-		__db_dl(dbenv,
+		__db_dl(env,
 		    "Fixed-length record size", (u_long)sp->bt_re_len);
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "%#x\tFixed-length record pad", (u_int)sp->bt_re_pad);
 	}
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Underlying database page size", (u_long)sp->bt_pagesize);
 	if (dbp->type == DB_BTREE)
-		__db_dl(dbenv, "Overflow key/data size",
+		__db_dl(env, "Overflow key/data size",
 		    ((BTREE_CURSOR *)dbc->internal)->ovflsize);
-	__db_dl(dbenv, "Number of levels in the tree", (u_long)sp->bt_levels);
-	__db_dl(dbenv, dbp->type == DB_BTREE ?
+	__db_dl(env, "Number of levels in the tree", (u_long)sp->bt_levels);
+	__db_dl(env, dbp->type == DB_BTREE ?
 	    "Number of unique keys in the tree" :
 	    "Number of records in the tree", (u_long)sp->bt_nkeys);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of data items in the tree", (u_long)sp->bt_ndata);
 
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of tree internal pages", (u_long)sp->bt_int_pg);
-	__db_dl_pct(dbenv,
+	__db_dl_pct(env,
 	    "Number of bytes free in tree internal pages",
 	    (u_long)sp->bt_int_pgfree,
 	    DB_PCT_PG(sp->bt_int_pgfree, sp->bt_int_pg, sp->bt_pagesize), "ff");
 
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of tree leaf pages", (u_long)sp->bt_leaf_pg);
-	__db_dl_pct(dbenv, "Number of bytes free in tree leaf pages",
+	__db_dl_pct(env, "Number of bytes free in tree leaf pages",
 	    (u_long)sp->bt_leaf_pgfree, DB_PCT_PG(
 	    sp->bt_leaf_pgfree, sp->bt_leaf_pg, sp->bt_pagesize), "ff");
 
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of tree duplicate pages", (u_long)sp->bt_dup_pg);
-	__db_dl_pct(dbenv,
+	__db_dl_pct(env,
 	    "Number of bytes free in tree duplicate pages",
 	    (u_long)sp->bt_dup_pgfree,
 	    DB_PCT_PG(sp->bt_dup_pgfree, sp->bt_dup_pg, sp->bt_pagesize), "ff");
 
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of tree overflow pages", (u_long)sp->bt_over_pg);
-	__db_dl_pct(dbenv, "Number of bytes free in tree overflow pages",
+	__db_dl_pct(env, "Number of bytes free in tree overflow pages",
 	    (u_long)sp->bt_over_pgfree, DB_PCT_PG(
 	    sp->bt_over_pgfree, sp->bt_over_pg, sp->bt_pagesize), "ff");
-	__db_dl(dbenv, "Number of empty pages", (u_long)sp->bt_empty_pg);
+	__db_dl(env, "Number of empty pages", (u_long)sp->bt_empty_pg);
 
-	__db_dl(dbenv, "Number of pages on the free list", (u_long)sp->bt_free);
+	__db_dl(env, "Number of pages on the free list", (u_long)sp->bt_free);
 
-	__os_ufree(dbenv, sp);
+	__os_ufree(env, sp);
 
 	return (0);
 }
@@ -306,19 +311,21 @@ __bam_stat_print(dbc, flags)
  * __bam_stat_callback --
  *	Statistics callback.
  *
- * PUBLIC: int __bam_stat_callback __P((DB *, PAGE *, void *, int *));
+ * PUBLIC: int __bam_stat_callback __P((DBC *, PAGE *, void *, int *));
  */
 int
-__bam_stat_callback(dbp, h, cookie, putp)
-	DB *dbp;
+__bam_stat_callback(dbc, h, cookie, putp)
+	DBC *dbc;
 	PAGE *h;
 	void *cookie;
 	int *putp;
 {
+	DB *dbp;
 	DB_BTREE_STAT *sp;
 	db_indx_t indx, *inp, top;
 	u_int8_t type;
 
+	dbp = dbc->dbp;
 	sp = cookie;
 	*putp = 0;
 	top = NUM_ENT(h);
@@ -405,7 +412,7 @@ __bam_stat_callback(dbp, h, cookie, putp)
 		sp->bt_over_pgfree += P_OVFLSPACE(dbp, dbp->pgsize, h);
 		break;
 	default:
-		return (__db_pgfmt(dbp->dbenv, h->pgno));
+		return (__db_pgfmt(dbp->env, h->pgno));
 	}
 	return (0);
 }
@@ -426,17 +433,17 @@ __bam_print_cursor(dbc)
 		{ C_RENUMBER,	"C_RENUMBER" },
 		{ 0,		NULL }
 	};
-	DB_ENV *dbenv;
+	ENV *env;
 	BTREE_CURSOR *cp;
 
-	dbenv = dbc->dbp->dbenv;
+	env = dbc->env;
 	cp = (BTREE_CURSOR *)dbc->internal;
 
 	STAT_ULONG("Overflow size", cp->ovflsize);
 	if (dbc->dbtype == DB_RECNO)
 		STAT_ULONG("Recno", cp->recno);
 	STAT_ULONG("Order", cp->order);
-	__db_prflags(dbenv, NULL, cp->flags, fn, NULL, "\tInternal Flags");
+	__db_prflags(env, NULL, cp->flags, fn, NULL, "\tInternal Flags");
 }
 
 #else /* !HAVE_STATISTICS */
@@ -450,7 +457,7 @@ __bam_stat(dbc, spp, flags)
 	COMPQUIET(spp, NULL);
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbc->dbp->dbenv));
+	return (__db_stat_not_built(dbc->env));
 }
 
 int
@@ -460,7 +467,7 @@ __bam_stat_print(dbc, flags)
 {
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbc->dbp->dbenv));
+	return (__db_stat_not_built(dbc->env));
 }
 #endif
 
@@ -543,14 +550,14 @@ __bam_key_range(dbc, dbt, kp, flags)
  *	Walk a Btree database.
  *
  * PUBLIC: int __bam_traverse __P((DBC *, db_lockmode_t,
- * PUBLIC:     db_pgno_t, int (*)(DB *, PAGE *, void *, int *), void *));
+ * PUBLIC:     db_pgno_t, int (*)(DBC *, PAGE *, void *, int *), void *));
  */
 int
 __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 	DBC *dbc;
 	db_lockmode_t mode;
 	db_pgno_t root_pgno;
-	int (*callback)__P((DB *, PAGE *, void *, int *));
+	int (*callback)__P((DBC *, PAGE *, void *, int *));
 	void *cookie;
 {
 	BINTERNAL *bi;
@@ -569,7 +576,8 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 
 	if ((ret = __db_lget(dbc, 0, root_pgno, mode, 0, &lock)) != 0)
 		return (ret);
-	if ((ret = __memp_fget(mpf, &root_pgno, dbc->txn, 0, &h)) != 0) {
+	if ((ret = __memp_fget(mpf, &root_pgno,
+	     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
 		(void)__TLPUT(dbc, lock);
 		return (ret);
 	}
@@ -579,8 +587,8 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
 			bi = GET_BINTERNAL(dbp, h, indx);
 			if (B_TYPE(bi->type) == B_OVERFLOW &&
-			    (ret = __db_traverse_big(dbp,
-			    ((BOVERFLOW *)bi->data)->pgno, dbc->txn,
+			    (ret = __db_traverse_big(dbc,
+			    ((BOVERFLOW *)bi->data)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
 			if ((ret = __bam_traverse(
@@ -603,9 +611,9 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
 			    (indx + P_INDX >= NUM_ENT(h) ||
 			    inp[indx] != inp[indx + P_INDX])) {
-				if ((ret = __db_traverse_big(dbp,
+				if ((ret = __db_traverse_big(dbc,
 				    GET_BOVERFLOW(dbp, h, indx)->pgno,
-				    dbc->txn, callback, cookie)) != 0)
+				    callback, cookie)) != 0)
 					goto err;
 			}
 			bk = GET_BKEYDATA(dbp, h, indx + O_INDX);
@@ -615,9 +623,9 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 			    callback, cookie)) != 0)
 				goto err;
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
-			    (ret = __db_traverse_big(dbp,
+			    (ret = __db_traverse_big(dbc,
 			    GET_BOVERFLOW(dbp, h, indx + O_INDX)->pgno,
-			    dbc->txn, callback, cookie)) != 0)
+			    callback, cookie)) != 0)
 				goto err;
 		}
 		break;
@@ -626,20 +634,20 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 		for (indx = 0; indx < NUM_ENT(h); indx += O_INDX) {
 			bk = GET_BKEYDATA(dbp, h, indx);
 			if (B_TYPE(bk->type) == B_OVERFLOW &&
-			    (ret = __db_traverse_big(dbp,
-			    GET_BOVERFLOW(dbp, h, indx)->pgno, dbc->txn,
+			    (ret = __db_traverse_big(dbc,
+			    GET_BOVERFLOW(dbp, h, indx)->pgno,
 			    callback, cookie)) != 0)
 				goto err;
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp->dbenv, h->pgno));
+		return (__db_pgfmt(dbp->env, h->pgno));
 	}
 
-	ret = callback(dbp, h, cookie, &already_put);
+	ret = callback(dbc, h, cookie, &already_put);
 
-err:	if (!already_put &&
-	     (t_ret = __memp_fput(mpf, h, dbc->priority)) != 0 && ret == 0)
+err:	if (!already_put && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;

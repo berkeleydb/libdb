@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_mpool.cpp,v 12.10 2007/06/28 13:02:50 mjc Exp $
+ * $Id: cxx_mpool.cpp,v 12.12 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -30,7 +30,7 @@ int DbMpoolFile::_name _argspec						\
 	else								\
 		ret = mpf->_name _arglist;				\
 	if (!_retok(ret))						\
-		DB_ERROR(DbEnv::get_DbEnv(mpf->dbenv), \
+		DB_ERROR(DbEnv::get_DbEnv(mpf->env->dbenv), 		\
 			"DbMpoolFile::"#_name, ret, ON_ERROR_UNKNOWN);	\
 	return (ret);							\
 }
@@ -62,7 +62,7 @@ int DbMpoolFile::close(u_int32_t flags)
 {
 	DB_MPOOLFILE *mpf = unwrap(this);
 	int ret;
-	DbEnv *dbenv = DbEnv::get_DbEnv(mpf->dbenv);
+	DbEnv *dbenv = DbEnv::get_DbEnv(mpf->env->dbenv);
 
 	if (mpf == NULL)
 		ret = EINVAL;

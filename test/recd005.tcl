@@ -1,22 +1,29 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd005.tcl,v 12.7 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd005.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd005
 # TEST	Verify reuse of file ids works on catastrophic recovery.
 # TEST
 # TEST	Make sure that we can do catastrophic recovery even if we open
 # TEST	files using the same log file id.
-proc recd005 { method args} {
+proc recd005 { method {select 0 } args } {
 	source ./include.tcl
 	global rand_init
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Recd005: $method catastrophic recovery"
+	puts "Recd005: $method catastrophic recovery ($envargs)"
 
 	berkdb srand $rand_init
 
@@ -24,7 +31,7 @@ proc recd005 { method args} {
 	set testfile2 recd005.2.db
 	set max_locks 2000
 	set eflags "-create -txn -lock_max_locks $max_locks \
-	    -lock_max_objects $max_locks -home $testdir"
+	    -lock_max_objects $max_locks -home $testdir $envargs"
 
 	set tnum 0
 	foreach sizes "{1000 10} {10 1000}" {

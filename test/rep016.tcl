@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep016.tcl,v 12.14 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep016.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep016
 # TEST	Replication election test with varying required nvotes.
@@ -58,10 +58,11 @@ proc rep016 { method args } {
 proc rep016_sub { method nclients tnum logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -135,12 +136,6 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set nsites [expr $nclients + 1]
 	set priority 2
 	set timeout 5000000
-	set nvotes -1
-	set res [catch {$clientenv(0) rep_elect $nsites $nvotes $priority \
-	    $timeout} ret]
-	error_check_bad catch $res 0
-	error_check_good ret [is_substr $ret "may not be negative"] 1
-
 	#
 	# Setting nsites to 0 acts as a signal for rep_elect to use
 	# the configured nsites, but since we haven't set that yet,
@@ -155,15 +150,6 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	error_check_good ret [is_substr $ret "is larger than nsites"] 1
 
 	#
-	# Check negative nsites
-	#
-	set nsites -1
-	set res [catch {$clientenv(0) rep_elect $nsites $nvotes $priority \
-	    $timeout} ret]
-	error_check_bad catch $res 0
-	error_check_good ret [is_substr $ret "nsites may not be negative"] 1
-
-	#
 	# Check nvotes > nsites.
 	#
 	set nsites $nclients
@@ -172,16 +158,6 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	    $timeout} ret]
 	error_check_bad catch $res 0
 	error_check_good ret [is_substr $ret "is larger than nsites"] 1
-
-	#
-	# Check negative priority.
-	#
-	set nvotes $nsites
-	set priority -1
-	set res [catch {$clientenv(0) rep_elect $nsites $nvotes $priority \
-	    $timeout} ret]
-	error_check_bad catch $res 0
-	error_check_good ret [is_substr $ret "may not be negative"] 1
 
 	for { set i 0 } { $i < $nclients } { incr i } {
 		replclear [expr $i + 2]
@@ -199,7 +175,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		#
 		if { $rep_verbose == 1 } {
 			$clientenv($i) errpfx CLIENT.$i
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			$clientenv($i) errfile /dev/stderr
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT.$i -errfile /dev/stderr "]
@@ -221,7 +197,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set winner 0
 	setpriority pri $nclients $winner
 	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner 1
+	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 test.db
 
 	#
 	# Now run with all clients.  Client0 should always get elected
@@ -237,7 +213,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set winner [rep016_selectwinner $nsites $nvotes $nclients]
 	setpriority pri $nclients $winner
 	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner 1
+	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 test.db
 
 	#
 	# Elect with varying levels of participation.  Start with nsites
@@ -253,7 +229,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		set winner [rep016_selectwinner $nsites $n $n]
 		setpriority pri $nclients $winner
 		run_election env_cmd envlist err_cmd pri crash\
-		    $qdir $m $elector $nsites $n $n $winner 1
+		    $qdir $m $elector $nsites $n $n $winner 1 test.db
 		incr count
 	}
 

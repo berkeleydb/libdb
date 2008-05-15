@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep020.tcl,v 12.16 2007/05/30 16:19:14 sue Exp $
+# $Id: rep020.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep020
 # TEST	Replication elections - test election generation numbers.
@@ -47,10 +47,11 @@ proc rep020_sub { method nclients tnum logset largs } {
 	global errorInfo
 	global mixed_mode_logging
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -111,7 +112,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set crash($i) 0
 		if { $rep_verbose == 1 } {
 			$clientenv($i) errpfx CLIENT$i
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			$clientenv($i) errfile /dev/stderr
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT$i -errfile /dev/stderr"]
@@ -129,8 +130,8 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash\
-		    $qdir $msg $elector $nsites $nvotes $nclients $winner 1
+		run_election env_cmd envlist err_cmd pri crash $qdir \
+		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
 	}
 	process_msgs $envlist
 
@@ -161,8 +162,8 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash\
-		    $qdir $msg $elector $nsites $nvotes $nclients $winner 1
+		run_election env_cmd envlist err_cmd pri crash $qdir \
+		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
 	}
 	process_msgs $envlist
 	#
@@ -199,8 +200,8 @@ proc rep020_sub { method nclients tnum logset largs } {
 	set nclients $orig_nclients
 	set elector [expr $nclients - 1]
 	setpriority pri $nclients $winner
-	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0
+	run_election env_cmd envlist err_cmd pri crash $qdir \
+	    $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	set newegen($i) \
 	    [stat_field $clientenv($i) rep_stat "Election generation number"]
@@ -252,8 +253,8 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash \
-		    $qdir $msg $elector $nsites $nvotes $nclients $winner 1
+		run_election env_cmd envlist err_cmd pri crash $qdir \
+		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
 
 		foreach pair $envlist {
 			set i [expr [lindex $pair 1] - 2]

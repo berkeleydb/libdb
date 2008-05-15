@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_thread.c,v 12.7 2007/06/13 12:31:31 bostic Exp $
+ * $Id: ex_thread.c,v 12.8 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include <sys/types.h>

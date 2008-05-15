@@ -1,4 +1,4 @@
-m4_comment([$Id: dbc_count.so,v 10.26 2006/10/24 13:26:50 bostic Exp $])
+m4_comment([$Id: dbc_count.so,v 10.27 2007/10/24 16:06:07 bostic Exp $])
 
 define(M4PAGELOCAL, dbc_count)
 include(m4/m4.seealso)
@@ -24,7 +24,8 @@ m4_param_co(countp, count of the number of duplicate data items)
 m4_unusedflags
 m4_paramend
 
-m4_err(dbc_count, repinval, einval, [the cursor has not been initialized])
+m4_err(dbc_count,
+    rephandle, replockout, einval, [the cursor has not been initialized])
 
 m4_seealso(Dbc)
 m4_page_footer

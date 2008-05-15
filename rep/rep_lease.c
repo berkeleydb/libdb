@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2007 Oracle.  All rights reserved.
+ * Copyright (c) 2007,2008 Oracle.  All rights reserved.
  *
- * $Id: rep_lease.c,v 12.5 2007/06/19 19:43:45 sue Exp $
+ * $Id: rep_lease.c,v 12.23 2008/01/11 21:49:26 sue Exp $
  */
 
 #include "db_config.h"
@@ -11,32 +11,36 @@
 #include "db_int.h"
 #include "dbinc/log.h"
 
-static void __rep_find_entry __P((DB_ENV *, REP *, int, REP_LEASE_ENTRY **));
+static void __rep_find_entry __P((ENV *, REP *, int, REP_LEASE_ENTRY **));
 
 /*
  * __rep_update_grant -
  *      Update a client's lease grant for this perm record
  *	and send the grant to the master.  Caller must
- *	hold the mtx_clientdb mutex.
+ *	hold the mtx_clientdb mutex.  Timespec given is in
+ *	host local format.
  *
- * PUBLIC: int __rep_update_grant __P((DB_ENV *, db_timespec *));
+ * PUBLIC: int __rep_update_grant __P((ENV *, db_timespec *));
  */
 int
-__rep_update_grant(dbenv, ts)
-	DB_ENV *dbenv;
+__rep_update_grant(env, ts)
+	ENV *env;
 	db_timespec *ts;
 {
+	DBT lease_dbt;
 	DB_LOG *dblp;
 	DB_REP *db_rep;
-	DBT lease_dbt;
 	LOG *lp;
 	REP *rep;
-	REP_GRANT_INFO gi;
+	__rep_grant_info_args gi;
 	db_timespec mytime;
+	u_int8_t buf[__REP_GRANT_INFO_SIZE];
+	int ret;
+	size_t len;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 	timespecclear(&mytime);
 
@@ -44,33 +48,33 @@ __rep_update_grant(dbenv, ts)
 	 * Get current time, and add in the (skewed) lease duration
 	 * time to send the grant to the master.
 	 */
-	__os_gettime(dbenv, &mytime);
+	__os_gettime(env, &mytime, 1);
 	timespecadd(&mytime, &rep->lease_duration);
-	REP_SYSTEM_LOCK(dbenv);
+	REP_SYSTEM_LOCK(env);
 	/*
 	 * If we are in an election, we cannot grant the lease.
 	 * We need to check under the region mutex.
 	 */
 	if (IN_ELECTION(rep)) {
-		REP_SYSTEM_UNLOCK(dbenv);
+		REP_SYSTEM_UNLOCK(env);
 		return (0);
 	}
 	if (timespeccmp(&mytime, &rep->grant_expire, >))
 		rep->grant_expire = mytime;
-	REP_SYSTEM_UNLOCK(dbenv);
+	REP_SYSTEM_UNLOCK(env);
 
 	/*
 	 * Send the LEASE_GRANT message with the current lease grant
 	 * no matter if we've actually extended the lease or not.
 	 */
-	memset(&gi, 0, sizeof(gi));
-#ifdef	DIAGNOSTIC
-	gi.expire_time = rep->grant_expire;
-#endif
-	gi.msg_time = *ts;
+	gi.msg_sec = (u_int32_t)ts->tv_sec;
+	gi.msg_nsec = (u_int32_t)ts->tv_nsec;
 
-	DB_INIT_DBT(lease_dbt, &gi, sizeof(gi));
-	(void)__rep_send_message(dbenv, rep->master_id, REP_LEASE_GRANT,
+	if ((ret = __rep_grant_info_marshal(env, &gi, buf,
+	    __REP_GRANT_INFO_SIZE, &len)) != 0)
+		return (ret);
+	DB_INIT_DBT(lease_dbt, buf, len);
+	(void)__rep_send_message(env, rep->master_id, REP_LEASE_GRANT,
 	    &lp->max_perm_lsn, &lease_dbt, 0, 0);
 	return (0);
 }
@@ -81,23 +85,23 @@ __rep_update_grant(dbenv, ts)
  *	Return 1 otherwise.
  *	Caller must hold the REP_SYSTEM (region) mutex.
  *
- * PUBLIC: int __rep_islease_granted __P((DB_ENV *));
+ * PUBLIC: int __rep_islease_granted __P((ENV *));
  */
 int
-__rep_islease_granted(dbenv)
-	DB_ENV *dbenv;
+__rep_islease_granted(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REP *rep;
 	db_timespec mytime;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	/*
 	 * Get current time and compare against our granted lease.
 	 */
 	timespecclear(&mytime);
-	__os_gettime(dbenv, &mytime);
+	__os_gettime(env, &mytime, 1);
 
 	return (timespeccmp(&mytime, &rep->grant_expire, <=) ? 1 : 0);
 }
@@ -108,24 +112,25 @@ __rep_islease_granted(dbenv)
  * held.  We need to acquire the env region mutex, so we need to
  * make sure we never acquire those mutexes in the opposite order.
  *
- * PUBLIC: int __rep_lease_table_alloc __P((DB_ENV *, int));
+ * PUBLIC: int __rep_lease_table_alloc __P((ENV *, u_int32_t));
  */
 int
-__rep_lease_table_alloc(dbenv, nsites)
-	DB_ENV *dbenv;
-	int nsites;
+__rep_lease_table_alloc(env, nsites)
+	ENV *env;
+	u_int32_t nsites;
 {
 	REGENV *renv;
 	REGINFO *infop;
 	REP *rep;
 	REP_LEASE_ENTRY *le, *table;
-	int i, *lease, ret;
+	int *lease, ret;
+	u_int32_t i;
 
-	rep = dbenv->rep_handle->region;
+	rep = env->rep_handle->region;
 
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	renv = infop->primary;
-	MUTEX_LOCK(dbenv, renv->mtx_regenv);
+	MUTEX_LOCK(env, renv->mtx_regenv);
 	if ((ret = __env_alloc(infop, (size_t)nsites * sizeof(REP_LEASE_ENTRY),
 	    &lease)) == 0) {
 		if (rep->lease_off != INVALID_ROFF)
@@ -133,7 +138,7 @@ __rep_lease_table_alloc(dbenv, nsites)
 			    R_ADDR(infop, rep->lease_off));
 		rep->lease_off = R_OFFSET(infop, lease);
 	}
-	MUTEX_UNLOCK(dbenv, renv->mtx_regenv);
+	MUTEX_UNLOCK(env, renv->mtx_regenv);
 	table = R_ADDR(infop, rep->lease_off);
 	for (i = 0; i < nsites; i++) {
 		le = &table[i];
@@ -149,49 +154,55 @@ __rep_lease_table_alloc(dbenv, nsites)
  * __rep_lease_grant -
  *	Handle incoming REP_LEASE_GRANT message on a master.
  *
- * PUBLIC: int __rep_lease_grant __P((DB_ENV *, REP_CONTROL *, DBT *, int));
+ * PUBLIC: int __rep_lease_grant __P((ENV *, __rep_control_args *, DBT *, int));
  */
 int
-__rep_lease_grant(dbenv, rp, rec, eid)
-	DB_ENV *dbenv;
-	REP_CONTROL *rp;
+__rep_lease_grant(env, rp, rec, eid)
+	ENV *env;
+	__rep_control_args *rp;
 	DBT *rec;
 	int eid;
 {
 	DB_REP *db_rep;
 	REP *rep;
-	REP_GRANT_INFO *gi;
+	__rep_grant_info_args gi;
 	REP_LEASE_ENTRY *le;
+	db_timespec msg_time;
+	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
-	gi = (REP_GRANT_INFO *)rec->data;
+	if ((ret = __rep_grant_info_unmarshal(env,
+	    &gi, rec->data, rec->size, NULL)) != 0)
+		return (ret);
+	timespecset(&msg_time, gi.msg_sec, gi.msg_nsec);
 	le = NULL;
 
 	/*
 	 * Get current time, and add in the (skewed) lease duration
 	 * time to send the grant to the master.
 	 */
-	REP_SYSTEM_LOCK(dbenv);
-	__rep_find_entry(dbenv, rep, eid, &le);
+	REP_SYSTEM_LOCK(env);
+	__rep_find_entry(env, rep, eid, &le);
 	/*
 	 * We either get back this site's entry, or an empty entry
 	 * that we need to initialize.
 	 */
-	DB_ASSERT(dbenv, le != NULL);
+	DB_ASSERT(env, le != NULL);
 	/*
 	 * Update the entry if it is an empty entry or if the new
 	 * lease grant is a later start time than the current one.
 	 */
-	RPRINT(dbenv, (dbenv, "lease_grant: gi msg_time %lu %lu",
-	    (u_long)gi->msg_time.tv_sec, (u_long)gi->msg_time.tv_nsec));
+	RPRINT(env, DB_VERB_REP_LEASE,
+	    (env, "lease_grant: grant msg time %lu %lu",
+	    (u_long)msg_time.tv_sec, (u_long)msg_time.tv_nsec));
 	if (le->eid == DB_EID_INVALID ||
-	    timespeccmp(&gi->msg_time, &le->start_time, >)) {
+	    timespeccmp(&msg_time, &le->start_time, >)) {
 		le->eid = eid;
-		le->start_time = gi->msg_time;
+		le->start_time = msg_time;
 		le->end_time = le->start_time;
 		timespecadd(&le->end_time, &rep->lease_duration);
-		RPRINT(dbenv, (dbenv,
+		RPRINT(env, DB_VERB_REP_LEASE, (env,
     "lease_grant: eid %d, start %lu %lu, end %lu %lu, duration %lu %lu",
     le->eid, (u_long)le->start_time.tv_sec, (u_long)le->start_time.tv_nsec,
     (u_long)le->end_time.tv_sec, (u_long)le->end_time.tv_nsec,
@@ -201,10 +212,10 @@ __rep_lease_grant(dbenv, rp, rec, eid)
 		 * record that has a later start time, but smaller
 		 * LSN than we have previously seen??
 		 */
-		DB_ASSERT(dbenv, LOG_COMPARE(&rp->lsn, &le->lease_lsn) >= 0);
+		DB_ASSERT(env, LOG_COMPARE(&rp->lsn, &le->lease_lsn) >= 0);
 		le->lease_lsn = rp->lsn;
 	}
-	REP_SYSTEM_UNLOCK(dbenv);
+	REP_SYSTEM_UNLOCK(env);
 	return (0);
 }
 
@@ -212,17 +223,17 @@ __rep_lease_grant(dbenv, rp, rec, eid)
  * Find the entry for the given EID.  Or the first empty one.
  */
 static void
-__rep_find_entry(dbenv, rep, eid, lep)
-	DB_ENV *dbenv;
+__rep_find_entry(env, rep, eid, lep)
+	ENV *env;
 	REP *rep;
 	int eid;
 	REP_LEASE_ENTRY **lep;
 {
 	REGINFO *infop;
 	REP_LEASE_ENTRY *le, *table;
-	int i;
+	u_int32_t i;
 
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	table = R_ADDR(infop, rep->lease_off);
 
 	for (i = 0; i < rep->nsites; i++) {
@@ -246,11 +257,11 @@ __rep_find_entry(dbenv, rep, eid, lep)
  *	to refresh the leases.  If that fails, then return the
  *	DB_REP_LEASE_EXPIRED error to the user.  No mutexes held.
  *
- * PUBLIC: int __rep_lease_check __P((DB_ENV *, int));
+ * PUBLIC: int __rep_lease_check __P((ENV *, int));
  */
 int
-__rep_lease_check(dbenv, refresh)
-	DB_ENV *dbenv;
+__rep_lease_check(env, refresh)
+	ENV *env;
 	int refresh;
 {
 	DB_LOG *dblp;
@@ -261,26 +272,28 @@ __rep_lease_check(dbenv, refresh)
 	REP *rep;
 	REP_LEASE_ENTRY *le, *table;
 	db_timespec curtime;
-	int i, min_leases, ret, tries, valid_leases;
+	int ret, tries;
+	u_int32_t i, min_leases, valid_leases;
 
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 	tries = 0;
 retry:
 	ret = 0;
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
-	dblp = dbenv->lg_handle;
+	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
-	LOG_SYSTEM_LOCK(dbenv);
+	LOG_SYSTEM_LOCK(env);
 	lease_lsn = lp->max_perm_lsn;
-	LOG_SYSTEM_UNLOCK(dbenv);
-	REP_SYSTEM_LOCK(dbenv);
+	LOG_SYSTEM_UNLOCK(env);
+	REP_SYSTEM_LOCK(env);
 	min_leases = rep->nsites / 2;
 
-	__os_gettime(dbenv, &curtime);
-
-	RPRINT(dbenv, (dbenv, "lease_check: min_leases %d curtime %lu %lu",
-	    min_leases, (u_long)curtime.tv_sec, (u_long)curtime.tv_nsec));
+	__os_gettime(env, &curtime, 1);
+	RPRINT(env, DB_VERB_REP_LEASE,
+	    (env, "lease_check: min_leases %lu curtime %lu %lu",
+	    (u_long)min_leases, (u_long)curtime.tv_sec,
+	    (u_long)curtime.tv_nsec));
 	table = R_ADDR(infop, rep->lease_off);
 	for (i = 0, valid_leases = 0;
 	    i < rep->nsites && valid_leases < min_leases; i++) {
@@ -292,11 +305,13 @@ retry:
 		 * - The LSN is up to date.
 		 */
 		if (le->eid != DB_EID_INVALID) {
-			RPRINT(dbenv, (dbenv,
-		    "lease_check: valid %d eid %d, lease_lsn [%lu][%lu]",
-			    valid_leases, le->eid, (u_long)le->lease_lsn.file,
+			RPRINT(env, DB_VERB_REP_LEASE, (env,
+		    "lease_check: valid %lu eid %d, lease_lsn [%lu][%lu]",
+			    (u_long)valid_leases, le->eid,
+			    (u_long)le->lease_lsn.file,
 			    (u_long)le->lease_lsn.offset));
-			RPRINT(dbenv, (dbenv, "lease_check: endtime %lu %lu",
+			RPRINT(env, DB_VERB_REP_LEASE,
+			    (env, "lease_check: endtime %lu %lu",
 			    (u_long)le->end_time.tv_sec,
 			    (u_long)le->end_time.tv_nsec));
 		}
@@ -305,12 +320,13 @@ retry:
 		    LOG_COMPARE(&le->lease_lsn, &lease_lsn) == 0)
 			valid_leases++;
 	}
-	REP_SYSTEM_UNLOCK(dbenv);
+	REP_SYSTEM_UNLOCK(env);
 
 	/*
 	 * Now see if we have enough.
 	 */
-	RPRINT(dbenv, (dbenv, "valid %d, min %d", valid_leases, min_leases));
+	RPRINT(env, DB_VERB_REP_LEASE, (env, "valid %lu, min %lu",
+	    (u_long)valid_leases, (u_long)min_leases));
 	if (valid_leases < min_leases) {
 		if (!refresh)
 			ret = DB_REP_LEASE_EXPIRED;
@@ -321,7 +337,7 @@ retry:
 			 * the PERM acknowledgement.  Give the grant messages
 			 * a chance to arrive and be processed.
 			 */
-			if ((ret = __rep_lease_refresh(dbenv)) == 0) {
+			if ((ret = __rep_lease_refresh(env)) == 0) {
 				if (tries <= LEASE_REFRESH_TRIES) {
 					/*
 					 * If we were successful sending, but
@@ -331,7 +347,7 @@ retry:
 					 * to run.
 					 */
 					if (tries > 0)
-						__os_sleep(dbenv, 1, 0);
+						__os_yield(env, 1, 0);
 					tries++;
 					goto retry;
 				} else
@@ -348,11 +364,11 @@ retry:
  *	Find the last permanent record and send that out so that it
  *	forces clients to grant their leases.
  *
- * PUBLIC: int __rep_lease_refresh __P((DB_ENV *));
+ * PUBLIC: int __rep_lease_refresh __P((ENV *));
  */
 int
-__rep_lease_refresh(dbenv)
-	DB_ENV *dbenv;
+__rep_lease_refresh(env)
+	ENV *env;
 {
 	DBT rec;
 	DB_LOGC *logc;
@@ -361,10 +377,10 @@ __rep_lease_refresh(dbenv)
 	REP *rep;
 	int ret, t_ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
 
-	if ((ret = __log_cursor(dbenv, &logc)) != 0)
+	if ((ret = __log_cursor(env, &logc)) != 0)
 		return (ret);
 
 	memset(&rec, 0, sizeof(rec));
@@ -372,18 +388,18 @@ __rep_lease_refresh(dbenv)
 	/*
 	 * Use __rep_log_backup to find the last PERM record.
 	 */
-	if ((ret = __rep_log_backup(dbenv, rep, logc, &lsn)) != 0)
+	if ((ret = __rep_log_backup(env, rep, logc, &lsn)) != 0)
 		goto err;
 
 	if ((ret = __logc_get(logc, &lsn, &rec, DB_CURRENT)) != 0)
 		goto err;
 
-	if ((ret = __rep_send_message(dbenv,
+	if ((ret = __rep_send_message(env,
 	    DB_EID_BROADCAST, REP_LOG, &lsn, &rec, REPCTL_PERM, 0)) != 0) {
 		/*
 		 * If we do not get an ack, we expire leases.
 		 */
-		(void)__rep_lease_expire(dbenv, 0);
+		(void)__rep_lease_expire(env, 0);
 		ret = DB_REP_LEASE_EXPIRED;
 	}
 
@@ -396,26 +412,27 @@ err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
  * __rep_lease_expire -
  *	Proactively expire all leases granted to us.
  *
- * PUBLIC: int __rep_lease_expire __P((DB_ENV *, int));
+ * PUBLIC: int __rep_lease_expire __P((ENV *, int));
  */
 int
-__rep_lease_expire(dbenv, locked)
-	DB_ENV *dbenv;
+__rep_lease_expire(env, locked)
+	ENV *env;
 	int locked;
 {
 	DB_REP *db_rep;
 	REGINFO *infop;
 	REP *rep;
 	REP_LEASE_ENTRY *le, *table;
-	int i, ret;
+	int ret;
+	u_int32_t i;
 
 	ret = 0;
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
-	infop = dbenv->reginfo;
+	infop = env->reginfo;
 
 	if (!locked)
-		REP_SYSTEM_LOCK(dbenv);
+		REP_SYSTEM_LOCK(env);
 	if (rep->lease_off != INVALID_ROFF) {
 		table = R_ADDR(infop, rep->lease_off);
 		/*
@@ -429,7 +446,7 @@ __rep_lease_expire(dbenv, locked)
 		}
 	}
 	if (!locked)
-		REP_SYSTEM_UNLOCK(dbenv);
+		REP_SYSTEM_UNLOCK(env);
 	return (ret);
 }
 
@@ -438,18 +455,18 @@ __rep_lease_expire(dbenv, locked)
  *	Return the amount of time remaining on a granted lease.
  * Assume the caller holds the REP_SYSTEM (region) mutex.
  *
- * PUBLIC: db_timeout_t __rep_lease_waittime __P((DB_ENV *));
+ * PUBLIC: db_timeout_t __rep_lease_waittime __P((ENV *));
  */
 db_timeout_t
-__rep_lease_waittime(dbenv)
-	DB_ENV *dbenv;
+__rep_lease_waittime(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REP *rep;
 	db_timespec exptime, mytime;
 	db_timeout_t to;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	exptime = rep->grant_expire;
 	to = 0;
@@ -459,15 +476,15 @@ __rep_lease_waittime(dbenv)
 	 * a crash and a lease could be granted from a previous
 	 * incarnation of this client.
 	 */
-	RPRINT(dbenv, (dbenv,
+	RPRINT(env, DB_VERB_REP_LEASE, (env,
     "wait_time: grant_expire %lu %lu lease_to %lu",
 	    (u_long)exptime.tv_sec, (u_long)exptime.tv_nsec,
 	    (u_long)rep->lease_timeout));
 	if (!timespecisset(&exptime))
 		to = rep->lease_timeout;
 	else {
-		__os_gettime(dbenv, &mytime);
-		RPRINT(dbenv, (dbenv,
+		__os_gettime(env, &mytime, 1);
+		RPRINT(env, DB_VERB_REP_LEASE, (env,
     "wait_time: mytime %lu %lu, grant_expire %lu %lu",
 		    (u_long)mytime.tv_sec, (u_long)mytime.tv_nsec,
 		    (u_long)exptime.tv_sec, (u_long)exptime.tv_nsec));
@@ -478,7 +495,7 @@ __rep_lease_waittime(dbenv)
 			 * time.
 			 */
 			timespecsub(&exptime, &mytime);
-			DB_TIMESPEC_TO_TIMEOUT(to, &exptime);
+			DB_TIMESPEC_TO_TIMEOUT(to, &exptime, 1);
 		}
 	}
 	return (to);

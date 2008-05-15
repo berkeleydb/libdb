@@ -1,5 +1,5 @@
-<!--$Id: config.so,v 10.20 2006/08/30 10:08:16 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: config.so,v 10.22 2008/04/29 22:35:23 mbrey Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Logging Subsystem</dl></b></td>
 <td align=right><a href="../log/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../log/limits.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Configuring logging</h3>
+<p align=center><b>Configuring logging</b></p>
 <p>The aspects of logging that may be configured are the size of the
 logging subsystem's region, the size of the log files on disk and the
 size of the log buffer in memory.  The <a href="../../api_c/env_set_lg_regionmax.html">DB_ENV-&gt;set_lg_regionmax</a> method
@@ -39,8 +38,17 @@ Larger buffer sizes can significantly increase throughput in the
 presence of long-running transactions, highly concurrent applications,
 or transactions producing large amounts of data.  By default, the buffer
 is approximately 32KB.</p>
+<p>The <a href="../../api_c/env_set_lg_dir.html">DB_ENV-&gt;set_lg_dir</a> method specifies the directory in which
+log files will be placed.  By default, log files are placed in
+the environment home directory.</p>
+<p>The <a href="../../api_c/env_set_lg_mode.html">DB_ENV-&gt;set_lg_filemode</a> method specifies the absolute file mode for
+created log files.  This method is only useful for the rare Berkeley DB
+application that does not control its umask value.</p>
+<p>The <a href="../../api_c/env_log_set_config.html">DB_ENV-&gt;log_set_config</a> method configures several boolean parameters
+that control the use of file system controls such as O_DIRECT and O_DSYNC,
+automatic removal of log files, in-memory logging, and pre-zeroing of logfiles.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../log/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../log/limits.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

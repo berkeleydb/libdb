@@ -1,5 +1,5 @@
 /*
- * $Id: sha1.c,v 12.4 2007/05/17 17:18:00 bostic Exp $
+ * $Id: sha1.c,v 12.5 2008/03/12 22:44:14 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -92,10 +92,13 @@ A million repetitions of "a"
     ^block->l[(i+2)&15]^block->l[i&15],1))
 
 /* (R0+R1), R2, R3, R4 are the different operations used in SHA1 */
-#define	R0(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk0(i)+0x5A827999+rol(v,5);w=rol(w,30);
-#define	R1(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk(i)+0x5A827999+rol(v,5);w=rol(w,30);
+#define	R0(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk0(i)+0x5A827999+rol(v,5); \
+    w=rol(w,30);
+#define	R1(v,w,x,y,z,i) z+=((w&(x^y))^y)+blk(i)+0x5A827999+rol(v,5); \
+    w=rol(w,30);
 #define	R2(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0x6ED9EBA1+rol(v,5);w=rol(w,30);
-#define	R3(v,w,x,y,z,i) z+=(((w|x)&y)|(w&x))+blk(i)+0x8F1BBCDC+rol(v,5);w=rol(w,30);
+#define	R3(v,w,x,y,z,i) z+=(((w|x)&y)|(w&x))+blk(i)+0x8F1BBCDC+rol(v,5); \
+    w=rol(w,30);
 #define	R4(v,w,x,y,z,i) z+=(w^x^y)+blk(i)+0xCA62C1D6+rol(v,5);w=rol(w,30);
 
 #ifdef VERBOSE  /* SAK */
@@ -224,7 +227,8 @@ u_int32_t i, j;	/* JHB */
     __db_SHAPrintContext(context, "before");
 #endif
     j = (context->count[0] >> 3) & 63;
-    if ((context->count[0] += (u_int32_t)len << 3) < (len << 3)) context->count[1]++;
+    if ((context->count[0] += (u_int32_t)len << 3) < (len << 3))
+	    context->count[1]++;
     context->count[1] += (u_int32_t)(len >> 29);
     if ((j + len) > 63) {
 	memcpy(&context->buffer[j], data, (i = 64-j));
@@ -283,4 +287,3 @@ unsigned char finalcount[8];
 }
 
 /*************************************************************/
-

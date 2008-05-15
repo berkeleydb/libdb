@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: code_capi.c,v 1.8 2007/06/05 14:06:25 bostic Exp $
+ * $Id: code_capi.c,v 1.10 2008/01/08 20:58:12 bostic Exp $
  */
 
 #include "db_codegen.h"
@@ -96,8 +96,8 @@ api_c_header()
 static void
 api_c_public_data()
 {
-	ENV_OBJ *cur_env;
 	DB_OBJ *cur_db;
+	ENV_OBJ *cur_env;
 
 	/*
 	 * Global handles.

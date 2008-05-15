@@ -10,11 +10,11 @@
  *	Recovery function for regop.
  *
  * PUBLIC: int __txn_regop_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_regop_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_regop_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -24,11 +24,14 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_regop_print);
-	REC_INTRO(__txn_regop_read, 1);
+	REC_INTRO(__txn_regop_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -72,11 +75,11 @@ out:	REC_CLOSE;
  *	Recovery function for regop.
  *
  * PUBLIC: int __txn_regop_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_regop_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_regop_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -86,11 +89,14 @@ __txn_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
 
 	REC_PRINT(__txn_regop_print);
-	REC_INTRO(__txn_regop_read, 1);
+	REC_INTRO(__txn_regop_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -134,11 +140,11 @@ out:	REC_CLOSE;
  *	Recovery function for ckp.
  *
  * PUBLIC: int __txn_ckp_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_ckp_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -148,11 +154,14 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_ckp_print);
-	REC_INTRO(__txn_ckp_read, 1);
+	REC_INTRO(__txn_ckp_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -196,11 +205,11 @@ out:	REC_CLOSE;
  *	Recovery function for ckp.
  *
  * PUBLIC: int __txn_ckp_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_ckp_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -210,11 +219,14 @@ __txn_ckp_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_ckp_print);
-	REC_INTRO(__txn_ckp_read, 1);
+	REC_INTRO(__txn_ckp_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -258,11 +270,11 @@ out:	REC_CLOSE;
  *	Recovery function for child.
  *
  * PUBLIC: int __txn_child_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_child_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_child_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -272,11 +284,14 @@ __txn_child_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_child_print);
-	REC_INTRO(__txn_child_read, 1);
+	REC_INTRO(__txn_child_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -320,11 +335,11 @@ out:	REC_CLOSE;
  *	Recovery function for xa_regop.
  *
  * PUBLIC: int __txn_xa_regop_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_xa_regop_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -334,11 +349,14 @@ __txn_xa_regop_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_xa_regop_print);
-	REC_INTRO(__txn_xa_regop_read, 1);
+	REC_INTRO(__txn_xa_regop_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {
@@ -382,11 +400,11 @@ out:	REC_CLOSE;
  *	Recovery function for recycle.
  *
  * PUBLIC: int __txn_recycle_recover
- * PUBLIC:   __P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
+ * PUBLIC:   __P((env *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__txn_recycle_recover(dbenv, dbtp, lsnp, op, info)
-	DB_ENV *dbenv;
+__txn_recycle_recover(env, dbtp, lsnp, op, info)
+	env *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
@@ -396,11 +414,14 @@ __txn_recycle_recover(dbenv, dbtp, lsnp, op, info)
 	DB *file_dbp;
 	DBC *dbc;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
 
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
 	REC_PRINT(__txn_recycle_print);
-	REC_INTRO(__txn_recycle_read, 1);
+	REC_INTRO(__txn_recycle_read, ip, 0);
 
 	if ((ret = mpf->get(mpf, &argp->pgno, 0, &pagep)) != 0)
 		if (DB_REDO(op)) {

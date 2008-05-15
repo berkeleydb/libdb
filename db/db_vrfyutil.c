@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: db_vrfyutil.c,v 12.16 2007/05/17 15:14:57 bostic Exp $
+ * $Id: db_vrfyutil.c,v 12.22 2008/03/18 17:29:39 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -14,18 +14,19 @@
 #include "dbinc/db_am.h"
 
 static int __db_vrfy_childinc __P((DBC *, VRFY_CHILDINFO *));
-static int __db_vrfy_pageinfo_create __P((DB_ENV *, VRFY_PAGEINFO **));
+static int __db_vrfy_pageinfo_create __P((ENV *, VRFY_PAGEINFO **));
 
 /*
  * __db_vrfy_dbinfo_create --
  *	Allocate and initialize a VRFY_DBINFO structure.
  *
  * PUBLIC: int __db_vrfy_dbinfo_create
- * PUBLIC:     __P((DB_ENV *, u_int32_t, VRFY_DBINFO **));
+ * PUBLIC:     __P((ENV *, DB_THREAD_INFO *, u_int32_t, VRFY_DBINFO **));
  */
 int
-__db_vrfy_dbinfo_create(dbenv, pgsize, vdpp)
-	DB_ENV *dbenv;
+__db_vrfy_dbinfo_create(env, ip, pgsize, vdpp)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	u_int32_t pgsize;
 	VRFY_DBINFO **vdpp;
 {
@@ -39,7 +40,7 @@ __db_vrfy_dbinfo_create(dbenv, pgsize, vdpp)
 	if ((ret = __os_calloc(NULL, 1, sizeof(VRFY_DBINFO), &vdp)) != 0)
 		goto err;
 
-	if ((ret = __db_create_internal(&cdbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&cdbp, env, 0)) != 0)
 		goto err;
 
 	if ((ret = __db_set_flags(cdbp, DB_DUP)) != 0)
@@ -49,29 +50,29 @@ __db_vrfy_dbinfo_create(dbenv, pgsize, vdpp)
 		goto err;
 
 	/* If transactional, make sure we don't log. */
-	if (TXN_ON(dbenv) &&
+	if (TXN_ON(env) &&
 	    (ret = __db_set_flags(cdbp, DB_TXN_NOT_DURABLE)) != 0)
 		goto err;
-	if ((ret = __db_open(cdbp,
+	if ((ret = __db_open(cdbp, ip,
 	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600, PGNO_BASE_MD)) != 0)
 		goto err;
 
-	if ((ret = __db_create_internal(&pgdbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&pgdbp, env, 0)) != 0)
 		goto err;
 
 	if ((ret = __db_set_pagesize(pgdbp, pgsize)) != 0)
 		goto err;
 
 	/* If transactional, make sure we don't log. */
-	if (TXN_ON(dbenv) &&
+	if (TXN_ON(env) &&
 	    (ret = __db_set_flags(pgdbp, DB_TXN_NOT_DURABLE)) != 0)
 		goto err;
 
-	if ((ret = __db_open(pgdbp,
+	if ((ret = __db_open(pgdbp, ip,
 	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600, PGNO_BASE_MD)) != 0)
 		goto err;
 
-	if ((ret = __db_vrfy_pgset(dbenv, pgsize, &pgset)) != 0)
+	if ((ret = __db_vrfy_pgset(env, ip, pgsize, &pgset)) != 0)
 		goto err;
 
 	LIST_INIT(&vdp->subdbs);
@@ -80,6 +81,7 @@ __db_vrfy_dbinfo_create(dbenv, pgsize, vdpp)
 	vdp->cdbp = cdbp;
 	vdp->pgdbp = pgdbp;
 	vdp->pgset = pgset;
+	vdp->thread_info = ip;
 	*vdpp = vdp;
 	return (0);
 
@@ -88,7 +90,7 @@ err:	if (cdbp != NULL)
 	if (pgdbp != NULL)
 		(void)__db_close(pgdbp, NULL, 0);
 	if (vdp != NULL)
-		__os_free(dbenv, vdp);
+		__os_free(env, vdp);
 	return (ret);
 }
 
@@ -97,11 +99,11 @@ err:	if (cdbp != NULL)
  *	Destructor for VRFY_DBINFO.  Destroys VRFY_PAGEINFOs and deallocates
  *	structure.
  *
- * PUBLIC: int __db_vrfy_dbinfo_destroy __P((DB_ENV *, VRFY_DBINFO *));
+ * PUBLIC: int __db_vrfy_dbinfo_destroy __P((ENV *, VRFY_DBINFO *));
  */
 int
-__db_vrfy_dbinfo_destroy(dbenv, vdp)
-	DB_ENV *dbenv;
+__db_vrfy_dbinfo_destroy(env, vdp)
+	ENV *env;
 	VRFY_DBINFO *vdp;
 {
 	VRFY_CHILDINFO *c;
@@ -115,7 +117,7 @@ __db_vrfy_dbinfo_destroy(dbenv, vdp)
 	 */
 	while (LIST_FIRST(&vdp->activepips) != NULL)
 		if ((t_ret = __db_vrfy_putpageinfo(
-		    dbenv, vdp, LIST_FIRST(&vdp->activepips))) != 0) {
+		    env, vdp, LIST_FIRST(&vdp->activepips))) != 0) {
 			if (ret == 0)
 				ret = t_ret;
 			break;
@@ -137,8 +139,8 @@ __db_vrfy_dbinfo_destroy(dbenv, vdp)
 		ret = t_ret;
 
 	if (vdp->extents != NULL)
-		__os_free(dbenv, vdp->extents);
-	__os_free(dbenv, vdp);
+		__os_free(env, vdp->extents);
+	__os_free(env, vdp);
 	return (ret);
 }
 
@@ -155,9 +157,9 @@ __db_vrfy_getpageinfo(vdp, pgno, pipp)
 	db_pgno_t pgno;
 	VRFY_PAGEINFO **pipp;
 {
-	DB_ENV *dbenv;
-	DBT key, data;
 	DB *pgdbp;
+	DBT key, data;
+	ENV *env;
 	VRFY_PAGEINFO *pip;
 	int ret;
 
@@ -186,16 +188,17 @@ __db_vrfy_getpageinfo(vdp, pgno, pipp)
 
 	/* Case 2. */
 	pgdbp = vdp->pgdbp;
-	dbenv = pgdbp->dbenv;
+	env = pgdbp->env;
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
 	F_SET(&data, DB_DBT_MALLOC);
 	key.data = &pgno;
 	key.size = sizeof(db_pgno_t);
 
-	if ((ret = __db_get(pgdbp, NULL, &key, &data, 0)) == 0) {
+	if ((ret = __db_get(pgdbp,
+	    vdp->thread_info, NULL, &key, &data, 0)) == 0) {
 		/* Found it. */
-		DB_ASSERT(dbenv, data.size == sizeof(VRFY_PAGEINFO));
+		DB_ASSERT(env, data.size == sizeof(VRFY_PAGEINFO));
 		pip = data.data;
 		LIST_INSERT_HEAD(&vdp->activepips, pip, links);
 		goto found;
@@ -203,7 +206,7 @@ __db_vrfy_getpageinfo(vdp, pgno, pipp)
 		return (ret);
 
 	/* Case 3 */
-	if ((ret = __db_vrfy_pageinfo_create(dbenv, &pip)) != 0)
+	if ((ret = __db_vrfy_pageinfo_create(env, &pip)) != 0)
 		return (ret);
 
 	LIST_INSERT_HEAD(&vdp->activepips, pip, links);
@@ -217,17 +220,17 @@ found:	pip->pi_refcount++;
  * __db_vrfy_putpageinfo --
  *	Put back a VRFY_PAGEINFO that we're done with.
  *
- * PUBLIC: int __db_vrfy_putpageinfo __P((DB_ENV *,
+ * PUBLIC: int __db_vrfy_putpageinfo __P((ENV *,
  * PUBLIC:     VRFY_DBINFO *, VRFY_PAGEINFO *));
  */
 int
-__db_vrfy_putpageinfo(dbenv, vdp, pip)
-	DB_ENV *dbenv;
+__db_vrfy_putpageinfo(env, vdp, pip)
+	ENV *env;
 	VRFY_DBINFO *vdp;
 	VRFY_PAGEINFO *pip;
 {
-	DBT key, data;
 	DB *pgdbp;
+	DBT key, data;
 	VRFY_PAGEINFO *p;
 	int ret;
 
@@ -243,7 +246,8 @@ __db_vrfy_putpageinfo(dbenv, vdp, pip)
 	data.data = pip;
 	data.size = sizeof(VRFY_PAGEINFO);
 
-	if ((ret = __db_put(pgdbp, NULL, &key, &data, 0)) != 0)
+	if ((ret = __db_put(pgdbp,
+	     vdp->thread_info, NULL, &key, &data, 0)) != 0)
 		return (ret);
 
 	LIST_FOREACH(p, &vdp->activepips, links)
@@ -252,7 +256,7 @@ __db_vrfy_putpageinfo(dbenv, vdp, pip)
 	if (p != NULL)
 		LIST_REMOVE(p, links);
 
-	__os_ufree(dbenv, p);
+	__os_ufree(env, p);
 	return (0);
 }
 
@@ -262,27 +266,29 @@ __db_vrfy_putpageinfo(dbenv, vdp, pip)
  *	(A mapping from page number to int, used by the *_meta2pgset functions,
  *	as well as for keeping track of which pages the verifier has seen.)
  *
- * PUBLIC: int __db_vrfy_pgset __P((DB_ENV *, u_int32_t, DB **));
+ * PUBLIC: int __db_vrfy_pgset __P((ENV *,
+ * PUBLIC:     DB_THREAD_INFO *, u_int32_t, DB **));
  */
 int
-__db_vrfy_pgset(dbenv, pgsize, dbpp)
-	DB_ENV *dbenv;
+__db_vrfy_pgset(env, ip, pgsize, dbpp)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	u_int32_t pgsize;
 	DB **dbpp;
 {
 	DB *dbp;
 	int ret;
 
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		return (ret);
 	if ((ret = __db_set_pagesize(dbp, pgsize)) != 0)
 		goto err;
 
 	/* If transactional, make sure we don't log. */
-	if (TXN_ON(dbenv) &&
+	if (TXN_ON(env) &&
 	    (ret = __db_set_flags(dbp, DB_TXN_NOT_DURABLE)) != 0)
 		goto err;
-	if ((ret = __db_open(dbp,
+	if ((ret = __db_open(dbp, ip,
 	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0600, PGNO_BASE_MD)) == 0)
 		*dbpp = dbp;
 	else
@@ -296,11 +302,13 @@ err:		(void)__db_close(dbp, NULL, 0);
  *	Get the value associated in a page set with a given pgno.  Return
  *	a 0 value (and succeed) if we've never heard of this page.
  *
- * PUBLIC: int __db_vrfy_pgset_get __P((DB *, db_pgno_t, int *));
+ * PUBLIC: int __db_vrfy_pgset_get __P((DB *, DB_THREAD_INFO *, db_pgno_t,
+ * PUBLIC:     int *));
  */
 int
-__db_vrfy_pgset_get(dbp, pgno, valp)
+__db_vrfy_pgset_get(dbp, ip, pgno, valp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	db_pgno_t pgno;
 	int *valp;
 {
@@ -316,8 +324,8 @@ __db_vrfy_pgset_get(dbp, pgno, valp)
 	data.ulen = sizeof(int);
 	F_SET(&data, DB_DBT_USERMEM);
 
-	if ((ret = __db_get(dbp, NULL, &key, &data, 0)) == 0) {
-		DB_ASSERT(dbp->dbenv, data.size == sizeof(int));
+	if ((ret = __db_get(dbp, ip, NULL, &key, &data, 0)) == 0) {
+		DB_ASSERT(dbp->env, data.size == sizeof(int));
 	} else if (ret == DB_NOTFOUND)
 		val = 0;
 	else
@@ -331,11 +339,12 @@ __db_vrfy_pgset_get(dbp, pgno, valp)
  * __db_vrfy_pgset_inc --
  *	Increment the value associated with a pgno by 1.
  *
- * PUBLIC: int __db_vrfy_pgset_inc __P((DB *, db_pgno_t));
+ * PUBLIC: int __db_vrfy_pgset_inc __P((DB *, DB_THREAD_INFO *, db_pgno_t));
  */
 int
-__db_vrfy_pgset_inc(dbp, pgno)
+__db_vrfy_pgset_inc(dbp, ip, pgno)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	db_pgno_t pgno;
 {
 	DBT key, data;
@@ -353,15 +362,15 @@ __db_vrfy_pgset_inc(dbp, pgno)
 	data.ulen = sizeof(int);
 	F_SET(&data, DB_DBT_USERMEM);
 
-	if ((ret = __db_get(dbp, NULL, &key, &data, 0)) == 0) {
-		DB_ASSERT(dbp->dbenv, data.size == sizeof(int));
+	if ((ret = __db_get(dbp, ip, NULL, &key, &data, 0)) == 0) {
+		DB_ASSERT(dbp->env, data.size == sizeof(int));
 	} else if (ret != DB_NOTFOUND)
 		return (ret);
 
 	data.size = sizeof(int);
 	++val;
 
-	return (__db_put(dbp, NULL, &key, &data, 0));
+	return (__db_put(dbp, ip, NULL, &key, &data, 0));
 }
 
 /*
@@ -391,7 +400,7 @@ __db_vrfy_pgset_next(dbc, pgnop)
 	if ((ret = __dbc_get(dbc, &key, &data, DB_NEXT)) != 0)
 		return (ret);
 
-	DB_ASSERT(dbc->dbp->dbenv, key.size == sizeof(db_pgno_t));
+	DB_ASSERT(dbc->env, key.size == sizeof(db_pgno_t));
 	*pgnop = pgno;
 
 	return (0);
@@ -415,7 +424,7 @@ __db_vrfy_childcursor(vdp, dbcp)
 
 	cdbp = vdp->cdbp;
 
-	if ((ret = __db_cursor(cdbp, NULL, &dbc, 0)) == 0)
+	if ((ret = __db_cursor(cdbp, vdp->thread_info, NULL, &dbc, 0)) == 0)
 		*dbcp = dbc;
 
 	return (ret);
@@ -487,7 +496,7 @@ __db_vrfy_childput(vdp, pgno, cip)
 	data.data = cip;
 	data.size = sizeof(VRFY_CHILDINFO);
 
-	return (__db_put(cdbp, NULL, &key, &data, 0));
+	return (__db_put(cdbp, vdp->thread_info, NULL, &key, &data, 0));
 }
 
 /*
@@ -538,7 +547,7 @@ __db_vrfy_ccset(dbc, pgno, cipp)
 	if ((ret = __dbc_get(dbc, &key, &data, DB_SET)) != 0)
 		return (ret);
 
-	DB_ASSERT(dbc->dbp->dbenv, data.size == sizeof(VRFY_CHILDINFO));
+	DB_ASSERT(dbc->env, data.size == sizeof(VRFY_CHILDINFO));
 	*cipp = (VRFY_CHILDINFO *)data.data;
 
 	return (0);
@@ -566,7 +575,7 @@ __db_vrfy_ccnext(dbc, cipp)
 	if ((ret = __dbc_get(dbc, &key, &data, DB_NEXT_DUP)) != 0)
 		return (ret);
 
-	DB_ASSERT(dbc->dbp->dbenv, data.size == sizeof(VRFY_CHILDINFO));
+	DB_ASSERT(dbc->env, data.size == sizeof(VRFY_CHILDINFO));
 	*cipp = (VRFY_CHILDINFO *)data.data;
 
 	return (0);
@@ -596,8 +605,8 @@ __db_vrfy_ccclose(dbc)
  *	Constructor for VRFY_PAGEINFO;  allocates and initializes.
  */
 static int
-__db_vrfy_pageinfo_create(dbenv, pipp)
-	DB_ENV *dbenv;
+__db_vrfy_pageinfo_create(env, pipp)
+	ENV *env;
 	VRFY_PAGEINFO **pipp;
 {
 	VRFY_PAGEINFO *pip;
@@ -610,7 +619,7 @@ __db_vrfy_pageinfo_create(dbenv, pipp)
 	 * used, and so we always allocate with __os_umalloc so we can free
 	 * with __os_ufree.
 	 */
-	if ((ret = __os_umalloc(dbenv, sizeof(VRFY_PAGEINFO), &pip)) != 0)
+	if ((ret = __os_umalloc(env, sizeof(VRFY_PAGEINFO), &pip)) != 0)
 		return (ret);
 	memset(pip, 0, sizeof(VRFY_PAGEINFO));
 
@@ -637,7 +646,7 @@ __db_salvage_init(vdp)
 	if ((ret = __db_set_pagesize(dbp, 1024)) != 0)
 		goto err;
 
-	if ((ret = __db_open(dbp,
+	if ((ret = __db_open(dbp, vdp->thread_info,
 	    NULL, NULL, NULL, DB_BTREE, DB_CREATE, 0, PGNO_BASE_MD)) != 0)
 		goto err;
 
@@ -688,11 +697,11 @@ __db_salvage_getnext(vdp, dbcp, pgnop, pgtypep, skip_overflow)
 	memset(&data, 0, sizeof(DBT));
 
 	if (*dbcp == NULL &&
-	    (ret = __db_cursor(dbp, NULL, dbcp, 0)) != 0)
+	    (ret = __db_cursor(dbp, vdp->thread_info, NULL, dbcp, 0)) != 0)
 		return (ret);
 
 	while ((ret = __dbc_get(*dbcp, &key, &data, DB_NEXT)) == 0) {
-		DB_ASSERT(dbp->dbenv, data.size == sizeof(u_int32_t));
+		DB_ASSERT(dbp->env, data.size == sizeof(u_int32_t));
 		memcpy(&pgtype, data.data, sizeof(pgtype));
 
 		if (skip_overflow && pgtype == SALVAGE_OVERFLOW)
@@ -701,8 +710,8 @@ __db_salvage_getnext(vdp, dbcp, pgnop, pgtypep, skip_overflow)
 		if ((ret = __dbc_del(*dbcp, 0)) != 0)
 			return (ret);
 		if (pgtype != SALVAGE_IGNORE) {
-			DB_ASSERT(dbp->dbenv, key.size == sizeof(db_pgno_t));
-			DB_ASSERT(dbp->dbenv, data.size == sizeof(u_int32_t));
+			DB_ASSERT(dbp->env, key.size == sizeof(db_pgno_t));
+			DB_ASSERT(dbp->env, data.size == sizeof(u_int32_t));
 
 			*pgnop = *(db_pgno_t *)key.data;
 			*pgtypep = *(u_int32_t *)data.data;
@@ -728,8 +737,8 @@ __db_salvage_isdone(vdp, pgno)
 	VRFY_DBINFO *vdp;
 	db_pgno_t pgno;
 {
-	DBT key, data;
 	DB *dbp;
+	DBT key, data;
 	int ret;
 	u_int32_t currtype;
 
@@ -752,7 +761,8 @@ __db_salvage_isdone(vdp, pgno)
 	 * If it's there and is marked anything else, that's fine--we
 	 * want to mark it done.
 	 */
-	if ((ret = __db_get(dbp, NULL, &key, &data, 0)) == 0) {
+	if ((ret = __db_get(dbp,
+	    vdp->thread_info, NULL, &key, &data, 0)) == 0) {
 		/*
 		 * The key's already here.  Check and see if it's already
 		 * marked done.  If it is, return DB_KEYEXIST.  If it's not,
@@ -780,8 +790,8 @@ __db_salvage_markdone(vdp, pgno)
 	VRFY_DBINFO *vdp;
 	db_pgno_t pgno;
 {
-	DBT key, data;
 	DB *dbp;
+	DBT key, data;
 	int pgtype, ret;
 	u_int32_t currtype;
 
@@ -818,7 +828,7 @@ __db_salvage_markdone(vdp, pgno)
 	data.size = sizeof(u_int32_t);
 	data.data = &pgtype;
 
-	return (__db_put(dbp, NULL, &key, &data, 0));
+	return (__db_put(dbp, vdp->thread_info, NULL, &key, &data, 0));
 }
 
 /*
@@ -855,7 +865,8 @@ __db_salvage_markneeded(vdp, pgno, pgtype)
 	 * unless it's already there, in which case it's presumably
 	 * already been marked done.
 	 */
-	ret = __db_put(dbp, NULL, &key, &data, DB_NOOVERWRITE);
+	ret = __db_put(dbp,
+	     vdp->thread_info, NULL, &key, &data, DB_NOOVERWRITE);
 	return (ret == DB_KEYEXIST ? 0 : ret);
 }
 

@@ -1,5 +1,5 @@
-<!--$Id: security.so,v 10.17 2002/02/04 17:52:38 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: security.so,v 10.18 2007/07/30 19:26:29 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,32 +10,31 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Environment</dl></b></td>
 <td align=right><a href="../env/region.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/encrypt.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Security</h3>
+<p align=center><b>Security</b></p>
 <p>The following are security issues that should be considered when writing
 Berkeley DB applications:</p>
-<dl compact>
-<dt>Database environment permissions<dd>The directory used as the Berkeley DB database environment should have its
+<br>
+<b>Database environment permissions</b><ul compact><li>The directory used as the Berkeley DB database environment should have its
 permissions set to ensure that files in the environment are not accessible
 to users without appropriate permissions.  Applications that add to the
 user's permissions (for example, UNIX setuid or setgid applications),
 must be carefully checked to not permit illegal use of those permissions
-such as general file access in the environment directory.
-<dt>Environment variables<dd>Setting the <a href="../../api_c/env_open.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> and <a href="../../api_c/env_open.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a> flags
+such as general file access in the environment directory.</ul>
+<b>Environment variables</b><ul compact><li>Setting the <a href="../../api_c/env_open.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a> and <a href="../../api_c/env_open.html#DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a> flags
 and allowing the use of environment variables during file naming can be
 dangerous.  Setting those flags in Berkeley DB applications with additional
 permissions (for example, UNIX setuid or setgid applications) could
 potentially allow users to read and write databases to which they would
-not normally have access.
-<dt>File permissions<dd>By default, Berkeley DB always creates files readable and writable by the owner
+not normally have access.</ul>
+<b>File permissions</b><ul compact><li>By default, Berkeley DB always creates files readable and writable by the owner
 and the group (that is, S_IRUSR, S_IWUSR, S_IRGRP and S_IWGRP; or octal mode
 0660 on historic UNIX systems).  The group ownership of created files is
 based on the system and directory defaults, and is not further specified
-by Berkeley DB.
-<dt>Temporary backing files<dd>If an unnamed database is created and the cache is too small to hold
+by Berkeley DB.</ul>
+<b>Temporary backing files</b><ul compact><li>If an unnamed database is created and the cache is too small to hold
 the database in memory, Berkeley DB will create a temporary physical file to
 enable it to page the database to disk as needed.  In this case,
 environment variables such as <b>TMPDIR</b> may be used to specify
@@ -46,10 +45,17 @@ may not sufficiently protect temporary files created in random
 directories from improper access.  To be absolutely safe, applications
 storing sensitive data in unnamed databases should use the
 <a href="../../api_c/env_set_tmp_dir.html">DB_ENV-&gt;set_tmp_dir</a> method to specify a temporary directory with
-known permissions.
-</dl>
+known permissions.</ul>
+<b>Tcl API</b><ul compact><li>The Berkeley DB Tcl API does not attempt to avoid evaluating input as Tcl
+commands.  For this reason, it may be dangerous to pass unreviewed user
+input through the Berkeley DB Tcl API, as the input may subsequently be
+evaluated as a Tcl command.  Additionally, the Berkeley DB Tcl API
+initialization routine resets process' effective user and group IDs to
+the real user and group IDs, to minimize the effectiveness of a Tcl
+injection attack.</ul>
+<br>
 <table width="100%"><tr><td><br></td><td align=right><a href="../env/region.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../env/encrypt.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!--$Id: limits.so,v 10.38 2004/08/18 19:57:37 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,12 +10,11 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Subsystem</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Transaction Subsystem</dl></b></td>
 <td align=right><a href="../txn/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../sequence/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Transaction limits</h3>
-<h3>Transaction IDs</h3>
+<p align=center><b>Transaction limits</b></p>
+<b>Transaction IDs</b>
 <p>Transactions are identified by 31-bit unsigned integers, which means
 there are just over two billion unique transaction IDs.  When a database
 environment is initially created or recovery is run, the transaction ID
@@ -25,7 +24,7 @@ transaction ID is reached, starting again from 0x80000000.  The most
 recently allocated transaction ID is the <b>st_last_txnid</b> value in
 the transaction statistics information, and can be displayed by the
 <a href="../../utility/db_stat.html">db_stat</a> utility.</p>
-<h3>Cursors</h3>
+<b>Cursors</b>
 <p>When using transactions, cursors are localized to a single transaction.
 That is, a cursor may not span transactions, and must be opened and
 closed within a single transaction.  In addition, intermingling
@@ -33,7 +32,7 @@ transaction-protected cursor operations and non-transaction-protected
 cursor operations on the same database in a single thread of control is
 practically guaranteed to deadlock because the locks obtained for
 transactions and non-transactions can conflict.</p>
-<h3>Multiple Threads of Control</h3>
+<b>Multiple Threads of Control</b>
 <p>Because transactions must hold all their locks until commit, a single
 transaction may accumulate a large number of long-term locks during its
 lifetime.  As a result, when two concurrently running transactions
@@ -50,6 +49,6 @@ is waiting is in the same thread of control, no forward progress can be
 made.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../txn/config.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../sequence/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

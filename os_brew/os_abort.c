@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: os_abort.c,v 1.6 2007/05/17 15:15:47 bostic Exp $
+ * $Id: os_abort.c,v 1.9 2008/01/08 20:58:44 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,9 +14,12 @@
  * __os_abort --
  */
 void
-__os_abort()
+__os_abort(env)
+	ENV *env;
 {
 	AEEApplet *app;
+
+	COMPQUIET(env, NULL);
 
 	app = (AEEApplet *)GETAPPINSTANCE();
 	ISHELL_CloseApplet(app->m_pIShell, FALSE);

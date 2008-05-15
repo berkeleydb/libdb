@@ -1,4 +1,4 @@
-m4_comment([$Id: ram.so,v 10.10 2006/09/19 15:42:31 bostic Exp $])
+m4_comment([$Id: ram.so,v 10.11 2008/01/24 00:36:26 sarette Exp $])
 
 m4_ref_title(Programmer Notes,
     Memory-only or Flash configurations,
@@ -73,7 +73,7 @@ In applications running on systems without any form of stable storage,
 durability must be accomplished through replication.  In this case,
 database environments should be configured to maintain database logs in
 memory, rather than in the filesystem, by specifying the
-m4_ref(DB_LOG_INMEMORY) flag to the m4_refT(dbenv_set_flags).])])
+m4_ref(DB_LOG_IN_MEMORY) flag to the m4_refT(dbenv_set_flags).])])
 
 m4_tagend
 

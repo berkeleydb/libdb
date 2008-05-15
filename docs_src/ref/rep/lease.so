@@ -1,0 +1,168 @@
+m4_comment([$Id: lease.so,v 1.6 2007/11/27 19:36:55 sue Exp $])
+
+m4_ref_title(m4_db Replication,
+    Master Leases,, rep/trans, rep/clock_skew)
+
+m4_p([dnl
+Some applications have strict requirements about the consistency
+of data read on a master site.  m4_db provides a mechanism
+called master leases to provide such consistency.
+Without master leases, it is sometimes possible for
+m4_db to return old data to an application when newer data is
+available due to unfortunate scheduling as illustrated below:])
+m4_nlistbegin
+m4_nlist([dnl
+m4_bold(Application on master site):   Read data item
+m4_italic(foo) via m4_db m4_ref(dbh_get) or m4_ref(dbc_get) call.])
+m4_nlist([dnl
+m4_bold(Application on master site): [sleep, get descheduled, etc].])
+m4_nlist([dnl
+m4_bold(System): Master changes role, becomes a client.])
+m4_nlist([dnl
+m4_bold(System): New site is elected master.])
+m4_nlist([dnl
+m4_bold(System): New master modifies data item m4_italic(foo).])
+m4_nlist([dnl
+m4_bold(Application): m4_db returns old data for m4_italic(foo)
+to application.])
+m4_nlistend
+
+m4_p([dnl
+By using master leases, m4_db can provide guarantees about the
+consistency of data read on a master site.  The master site
+can be considered a recognized authority for the data and
+consequently can provide authoritative reads.  Clients grant master
+leases to a master site.  By doing so, clients acknowledge
+the right of that site to retain the role of master
+for a period of time.
+During that period of time, clients cannot elect a new
+master, become master, nor grant their lease to another site.])
+
+m4_p([dnl
+By holding a collection of granted leases, a master site can
+guarantee to the application that the data returned is the
+current, authoritative value.  As a master performs operations,
+it continually requests updated grants from the clients.
+When a read operation is required, the master guarantees
+that it holds a valid collection of lease grants from clients
+before returning data to the application.  By holding leases,
+m4_db provides several guarantees to the application:])
+
+m4_nlistbegin
+m4_nlist([dnl
+Authoritative reads: A guarantee that the data being read by the
+application is the current value.])
+
+m4_nlist([dnl
+Durability from rollback: A guarantee that the data being written or read by the
+application is permanent across a majority of client sites and will
+never be rolled back.])
+
+m4_p([dnl
+The rollback guarantee also depends on the m4_ref(DB_TXN_NOSYNC) flag.
+The guarantee is effective as long as there isn't total
+replication group failure while clients have granted leases
+but are holding the updates in their cache.
+The application must weigh the performance impact of synchronous
+transactions against the risk of total replication group failure.
+If clients grant a lease while holding updated data in cache,
+and total failure occurs, then the data is no longer present
+on the clients and rollback can occur if the master also crashes.])
+
+m4_p([dnl
+The guarantee that data will not be rolled back applies only
+to data successfully committed on a master.
+Data read on a client, or read while ignoring leases
+can be rolled back.])
+
+m4_nlist([dnl
+Freshness: A guarantee that the data being read by the application
+on the m4_italic(master) is up-to-date and has not been
+modified or removed during the read.])
+
+m4_p([dnl
+The read authority is only on the master.  Read operations on a client
+always ignore leases and consequently, that operation can return stale data.])
+
+m4_nlist([dnl
+Master viability: A guarantee that a current master with valid
+leases cannot encounter a duplicate master situation.])
+
+m4_p([dnl
+Leases remove the possibility of a duplicate master situation that
+forces the current master to downgrade to a client.  However, it is
+still possible that old masters with expired leases can discover a later
+master and return m4_ref(DB_REP_DUPMASTER) to the application.])
+m4_nlistend
+
+m4_p([dnl
+There are several requirements of the application using leases:])
+m4_nlistbegin
+m4_nlist([dnl
+Replication Manager applications must configure a majority (or larger)
+acknowledgement policy via the m4_refT(repmgr_set_ack_policy).  Base API
+users must implement and enforce such a policy on their own.])
+
+m4_nlist([dnl
+Base API users must return an error from the send callback function when
+the majority acknowledgement policy is not met for permanent records
+marked with m4_ref(DB_REP_PERMANENT).  Note that the Replication Manager
+automatically fulfills this requirement.])
+
+m4_nlist([dnl
+Applications must set the number of sites in the group using the
+m4_refT(rep_set_nsites) before starting replication and cannot
+change it during operation.])
+
+m4_nlist([dnl
+Using leases in a replication group is all or none.  Behavior is
+undefined when some sites configure leases and others do not.
+Use the m4_refT(rep_set_config) to turn on leases.])
+
+m4_nlist([dnl
+The configured lease timeout value must be the same on all sites
+in a replication group, set via the m4_refT(rep_set_timeout).])
+
+m4_nlist([dnl
+The configured clock_scale_factor value must be the same on all sites
+in a replication group.  This value defaults to no skew, but can
+be set via the m4_refT(rep_set_clockskew).])
+
+m4_nlist([dnl
+Applications that care about read guarantees must perform all read
+operations on the master.  Reading on a client does not guarantee
+freshness.])
+
+m4_nlist([dnl
+The application must use elections to choose a master site.  It must
+never simply declare a master without having won an election (as is
+allowed without Master Leases).])
+m4_nlistend
+
+m4_p([dnl
+Master leases are based on timeouts.  m4_db assumes that time
+always runs forward.  Users who change the system clock on
+either client or master sites when leases are in use void all
+guarantees and can get undefined behavior.  See the
+m4_refT(rep_set_timeout) for more information.])
+
+m4_p([dnl
+Read operations on a master that should not be subject to
+leases can use the m4_ref(DB_IGNORE_LEASE) flag to the
+m4_refT(dbh_get) or the m4_refT(dbc_get).  Read
+operations on a client always imply leases are ignored.])
+
+m4_p([dnl
+Clients are forbidden from participating in elections while
+they have an outstanding lease granted to a master.
+Therefore, if the m4_refT(rep_elect) is called, then m4_db will
+block, waiting until its lease grant expires before participating in
+any election.  While it waits, the client attempts to
+contact the current master.  If the client finds a current
+master, then it returns from the m4_refT(rep_elect).
+When leases are configured and the
+lease has never yet been granted (on start-up), clients
+must wait a full lease timeout before participating in
+an election.])
+
+m4_page_footer

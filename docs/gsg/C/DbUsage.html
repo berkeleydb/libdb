@@ -274,7 +274,7 @@ load_vendors_database(STOCK_DBS my_stock, char *vendor_file)
         data.size = sizeof(my_vendor);
                                                                                                                                
         /*
-         * Note that given the way we built our struct, there is extra
+         * Note that given the way we built our struct, there are extra
          * bytes in it. Essentially we're using fixed-width fields with
          * the unused portion of some fields padded with zeros. This
          * is the easiest thing to do, but it does result in a bloated

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep009.tcl,v 12.15 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep009.tcl,v 12.17 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep009
 # TEST	Replication and DUPMASTERs
@@ -52,10 +52,11 @@ proc rep009 { method { niter 10 } { tnum "009" } args } {
 proc rep009_sub { method niter tnum clean logset recargs largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

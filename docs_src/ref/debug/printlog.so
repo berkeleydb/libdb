@@ -1,4 +1,4 @@
-m4_comment([$Id: printlog.so,v 10.49 2007/07/10 16:54:17 bostic Exp $])
+m4_comment([$Id: printlog.so,v 10.50 2007/10/26 15:39:18 bostic Exp $])
 
 m4_ref_title(Debugging Applications,
     Reviewing m4_db log files,, debug/runtime, build_brew/intro)
@@ -89,8 +89,6 @@ m4_table_element(db_pg_alloc, [Indicates we allocated a page to a database.])
 m4_table_element(db_pg_free, [Indicates we freed a page (freed pages are added to a freelist and reused).])
 m4_table_element(db_pg_freedata, [Indicates we freed a page that still contained data entries (freed pages are added to a freelist and reused.)])
 m4_table_element(db_pg_init, [Indicates we reinitialized a page during a truncate.])
-m4_table_element(db_pg_new, [Indicates that a page was allocated and put on the free list.])
-m4_table_element(db_pg_prepare, [Indicates a new page was allocated during a child transaction of a prepared transaction.])
 m4_table_element(db_pg_sort, [Sort the free page list and free pages at the end of the file.])
 m4_table_element(dbreg_register, [Records an open of a file (mapping the filename to a log-id that is used in subsequent log operations).])
 m4_table_element(fop_create, [Create a file in the file system.])

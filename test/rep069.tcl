@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep069.tcl,v 12.5 2007/06/15 14:39:51 carol Exp $
+# $Id: rep069.tcl,v 12.8 2008/01/23 16:40:51 carol Exp $
 #
 # TEST	rep069
 # TEST	Test of internal initialization and elections.
@@ -46,6 +46,7 @@ proc rep069_sub { method niter tnum logset largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 	global timeout_ok
 
 	env_cleanup $testdir
@@ -55,7 +56,7 @@ proc rep069_sub { method niter tnum logset largs } {
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose { rep on } "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 	set masterdir $testdir/MASTERDIR
 	file mkdir $masterdir
@@ -239,9 +240,9 @@ proc rep069_sub { method niter tnum logset largs } {
 	for { set i 0 } { $i < $nclients } { incr i } {
 		set none_electable 0
 		set id [expr $i + 1]
-		set fd [open $testdir/ELECTION_ERRFILE.$id r]
+		set fd [open $testdir/ELECTION_RESULT.$id r]
 		while { [gets $fd str] != -1 } {
-			if { [is_substr $str "No electable site found"] == 1 } {
+			if { [is_substr $str "Unable to elect a master"] == 1 } {
 				set none_electable 1
 				break
 			}

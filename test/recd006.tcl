@@ -1,14 +1,21 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: recd006.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd006.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd006
 # TEST	Nested transactions.
-proc recd006 { method {select 0} args} {
+proc recd006 { method {select 0} args } {
 	global kvals
 	source ./include.tcl
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
@@ -17,7 +24,7 @@ proc recd006 { method {select 0} args} {
 		puts "Recd006 skipping for method $method"
 		return
 	}
-	puts "Recd006: $method nested transactions"
+	puts "Recd006: $method nested transactions ($envargs)"
 
 	# Create the database and environment.
 	env_cleanup $testdir

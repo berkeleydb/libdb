@@ -1,5 +1,5 @@
-<!--$Id: ram.so,v 10.10 2006/09/19 15:42:31 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: ram.so,v 10.11 2008/01/24 00:36:26 sarette Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></b></td>
 <td align=right><a href="../program/namespace.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/cache.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Memory-only or Flash configurations</h3>
+<p align=center><b>Memory-only or Flash configurations</b></p>
 <p>Berkeley DB supports a variety of memory-based configurations for systems
 where filesystem space is either limited in availability or entirely
 replaced by some combination of memory and Flash.  In addition, Berkeley DB
@@ -24,8 +23,8 @@ filesystem is backed by Flash memory.</p>
 to the filesystem: the database environment region files, the database
 files and the database environment log files.  Each of these items can
 be configured to live in memory rather than in the filesystem:</p>
-<dl compact>
-<dt>The database environment region files:<dd>Each of the Berkeley DB subsystems in a database environment is described by
+<br>
+<b>The database environment region files:</b><ul compact><li>Each of the Berkeley DB subsystems in a database environment is described by
 one or more regions, or chunks of memory. The regions contain all of the
 per-process and per-thread shared information (including mutexes), that
 comprise a Berkeley DB environment.  By default, these regions are backed by
@@ -45,16 +44,16 @@ memory do create a small (roughly 8 byte) file in the filesystem, read
 by the processes to identify which system shared memory segments to
 use.</p>
 <p>For more information, see <a href="../../ref/env/region.html">Shared
-memory regions</a>.</p>
-<dt>The database files:<dd>By default, databases are periodically flushed from the Berkeley DB memory
+memory regions</a>.</p></ul>
+<b>The database files:</b><ul compact><li>By default, databases are periodically flushed from the Berkeley DB memory
 cache to backing physical files in the filesystem.  To keep databases
 from being written to backing physical files, pass the
 <a href="../../api_c/memp_set_flags.html#DB_MPOOL_NOFILE">DB_MPOOL_NOFILE</a> flag to the <a href="../../api_c/memp_set_flags.html">DB_MPOOLFILE-&gt;set_flags</a> method.  This flag
 implies the application's databases must fit entirely in the Berkeley DB
 cache, of course.  To avoid a database file growing to consume the
 entire cache, applications can limit the size of individual databases
-in the cache by calling the <a href="../../api_c/memp_set_maxsize.html">DB_MPOOLFILE-&gt;set_maxsize</a> method.
-<dt>The database environment log files:<dd>If a database environment is not intended to be transactionally
+in the cache by calling the <a href="../../api_c/memp_set_maxsize.html">DB_MPOOLFILE-&gt;set_maxsize</a> method.</ul>
+<b>The database environment log files:</b><ul compact><li>If a database environment is not intended to be transactionally
 recoverable after application or system failure (that is, if it will not
 exhibit the transactional attribute of "durability"), applications
 should not configure the database environment for logging or
@@ -66,17 +65,17 @@ failure, or they must be replicated to other systems.
 durability must be accomplished through replication.  In this case,
 database environments should be configured to maintain database logs in
 memory, rather than in the filesystem, by specifying the
-<a href="../../api_c/env_set_flags.html#DB_LOG_INMEMORY">DB_LOG_INMEMORY</a> flag to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method.</p>
-</dl>
+<a href="../../api_c/env_log_set_config.html#DB_LOG_IN_MEMORY">DB_LOG_IN_MEMORY</a> flag to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method.</p></ul>
+<br>
 <p>In systems where the filesystem is backed by Flash memory, the number
 of times the Flash memory is written may be a concern.  Each of the
 three parts of the Berkeley DB database environment normally written to the
 filesystem can be configured to minimize the number of times the
 filesystem is written:</p>
-<dl compact>
-<dt>The database environment region files:<dd>On a Flash-based filesystem, the database environment should be placed
-in heap or system memory, as described previously.
-<dt>The database files:<dd>The Berkeley DB library maintains a cache of database pages.  The database
+<br>
+<b>The database environment region files:</b><ul compact><li>On a Flash-based filesystem, the database environment should be placed
+in heap or system memory, as described previously.</ul>
+<b>The database files:</b><ul compact><li>The Berkeley DB library maintains a cache of database pages.  The database
 pages are only written to backing physical files when the application
 checkpoints the database environment with the <a href="../../api_c/txn_checkpoint.html">DB_ENV-&gt;txn_checkpoint</a> method,
 when database handles are closed with the <a href="../../api_c/db_close.html">DB-&gt;close</a> method, or when
@@ -94,8 +93,8 @@ handle, applications should specify the <a href="../../api_c/db_close.html#DB_NO
 <p>To avoid unnecessary writes of the filesystem due to flushing the cache,
 applications should not explicitly flush the cache under normal
 conditions -- flushing the cache is rarely if ever needed in a
-normally-running application.</p>
-<dt>The database environment log files:<dd>The Berkeley DB log files do not repeatedly overwrite the same blocks of the
+normally-running application.</p></ul>
+<b>The database environment log files:</b><ul compact><li>The Berkeley DB log files do not repeatedly overwrite the same blocks of the
 filesystem as the Berkeley DB log files are not implemented as a circular
 buffer and log files are not re-used.  For this reason, the Berkeley DB log
 files should not cause any difficulties for Flash memory configurations.
@@ -107,10 +106,10 @@ write the same block of Flash memory as the first log record from the
 second commit.  Applications not requiring absolute durability should
 specify the <a href="../../api_c/env_set_flags.html#DB_TXN_WRITE_NOSYNC">DB_TXN_WRITE_NOSYNC</a> or <a href="../../api_c/env_set_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flags
 to the <a href="../../api_c/env_set_flags.html">DB_ENV-&gt;set_flags</a> method to avoid this overwrite of a block of
-Flash memory.</p>
-</dl>
+Flash memory.</p></ul>
+<br>
 <table width="100%"><tr><td><br></td><td align=right><a href="../program/namespace.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/cache.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

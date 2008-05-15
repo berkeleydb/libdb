@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep024.tcl,v 12.14 2007/06/14 18:12:56 alanb Exp $
+# $Id: rep024.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep024
 # TEST	Replication page allocation / verify test
@@ -54,10 +54,11 @@ proc rep024 { method { niter 1000 } { tnum "024" } args } {
 proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -77,12 +78,6 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	# we only have to adjust the logargs.
 	set m_logargs [adjust_logargs $m_logtype]
 	set c_logargs [adjust_logargs $c_logtype]
-
-	if { [is_record_based $method] == 1 } {
-		set checkfunc test024_recno.check
-	} else {
-		set checkfunc test024.check
-	}
 
 	# Open a master.
 	repladd 1
@@ -122,6 +117,7 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	set db [eval "berkdb_open_noerr -create $omethod -auto_commit \
 	    -pagesize $pagesize -env $masterenv $largs $testfile"]
 	eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
+	$masterenv txn_checkpoint
 	process_msgs $envlist
 
 	# Close client.  Force a page allocation on the master.
@@ -129,8 +125,10 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	#
 	puts "\tRep$tnum.b: Close client, force page allocation on master."
 	error_check_good client_close [$clientenv close] 0
-#	error_check_good client_verify \
-#	    [verify_dir $clientdir "\tRep$tnum.b: " 0 0 1] 0
+
+	error_check_good client_verify \
+	    [verify_dir $clientdir "\tRep$tnum.b: " 0 0 1 0 0] 0
+
 	set pages1 [r24_check_pages $db $method]
 	set txn [$masterenv txn]
 	error_check_good put_bigdata [eval {$db put} \

@@ -1,4 +1,4 @@
-m4_comment([$Id: rep_sync.so,v 1.10 2007/03/20 20:20:26 alanb Exp $])
+m4_comment([$Id: rep_sync.so,v 1.11 2007/09/21 20:06:04 bostic Exp $])
 
 define(M4PAGELOCAL, [rep_sync])
 include(m4/m4.seealso)
@@ -27,7 +27,7 @@ time after the client application learns that the new master has been
 established (by receiving a m4_ref(DB_EVENT_REP_NEWMASTER) event
 notification).])
 
-m4_when_after_envopen(rep_sync)
+m4_when(rep_sync, before, dbenv_open)
 m4_return(rep_sync, std)
 
 m4_parambegin

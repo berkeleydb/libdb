@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_db.cpp,v 12.20 2007/06/28 13:02:50 mjc Exp $
+ * $Id: cxx_db.cpp,v 12.22 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -34,7 +34,7 @@ int Db::_name _argspec							\
 									\
 	ret = db->_name _arglist;					\
 	if (!_retok(ret))						\
-		DB_ERROR(env_, "Db::" # _name, ret, error_policy());	\
+		DB_ERROR(dbenv_, "Db::" # _name, ret, error_policy());	\
 	return (ret);							\
 }
 
@@ -45,13 +45,13 @@ int Db::_name _argspec							\
 	DB *db = unwrap(this);						\
 									\
 	if (!db) {							\
-		DB_ERROR(env_, "Db::" # _name, EINVAL, error_policy());	\
+		DB_ERROR(dbenv_, "Db::" # _name, EINVAL, error_policy());	\
 		return (EINVAL);					\
 	}								\
 	ret = db->_name _arglist;					\
 	cleanup();							\
 	if (!_retok(ret))						\
-		DB_ERROR(env_, "Db::" # _name, ret, error_policy());	\
+		DB_ERROR(dbenv_, "Db::" # _name, ret, error_policy());	\
 	return (ret);							\
 }
 
@@ -83,9 +83,9 @@ void Db::_name _argspec							\
 // coordinating the open objects between Db/DbEnv turned
 // out to be overly complicated.  Now we do not allow this.
 
-Db::Db(DbEnv *env, u_int32_t flags)
+Db::Db(DbEnv *dbenv, u_int32_t flags)
 :	imp_(0)
-,	env_(env)
+,	dbenv_(dbenv)
 ,	mpf_(0)
 ,	construct_error_(0)
 ,	flags_(0)
@@ -99,11 +99,11 @@ Db::Db(DbEnv *env, u_int32_t flags)
 ,	h_compare_callback_(0)
 ,	h_hash_callback_(0)
 {
-	if (env_ == 0)
+	if (dbenv_ == 0)
 		flags_ |= DB_CXX_PRIVATE_ENV;
 
 	if ((construct_error_ = initialize()) != 0)
-		DB_ERROR(env_, "Db::Db", construct_error_, error_policy());
+		DB_ERROR(dbenv_, "Db::Db", construct_error_, error_policy());
 }
 
 // If the DB handle is still open, we close it.  This is to make stack
@@ -131,7 +131,7 @@ Db::~Db()
 int Db::initialize()
 {
 	DB *db;
-	DB_ENV *cenv = unwrap(env_);
+	DB_ENV *cenv = unwrap(dbenv_);
 	int ret;
 	u_int32_t cxx_flags;
 
@@ -153,7 +153,7 @@ int Db::initialize()
 	// It is deleted in Db::close().
 	//
 	if ((flags_ & DB_CXX_PRIVATE_ENV) != 0)
-		env_ = new DbEnv(db->dbenv, cxx_flags);
+		dbenv_ = new DbEnv(db->dbenv, cxx_flags);
 
 	// Create a DbMpoolFile from the DB_MPOOLFILE* in the DB handle.
 	mpf_ = new DbMpoolFile();
@@ -177,9 +177,9 @@ void Db::cleanup()
 		// after the close, so we must clean it up now.
 		//
 		if ((flags_ & DB_CXX_PRIVATE_ENV) != 0) {
-			env_->cleanup();
-			delete env_;
-			env_ = 0;
+			dbenv_->cleanup();
+			delete dbenv_;
+			dbenv_ = 0;
 		}
 
 		delete mpf_;
@@ -194,10 +194,10 @@ void Db::cleanup()
 //
 int Db::error_policy()
 {
-	if (env_ != NULL)
-		return (env_->error_policy());
+	if (dbenv_ != NULL)
+		return (dbenv_->error_policy());
 	else {
-		// If the env_ is null, that means that the user
+		// If the dbenv_ is null, that means that the user
 		// did not attach an environment, so the correct error
 		// policy can be deduced from constructor flags
 		// for this Db.
@@ -253,9 +253,9 @@ int Db::get(DbTxn *txnid, Dbt *key, Dbt *value, u_int32_t flags)
 
 	if (!DB_RETOK_DBGET(ret)) {
 		if (ret == DB_BUFFER_SMALL)
-			DB_ERROR_DBT(env_, "Db::get", value, error_policy());
+			DB_ERROR_DBT(dbenv_, "Db::get", value, error_policy());
 		else
-			DB_ERROR(env_, "Db::get", ret, error_policy());
+			DB_ERROR(dbenv_, "Db::get", ret, error_policy());
 	}
 
 	return (ret);
@@ -316,7 +316,7 @@ int Db::open(DbTxn *txnid, const char *file, const char *database,
 		    mode);
 
 	if (!DB_RETOK_STD(ret))
-		DB_ERROR(env_, "Db::open", ret, error_policy());
+		DB_ERROR(dbenv_, "Db::open", ret, error_policy());
 
 	return (ret);
 }
@@ -331,9 +331,9 @@ int Db::pget(DbTxn *txnid, Dbt *key, Dbt *pkey, Dbt *value, u_int32_t flags)
 	/* The logic here is identical to Db::get - reuse the macro. */
 	if (!DB_RETOK_DBGET(ret)) {
 		if (ret == DB_BUFFER_SMALL && DB_OVERFLOWED_DBT(value))
-			DB_ERROR_DBT(env_, "Db::pget", value, error_policy());
+			DB_ERROR_DBT(dbenv_, "Db::pget", value, error_policy());
 		else
-			DB_ERROR(env_, "Db::pget", ret, error_policy());
+			DB_ERROR(dbenv_, "Db::pget", ret, error_policy());
 	}
 
 	return (ret);
@@ -407,8 +407,8 @@ extern "C" _rettype _db_##_name##_intercept_c _cargspec			\
 	/* We don't have a dbenv handle at this point. */		\
 	DB_ASSERT(NULL, cthis != NULL);					\
 	cxxthis = Db::get_Db(cthis);					\
-	DB_ASSERT(cthis->dbenv, cxxthis != NULL);			\
-	DB_ASSERT(cthis->dbenv, cxxthis->_name##_callback_ != 0);	\
+	DB_ASSERT(cthis->dbenv->env, cxxthis != NULL);			\
+	DB_ASSERT(cthis->dbenv->env, cxxthis->_name##_callback_ != 0);	\
 									\
 	_return (*cxxthis->_name##_callback_) _cxxargs;			\
 }
@@ -536,7 +536,7 @@ int Db::verify(const char *name, const char *subdb,
 	}
 
 	if (!DB_RETOK_STD(ret))
-		DB_ERROR(env_, "Db::verify", ret, error_policy());
+		DB_ERROR(dbenv_, "Db::verify", ret, error_policy());
 
 	return (ret);
 }
@@ -617,12 +617,12 @@ DB_METHOD_QUIET(set_alloc, (db_malloc_fcn_type malloc_fcn,
 
 void Db::set_errcall(void (*arg)(const DbEnv *, const char *, const char *))
 {
-	env_->set_errcall(arg);
+	dbenv_->set_errcall(arg);
 }
 
 void Db::set_msgcall(void (*arg)(const DbEnv *, const char *))
 {
-	env_->set_msgcall(arg);
+	dbenv_->set_msgcall(arg);
 }
 
 void *Db::get_app_private() const
@@ -642,27 +642,27 @@ DB_METHOD(set_cachesize, (u_int32_t gbytes, u_int32_t bytes, int ncache),
 
 int Db::set_paniccall(void (*callback)(DbEnv *, int))
 {
-	return (env_->set_paniccall(callback));
+	return (dbenv_->set_paniccall(callback));
 }
 
 __DB_STD(ostream) *Db::get_error_stream()
 {
-	return env_->get_error_stream();
+	return dbenv_->get_error_stream();
 }
 
 void Db::set_error_stream(__DB_STD(ostream) *error_stream)
 {
-	env_->set_error_stream(error_stream);
+	dbenv_->set_error_stream(error_stream);
 }
 
 __DB_STD(ostream) *Db::get_message_stream()
 {
-	return env_->get_message_stream();
+	return dbenv_->get_message_stream();
 }
 
 void Db::set_message_stream(__DB_STD(ostream) *message_stream)
 {
-	env_->set_message_stream(message_stream);
+	dbenv_->set_message_stream(message_stream);
 }
 
 DB_METHOD_QUIET(get_transactional, (), (db))

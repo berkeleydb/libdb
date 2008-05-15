@@ -115,6 +115,26 @@ proc replsend_noenv { control rec fromid toid flags lsn } {
 	return 0
 }
 
+#
+proc replmsglen_noenv { machid {tf "to"}} {
+	global queuedbs qtestdir testdir
+
+	if { ![info exists qtestdir] } {
+		set qtestdir $testdir
+	}
+	set queuedir $qtestdir/MSGQUEUEDIR
+	set orig [pwd]
+
+	cd $queuedir
+	if { $tf == "to" } {
+		set msgdbs [glob -nocomplain ready.$machid.*]
+	} else {
+		set msgdbs [glob -nocomplain ready.*.$machid.*]
+	}
+	cd $orig
+	return [llength $msgdbs]
+}
+
 # Discard all the pending messages for a particular site.
 proc replclear_noenv { machid {tf "to"}} {
 	global queuedbs qtestdir testdir

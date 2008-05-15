@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep021.tcl,v 12.13 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep021.tcl,v 12.17 2008/04/02 02:46:54 moshen Exp $
 #
 # TEST	rep021
 # TEST	Replication and multiple environments.
@@ -24,6 +24,14 @@ proc rep021 { method { nclients 3 } { tnum "021" } args } {
 	# Run for all access methods.
 	if { $checking_valid_methods } {
 		return "ALL"
+	}
+
+	# This test depends on copying logs, so can't be run with
+	# in-memory logging.
+	global mixed_mode_logging
+	if { $mixed_mode_logging > 0 } {
+		puts "Rep$tnum: Skipping for mixed-mode logging."
+		return
 	}
 
 	set args [convert_args $method $args]
@@ -54,10 +62,11 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set orig_tdir $testdir
@@ -110,7 +119,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	# to sync up that client.  We should get a failure with
 	# one of the non-matching error messages:
 	#	"Too few log files to sync with master"
-	#	 "Client was never part of master's environment"
+	#	 REP_JOIN_FAILURE
 
 	# Open a 2nd master.  Make all the 2nd env ids >= 10.
 	# For the 2nd group, just have 1 master and 1 client.
@@ -240,6 +249,12 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	    -home $clientdir($i) $verbargs \
 	    -rep_client -rep_transport \[list $id($i) replsend\]"
 	set clenv($i) [eval $cl_envcmd($i) $recargs]
+	#
+	# We'll only catch an error if we turn on no-autoinit.
+	# Otherwise, the system will throw away everything on the
+	# client and resync.
+	#
+	$clenv($i) rep_config {noautoinit on}
 
 	lappend envlist "$clenv($i) $id($i)"
 
@@ -271,7 +286,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 		    [filecmp $clientdir($i)/prlog.orig $clientdir($i)/prlog] 0
 		puts "\tRep$tnum.g: Verify client error."
 		error_check_good errchk [is_substr $err \
-		    "Client was never part"] 1
+		    "REP_JOIN_FAILURE"] 1
 	} else {
 		puts "\tRep$tnum.f: Verify client log doesn't match original."
 		error_check_good log_cmp(orig,$i) \

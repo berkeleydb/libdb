@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_mp.c,v 12.14 2007/06/22 17:41:45 bostic Exp $
+ * $Id: tcl_mp.c,v 12.18 2008/03/28 01:16:02 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -64,11 +64,11 @@ _MpInfoDelete(interp, mpip)
  * PUBLIC: int tcl_MpSync __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_MpSync(interp, objc, objv, envp)
+tcl_MpSync(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 
 	DB_LSN lsn, *lsnp;
@@ -91,7 +91,7 @@ tcl_MpSync(interp, objc, objv, envp)
 	}
 
 	_debug_check();
-	ret = envp->memp_sync(envp, lsnp);
+	ret = dbenv->memp_sync(dbenv, lsnp);
 	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp sync"));
 }
 
@@ -102,11 +102,11 @@ tcl_MpSync(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_MpTrickle(interp, objc, objv, envp)
+tcl_MpTrickle(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 
 	Tcl_Obj *res;
@@ -126,7 +126,7 @@ tcl_MpTrickle(interp, objc, objv, envp)
 		return (result);
 
 	_debug_check();
-	ret = envp->memp_trickle(envp, percent, &pages);
+	ret = dbenv->memp_trickle(dbenv, percent, &pages);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp trickle");
 	if (result == TCL_ERROR)
 		return (result);
@@ -144,11 +144,11 @@ tcl_MpTrickle(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
  */
 int
-tcl_Mp(interp, objc, objv, envp, envip)
+tcl_Mp(interp, objc, objv, dbenv, envip)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 	DBTCL_INFO *envip;		/* Info pointer */
 {
 	static const char *mpopts[] = {
@@ -265,7 +265,7 @@ tcl_Mp(interp, objc, objv, envp, envip)
 	}
 
 	_debug_check();
-	if ((ret = envp->memp_fcreate(envp, &mpf, 0)) != 0) {
+	if ((ret = dbenv->memp_fcreate(dbenv, &mpf, 0)) != 0) {
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "mpool");
 		_DeleteInfo(ip);
 		goto error;
@@ -306,14 +306,14 @@ error:
  * PUBLIC: int tcl_MpStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_MpStat(interp, objc, objv, envp)
+tcl_MpStat(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
-	DB_MPOOL_STAT *sp;
 	DB_MPOOL_FSTAT **fsp, **savefsp;
+	DB_MPOOL_STAT *sp;
 	int result;
 	int ret;
 	Tcl_Obj *res;
@@ -329,7 +329,7 @@ tcl_MpStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->memp_stat(envp, &sp, &fsp, 0);
+	ret = dbenv->memp_stat(dbenv, &sp, &fsp, 0);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "memp stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -371,6 +371,8 @@ tcl_MpStat(interp, objc, objv, envp)
 	MAKE_STAT_LIST("Hash elements examined", sp->st_hash_examined);
 	MAKE_STAT_LIST("Number of hash bucket nowaits", sp->st_hash_nowait);
 	MAKE_STAT_LIST("Number of hash bucket waits", sp->st_hash_wait);
+	MAKE_STAT_LIST("Maximum number of hash bucket nowaits",
+	    sp->st_hash_max_nowait);
 	MAKE_STAT_LIST("Maximum number of hash bucket waits",
 	    sp->st_hash_max_wait);
 	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
@@ -420,9 +422,9 @@ tcl_MpStat(interp, objc, objv, envp)
 #endif
 	Tcl_SetObjResult(interp, res1);
 error:
-	__os_ufree(envp, sp);
+	__os_ufree(dbenv->env, sp);
 	if (savefsp != NULL)
-		__os_ufree(envp, savefsp);
+		__os_ufree(dbenv->env, savefsp);
 	return (result);
 }
 

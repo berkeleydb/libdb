@@ -1,5 +1,5 @@
 <!--$Id: select.so,v 10.25 2001/03/31 17:06:27 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,11 +10,10 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Access Methods</dl></b></td>
 <td align=right><a href="../am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Selecting an access method</h3>
+<p align=center><b>Selecting an access method</b></p>
 <p>The Berkeley DB access method implementation unavoidably interacts with each
 application's data set, locking requirements and data access patterns.
 For this reason, one access method may result in dramatically better
@@ -29,7 +28,7 @@ methods against each other for their particular data set and access pattern.</p>
 <p>Most applications choose between using the Btree or Hash access methods
 or between using the Queue and Recno access methods, because each of the
 two pairs offer similar functionality.</p>
-<h3>Hash or Btree?</h3>
+<b>Hash or Btree?</b>
 <p>The Hash and Btree access methods should be used when logical record
 numbers are not the primary key used for data access.  (If logical record
 numbers are a secondary key used for data access, the Btree access method
@@ -88,7 +87,7 @@ will suffice.  For data sets larger than the cache, we normally recommend
 using the Btree access method.  If you have truly large data, then the
 Hash access method may be a better choice.  The <a href="../../utility/db_stat.html">db_stat</a> utility
 is a useful tool for monitoring how well your cache is performing.</p>
-<h3>Queue or Recno?</h3>
+<b>Queue or Recno?</b>
 <p>The Queue or Recno access methods should be used when logical record
 numbers are the primary key used for data access.  The advantage of the
 Queue access method is that it performs record level locking and for this
@@ -112,6 +111,6 @@ permanent storage is a flat text file and the database is used as a fast,
 temporary storage area while the data is being read or modified.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../am_conf/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../am_conf/logrec.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

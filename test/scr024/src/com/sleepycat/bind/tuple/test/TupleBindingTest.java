@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: TupleBindingTest.java,v 12.7 2007/05/04 00:28:28 mark Exp $
+ * $Id: TupleBindingTest.java,v 12.9 2008/02/07 17:12:30 mark Exp $
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -11,6 +11,7 @@ package com.sleepycat.bind.tuple.test;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import java.math.BigInteger;
 
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.EntryBinding;
@@ -22,6 +23,7 @@ import com.sleepycat.bind.tuple.FloatBinding;
 import com.sleepycat.bind.tuple.IntegerBinding;
 import com.sleepycat.bind.tuple.LongBinding;
 import com.sleepycat.bind.tuple.ShortBinding;
+import com.sleepycat.bind.tuple.BigIntegerBinding;
 import com.sleepycat.bind.tuple.SortedDoubleBinding;
 import com.sleepycat.bind.tuple.SortedFloatBinding;
 import com.sleepycat.bind.tuple.StringBinding;
@@ -31,10 +33,10 @@ import com.sleepycat.bind.tuple.TupleInputBinding;
 import com.sleepycat.bind.tuple.TupleMarshalledBinding;
 import com.sleepycat.bind.tuple.TupleOutput;
 import com.sleepycat.bind.tuple.TupleTupleMarshalledBinding;
-import com.sleepycat.collections.test.DbTestUtil;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.util.FastOutputStream;
 import com.sleepycat.util.ExceptionUnwrapper;
+import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
@@ -71,7 +73,7 @@ public class TupleBindingTest extends TestCase {
 
     public void setUp() {
 
-        DbTestUtil.printTestName("TupleBindingTest." + getName());
+        SharedTestUtils.printTestName("TupleBindingTest." + getName());
         buffer = new DatabaseEntry();
         keyBuffer = new DatabaseEntry();
     }
@@ -115,20 +117,24 @@ public class TupleBindingTest extends TestCase {
         catch (ClassCastException expected) {}
 
         /* Test nested tuple binding. */
+	forMoreCoverageTest(binding, val);
+    }
+
+    private void forMoreCoverageTest(TupleBinding val1,Object val2) {
 
         TupleOutput output = new TupleOutput();
         output.writeString("abc");
-        binding.objectToEntry(val, output);
+        val1.objectToEntry(val2, output);
         output.writeString("xyz");
 
         TupleInput input = new TupleInput(output);
         assertEquals("abc", input.readString());
-        Object val3 = binding.entryToObject(input);
+        Object val3 = val1.entryToObject(input);
         assertEquals("xyz", input.readString());
 
         assertEquals(0, input.available());
-        assertSame(compareCls, val3.getClass());
-        assertEquals(val, val3);
+        assertSame(val2.getClass(), val3.getClass());
+        assertEquals(val2, val3);
     }
 
     public void testPrimitiveBindings() {
@@ -146,7 +152,7 @@ public class TupleBindingTest extends TestCase {
                              new Short((short) 123), 2);
         primitiveBindingTest(Integer.class, Integer.class,
                              new Integer(123), 4);
-        primitiveBindingTest(Long.class, Long.class,
+	primitiveBindingTest(Long.class, Long.class,
                              new Long(123), 8);
         primitiveBindingTest(Float.class, Float.class,
                              new Float(123.123), 4);
@@ -171,7 +177,7 @@ public class TupleBindingTest extends TestCase {
                              new Double(123.123), 8);
 
         DatabaseEntry entry = new DatabaseEntry();
-
+	
         StringBinding.stringToEntry("abc", entry);
 	assertEquals(4, entry.getData().length);
         assertEquals("abc", StringBinding.entryToString(entry));
@@ -239,7 +245,18 @@ public class TupleBindingTest extends TestCase {
         new DoubleBinding().objectToEntry(new Double(123.123), entry);
 	assertEquals(8, entry.getData().length);
 
+        BigIntegerBinding.bigIntegerToEntry
+                (new BigInteger("1234567890123456"), entry);
+        assertEquals(9, entry.getData().length);
+        assertTrue((new BigInteger("1234567890123456")).equals
+		   (BigIntegerBinding.entryToBigInteger(entry)));
 
+        new BigIntegerBinding().objectToEntry
+                (new BigInteger("1234567890123456"), entry);
+        assertEquals(9, entry.getData().length);
+        forMoreCoverageTest(new BigIntegerBinding(),
+                            new BigInteger("1234567890123456"));
+	
         SortedFloatBinding.floatToEntry((float) 123.123, entry);
 	assertEquals(4, entry.getData().length);
         assertTrue(((float) 123.123) ==
@@ -248,6 +265,8 @@ public class TupleBindingTest extends TestCase {
         new SortedFloatBinding().objectToEntry
             (new Float((float) 123.123), entry);
 	assertEquals(4, entry.getData().length);
+        forMoreCoverageTest(new SortedFloatBinding(),
+                            new Float((float) 123.123));
 
         SortedDoubleBinding.doubleToEntry(123.123, entry);
 	assertEquals(8, entry.getData().length);
@@ -255,6 +274,8 @@ public class TupleBindingTest extends TestCase {
 
         new SortedDoubleBinding().objectToEntry(new Double(123.123), entry);
 	assertEquals(8, entry.getData().length);
+        forMoreCoverageTest(new SortedDoubleBinding(),
+                            new Double(123.123));
     }
 
     public void testTupleInputBinding() {

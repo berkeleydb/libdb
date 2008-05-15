@@ -1,5 +1,5 @@
-<!--$Id: read.so,v 1.14 2006/09/13 14:30:56 mjc Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: read.so,v 1.15 2008/01/17 07:58:08 mjc Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></b></td>
 <td align=right><a href="../transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Degrees of isolation</h3>
+<p align=center><b>Degrees of isolation</b></p>
 <a name="2"><!--meow--></a>
 <p>Transactions can be isolated from each other to different degrees.
 <i>Serializable</i> provides the most isolation, and means that, for
@@ -73,7 +72,7 @@ abort.</p>
 <a name="11"><!--meow--></a>
 <a name="12"><!--meow--></a>
 <a name="13"><!--meow--></a>
-<h3>Snapshot Isolation</h3>
+<b>Snapshot Isolation</b>
 <p>To make use of snapshot isolation, databases must first be configured
 for multiversion access by calling <a href="../../api_c/db_open.html">DB-&gt;open</a> with the
 <a href="../../api_c/db_open.html#DB_MULTIVERSION">DB_MULTIVERSION</a> flag.  Then transactions or cursors must be
@@ -96,7 +95,9 @@ needs to include all transactions executed concurrently by the
 application plus all cursors configured for snapshot isolation.
 Further, the transactions are retained until the last page they created
 is evicted from cache, so in the extreme case, an additional transaction
-may be needed for each page in the cache.</p>
+may be needed for each page in the cache.  Note that cache sizes under
+500MB are increased by 25%, so the calculation of number of pages needs
+to take this into account.</p>
 <p>So when <i>should</i> applications use snapshot isolation?
 <p><ul type=disc>
 <li>There is a large cache relative to size of updates performed by
@@ -117,6 +118,6 @@ found, then modifying it), throughput may be improved by running some
 updates at snapshot isolation as well.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/inc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/cursor.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

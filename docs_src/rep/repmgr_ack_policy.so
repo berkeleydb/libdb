@@ -1,4 +1,4 @@
-m4_comment([$Id: repmgr_ack_policy.so,v 1.5 2006/09/07 19:26:44 alanb Exp $])
+m4_comment([$Id: repmgr_ack_policy.so,v 1.6 2008/01/30 20:14:30 sue Exp $])
 
 define(M4PAGELOCAL, [repmgr_set_ack_policy, repmgr_get_ack_policy,
     DB_REPMGR_ACKS_ALL, DB_REPMGR_ACKS_ALL_PEERS, DB_REPMGR_ACKS_NONE,
@@ -28,6 +28,11 @@ will handle acknowledgment of replication messages which are necessary
 for "permanent" records.  The current implementation requires all
 sites in a replication group configure the same acknowledgement
 policy.])
+
+m4_env_config(repmgr_set_ack_policy, replication subsystem,
+repmgr_set_ack_policy, [dnl
+the m4_arg(ack_policy) parameter specified as a string.
+For example, "repmgr_set_ack_policy DB_REPMGR_ACKS_ALL"])
 
 m4_scope_env(repmgr_set_ack_policy)
 m4_when_any(repmgr_set_ack_policy)

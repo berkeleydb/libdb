@@ -13,8 +13,6 @@ BEGIN	pg_alloc	43	49
 BEGIN	pg_free	43	50
 BEGIN	cksum	42	51
 BEGIN	pg_freedata	43	52
-BEGIN	pg_prepare	42	53
-BEGIN	pg_new	42	54
 BEGIN	pg_init	43	60
 BEGIN	pg_sort	44	61
 PREFIX	__dbreg
@@ -30,7 +28,7 @@ BEGIN	root	42	59
 BEGIN	curadj	42	64
 BEGIN	rcuradj	42	65
 BEGIN	relink	44	147
-BEGIN	merge	44	148
+BEGIN	merge	47	148
 BEGIN	pgno	44	149
 PREFIX	__fop
 BEGIN	create	42	143
@@ -54,7 +52,6 @@ BEGIN	mvptr	42	85
 BEGIN	del	42	79
 BEGIN	add	42	80
 BEGIN	delext	42	83
-PREFIX  __rep
 PREFIX	__txn
 BEGIN	regop	44	10
 BEGIN	ckp	43	11

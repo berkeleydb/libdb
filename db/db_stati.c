@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_stati.c,v 12.29 2007/06/29 12:16:16 bostic Exp $
+ * $Id: db_stati.c,v 12.37 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -21,7 +21,8 @@
 static int __db_print_all __P((DB *, u_int32_t));
 static int __db_print_citem __P((DBC *));
 static int __db_print_cursor __P((DB *));
-static int __db_print_stats __P((DB *, u_int32_t));
+static int __db_print_stats __P((DB *, DB_THREAD_INFO *, u_int32_t));
+static int __db_stat __P((DB *, DB_THREAD_INFO *, DB_TXN *, void *, u_int32_t));
 static int __db_stat_arg __P((DB *, u_int32_t));
 
 /*
@@ -37,34 +38,33 @@ __db_stat_pp(dbp, txn, spp, flags)
 	void *spp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	PANIC_CHECK(dbp->dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat");
 
 	if ((ret = __db_stat_arg(dbp, flags)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check && (ret = __db_rep_enter(dbp, 1, 0, 0)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
 
-	ret = __db_stat(dbp, txn, spp, flags);
+	ret = __db_stat(dbp, ip, txn, spp, flags);
 
 	/* Release replication block. */
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -72,23 +72,23 @@ err:	ENV_LEAVE(dbenv, ip);
  * __db_stat --
  *	DB->stat.
  *
- * PUBLIC: int __db_stat __P((DB *, DB_TXN *, void *, u_int32_t));
  */
-int
-__db_stat(dbp, txn, spp, flags)
+static int
+__db_stat(dbp, ip, txn, spp, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	void *spp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DBC *dbc;
+	ENV *env;
 	int ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/* Acquire a cursor. */
-	if ((ret = __db_cursor(dbp, txn,
+	if ((ret = __db_cursor(dbp, ip, txn,
 	     &dbc, LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED))) != 0)
 		return (ret);
 
@@ -108,7 +108,7 @@ __db_stat(dbp, txn, spp, flags)
 		break;
 	case DB_UNKNOWN:
 	default:
-		ret = (__db_unknown_type(dbenv, "DB->stat", dbp->type));
+		ret = (__db_unknown_type(env, "DB->stat", dbp->type));
 		break;
 	}
 
@@ -127,9 +127,9 @@ __db_stat_arg(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/* Check for invalid function flags. */
 	LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED);
@@ -138,7 +138,7 @@ __db_stat_arg(dbp, flags)
 	case DB_FAST_STAT:
 		break;
 	default:
-		return (__db_ferr(dbenv, "DB->stat", 0));
+		return (__db_ferr(env, "DB->stat", 0));
 	}
 
 	return (0);
@@ -155,39 +155,38 @@ __db_stat_print_pp(dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	PANIC_CHECK(dbenv);
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->stat_print");
 
 	/*
 	 * !!!
 	 * The actual argument checking is simple, do it inline.
 	 */
-	if ((ret = __db_fchk(dbenv,
+	if ((ret = __db_fchk(env,
 	    "DB->stat_print", flags, DB_FAST_STAT | DB_STAT_ALL)) != 0)
 		return (ret);
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check && (ret = __db_rep_enter(dbp, 1, 0, 0)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
 
-	ret = __db_stat_print(dbp, flags);
+	ret = __db_stat_print(dbp, ip, flags);
 
 	/* Release replication block. */
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -195,11 +194,12 @@ err:	ENV_LEAVE(dbenv, ip);
  * __db_stat_print --
  *	DB->stat_print.
  *
- * PUBLIC: int __db_stat_print __P((DB *, u_int32_t));
+ * PUBLIC: int __db_stat_print __P((DB *, DB_THREAD_INFO *, u_int32_t));
  */
 int
-__db_stat_print(dbp, flags)
+__db_stat_print(dbp, ip, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	u_int32_t flags;
 {
 	time_t now;
@@ -207,12 +207,12 @@ __db_stat_print(dbp, flags)
 	char time_buf[CTIME_BUFLEN];
 
 	(void)time(&now);
-	__db_msg(dbp->dbenv, "%.24s\tLocal time", __db_ctime(&now, time_buf));
+	__db_msg(dbp->env, "%.24s\tLocal time", __os_ctime(&now, time_buf));
 
 	if (LF_ISSET(DB_STAT_ALL) && (ret = __db_print_all(dbp, flags)) != 0)
 		return (ret);
 
-	if ((ret = __db_print_stats(dbp, flags)) != 0)
+	if ((ret = __db_print_stats(dbp, ip, flags)) != 0)
 		return (ret);
 
 	return (0);
@@ -223,18 +223,19 @@ __db_stat_print(dbp, flags)
  *	Display default DB handle statistics.
  */
 static int
-__db_print_stats(dbp, flags)
+__db_print_stats(dbp, ip, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	u_int32_t flags;
 {
 	DBC *dbc;
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/* Acquire a cursor. */
-	if ((ret = __db_cursor(dbp, NULL, &dbc, 0)) != 0)
+	if ((ret = __db_cursor(dbp, ip, NULL, &dbc, 0)) != 0)
 		return (ret);
 
 	DEBUG_LWRITE(dbc, NULL, "DB->stat_print", NULL, NULL, 0);
@@ -252,7 +253,7 @@ __db_print_stats(dbp, flags)
 		break;
 	case DB_UNKNOWN:
 	default:
-		ret = (__db_unknown_type(dbenv, "DB->stat_print", dbp->type));
+		ret = (__db_unknown_type(env, "DB->stat_print", dbp->type));
 		break;
 	}
 
@@ -303,28 +304,28 @@ __db_print_all(dbp, flags)
 		{ DB_AM_VERIFYING,		"DB_AM_VERIFYING" },
 		{ 0,				NULL }
 	};
-	DB_ENV *dbenv;
+	ENV *env;
 	char time_buf[CTIME_BUFLEN];
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "DB handle information:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "DB handle information:");
 	STAT_ULONG("Page size", dbp->pgsize);
 	STAT_ISSET("Append recno", dbp->db_append_recno);
 	STAT_ISSET("Feedback", dbp->db_feedback);
 	STAT_ISSET("Dup compare", dbp->dup_compare);
 	STAT_ISSET("App private", dbp->app_private);
-	STAT_ISSET("DbEnv", dbp->dbenv);
+	STAT_ISSET("DbEnv", dbp->env);
 	STAT_STRING("Type", __db_dbtype_to_string(dbp->type));
 
-	__mutex_print_debug_single(dbenv, "Thread mutex", dbp->mutex, flags);
+	__mutex_print_debug_single(env, "Thread mutex", dbp->mutex, flags);
 
 	STAT_STRING("File", dbp->fname);
 	STAT_STRING("Database", dbp->dname);
 	STAT_HEX("Open flags", dbp->open_flags);
 
-	__db_print_fileid(dbenv, dbp->fileid, "\tFile ID");
+	__db_print_fileid(env, dbp->fileid, "\tFile ID");
 
 	STAT_ULONG("Cursor adjust ID", dbp->adj_fileid);
 	STAT_ULONG("Meta pgno", dbp->meta_pgno);
@@ -336,9 +337,9 @@ __db_print_all(dbp, flags)
 		STAT_ULONG("Associate lock", dbp->associate_locker->id);
 	STAT_ULONG("RPC remote ID", dbp->cl_id);
 
-	__db_msg(dbenv,
+	__db_msg(env,
 	    "%.24s\tReplication handle timestamp",
-	    dbp->timestamp == 0 ? "0" : __db_ctime(&dbp->timestamp, time_buf));
+	    dbp->timestamp == 0 ? "0" : __os_ctime(&dbp->timestamp, time_buf));
 
 	STAT_ISSET("Secondary callback", dbp->s_callback);
 	STAT_ISSET("Primary handle", dbp->s_primary);
@@ -349,12 +350,12 @@ __db_print_all(dbp, flags)
 	STAT_ISSET("Queue internal", dbp->q_internal);
 	STAT_ISSET("XA internal", dbp->xa_internal);
 
-	__db_prflags(dbenv, NULL, dbp->flags, fn, NULL, "\tFlags");
+	__db_prflags(env, NULL, dbp->flags, fn, NULL, "\tFlags");
 
 	if (dbp->log_filename == NULL)
 		STAT_ISSET("File naming information", dbp->log_filename);
 	else
-		__dbreg_print_fname(dbenv, dbp->log_filename);
+		__dbreg_print_fname(env, dbp->log_filename);
 
 	(void)__db_print_cursor(dbp);
 
@@ -369,30 +370,30 @@ static int
 __db_print_cursor(dbp)
 	DB *dbp;
 {
-	DB_ENV *dbenv;
 	DBC *dbc;
+	ENV *env;
 	int ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
-	__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-	__db_msg(dbenv, "DB handle cursors:");
+	__db_msg(env, "%s", DB_GLOBAL(db_line));
+	__db_msg(env, "DB handle cursors:");
 
 	ret = 0;
-	MUTEX_LOCK(dbp->dbenv, dbp->mutex);
-	__db_msg(dbenv, "Active queue:");
+	MUTEX_LOCK(dbp->env, dbp->mutex);
+	__db_msg(env, "Active queue:");
 	TAILQ_FOREACH(dbc, &dbp->active_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-	__db_msg(dbenv, "Join queue:");
+	__db_msg(env, "Join queue:");
 	TAILQ_FOREACH(dbc, &dbp->join_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-	__db_msg(dbenv, "Free queue:");
+	__db_msg(env, "Free queue:");
 	TAILQ_FOREACH(dbc, &dbp->free_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-	MUTEX_UNLOCK(dbp->dbenv, dbp->mutex);
+	MUTEX_UNLOCK(dbp->env, dbp->mutex);
 
 	return (ret);
 }
@@ -419,18 +420,17 @@ __db_print_citem(dbc)
 	};
 	DB *dbp;
 	DBC_INTERNAL *cp;
-	DB_ENV *dbenv;
+	ENV *env;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	cp = dbc->internal;
 
 	STAT_POINTER("DBC", dbc);
 	STAT_POINTER("Associated dbp", dbc->dbp);
 	STAT_POINTER("Associated txn", dbc->txn);
 	STAT_POINTER("Internal", cp);
-	STAT_HEX("Default locker ID",
-	    dbc->lref == NULL ? 0 : ((DB_LOCKER *)dbc->lref)->id);
+	STAT_HEX("Default locker ID", dbc->lref == NULL ? 0 : dbc->lref->id);
 	STAT_HEX("Locker", P_TO_ULONG(dbc->locker));
 	STAT_STRING("Type", __db_dbtype_to_string(dbc->dbtype));
 
@@ -440,7 +440,7 @@ __db_print_citem(dbc)
 	STAT_ULONG("Page number", cp->pgno);
 	STAT_ULONG("Page index", cp->indx);
 	STAT_STRING("Lock mode", __db_lockmode_to_string(cp->lock_mode));
-	__db_prflags(dbenv, NULL, dbc->flags, fn, NULL, "\tFlags");
+	__db_prflags(env, NULL, dbc->flags, fn, NULL, "\tFlags");
 
 	switch (dbc->dbtype) {
 	case DB_BTREE:
@@ -451,7 +451,7 @@ __db_print_citem(dbc)
 		__ham_print_cursor(dbc);
 		break;
 	case DB_UNKNOWN:
-		DB_ASSERT(dbenv, dbp->type != DB_UNKNOWN);
+		DB_ASSERT(env, dbp->type != DB_UNKNOWN);
 		/* FALLTHROUGH */
 	case DB_QUEUE:
 	default:
@@ -473,7 +473,7 @@ __db_stat_pp(dbp, txn, spp, flags)
 	COMPQUIET(txn, NULL);
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbp->dbenv));
+	return (__db_stat_not_built(dbp->env));
 }
 
 int
@@ -483,6 +483,6 @@ __db_stat_print_pp(dbp, flags)
 {
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbp->dbenv));
+	return (__db_stat_not_built(dbp->env));
 }
 #endif

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: env_failchk.c,v 12.33 2007/06/06 15:34:41 bostic Exp $
+ * $Id: env_failchk.c,v 12.44 2008/03/12 20:52:53 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -14,13 +14,16 @@
 #include "dbinc/hash.h"			/* Needed for call to __ham_func5. */
 #endif
 #include "dbinc/lock.h"
+#include "dbinc/log.h"
+#include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-static int __env_in_api __P((DB_ENV *));
+static int __env_in_api __P((ENV *));
+static void __env_clear_state __P((ENV *));
 
 /*
  * __env_failchk_pp --
- *	DB_ENV->failchk pre/post processing.
+ *	ENV->failchk pre/post processing.
  *
  * PUBLIC: int __env_failchk_pp __P((DB_ENV *, u_int32_t));
  */
@@ -30,44 +33,51 @@ __env_failchk_pp(dbenv, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_ILLEGAL_BEFORE_OPEN(dbenv, "DB_ENV->failchk");
+	env = dbenv->env;
+
+	ENV_ILLEGAL_BEFORE_OPEN(env, "DB_ENV->failchk");
 
 	/*
-	 * DB_ENV->failchk requires self and is-alive functions.  We
+	 * ENV->failchk requires self and is-alive functions.  We
 	 * have a default self function, but no is-alive function.
 	 */
-	if (!ALIVE_ON(dbenv)) {
-		__db_errx(dbenv,
+	if (!ALIVE_ON(env)) {
+		__db_errx(env,
 	"DB_ENV->failchk requires DB_ENV->is_alive be configured");
 		return (EINVAL);
 	}
 
 	if (flags != 0)
-		return (__db_ferr(dbenv, "DB_ENV->failchk", 0));
+		return (__db_ferr(env, "DB_ENV->failchk", 0));
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/*
 	 * We check for dead threads in the API first as this would be likely
 	 * to hang other things we try later, like locks and transactions.
 	 */
-	if ((ret = __env_in_api(dbenv)) != 0)
+	if ((ret = __env_in_api(env)) != 0)
 		goto err;
 
-	if (LOCKING_ON(dbenv) && (ret = __lock_failchk(dbenv)) != 0)
+	if (LOCKING_ON(env) && (ret = __lock_failchk(env)) != 0)
 		goto err;
 
-	if (TXN_ON(dbenv) && (ret = __txn_failchk(dbenv)) != 0)
+	if (TXN_ON(env) &&
+	    ((ret = __txn_failchk(env)) != 0 ||
+	    (ret = __dbreg_failchk(env)) != 0))
 		goto err;
+
+	/* Mark any dead blocked threads as dead. */
+	__env_clear_state(env);
 
 #ifdef HAVE_MUTEX_SUPPORT
-	ret = __mut_failchk(dbenv);
+	ret = __mut_failchk(env);
 #endif
 
-err:	ENV_LEAVE(dbenv, ip);
+err:	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -75,26 +85,29 @@ err:	ENV_LEAVE(dbenv, ip);
  * __env_thread_init --
  *	Initialize the thread control block table.
  *
- * PUBLIC: int __env_thread_init __P((DB_ENV *, int));
+ * PUBLIC: int __env_thread_init __P((ENV *, int));
  */
 int
-__env_thread_init(dbenv, during_creation)
-	DB_ENV *dbenv;
+__env_thread_init(env, during_creation)
+	ENV *env;
 	int during_creation;
 {
+	DB_ENV *dbenv;
 	DB_HASHTAB *htab;
-	REGINFO *infop;
 	REGENV *renv;
+	REGINFO *infop;
 	THREAD_INFO *thread;
 	int ret;
 
-	infop = dbenv->reginfo;
+	dbenv = env->dbenv;
+	infop = env->reginfo;
 	renv = infop->primary;
+
 	if (renv->thread_off == INVALID_ROFF) {
-		if (dbenv->thr_nbucket == 0) {
-			dbenv->thr_hashtab = NULL;
-			if (ALIVE_ON(dbenv)) {
-				__db_errx(dbenv,
+		if (dbenv->thr_max == 0) {
+			env->thr_hashtab = NULL;
+			if (ALIVE_ON(env)) {
+				__db_errx(env,
 		"is_alive method specified but no thread region allocated");
 				return (EINVAL);
 			}
@@ -102,20 +115,24 @@ __env_thread_init(dbenv, during_creation)
 		}
 
 		if (!during_creation) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "thread table must be allocated when the database environment is created");
 			return (EINVAL);
 		}
 
 		if ((ret =
 		    __env_alloc(infop, sizeof(THREAD_INFO), &thread)) != 0) {
-			__db_err(dbenv, ret,
+			__db_err(env, ret,
 			     "unable to allocate a thread status block");
 			return (ret);
 		}
 		memset(thread, 0, sizeof(*thread));
 		renv->thread_off = R_OFFSET(infop, thread);
-		thread->thr_nbucket = __db_tablesize(dbenv->thr_nbucket);
+		/*
+		 * Set the number of buckets to be 1/8th the number of
+		 * thread control blocks.  This is rather arbitrary.
+		 */
+		thread->thr_nbucket = __db_tablesize(dbenv->thr_max / 8);
 		if ((ret = __env_alloc(infop,
 		     thread->thr_nbucket * sizeof(DB_HASHTAB), &htab)) != 0)
 			return (ret);
@@ -127,35 +144,80 @@ __env_thread_init(dbenv, during_creation)
 		htab = R_ADDR(infop, thread->thr_hashoff);
 	}
 
-	dbenv->thr_hashtab = htab;
-	dbenv->thr_nbucket = thread->thr_nbucket;
+	env->thr_hashtab = htab;
+	env->thr_nbucket = thread->thr_nbucket;
 	dbenv->thr_max = thread->thr_max;
 	return (0);
 }
 
 /*
+ * __env_thread_destroy --
+ *	Destroy the thread control block table.
+ *
+ * PUBLIC: void __env_thread_destroy __P((ENV *));
+ */
+void
+__env_thread_destroy(env)
+	ENV *env;
+{
+	DB_HASHTAB *htab;
+	DB_THREAD_INFO *ip, *np;
+	REGENV *renv;
+	REGINFO *infop;
+	THREAD_INFO *thread;
+	u_int32_t i;
+
+	infop = env->reginfo;
+	renv = infop->primary;
+	if (renv->thread_off == INVALID_ROFF)
+		return;
+
+	thread = R_ADDR(infop, renv->thread_off);
+	if ((htab = env->thr_hashtab) != NULL) {
+		for (i = 0; i < env->thr_nbucket; i++) {
+			ip = SH_TAILQ_FIRST(&htab[i], __db_thread_info);
+			for (; ip != NULL; ip = np) {
+				np = SH_TAILQ_NEXT(ip,
+				    dbth_links, __db_thread_info);
+				__env_alloc_free(infop, ip);
+			}
+		}
+		__env_alloc_free(infop, htab);
+	}
+
+	__env_alloc_free(infop, thread);
+	return;
+}
+
+/*
  * __env_in_api --
  *	Look for threads which died in the api and complain.
+ *	If no threads died but there are blocked threads unpin
+ *	any buffers they may have locked.
  */
 static int
-__env_in_api(dbenv)
-	DB_ENV *dbenv;
+__env_in_api(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
 	DB_HASHTAB *htab;
 	DB_THREAD_INFO *ip;
 	REGENV *renv;
 	REGINFO *infop;
 	THREAD_INFO *thread;
 	u_int32_t i;
+	int unpin, ret;
 
-	if ((htab = dbenv->thr_hashtab) == NULL)
+	if ((htab = env->thr_hashtab) == NULL)
 		return (EINVAL);
 
-	infop = dbenv->reginfo;
+	dbenv = env->dbenv;
+	infop = env->reginfo;
 	renv = infop->primary;
 	thread = R_ADDR(infop, renv->thread_off);
+	unpin = 0;
 
-	for (i = 0; i < dbenv->thr_nbucket; i++)
+	for (i = 0; i < env->thr_nbucket; i++)
 		SH_TAILQ_FOREACH(ip, &htab[i], dbth_links, __db_thread_info) {
 			if (ip->dbth_state == THREAD_SLOT_NOT_IN_USE ||
 			    (ip->dbth_state == THREAD_OUT &&
@@ -164,16 +226,49 @@ __env_in_api(dbenv)
 			if (dbenv->is_alive(
 			    dbenv, ip->dbth_pid, ip->dbth_tid, 0))
 				continue;
+			if (ip->dbth_state == THREAD_BLOCKED) {
+				ip->dbth_state = THREAD_BLOCKED_DEAD;
+				unpin = 1;
+				continue;
+			}
 			if (ip->dbth_state == THREAD_OUT) {
 				ip->dbth_state = THREAD_SLOT_NOT_IN_USE;
 				continue;
 			}
-			return (__db_failed(dbenv,
+			return (__db_failed(env,
 			     "Thread died in Berkeley DB library",
 			     ip->dbth_pid, ip->dbth_tid));
 		}
 
+	if (unpin == 0)
+		return (0);
+
+	for (i = 0; i < env->thr_nbucket; i++)
+		SH_TAILQ_FOREACH(ip, &htab[i], dbth_links, __db_thread_info)
+			if (ip->dbth_state == THREAD_BLOCKED_DEAD &&
+			    (ret = __memp_unpin_buffers(env, ip)) != 0)
+				return (ret);
+
 	return (0);
+}
+
+/*
+ * __env_clear_state --
+ *	Look for threads which died while blockedi and clear them..
+ */
+static void
+__env_clear_state(env)
+	ENV *env;
+{
+	DB_HASHTAB *htab;
+	DB_THREAD_INFO *ip;
+	u_int32_t i;
+
+	htab = env->thr_hashtab;
+	for (i = 0; i < env->thr_nbucket; i++)
+		SH_TAILQ_FOREACH(ip, &htab[i], dbth_links, __db_thread_info)
+			if (ip->dbth_state == THREAD_BLOCKED_DEAD)
+				ip->dbth_state = THREAD_SLOT_NOT_IN_USE;
 }
 
 struct __db_threadid {
@@ -182,16 +277,16 @@ struct __db_threadid {
 };
 
 /*
- * PUBLIC: int __env_set_state __P((DB_ENV *,
- * PUBLIC:      DB_THREAD_INFO **, DB_THREAD_STATE));
+ * PUBLIC: int __env_set_state __P((ENV *, DB_THREAD_INFO **, DB_THREAD_STATE));
  */
 int
-__env_set_state(dbenv, ipp, state)
-	DB_ENV *dbenv;
+__env_set_state(env, ipp, state)
+	ENV *env;
 	DB_THREAD_INFO **ipp;
 	DB_THREAD_STATE state;
 {
 	struct __db_threadid id;
+	DB_ENV *dbenv;
 	DB_HASHTAB *htab;
 	DB_THREAD_INFO *ip;
 	REGENV *renv;
@@ -200,8 +295,8 @@ __env_set_state(dbenv, ipp, state)
 	u_int32_t indx;
 	int ret;
 
-	*ipp = NULL;
-	htab = (DB_HASHTAB *)dbenv->thr_hashtab;
+	dbenv = env->dbenv;
+	htab = env->thr_hashtab;
 
 	dbenv->thread_id(dbenv, &id.pid, &id.tid);
 
@@ -218,7 +313,7 @@ __env_set_state(dbenv, ipp, state)
 #else
 	indx = __ham_func5(NULL, &id.tid, sizeof(id.tid));
 #endif
-	indx %= dbenv->thr_nbucket;
+	indx %= env->thr_nbucket;
 	SH_TAILQ_FOREACH(ip, &htab[indx], dbth_links, __db_thread_info) {
 #ifdef HAVE_SIMPLE_THREAD_TYPE
 		if (id.pid == ip->dbth_pid && id.tid == ip->dbth_tid)
@@ -233,18 +328,20 @@ __env_set_state(dbenv, ipp, state)
 	}
 
 #ifdef DIAGNOSTIC
-	if (state == THREAD_DIAGNOSTIC) {
-		*ipp = ip;
+	/* A check to ensure the thread of control has been registered. */
+	if (state == THREAD_VERIFY) {
+		DB_ASSERT(env, ip != NULL && ip->dbth_state != THREAD_OUT);
 		return (0);
 	}
 #endif
 
+	*ipp = NULL;
 	ret = 0;
 	if (ip == NULL) {
-		infop = dbenv->reginfo;
+		infop = env->reginfo;
 		renv = infop->primary;
 		thread = R_ADDR(infop, renv->thread_off);
-		MUTEX_LOCK(dbenv, renv->mtx_regenv);
+		MUTEX_LOCK(env, renv->mtx_regenv);
 
 		/*
 		 * If we are passed the specified max, try to reclaim one from
@@ -257,12 +354,14 @@ __env_set_state(dbenv, ipp, state)
 			    ip, &htab[indx], dbth_links, __db_thread_info)
 				if (ip->dbth_state == THREAD_SLOT_NOT_IN_USE ||
 				    (ip->dbth_state == THREAD_OUT &&
-				    ALIVE_ON(dbenv) && !dbenv->is_alive(dbenv,
-				    ip->dbth_pid, ip->dbth_tid, 0)))
+				    ALIVE_ON(env) && !dbenv->is_alive(
+				    dbenv, ip->dbth_pid, ip->dbth_tid, 0)))
 					break;
 
-			if (ip != NULL)
+			if (ip != NULL) {
+				DB_ASSERT(env, ip->dbth_pincount == 0);
 				goto init;
+			}
 		}
 
 		thread->thr_count++;
@@ -277,11 +376,15 @@ __env_set_state(dbenv, ipp, state)
 			 */
 			SH_TAILQ_INSERT_HEAD(
 			    &htab[indx], ip, dbth_links, __db_thread_info);
+			ip->dbth_pincount = 0;
+			ip->dbth_pinmax = PINMAX;
+			ip->dbth_pinlist = R_OFFSET(infop, ip->dbth_pinarray);
+
 init:			ip->dbth_pid = id.pid;
 			ip->dbth_tid = id.tid;
 			ip->dbth_state = state;
 		}
-		MUTEX_UNLOCK(dbenv, renv->mtx_regenv);
+		MUTEX_UNLOCK(env, renv->mtx_regenv);
 	} else
 		ip->dbth_state = state;
 	*ipp = ip;

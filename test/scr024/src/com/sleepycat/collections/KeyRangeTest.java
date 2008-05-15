@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: KeyRangeTest.java,v 12.7 2007/05/04 00:28:29 mark Exp $
+ * $Id: KeyRangeTest.java,v 12.9 2008/02/07 17:12:31 mark Exp $
  */
 
 package com.sleepycat.collections;
@@ -17,7 +17,6 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import com.sleepycat.bind.ByteArrayBinding;
-import com.sleepycat.collections.test.DbTestUtil;
 import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
@@ -28,6 +27,7 @@ import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.util.keyrange.KeyRange;
 import com.sleepycat.util.keyrange.KeyRangeException;
+import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
@@ -84,13 +84,13 @@ public class KeyRangeTest extends TestCase {
     public void setUp()
         throws Exception {
 
-        DbTestUtil.printTestName(DbTestUtil.qualifiedTestName(this));
+        SharedTestUtils.printTestName(SharedTestUtils.qualifiedTestName(this));
     }
 
     private void openDb(Comparator comparator)
         throws Exception {
 
-        File dir = DbTestUtil.getNewDir();
+        File dir = SharedTestUtils.getNewDir();
         ByteArrayBinding dataBinding = new ByteArrayBinding();
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setAllowCreate(true);
@@ -102,13 +102,14 @@ public class KeyRangeTest extends TestCase {
 	if (comparator != null) {
 	    DbCompat.setBtreeComparator(dbConfig, comparator);
 	}
-        store = DbCompat.openDatabase(env, null, "test.db", null, dbConfig);
+        store = DbCompat.testOpenDatabase
+            (env, null, "test.db", null, dbConfig);
         view = new DataView(store, dataBinding, dataBinding, null, true, null);
     }
 
     private void closeDb()
         throws Exception {
-        
+
         store.close();
         store = null;
         env.close();

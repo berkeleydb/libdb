@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: bt_verify.c,v 12.30 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_verify.c,v 12.39 2008/03/11 21:07:01 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -14,11 +14,13 @@
 #include "dbinc/btree.h"
 #include "dbinc/mp.h"
 
-static int __bam_safe_getdata __P((DB *, PAGE *, u_int32_t, int, DBT *, int *));
+static int __bam_safe_getdata __P((DB *, DB_THREAD_INFO *,
+    PAGE *, u_int32_t, int, DBT *, int *));
 static int __bam_vrfy_inp __P((DB *, VRFY_DBINFO *, PAGE *, db_pgno_t,
     db_indx_t *, u_int32_t));
-static int __bam_vrfy_treeorder __P((DB *, PAGE *, BINTERNAL *,
-    BINTERNAL *, int (*)(DB *, const DBT *, const DBT *), u_int32_t));
+static int __bam_vrfy_treeorder __P((DB *, DB_THREAD_INFO *, PAGE *,
+    BINTERNAL *, BINTERNAL *, int (*)(DB *, const DBT *, const DBT *),
+    u_int32_t));
 static int __ram_vrfy_inp __P((DB *, VRFY_DBINFO *, PAGE *, db_pgno_t,
     db_indx_t *, u_int32_t));
 
@@ -37,12 +39,12 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	db_pgno_t pgno;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_PAGEINFO *pip;
 	int isbad, t_ret, ret;
 	db_indx_t ovflsize;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	isbad = 0;
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
@@ -75,7 +77,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	    ovflsize > B_MINKEY_TO_OVFLSIZE(dbp, DEFMINKEYPAGE, dbp->pgsize)) {
 		pip->bt_minkey = 0;
 		isbad = 1;
-		EPRINT((dbenv,
+		EPRINT((env,
 	    "Page %lu: nonsensical bt_minkey value %lu on metadata page",
 		    (u_long)pgno, (u_long)meta->minkey));
 	} else
@@ -95,7 +97,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	    meta->root == pgno || !IS_VALID_PGNO(meta->root) ||
 	    (pgno == PGNO_BASE_MD && meta->root != 1)) {
 		isbad = 1;
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: nonsensical root page %lu on metadata page",
 		    (u_long)pgno, (u_long)meta->root));
 	} else
@@ -112,7 +114,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		 */
 		if (F_ISSET(&meta->dbmeta, BTM_DUP) && pgno == PGNO_BASE_MD) {
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 "Page %lu: Btree metadata page has both duplicates and multiple databases",
 			    (u_long)pgno));
 		}
@@ -126,7 +128,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	if (F_ISSET(&meta->dbmeta, BTM_RECNUM))
 		F_SET(pip, VRFY_HAS_RECNUMS);
 	if (F_ISSET(pip, VRFY_HAS_RECNUMS) && F_ISSET(pip, VRFY_HAS_DUPS)) {
-		EPRINT((dbenv,
+		EPRINT((env,
     "Page %lu: Btree metadata page illegally has both recnums and dups",
 		    (u_long)pgno));
 		isbad = 1;
@@ -137,13 +139,13 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		dbp->type = DB_RECNO;
 	} else if (F_ISSET(pip, VRFY_IS_RRECNO)) {
 		isbad = 1;
-		EPRINT((dbenv,
+		EPRINT((env,
     "Page %lu: metadata page has renumber flag set but is not recno",
 		    (u_long)pgno));
 	}
 
 	if (F_ISSET(pip, VRFY_IS_RECNO) && F_ISSET(pip, VRFY_HAS_DUPS)) {
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: recno metadata page specifies duplicates",
 		    (u_long)pgno));
 		isbad = 1;
@@ -157,7 +159,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		 * database
 		 */
 		isbad = 1;
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: re_len of %lu in non-fixed-length database",
 		    (u_long)pgno, (u_long)pip->re_len));
 	}
@@ -167,7 +169,7 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	 * not be and may still be correct.
 	 */
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (LF_ISSET(DB_SALVAGE) &&
 	   (t_ret = __db_salvage_markdone(vdp, pgno)) != 0 && ret == 0)
@@ -191,20 +193,20 @@ __ram_vrfy_leaf(dbp, vdp, h, pgno, flags)
 	u_int32_t flags;
 {
 	BKEYDATA *bk;
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_PAGEINFO *pip;
 	db_indx_t i;
 	int ret, t_ret, isbad;
 	u_int32_t re_len_guess, len;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	isbad = 0;
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
 		return (ret);
 
 	if (TYPE(h) != P_LRECNO) {
-		ret = __db_unknown_path(dbenv, "__ram_vrfy_leaf");
+		ret = __db_unknown_path(env, "__ram_vrfy_leaf");
 		goto err;
 	}
 
@@ -228,7 +230,7 @@ __ram_vrfy_leaf(dbp, vdp, h, pgno, flags)
 		goto err;
 
 	if (F_ISSET(pip, VRFY_HAS_DUPS)) {
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: Recno database has dups", (u_long)pgno));
 		ret = DB_VERIFY_BAD;
 		goto err;
@@ -252,7 +254,7 @@ __ram_vrfy_leaf(dbp, vdp, h, pgno, flags)
 			len = bk->len;
 		else {
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: nonsensical type for item %lu",
 			    (u_long)pgno, (u_long)i));
 			continue;
@@ -275,7 +277,7 @@ __ram_vrfy_leaf(dbp, vdp, h, pgno, flags)
 	/* Save off record count. */
 	pip->rec_cnt = NUM_ENT(h);
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -295,11 +297,11 @@ __bam_vrfy(dbp, vdp, h, pgno, flags)
 	db_pgno_t pgno;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_PAGEINFO *pip;
 	int ret, t_ret, isbad;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	isbad = 0;
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
@@ -312,7 +314,7 @@ __bam_vrfy(dbp, vdp, h, pgno, flags)
 	case P_LDUP:
 		break;
 	default:
-		ret = __db_unknown_path(dbenv, "__bam_vrfy");
+		ret = __db_unknown_path(env, "__bam_vrfy");
 		goto err;
 	}
 
@@ -349,11 +351,12 @@ __bam_vrfy(dbp, vdp, h, pgno, flags)
 			isbad = 1;
 		else
 			goto err;
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: item order check unsafe: skipping",
 		    (u_long)pgno));
 	} else if (!LF_ISSET(DB_NOORDERCHK) && (ret =
-	    __bam_vrfy_itemorder(dbp, vdp, h, pgno, 0, 0, 0, flags)) != 0) {
+	    __bam_vrfy_itemorder(dbp,
+	    vdp, vdp->thread_info, h, pgno, 0, 0, 0, flags)) != 0) {
 		/*
 		 * We know that the elements of inp are reasonable.
 		 *
@@ -365,7 +368,7 @@ __bam_vrfy(dbp, vdp, h, pgno, flags)
 			goto err;
 	}
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -386,7 +389,7 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	db_indx_t *nentriesp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	RINTERNAL *ri;
 	VRFY_CHILDINFO child;
 	VRFY_PAGEINFO *pip;
@@ -395,7 +398,7 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	db_indx_t *inp;
 	u_int8_t *pagelayout, *p;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	isbad = 0;
 	memset(&child, 0, sizeof(VRFY_CHILDINFO));
 	nentries = 0;
@@ -405,18 +408,18 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		return (ret);
 
 	if (TYPE(h) != P_IRECNO) {
-		ret = __db_unknown_path(dbenv, "__ram_vrfy_inp");
+		ret = __db_unknown_path(env, "__ram_vrfy_inp");
 		goto err;
 	}
 
 	himark = dbp->pgsize;
-	if ((ret = __os_malloc(dbenv, dbp->pgsize, &pagelayout)) != 0)
+	if ((ret = __os_malloc(env, dbp->pgsize, &pagelayout)) != 0)
 		goto err;
 	memset(pagelayout, 0, dbp->pgsize);
 	inp = P_INP(dbp, h);
 	for (i = 0; i < NUM_ENT(h); i++) {
 		if ((u_int8_t *)inp + i >= (u_int8_t *)h + himark) {
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: entries listing %lu overlaps data",
 			    (u_long)pgno, (u_long)i));
 			ret = DB_VERIFY_BAD;
@@ -432,7 +435,7 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		    (u_int8_t *)h) ||
 		    offset > (u_int32_t)(dbp->pgsize - RINTERNAL_SIZE)) {
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: bad offset %lu at index %lu",
 			    (u_long)pgno, (u_long)offset, (u_long)i));
 			continue;
@@ -454,7 +457,7 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 			if ((ret = __db_vrfy_childput(vdp, pgno, &child)) != 0)
 				goto err;
 		} else {
-			EPRINT((dbenv,
+			EPRINT((env,
 		"Page %lu: RINTERNAL structure at offset %lu referenced twice",
 			    (u_long)pgno, (u_long)offset));
 			isbad = 1;
@@ -465,14 +468,14 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	    p < pagelayout + dbp->pgsize;
 	    p += RINTERNAL_SIZE)
 		if (*p != 1) {
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: gap between items at offset %lu",
 			    (u_long)pgno, (u_long)(p - pagelayout)));
 			isbad = 1;
 		}
 
 	if ((db_indx_t)himark != HOFFSET(h)) {
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: bad HOFFSET %lu, appears to be %lu",
 		    (u_long)pgno, (u_long)(HOFFSET(h)), (u_long)himark));
 		isbad = 1;
@@ -480,10 +483,10 @@ __ram_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 
 	*nentriesp = nentries;
 
-err:	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+err:	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (pagelayout != NULL)
-		__os_free(dbenv, pagelayout);
+		__os_free(env, pagelayout);
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
 
@@ -505,7 +508,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 {
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_CHILDINFO child;
 	VRFY_ITEM *pagelayout;
 	VRFY_PAGEINFO *pip;
@@ -516,7 +519,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	u_int32_t i, endoff, nentries;
 	int isbad, initem, isdupitem, ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	isbad = isdupitem = 0;
 	nentries = 0;
 	memset(&child, 0, sizeof(VRFY_CHILDINFO));
@@ -537,7 +540,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		 */
 		if (LF_ISSET(DB_SALVAGE))
 			break;
-		ret = __db_unknown_path(dbenv, "__bam_vrfy_inp");
+		ret = __db_unknown_path(env, "__bam_vrfy_inp");
 		goto err;
 	}
 
@@ -554,7 +557,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 	 */
 	himark = dbp->pgsize;
 	if ((ret = __os_calloc(
-	    dbenv, dbp->pgsize, sizeof(pagelayout[0]), &pagelayout)) != 0)
+	    env, dbp->pgsize, sizeof(pagelayout[0]), &pagelayout)) != 0)
 		goto err;
 	for (i = 0; i < NUM_ENT(h); i++) {
 		switch (ret = __db_vrfy_inpitem(dbp,
@@ -568,7 +571,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 			isbad = 1;
 			goto err;
 		default:
-			DB_ASSERT(dbenv, ret != 0);
+			DB_ASSERT(env, ret != 0);
 			break;
 		}
 
@@ -603,7 +606,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				isdupitem = 1;
 			} else {
 				isbad = 1;
-				EPRINT((dbenv, "Page %lu: duplicated item %lu",
+				EPRINT((env, "Page %lu: duplicated item %lu",
 				    (u_long)pgno, (u_long)i));
 			}
 		}
@@ -655,7 +658,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		 * the end had better coincide too.
 		 */
 		if (isdupitem && pagelayout[endoff] != VRFY_ITEM_END) {
-			EPRINT((dbenv, "Page %lu: duplicated item %lu",
+			EPRINT((env, "Page %lu: duplicated item %lu",
 			    (u_long)pgno, (u_long)i));
 			isbad = 1;
 		} else if (pagelayout[endoff] == VRFY_ITEM_NOTSET)
@@ -668,7 +671,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		 */
 		if (B_DISSET(bk->type) && TYPE(h) != P_LRECNO) {
 			isbad = 1;
-			EPRINT((dbenv, "Page %lu: item %lu marked deleted",
+			EPRINT((env, "Page %lu: item %lu marked deleted",
 			    (u_long)pgno, (u_long)i));
 		}
 
@@ -687,13 +690,13 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 		case B_DUPLICATE:
 			if (TYPE(h) == P_IBTREE) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
     "Page %lu: duplicate page referenced by internal btree page at item %lu",
 				    (u_long)pgno, (u_long)i));
 				break;
 			} else if (TYPE(h) == P_LRECNO) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 	"Page %lu: duplicate page referenced by recno page at item %lu",
 				    (u_long)pgno, (u_long)i));
 				break;
@@ -708,7 +711,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				/* Make sure tlen is reasonable. */
 				if (bo->tlen > dbp->pgsize * vdp->last_pgno) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 				"Page %lu: impossible tlen %lu, item %lu",
 					    (u_long)pgno,
 					    (u_long)bo->tlen, (u_long)i));
@@ -719,7 +722,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 			if (!IS_VALID_PGNO(bo->pgno) || bo->pgno == pgno ||
 			    bo->pgno == PGNO_INVALID) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 			    "Page %lu: offpage item %lu has bad pgno %lu",
 				    (u_long)pgno, (u_long)i, (u_long)bo->pgno));
 				/* Don't save as a child. */
@@ -735,7 +738,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 			break;
 		default:
 			isbad = 1;
-			EPRINT((dbenv, "Page %lu: item %lu of invalid type %lu",
+			EPRINT((env, "Page %lu: item %lu of invalid type %lu",
 			    (u_long)pgno, (u_long)i, (u_long)B_TYPE(bk->type)));
 			break;
 		}
@@ -755,7 +758,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 					continue;
 
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: gap between items at offset %lu",
 				    (u_long)pgno, (u_long)i));
 				/* Find the end of the gap */
@@ -767,7 +770,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				/* We've found an item. Check its alignment. */
 				if (i != DB_ALIGN(i, sizeof(u_int32_t))) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 					    "Page %lu: offset %lu unaligned",
 					    (u_long)pgno, (u_long)i));
 				}
@@ -781,7 +784,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				 * be an overlap.
 				 */
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: overlapping items at offset %lu",
 				    (u_long)pgno, (u_long)i));
 				break;
@@ -801,17 +804,17 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 				 * end.  Overlap.
 				 */
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: overlapping items at offset %lu",
 				    (u_long)pgno, (u_long)i));
 				break;
 			}
 
-	__os_free(dbenv, pagelayout);
+	__os_free(env, pagelayout);
 
 	/* Verify HOFFSET. */
 	if ((db_indx_t)himark != HOFFSET(h)) {
-		EPRINT((dbenv, "Page %lu: bad HOFFSET %lu, appears to be %lu",
+		EPRINT((env, "Page %lu: bad HOFFSET %lu, appears to be %lu",
 		    (u_long)pgno, (u_long)HOFFSET(h), (u_long)himark));
 		isbad = 1;
 	}
@@ -819,7 +822,7 @@ __bam_vrfy_inp(dbp, vdp, h, pgno, nentriesp, flags)
 err:	if (nentriesp != NULL)
 		*nentriesp = nentries;
 
-	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return ((isbad == 1 && ret == 0) ? DB_VERIFY_BAD : ret);
@@ -838,13 +841,14 @@ err:	if (nentriesp != NULL)
  *	and we run into an overflow page, carp and return DB_VERIFY_BAD;
  *	we shouldn't be called if any exist.
  *
- * PUBLIC: int __bam_vrfy_itemorder __P((DB *, VRFY_DBINFO *, PAGE *,
- * PUBLIC:     db_pgno_t, u_int32_t, int, int, u_int32_t));
+ * PUBLIC: int __bam_vrfy_itemorder __P((DB *, VRFY_DBINFO *, DB_THREAD_INFO *,
+ * PUBLIC:      PAGE *, db_pgno_t, u_int32_t, int, int, u_int32_t));
  */
 int
-__bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
+__bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
+	DB_THREAD_INFO *ip;
 	PAGE *h;
 	db_pgno_t pgno;
 	u_int32_t nentries;
@@ -856,7 +860,7 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 	BOVERFLOW *bo;
 	BTREE *bt;
 	DBT dbta, dbtb, dup_1, dup_2, *p1, *p2, *tmp;
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_PAGEINFO *pip;
 	db_indx_t i, *inp;
 	int adj, cmp, freedup_1, freedup_2, isbad, ret, t_ret;
@@ -876,7 +880,7 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 	} else
 		pip = NULL;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ret = isbad = 0;
 	bo = NULL;			/* Shut up compiler. */
 
@@ -888,7 +892,7 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 
 	buf1 = buf2 = NULL;
 
-	DB_ASSERT(dbenv, !LF_ISSET(DB_NOORDERCHK));
+	DB_ASSERT(env, !LF_ISSET(DB_NOORDERCHK));
 
 	dupfunc = (dbp->dup_compare == NULL) ? __bam_defcmp : dbp->dup_compare;
 	if (TYPE(h) == P_LDUP)
@@ -960,7 +964,7 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 #if 0
 			if (i == 0 && bi->len != 0) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 		"Page %lu: lowest key on internal page of nonzero length",
 				    (u_long)pgno));
 			}
@@ -982,7 +986,7 @@ __bam_vrfy_itemorder(dbp, vdp, h, pgno, nentries, ovflok, hasdups, flags)
 			 * This means our caller screwed up and sent us
 			 * an inappropriate page.
 			 */
-			ret = __db_unknown_path(dbenv, "__bam_vrfy_itemorder");
+			ret = __db_unknown_path(env, "__bam_vrfy_itemorder");
 			goto err;
 		}
 
@@ -1012,10 +1016,10 @@ overflow:		if (!ovflok) {
 			 * was just pointing at a non-overflow item.)
 			 */
 			p2->data = buf2;
-			if ((ret = __db_goff(dbp, NULL,
+			if ((ret = __db_goff(dbp, ip, NULL,
 			    p2, bo->tlen, bo->pgno, NULL, NULL)) != 0) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 			    "Page %lu: error %lu in fetching overflow item %lu",
 				    (u_long)pgno, (u_long)ret, (u_long)i));
 			}
@@ -1030,13 +1034,13 @@ overflow:		if (!ovflok) {
 			/* comparison succeeded */
 			if (cmp > 0) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: out-of-order key at entry %lu",
 				    (u_long)pgno, (u_long)i));
 				/* proceed */
 			} else if (cmp == 0) {
 				if (inp[i] != inp[i - adj]) {
-					EPRINT((dbenv,
+					EPRINT((env,
 				     "Page %lu: non-dup dup key at entry %lu",
 					   (u_long)pgno, (u_long)i));
 					isbad = 1;
@@ -1051,7 +1055,7 @@ overflow:		if (!ovflok) {
 					F_SET(pip, VRFY_HAS_DUPS);
 				else if (hasdups == 0) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 	"Page %lu: database with no duplicates has duplicated keys",
 					    (u_long)pgno));
 				}
@@ -1084,11 +1088,11 @@ overflow:		if (!ovflok) {
 					 * dups are probably (?) rare.
 					 */
 					if (((ret = __bam_safe_getdata(dbp,
-					    h, i - 1, ovflok, &dup_1,
-					    &freedup_1)) != 0) ||
+					    ip, h, i - 1, ovflok,
+					    &dup_1, &freedup_1)) != 0) ||
 					    ((ret = __bam_safe_getdata(dbp,
-					    h, i + 1, ovflok, &dup_2,
-					    &freedup_2)) != 0))
+					    ip, h, i + 1, ovflok,
+					    &dup_2, &freedup_2)) != 0))
 						goto err;
 
 					/*
@@ -1099,7 +1103,7 @@ overflow:		if (!ovflok) {
 					 */
 					if (dup_1.data == NULL ||
 					    dup_2.data == NULL) {
-						DB_ASSERT(dbenv, !ovflok);
+						DB_ASSERT(env, !ovflok);
 						F_SET(pip, VRFY_INCOMPLETE);
 						goto err;
 					}
@@ -1114,22 +1118,22 @@ overflow:		if (!ovflok) {
 						F_SET(pip, VRFY_DUPS_UNSORTED);
 
 					if (freedup_1)
-						__os_ufree(dbenv, dup_1.data);
+						__os_ufree(env, dup_1.data);
 					if (freedup_2)
-						__os_ufree(dbenv, dup_2.data);
+						__os_ufree(env, dup_2.data);
 				}
 			}
 		}
 	}
 
 err:	if (pip != NULL && ((t_ret =
-	    __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0) && ret == 0)
+	    __db_vrfy_putpageinfo(env, vdp, pip)) != 0) && ret == 0)
 		ret = t_ret;
 
 	if (buf1 != NULL)
-		__os_ufree(dbenv, buf1);
+		__os_ufree(env, buf1);
 	if (buf2 != NULL)
-		__os_ufree(dbenv, buf2);
+		__os_ufree(env, buf2);
 
 	return ((ret == 0 && isbad == 1) ? DB_VERIFY_BAD : ret);
 }
@@ -1150,35 +1154,37 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 	u_int32_t flags;
 {
 	DB *pgset;
-	DB_ENV *dbenv;
+	ENV *env;
 	VRFY_PAGEINFO *mip, *rip;
 	db_pgno_t root, p;
 	int t_ret, ret;
 	u_int32_t nrecs, level, relen, stflags;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mip = rip = 0;
 	pgset = vdp->pgset;
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, meta_pgno, &mip)) != 0)
 		return (ret);
 
-	if ((ret = __db_vrfy_pgset_get(pgset, meta_pgno, (int *)&p)) != 0)
+	if ((ret = __db_vrfy_pgset_get(pgset,
+	    vdp->thread_info, meta_pgno, (int *)&p)) != 0)
 		goto err;
 	if (p != 0) {
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: btree metadata page observed twice",
 		    (u_long)meta_pgno));
 		ret = DB_VERIFY_BAD;
 		goto err;
 	}
-	if ((ret = __db_vrfy_pgset_inc(pgset, meta_pgno)) != 0)
+	if ((ret =
+	    __db_vrfy_pgset_inc(pgset, vdp->thread_info, meta_pgno)) != 0)
 		goto err;
 
 	root = mip->root;
 
 	if (root == 0) {
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: btree metadata page has no root",
 		    (u_long)meta_pgno));
 		ret = DB_VERIFY_BAD;
@@ -1191,21 +1197,22 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 	switch (rip->type) {
 	case P_IBTREE:
 	case P_LBTREE:
-		stflags = flags | ST_TOPLEVEL;
+		stflags = flags | DB_ST_TOPLEVEL;
 		if (F_ISSET(mip, VRFY_HAS_DUPS))
-			stflags |= ST_DUPOK;
+			stflags |= DB_ST_DUPOK;
 		if (F_ISSET(mip, VRFY_HAS_DUPSORT))
-			stflags |= ST_DUPSORT;
+			stflags |= DB_ST_DUPSORT;
 		if (F_ISSET(mip, VRFY_HAS_RECNUMS))
-			stflags |= ST_RECNUM;
+			stflags |= DB_ST_RECNUM;
 		ret = __bam_vrfy_subtree(dbp,
 		    vdp, root, NULL, NULL, stflags, NULL, NULL, NULL);
 		break;
 	case P_IRECNO:
 	case P_LRECNO:
-		stflags = flags | ST_RECNUM | ST_IS_RECNO | ST_TOPLEVEL;
+		stflags =
+		    flags | DB_ST_RECNUM | DB_ST_IS_RECNO | DB_ST_TOPLEVEL;
 		if (mip->re_len > 0)
-			stflags |= ST_RELEN;
+			stflags |= DB_ST_RELEN;
 		if ((ret = __bam_vrfy_subtree(dbp, vdp,
 		    root, NULL, NULL, stflags, &level, &nrecs, &relen)) != 0)
 			goto err;
@@ -1216,7 +1223,7 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 		 * that should never happen.
 		 */
 		if (mip->re_len > 0 && relen > 0 && mip->re_len != relen) {
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: recno database has bad re_len %lu",
 			    (u_long)meta_pgno, (u_long)relen));
 			ret = DB_VERIFY_BAD;
@@ -1225,13 +1232,13 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 		ret = 0;
 		break;
 	case P_LDUP:
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: duplicate tree referenced from metadata page",
 		    (u_long)meta_pgno));
 		ret = DB_VERIFY_BAD;
 		break;
 	default:
-		EPRINT((dbenv,
+		EPRINT((env,
 	    "Page %lu: btree root of incorrect type %lu on metadata page",
 		    (u_long)meta_pgno, (u_long)rip->type));
 		ret = DB_VERIFY_BAD;
@@ -1239,10 +1246,10 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 	}
 
 err:	if (mip != NULL && ((t_ret =
-	    __db_vrfy_putpageinfo(dbenv, vdp, mip)) != 0) && ret == 0)
+	    __db_vrfy_putpageinfo(env, vdp, mip)) != 0) && ret == 0)
 		ret = t_ret;
 	if (rip != NULL && ((t_ret =
-	    __db_vrfy_putpageinfo(dbenv, vdp, rip)) != 0) && ret == 0)
+	    __db_vrfy_putpageinfo(env, vdp, rip)) != 0) && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -1268,8 +1275,8 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 	BINTERNAL *li, *ri;
 	DB *pgset;
 	DBC *cc;
-	DB_ENV *dbenv;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	PAGE *h;
 	VRFY_CHILDINFO *child;
 	VRFY_PAGEINFO *pip;
@@ -1286,7 +1293,7 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 	if (nrecsp != NULL)
 		*nrecsp = 0;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	h = NULL;
 	next_pgno = prev_pgno = PGNO_INVALID;
@@ -1305,8 +1312,8 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 	cc = NULL;
 	level = pip->bt_level;
 
-	toplevel = LF_ISSET(ST_TOPLEVEL) ? 1 : 0;
-	LF_CLR(ST_TOPLEVEL);
+	toplevel = LF_ISSET(DB_ST_TOPLEVEL) ? 1 : 0;
+	LF_CLR(DB_ST_TOPLEVEL);
 
 	/*
 	 * If this is the root, initialize the vdp's prev- and next-pgno
@@ -1382,7 +1389,7 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 			 */
 			if (pip->type != vdp->leaf_type) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 	"Page %lu: unexpected page type %lu found in leaf chain (expected %lu)",
 				    (u_long)pip->pgno, (u_long)pip->type,
 				    (u_long)vdp->leaf_type));
@@ -1395,7 +1402,7 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 			if (!F_ISSET(vdp, VRFY_LEAFCHAIN_BROKEN)) {
 				if (pip->pgno != vdp->next_pgno) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 	"Page %lu: incorrect next_pgno %lu found in leaf chain (should be %lu)",
 					    (u_long)vdp->prev_pgno,
 					    (u_long)vdp->next_pgno,
@@ -1403,7 +1410,7 @@ __bam_vrfy_subtree(dbp, vdp, pgno, l, r, flags, levelp, nrecsp, relenp)
 				}
 				if (pip->prev_pgno != vdp->prev_pgno) {
 bad_prev:				isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
     "Page %lu: incorrect prev_pgno %lu found in leaf chain (should be %lu)",
 					    (u_long)pip->pgno,
 					    (u_long)pip->prev_pgno,
@@ -1426,7 +1433,7 @@ bad_prev:				isbad = 1;
 			if (child->type == V_OVERFLOW &&
 			    (ret = __db_vrfy_ovfl_structure(dbp, vdp,
 			    child->pgno, child->tlen,
-			    flags | ST_OVFL_LEAF)) != 0) {
+			    flags | DB_ST_OVFL_LEAF)) != 0) {
 				if (ret == DB_VERIFY_BAD)
 					isbad = 1;
 				else
@@ -1439,22 +1446,23 @@ bad_prev:				isbad = 1;
 
 		/* Case 1 */
 		if (pip->type == P_LRECNO) {
-			if (!LF_ISSET(ST_IS_RECNO) &&
-			    !(LF_ISSET(ST_DUPOK) && !LF_ISSET(ST_DUPSORT))) {
+			if (!LF_ISSET(DB_ST_IS_RECNO) &&
+			    !(LF_ISSET(DB_ST_DUPOK) &&
+			    !LF_ISSET(DB_ST_DUPSORT))) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: recno leaf page non-recno tree",
 				    (u_long)pgno));
 				goto done;
 			}
 			goto leaf;
-		} else if (LF_ISSET(ST_IS_RECNO)) {
+		} else if (LF_ISSET(DB_ST_IS_RECNO)) {
 			/*
 			 * It's a non-recno leaf.  Had better not be a recno
 			 * subtree.
 			 */
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: non-recno leaf page in recno tree",
 			    (u_long)pgno));
 			goto done;
@@ -1469,9 +1477,9 @@ bad_prev:				isbad = 1;
 		/* Check if we have any dups. */
 		if (F_ISSET(pip, VRFY_HAS_DUPS)) {
 			/* If dups aren't allowed in this btree, trouble. */
-			if (!LF_ISSET(ST_DUPOK)) {
+			if (!LF_ISSET(DB_ST_DUPOK)) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 				    "Page %lu: duplicates in non-dup btree",
 				    (u_long)pgno));
 			} else {
@@ -1485,7 +1493,8 @@ bad_prev:				isbad = 1;
 				for (ret = __db_vrfy_ccset(cc, pgno, &child);
 				    ret == 0;
 				    ret = __db_vrfy_ccnext(cc, &child)) {
-					stflags = flags | ST_RECNUM | ST_DUPSET;
+					stflags =
+					    flags | DB_ST_RECNUM | DB_ST_DUPSET;
 					/* Skip any overflow entries. */
 					if (child->type == V_DUPLICATE) {
 						if ((ret = __db_vrfy_duptype(
@@ -1496,8 +1505,9 @@ bad_prev:				isbad = 1;
 							continue;
 						}
 						if ((ret = __bam_vrfy_subtree(
-						    dbp, vdp, child->pgno, NULL,
-						    NULL, stflags | ST_TOPLEVEL,
+						    dbp, vdp, child->pgno,
+						    NULL, NULL,
+						    stflags | DB_ST_TOPLEVEL,
 						    NULL, NULL, NULL)) != 0) {
 							if (ret ==
 							    DB_VERIFY_BAD)
@@ -1514,12 +1524,12 @@ bad_prev:				isbad = 1;
 
 				/*
 				 * If VRFY_DUPS_UNSORTED is set,
-				 * ST_DUPSORT had better not be.
+				 * DB_ST_DUPSORT had better not be.
 				 */
 				if (F_ISSET(pip, VRFY_DUPS_UNSORTED) &&
-				    LF_ISSET(ST_DUPSORT)) {
+				    LF_ISSET(DB_ST_DUPSORT)) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 		    "Page %lu: unsorted duplicate set in sorted-dup database",
 					    (u_long)pgno));
 				}
@@ -1543,9 +1553,9 @@ bad_prev:				isbad = 1;
 		 * zeroed);  handle this case specially.
 		 */
 		if (F_ISSET(pip, VRFY_IS_ALLZEROES))
-			ZEROPG_ERR_PRINT(dbenv, pgno, "btree or recno page");
+			ZEROPG_ERR_PRINT(env, pgno, "btree or recno page");
 		else
-			EPRINT((dbenv,
+			EPRINT((env,
 	    "Page %lu: btree or recno page is of inappropriate type %lu",
 			    (u_long)pgno, (u_long)pip->type));
 
@@ -1574,7 +1584,7 @@ bad_prev:				isbad = 1;
 		if (child->type == V_RECNO) {
 			if (pip->type != P_IRECNO) {
 				ret = __db_unknown_path(
-				    dbenv, "__bam_vrfy_subtree");
+				    env, "__bam_vrfy_subtree");
 				goto err;
 			}
 			if ((ret = __bam_vrfy_subtree(dbp, vdp, child->pgno,
@@ -1586,7 +1596,7 @@ bad_prev:				isbad = 1;
 					goto done;
 			}
 
-			if (LF_ISSET(ST_RELEN)) {
+			if (LF_ISSET(DB_ST_RELEN)) {
 				if (relen == 0)
 					relen = child_relen;
 				/*
@@ -1596,7 +1606,7 @@ bad_prev:				isbad = 1;
 				else if (child_relen > 0 &&
 				    relen != child_relen) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 			   "Page %lu: recno page returned bad re_len %lu",
 					    (u_long)child->pgno,
 					    (u_long)child_relen));
@@ -1604,10 +1614,10 @@ bad_prev:				isbad = 1;
 				if (relenp)
 					*relenp = relen;
 			}
-			if (LF_ISSET(ST_RECNUM)) {
+			if (LF_ISSET(DB_ST_RECNUM)) {
 				if (child->nrecs != child_nrecs) {
 					isbad = 1;
-					EPRINT((dbenv,
+					EPRINT((env,
 		"Page %lu: record count incorrect: actual %lu, in record %lu",
 					    (u_long)child->pgno,
 					    (u_long)child_nrecs,
@@ -1617,7 +1627,7 @@ bad_prev:				isbad = 1;
 			}
 			if (isbad == 0 && level != child_level + 1) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 		"Page %lu: recno level incorrect: got %lu, expected %lu",
 				    (u_long)child->pgno, (u_long)child_level,
 				    (u_long)(level - 1)));
@@ -1642,7 +1652,7 @@ bad_prev:				isbad = 1;
 			 */
 
 			/* Otherwise, __db_vrfy_childput would be broken. */
-			DB_ASSERT(dbenv, child->refcnt >= 1);
+			DB_ASSERT(env, child->refcnt >= 1);
 
 			/*
 			 * An overflow referenced more than twice here
@@ -1650,7 +1660,7 @@ bad_prev:				isbad = 1;
 			 */
 			if (child->refcnt > 2) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
     "Page %lu: overflow page %lu referenced more than twice from internal page",
 				    (u_long)pgno, (u_long)child->pgno));
 			} else
@@ -1683,7 +1693,8 @@ bad_prev:				isbad = 1;
 	 * itself, which must sort lower than all entries on its child;
 	 * ri will be the key to its right, which must sort greater.
 	 */
-	if (h == NULL && (ret = __memp_fget(mpf, &pgno, NULL, 0, &h)) != 0)
+	if (h == NULL &&
+	    (ret = __memp_fget(mpf, &pgno, vdp->thread_info, NULL, 0, &h)) != 0)
 		goto err;
 	for (i = 0; i < pip->entries; i += O_INDX) {
 		li = GET_BINTERNAL(dbp, h, i);
@@ -1703,7 +1714,7 @@ bad_prev:				isbad = 1;
 				goto done;
 		}
 
-		if (LF_ISSET(ST_RECNUM)) {
+		if (LF_ISSET(DB_ST_RECNUM)) {
 			/*
 			 * Keep a running tally on the actual record count so
 			 * we can return it to our parent (if we have one) or
@@ -1717,7 +1728,7 @@ bad_prev:				isbad = 1;
 			 */
 			if (li->nrecs != child_nrecs) {
 				isbad = 1;
-				EPRINT((dbenv,
+				EPRINT((env,
 	"Page %lu: item %lu has incorrect record count of %lu, should be %lu",
 				    (u_long)pgno, (u_long)i, (u_long)li->nrecs,
 				    (u_long)child_nrecs));
@@ -1726,7 +1737,7 @@ bad_prev:				isbad = 1;
 
 		if (level != child_level + 1) {
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 		"Page %lu: Btree level incorrect: got %lu, expected %lu",
 			    (u_long)li->pgno,
 			    (u_long)child_level, (u_long)(level - 1)));
@@ -1735,7 +1746,7 @@ bad_prev:				isbad = 1;
 
 	if (0) {
 leaf:		level = LEAFLEVEL;
-		if (LF_ISSET(ST_RECNUM))
+		if (LF_ISSET(DB_ST_RECNUM))
 			nrecs = pip->rec_cnt;
 
 		/* XXX
@@ -1746,7 +1757,7 @@ leaf:		level = LEAFLEVEL;
 		 * soon, so for now we don't bother.
 		 */
 
-		if (LF_ISSET(ST_RELEN) && relenp)
+		if (LF_ISSET(DB_ST_RELEN) && relenp)
 			*relenp = pip->re_len;
 	}
 done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
@@ -1756,11 +1767,11 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 		 * isbad == 0, though, it's now safe to do so, as we've
 		 * traversed any child overflow pages.  Do it.
 		 */
-		if (h == NULL &&
-		    (ret = __memp_fget(mpf, &pgno, NULL, 0, &h)) != 0)
+		if (h == NULL && (ret = __memp_fget(mpf, &pgno,
+		    vdp->thread_info, NULL, 0, &h)) != 0)
 			goto err;
 		if ((ret = __bam_vrfy_itemorder(dbp,
-		    vdp, h, pgno, 0, 1, 0, flags)) != 0)
+		    vdp, vdp->thread_info, h, pgno, 0, 1, 0, flags)) != 0)
 			goto err;
 		F_CLR(pip, VRFY_INCOMPLETE);
 	}
@@ -1776,13 +1787,13 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	 * must have children).
 	 */
 	if (isbad == 0 && ret == 0) {
-		if (h == NULL &&
-		    (ret = __memp_fget(mpf, &pgno, NULL, 0, &h)) != 0)
+		if (h == NULL && (ret = __memp_fget(mpf, &pgno,
+		    vdp->thread_info, NULL, 0, &h)) != 0)
 			goto err;
 
 		if (NUM_ENT(h) == 0 && ISINTERNAL(h)) {
 			isbad = 1;
-			EPRINT((dbenv,
+			EPRINT((env,
 		    "Page %lu: internal page is empty and should not be",
 			    (u_long)pgno));
 			goto err;
@@ -1796,23 +1807,23 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	 */
 	if (isbad == 0 && ret == 0 && !LF_ISSET(DB_NOORDERCHK) &&
 	    pip->type != P_IRECNO && pip->type != P_LRECNO) {
-		if (h == NULL &&
-		    (ret = __memp_fget(mpf, &pgno, NULL, 0, &h)) != 0)
+		if (h == NULL && (ret = __memp_fget(mpf, &pgno,
+		    vdp->thread_info, NULL, 0, &h)) != 0)
 			goto err;
 
 		/*
 		 * __bam_vrfy_treeorder needs to know what comparison function
-		 * to use.  If ST_DUPSET is set, we're in a duplicate tree
+		 * to use.  If DB_ST_DUPSET is set, we're in a duplicate tree
 		 * and we use the duplicate comparison function;  otherwise,
 		 * use the btree one.  If unset, use the default, of course.
 		 */
-		func = LF_ISSET(ST_DUPSET) ? dbp->dup_compare :
+		func = LF_ISSET(DB_ST_DUPSET) ? dbp->dup_compare :
 		    ((BTREE *)dbp->bt_internal)->bt_compare;
 		if (func == NULL)
 			func = __bam_defcmp;
 
-		if ((ret = __bam_vrfy_treeorder(
-		    dbp, h, l, r, func, flags)) != 0) {
+		if ((ret = __bam_vrfy_treeorder(dbp,
+		    vdp->thread_info, h, l, r, func, flags)) != 0) {
 			if (ret == DB_VERIFY_BAD)
 				isbad = 1;
 			else
@@ -1826,9 +1837,9 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 	 * Internal pages below the top level do not store their own
 	 * record numbers, so we skip them.
 	 */
-	if (LF_ISSET(ST_RECNUM) && nrecs != pip->rec_cnt && toplevel) {
+	if (LF_ISSET(DB_ST_RECNUM) && nrecs != pip->rec_cnt && toplevel) {
 		isbad = 1;
-		EPRINT((dbenv,
+		EPRINT((env,
 		    "Page %lu: bad record count: has %lu records, claims %lu",
 		    (u_long)pgno, (u_long)nrecs, (u_long)pip->rec_cnt));
 	}
@@ -1839,12 +1850,14 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 		*nrecsp = nrecs;
 
 	pgset = vdp->pgset;
-	if ((ret = __db_vrfy_pgset_get(pgset, pgno, &p)) != 0)
+	if ((ret = __db_vrfy_pgset_get(pgset,
+	    vdp->thread_info, pgno, &p)) != 0)
 		goto err;
 	if (p != 0) {
 		isbad = 1;
-		EPRINT((dbenv, "Page %lu: linked twice", (u_long)pgno));
-	} else if ((ret = __db_vrfy_pgset_inc(pgset, pgno)) != 0)
+		EPRINT((env, "Page %lu: linked twice", (u_long)pgno));
+	} else if ((ret =
+	    __db_vrfy_pgset_inc(pgset, vdp->thread_info, pgno)) != 0)
 		goto err;
 
 	if (toplevel)
@@ -1854,7 +1867,7 @@ done:	if (F_ISSET(pip, VRFY_INCOMPLETE) && isbad == 0 && ret == 0) {
 		 */
 		if (vdp->next_pgno != PGNO_INVALID) {
 			isbad = 1;
-			EPRINT((dbenv, "Page %lu: unterminated leaf chain",
+			EPRINT((env, "Page %lu: unterminated leaf chain",
 			    (u_long)vdp->prev_pgno));
 		}
 
@@ -1865,10 +1878,10 @@ err:	if (toplevel) {
 		vdp->leaf_type = leaf_type;
 	}
 
-	if (h != NULL && (t_ret =
-	    __memp_fput(mpf, h, DB_PRIORITY_UNCHANGED)) != 0 && ret == 0)
+	if (h != NULL && (t_ret = __memp_fput(mpf,
+	    vdp->thread_info, h, DB_PRIORITY_UNCHANGED)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret = __db_vrfy_putpageinfo(dbenv, vdp, pip)) != 0 && ret == 0)
+	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	if (cc != NULL && ((t_ret = __db_vrfy_ccclose(cc)) != 0) && ret == 0)
 		ret = t_ret;
@@ -1889,20 +1902,21 @@ err:	if (toplevel) {
  *	no higher key we must sort less than.
  */
 static int
-__bam_vrfy_treeorder(dbp, h, lp, rp, func, flags)
+__bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	PAGE *h;
 	BINTERNAL *lp, *rp;
 	int (*func) __P((DB *, const DBT *, const DBT *));
 	u_int32_t flags;
 {
 	BOVERFLOW *bo;
-	DB_ENV *dbenv;
 	DBT dbt;
+	ENV *env;
 	db_indx_t last;
 	int ret, cmp;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	memset(&dbt, 0, sizeof(DBT));
 	F_SET(&dbt, DB_DBT_MALLOC);
 	ret = 0;
@@ -1924,7 +1938,7 @@ __bam_vrfy_treeorder(dbp, h, lp, rp, func, flags)
 		last = NUM_ENT(h) - P_INDX;
 		break;
 	default:
-		return (__db_unknown_path(dbenv, "__bam_vrfy_treeorder"));
+		return (__db_unknown_path(env, "__bam_vrfy_treeorder"));
 	}
 
 	/*
@@ -1946,28 +1960,29 @@ __bam_vrfy_treeorder(dbp, h, lp, rp, func, flags)
 			dbt.size = lp->len;
 		} else if (lp->type == B_OVERFLOW) {
 			bo = (BOVERFLOW *)lp->data;
-			if ((ret = __db_goff(dbp, NULL, &dbt,
+			if ((ret = __db_goff(dbp, ip, NULL, &dbt,
 			    bo->tlen, bo->pgno, NULL, NULL)) != 0)
 				return (ret);
 		} else
 			return (
-			    __db_unknown_path(dbenv, "__bam_vrfy_treeorder"));
+			    __db_unknown_path(env, "__bam_vrfy_treeorder"));
 
 		/* On error, fall through, free if needed, and return. */
-		if ((ret = __bam_cmp(dbp, NULL, &dbt, h, 0, func, &cmp)) == 0) {
+		if ((ret = __bam_cmp(dbp, ip,
+		    NULL, &dbt, h, 0, func, &cmp)) == 0) {
 			if (cmp > 0) {
-				EPRINT((dbenv,
+				EPRINT((env,
 	    "Page %lu: first item on page sorted greater than parent entry",
 				    (u_long)PGNO(h)));
 				ret = DB_VERIFY_BAD;
 			}
 		} else
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: first item on page had comparison error",
 			    (u_long)PGNO(h)));
 
 		if (dbt.data != lp->data)
-			__os_ufree(dbenv, dbt.data);
+			__os_ufree(env, dbt.data);
 		if (ret != 0)
 			return (ret);
 	}
@@ -1978,29 +1993,29 @@ __bam_vrfy_treeorder(dbp, h, lp, rp, func, flags)
 			dbt.size = rp->len;
 		} else if (rp->type == B_OVERFLOW) {
 			bo = (BOVERFLOW *)rp->data;
-			if ((ret = __db_goff(dbp, NULL, &dbt,
+			if ((ret = __db_goff(dbp, ip, NULL, &dbt,
 			    bo->tlen, bo->pgno, NULL, NULL)) != 0)
 				return (ret);
 		} else
 			return (
-			    __db_unknown_path(dbenv, "__bam_vrfy_treeorder"));
+			    __db_unknown_path(env, "__bam_vrfy_treeorder"));
 
 		/* On error, fall through, free if needed, and return. */
-		if ((ret = __bam_cmp(dbp, NULL, &dbt,
-		    h, last, func, &cmp)) == 0) {
+		if ((ret = __bam_cmp(dbp, ip,
+		    NULL, &dbt, h, last, func, &cmp)) == 0) {
 			if (cmp < 0) {
-				EPRINT((dbenv,
+				EPRINT((env,
 	    "Page %lu: last item on page sorted greater than parent entry",
 				    (u_long)PGNO(h)));
 				ret = DB_VERIFY_BAD;
 			}
 		} else
-			EPRINT((dbenv,
+			EPRINT((env,
 			    "Page %lu: last item on page had comparison error",
 			    (u_long)PGNO(h)));
 
 		if (dbt.data != rp->data)
-			__os_ufree(dbenv, dbt.data);
+			__os_ufree(env, dbt.data);
 	}
 
 	return (ret);
@@ -2009,11 +2024,12 @@ __bam_vrfy_treeorder(dbp, h, lp, rp, func, flags)
 /*
  * __bam_salvage --
  *	Safely dump out anything that looks like a key on an alleged
- *	btree leaf page.
+ *	btree leaf page, also mark overflow pages as seen.  For internal btree
+ *	pages, just mark any overflow pages as seen.
  *
- * PUBLIC: int __bam_salvage __P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t,
- * PUBLIC:     PAGE *, void *, int (*)(void *, const void *), DBT *,
- * PUBLIC:     u_int32_t));
+ * PUBLIC: int __bam_salvage __P((DB *, VRFY_DBINFO *,
+ * PUBLIC:     db_pgno_t, u_int32_t, PAGE *, void *,
+ * PUBLIC:     int (*)(void *, const void *), DBT *, u_int32_t));
  */
 int
 __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
@@ -2029,20 +2045,22 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 {
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
-	DBT dbt, unknown_key, unknown_data;
-	DB_ENV *dbenv;
+	DBT dbt, repldbt, unknown_key, unknown_data;
+	ENV *env;
 	VRFY_ITEM *pgmap;
 	db_indx_t i, last, beg, end, *inp;
+	db_pgno_t ovflpg;
 	u_int32_t himark;
 	void *ovflbuf;
-	int ret, t_ret, t2_ret;
+	int adj, ret, t_ret, t2_ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ovflbuf = pgmap = NULL;
 	inp = P_INP(dbp, h);
 
 	memset(&dbt, 0, sizeof(DBT));
 	dbt.flags = DB_DBT_REALLOC;
+	memset(&repldbt, 0, sizeof(DBT));
 
 	DB_INIT_DBT(unknown_key, "UNKNOWN_KEY", sizeof("UNKNOWN_KEY") - 1);
 	DB_INIT_DBT(unknown_data, "UNKNOWN_DATA", sizeof("UNKNOWN_DATA") - 1);
@@ -2051,11 +2069,11 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	 * Allocate a buffer for overflow items.  Start at one page;
 	 * __db_safe_goff will realloc as needed.
 	 */
-	if ((ret = __os_malloc(dbenv, dbp->pgsize, &ovflbuf)) != 0)
+	if ((ret = __os_malloc(env, dbp->pgsize, &ovflbuf)) != 0)
 		goto err;
 
 	if (LF_ISSET(DB_AGGRESSIVE) && (ret =
-	    __os_calloc(dbenv, dbp->pgsize, sizeof(pgmap[0]), &pgmap)) != 0)
+	    __os_calloc(env, dbp->pgsize, sizeof(pgmap[0]), &pgmap)) != 0)
 		goto err;
 
 	/*
@@ -2131,10 +2149,10 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 		/*
 		 * We're going to go try to print the next item.  If key is
 		 * non-NULL, we're a dup page, so we've got to print the key
-		 * first, unless SA_SKIPFIRSTKEY is set and we're on the first
-		 * entry.
+		 * first, unless DB_SA_SKIPFIRSTKEY is set and we're on the
+		 * first entry.
 		 */
-		if (key != NULL && (i != 0 || !LF_ISSET(SA_SKIPFIRSTKEY)))
+		if (key != NULL && (i != 0 || !LF_ISSET(DB_SA_SKIPFIRSTKEY)))
 			if ((t_ret = __db_vrfy_prdbt(key,
 			    0, " ", handle, callback, 0, vdp)) != 0) {
 				if (ret == 0)
@@ -2142,9 +2160,12 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 				goto err;
 			}
 
-		beg = inp[i];
+		beg = end = inp[i];
 		switch (B_TYPE(bk->type)) {
 		case B_DUPLICATE:
+			if (pgtype == P_IBTREE)
+				break;
+
 			end = beg + BOVERFLOW_SIZE - 1;
 			/*
 			 * If we're not on a normal btree leaf page, there
@@ -2178,13 +2199,17 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			/* Don't stop on error. */
 			if ((t_ret = __db_salvage_duptree(dbp,
 			    vdp, bo->pgno, &dbt, handle, callback,
-			    flags | SA_SKIPFIRSTKEY)) != 0 && ret == 0)
+			    flags | DB_SA_SKIPFIRSTKEY)) != 0 && ret == 0)
 				ret = t_ret;
 
 			break;
 		case B_KEYDATA:
+			if (pgtype == P_IBTREE)
+				break;
+
 			end = (db_indx_t)DB_ALIGN(
 			    beg + bk->len, sizeof(u_int32_t)) - 1;
+
 			dbt.data = bk->data;
 			dbt.size = bk->len;
 			if ((t_ret = __db_vrfy_prdbt(&dbt,
@@ -2195,13 +2220,73 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			}
 			break;
 		case B_OVERFLOW:
-			end = beg + BOVERFLOW_SIZE - 1;
+			if (pgtype != P_IBTREE)
+				end = beg + BOVERFLOW_SIZE - 1;
 			bo = (BOVERFLOW *)bk;
 
-			/* Don't stop on error. */
-			if ((t_ret = __db_safe_goff(dbp, vdp,
-			    bo->pgno, &dbt, &ovflbuf, flags)) != 0 && ret == 0)
-				ret = t_ret;
+			/*
+			 * Check for replicated overflow keys, so that we only
+			 * call __db_safe_goff once per overflow page.  If we
+			 * get the same offset as the previous key just re-use
+			 * the previous dbt.
+			 *
+			 * P_IBTREE pages will never have replicated overflow
+			 * keys and will never pass this test.
+			 */
+			adj = pgtype == P_IBTREE ? O_INDX : P_INDX;
+			if (i > adj - 1 && i % adj == 0 &&
+			    inp[i] == inp[i - adj]) {
+				DB_ASSERT(env, pgtype != P_IBTREE);
+				dbt = repldbt;
+			} else {
+				if (pgtype == P_IBTREE) {
+					/*
+					 * If we're looking at a P_IBTREE, we
+					 * just want to mark the overflow page
+					 * as seen.  P_IBTREE entries will
+					 * always fail the above test, we'll
+					 * always wind up here.
+					 *
+					 * Note that this call to __db_safe_goff
+					 * differs from the non-P_IBTREE call.
+					 *
+					 * Only call __db_safe_goff if the
+					 * overflow page hasn't been seen.
+					 */
+					ovflpg = ((BOVERFLOW *)
+					    ((BINTERNAL *)bk)->data)->pgno;
+					if (__db_salvage_isdone(vdp,
+					    ovflpg) == 0 && (t_ret =
+					    __db_safe_goff(dbp, vdp, ovflpg,
+					    &dbt, &ovflbuf, flags)) != 0 &&
+					    ret == 0)
+						ret = t_ret;
+					break;
+				}
+
+				/* Don't stop on error. */
+				if ((t_ret = __db_safe_goff(dbp, vdp, bo->pgno,
+				    &dbt, &ovflbuf, flags)) != 0 && ret == 0)
+					ret = t_ret;
+
+				/*
+				 * If this is a key, save it in case the next
+				 * key is a replicated overflow, so we don't
+				 * call __db_safe_goff again.  Copy out dbt.data
+				 * in case that pointer gets realloc'd when
+				 * getting a data item.
+				 */
+				if (i % P_INDX == 0) {
+					if ((ret = __os_realloc(env,
+					    dbt.size, &repldbt.data)) != 0)
+						goto err;
+					memcpy(repldbt.data, dbt.data,
+					    dbt.size);
+					repldbt.size = dbt.size;
+				}
+
+			}
+
 			if ((t_ret = __db_vrfy_prdbt(
 			    t_ret == 0 ? &dbt : &unknown_key,
 			    0, " ", handle, callback, 0, vdp)) != 0 && ret == 0)
@@ -2212,7 +2297,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			 * We should never get here; __db_vrfy_inpitem should
 			 * not be returning 0 if bk->type is unrecognizable.
 			 */
-			t_ret = __db_unknown_path(dbenv, "__bam_salvage");
+			t_ret = __db_unknown_path(env, "__bam_salvage");
 			if (ret == 0)
 				ret = t_ret;
 			goto err;
@@ -2224,16 +2309,18 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 		 * the gaps in case we had any bogus inp elements and thereby
 		 * missed stuff.
 		 */
-		if (LF_ISSET(DB_AGGRESSIVE)) {
+		if (LF_ISSET(DB_AGGRESSIVE) && pgtype != P_IBTREE) {
 			pgmap[beg] = VRFY_ITEM_BEGIN;
 			pgmap[end] = VRFY_ITEM_END;
 		}
 	}
 
 err:	if (pgmap != NULL)
-		__os_free(dbenv, pgmap);
+		__os_free(env, pgmap);
 	if (ovflbuf != NULL)
-		__os_free(dbenv, ovflbuf);
+		__os_free(env, ovflbuf);
+	if (repldbt.data != NULL)
+		__os_free(env, repldbt.data);
 
 	/* Mark this page as done. */
 	if ((t_ret = __db_salvage_markdone(vdp, pgno)) != 0 && ret == 0)
@@ -2260,13 +2347,13 @@ __bam_salvage_walkdupint(dbp, vdp, h, key, handle, callback, flags)
 	int (*callback) __P((void *, const void *));
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
-	RINTERNAL *ri;
 	BINTERNAL *bi;
+	ENV *env;
+	RINTERNAL *ri;
 	int ret, t_ret;
 	db_indx_t i;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ret = 0;
 
 	for (i = 0; i < NUM_ENT(h); i++) {
@@ -2285,10 +2372,10 @@ __bam_salvage_walkdupint(dbp, vdp, h, key, handle, callback, flags)
 			break;
 		default:
 			return (__db_unknown_path(
-			    dbenv, "__bam_salvage_walkdupint"));
+			    env, "__bam_salvage_walkdupint"));
 		}
-		/* Pass SA_SKIPFIRSTKEY, if set, on to the 0th child only. */
-		flags &= ~LF_ISSET(SA_SKIPFIRSTKEY);
+		/* Pass DB_SA_SKIPFIRSTKEY, if set, on to the 0th child only. */
+		flags &= ~LF_ISSET(DB_SA_SKIPFIRSTKEY);
 	}
 
 	return (ret);
@@ -2326,7 +2413,7 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 	db_pgno_t current, p;
 	int err_ret, ret;
 
-	DB_ASSERT(dbp->dbenv, pgset != NULL);
+	DB_ASSERT(dbp->env, pgset != NULL);
 
 	mpf = dbp->mpf;
 	h = NULL;
@@ -2337,7 +2424,8 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 			err_ret = DB_VERIFY_BAD;
 			goto err;
 		}
-		if ((ret = __memp_fget(mpf, &current, NULL, 0, &h)) != 0) {
+		if ((ret = __memp_fget(mpf, &current,
+		     vdp->thread_info, NULL, 0, &h)) != 0) {
 			err_ret = ret;
 			goto err;
 		}
@@ -2366,7 +2454,8 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 			goto err;
 		}
 
-		if ((ret = __memp_fput(mpf, h, DB_PRIORITY_UNCHANGED)) != 0)
+		if ((ret = __memp_fput(mpf,
+		     vdp->thread_info, h, DB_PRIORITY_UNCHANGED)) != 0)
 			err_ret = ret;
 		h = NULL;
 	}
@@ -2377,13 +2466,14 @@ __bam_meta2pgset(dbp, vdp, btmeta, flags, pgset)
 	 */
 traverse:
 	while (IS_VALID_PGNO(current) && current != PGNO_INVALID) {
-		if (h == NULL &&
-		    (ret = __memp_fget(mpf, &current, NULL, 0, &h)) != 0) {
+		if (h == NULL && (ret = __memp_fget(mpf,
+		    &current, vdp->thread_info, NULL, 0, &h)) != 0) {
 			err_ret = ret;
 			break;
 		}
 
-		if ((ret = __db_vrfy_pgset_get(pgset, current, (int *)&p)) != 0)
+		if ((ret = __db_vrfy_pgset_get(pgset,
+		    vdp->thread_info, current, (int *)&p)) != 0)
 			goto err;
 
 		if (p != 0) {
@@ -2394,17 +2484,20 @@ traverse:
 			 */
 			break;
 		}
-		if ((ret = __db_vrfy_pgset_inc(pgset, current)) != 0)
+		if ((ret =
+		    __db_vrfy_pgset_inc(pgset, vdp->thread_info, current)) != 0)
 			goto err;
 
 		current = NEXT_PGNO(h);
-		if ((ret = __memp_fput(mpf, h, DB_PRIORITY_UNCHANGED)) != 0)
+		if ((ret = __memp_fput(mpf,
+		     vdp->thread_info, h, DB_PRIORITY_UNCHANGED)) != 0)
 			err_ret = ret;
 		h = NULL;
 	}
 
 err:	if (h != NULL)
-		(void)__memp_fput(mpf, h, DB_PRIORITY_UNCHANGED);
+		(void)__memp_fput(mpf,
+		    vdp->thread_info, h, DB_PRIORITY_UNCHANGED);
 
 	return (ret == 0 ? err_ret : ret);
 }
@@ -2418,8 +2511,9 @@ err:	if (h != NULL)
  *	to free dbt->data;  if ovflok is 0, we leaves the DBT zeroed.
  */
 static int
-__bam_safe_getdata(dbp, h, i, ovflok, dbt, freedbtp)
+__bam_safe_getdata(dbp, ip, h, i, ovflok, dbt, freedbtp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	PAGE *h;
 	u_int32_t i;
 	int ovflok;
@@ -2441,7 +2535,7 @@ __bam_safe_getdata(dbp, h, i, ovflok, dbt, freedbtp)
 		F_SET(dbt, DB_DBT_MALLOC);
 
 		*freedbtp = 1;
-		return (__db_goff(dbp, NULL, dbt,
+		return (__db_goff(dbp, ip, NULL, dbt,
 		    bo->tlen, bo->pgno, NULL, NULL));
 	} else {
 		dbt->data = bk->data;

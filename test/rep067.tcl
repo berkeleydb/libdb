@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep067.tcl,v 1.8 2007/06/15 14:39:51 carol Exp $
+# $Id: rep067.tcl,v 1.11 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep067
 # TEST	Replication election test with large timeouts.
@@ -66,10 +66,11 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -135,9 +136,9 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 	#
 	# Run the test for all different timoeut combinations.
 	#
-	set c0to { long medium short }
-	set c1to { medium short long }
-	set c2to { short medium long }
+	set c0to { long medium }
+	set c1to { medium short }
+	set c2to { short long }
 	set numtests [expr [llength $c0to] * [llength $c1to] * \
 	    [llength $c2to]]
 	set m "Rep$tnum"

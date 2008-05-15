@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: rep049.tcl,v 12.17 2007/05/17 19:33:06 bostic Exp $
+# $Id: rep049.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep049
 # TEST	Replication and delay syncing clients - basic test.
@@ -55,10 +55,11 @@ proc rep049_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

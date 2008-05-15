@@ -1,6 +1,6 @@
 <!--$Id: dbt_class.so,v 10.1 2002/08/24 18:22:30 bostic Exp $-->
 <!--$Id: dbt_cxx.so,v 10.72 2007/02/27 00:41:24 mjc Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -11,7 +11,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>Dbt</h3>
+<b>Dbt</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -19,7 +19,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 class Dbt {
@@ -53,13 +53,13 @@ public:
 	static Dbt *Dbt::get_Dbt(DBT *dbt);
 	static const Dbt *Dbt::get_const_Dbt(const DBT *dbt);
 };
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: Dbt</h3>
+<b>Description: Dbt</b>
 <p>This information describes the specific details of the Dbt class,
 used to encode keys and data items in a database.</p>
 <a name="2"><!--meow--></a>
-<h3>Key/Data Pairs</h3>
+<b>Key/Data Pairs</b>
 <p>Storage and retrieval for the <a href="../api_cxx/db_class.html">Db</a> access methods are based on
 key/data pairs.  Both key and data items are represented by Dbt
 objects.  Key and data byte strings may refer to strings of zero length
@@ -101,102 +101,94 @@ Dbt object, if there is one.</p>
 and C++ language software.  It should not be necessary to use these
 calls in a purely C++ application.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_data</h3>
+<b>Description: Dbt::set_data</b>
 <p>Set the data array.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>data</b><dd>The <b>data</b> parameter is an array of bytes to be used to set the
-content for the Dbt.
-</dl>
+<b>Parameters</b> <br>
+ <b>data</b><ul compact><li>The <b>data</b> parameter is an array of bytes to be used to set the
+content for the Dbt.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_data</h3>
+<b>Description: Dbt::get_data</b>
 <p>Return the data array.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_recno_key_data</h3>
+<b>Description: Dbt::set_recno_key_data</b>
 <p>Initialize the data array from a logical record number.  Recno database
 records are ordered by integer keys starting at 1.  When the
 Dbt::set_recno_key_data method is called, the data, size and offset
 fields in the Dbt are implicitly set to hold a byte array
 representation of the integer key.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>recno</b><dd>The <b>recno</b> parameter logical record number used to initialize the
-data array.
-</dl>
+<b>Parameters</b> <br>
+ <b>recno</b><ul compact><li>The <b>recno</b> parameter logical record number used to initialize the
+data array.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_recno_key_data</h3>
+<b>Description: Dbt::get_recno_key_data</b>
 <p>Return an object from the data array, expecting that data to be a
 logical record number.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_offset</h3>
+<b>Description: Dbt::set_offset</b>
 <p>Set the byte offset into the data array.</p>
 <p>The number of bytes offset into the <b>data</b> array determine the
 portion of the array actually used.  This element is accessed using
 Dbt::get_offset and Dbt::set_offset.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>offset</b><dd>The <b>offset</b> parameter is the byte offset into the data array.
-</dl>
+<b>Parameters</b> <br>
+ <b>offset</b><ul compact><li>The <b>offset</b> parameter is the byte offset into the data array.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_offset</h3>
+<b>Description: Dbt::get_offset</b>
 <p>Return the byte offset into the data array.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_size</h3>
+<b>Description: Dbt::set_size</b>
 <p>Set the byte size of the data array.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>size</b><dd>The <b>size</b> parameter is the size of the data array in bytes.
-</dl>
+<b>Parameters</b> <br>
+ <b>size</b><ul compact><li>The <b>size</b> parameter is the size of the data array in bytes.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_size</h3>
+<b>Description: Dbt::get_size</b>
 <p>Return the data array size.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_ulen</h3>
+<b>Description: Dbt::set_ulen</b>
 <p>Set the byte size of the user-specified buffer.</p>
 <p>Note that applications can determine the length of a record by setting
 the <b>ulen</b> to 0 and checking the return value found in <b>size</b>.
 See the DB_DBT_USERMEM flag for more information.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>ulen</b><dd>The <b>ulen</b> parameter the size of the data array in bytes.
-</dl>
+<b>Parameters</b> <br>
+ <b>ulen</b><ul compact><li>The <b>ulen</b> parameter the size of the data array in bytes.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_ulen</h3>
+<b>Description: Dbt::get_ulen</b>
 <p>Return the length in bytes of the user-specified buffer.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_dlen</h3>
+<b>Description: Dbt::set_dlen</b>
 <p>Set the byte length of the partial record being read or written by the
 application, in bytes.  See the DB_DBT_PARTIAL flag for more
 information.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>dlen</b><dd>The <b>dlen</b> parameter is the length of the partial record in bytes.
-</dl>
+<b>Parameters</b> <br>
+ <b>dlen</b><ul compact><li>The <b>dlen</b> parameter is the length of the partial record in bytes.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_dlen</h3>
+<b>Description: Dbt::get_dlen</b>
 <p>Return the length of the partial record, in bytes.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_doff</h3>
+<b>Description: Dbt::set_doff</b>
 <p>Set the offset of the partial record being read or written by the
 application, in bytes.  See the DB_DBT_PARTIAL flag for more
 information.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>doff</b><dd>The <b>doff</b> parameter is the offset of the partial record.
-</dl>
+<b>Parameters</b> <br>
+ <b>doff</b><ul compact><li>The <b>doff</b> parameter is the offset of the partial record.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_doff</h3>
+<b>Description: Dbt::get_doff</b>
 <p>Return the offset of the partial record, in bytes.</p>
 <hr size=1 noshade>
-<h3>Description: Dbt::set_flags</h3>
+<b>Description: Dbt::set_flags</b>
 <p>Set the object flag value.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>flags</b><dd>The <b>flags</b> parameter is Dbt flag value.
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter is Dbt flag value.</ul>
 The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
 or more of the following values:
-<dl compact>
-<dt><a name="DB_DBT_MALLOC">DB_DBT_MALLOC</a><dd>When this flag is set, Berkeley DB will allocate memory for the returned key
+<br>
+<b><a name="DB_DBT_MALLOC">DB_DBT_MALLOC</a></b><ul compact><li>When this flag is set, Berkeley DB will allocate memory for the returned key
 or data item (using <b>malloc</b>(3) or the user-specified malloc
 method), and return a pointer to it in the <b>data</b> field of the key
 or data Dbt object.  Because any allocated memory becomes the
@@ -204,8 +196,8 @@ responsibility of the calling application, the caller must determine
 whether memory was allocated using the returned value of the
 <b>data</b> field.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
-DB_DBT_REALLOC, and DB_DBT_USERMEM.</p>
-<dt><a name="DB_DBT_REALLOC">DB_DBT_REALLOC</a><dd>When this flag is set Berkeley DB will allocate memory for the returned key
+DB_DBT_REALLOC, and DB_DBT_USERMEM.</p></ul>
+<b><a name="DB_DBT_REALLOC">DB_DBT_REALLOC</a></b><ul compact><li>When this flag is set Berkeley DB will allocate memory for the returned key
 or data item (using <b>realloc</b>(3) or the user-specified realloc
 method), and return a pointer to it in the <b>data</b> field of the key
 or data Dbt object.  Because any allocated memory becomes the
@@ -213,9 +205,9 @@ responsibility of the calling application, the caller must determine
 whether memory was allocated using the returned value of the
 <b>data</b> field.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
-DB_DBT_REALLOC, and DB_DBT_USERMEM.</p>
+DB_DBT_REALLOC, and DB_DBT_USERMEM.</p></ul>
 <a name="3"><!--meow--></a>
-<dt><a name="DB_DBT_USERMEM">DB_DBT_USERMEM</a><dd>The <b>data</b> field of the key or data object must refer to memory
+<b><a name="DB_DBT_USERMEM">DB_DBT_USERMEM</a></b><ul compact><li>The <b>data</b> field of the key or data object must refer to memory
 that is at least <b>ulen</b> bytes in length.  If the length of the
 requested item is less than or equal to that number of bytes, the item
 is copied into the memory referred to by the <b>data</b> field.
@@ -223,8 +215,8 @@ Otherwise, the <b>size</b> fields of both the key and data Dbt
 objects are set to the length needed for the requested item, and the
 error DB_BUFFER_SMALL is returned.
 <p>It is an error to specify more than one of DB_DBT_MALLOC,
-DB_DBT_REALLOC, and DB_DBT_USERMEM.</p>
-</dl>
+DB_DBT_REALLOC, and DB_DBT_USERMEM.</p></ul>
+<br>
 <p>If DB_DBT_MALLOC or DB_DBT_REALLOC is specified, Berkeley DB
 allocates a properly sized byte array to contain the data.  This can be
 convenient if you know little about the nature of the data, specifically
@@ -237,8 +229,8 @@ DB_DBT_USERMEM.  Even if you don't know the maximum size, you can
 use this option and reallocate your array whenever your retrieval API call
 returns an DB_BUFFER_SMALL error or throws an exception
 encapsulating an DB_BUFFER_SMALL.</p>
-<dl compact>
-<dt><a name="DB_DBT_PARTIAL">DB_DBT_PARTIAL</a><dd>Do partial retrieval or storage of an item.  If the calling application
+<br>
+<b><a name="DB_DBT_PARTIAL">DB_DBT_PARTIAL</a></b><ul compact><li>Do partial retrieval or storage of an item.  If the calling application
 is doing a get, the <b>dlen</b> bytes starting <b>doff</b> bytes from
 the beginning of the retrieved data record are returned as if they
 comprised the entire record.  If any or all of the specified bytes do
@@ -267,15 +259,15 @@ using a <a href="../api_cxx/dbc_class.html">Dbc</a> method.</p>
 and a partial put was done using a Dbt having a <b>dlen</b>
 field of 20, a <b>doff</b> field of 85, and a <b>size</b> field of 30,
 the resulting record would be 115 bytes in length, where the last 30
-bytes would be those specified by the put call.</p>
-<dt><a name="DB_DBT_APPMALLOC">DB_DBT_APPMALLOC</a><dd>After an application-supplied callback routine passed to either
+bytes would be those specified by the put call.</p></ul>
+<b><a name="DB_DBT_APPMALLOC">DB_DBT_APPMALLOC</a></b><ul compact><li>After an application-supplied callback routine passed to either
 <a href="../api_cxx/db_associate.html">Db::associate</a> or <a href="../api_cxx/db_set_append_recno.html">Db::set_append_recno</a> is executed, the
 <b>data</b> field of a Dbt may refer to memory allocated with
 <b>malloc</b>(3) or <b>realloc</b>(3).  In that case, the
 callback sets the DB_DBT_APPMALLOC flag in the Dbt so
 that Berkeley DB will call <b>free</b>(3) to deallocate the memory when it
-is no longer required.
-<dt><a name="DB_DBT_MULTIPLE">DB_DBT_MULTIPLE</a><dd>Set in a secondary key creation callback routine passed to
+is no longer required.</ul>
+<b><a name="DB_DBT_MULTIPLE">DB_DBT_MULTIPLE</a></b><ul compact><li>Set in a secondary key creation callback routine passed to
 <a href="../api_cxx/db_associate.html">Db::associate</a> to indicate that multiple secondary keys should be
 associated with the given primary key/data pair.  If set, the
 <b>size</b> field indicates the number of secondary keys and the
@@ -283,16 +275,16 @@ associated with the given primary key/data pair.  If set, the
 structures.
 <p>The DB_DBT_APPMALLOC flag may be set on any of the Dbt
 structures to indicate that their <b>data</b> field needs to be
-freed.</p>
-</dl>
-</dl>
+freed.</p></ul>
+<br>
+<br>
 <hr size=1 noshade>
-<h3>Description: Dbt::get_flags</h3>
+<b>Description: Dbt::get_flags</b>
 <p>Return the object flag value.</p>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

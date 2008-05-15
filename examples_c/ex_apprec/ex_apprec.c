@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_apprec.c,v 12.5 2007/05/17 15:15:13 bostic Exp $
+ * $Id: ex_apprec.c,v 12.9 2008/04/16 13:27:33 margo Exp $
  */
 
 #include <sys/types.h>
@@ -16,7 +16,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <db.h>
+#include "db_config.h"
+#include "db.h"
+#include "db_int.h"
+#include "dbinc/db_swap.h"
 
 #include "ex_apprec.h"
 
@@ -72,10 +75,19 @@ main(argc, argv)
 		return (EXIT_FAILURE);
 	}
 
-	/* Remember, always log actions before you execute them! */
+	/*
+	 * Remember, always log actions before you execute them!
+	 * Since this log record is describing a file system operation and
+	 * we have no control over when file system operations go to disk,
+	 * we need to flush the log record immediately to ensure that the
+	 * log record is on disk before the operation it describes.  The
+	 * flush would not be necessary were we doing an operation into the
+	 * BDB mpool and using LSNs that mpool knew about.
+	 */
 	memset(&lsn, 0, sizeof(lsn));
 	if ((ret =
-	    ex_apprec_mkdir_log(dbenv, txn, &lsn, 0, &dirnamedbt)) != 0) {
+	    ex_apprec_mkdir_log(dbenv,
+	        txn, &lsn, DB_FLUSH, &dirnamedbt)) != 0) {
 		dbenv->err(dbenv, ret, "mkdir_log");
 		return (EXIT_FAILURE);
 	}
@@ -221,11 +233,11 @@ apprec_dispatch(dbenv, dbt, lsn, op)
 	u_int32_t rectype;
 
 	/* Pull the record type out of the log record. */
-	memcpy(&rectype, dbt->data, sizeof(rectype));
+	LOGCOPY_32(dbenv->env, &rectype, dbt->data);
 
 	switch (rectype) {
 	case DB_ex_apprec_mkdir:
-		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op, NULL));
+		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op));
 	default:
 		/*
 		 * We've hit an unexpected, allegedly user-defined record

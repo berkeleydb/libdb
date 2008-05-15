@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_compare.c,v 12.9 2007/05/17 15:14:46 bostic Exp $
+ * $Id: bt_compare.c,v 12.12 2008/01/08 20:57:59 bostic Exp $
  */
 
 #include "db_config.h"
@@ -51,12 +51,14 @@
  * __bam_cmp --
  *	Compare a key to a given record.
  *
- * PUBLIC: int __bam_cmp __P((DB *, DB_TXN *, const DBT *, PAGE *, u_int32_t,
+ * PUBLIC: int __bam_cmp __P((DB *, DB_THREAD_INFO *,
+ * PUBLIC:    DB_TXN *, const DBT *, PAGE *, u_int32_t,
  * PUBLIC:    int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
-__bam_cmp(dbp, txn, dbt, h, indx, func, cmpp)
+__bam_cmp(dbp, ip, txn, dbt, h, indx, func, cmpp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const DBT *dbt;
 	PAGE *h;
@@ -132,13 +134,13 @@ __bam_cmp(dbp, txn, dbt, h, indx, func, cmpp)
 		}
 		break;
 	default:
-		return (__db_pgfmt(dbp->dbenv, PGNO(h)));
+		return (__db_pgfmt(dbp->env, PGNO(h)));
 	}
 
 	/*
 	 * Overflow.
 	 */
-	return (__db_moff(dbp, txn, dbt,
+	return (__db_moff(dbp, ip, txn, dbt,
 	    bo->pgno, bo->tlen, func == __bam_defcmp ? NULL : func, cmpp));
 }
 

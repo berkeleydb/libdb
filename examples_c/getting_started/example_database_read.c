@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  */
 
 #include "gettingstarted_common.h"
@@ -20,7 +20,7 @@ usage()
     fprintf(stderr, " [-h <database home>]\n");
 
     fprintf(stderr,
-        "\tNote: Any path specified to the -h parameter must end\n");
+	"\tNote: Any path specified to the -h parameter must end\n");
     fprintf(stderr, " with your system's path delimiter (/ or \\)\n");
     return (-1);
 }
@@ -46,20 +46,20 @@ main(int argc, char *argv[])
     /* Parse the command line arguments */
     itemname = NULL;
     while ((ch = getopt(argc, argv, "h:i:?")) != EOF)
-        switch (ch) {
-        case 'h':
-            if (optarg[strlen(optarg)-1] != '/' &&
-                optarg[strlen(optarg)-1] != '\\')
-                return (usage());
-            my_stock.db_home_dir = optarg;
-            break;
-        case 'i':
-            itemname = optarg;
-            break;
-        case '?':
-        default:
-            return (usage());
-        }
+	switch (ch) {
+	case 'h':
+	    if (optarg[strlen(optarg)-1] != '/' &&
+		optarg[strlen(optarg)-1] != '\\')
+		return (usage());
+	    my_stock.db_home_dir = optarg;
+	    break;
+	case 'i':
+	    itemname = optarg;
+	    break;
+	case '?':
+	default:
+	    return (usage());
+	}
 
     /* Identify the files that hold our databases */
     set_db_filenames(&my_stock);
@@ -67,15 +67,15 @@ main(int argc, char *argv[])
     /* Open all databases */
     ret = databases_setup(&my_stock, "example_database_read", stderr);
     if (ret != 0) {
-        fprintf(stderr, "Error opening databases\n");
-        databases_close(&my_stock);
-        return (ret);
+	fprintf(stderr, "Error opening databases\n");
+	databases_close(&my_stock);
+	return (ret);
     }
 
     if (itemname == NULL)
-        ret = show_all_records(&my_stock);
+	ret = show_all_records(&my_stock);
     else
-        ret = show_records(&my_stock, itemname);
+	ret = show_records(&my_stock, itemname);
 
     /* close our databases */
     databases_close(&my_stock);
@@ -105,12 +105,12 @@ int show_all_records(STOCK_DBS *my_stock)
     while ((ret =
       inventory_cursorp->get(inventory_cursorp, &key, &data, DB_NEXT)) == 0)
     {
-        the_vendor = show_inventory_item(data.data);
-        ret = show_vendor_record(the_vendor, my_stock->vendor_dbp);
-        if (ret) {
-            exit_value = ret;
-            break;
-        }
+	the_vendor = show_inventory_item(data.data);
+	ret = show_vendor_record(the_vendor, my_stock->vendor_dbp);
+	if (ret) {
+	    exit_value = ret;
+	    break;
+	}
     }
 
     /* Close the cursor */
@@ -153,26 +153,26 @@ show_records(STOCK_DBS *my_stock, char *itemname)
     exit_value = 0;
     ret = itemname_cursorp->get(itemname_cursorp, &key, &data, DB_SET);
     if (!ret) {
-        do {
-            /*
-             * Show the inventory record and the vendor responsible
-             * for this inventory item.
-             */
-            the_vendor = show_inventory_item(data.data);
-            ret = show_vendor_record(the_vendor, my_stock->vendor_dbp);
-            if (ret) {
-                exit_value = ret;
-                break;
-            }
-            /*
-             * Our secondary allows duplicates, so we need to loop over
-             * the next duplicate records and show them all. This is done
-             * because an inventory item's name is not a unique value.
-             */
-        } while (itemname_cursorp->get(itemname_cursorp, &key, &data,
-            DB_NEXT_DUP) == 0);
+	do {
+	    /*
+	     * Show the inventory record and the vendor responsible
+	     * for this inventory item.
+	     */
+	    the_vendor = show_inventory_item(data.data);
+	    ret = show_vendor_record(the_vendor, my_stock->vendor_dbp);
+	    if (ret) {
+		exit_value = ret;
+		break;
+	    }
+	    /*
+	     * Our secondary allows duplicates, so we need to loop over
+	     * the next duplicate records and show them all. This is done
+	     * because an inventory item's name is not a unique value.
+	     */
+	} while (itemname_cursorp->get(itemname_cursorp, &key, &data,
+	    DB_NEXT_DUP) == 0);
     } else {
-        printf("No records found for '%s'\n", itemname);
+	printf("No records found for '%s'\n", itemname);
     }
 
     /* Close the cursor */
@@ -259,17 +259,17 @@ show_vendor_record(char *vendor_name, DB *vendor_dbp)
     /* Get the record */
     ret = vendor_dbp->get(vendor_dbp, NULL, &key, &data, 0);
     if (ret != 0) {
-        vendor_dbp->err(vendor_dbp, ret, "Error searching for vendor: '%s'",
-          vendor_name);
-        return (ret);
+	vendor_dbp->err(vendor_dbp, ret, "Error searching for vendor: '%s'",
+	  vendor_name);
+	return (ret);
     } else {
-        printf("\t\t%s\n", my_vendor.name);
-        printf("\t\t%s\n", my_vendor.street);
-        printf("\t\t%s, %s\n", my_vendor.city, my_vendor.state);
-        printf("\t\t%s\n\n", my_vendor.zipcode);
-        printf("\t\t%s\n\n", my_vendor.phone_number);
-        printf("\t\tContact: %s\n", my_vendor.sales_rep);
-        printf("\t\t%s\n", my_vendor.sales_rep_phone);
+	printf("\t\t%s\n", my_vendor.name);
+	printf("\t\t%s\n", my_vendor.street);
+	printf("\t\t%s, %s\n", my_vendor.city, my_vendor.state);
+	printf("\t\t%s\n\n", my_vendor.zipcode);
+	printf("\t\t%s\n\n", my_vendor.phone_number);
+	printf("\t\tContact: %s\n", my_vendor.sales_rep);
+	printf("\t\t%s\n", my_vendor.sales_rep_phone);
     }
     return (0);
 }

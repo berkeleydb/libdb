@@ -257,7 +257,8 @@ main(int argc, char *argv[])
                 goto err;
             }
             port = (unsigned short)atoi(portstr);
-            if (dbenv-&gt;repmgr_add_remote_site(dbenv, host, port, 0) != 0) {
+            if (dbenv-&gt;repmgr_add_remote_site(dbenv, host, port, 
+                                                 NULL, 0) != 0) {
                 fprintf(stderr,
                     "Could not add site %s.\n", host);
                 goto err;

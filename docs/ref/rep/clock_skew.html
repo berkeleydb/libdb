@@ -1,0 +1,66 @@
+<!--$Id: clock_skew.so,v 1.3 2007/10/24 14:33:31 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: Clock Skew</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
+<td align=right><a href="../rep/lease.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/partition.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Clock Skew</b></p>
+<p>Since master leases take into account a timeout that is used across
+all sites in a replication group, leases must also take into account
+any known skew (or drift) between the clocks on different machines
+in the group.  The guarantees provided by master leases take clock
+skew into account.  Consider a replication group where a client's
+clock is running faster than the master's clock and the group has
+a lease timeout of 5 seconds.  If clock skew is not taken into
+account, eventually, the client will believe that 5 seconds have
+passed faster than the master and that client may then grant its
+lease to another site.  Meanwhile, the master site does not believe
+5 seconds have passed because its clock is slower, and it believes
+it still holds a valid lease grant.  For this reason, Berkeley DB compensates
+for clock skew.</p>
+<p>The master of a group using leases must account for skew
+in case that site has the slowest clock in the group.  This computation
+avoids the problem of a master site believing a lease grant is valid
+too long.  Clients in a group must account for skew in case they
+have the fastest clock in the group.  This computation avoids
+the problem of a client site expiring its grant too soon and
+potentially granting a lease to a different site.  Berkeley DB uses
+a conservative computation and accounts for clock skew on both
+sides, yielding a double compensation.</p>
+<p>The <a href="../../api_c/rep_clockskew.html">DB_ENV-&gt;rep_set_clockskew</a> method takes the values for both the fastest
+and slowest clocks in the entire replication group as parameters.
+The values passed in must be the same for all sites in the group.
+If the user knows the maximum clock drift of their sites, then those
+values can be expressed as a relative percentage.  Or, if the user
+runs an experiment then the actual values can be used.</p>
+<p>For example, suppose the user knows that there is a maximum drift
+rate of 2% among sites in the group.  The user should pass in
+102 and 100 for the fast and slow clock values respectively.
+That is an unusually large value, so suppose, for example, the
+rate is 0.03% among sites in the group.  The user should pass in
+10003 and 10000 for the fast and slow clock values.  Those values
+can be used to express the level of precision the user needs.</p>
+<p>An example of an experiment a user can run to help determine skew
+would be to write a program that started simultaneously on all
+sites in the group.  Suppose, after 1 day (86400 seconds), one
+site shows 86400 seconds and the other site shows it ran faster
+and it indicates 86460 seconds has passed.
+The user can use 86460 and 86400 for their parameters for the
+fast and slow clock values.</p>
+<p>Since Berkeley DB is using those fast and slow clock values to compute
+a ratio internally, if the user cannot detect or measure any
+clock skew, then the same value should be passed in for both
+parameters, such as 1 and 1.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../rep/lease.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/partition.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

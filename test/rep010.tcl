@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep010.tcl,v 12.14 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep010.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep010
 # TEST	Replication and ISPERM
@@ -52,10 +52,11 @@ proc rep010_sub { method niter tnum logset recargs largs } {
 	berkdb srand $rand_init
 	global perm_sent_list
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

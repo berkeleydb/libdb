@@ -12,7 +12,8 @@
 #ifndef	INT_MAX
 #if SIZEOF_INT == 4
 #define	INT_MAX		2147483647
-#elif SIZEOF_INT == 8
+#endif
+#if SIZEOF_INT == 8
 #define	INT_MAX		9223372036854775807
 #endif
 #endif
@@ -24,7 +25,8 @@
 #ifndef	UINT_MAX			/* maximum (signed) int value */
 #if SIZEOF_INT == 4
 #define	UINT_MAX	4294967295U
-#elif SIZEOF_INT == 8
+#endif
+#if SIZEOF_INT == 8
 #define	UINT_MAX	18446744073709551615U
 #endif
 #endif
@@ -32,7 +34,8 @@
 #ifndef	LONG_MAX			/* maximum (signed) long value */
 #if SIZEOF_LONG == 4
 #define	LONG_MAX	2147483647
-#elif SIZEOF_LONG == 8
+#endif
+#if SIZEOF_LONG == 8
 #define	LONG_MAX	9223372036854775807L
 #endif
 #endif
@@ -44,7 +47,8 @@
 #ifndef	ULONG_MAX			/* maximum (unsigned) long value */
 #if SIZEOF_LONG == 4
 #define	ULONG_MAX	4294967295U
-#elif SIZEOF_LONG == 8
+#endif
+#if SIZEOF_LONG == 8
 #define	ULONG_MAX	18446744073709551615UL
 #endif
 #endif
@@ -78,6 +82,73 @@
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
 #endif
+
+/*
+ * File modes.
+ */
+#ifdef DB_WIN32
+#ifndef S_IREAD				/* WinCE doesn't have S_IREAD. */
+#define	S_IREAD		0
+#endif
+#ifndef S_IWRITE			/* WinCE doesn't have S_IWRITE. */
+#define	S_IWRITE	0
+#endif
+#ifndef	S_IRUSR
+#define	S_IRUSR		S_IREAD		/* R for owner */
+#endif
+#ifndef	S_IWUSR
+#define	S_IWUSR		S_IWRITE	/* W for owner */
+#endif
+#ifndef	S_IXUSR
+#define	S_IXUSR		0		/* X for owner */
+#endif
+#ifndef	S_IRGRP
+#define	S_IRGRP		0		/* R for group */
+#endif
+#ifndef	S_IWGRP
+#define	S_IWGRP		0		/* W for group */
+#endif
+#ifndef	S_IXGRP
+#define	S_IXGRP		0		/* X for group */
+#endif
+#ifndef	S_IROTH
+#define	S_IROTH		0		/* R for other */
+#endif
+#ifndef	S_IWOTH
+#define	S_IWOTH		0		/* W for other */
+#endif
+#ifndef	S_IXOTH
+#define	S_IXOTH		0		/* X for other */
+#endif
+#else /* !DB_WIN32 */
+#ifndef	S_IRUSR
+#define	S_IRUSR		0000400		/* R for owner */
+#endif
+#ifndef	S_IWUSR
+#define	S_IWUSR		0000200		/* W for owner */
+#endif
+#ifndef	S_IXUSR
+#define	S_IXUSR		0000100		/* X for owner */
+#endif
+#ifndef	S_IRGRP
+#define	S_IRGRP		0000040		/* R for group */
+#endif
+#ifndef	S_IWGRP
+#define	S_IWGRP		0000020		/* W for group */
+#endif
+#ifndef	S_IXGRP
+#define	S_IXGRP		0000010		/* X for group */
+#endif
+#ifndef	S_IROTH
+#define	S_IROTH		0000004		/* R for other */
+#endif
+#ifndef	S_IWOTH
+#define	S_IWOTH		0000002		/* W for other */
+#endif
+#ifndef	S_IXOTH
+#define	S_IXOTH		0000001		/* X for other */
+#endif
+#endif /* !DB_WIN32 */
 
 /*
  * Don't step on the namespace.  Other libraries may have their own

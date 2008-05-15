@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: cxx_logc.cpp,v 12.8 2007/06/28 13:02:50 mjc Exp $
+ * $Id: cxx_logc.cpp,v 12.10 2008/01/08 20:58:09 bostic Exp $
  */
 
 #include "db_config.h"
@@ -32,7 +32,7 @@ int DbLogc::close(u_int32_t _flags)
 {
 	DB_LOGC *logc = this;
 	int ret;
-	DbEnv *dbenv2 = DbEnv::get_DbEnv(logc->dbenv);
+	DbEnv *dbenv2 = DbEnv::get_DbEnv(logc->env->dbenv);
 
 	ret = logc->close(logc, _flags);
 
@@ -52,10 +52,10 @@ int DbLogc::get(DbLsn *get_lsn, Dbt *data, u_int32_t _flags)
 
 	if (!DB_RETOK_LGGET(ret)) {
 		if (ret == DB_BUFFER_SMALL)
-			DB_ERROR_DBT(DbEnv::get_DbEnv(logc->dbenv),
+			DB_ERROR_DBT(DbEnv::get_DbEnv(logc->env->dbenv),
 				"DbLogc::get", data, ON_ERROR_UNKNOWN);
 		else
-			DB_ERROR(DbEnv::get_DbEnv(logc->dbenv),
+			DB_ERROR(DbEnv::get_DbEnv(logc->env->dbenv),
 				"DbLogc::get", ret, ON_ERROR_UNKNOWN);
 	}
 
@@ -71,7 +71,7 @@ int DbLogc::version(u_int32_t *versionp, u_int32_t _flags)
 	ret = logc->version(logc, versionp, _flags);
 
 	if (!DB_RETOK_LGGET(ret))
-		DB_ERROR(DbEnv::get_DbEnv(logc->dbenv),
+		DB_ERROR(DbEnv::get_DbEnv(logc->env->dbenv),
 			"DbLogc::version", ret, ON_ERROR_UNKNOWN);
 
 	return (ret);

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2007 Oracle.  All rights reserved.
+# Copyright (c) 2002,2008 Oracle.  All rights reserved.
 #
-# $Id: rep003.tcl,v 12.12 2007/06/01 20:15:58 sue Exp $
+# $Id: rep003.tcl,v 12.14 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  	rep003
 # TEST	Repeated shutdown/restart replication test
@@ -65,10 +65,11 @@ proc rep003 { method { tnum "003" } args } {
 proc rep003_sub { method tnum logset recargs largs } {
 	source ./include.tcl
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

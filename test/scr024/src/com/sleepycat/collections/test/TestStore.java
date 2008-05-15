@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: TestStore.java,v 12.6 2007/05/04 00:28:29 mark Exp $
+ * $Id: TestStore.java,v 12.8 2008/02/07 17:12:31 mark Exp $
  */
 
 package com.sleepycat.collections.test;
@@ -212,6 +212,10 @@ class TestStore {
         return DbCompat.isTypeQueue(config) || DbCompat.isTypeRecno(config);
     }
 
+    boolean areKeyRangesAllowed() {
+        return isOrdered() && !isQueueOrRecno();
+    }
+
     boolean areDuplicatesAllowed() {
 
         return DbCompat.getSortedDuplicates(config) ||
@@ -266,13 +270,11 @@ class TestStore {
         DbCompat.setReadUncommitted(config, true);
         config.setTransactional(CurrentTransaction.getInstance(env) != null);
         if (primary != null) {
-            return DbCompat.openSecondaryDatabase(env, null, 
-                                                  fileName, null,
-                                                  primary, config);
+            return DbCompat.testOpenSecondaryDatabase
+                (env, null, fileName, null, primary, config);
         } else {
-            return DbCompat.openDatabase(env, null, 
-                                         fileName, null,
-                                         config);
+            return DbCompat.testOpenDatabase
+                (env, null, fileName, null, config);
         }
     }
 }

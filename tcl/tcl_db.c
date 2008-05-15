@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_db.c,v 12.33 2007/06/21 17:46:59 bostic Exp $
+ * $Id: tcl_db.c,v 12.37 2008/02/19 17:01:58 bostic Exp $
  */
 
 #include "db_config.h"
@@ -728,7 +728,7 @@ tcl_DbStat(interp, objc, objv, dbp)
 	Tcl_SetObjResult(interp, res);
 error:
 	if (sp != NULL)
-		__os_ufree(dbp->dbenv, sp);
+		__os_ufree(dbp->env, sp);
 	return (result);
 }
 
@@ -790,7 +790,7 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 			break;
 	}
 	if (dbip->i_cdata != NULL)
-		__os_free(dbp->dbenv, dbip->i_cdata);
+		__os_free(dbp->env, dbip->i_cdata);
 	_DbInfoDelete(interp, dbip);
 	_debug_check();
 
@@ -1015,9 +1015,9 @@ tcl_DbPut(interp, objc, objv, dbp)
 	}
 
 out:	if (dtmp != NULL && freedata)
-		__os_free(dbp->dbenv, dtmp);
+		__os_free(dbp->env, dtmp);
 	if (ktmp != NULL && freekey)
-		__os_free(dbp->dbenv, ktmp);
+		__os_free(dbp->env, ktmp);
 	return (result);
 }
 
@@ -1438,7 +1438,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			ktmp = key.data;
 #ifdef CONFIG_TEST
 			if (mflag & DB_MULTIPLE) {
-				if ((ret = __os_malloc(dbp->dbenv,
+				if ((ret = __os_malloc(dbp->env,
 				    (size_t)bufsize, &save.data)) != 0) {
 					Tcl_SetResult(interp,
 					    db_strerror(ret), TCL_STATIC);
@@ -1511,14 +1511,14 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 		 */
 		if (F_ISSET(&key, DB_DBT_MALLOC) && ret == 0 &&
 		    key.data != ktmp)
-			__os_ufree(dbp->dbenv, key.data);
+			__os_ufree(dbp->env, key.data);
 		if (F_ISSET(&data, DB_DBT_MALLOC) && ret == 0 &&
 		    data.data != dtmp)
-			__os_ufree(dbp->dbenv, data.data);
+			__os_ufree(dbp->env, data.data);
 		else if (!F_ISSET(&data, DB_DBT_MALLOC))
-			__os_free(dbp->dbenv, data.data);
+			__os_free(dbp->env, data.data);
 		if (ispget && ret == 0 && pkey.data != save.data)
-			__os_ufree(dbp->dbenv, pkey.data);
+			__os_ufree(dbp->env, pkey.data);
 		if (result == TCL_OK)
 			Tcl_SetObjResult(interp, retlist);
 		goto out;
@@ -1605,7 +1605,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			/*
 			 * Free space from DB_DBT_MALLOC
 			 */
-			__os_ufree(dbp->dbenv, data.data);
+			__os_ufree(dbp->env, data.data);
 			goto out1;
 		}
 		cflag = DB_NEXT;
@@ -1626,8 +1626,8 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 		 * Free space from DB_DBT_MALLOC
 		 */
 		if (ispget)
-			__os_ufree(dbp->dbenv, pkey.data);
-		__os_ufree(dbp->dbenv, data.data);
+			__os_ufree(dbp->env, pkey.data);
+		__os_ufree(dbp->env, data.data);
 		if (result != TCL_OK)
 			break;
 		/*
@@ -1650,7 +1650,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			/*
 			 * Free space from DB_DBT_MALLOC
 			 */
-			__os_ufree(dbp->dbenv, data.data);
+			__os_ufree(dbp->env, data.data);
 			break;
 		}
 	}
@@ -1665,11 +1665,11 @@ out:
 	 * have multiple nuls at the end, so we free using __os_free().
 	 */
 	if (prefix != NULL)
-		__os_free(dbp->dbenv, prefix);
+		__os_free(dbp->env, prefix);
 	if (dtmp != NULL && freedata)
-		__os_free(dbp->dbenv, dtmp);
+		__os_free(dbp->env, dtmp);
 	if (ktmp != NULL && freekey)
-		__os_free(dbp->dbenv, ktmp);
+		__os_free(dbp->env, ktmp);
 	return (result);
 }
 
@@ -1837,7 +1837,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		 * processing keys.
 		 */
 		if (ktmp != NULL && freekey)
-			__os_free(dbp->dbenv, ktmp);
+			__os_free(dbp->env, ktmp);
 		if (ret != 0)
 			break;
 	}
@@ -1903,7 +1903,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		 * by copying and condensing another string.  Thus prefix may
 		 * have multiple nuls at the end, so we free using __os_free().
 		 */
-		__os_free(dbp->dbenv, prefix);
+		__os_free(dbp->env, prefix);
 		(void)dbc->close(dbc);
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "db del");
 	}
@@ -2196,8 +2196,8 @@ tcl_second_call(dbp, pkey, data, skey)
 	const DBT *pkey, *data;
 	DBT *skey;
 {
-	DBTCL_INFO *ip;
 	DBT *tskey;
+	DBTCL_INFO *ip;
 	Tcl_Interp *interp;
 	Tcl_Obj *pobj, *dobj, *objv[3], *robj, **skeylist;
 	size_t len;
@@ -2227,7 +2227,7 @@ tcl_second_call(dbp, pkey, data, skey)
 	Tcl_DecrRefCount(dobj);
 
 	if (result != TCL_OK) {
-		__db_errx(dbp->dbenv,
+		__db_errx(dbp->env,
 		    "Tcl callback function failed with code %d", result);
 		return (EINVAL);
 	}
@@ -2240,7 +2240,7 @@ tcl_second_call(dbp, pkey, data, skey)
 	} else {
 		if ((result = Tcl_ListObjGetElements(interp,
 		    robj, &ilen, &skeylist)) != TCL_OK) {
-			__db_errx(dbp->dbenv,
+			__db_errx(dbp->env,
 			    "Could not get list elements from Tcl callback");
 			return (EINVAL);
 		}
@@ -2260,7 +2260,7 @@ tcl_second_call(dbp, pkey, data, skey)
 			tskey = skey;
 		else {
 			memset(skey, 0, sizeof(DBT));
-			if ((ret = __os_umalloc(dbp->dbenv,
+			if ((ret = __os_umalloc(dbp->env,
 			    nskeys * sizeof(DBT), &skey->data)) != 0)
 				return (ret);
 			skey->size = nskeys;
@@ -2279,7 +2279,7 @@ tcl_second_call(dbp, pkey, data, skey)
 		 * will be freed by DB using __os_ufree--the DB_DBT_APPMALLOC
 		 * flag tells DB to free application-allocated memory.
 		 */
-		if ((ret = __os_umalloc(dbp->dbenv, len, &databuf)) != 0)
+		if ((ret = __os_umalloc(dbp->env, len, &databuf)) != 0)
 			return (ret);
 		memcpy(databuf, retbuf, len);
 
@@ -2346,7 +2346,7 @@ tcl_DbJoin(interp, objc, objv, dbp, dbcp)
 	 * Allocate one more for NULL ptr at end of list.
 	 */
 	size = sizeof(DBC *) * (size_t)((objc - adj) + 1);
-	ret = __os_malloc(dbp->dbenv, size, &listp);
+	ret = __os_malloc(dbp->env, size, &listp);
 	if (ret != 0) {
 		Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 		return (TCL_ERROR);
@@ -2370,7 +2370,7 @@ tcl_DbJoin(interp, objc, objv, dbp, dbcp)
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "db join");
 
 out:
-	__os_free(dbp->dbenv, listp);
+	__os_free(dbp->env, listp);
 	return (result);
 }
 
@@ -2531,8 +2531,8 @@ tcl_DbGetjoin(interp, objc, objv, dbp)
 			result = _SetListElem(interp, retlist,
 			    key.data, key.size,
 			    data.data, data.size);
-			__os_ufree(dbp->dbenv, key.data);
-			__os_ufree(dbp->dbenv, data.data);
+			__os_ufree(dbp->env, key.data);
+			__os_ufree(dbp->env, data.data);
 		}
 	}
 	(void)dbc->close(dbc);
@@ -2540,13 +2540,13 @@ tcl_DbGetjoin(interp, objc, objv, dbp)
 		Tcl_SetObjResult(interp, retlist);
 out:
 	if (ktmp != NULL && freekey)
-		__os_free(dbp->dbenv, ktmp);
+		__os_free(dbp->env, ktmp);
 	while (j) {
 		if (listp[j])
 			(void)(listp[j])->close(listp[j]);
 		j--;
 	}
-	__os_free(dbp->dbenv, listp);
+	__os_free(dbp->env, listp);
 	return (result);
 }
 
@@ -2629,9 +2629,9 @@ tcl_DbGetOpenFlags(interp, objc, objv, dbp)
 		{ DB_AUTO_COMMIT,	"-auto_commit" },
 		{ DB_CREATE,		"-create" },
 		{ DB_EXCL,		"-excl" },
+		{ DB_MULTIVERSION,	"-multiversion" },
 		{ DB_NOMMAP,		"-nommap" },
 		{ DB_RDONLY,		"-rdonly" },
-		{ DB_READ_COMMITTED,	"-read_committed" },
 		{ DB_READ_UNCOMMITTED,	"-read_uncommitted" },
 		{ DB_THREAD,		"-thread" },
 		{ DB_TRUNCATE,		"-truncate" },
@@ -2673,9 +2673,9 @@ tcl_DbCount(interp, objc, objv, dbp)
 	Tcl_Obj *CONST objv[];		/* The argument objects */
 	DB *dbp;			/* Database pointer */
 {
-	Tcl_Obj *res;
 	DBC *dbc;
 	DBT key, data;
+	Tcl_Obj *res;
 	void *ktmp;
 	db_recno_t count, recno;
 	int freekey, result, ret;
@@ -2745,7 +2745,7 @@ tcl_DbCount(interp, objc, objv, dbp)
 	Tcl_SetObjResult(interp, res);
 
 out:	if (ktmp != NULL && freekey)
-		__os_free(dbp->dbenv, ktmp);
+		__os_free(dbp->env, ktmp);
 	(void)dbc->close(dbc);
 	return (result);
 }
@@ -2866,7 +2866,7 @@ tcl_DbKeyRange(interp, objc, objv, dbp)
 		Tcl_SetObjResult(interp, retlist);
 
 out:	if (ktmp != NULL && freekey)
-		__os_free(dbp->dbenv, ktmp);
+		__os_free(dbp->env, ktmp);
 	return (result);
 }
 #endif
@@ -3112,7 +3112,7 @@ tcl_DbCompact(interp, objc, objv, dbp)
 		goto out;
 
 	if (ip->i_cdata == NULL)
-		if ((ret = __os_calloc(dbp->dbenv,
+		if ((ret = __os_calloc(dbp->env,
 		    1, sizeof(DB_COMPACT), &ip->i_cdata)) != 0) {
 			Tcl_SetResult(interp,
 			    db_strerror(ret), TCL_STATIC);

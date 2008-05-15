@@ -1,8 +1,8 @@
-m4_comment([$Id: intro.so,v 1.7 2007/07/07 14:34:54 bostic Exp $])
+m4_comment([$Id: intro.so,v 1.8 2007/10/31 18:02:52 bostic Exp $])
 
 m4_ref_title(Building m4_db for S60,
     Building for S60, @building for S60,
-    build_brew/intro, build_unix/intro)
+    build_brew/intro, build_s60/notes)
 
 m4_p([dnl
 This page has general instructions for building the m4_db library and

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: util.c,v 1.21 2007/05/17 15:15:13 bostic Exp $
+ * $Id: util.c,v 1.23 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include "csv.h"
@@ -134,7 +134,7 @@ secondary_callback(DB *db_arg, const DBT *key, const DBT *data, DBT *result)
 		result->flags = DB_DBT_APPMALLOC;
 		memcpy(addr, faddr, sizeof(double));
 		break;
-	case ULONG:
+	case UNSIGNED_LONG:
 		if ((addr = malloc(sizeof(u_long))) == NULL)
 			return (-1);
 		result->data = addr;

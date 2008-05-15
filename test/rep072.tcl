@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007 Oracle.  All rights reserved.
+# Copyright (c) 2007,2008 Oracle.  All rights reserved.
 #
-# $Id: rep072.tcl,v 12.4 2007/06/19 03:33:16 moshen Exp $
+# $Id: rep072.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep072
 # TEST  Verify that internal init does not leak resources from
@@ -52,10 +52,11 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 	global testdir
 	global util_path
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir

@@ -1,12 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield,
  * -- astubble@rice.edu.
  *
- * $Id: aes_method.c,v 12.7 2007/05/17 15:14:55 bostic Exp $
+ * $Id: aes_method.c,v 12.10 2008/01/08 20:58:08 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,18 +15,18 @@
 #include "dbinc/crypto.h"
 #include "dbinc/hmac.h"
 
-static void __aes_err __P((DB_ENV *, int));
-static int __aes_derivekeys __P((DB_ENV *, DB_CIPHER *, u_int8_t *, size_t));
+static void __aes_err __P((ENV *, int));
+static int __aes_derivekeys __P((ENV *, DB_CIPHER *, u_int8_t *, size_t));
 
 /*
  * __aes_setup --
  *	Setup AES functions.
  *
- * PUBLIC: int __aes_setup __P((DB_ENV *, DB_CIPHER *));
+ * PUBLIC: int __aes_setup __P((ENV *, DB_CIPHER *));
  */
 int
-__aes_setup(dbenv, db_cipher)
-	DB_ENV *dbenv;
+__aes_setup(env, db_cipher)
+	ENV *env;
 	DB_CIPHER *db_cipher;
 {
 	AES_CIPHER *aes_cipher;
@@ -37,7 +37,7 @@ __aes_setup(dbenv, db_cipher)
 	db_cipher->decrypt = __aes_decrypt;
 	db_cipher->encrypt = __aes_encrypt;
 	db_cipher->init = __aes_init;
-	if ((ret = __os_calloc(dbenv, 1, sizeof(AES_CIPHER), &aes_cipher)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(AES_CIPHER), &aes_cipher)) != 0)
 		return (ret);
 	db_cipher->data = aes_cipher;
 	return (0);
@@ -63,14 +63,14 @@ __aes_adj_size(len)
  * __aes_close --
  *	Destroy the AES encryption instantiation.
  *
- * PUBLIC: int __aes_close __P((DB_ENV *, void *));
+ * PUBLIC: int __aes_close __P((ENV *, void *));
  */
 int
-__aes_close(dbenv, data)
-	DB_ENV *dbenv;
+__aes_close(env, data)
+	ENV *env;
 	void *data;
 {
-	__os_free(dbenv, data);
+	__os_free(env, data);
 	return (0);
 }
 
@@ -78,12 +78,12 @@ __aes_close(dbenv, data)
  * __aes_decrypt --
  *	Decrypt data with AES.
  *
- * PUBLIC: int __aes_decrypt __P((DB_ENV *, void *, void *,
+ * PUBLIC: int __aes_decrypt __P((ENV *, void *, void *,
  * PUBLIC:     u_int8_t *, size_t));
  */
 int
-__aes_decrypt(dbenv, aes_data, iv, cipher, cipher_len)
-	DB_ENV *dbenv;
+__aes_decrypt(env, aes_data, iv, cipher, cipher_len)
+	ENV *env;
 	void *aes_data;
 	void *iv;
 	u_int8_t *cipher;
@@ -102,14 +102,14 @@ __aes_decrypt(dbenv, aes_data, iv, cipher, cipher_len)
 	 * Initialize the cipher
 	 */
 	if ((ret = __db_cipherInit(&c, MODE_CBC, iv)) < 0) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 
 	/* Do the decryption */
 	if ((ret = __db_blockDecrypt(&c, &aes->decrypt_ki, cipher,
 	    cipher_len * 8, cipher)) < 0) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 	return (0);
@@ -119,12 +119,12 @@ __aes_decrypt(dbenv, aes_data, iv, cipher, cipher_len)
  * __aes_encrypt --
  *	Encrypt data with AES.
  *
- * PUBLIC: int __aes_encrypt __P((DB_ENV *, void *, void *,
+ * PUBLIC: int __aes_encrypt __P((ENV *, void *, void *,
  * PUBLIC:     u_int8_t *, size_t));
  */
 int
-__aes_encrypt(dbenv, aes_data, iv, data, data_len)
-	DB_ENV *dbenv;
+__aes_encrypt(env, aes_data, iv, data, data_len)
+	ENV *env;
 	void *aes_data;
 	void *iv;
 	u_int8_t *data;
@@ -149,21 +149,21 @@ __aes_encrypt(dbenv, aes_data, iv, data, data_len)
 	 * algorithms someone might add may not use IV's and we always
 	 * want on here.
 	 */
-	if ((ret = __db_generate_iv(dbenv, tmp_iv)) != 0)
+	if ((ret = __db_generate_iv(env, tmp_iv)) != 0)
 		return (ret);
 
 	/*
 	 * Initialize the cipher
 	 */
 	if ((ret = __db_cipherInit(&c, MODE_CBC, (char *)tmp_iv)) < 0) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 
 	/* Do the encryption */
 	if ((ret = __db_blockEncrypt(&c, &aes->encrypt_ki, data, data_len * 8,
 	    data)) < 0) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 	memcpy(iv, tmp_iv, DB_IV_BYTES);
@@ -174,26 +174,30 @@ __aes_encrypt(dbenv, aes_data, iv, data, data_len)
  * __aes_init --
  *	Initialize the AES encryption instantiation.
  *
- * PUBLIC: int __aes_init __P((DB_ENV *, DB_CIPHER *));
+ * PUBLIC: int __aes_init __P((ENV *, DB_CIPHER *));
  */
 int
-__aes_init(dbenv, db_cipher)
-	DB_ENV *dbenv;
+__aes_init(env, db_cipher)
+	ENV *env;
 	DB_CIPHER *db_cipher;
 {
-	return (__aes_derivekeys(dbenv, db_cipher, (u_int8_t *)dbenv->passwd,
-	    dbenv->passwd_len));
+	DB_ENV *dbenv;
+
+	dbenv = env->dbenv;
+
+	return (__aes_derivekeys(
+	    env, db_cipher, (u_int8_t *)dbenv->passwd, dbenv->passwd_len));
 }
 
 static int
-__aes_derivekeys(dbenv, db_cipher, passwd, plen)
-	DB_ENV *dbenv;
+__aes_derivekeys(env, db_cipher, passwd, plen)
+	ENV *env;
 	DB_CIPHER *db_cipher;
 	u_int8_t *passwd;
 	size_t plen;
 {
-	SHA1_CTX ctx;
 	AES_CIPHER *aes;
+	SHA1_CTX ctx;
 	int ret;
 	u_int32_t temp[DB_MAC_KEY/4];
 
@@ -211,12 +215,12 @@ __aes_derivekeys(dbenv, db_cipher, passwd, plen)
 
 	if ((ret = __db_makeKey(&aes->encrypt_ki, DIR_ENCRYPT,
 	    DB_AES_KEYLEN, (char *)temp)) != TRUE) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 	if ((ret = __db_makeKey(&aes->decrypt_ki, DIR_DECRYPT,
 	    DB_AES_KEYLEN, (char *)temp)) != TRUE) {
-		__aes_err(dbenv, ret);
+		__aes_err(env, ret);
 		return (EAGAIN);
 	}
 	return (0);
@@ -228,8 +232,8 @@ __aes_derivekeys(dbenv, db_cipher, passwd, plen)
  *	rijndael/rijndael-api-fst.h.
  */
 static void
-__aes_err(dbenv, err)
-	DB_ENV *dbenv;
+__aes_err(env, err)
+	ENV *env;
 	int err;
 {
 	char *errstr;
@@ -263,6 +267,6 @@ __aes_err(dbenv, err)
 		errstr = "AES error unrecognized";
 		break;
 	}
-	__db_errx(dbenv, errstr);
+	__db_errx(env, errstr);
 	return;
 }

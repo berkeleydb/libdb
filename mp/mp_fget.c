@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_fget.c,v 12.43 2007/06/05 11:55:28 mjc Exp $
+ * $Id: mp_fget.c,v 12.53 2008/04/28 02:59:57 alexg Exp $
  */
 
 #include "db_config.h"
@@ -28,13 +28,12 @@ __memp_fget_pp(dbmfp, pgnoaddr, txnp, flags, addrp)
 	u_int32_t flags;
 	void *addrp;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
-	int rep_check, ret;
+	ENV *env;
+	int rep_blocked, ret;
 
-	dbenv = dbmfp->dbenv;
+	env = dbmfp->env;
 
-	PANIC_CHECK(dbenv);
 	MPF_ILLEGAL_BEFORE_OPEN(dbmfp, "DB_MPOOLFILE->get");
 
 	/*
@@ -53,7 +52,7 @@ __memp_fget_pp(dbmfp, pgnoaddr, txnp, flags, addrp)
 #define	OKFLAGS		(DB_MPOOL_CREATE | DB_MPOOL_DIRTY | \
 	    DB_MPOOL_EDIT | DB_MPOOL_LAST | DB_MPOOL_NEW)
 	if (flags != 0) {
-		if ((ret = __db_fchk(dbenv, "memp_fget", flags, OKFLAGS)) != 0)
+		if ((ret = __db_fchk(env, "memp_fget", flags, OKFLAGS)) != 0)
 			return (ret);
 
 		switch (flags) {
@@ -64,27 +63,30 @@ __memp_fget_pp(dbmfp, pgnoaddr, txnp, flags, addrp)
 		case DB_MPOOL_NEW:
 			break;
 		default:
-			return (__db_ferr(dbenv, "memp_fget", 1));
+			return (__db_ferr(env, "memp_fget", 1));
 		}
 	}
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
-	rep_check = IS_ENV_REPLICATED(dbenv) ? 1 : 0;
-	if (rep_check && (ret = __op_rep_enter(dbenv)) != 0)
-		goto err;
-	ret = __memp_fget(dbmfp, pgnoaddr, txnp, flags, addrp);
+	rep_blocked = 0;
+	if (txnp == NULL && IS_ENV_REPLICATED(env)) {
+		if ((ret = __op_rep_enter(env)) != 0)
+			goto err;
+		rep_blocked = 1;
+	}
+	ret = __memp_fget(dbmfp, pgnoaddr, ip, txnp, flags, addrp);
 	/*
 	 * We only decrement the count in op_rep_exit if the operation fails.
 	 * Otherwise the count will be decremented when the page is no longer
 	 * pinned in memp_fput.
 	 */
-	if (ret != 0 && rep_check)
-		(void)__op_rep_exit(dbenv);
+	if (ret != 0 && rep_blocked)
+		(void)__op_rep_exit(env);
 
 	/* Similarly if an app has a page pinned it is ACTIVE. */
 err:	if (ret != 0)
-		ENV_LEAVE(dbenv, ip);
+		ENV_LEAVE(env, ip);
 
 	return (ret);
 }
@@ -93,39 +95,41 @@ err:	if (ret != 0)
  * __memp_fget --
  *	Get a page from the file.
  *
- * PUBLIC: int __memp_fget
- * PUBLIC:     __P((DB_MPOOLFILE *, db_pgno_t *, DB_TXN *, u_int32_t, void *));
+ * PUBLIC: int __memp_fget __P((DB_MPOOLFILE *,
+ * PUBLIC:     db_pgno_t *, DB_THREAD_INFO *, DB_TXN *, u_int32_t, void *));
  */
 int
-__memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
+__memp_fget(dbmfp, pgnoaddr, ip, txn, flags, addrp)
 	DB_MPOOLFILE *dbmfp;
 	db_pgno_t *pgnoaddr;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	u_int32_t flags;
 	void *addrp;
 {
 	enum { FIRST_FOUND, FIRST_MISS, SECOND_FOUND, SECOND_MISS } state;
 	BH *alloc_bhp, *bhp, *frozen_bhp, *oldest_bhp;
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_LSN *read_lsnp, vlsn;
 	DB_MPOOL *dbmp;
 	DB_MPOOL_HASH *hp;
 	MPOOL *c_mp;
 	MPOOLFILE *mfp;
-	REGINFO *infop, *t_infop;
+	PIN_LIST *list, *lp;
+	REGINFO *infop, *t_infop, *reginfo;
 	TXN_DETAIL *td;
-	roff_t mf_offset;
-	u_int32_t st_hsearch;
+	roff_t list_off, mf_offset;
+	u_int32_t pinmax, st_hsearch;
 	int b_incr, b_locked, dirty, edit, extending, first;
-	int makecopy, mvcc, need_free, reorder, ret;
+	int makecopy, mvcc, need_free, ret;
 
 	*(void **)addrp = NULL;
 	COMPQUIET(c_mp, NULL);
 	COMPQUIET(infop, NULL);
 	COMPQUIET(oldest_bhp, NULL);
 
-	dbenv = dbmfp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
 
 	mfp = dbmfp->mfp;
 	mvcc = mfp->multiversion;
@@ -138,12 +142,12 @@ __memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
 
 	if (LF_ISSET(DB_MPOOL_DIRTY)) {
 		if (F_ISSET(dbmfp, MP_READONLY)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "%s: dirty flag set for readonly file page",
 			    __memp_fn(dbmfp));
 			return (EINVAL);
 		}
-		if ((ret = __db_fcchk(dbenv, "DB_MPOOLFILE->get",
+		if ((ret = __db_fcchk(env, "DB_MPOOLFILE->get",
 		    flags, DB_MPOOL_DIRTY, DB_MPOOL_EDIT)) != 0)
 			return (ret);
 	}
@@ -166,22 +170,22 @@ __memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
 		if (F_ISSET(txn, TXN_SNAPSHOT)) {
 			read_lsnp = &td->read_lsn;
 			if (IS_MAX_LSN(*read_lsnp) &&
-			    (ret = __log_current_lsn(dbenv, read_lsnp,
+			    (ret = __log_current_lsn(env, read_lsnp,
 			    NULL, NULL)) != 0)
 				return (ret);
 		}
 		if ((dirty || LF_ISSET(DB_MPOOL_CREATE | DB_MPOOL_NEW)) &&
 		    td->mvcc_mtx == MUTEX_INVALID && (ret =
-		    __mutex_alloc(dbenv, MTX_TXN_MVCC, 0, &td->mvcc_mtx)) != 0)
+		    __mutex_alloc(env, MTX_TXN_MVCC, 0, &td->mvcc_mtx)) != 0)
 			return (ret);
 	}
 
 	switch (flags) {
 	case DB_MPOOL_LAST:
 		/* Get the last page number in the file. */
-		MUTEX_LOCK(dbenv, mfp->mutex);
+		MUTEX_LOCK(env, mfp->mutex);
 		*pgnoaddr = mfp->last_pgno;
-		MUTEX_UNLOCK(dbenv, mfp->mutex);
+		MUTEX_UNLOCK(env, mfp->mutex);
 		break;
 	case DB_MPOOL_NEW:
 		/*
@@ -230,7 +234,7 @@ retry:	/*
 	 * local pointers to them.  Reset on each pass through this code, the
 	 * page number can change.
 	 */
-	MP_GET_BUCKET(dbmfp, *pgnoaddr, &infop, hp, ret);
+	MP_GET_BUCKET(env, mfp, *pgnoaddr, &infop, hp, ret);
 	if (ret != 0)
 		return (ret);
 	c_mp = infop->primary;
@@ -246,17 +250,17 @@ retry:	/*
 		/* Snapshot reads -- get the version visible at read_lsn. */
 		if (mvcc && !edit && read_lsnp != NULL) {
 			while (bhp != NULL &&
-			    !BH_OWNED_BY(dbenv, bhp, txn) &&
-			    !BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn))
+			    !BH_OWNED_BY(env, bhp, txn) &&
+			    !BH_VISIBLE(env, bhp, read_lsnp, vlsn))
 				bhp = SH_CHAIN_PREV(bhp, vc, __bh);
 
-			DB_ASSERT(dbenv, bhp != NULL);
+			DB_ASSERT(env, bhp != NULL);
 		}
 
-		makecopy = mvcc && dirty && !BH_OWNED_BY(dbenv, bhp, txn);
+		makecopy = mvcc && dirty && !BH_OWNED_BY(env, bhp, txn);
 
 		if (F_ISSET(bhp, BH_FROZEN) && !F_ISSET(bhp, BH_FREED)) {
-			DB_ASSERT(dbenv, frozen_bhp == NULL);
+			DB_ASSERT(env, frozen_bhp == NULL);
 			frozen_bhp = bhp;
 		}
 
@@ -267,10 +271,10 @@ retry:	/*
 		 * unchanged.
 		 */
 		if (bhp->ref == UINT16_MAX) {
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "%s: page %lu: reference count overflow",
 			    __memp_fn(dbmfp), (u_long)bhp->pgno);
-			ret = __db_panic(dbenv, EINVAL);
+			ret = __env_panic(env, EINVAL);
 			goto err;
 		}
 		++bhp->ref;
@@ -284,7 +288,7 @@ retry:	/*
 		 * for the buffer to become available, re-acquire the bucket.
 		 */
 		for (first = 1; F_ISSET(bhp, BH_LOCKED) &&
-		    !F_ISSET(dbenv, DB_ENV_NOLOCKING); first = 0) {
+		    !F_ISSET(env->dbenv, DB_ENV_NOLOCKING); first = 0) {
 			/*
 			 * If someone is trying to sync this buffer and the
 			 * buffer is hot, they may never get in.  Give up and
@@ -292,10 +296,10 @@ retry:	/*
 			 */
 			if (!first && bhp->ref_sync != 0) {
 				--bhp->ref;
-				MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+				MUTEX_UNLOCK(env, hp->mtx_hash);
 				bhp = frozen_bhp = NULL;
 				b_incr = b_locked = 0;
-				__os_sleep(dbenv, 0, 1);
+				__os_yield(env, 0, 1);
 				goto retry;
 			}
 
@@ -306,19 +310,19 @@ retry:	/*
 			 */
 			if (!F_ISSET(hp, IO_WAITER)) {
 				F_SET(hp, IO_WAITER);
-				MUTEX_LOCK(dbenv, hp->mtx_io);
+				MUTEX_LOCK(env, hp->mtx_io);
 			}
 			STAT(++hp->hash_io_wait);
 
 			/* Release the hash bucket lock. */
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
 
 			/* Wait for I/O to finish. */
-			MUTEX_LOCK(dbenv, hp->mtx_io);
-			MUTEX_UNLOCK(dbenv, hp->mtx_io);
+			MUTEX_LOCK(env, hp->mtx_io);
+			MUTEX_UNLOCK(env, hp->mtx_io);
 
 			/* Re-acquire the hash bucket lock. */
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MUTEX_LOCK(env, hp->mtx_hash);
 		}
 
 		/*
@@ -330,8 +334,8 @@ retry:	/*
 		if (frozen_bhp != NULL && F_ISSET(frozen_bhp, BH_THAWED)) {
 thawed:			need_free = (--frozen_bhp->ref == 0);
 			b_incr = 0;
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
-			MPOOL_REGION_LOCK(dbenv, infop);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
+			MPOOL_REGION_LOCK(env, infop);
 			if (alloc_bhp != NULL) {
 				__memp_free(infop, mfp, alloc_bhp);
 				alloc_bhp = NULL;
@@ -339,7 +343,7 @@ thawed:			need_free = (--frozen_bhp->ref == 0);
 			if (need_free)
 				SH_TAILQ_INSERT_TAIL(&c_mp->free_frozen,
 				    frozen_bhp, hq);
-			MPOOL_REGION_UNLOCK(dbenv, infop);
+			MPOOL_REGION_UNLOCK(env, infop);
 			bhp = frozen_bhp = NULL;
 			goto retry;
 		}
@@ -352,7 +356,7 @@ thawed:			need_free = (--frozen_bhp->ref == 0);
 		    SH_CHAIN_NEXTP(bhp, vc, __bh)->td_off == bhp->td_off) {
 			--bhp->ref;
 			b_incr = 0;
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
 			bhp = frozen_bhp = NULL;
 			goto retry;
 		} else if (dirty && SH_CHAIN_HASNEXT(bhp, vc)) {
@@ -430,18 +434,18 @@ thawed:			need_free = (--frozen_bhp->ref == 0);
 				if (mvcc && (F_ISSET(bhp, BH_FROZEN) ||
 				    !SH_CHAIN_SINGLETON(bhp, vc) ||
 				    bhp->td_off == INVALID_ROFF ||
-				    !IS_MAX_LSN(*VISIBLE_LSN(dbenv, bhp)))) {
+				    !IS_MAX_LSN(*VISIBLE_LSN(env, bhp)))) {
 					F_SET(bhp, BH_FREED);
-					MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+					MUTEX_UNLOCK(env, hp->mtx_hash);
 					return (0);
 				}
 				return (__memp_bhfree(
 				    dbmp, infop, hp, bhp, BH_FREE_FREEMEM));
 			}
-			__db_errx(dbenv,
+			__db_errx(env,
 			    "File %s: freeing pinned buffer for page %lu",
 				__memp_fns(dbmp, mfp), (u_long)*pgnoaddr);
-			ret = __db_panic(dbenv, EINVAL);
+			ret = __env_panic(env, EINVAL);
 			goto err;
 		}
 
@@ -449,10 +453,10 @@ thawed:			need_free = (--frozen_bhp->ref == 0);
 			if (flags == DB_MPOOL_CREATE &&
 			    F_ISSET(bhp, BH_FREED)) {
 				extending = makecopy = 1;
-				MUTEX_LOCK(dbenv, mfp->mutex);
+				MUTEX_LOCK(env, mfp->mutex);
 				if (*pgnoaddr > mfp->last_pgno)
 					mfp->last_pgno = *pgnoaddr;
-				MUTEX_UNLOCK(dbenv, mfp->mutex);
+				MUTEX_UNLOCK(env, mfp->mutex);
 			}
 
 			/*
@@ -474,7 +478,7 @@ reuse:			if ((makecopy || frozen_bhp != NULL) && (oldest_bhp =
 
 				if (oldest_bhp->ref == 0 && !BH_OBSOLETE(
 				    oldest_bhp, hp->old_reader, vlsn) &&
-				    (ret = __txn_oldest_reader(dbenv,
+				    (ret = __txn_oldest_reader(env,
 				    &hp->old_reader)) != 0)
 					goto err;
 
@@ -495,7 +499,7 @@ reuse:			if ((makecopy || frozen_bhp != NULL) && (oldest_bhp =
 					alloc_bhp = oldest_bhp;
 				}
 
-				DB_ASSERT(dbenv, alloc_bhp == NULL ||
+				DB_ASSERT(env, alloc_bhp == NULL ||
 				    !F_ISSET(alloc_bhp, BH_FROZEN));
 			}
 		}
@@ -511,7 +515,7 @@ reuse:			if ((makecopy || frozen_bhp != NULL) && (oldest_bhp =
 		 * if the page exists, and allocate structures so we can add
 		 * the page to the buffer pool.
 		 */
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 		b_locked = 0;
 
 		/*
@@ -525,15 +529,15 @@ alloc:		/*
 		 * If neither DB_MPOOL_CREATE or DB_MPOOL_NEW is set, then
 		 * it's an error to try and get a page past the end of file.
 		 */
-		DB_ASSERT(dbenv, !b_locked);
-		MUTEX_LOCK(dbenv, mfp->mutex);
+		DB_ASSERT(env, !b_locked);
+		MUTEX_LOCK(env, mfp->mutex);
 		switch (flags) {
 		case DB_MPOOL_NEW:
 			extending = 1;
 			if (mfp->maxpgno != 0 &&
 			    mfp->last_pgno >= mfp->maxpgno) {
 				__db_errx(
-				    dbenv, "%s: file limited to %lu pages",
+				    env, "%s: file limited to %lu pages",
 				    __memp_fn(dbmfp), (u_long)mfp->maxpgno);
 				ret = ENOSPC;
 			} else
@@ -542,7 +546,7 @@ alloc:		/*
 		case DB_MPOOL_CREATE:
 			if (mfp->maxpgno != 0 && *pgnoaddr > mfp->maxpgno) {
 				__db_errx(
-				    dbenv, "%s: file limited to %lu pages",
+				    env, "%s: file limited to %lu pages",
 				    __memp_fn(dbmfp), (u_long)mfp->maxpgno);
 				ret = ENOSPC;
 			} else if (!extending)
@@ -552,7 +556,7 @@ alloc:		/*
 			ret = *pgnoaddr > mfp->last_pgno ? DB_PAGE_NOTFOUND : 0;
 			break;
 		}
-		MUTEX_UNLOCK(dbenv, mfp->mutex);
+		MUTEX_UNLOCK(env, mfp->mutex);
 		if (ret != 0)
 			goto err;
 
@@ -572,9 +576,9 @@ alloc:		/*
 			goto err;
 #ifdef DIAGNOSTIC
 		if ((uintptr_t)alloc_bhp->buf & (sizeof(size_t) - 1)) {
-			__db_errx(dbenv,
+			__db_errx(env,
 		    "DB_MPOOLFILE->get: buffer data is NOT size_t aligned");
-			ret = __db_panic(dbenv, EINVAL);
+			ret = __env_panic(env, EINVAL);
 			goto err;
 		}
 #endif
@@ -583,7 +587,7 @@ alloc:		/*
 		 * again.
 		 */
 		if (extending)
-			MUTEX_LOCK(dbenv, mfp->mutex);
+			MUTEX_LOCK(env, mfp->mutex);
 
 		/*
 		 * DB_MPOOL_NEW does not guarantee you a page unreferenced by
@@ -620,12 +624,12 @@ alloc:		/*
 				 * flags == DB_MPOOL_NEW, so extending is set
 				 * and we're holding the mfp locked.
 				 */
-				MUTEX_UNLOCK(dbenv, mfp->mutex);
+				MUTEX_UNLOCK(env, mfp->mutex);
 
-				MPOOL_REGION_LOCK(dbenv, infop);
+				MPOOL_REGION_LOCK(env, infop);
 				__memp_free(infop, mfp, alloc_bhp);
 				c_mp->stat.st_pages--;
-				MPOOL_REGION_UNLOCK(dbenv, infop);
+				MPOOL_REGION_UNLOCK(env, infop);
 
 				alloc_bhp = NULL;
 				goto alloc;
@@ -641,7 +645,7 @@ alloc:		/*
 			if (*pgnoaddr > mfp->last_pgno)
 				mfp->last_pgno = *pgnoaddr;
 
-			MUTEX_UNLOCK(dbenv, mfp->mutex);
+			MUTEX_UNLOCK(env, mfp->mutex);
 			if (ret != 0)
 				goto err;
 		}
@@ -651,11 +655,11 @@ alloc:		/*
 		 * buffer header.  In that case, we don't need to search again.
 		 */
 		if (bhp != NULL) {
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MUTEX_LOCK(env, hp->mtx_hash);
 			b_locked = 1;
 			break;
 		}
-		DB_ASSERT(dbenv, frozen_bhp == NULL);
+		DB_ASSERT(env, frozen_bhp == NULL);
 		goto retry;
 	case SECOND_FOUND:
 		/*
@@ -681,11 +685,11 @@ alloc:		/*
 		 * lock, we have to release the hash bucket and re-acquire it.
 		 * That's OK, because we have the buffer pinned down.
 		 */
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
-		MPOOL_REGION_LOCK(dbenv, infop);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
+		MPOOL_REGION_LOCK(env, infop);
 		__memp_free(infop, mfp, alloc_bhp);
 		c_mp->stat.st_pages--;
-		MPOOL_REGION_UNLOCK(dbenv, infop);
+		MPOOL_REGION_UNLOCK(env, infop);
 		alloc_bhp = NULL;
 
 		/*
@@ -704,7 +708,7 @@ alloc:		/*
 		}
 
 		/* We can use the page -- get the bucket lock. */
-		MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MUTEX_LOCK(env, hp->mtx_hash);
 		break;
 	case SECOND_MISS:
 		/*
@@ -735,9 +739,6 @@ alloc:		/*
 		bhp->mf_offset = mf_offset;
 		SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
 		SH_CHAIN_INIT(bhp, vc);
-
-		hp->hash_priority =
-		    BH_PRIORITY(SH_TAILQ_FIRSTP(&hp->hash_bucket, __bh));
 
 		/* We created a new page, it starts dirty. */
 		if (extending) {
@@ -786,17 +787,17 @@ alloc:		/*
 		}
 
 		/* Increment buffer count referenced by MPOOLFILE. */
-		MUTEX_LOCK(dbenv, mfp->mutex);
+		MUTEX_LOCK(env, mfp->mutex);
 		++mfp->block_cnt;
-		MUTEX_UNLOCK(dbenv, mfp->mutex);
+		MUTEX_UNLOCK(env, mfp->mutex);
 	}
 
-	DB_ASSERT(dbenv, bhp != NULL);
-	DB_ASSERT(dbenv, bhp->ref != 0);
+	DB_ASSERT(env, bhp != NULL);
+	DB_ASSERT(env, bhp->ref != 0);
 
 	/* We've got a buffer header we're re-instantiating. */
 	if (frozen_bhp != NULL) {
-		DB_ASSERT(dbenv, alloc_bhp != NULL);
+		DB_ASSERT(env, alloc_bhp != NULL);
 
 		/*
 		 * If the empty buffer has been filled in the meantime, don't
@@ -819,7 +820,7 @@ alloc:		/*
 		 * the new copy.
 		 */
 		if (makecopy) {
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
 			b_locked = 0;
 			goto alloc;
 		}
@@ -858,10 +859,10 @@ alloc:		/*
 
 	/* Copy-on-write. */
 	if (makecopy && state != SECOND_MISS) {
-		DB_ASSERT(dbenv, !SH_CHAIN_HASNEXT(bhp, vc));
-		DB_ASSERT(dbenv, bhp != NULL);
-		DB_ASSERT(dbenv, alloc_bhp != NULL);
-		DB_ASSERT(dbenv, alloc_bhp != bhp);
+		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
+		DB_ASSERT(env, bhp != NULL);
+		DB_ASSERT(env, alloc_bhp != NULL);
+		DB_ASSERT(env, alloc_bhp != bhp);
 
 		if (bhp->ref == 1)
 			MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize,
@@ -890,15 +891,14 @@ alloc:		/*
 		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
 		if (--bhp->ref == 0) {
 			bhp->priority = c_mp->lru_count;
-			__memp_bucket_reorder(dbenv, hp, bhp);
 			MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize, 0);
 		}
 		bhp = alloc_bhp;
 
 		if (alloc_bhp != oldest_bhp) {
-			MUTEX_LOCK(dbenv, mfp->mutex);
+			MUTEX_LOCK(env, mfp->mutex);
 			++mfp->block_cnt;
-			MUTEX_UNLOCK(dbenv, mfp->mutex);
+			MUTEX_UNLOCK(env, mfp->mutex);
 		}
 
 		alloc_bhp = NULL;
@@ -907,32 +907,25 @@ alloc:		/*
 		goto err;
 
 	if ((dirty || edit || extending) && !F_ISSET(bhp, BH_DIRTY)) {
-		DB_ASSERT(dbenv, !SH_CHAIN_HASNEXT(bhp, vc));
+		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
 		++hp->hash_page_dirty;
 		F_SET(bhp, BH_DIRTY);
 	}
 
 	/*
-	 * If we're the only reference, update buffer and bucket priorities.
-	 * We may be about to release the hash bucket lock, and everything
-	 * should be correct, first.  (We've already done this if we created
-	 * the buffer, so there is no need to do it again.)
+	 * If we're the only reference, update buffer priority.  We may be
+	 * about to release the hash bucket lock, and everything should be
+	 * correct, first.  (We've already done this work if we created the
+	 * buffer, so there is no need to do it again.)
 	 */
 	if (state != SECOND_MISS && bhp->ref == 1) {
+		bhp->priority = UINT32_MAX;
 		if (SH_CHAIN_SINGLETON(bhp, vc)) {
-			bhp->priority = UINT32_MAX;
 			if (bhp != SH_TAILQ_LAST(&hp->hash_bucket, hq, __bh)) {
 				SH_TAILQ_REMOVE(&hp->hash_bucket,
 				    bhp, hq, __bh);
 				SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
 			}
-			hp->hash_priority = BH_PRIORITY(
-			    SH_TAILQ_FIRSTP(&hp->hash_bucket, __bh));
-		} else {
-			reorder = (BH_PRIORITY(bhp) == bhp->priority);
-			bhp->priority = UINT32_MAX;
-			if (reorder)
-				__memp_bucket_reorder(dbenv, hp, bhp);
 		}
 	}
 
@@ -941,41 +934,71 @@ alloc:		/*
 	    PROT_WRITE : 0));
 
 #ifdef DIAGNOSTIC
-	__memp_check_order(dbenv, hp);
-
 	{
 	BH *next_bhp = SH_CHAIN_NEXT(bhp, vc, __bh);
 
-	DB_ASSERT(dbenv, !mfp->multiversion ||
+	DB_ASSERT(env, !mfp->multiversion ||
 	    !F_ISSET(bhp, BH_DIRTY) || next_bhp == NULL);
 
-	DB_ASSERT(dbenv, !mvcc || edit || read_lsnp == NULL ||
-	    bhp->td_off == INVALID_ROFF || BH_OWNED_BY(dbenv, bhp, txn) ||
-	    (BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn) &&
+	DB_ASSERT(env, !mvcc || edit || read_lsnp == NULL ||
+	    bhp->td_off == INVALID_ROFF || BH_OWNED_BY(env, bhp, txn) ||
+	    (BH_VISIBLE(env, bhp, read_lsnp, vlsn) &&
 	    (next_bhp == NULL || F_ISSET(next_bhp, BH_FROZEN) ||
 	    (next_bhp->td_off != INVALID_ROFF &&
-	    (BH_OWNER(dbenv, next_bhp)->status != TXN_COMMITTED ||
-	    !BH_VISIBLE(dbenv, next_bhp, read_lsnp, vlsn))))));
+	    (BH_OWNER(env, next_bhp)->status != TXN_COMMITTED ||
+	    !BH_VISIBLE(env, next_bhp, read_lsnp, vlsn))))));
 	}
 #endif
 
-	MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+	MUTEX_UNLOCK(env, hp->mtx_hash);
+	/*
+	 * Record this pin for this thread.  Holding the page pinned
+	 * without recording the pin is ok since we do not recover from
+	 * a death from within the library itself.
+	 */
+	if (ip != NULL) {
+		reginfo = env->reginfo;
+		if (ip->dbth_pincount == ip->dbth_pinmax) {
+			pinmax = ip->dbth_pinmax;
+			if ((ret = __env_alloc(reginfo,
+			    2 * pinmax * sizeof(PIN_LIST), &list)) != 0)
+				goto err;
+
+			memcpy(list, R_ADDR(reginfo, ip->dbth_pinlist),
+			    pinmax * sizeof(PIN_LIST));
+			memset(&list[pinmax], 0, pinmax * sizeof(PIN_LIST));
+			list_off = R_OFFSET(reginfo, list);
+			list = R_ADDR(reginfo, ip->dbth_pinlist);
+			ip->dbth_pinmax = 2 * pinmax;
+			ip->dbth_pinlist = list_off;
+			if (list != ip->dbth_pinarray)
+				__env_alloc_free(reginfo, list);
+		}
+		list = R_ADDR(reginfo, ip->dbth_pinlist);
+		for (lp = list; lp < &list[ip->dbth_pinmax]; lp++)
+			if (lp->b_ref == INVALID_ROFF)
+				break;
+
+		ip->dbth_pincount++;
+		lp->b_ref = R_OFFSET(infop, bhp);
+		lp->region = (int)(infop - dbmp->reginfo);
+	}
 
 #ifdef DIAGNOSTIC
 	/* Update the file's pinned reference count. */
-	MPOOL_SYSTEM_LOCK(dbenv);
+	MPOOL_SYSTEM_LOCK(env);
 	++dbmfp->pinref;
-	MPOOL_SYSTEM_UNLOCK(dbenv);
+	MPOOL_SYSTEM_UNLOCK(env);
 
 	/*
 	 * We want to switch threads as often as possible, and at awkward
 	 * times.  Yield every time we get a new page to ensure contention.
 	 */
-	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-		__os_yield(dbenv);
+	if (F_ISSET(env->dbenv, DB_ENV_YIELDCPU))
+		__os_yield(env, 0, 0);
 #endif
 
-	DB_ASSERT(dbenv, alloc_bhp == NULL);
+	DB_ASSERT(env, alloc_bhp == NULL);
 
 	*(void **)addrp = bhp->buf;
 	return (0);
@@ -987,7 +1010,7 @@ err:	/*
 	 */
 	if (b_incr || frozen_bhp != NULL) {
 		if (!b_locked) {
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MUTEX_LOCK(env, hp->mtx_hash);
 			b_locked = 1;
 		}
 		if (frozen_bhp != NULL)
@@ -996,14 +1019,14 @@ err:	/*
 			--bhp->ref;
 	}
 	if (b_locked)
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 
 	/* If alloc_bhp is set, free the memory. */
 	if (alloc_bhp != NULL) {
-		MPOOL_REGION_LOCK(dbenv, infop);
+		MPOOL_REGION_LOCK(env, infop);
 		__memp_free(infop, mfp, alloc_bhp);
 		c_mp->stat.st_pages--;
-		MPOOL_REGION_UNLOCK(dbenv, infop);
+		MPOOL_REGION_UNLOCK(env, infop);
 	}
 
 	return (ret);

@@ -1,4 +1,4 @@
-m4_comment([$Id: def.so,v 10.7 2007/04/05 20:37:29 bostic Exp $])
+m4_comment([$Id: def.so,v 10.9 2007/12/15 01:18:15 alanb Exp $])
 
 m4_ref_title(Application Specific Logging and Recovery,
     Defining application-specific log records,,
@@ -33,13 +33,6 @@ application-specific recovery example lists the following include
 files:])
 
 m4_indent([dnl
-INCLUDE [#]include __LT__ctype.h__GT__
-INCLUDE [#]include __LT__errno.h__GT__
-INCLUDE [#]include __LT__stdlib.h__GT__
-INCLUDE [#]include __LT__string.h__GT__
-INCLUDE
-INCLUDE [#]include __LT__db.h__GT__
-INCLUDE
 INCLUDE [#]include "ex_apprec.h"])
 
 m4_p([dnl
@@ -47,7 +40,6 @@ The rest of the XXX.src file consists of log record descriptions.  Each
 log record description begins with one of the following lines:])
 
 m4_indent([BEGIN m4_italic(RECORD_NAME) m4_italic(DB_VERSION_NUMBER) m4_italic(RECORD_NUMBER)])
-m4_indent([BEGIN_BUF m4_italic(RECORD_NAME) m4_italic(DB_VERSION_NUMBER)])
 m4_indent([BEGIN_COMPAT m4_italic(RECORD_NAME) m4_italic(DB_VERSION_NUMBER) m4_italic(RECORD_NUMBER)])
 
 m4_p([dnl
@@ -57,13 +49,6 @@ m4_indent([END])
 
 m4_p([dnl
 The m4_italic(BEGIN) line should be used for most record types.])
-
-m4_p([dnl
-The m4_italic(BEGIN_BUF) is used for records that need only marshalling and
-unmarshalling of the record, that is logging and reading routines, but not
-a recovery routine.  These records are specific to the replication system's
-internal initialization process, which sends variable length records containing
-file data and file description records.])
 
 m4_p([dnl
 The m4_italic(BEGIN_COMPAT) is used for log record compatibility to facilitate

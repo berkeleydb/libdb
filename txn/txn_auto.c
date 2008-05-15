@@ -1,7 +1,6 @@
 /* Do not edit: automatically built by gen_rec.awk. */
 
 #include "db_config.h"
-
 #include "db_int.h"
 #include "dbinc/crypto.h"
 #include "dbinc/db_page.h"
@@ -12,12 +11,12 @@
 #include "dbinc/txn.h"
 
 /*
- * PUBLIC: int __txn_regop_42_read __P((DB_ENV *, void *,
+ * PUBLIC: int __txn_regop_42_read __P((ENV *, void *,
  * PUBLIC:     __txn_regop_42_args **));
  */
 int
-__txn_regop_42_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
+__txn_regop_42_read(env, recbuf, argpp)
+	ENV *env;
 	void *recbuf;
 	__txn_regop_42_args **argpp;
 {
@@ -26,48 +25,97 @@ __txn_regop_42_read(dbenv, recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	if ((ret = __os_malloc(dbenv,
+	if ((ret = __os_malloc(env,
 	    sizeof(__txn_regop_42_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
 	memset(argp->txnp, 0, sizeof(DB_TXN));
 
-	memcpy(&argp->type, bp, sizeof(argp->type));
+	LOGCOPY_32(env, &argp->type, bp);
 	bp += sizeof(argp->type);
 
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
 	bp += sizeof(argp->txnp->txnid);
 
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
 	bp += sizeof(DB_LSN);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->opcode = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, &argp->opcode, bp);
+	bp += sizeof(argp->opcode);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	LOGCOPY_32(env, &uinttmp, bp);
 	argp->timestamp = (int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
 	memset(&argp->locks, 0, sizeof(argp->locks));
-	memcpy(&argp->locks.size, bp, sizeof(u_int32_t));
+	LOGCOPY_32(env,&argp->locks.size, bp);
 	bp += sizeof(u_int32_t);
 	argp->locks.data = bp;
 	bp += argp->locks.size;
 
 	*argpp = argp;
-	return (0);
+	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_regop_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC: int __txn_regop_read __P((ENV *, void *, __txn_regop_args **));
+ */
+int
+__txn_regop_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__txn_regop_args **argpp;
+{
+	__txn_regop_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_regop_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &argp->opcode, bp);
+	bp += sizeof(argp->opcode);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->timestamp = (int32_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_32(env, &argp->envid, bp);
+	bp += sizeof(argp->envid);
+
+	memset(&argp->locks, 0, sizeof(argp->locks));
+	LOGCOPY_32(env,&argp->locks.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->locks.data = bp;
+	bp += argp->locks.size;
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __txn_regop_log __P((ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, u_int32_t, int32_t, u_int32_t, const DBT *));
  */
 int
-__txn_regop_log(dbenv, txnp, ret_lsnp, flags,
+__txn_regop_log(env, txnp, ret_lsnp, flags,
     opcode, timestamp, envid, locks)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -77,8 +125,8 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 	const DBT *locks;
 {
 	DBT logrec;
-	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
+	DB_TXNLOGREC *lr;
 	u_int32_t zero, uinttmp, rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
@@ -86,10 +134,9 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 	COMPQUIET(lr, NULL);
 
+	rlsnp = ret_lsnp;
 	rectype = DB___txn_regop;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
@@ -107,7 +154,7 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 		null_lsn.file = null_lsn.offset = 0;
 	} else {
 		if (TAILQ_FIRST(&txnp->kids) != NULL &&
-		    (ret = __txn_activekids(dbenv, rectype, txnp)) != 0)
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
 			return (ret);
 		/*
 		 * We need to assign begin_lsn while holding region mutex.
@@ -124,24 +171,23 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t) + (locks == NULL ? 0 : locks->size);
-	if (CRYPTO_ON(dbenv)) {
-		npad =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
 		logrec.size += npad;
 	}
 
 	if (is_durable || txnp == NULL) {
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
 			return (ret);
 #ifdef DIAGNOSTIC
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
-			__os_free(dbenv, lr);
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
 			return (ret);
 		}
 #else
@@ -153,43 +199,41 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
-	uinttmp = (u_int32_t)opcode;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &opcode);
+	bp += sizeof(opcode);
 
 	uinttmp = (u_int32_t)timestamp;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	LOGCOPY_32(env,bp, &uinttmp);
 	bp += sizeof(uinttmp);
 
-	uinttmp = (u_int32_t)envid;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &envid);
+	bp += sizeof(envid);
 
 	if (locks == NULL) {
 		zero = 0;
-		memcpy(bp, &zero, sizeof(u_int32_t));
+		LOGCOPY_32(env, bp, &zero);
 		bp += sizeof(u_int32_t);
 	} else {
-		memcpy(bp, &locks->size, sizeof(locks->size));
+		LOGCOPY_32(env, bp, &locks->size);
 		bp += sizeof(locks->size);
 		memcpy(bp, locks->data, locks->size);
 		bp += locks->size;
 	}
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnp == NULL) {
-		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnp != NULL) {
 			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
@@ -204,10 +248,10 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 		 */
 		memcpy(lr->data, logrec.data, logrec.size);
 		rectype |= DB_debug_FLAG;
-		memcpy(logrec.data, &rectype, sizeof(rectype));
+		LOGCOPY_32(env, logrec.data, &rectype);
 
-		if (!IS_REP_CLIENT(dbenv))
-			ret = __log_put(dbenv,
+		if (!IS_REP_CLIENT(env))
+			ret = __log_put(env,
 			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
 #endif
 		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
@@ -217,77 +261,25 @@ __txn_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_regop_print(dbenv,
+		(void)__txn_regop_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
-	__os_free(dbenv, logrec.data);
+	__os_free(env, logrec.data);
 #else
 	if (is_durable || txnp == NULL)
-		__os_free(dbenv, logrec.data);
+		__os_free(env, logrec.data);
 #endif
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_regop_read __P((DB_ENV *, void *, __txn_regop_args **));
+ * PUBLIC: int __txn_ckp_42_read __P((ENV *, void *, __txn_ckp_42_args **));
  */
 int
-__txn_regop_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
-	void *recbuf;
-	__txn_regop_args **argpp;
-{
-	__txn_regop_args *argp;
-	u_int32_t uinttmp;
-	u_int8_t *bp;
-	int ret;
-
-	if ((ret = __os_malloc(dbenv,
-	    sizeof(__txn_regop_args) + sizeof(DB_TXN), &argp)) != 0)
-		return (ret);
-	bp = recbuf;
-	argp->txnp = (DB_TXN *)&argp[1];
-	memset(argp->txnp, 0, sizeof(DB_TXN));
-
-	memcpy(&argp->type, bp, sizeof(argp->type));
-	bp += sizeof(argp->type);
-
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
-	bp += sizeof(argp->txnp->txnid);
-
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
-	bp += sizeof(DB_LSN);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->opcode = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->timestamp = (int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->envid = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memset(&argp->locks, 0, sizeof(argp->locks));
-	memcpy(&argp->locks.size, bp, sizeof(u_int32_t));
-	bp += sizeof(u_int32_t);
-	argp->locks.data = bp;
-	bp += argp->locks.size;
-
-	*argpp = argp;
-	return (0);
-}
-
-/*
- * PUBLIC: int __txn_ckp_42_read __P((DB_ENV *, void *, __txn_ckp_42_args **));
- */
-int
-__txn_ckp_42_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
+__txn_ckp_42_read(env, recbuf, argpp)
+	ENV *env;
 	void *recbuf;
 	__txn_ckp_42_args **argpp;
 {
@@ -296,48 +288,97 @@ __txn_ckp_42_read(dbenv, recbuf, argpp)
 	u_int8_t *bp;
 	int ret;
 
-	if ((ret = __os_malloc(dbenv,
+	if ((ret = __os_malloc(env,
 	    sizeof(__txn_ckp_42_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
 	memset(argp->txnp, 0, sizeof(DB_TXN));
 
-	memcpy(&argp->type, bp, sizeof(argp->type));
+	LOGCOPY_32(env, &argp->type, bp);
 	bp += sizeof(argp->type);
 
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
 	bp += sizeof(argp->txnp->txnid);
 
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
 	bp += sizeof(DB_LSN);
 
-	memcpy(&argp->ckp_lsn, bp,  sizeof(argp->ckp_lsn));
-	bp += sizeof(argp->ckp_lsn);
+	LOGCOPY_TOLSN(env, &argp->ckp_lsn, bp);
+	bp += sizeof(DB_LSN);
 
-	memcpy(&argp->last_ckp, bp,  sizeof(argp->last_ckp));
-	bp += sizeof(argp->last_ckp);
+	LOGCOPY_TOLSN(env, &argp->last_ckp, bp);
+	bp += sizeof(DB_LSN);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
+	LOGCOPY_32(env, &uinttmp, bp);
 	argp->timestamp = (int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->rep_gen = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, &argp->rep_gen, bp);
+	bp += sizeof(argp->rep_gen);
 
 	*argpp = argp;
-	return (0);
+	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_ckp_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC: int __txn_ckp_read __P((ENV *, void *, __txn_ckp_args **));
+ */
+int
+__txn_ckp_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__txn_ckp_args **argpp;
+{
+	__txn_ckp_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_ckp_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_TOLSN(env, &argp->ckp_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_TOLSN(env, &argp->last_ckp, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->timestamp = (int32_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_32(env, &argp->envid, bp);
+	bp += sizeof(argp->envid);
+
+	LOGCOPY_32(env, &argp->spare, bp);
+	bp += sizeof(argp->spare);
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __txn_ckp_log __P((ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, DB_LSN *, DB_LSN *, int32_t, u_int32_t, u_int32_t));
  */
 int
-__txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
+__txn_ckp_log(env, txnp, ret_lsnp, flags,
     ckp_lsn, last_ckp, timestamp, envid, spare)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -348,8 +389,8 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 	u_int32_t spare;
 {
 	DBT logrec;
-	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
+	DB_TXNLOGREC *lr;
 	u_int32_t uinttmp, rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
@@ -357,10 +398,9 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 
 	COMPQUIET(lr, NULL);
 
+	rlsnp = ret_lsnp;
 	rectype = DB___txn_ckp;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
@@ -378,7 +418,7 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 		null_lsn.file = null_lsn.offset = 0;
 	} else {
 		if (TAILQ_FIRST(&txnp->kids) != NULL &&
-		    (ret = __txn_activekids(dbenv, rectype, txnp)) != 0)
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
 			return (ret);
 		/*
 		 * We need to assign begin_lsn while holding region mutex.
@@ -396,24 +436,23 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t);
-	if (CRYPTO_ON(dbenv)) {
-		npad =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
 		logrec.size += npad;
 	}
 
 	if (is_durable || txnp == NULL) {
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
 			return (ret);
 #ifdef DIAGNOSTIC
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
-			__os_free(dbenv, lr);
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
 			return (ret);
 		}
 #else
@@ -425,44 +464,42 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
 	if (ckp_lsn != NULL)
-		memcpy(bp, ckp_lsn, sizeof(*ckp_lsn));
+		LOGCOPY_FROMLSN(env, bp, ckp_lsn);
 	else
 		memset(bp, 0, sizeof(*ckp_lsn));
 	bp += sizeof(*ckp_lsn);
 
 	if (last_ckp != NULL)
-		memcpy(bp, last_ckp, sizeof(*last_ckp));
+		LOGCOPY_FROMLSN(env, bp, last_ckp);
 	else
 		memset(bp, 0, sizeof(*last_ckp));
 	bp += sizeof(*last_ckp);
 
 	uinttmp = (u_int32_t)timestamp;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	LOGCOPY_32(env,bp, &uinttmp);
 	bp += sizeof(uinttmp);
 
-	uinttmp = (u_int32_t)envid;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &envid);
+	bp += sizeof(envid);
 
-	uinttmp = (u_int32_t)spare;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &spare);
+	bp += sizeof(spare);
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnp == NULL) {
-		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnp != NULL) {
 			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
@@ -477,10 +514,10 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 		 */
 		memcpy(lr->data, logrec.data, logrec.size);
 		rectype |= DB_debug_FLAG;
-		memcpy(logrec.data, &rectype, sizeof(rectype));
+		LOGCOPY_32(env, logrec.data, &rectype);
 
-		if (!IS_REP_CLIENT(dbenv))
-			ret = __log_put(dbenv,
+		if (!IS_REP_CLIENT(env))
+			ret = __log_put(env,
 			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
 #endif
 		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
@@ -490,79 +527,66 @@ __txn_ckp_log(dbenv, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_ckp_print(dbenv,
+		(void)__txn_ckp_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
-	__os_free(dbenv, logrec.data);
+	__os_free(env, logrec.data);
 #else
 	if (is_durable || txnp == NULL)
-		__os_free(dbenv, logrec.data);
+		__os_free(env, logrec.data);
 #endif
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_ckp_read __P((DB_ENV *, void *, __txn_ckp_args **));
+ * PUBLIC: int __txn_child_read __P((ENV *, void *, __txn_child_args **));
  */
 int
-__txn_ckp_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
+__txn_child_read(env, recbuf, argpp)
+	ENV *env;
 	void *recbuf;
-	__txn_ckp_args **argpp;
+	__txn_child_args **argpp;
 {
-	__txn_ckp_args *argp;
-	u_int32_t uinttmp;
+	__txn_child_args *argp;
 	u_int8_t *bp;
 	int ret;
 
-	if ((ret = __os_malloc(dbenv,
-	    sizeof(__txn_ckp_args) + sizeof(DB_TXN), &argp)) != 0)
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_child_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
 	memset(argp->txnp, 0, sizeof(DB_TXN));
 
-	memcpy(&argp->type, bp, sizeof(argp->type));
+	LOGCOPY_32(env, &argp->type, bp);
 	bp += sizeof(argp->type);
 
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
 	bp += sizeof(argp->txnp->txnid);
 
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
 	bp += sizeof(DB_LSN);
 
-	memcpy(&argp->ckp_lsn, bp,  sizeof(argp->ckp_lsn));
-	bp += sizeof(argp->ckp_lsn);
+	LOGCOPY_32(env, &argp->child, bp);
+	bp += sizeof(argp->child);
 
-	memcpy(&argp->last_ckp, bp,  sizeof(argp->last_ckp));
-	bp += sizeof(argp->last_ckp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->timestamp = (int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->envid = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->spare = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
+	LOGCOPY_TOLSN(env, &argp->c_lsn, bp);
+	bp += sizeof(DB_LSN);
 
 	*argpp = argp;
-	return (0);
+	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_child_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC: int __txn_child_log __P((ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, u_int32_t, DB_LSN *));
  */
 int
-__txn_child_log(dbenv, txnp, ret_lsnp, flags,
+__txn_child_log(env, txnp, ret_lsnp, flags,
     child, c_lsn)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -570,19 +594,18 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 	DB_LSN * c_lsn;
 {
 	DBT logrec;
-	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
-	u_int32_t uinttmp, rectype, txn_num;
+	DB_TXNLOGREC *lr;
+	u_int32_t rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
 	int is_durable, ret;
 
 	COMPQUIET(lr, NULL);
 
+	rlsnp = ret_lsnp;
 	rectype = DB___txn_child;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
@@ -600,7 +623,7 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 		null_lsn.file = null_lsn.offset = 0;
 	} else {
 		if (TAILQ_FIRST(&txnp->kids) != NULL &&
-		    (ret = __txn_activekids(dbenv, rectype, txnp)) != 0)
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
 			return (ret);
 		/*
 		 * We need to assign begin_lsn while holding region mutex.
@@ -615,24 +638,23 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t)
 	    + sizeof(*c_lsn);
-	if (CRYPTO_ON(dbenv)) {
-		npad =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
 		logrec.size += npad;
 	}
 
 	if (is_durable || txnp == NULL) {
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
 			return (ret);
 #ifdef DIAGNOSTIC
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
-			__os_free(dbenv, lr);
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
 			return (ret);
 		}
 #else
@@ -644,30 +666,29 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
-	uinttmp = (u_int32_t)child;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &child);
+	bp += sizeof(child);
 
 	if (c_lsn != NULL)
-		memcpy(bp, c_lsn, sizeof(*c_lsn));
+		LOGCOPY_FROMLSN(env, bp, c_lsn);
 	else
 		memset(bp, 0, sizeof(*c_lsn));
 	bp += sizeof(*c_lsn);
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnp == NULL) {
-		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnp != NULL) {
 			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
@@ -682,10 +703,10 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 		 */
 		memcpy(lr->data, logrec.data, logrec.size);
 		rectype |= DB_debug_FLAG;
-		memcpy(logrec.data, &rectype, sizeof(rectype));
+		LOGCOPY_32(env, logrec.data, &rectype);
 
-		if (!IS_REP_CLIENT(dbenv))
-			ret = __log_put(dbenv,
+		if (!IS_REP_CLIENT(env))
+			ret = __log_put(env,
 			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
 #endif
 		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
@@ -695,70 +716,92 @@ __txn_child_log(dbenv, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_child_print(dbenv,
+		(void)__txn_child_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
-	__os_free(dbenv, logrec.data);
+	__os_free(env, logrec.data);
 #else
 	if (is_durable || txnp == NULL)
-		__os_free(dbenv, logrec.data);
+		__os_free(env, logrec.data);
 #endif
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_child_read __P((DB_ENV *, void *, __txn_child_args **));
+ * PUBLIC: int __txn_xa_regop_read __P((ENV *, void *,
+ * PUBLIC:     __txn_xa_regop_args **));
  */
 int
-__txn_child_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
+__txn_xa_regop_read(env, recbuf, argpp)
+	ENV *env;
 	void *recbuf;
-	__txn_child_args **argpp;
+	__txn_xa_regop_args **argpp;
 {
-	__txn_child_args *argp;
+	__txn_xa_regop_args *argp;
 	u_int32_t uinttmp;
 	u_int8_t *bp;
 	int ret;
 
-	if ((ret = __os_malloc(dbenv,
-	    sizeof(__txn_child_args) + sizeof(DB_TXN), &argp)) != 0)
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_xa_regop_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
 	memset(argp->txnp, 0, sizeof(DB_TXN));
 
-	memcpy(&argp->type, bp, sizeof(argp->type));
+	LOGCOPY_32(env, &argp->type, bp);
 	bp += sizeof(argp->type);
 
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
 	bp += sizeof(argp->txnp->txnid);
 
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
 	bp += sizeof(DB_LSN);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->child = (u_int32_t)uinttmp;
+	LOGCOPY_32(env, &argp->opcode, bp);
+	bp += sizeof(argp->opcode);
+
+	memset(&argp->xid, 0, sizeof(argp->xid));
+	LOGCOPY_32(env,&argp->xid.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->xid.data = bp;
+	bp += argp->xid.size;
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->formatID = (int32_t)uinttmp;
 	bp += sizeof(uinttmp);
 
-	memcpy(&argp->c_lsn, bp,  sizeof(argp->c_lsn));
-	bp += sizeof(argp->c_lsn);
+	LOGCOPY_32(env, &argp->gtrid, bp);
+	bp += sizeof(argp->gtrid);
+
+	LOGCOPY_32(env, &argp->bqual, bp);
+	bp += sizeof(argp->bqual);
+
+	LOGCOPY_TOLSN(env, &argp->begin_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->locks, 0, sizeof(argp->locks));
+	LOGCOPY_32(env,&argp->locks.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->locks.data = bp;
+	bp += argp->locks.size;
 
 	*argpp = argp;
-	return (0);
+	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC: int __txn_xa_regop_log __P((ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, u_int32_t, const DBT *, int32_t, u_int32_t, u_int32_t,
  * PUBLIC:     DB_LSN *, const DBT *));
  */
 int
-__txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
+__txn_xa_regop_log(env, txnp, ret_lsnp, flags,
     opcode, xid, formatID, gtrid, bqual, begin_lsn,
     locks)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -771,8 +814,8 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 	const DBT *locks;
 {
 	DBT logrec;
-	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
+	DB_TXNLOGREC *lr;
 	u_int32_t zero, uinttmp, rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
@@ -780,10 +823,9 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 	COMPQUIET(lr, NULL);
 
+	rlsnp = ret_lsnp;
 	rectype = DB___txn_xa_regop;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
@@ -801,7 +843,7 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 		null_lsn.file = null_lsn.offset = 0;
 	} else {
 		if (TAILQ_FIRST(&txnp->kids) != NULL &&
-		    (ret = __txn_activekids(dbenv, rectype, txnp)) != 0)
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
 			return (ret);
 		/*
 		 * We need to assign begin_lsn while holding region mutex.
@@ -821,24 +863,23 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 	    + sizeof(u_int32_t)
 	    + sizeof(*begin_lsn)
 	    + sizeof(u_int32_t) + (locks == NULL ? 0 : locks->size);
-	if (CRYPTO_ON(dbenv)) {
-		npad =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
 		logrec.size += npad;
 	}
 
 	if (is_durable || txnp == NULL) {
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
 			return (ret);
 #ifdef DIAGNOSTIC
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
-			__os_free(dbenv, lr);
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
 			return (ret);
 		}
 #else
@@ -850,64 +891,61 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
-	uinttmp = (u_int32_t)opcode;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &opcode);
+	bp += sizeof(opcode);
 
 	if (xid == NULL) {
 		zero = 0;
-		memcpy(bp, &zero, sizeof(u_int32_t));
+		LOGCOPY_32(env, bp, &zero);
 		bp += sizeof(u_int32_t);
 	} else {
-		memcpy(bp, &xid->size, sizeof(xid->size));
+		LOGCOPY_32(env, bp, &xid->size);
 		bp += sizeof(xid->size);
 		memcpy(bp, xid->data, xid->size);
 		bp += xid->size;
 	}
 
 	uinttmp = (u_int32_t)formatID;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
+	LOGCOPY_32(env,bp, &uinttmp);
 	bp += sizeof(uinttmp);
 
-	uinttmp = (u_int32_t)gtrid;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &gtrid);
+	bp += sizeof(gtrid);
 
-	uinttmp = (u_int32_t)bqual;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &bqual);
+	bp += sizeof(bqual);
 
 	if (begin_lsn != NULL)
-		memcpy(bp, begin_lsn, sizeof(*begin_lsn));
+		LOGCOPY_FROMLSN(env, bp, begin_lsn);
 	else
 		memset(bp, 0, sizeof(*begin_lsn));
 	bp += sizeof(*begin_lsn);
 
 	if (locks == NULL) {
 		zero = 0;
-		memcpy(bp, &zero, sizeof(u_int32_t));
+		LOGCOPY_32(env, bp, &zero);
 		bp += sizeof(u_int32_t);
 	} else {
-		memcpy(bp, &locks->size, sizeof(locks->size));
+		LOGCOPY_32(env, bp, &locks->size);
 		bp += sizeof(locks->size);
 		memcpy(bp, locks->data, locks->size);
 		bp += locks->size;
 	}
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnp == NULL) {
-		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnp != NULL) {
 			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
@@ -922,10 +960,10 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 		 */
 		memcpy(lr->data, logrec.data, logrec.size);
 		rectype |= DB_debug_FLAG;
-		memcpy(logrec.data, &rectype, sizeof(rectype));
+		LOGCOPY_32(env, logrec.data, &rectype);
 
-		if (!IS_REP_CLIENT(dbenv))
-			ret = __log_put(dbenv,
+		if (!IS_REP_CLIENT(env))
+			ret = __log_put(env,
 			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
 #endif
 		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
@@ -935,93 +973,66 @@ __txn_xa_regop_log(dbenv, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_xa_regop_print(dbenv,
+		(void)__txn_xa_regop_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
-	__os_free(dbenv, logrec.data);
+	__os_free(env, logrec.data);
 #else
 	if (is_durable || txnp == NULL)
-		__os_free(dbenv, logrec.data);
+		__os_free(env, logrec.data);
 #endif
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_read __P((DB_ENV *, void *,
- * PUBLIC:     __txn_xa_regop_args **));
+ * PUBLIC: int __txn_recycle_read __P((ENV *, void *, __txn_recycle_args **));
  */
 int
-__txn_xa_regop_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
+__txn_recycle_read(env, recbuf, argpp)
+	ENV *env;
 	void *recbuf;
-	__txn_xa_regop_args **argpp;
+	__txn_recycle_args **argpp;
 {
-	__txn_xa_regop_args *argp;
-	u_int32_t uinttmp;
+	__txn_recycle_args *argp;
 	u_int8_t *bp;
 	int ret;
 
-	if ((ret = __os_malloc(dbenv,
-	    sizeof(__txn_xa_regop_args) + sizeof(DB_TXN), &argp)) != 0)
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_recycle_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
 	memset(argp->txnp, 0, sizeof(DB_TXN));
 
-	memcpy(&argp->type, bp, sizeof(argp->type));
+	LOGCOPY_32(env, &argp->type, bp);
 	bp += sizeof(argp->type);
 
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
 	bp += sizeof(argp->txnp->txnid);
 
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
 	bp += sizeof(DB_LSN);
 
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->opcode = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, &argp->min, bp);
+	bp += sizeof(argp->min);
 
-	memset(&argp->xid, 0, sizeof(argp->xid));
-	memcpy(&argp->xid.size, bp, sizeof(u_int32_t));
-	bp += sizeof(u_int32_t);
-	argp->xid.data = bp;
-	bp += argp->xid.size;
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->formatID = (int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->gtrid = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->bqual = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&argp->begin_lsn, bp,  sizeof(argp->begin_lsn));
-	bp += sizeof(argp->begin_lsn);
-
-	memset(&argp->locks, 0, sizeof(argp->locks));
-	memcpy(&argp->locks.size, bp, sizeof(u_int32_t));
-	bp += sizeof(u_int32_t);
-	argp->locks.data = bp;
-	bp += argp->locks.size;
+	LOGCOPY_32(env, &argp->max, bp);
+	bp += sizeof(argp->max);
 
 	*argpp = argp;
-	return (0);
+	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_recycle_log __P((DB_ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC: int __txn_recycle_log __P((ENV *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, u_int32_t, u_int32_t));
  */
 int
-__txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
+__txn_recycle_log(env, txnp, ret_lsnp, flags,
     min, max)
-	DB_ENV *dbenv;
+	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
@@ -1029,19 +1040,18 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 	u_int32_t max;
 {
 	DBT logrec;
-	DB_TXNLOGREC *lr;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
-	u_int32_t uinttmp, rectype, txn_num;
+	DB_TXNLOGREC *lr;
+	u_int32_t rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
 	int is_durable, ret;
 
 	COMPQUIET(lr, NULL);
 
+	rlsnp = ret_lsnp;
 	rectype = DB___txn_recycle;
 	npad = 0;
-	rlsnp = ret_lsnp;
-
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
@@ -1059,7 +1069,7 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 		null_lsn.file = null_lsn.offset = 0;
 	} else {
 		if (TAILQ_FIRST(&txnp->kids) != NULL &&
-		    (ret = __txn_activekids(dbenv, rectype, txnp)) != 0)
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
 			return (ret);
 		/*
 		 * We need to assign begin_lsn while holding region mutex.
@@ -1074,24 +1084,23 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t);
-	if (CRYPTO_ON(dbenv)) {
-		npad =
-		    ((DB_CIPHER *)dbenv->crypto_handle)->adj_size(logrec.size);
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
 		logrec.size += npad;
 	}
 
 	if (is_durable || txnp == NULL) {
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0)
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
 			return (ret);
 	} else {
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
 			return (ret);
 #ifdef DIAGNOSTIC
 		if ((ret =
-		    __os_malloc(dbenv, logrec.size, &logrec.data)) != 0) {
-			__os_free(dbenv, lr);
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
 			return (ret);
 		}
 #else
@@ -1103,28 +1112,26 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 
 	bp = logrec.data;
 
-	memcpy(bp, &rectype, sizeof(rectype));
+	LOGCOPY_32(env, bp, &rectype);
 	bp += sizeof(rectype);
 
-	memcpy(bp, &txn_num, sizeof(txn_num));
+	LOGCOPY_32(env, bp, &txn_num);
 	bp += sizeof(txn_num);
 
-	memcpy(bp, lsnp, sizeof(DB_LSN));
+	LOGCOPY_FROMLSN(env, bp, lsnp);
 	bp += sizeof(DB_LSN);
 
-	uinttmp = (u_int32_t)min;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &min);
+	bp += sizeof(min);
 
-	uinttmp = (u_int32_t)max;
-	memcpy(bp, &uinttmp, sizeof(uinttmp));
-	bp += sizeof(uinttmp);
+	LOGCOPY_32(env, bp, &max);
+	bp += sizeof(max);
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
 
 	if (is_durable || txnp == NULL) {
-		if ((ret = __log_put(dbenv, rlsnp,(DBT *)&logrec,
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
 		    flags | DB_LOG_NOCOPY)) == 0 && txnp != NULL) {
 			*lsnp = *rlsnp;
 			if (rlsnp != ret_lsnp)
@@ -1139,10 +1146,10 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 		 */
 		memcpy(lr->data, logrec.data, logrec.size);
 		rectype |= DB_debug_FLAG;
-		memcpy(logrec.data, &rectype, sizeof(rectype));
+		LOGCOPY_32(env, logrec.data, &rectype);
 
-		if (!IS_REP_CLIENT(dbenv))
-			ret = __log_put(dbenv,
+		if (!IS_REP_CLIENT(env))
+			ret = __log_put(env,
 			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
 #endif
 		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
@@ -1152,87 +1159,42 @@ __txn_recycle_log(dbenv, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_recycle_print(dbenv,
+		(void)__txn_recycle_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
 #ifdef DIAGNOSTIC
-	__os_free(dbenv, logrec.data);
+	__os_free(env, logrec.data);
 #else
 	if (is_durable || txnp == NULL)
-		__os_free(dbenv, logrec.data);
+		__os_free(env, logrec.data);
 #endif
 	return (ret);
 }
 
 /*
- * PUBLIC: int __txn_recycle_read __P((DB_ENV *, void *,
- * PUBLIC:     __txn_recycle_args **));
+ * PUBLIC: int __txn_init_recover __P((ENV *, DB_DISTAB *));
  */
 int
-__txn_recycle_read(dbenv, recbuf, argpp)
-	DB_ENV *dbenv;
-	void *recbuf;
-	__txn_recycle_args **argpp;
-{
-	__txn_recycle_args *argp;
-	u_int32_t uinttmp;
-	u_int8_t *bp;
-	int ret;
-
-	if ((ret = __os_malloc(dbenv,
-	    sizeof(__txn_recycle_args) + sizeof(DB_TXN), &argp)) != 0)
-		return (ret);
-	bp = recbuf;
-	argp->txnp = (DB_TXN *)&argp[1];
-	memset(argp->txnp, 0, sizeof(DB_TXN));
-
-	memcpy(&argp->type, bp, sizeof(argp->type));
-	bp += sizeof(argp->type);
-
-	memcpy(&argp->txnp->txnid, bp, sizeof(argp->txnp->txnid));
-	bp += sizeof(argp->txnp->txnid);
-
-	memcpy(&argp->prev_lsn, bp, sizeof(DB_LSN));
-	bp += sizeof(DB_LSN);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->min = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	memcpy(&uinttmp, bp, sizeof(uinttmp));
-	argp->max = (u_int32_t)uinttmp;
-	bp += sizeof(uinttmp);
-
-	*argpp = argp;
-	return (0);
-}
-
-/*
- * PUBLIC: int __txn_init_recover __P((DB_ENV *, int (***)(DB_ENV *,
- * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
- */
-int
-__txn_init_recover(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__txn_init_recover(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
 	int ret;
 
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_regop_recover, DB___txn_regop)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_ckp_recover, DB___txn_ckp)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_child_recover, DB___txn_child)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_xa_regop_recover, DB___txn_xa_regop)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_recycle_recover, DB___txn_recycle)) != 0)
 		return (ret);
 	return (0);

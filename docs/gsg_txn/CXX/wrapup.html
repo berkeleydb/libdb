@@ -138,8 +138,7 @@
                 Spawn off worker threads. How many of these you need and
                 how they split their DB workload is entirely up to your
                 application's requirements. However, any worker threads
-                that perform write operations against your databases will do
-                the following:
+                that perform write operations will do the following:
             </p>
               <div class="orderedlist">
                 <ol type="a">
@@ -151,7 +150,7 @@
                   <li>
                     <p>
                         Perform one or more read and write
-                        operations against your databases.
+                        operations.
                     </p>
                   </li>
                   <li>
@@ -193,7 +192,7 @@
                   </li>
                   <li>
                     <p>
-                        Close your databases
+                            Close your databases.
                     </p>
                   </li>
                   <li>
@@ -209,7 +208,7 @@
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
-            Robust applications should monitor their database worker threads to
+                Robust DB applications should monitor their worker threads to
             make sure they have not died unexpectedly. If a thread does
             terminate abnormally, you must shutdown all your worker threads
             and then run normal recovery (you will have to reopen your

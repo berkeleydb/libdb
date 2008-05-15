@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: SampleDatabase.java,v 12.6 2007/05/17 15:15:35 bostic Exp $
+ * $Id: SampleDatabase.java,v 12.8 2008/02/07 17:12:22 mark Exp $
  */
 
 package collections.ship.marshal;
@@ -22,6 +22,7 @@ import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.ForeignKeyDeleteAction;
 import com.sleepycat.db.SecondaryConfig;
 import com.sleepycat.db.SecondaryDatabase;
 
@@ -110,25 +111,26 @@ public class SampleDatabase {
                                                          Supplier.class,
                                                          Supplier.CITY_KEY));
         supplierByCityDb = env.openSecondaryDatabase(null, SUPPLIER_CITY_INDEX,
-                                                     null,
-                                                     supplierDb,
+                                                     null, supplierDb,
                                                      secConfig);
 
+        secConfig.setForeignKeyDatabase(partDb);
+        secConfig.setForeignKeyDeleteAction(ForeignKeyDeleteAction.CASCADE);
         secConfig.setKeyCreator(new MarshalledKeyCreator(javaCatalog,
                                                          Shipment.class,
                                                          Shipment.PART_KEY));
         shipmentByPartDb = env.openSecondaryDatabase(null, SHIPMENT_PART_INDEX,
-                                                     null,
-                                                     shipmentDb,
+                                                     null, shipmentDb,
                                                      secConfig);
 
+        secConfig.setForeignKeyDatabase(supplierDb);
+        secConfig.setForeignKeyDeleteAction(ForeignKeyDeleteAction.CASCADE);
         secConfig.setKeyCreator(new MarshalledKeyCreator(javaCatalog,
                                                          Shipment.class,
                                                      Shipment.SUPPLIER_KEY));
         shipmentBySupplierDb = env.openSecondaryDatabase(null,
                                                      SHIPMENT_SUPPLIER_INDEX,
-                                                     null,
-                                                     shipmentDb,
+                                                     null, shipmentDb,
                                                      secConfig);
     }
 

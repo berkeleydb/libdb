@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: client.c,v 12.11 2007/05/17 15:15:51 bostic Exp $
+ * $Id: client.c,v 12.16 2008/01/08 20:58:49 bostic Exp $
  */
 
 #include "db_config.h"
@@ -24,7 +24,7 @@
 #include "dbinc_auto/rpc_client_ext.h"
 
 static int __dbcl_c_destroy __P((DBC *));
-static int __dbcl_txn_close __P((DB_ENV *));
+static int __dbcl_txn_close __P((ENV *));
 
 /*
  * __dbcl_env_set_rpc_server --
@@ -42,18 +42,21 @@ __dbcl_env_set_rpc_server(dbenv, clnt, host, tsec, ssec, flags)
 	u_int32_t flags;
 {
 	CLIENT *cl;
+	ENV *env;
 	struct timeval tp;
 
 	COMPQUIET(flags, 0);
 
+	env = dbenv->env;
+
 #ifdef HAVE_VXWORKS
 	if (rpcTaskInit() != 0) {
-		__db_errx(dbenv, "Could not initialize VxWorks RPC");
+		__db_errx(env, "Could not initialize VxWorks RPC");
 		return (ERROR);
 	}
 #endif
 	if (RPC_ON(dbenv)) {
-		__db_errx(dbenv, "Already set an RPC handle");
+		__db_errx(env, "Already set an RPC handle");
 		return (EINVAL);
 	}
 	/*
@@ -63,7 +66,7 @@ __dbcl_env_set_rpc_server(dbenv, clnt, host, tsec, ssec, flags)
 	if (clnt == NULL) {
 		if ((cl = clnt_create((char *)host, DB_RPC_SERVERPROG,
 		    DB_RPC_SERVERVERS, "tcp")) == NULL) {
-			__db_errx(dbenv, clnt_spcreateerror((char *)host));
+			__db_errx(env, clnt_spcreateerror((char *)host));
 			return (DB_NOSERVER);
 		}
 		if (tsec != 0) {
@@ -98,6 +101,7 @@ __dbcl_env_close_wrap(dbenv, flags)
 
 	ret = __dbcl_env_close(dbenv, flags);
 	t_ret = __dbcl_refresh(dbenv);
+	__db_env_destroy(dbenv);
 	if (ret == 0 && t_ret != 0)
 		ret = t_ret;
 	return (ret);
@@ -119,17 +123,20 @@ __dbcl_env_open_wrap(dbenv, home, flags, mode)
 	u_int32_t flags;
 	int mode;
 {
+	ENV *env;
 	int ret;
 
+	env = dbenv->env;
+
 	if (LF_ISSET(DB_THREAD)) {
-		__db_errx(dbenv, "DB_THREAD not allowed on RPC clients");
+		__db_errx(env, "DB_THREAD not allowed on RPC clients");
 		return (EINVAL);
 	}
 
 	if ((ret = __env_config(dbenv, home, flags, mode)) != 0)
 		return (ret);
 
-	return (__dbcl_env_open(dbenv, dbenv->db_home, flags, mode));
+	return (__dbcl_env_open(dbenv, env->db_home, flags, mode));
 }
 
 /*
@@ -166,26 +173,46 @@ __dbcl_refresh(dbenv)
 	DB_ENV *dbenv;
 {
 	CLIENT *cl;
+	ENV *env;
 	int ret;
+	char **p;
 
 	cl = (CLIENT *)dbenv->cl_handle;
+	env = dbenv->env;
 
 	ret = 0;
-	if (dbenv->tx_handle != NULL) {
+	if (env->tx_handle != NULL) {
 		/*
 		 * We only need to free up our stuff, the caller
 		 * of this function will call the server who will
 		 * do all the real work.
 		 */
-		ret = __dbcl_txn_close(dbenv);
-		dbenv->tx_handle = NULL;
+		ret = __dbcl_txn_close(env);
+		env->tx_handle = NULL;
 	}
 	if (!F_ISSET(dbenv, DB_ENV_RPCCLIENT_GIVEN) && cl != NULL)
 		clnt_destroy(cl);
 	dbenv->cl_handle = NULL;
-	if (dbenv->db_home != NULL) {
-		__os_free(dbenv, dbenv->db_home);
-		dbenv->db_home = NULL;
+	/*
+	 * Release any string-based configuration parameters we've copied.
+	 * This section is copied from __env_close.
+	 */
+	if (dbenv->db_log_dir != NULL)
+		__os_free(env, dbenv->db_log_dir);
+	dbenv->db_log_dir = NULL;
+	if (dbenv->db_tmp_dir != NULL)
+		__os_free(env, dbenv->db_tmp_dir);
+	dbenv->db_tmp_dir = NULL;
+	if (dbenv->db_data_dir != NULL) {
+		for (p = dbenv->db_data_dir; *p != NULL; ++p)
+			__os_free(env, *p);
+		__os_free(env, dbenv->db_data_dir);
+		dbenv->db_data_dir = NULL;
+		dbenv->data_next = 0;
+	}
+	if (env->db_home != NULL) {
+		__os_free(env, env->db_home);
+		env->db_home = NULL;
 	}
 	return (ret);
 }
@@ -195,20 +222,20 @@ __dbcl_refresh(dbenv)
  *	Copy the returned data into the user's DBT, handling allocation flags,
  *	but not DB_DBT_PARTIAL.
  *
- * PUBLIC: int __dbcl_retcopy __P((DB_ENV *, DBT *,
+ * PUBLIC: int __dbcl_retcopy __P((ENV *, DBT *,
  * PUBLIC:    void *, u_int32_t, void **, u_int32_t *));
  */
 int
-__dbcl_retcopy(dbenv, dbt, data, len, memp, memsize)
-	DB_ENV *dbenv;
+__dbcl_retcopy(env, dbt, data, len, memp, memsize)
+	ENV *env;
 	DBT *dbt;
 	void *data;
 	u_int32_t len;
 	void **memp;
 	u_int32_t *memsize;
 {
-	int ret;
 	u_int32_t orig_flags;
+	int ret;
 
 	/*
 	 * The RPC server handles DB_DBT_PARTIAL, so we mask it out here to
@@ -222,7 +249,7 @@ __dbcl_retcopy(dbenv, dbt, data, len, memp, memsize)
 	    memcmp(dbt->data, data, len) == 0)
 		ret = 0;
 	else
-		ret = __db_retcopy(dbenv, dbt, data, len, memp, memsize);
+		ret = __db_retcopy(env, dbt, data, len, memp, memsize);
 	dbt->flags = orig_flags;
 	return (ret);
 }
@@ -232,15 +259,15 @@ __dbcl_retcopy(dbenv, dbt, data, len, memp, memsize)
  *	Clean up an environment's transactions.
  */
 static int
-__dbcl_txn_close(dbenv)
-	DB_ENV *dbenv;
+__dbcl_txn_close(env)
+	ENV *env;
 {
 	DB_TXN *txnp;
 	DB_TXNMGR *tmgrp;
 	int ret;
 
 	ret = 0;
-	tmgrp = dbenv->tx_handle;
+	tmgrp = env->tx_handle;
 
 	/*
 	 * This function can only be called once per process (i.e., not
@@ -252,9 +279,8 @@ __dbcl_txn_close(dbenv)
 	while ((txnp = TAILQ_FIRST(&tmgrp->txn_chain)) != NULL)
 		__dbcl_txn_end(txnp);
 
-	__os_free(dbenv, tmgrp);
+	__os_free(env, tmgrp);
 	return (ret);
-
 }
 
 /*
@@ -268,12 +294,12 @@ void
 __dbcl_txn_end(txnp)
 	DB_TXN *txnp;
 {
-	DB_ENV *dbenv;
 	DB_TXN *kids;
 	DB_TXNMGR *mgr;
+	ENV *env;
 
 	mgr = txnp->mgrp;
-	dbenv = mgr->dbenv;
+	env = mgr->env;
 
 	/*
 	 * First take care of any kids we have
@@ -292,23 +318,23 @@ __dbcl_txn_end(txnp)
 	if (txnp->parent != NULL)
 		TAILQ_REMOVE(&txnp->parent->kids, txnp, klinks);
 	TAILQ_REMOVE(&mgr->txn_chain, txnp, links);
-	__os_free(dbenv, txnp);
+	__os_free(env, txnp);
 }
 
 /*
  * __dbcl_txn_setup --
  *	Setup a client transaction structure.
  *
- * PUBLIC: void __dbcl_txn_setup __P((DB_ENV *, DB_TXN *, DB_TXN *, u_int32_t));
+ * PUBLIC: void __dbcl_txn_setup __P((ENV *, DB_TXN *, DB_TXN *, u_int32_t));
  */
 void
-__dbcl_txn_setup(dbenv, txn, parent, id)
-	DB_ENV *dbenv;
+__dbcl_txn_setup(env, txn, parent, id)
+	ENV *env;
 	DB_TXN *txn;
 	DB_TXN *parent;
 	u_int32_t id;
 {
-	txn->mgrp = dbenv->tx_handle;
+	txn->mgrp = env->tx_handle;
 	txn->parent = parent;
 	txn->txnid = id;
 
@@ -342,17 +368,19 @@ __dbcl_c_destroy(dbc)
 	DBC *dbc;
 {
 	DB *dbp;
+	ENV *env;
 
 	dbp = dbc->dbp;
+	env = dbc->env;
 
 	TAILQ_REMOVE(&dbp->free_queue, dbc, links);
 	/* Discard any memory used to store returned data. */
 	if (dbc->my_rskey.data != NULL)
-		__os_free(dbc->dbp->dbenv, dbc->my_rskey.data);
+		__os_free(env, dbc->my_rskey.data);
 	if (dbc->my_rkey.data != NULL)
-		__os_free(dbc->dbp->dbenv, dbc->my_rkey.data);
+		__os_free(env, dbc->my_rkey.data);
 	if (dbc->my_rdata.data != NULL)
-		__os_free(dbc->dbp->dbenv, dbc->my_rdata.data);
+		__os_free(env, dbc->my_rdata.data);
 	__os_free(NULL, dbc);
 
 	return (0);
@@ -403,7 +431,7 @@ __dbcl_c_setup(cl_id, dbp, dbcp)
 		TAILQ_REMOVE(&dbp->free_queue, dbc, links);
 	else {
 		if ((ret =
-		    __os_calloc(dbp->dbenv, 1, sizeof(DBC), &dbc)) != 0) {
+		    __os_calloc(dbp->env, 1, sizeof(DBC), &dbc)) != 0) {
 			/*
 			 * If we die here, set up a tmp dbc to call the
 			 * server to shut down that cursor.
@@ -423,7 +451,10 @@ __dbcl_c_setup(cl_id, dbp, dbcp)
 		 */
 		dbc->am_destroy = __dbcl_c_destroy;
 	}
+
 	dbc->cl_id = cl_id;
+	dbc->dbenv = dbp->dbenv;
+	dbc->env = dbp->env;
 	dbc->dbp = dbp;
 	TAILQ_INSERT_TAIL(&dbp->active_queue, dbc, links);
 	*dbcp = dbc;
@@ -440,8 +471,11 @@ int
 __dbcl_dbclose_common(dbp)
 	DB *dbp;
 {
-	int ret, t_ret;
 	DBC *dbc;
+	ENV *env;
+	int ret, t_ret;
+
+	env = dbp->env;
 
 	/*
 	 * Go through the active cursors and call the cursor recycle routine,
@@ -463,11 +497,11 @@ __dbcl_dbclose_common(dbp)
 	TAILQ_INIT(&dbp->active_queue);
 	/* Discard any memory used to store returned data. */
 	if (dbp->my_rskey.data != NULL)
-		__os_free(dbp->dbenv, dbp->my_rskey.data);
+		__os_free(env, dbp->my_rskey.data);
 	if (dbp->my_rkey.data != NULL)
-		__os_free(dbp->dbenv, dbp->my_rkey.data);
+		__os_free(env, dbp->my_rkey.data);
 	if (dbp->my_rdata.data != NULL)
-		__os_free(dbp->dbenv, dbp->my_rdata.data);
+		__os_free(env, dbp->my_rdata.data);
 
 	memset(dbp, CLEAR_BYTE, sizeof(*dbp));
 	__os_free(NULL, dbp);

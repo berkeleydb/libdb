@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: TupleTupleMarshalledKeyCreator.java,v 12.5 2007/05/04 00:28:25 mark Exp $
+ * $Id: TupleTupleMarshalledKeyCreator.java,v 12.7 2008/02/07 17:12:25 mark Exp $
  */
 
 package com.sleepycat.bind.tuple;
@@ -61,7 +61,6 @@ public class TupleTupleMarshalledKeyCreator extends TupleTupleKeyCreator {
     public boolean nullifyForeignKey(TupleInput dataInput,
                                      TupleOutput dataOutput) {
 
-        // XXX null primary key input below may be unexpected by the binding
         MarshalledTupleKeyEntity entity = (MarshalledTupleKeyEntity)
             binding.entryToObject(null, dataInput);
         if (entity.nullifyForeignKey(keyName)) {

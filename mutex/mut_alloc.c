@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_alloc.c,v 12.18 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_alloc.c,v 12.23 2008/02/27 17:00:33 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,11 +15,11 @@
  * __mutex_alloc --
  *	Allocate a mutex from the mutex region.
  *
- * PUBLIC: int __mutex_alloc __P((DB_ENV *, int, u_int32_t, db_mutex_t *));
+ * PUBLIC: int __mutex_alloc __P((ENV *, int, u_int32_t, db_mutex_t *));
  */
 int
-__mutex_alloc(dbenv, alloc_id, flags, indxp)
-	DB_ENV *dbenv;
+__mutex_alloc(env, alloc_id, flags, indxp)
+	ENV *env;
 	int alloc_id;
 	u_int32_t flags;
 	db_mutex_t *indxp;
@@ -31,23 +31,27 @@ __mutex_alloc(dbenv, alloc_id, flags, indxp)
 
 	/*
 	 * If this is not an application lock, and we've turned off locking,
-	 * or the DB_ENV handle isn't thread-safe, and this is a thread lock
+	 * or the ENV handle isn't thread-safe, and this is a thread lock
 	 * or the environment isn't multi-process by definition, there's no
 	 * need to mutex at all.
 	 */
 	if (alloc_id != MTX_APPLICATION &&
-	    (F_ISSET(dbenv, DB_ENV_NOLOCKING) ||
-	    (!F_ISSET(dbenv, DB_ENV_THREAD) &&
+	    (F_ISSET(env->dbenv, DB_ENV_NOLOCKING) ||
+	    (!F_ISSET(env, ENV_THREAD) &&
 	    (LF_ISSET(DB_MUTEX_PROCESS_ONLY) ||
-	    F_ISSET(dbenv, DB_ENV_PRIVATE)))))
+	    F_ISSET(env, ENV_PRIVATE)))))
 		return (0);
+
+	/* Private environments never share mutexes. */
+	if (F_ISSET(env, ENV_PRIVATE))
+		LF_SET(DB_MUTEX_PROCESS_ONLY);
 
 	/*
 	 * If we have a region in which to allocate the mutexes, lock it and
 	 * do the allocation.
 	 */
-	if (MUTEX_ON(dbenv))
-		return (__mutex_alloc_int(dbenv, 1, alloc_id, flags, indxp));
+	if (MUTEX_ON(env))
+		return (__mutex_alloc_int(env, 1, alloc_id, flags, indxp));
 
 	/*
 	 * We have to allocate some number of mutexes before we have a region
@@ -57,22 +61,22 @@ __mutex_alloc(dbenv, alloc_id, flags, indxp)
 	 * The list of mutexes to alloc is maintained in pairs: first the
 	 * alloc_id argument, second the flags passed in by the caller.
 	 */
-	if (dbenv->mutex_iq == NULL) {
-		dbenv->mutex_iq_max = 50;
-		if ((ret = __os_calloc(dbenv, dbenv->mutex_iq_max,
-		    sizeof(dbenv->mutex_iq[0]), &dbenv->mutex_iq)) != 0)
+	if (env->mutex_iq == NULL) {
+		env->mutex_iq_max = 50;
+		if ((ret = __os_calloc(env, env->mutex_iq_max,
+		    sizeof(env->mutex_iq[0]), &env->mutex_iq)) != 0)
 			return (ret);
-	} else if (dbenv->mutex_iq_next == dbenv->mutex_iq_max - 1) {
-		dbenv->mutex_iq_max *= 2;
-		if ((ret = __os_realloc(dbenv,
-		    dbenv->mutex_iq_max * sizeof(dbenv->mutex_iq[0]),
-		    &dbenv->mutex_iq)) != 0)
+	} else if (env->mutex_iq_next == env->mutex_iq_max - 1) {
+		env->mutex_iq_max *= 2;
+		if ((ret = __os_realloc(env,
+		    env->mutex_iq_max * sizeof(env->mutex_iq[0]),
+		    &env->mutex_iq)) != 0)
 			return (ret);
 	}
-	*indxp = dbenv->mutex_iq_next + 1;	/* Correct for MUTEX_INVALID. */
-	dbenv->mutex_iq[dbenv->mutex_iq_next].alloc_id = alloc_id;
-	dbenv->mutex_iq[dbenv->mutex_iq_next].flags = flags;
-	++dbenv->mutex_iq_next;
+	*indxp = env->mutex_iq_next + 1;	/* Correct for MUTEX_INVALID. */
+	env->mutex_iq[env->mutex_iq_next].alloc_id = alloc_id;
+	env->mutex_iq[env->mutex_iq_next].flags = flags;
+	++env->mutex_iq_next;
 
 	return (0);
 }
@@ -82,21 +86,23 @@ __mutex_alloc(dbenv, alloc_id, flags, indxp)
  *	Internal routine to allocate a mutex.
  *
  * PUBLIC: int __mutex_alloc_int
- * PUBLIC:	__P((DB_ENV *, int, int, u_int32_t, db_mutex_t *));
+ * PUBLIC:	__P((ENV *, int, int, u_int32_t, db_mutex_t *));
  */
 int
-__mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
-	DB_ENV *dbenv;
+__mutex_alloc_int(env, locksys, alloc_id, flags, indxp)
+	ENV *env;
 	int locksys, alloc_id;
 	u_int32_t flags;
 	db_mutex_t *indxp;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	int ret;
 
-	mtxmgr = dbenv->mutex_handle;
+	dbenv = env->dbenv;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	ret = 0;
 
@@ -106,19 +112,20 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
 	 * mutex initialization may require a system call.
 	 */
 	if (locksys)
-		MUTEX_SYSTEM_LOCK(dbenv);
+		MUTEX_SYSTEM_LOCK(env);
 
 	if (mtxregion->mutex_next == MUTEX_INVALID) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "unable to allocate memory for mutex; resize mutex region");
 		if (locksys)
-			MUTEX_SYSTEM_UNLOCK(dbenv);
+			MUTEX_SYSTEM_UNLOCK(env);
 		return (ENOMEM);
 	}
 
 	*indxp = mtxregion->mutex_next;
 	mutexp = MUTEXP_SET(*indxp);
-	DB_ASSERT(dbenv, ((uintptr_t)mutexp & (dbenv->mutex_align - 1)) == 0);
+	DB_ASSERT(env,
+	    ((uintptr_t)mutexp & (dbenv->mutex_align - 1)) == 0);
 	mtxregion->mutex_next = mutexp->mutex_next_link;
 
 	--mtxregion->stat.st_mutex_free;
@@ -127,7 +134,7 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
 		mtxregion->stat.st_mutex_inuse_max =
 		    mtxregion->stat.st_mutex_inuse;
 	if (locksys)
-		MUTEX_SYSTEM_UNLOCK(dbenv);
+		MUTEX_SYSTEM_UNLOCK(env);
 
 	/* Initialize the mutex. */
 	memset(mutexp, 0, sizeof(*mutexp));
@@ -148,8 +155,8 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
 	COMPQUIET(alloc_id, 0);
 #endif
 
-	if ((ret = __mutex_init(dbenv, *indxp, flags)) != 0)
-		(void)__mutex_free_int(dbenv, locksys, indxp);
+	if ((ret = __mutex_init(env, *indxp, flags)) != 0)
+		(void)__mutex_free_int(env, locksys, indxp);
 
 	return (ret);
 }
@@ -158,11 +165,11 @@ __mutex_alloc_int(dbenv, locksys, alloc_id, flags, indxp)
  * __mutex_free --
  *	Free a mutex.
  *
- * PUBLIC: int __mutex_free __P((DB_ENV *, db_mutex_t *));
+ * PUBLIC: int __mutex_free __P((ENV *, db_mutex_t *));
  */
 int
-__mutex_free(dbenv, indxp)
-	DB_ENV *dbenv;
+__mutex_free(env, indxp)
+	ENV *env;
 	db_mutex_t *indxp;
 {
 	/*
@@ -178,21 +185,21 @@ __mutex_free(dbenv, indxp)
 	 *
 	 * If the mutex has never been configured, we're done.
 	 */
-	if (!MUTEX_ON(dbenv) || *indxp == MUTEX_INVALID)
+	if (!MUTEX_ON(env) || *indxp == MUTEX_INVALID)
 		return (0);
 
-	return (__mutex_free_int(dbenv, 1, indxp));
+	return (__mutex_free_int(env, 1, indxp));
 }
 
 /*
  * __mutex_free_int --
  *	Internal routine to free a mutex.
  *
- * PUBLIC: int __mutex_free_int __P((DB_ENV *, int, db_mutex_t *));
+ * PUBLIC: int __mutex_free_int __P((ENV *, int, db_mutex_t *));
  */
 int
-__mutex_free_int(dbenv, locksys, indxp)
-	DB_ENV *dbenv;
+__mutex_free_int(env, locksys, indxp)
+	ENV *env;
 	int locksys;
 	db_mutex_t *indxp;
 {
@@ -205,17 +212,17 @@ __mutex_free_int(dbenv, locksys, indxp)
 	mutex = *indxp;
 	*indxp = MUTEX_INVALID;
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
-	DB_ASSERT(dbenv, F_ISSET(mutexp, DB_MUTEX_ALLOCATED));
+	DB_ASSERT(env, F_ISSET(mutexp, DB_MUTEX_ALLOCATED));
 	F_CLR(mutexp, DB_MUTEX_ALLOCATED);
 
-	ret = __mutex_destroy(dbenv, mutex);
+	ret = __mutex_destroy(env, mutex);
 
 	if (locksys)
-		MUTEX_SYSTEM_LOCK(dbenv);
+		MUTEX_SYSTEM_LOCK(env);
 
 	/* Link the mutex on the head of the free list. */
 	mutexp->mutex_next_link = mtxregion->mutex_next;
@@ -224,7 +231,7 @@ __mutex_free_int(dbenv, locksys, indxp)
 	--mtxregion->stat.st_mutex_inuse;
 
 	if (locksys)
-		MUTEX_SYSTEM_UNLOCK(dbenv);
+		MUTEX_SYSTEM_UNLOCK(env);
 
 	return (ret);
 }

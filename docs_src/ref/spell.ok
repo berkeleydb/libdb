@@ -161,6 +161,7 @@ ENOMEM
 ENV
 EOF
 EPOCROOT
+EPOCSTACKSIZE
 ERL
 EXCL
 EXE
@@ -661,6 +662,7 @@ cksum
 classpath
 clib
 clnt
+clockskew
 cmp
 cmpdi
 cnt
@@ -702,6 +704,7 @@ datadir
 datafiles
 datastore
 dave
+david
 db
 db's
 dbAppendRecno
@@ -912,6 +915,7 @@ inode
 insdel
 instanceof
 int
+interdir
 interoperation
 introae
 io
@@ -1235,6 +1239,7 @@ rem
 remotehost
 removeAll
 rep
+repapi
 repinit
 repl
 repmgr

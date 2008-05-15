@@ -1,8 +1,9 @@
-m4_comment([$Id: rep_config.so,v 1.4 2007/02/13 19:32:52 bostic Exp $])
+m4_comment([$Id: rep_config.so,v 1.10 2008/01/19 14:12:59 bostic Exp $])
 
 define(M4PAGELOCAL, [dnl
 	rep_set_config, rep_get_config, DB_REP_CONF_BULK,
-	DB_REP_CONF_DELAYCLIENT, DB_REP_CONF_NOAUTOINIT, DB_REP_CONF_NOWAIT])
+	DB_REP_CONF_DELAYCLIENT, DB_REP_CONF_LEASE, DB_REP_CONF_NOAUTOINIT,
+	DB_REP_CONF_NOWAIT, DB_REP_LEASE_EXPIRED, DB_REPMGR_CONF_2SITE_STRICT])
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(rep_set_config),
@@ -27,7 +28,7 @@ subsystem.])
 
 m4_env_config(rep_set_config, replication subsystem, rep_set_config, [dnl
 the method m4_arg(which) parameter as a string; for example,
-"rep_set_config REP_CONF_NOWAIT"])
+"rep_set_config DB_REP_CONF_NOWAIT"])
 
 m4_scope_env(rep_set_config)
 m4_when_any(rep_set_config)
@@ -51,6 +52,16 @@ The client should delay synchronizing to a newly declared master
 (defaults to off).  Clients configured in this way will remain
 unsynchronized until the application calls the m4_refT(rep_sync).])
 
+m4_tag(m4_idef(DB_REP_CONF_LEASE), [dnl
+Master leases will be used for this site (defaults to off).
+m4_p([dnl
+Configuring this option may result in m4_idef(DB_REP_LEASE_EXPIRED)
+error returns from the m4_ref(dbh_get) and m4_refT(dbc_get)s when
+attempting to read entries from a database after the site's master lease
+has expired.])
+m4_when_two(rep_set_config, after, repmgr_start, rep_start)
+Once this option is turned on, it may never be turned off.])
+
 m4_tag(m4_idef(DB_REP_CONF_NOAUTOINIT), [dnl
 The replication master will not automatically re-initialize outdated
 clients (defaults to off).])
@@ -58,6 +69,15 @@ clients (defaults to off).])
 m4_tag(m4_idef(DB_REP_CONF_NOWAIT), [dnl
 m4_db method calls that would normally block while clients are in
 recovery will return errors immediately (defaults to off).])
+
+m4_tag(m4_idef(DB_REPMGR_CONF_2SITE_STRICT), [dnl
+Replication Manager observes the strict "majority" rule in managing
+elections, even in a group with only 2 sites.  This means the client in
+a 2-site group will be unable to take over as master if the original
+master fails or becomes disconnected.  (See the
+m4_link(M4RELDIR/ref/rep/elect, [Elections]) section in the m4_db
+Reference Guide for more information.)  Both sites in the replication
+group should have the same value for this parameter.])
 
 m4_tagend])
 m4_paramend

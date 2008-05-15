@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_rw.c,v 12.19 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_rw.c,v 12.28 2008/02/12 16:08:52 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Do an I/O.
  */
 int
-__os_io(dbenv, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
-	DB_ENV *dbenv;
+__os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
+	ENV *env;
 	int op;
 	DB_FH *fhp;
 	db_pgno_t pgno;
@@ -28,9 +28,11 @@ __os_io(dbenv, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 
 #ifndef DB_WINCE
 	if (__os_is_winnt()) {
-		ULONG64 off;
-		OVERLAPPED over;
+		DB_ENV *dbenv;
 		DWORD nbytes;
+		OVERLAPPED over;
+		ULONG64 off;
+		dbenv = env == NULL ? NULL : env->dbenv;
 		if ((off = relative) == 0)
 			off = (ULONG64)pgsize * pgno;
 		over.Offset = (DWORD)(off & 0xffffffff);
@@ -39,13 +41,18 @@ __os_io(dbenv, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 
 		if (dbenv != NULL &&
 		    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-			__db_msg(dbenv,
+			__db_msg(env,
 			    "fileops: %s %s: %lu bytes at offset %lu",
 			    op == DB_IO_READ ? "read" : "write",
 			    fhp->name, (u_long)io_len, (u_long)off);
 
+		LAST_PANIC_CHECK_BEFORE_IO(env);
+
 		switch (op) {
 		case DB_IO_READ:
+#if defined(HAVE_STATISTICS)
+			++fhp->read_count;
+#endif
 			if (!ReadFile(fhp->handle,
 			    buf, (DWORD)io_len, &nbytes, &over))
 				goto slow;
@@ -54,6 +61,9 @@ __os_io(dbenv, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 #ifdef HAVE_FILESYSTEM_NOTZERO
 			if (__os_fs_notzero())
 				goto slow;
+#endif
+#if defined(HAVE_STATISTICS)
+			++fhp->write_count;
 #endif
 			if (!WriteFile(fhp->handle,
 			    buf, (DWORD)io_len, &nbytes, &over))
@@ -68,21 +78,21 @@ __os_io(dbenv, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 
 slow:
 #endif
-	MUTEX_LOCK(dbenv, fhp->mtx_fh);
+	MUTEX_LOCK(env, fhp->mtx_fh);
 
-	if ((ret = __os_seek(dbenv, fhp, pgno, pgsize, relative)) != 0)
+	if ((ret = __os_seek(env, fhp, pgno, pgsize, relative)) != 0)
 		goto err;
 
 	switch (op) {
 	case DB_IO_READ:
-		ret = __os_read(dbenv, fhp, buf, io_len, niop);
+		ret = __os_read(env, fhp, buf, io_len, niop);
 		break;
 	case DB_IO_WRITE:
-		ret = __os_write(dbenv, fhp, buf, io_len, niop);
+		ret = __os_write(env, fhp, buf, io_len, niop);
 		break;
 	}
 
-err:	MUTEX_UNLOCK(dbenv, fhp->mtx_fh);
+err:	MUTEX_UNLOCK(env, fhp->mtx_fh);
 
 	return (ret);
 }
@@ -92,26 +102,32 @@ err:	MUTEX_UNLOCK(dbenv, fhp->mtx_fh);
  *	Read from a file handle.
  */
 int
-__os_read(dbenv, fhp, addr, len, nrp)
-	DB_ENV *dbenv;
+__os_read(env, fhp, addr, len, nrp)
+	ENV *env;
 	DB_FH *fhp;
 	void *addr;
 	size_t len;
 	size_t *nrp;
 {
-	size_t offset, nr;
+	DB_ENV *dbenv;
 	DWORD count;
-	int ret;
+	size_t offset, nr;
 	u_int8_t *taddr;
+	int ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
 	ret = 0;
 
+#if defined(HAVE_STATISTICS)
+	++fhp->read_count;
+#endif
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: read %s: %lu bytes", fhp->name, (u_long)len);
 
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nr, offset += nr) {
+		LAST_PANIC_CHECK_BEFORE_IO(env);
 		RETRY_CHK((!ReadFile(fhp->handle,
 		    taddr, (DWORD)(len - offset), &count, NULL)), ret);
 		if (count == 0 || ret != 0)
@@ -120,7 +136,7 @@ __os_read(dbenv, fhp, addr, len, nrp)
 	}
 	*nrp = taddr - (u_int8_t *)addr;
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "read: 0x%lx, %lu",
+		__db_syserr(env, ret, "read: 0x%lx, %lu",
 		    P_TO_ULONG(taddr), (u_long)len - offset);
 		ret = __os_posix_err(ret);
 	}
@@ -132,8 +148,8 @@ __os_read(dbenv, fhp, addr, len, nrp)
  *	Write to a file handle.
  */
 int
-__os_write(dbenv, fhp, addr, len, nwp)
-	DB_ENV *dbenv;
+__os_write(env, fhp, addr, len, nwp)
+	ENV *env;
 	DB_FH *fhp;
 	void *addr;
 	size_t len;
@@ -143,10 +159,11 @@ __os_write(dbenv, fhp, addr, len, nwp)
 
 #ifdef HAVE_FILESYSTEM_NOTZERO
 	/* Zero-fill as necessary. */
-	if (__os_fs_notzero() && (ret = __os_zerofill(dbenv, fhp)) != 0)
+	if (__os_fs_notzero() &&
+	    (ret = __db_zero_fill(env, fhp)) != 0)
 		return (ret);
 #endif
-	return (__os_physwrite(dbenv, fhp, addr, len, nwp));
+	return (__os_physwrite(env, fhp, addr, len, nwp));
 }
 
 /*
@@ -154,38 +171,32 @@ __os_write(dbenv, fhp, addr, len, nwp)
  *	Physical write to a file handle.
  */
 int
-__os_physwrite(dbenv, fhp, addr, len, nwp)
-	DB_ENV *dbenv;
+__os_physwrite(env, fhp, addr, len, nwp)
+	ENV *env;
 	DB_FH *fhp;
 	void *addr;
 	size_t len;
 	size_t *nwp;
 {
-	size_t offset, nw;
+	DB_ENV *dbenv;
 	DWORD count;
-	int ret;
+	size_t offset, nw;
 	u_int8_t *taddr;
+	int ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
+	ret = 0;
+
+#if defined(HAVE_STATISTICS)
+	++fhp->write_count;
+#endif
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: write %s: %lu bytes", fhp->name, (u_long)len);
 
-	/*
-	 * Make a last "panic" check.  Imagine a thread of control running in
-	 * Berkeley DB, going to sleep.  Another thread of control decides to
-	 * run recovery because the environment is broken.  The first thing
-	 * recovery does is panic the existing environment, but we only check
-	 * the panic flag when crossing the public API.  If the sleeping thread
-	 * wakes up and writes something, we could have two threads of control
-	 * writing the log files at the same time.  So, before writing, make a
-	 * last panic check.  Obviously, there's still a window, but it's very,
-	 * very small.
-	 */
-	PANIC_CHECK(dbenv);
-
-	ret = 0;
 	for (taddr = addr,
 	    offset = 0; offset < len; taddr += nw, offset += nw) {
+		LAST_PANIC_CHECK_BEFORE_IO(env);
 		RETRY_CHK((!WriteFile(fhp->handle,
 		    taddr, (DWORD)(len - offset), &count, NULL)), ret);
 		if (ret != 0)
@@ -194,11 +205,11 @@ __os_physwrite(dbenv, fhp, addr, len, nwp)
 	}
 	*nwp = len;
 	if (ret != 0) {
-		__db_syserr(dbenv, ret, "write: %#lx, %lu",
+		__db_syserr(env, ret, "write: %#lx, %lu",
 		    P_TO_ULONG(taddr), (u_long)len - offset);
 		ret = __os_posix_err(ret);
 
-		DB_EVENT(dbenv, DB_EVENT_WRITE_FAILED, NULL);
+		DB_EVENT(env, DB_EVENT_WRITE_FAILED, NULL);
 	}
 	return (ret);
 }

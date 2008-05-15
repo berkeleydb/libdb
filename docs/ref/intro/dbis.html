@@ -1,5 +1,5 @@
 <!--$Id: dbis.so,v 10.11 2006/09/19 16:21:42 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Introduction</dl></b></td>
 <td align=right><a href="../intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>What is Berkeley DB?</h3>
+<p align=center><b>What is Berkeley DB?</b></p>
 <p>So far, we've discussed database systems in general terms. It's time
 now to consider Berkeley DB in particular and see how it fits into the
 framework we have introduced. The key question is, what kinds of
@@ -63,7 +62,7 @@ on a network, is much higher than the cost of making a function call.
 Second, because Berkeley DB uses a simple function-call interface for all
 operations, there is no query language to parse, and no execution plan
 to produce.</p>
-<h3>Data Access Services</h3>
+<b>Data Access Services</b>
 <p>Berkeley DB applications can choose the storage structure that best suits the
 application. Berkeley DB supports hash tables, Btrees, simple
 record-number-based storage, and persistent queues. Programmers can
@@ -90,7 +89,7 @@ automatically.</p>
 must deal with those records in creation order. A good example is
 on-line purchasing systems. Orders can enter the system at any time,
 but should generally be filled in the order in which they were placed.</p>
-<h3>Data management services</h3>
+<b>Data management services</b>
 <p>Berkeley DB offers important data management services, including concurrency,
 transactions, and recovery. All of these services work on all of the
 storage structures.</p>
@@ -122,7 +121,7 @@ transaction-protected database access can enable all of the
 subsystems.</p>
 <p>In all these cases, the application uses the same function-call API to
 fetch and update records.</p>
-<h3>Design</h3>
+<b>Design</b>
 <p>Berkeley DB was designed to provide industrial-strength database services to
 application developers, without requiring them to become database
 experts.  It is a classic C-library style <i>toolkit</i>, providing
@@ -152,6 +151,6 @@ increasingly important feature in a world using CGI scripts to deliver
 HTML.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../intro/terrain.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../intro/dbisnot.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

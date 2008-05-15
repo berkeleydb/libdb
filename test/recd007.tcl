@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: recd007.tcl,v 12.8 2007/05/17 15:15:55 bostic Exp $
+# $Id: recd007.tcl,v 12.11 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	recd007
 # TEST	File create/delete tests.
@@ -12,21 +12,28 @@
 # TEST	points and make sure that the transaction doesn't commit.  We
 # TEST	then need to recover and make sure the file is correctly existing
 # TEST	or not, as the case may be.
-proc recd007 { method args} {
+proc recd007 { method {select 0} args } {
 	global fixed_len
 	source ./include.tcl
+
+	set envargs ""
+	set zero_idx [lsearch -exact $args "-zero_log"]
+	if { $zero_idx != -1 } {
+		set args [lreplace $args $zero_idx $zero_idx]
+		set envargs "-zero_log"
+	}
 
 	set orig_fixed_len $fixed_len
 	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
 
-	puts "Recd007: $method operation/transaction tests"
+	puts "Recd007: $method operation/transaction tests ($envargs)"
 
 	# Create the database and environment.
 	env_cleanup $testdir
 
 	set testfile recd007.db
-	set flags "-create -txn -home $testdir"
+	set flags "-create -txn -home $testdir $envargs"
 
 	puts "\tRecd007.a: creating environment"
 	set env_cmd "berkdb_env $flags"

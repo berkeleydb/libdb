@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: dbm.c,v 12.11 2007/05/17 15:15:07 bostic Exp $
+ * $Id: dbm.c,v 12.14 2008/01/11 20:49:58 bostic Exp $
  */
 
 #define	DB_DBM_HSEARCH	1
@@ -89,8 +89,7 @@ __db_dbm_init(file)
 {
 	if (__cur_db != NULL)
 		dbm_close(__cur_db);
-	if ((__cur_db =
-	    dbm_open(file, O_CREAT | O_RDWR, __db_omode(OWNER_RW))) != NULL)
+	if ((__cur_db = dbm_open(file, O_CREAT | O_RDWR, DB_MODE_600)) != NULL)
 		return (0);
 	if ((__cur_db = dbm_open(file, O_RDONLY, 0)) != NULL)
 		return (0);
@@ -231,7 +230,7 @@ __db_ndbm_open(file, oflags, mode)
 	    (ret = dbp->set_h_ffactor(dbp, 40)) != 0 ||
 	    (ret = dbp->set_h_nelem(dbp, 1)) != 0 ||
 	    (ret = dbp->open(dbp, NULL,
-	    path, NULL, DB_HASH, __db_oflags(oflags), mode)) != 0) {
+	    path, NULL, DB_HASH, __db_openflags(oflags), mode)) != 0) {
 		__os_set_errno(ret);
 		return (NULL);
 	}

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_rename.c,v 12.10 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_rename.c,v 12.14 2008/02/18 19:34:22 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,26 +15,31 @@
  *	Rename a file.
  */
 int
-__os_rename(dbenv, oldname, newname, silent)
-	DB_ENV *dbenv;
+__os_rename(env, oldname, newname, silent)
+	ENV *env;
 	const char *oldname, *newname;
 	u_int32_t silent;
 {
+	DB_ENV *dbenv;
 	_TCHAR *toldname, *tnewname;
 	int ret;
 
+	dbenv = env == NULL ? NULL : env->dbenv;
+
 	if (dbenv != NULL &&
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv, "fileops: rename %s to %s", oldname, newname);
+		__db_msg(env, "fileops: rename %s to %s", oldname, newname);
 
-	TO_TSTRING(dbenv, oldname, toldname, ret);
+	TO_TSTRING(env, oldname, toldname, ret);
 	if (ret != 0)
 		return (ret);
-	TO_TSTRING(dbenv, newname, tnewname, ret);
+	TO_TSTRING(env, newname, tnewname, ret);
 	if (ret != 0) {
-		FREE_STRING(dbenv, toldname);
+		FREE_STRING(env, toldname);
 		return (ret);
 	}
+
+	LAST_PANIC_CHECK_BEFORE_IO(env);
 
 	if (!MoveFile(toldname, tnewname))
 		ret = __os_get_syserr();
@@ -62,13 +67,13 @@ __os_rename(dbenv, oldname, newname, silent)
 		}
 	}
 
-	FREE_STRING(dbenv, tnewname);
-	FREE_STRING(dbenv, toldname);
+	FREE_STRING(env, tnewname);
+	FREE_STRING(env, toldname);
 
 	if (ret != 0) {
 		if (silent == 0)
 			__db_syserr(
-			    dbenv, ret, "MoveFileEx %s %s", oldname, newname);
+			    env, ret, "MoveFileEx %s %s", oldname, newname);
 		ret = __os_posix_err(ret);
 	}
 

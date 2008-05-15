@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2007 Oracle.  All rights reserved.
+# Copyright (c) 2001,2008 Oracle.  All rights reserved.
 #
-# $Id: si002.tcl,v 12.13 2007/06/18 14:50:03 carol Exp $
+# $Id: si002.tcl,v 12.15 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	si002
 # TEST	Basic cursor-based secondary index put/delete test
@@ -161,7 +161,7 @@ proc si002 { methods {nentries 200} {tnum "002"} args } {
 		}
 
 		set newd $pdatum.[string range $pdatum 0 2]
-		set ret [eval {$pdb put} $pkey [chop_data $pmethod $newd]]
+		set ret [eval {$pdb put} {$pkey [chop_data $pmethod $newd]}]
 		error_check_good pdb_put($pkey) $ret 0
 		set data($ns($pkey)) [pad_data $pmethod $newd]
 	}

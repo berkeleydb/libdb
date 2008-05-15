@@ -1,4 +1,4 @@
-m4_comment([$Id: db_dump.so,v 10.34 2006/10/05 01:06:08 bostic Exp $])
+m4_comment([$Id: db_dump.so,v 10.35 2007/10/26 15:02:55 bostic Exp $])
 
 include(m4/m4.utility)
 define(M4PAGELOCAL, db_dump)
@@ -29,8 +29,8 @@ Dump the specified database in a format helpful for debugging the m4_db
 library routines.
 m4_tagbegin
 m4_tag(a, [Display all information.])
-m4_tagns(h, [Display only page headers.])
-m4_tagns(r, [Do not display the free-list or pages on the free list.  This
+m4_tag(h, [Display only page headers.])
+m4_tag(r, [Do not display the free-list or pages on the free list.  This
 mode is used by the recovery tests.])
 m4_tagend
 m4_p([m4_bold([dnl

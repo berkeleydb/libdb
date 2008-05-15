@@ -1,5 +1,5 @@
-<!--$Id: printlog.so,v 10.49 2007/07/10 16:54:17 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: printlog.so,v 10.50 2007/10/26 15:39:18 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Debugging Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Debugging Applications</dl></b></td>
 <td align=right><a href="../debug/runtime.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_brew/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Reviewing Berkeley DB log files</h3>
+<p align=center><b>Reviewing Berkeley DB log files</b></p>
 <p>If you are running with transactions and logging, the <a href="../../utility/db_printlog.html">db_printlog</a>
 utility can be a useful debugging aid.  The <a href="../../utility/db_printlog.html">db_printlog</a> utility
 will display the contents of your log files in a human readable (and
@@ -78,8 +77,6 @@ system was configured with <a href="../../ref/build_unix/conf.html#--enable-diag
 <tr><td>db_pg_free</td><td>Indicates we freed a page (freed pages are added to a freelist and reused).</td></tr>
 <tr><td>db_pg_freedata</td><td>Indicates we freed a page that still contained data entries (freed pages are added to a freelist and reused.)</td></tr>
 <tr><td>db_pg_init</td><td>Indicates we reinitialized a page during a truncate.</td></tr>
-<tr><td>db_pg_new</td><td>Indicates that a page was allocated and put on the free list.</td></tr>
-<tr><td>db_pg_prepare</td><td>Indicates a new page was allocated during a child transaction of a prepared transaction.</td></tr>
 <tr><td>db_pg_sort</td><td>Sort the free page list and free pages at the end of the file.</td></tr>
 <tr><td>dbreg_register</td><td>Records an open of a file (mapping the filename to a log-id that is used in subsequent log operations).</td></tr>
 <tr><td>fop_create</td><td>Create a file in the file system.</td></tr>
@@ -108,7 +105,7 @@ system was configured with <a href="../../ref/build_unix/conf.html#--enable-diag
 <tr><td>txn_xa_regop</td><td>Logs a prepare message.</td></tr>
 </table>
 <!--END LOG RECORD TYPES-->
-<h3>Augmenting the Log for Debugging</h3>
+<b>Augmenting the Log for Debugging</b>
 <p>When debugging applications, it is sometimes useful to log not only the
 actual operations that modify pages, but also the underlying Berkeley DB
 functions being executed.  This form of logging can add significant bulk
@@ -117,7 +114,7 @@ impossible to find any other way.  To turn on these log messages, specify
 the --enable-debug_rop and --enable-debug_wop configuration options when
 configuring Berkeley DB.  See <a href="../../ref/build_unix/conf.html">Configuring
 Berkeley DB</a> for more information.</p>
-<h3>Extracting Committed Transactions and Transaction Status</h3>
+<b>Extracting Committed Transactions and Transaction Status</b>
 <p>Sometimes, it is helpful to use the human-readable log output to
 determine which transactions committed and aborted.  The awk script,
 commit.awk, (found in the db_printlog directory of the Berkeley DB
@@ -128,7 +125,7 @@ the transaction IDs of all committed transactions found in the log:</p>
 <p>If you need a complete list of both committed and aborted transactions,
 then the script status.awk will produce it.  The syntax is as follows:</p>
 <blockquote><pre>awk -f status.awk log_output</pre></blockquote>
-<h3>Extracting Transaction Histories</h3>
+<b>Extracting Transaction Histories</b>
 <p>Another useful debugging aid is to print out the complete history of a
 transaction.  The awk script txn.awk allows you to do that.  The
 following command line, where log_output is the output of
@@ -136,13 +133,13 @@ following command line, where log_output is the output of
 IDs, will display all log records associated with the designated
 transaction ids:</p>
 <blockquote><pre>awk -f txn.awk TXN=txnlist log_output</pre></blockquote>
-<h3>Extracting File Histories</h3>
+<b>Extracting File Histories</b>
 <p>The awk script fileid.awk allows you to extract all log records that
 refer to a designated file.  The syntax for the fileid.awk script is
 the following, where log_output is the output of db_printlog and fids
 is a comma-separated list of fileids:</p>
 <blockquote><pre>awk -f fileid.awk PGNO=fids log_output</pre></blockquote>
-<h3>Extracting Page Histories</h3>
+<b>Extracting Page Histories</b>
 <p>The awk script pgno.awk allows you to extract all log records that refer
 to designated page numbers.  However, because this script will extract
 records with the designated page numbers for all files, it is most
@@ -150,7 +147,7 @@ useful in conjunction with the fileid script.  The syntax for the
 pgno.awk script is the following, where log_output is the output of
 db_printlog and pgnolist is a comma-separated list of page numbers:</p>
 <blockquote><pre>awk -f pgno.awk PGNO=pgnolist log_output</pre></blockquote>
-<h3>Other log processing tools</h3>
+<b>Other log processing tools</b>
 <p>The awk script count.awk prints out the number of log records
 encountered that belonged to some transaction (that is, the number of
 log records excluding those for checkpoints and
@@ -165,6 +162,6 @@ extract:</p>
 <blockquote><pre>awk -f range.awk START_FILE=sf START_OFFSET=so END_FILE=ef END_OFFSET=eo log_output</pre></blockquote>
 <table width="100%"><tr><td><br></td><td align=right><a href="../debug/runtime.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_brew/intro.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

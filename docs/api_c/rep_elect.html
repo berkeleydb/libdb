@@ -1,5 +1,5 @@
-<!--$Id: rep_elect.so,v 1.26 2007/03/20 20:20:26 alanb Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: rep_elect.so,v 1.28 2007/12/03 21:01:23 sue Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;rep_elect</h3>
+<b>DB_ENV-&gt;rep_elect</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,15 +18,15 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DB_ENV-&gt;rep_elect(DB_ENV *env,
-    int nsites, int nvotes, u_int32_t flags);
-</pre></h3>
+    u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;rep_elect</h3>
+<b>Description: DB_ENV-&gt;rep_elect</b>
 <p>The DB_ENV-&gt;rep_elect method holds an election for the master of a replication
 group.</p>
 <p>The DB_ENV-&gt;rep_elect method is not called by most replication
@@ -45,23 +45,24 @@ the results of the election.</p>
 <p>The thread of control that calls the DB_ENV-&gt;rep_elect method must not be the
 thread of control that processes incoming messages; processing the
 incoming messages is necessary to successfully complete an election.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>nsites</b><dd>The <b>nsites</b> parameter specifies the number of replication sites
+<b>Parameters</b> <br>
+ <b>nsites</b><ul compact><li>The <b>nsites</b> parameter specifies the number of replication sites
 expected to participate in the election.  Once the current site has
 election information from that many sites, it will short-circuit the
 election and immediately cast its vote for a new master. The
-<b>nsites</b> parameter must be a positive integer, no less than
+<b>nsites</b> parameter must be no less than
 <b>nvotes</b>, or 0 if the election should use the value previously set
-using the <a href="../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a> method.
-<dt><b>nvotes</b><dd>The <b>nvotes</b> parameter specifies the minimum number of replication
+using the <a href="../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a> method.  If an application is using master
+leases, then the value <b>must</b> be 0 and the value from
+<a href="../api_c/rep_nsites.html">DB_ENV-&gt;rep_set_nsites</a> method must be used.</ul>
+ <b>nvotes</b><ul compact><li>The <b>nvotes</b> parameter specifies the minimum number of replication
 sites from which the current site must have election information, before
 the current site will cast a vote for a new master.  The <b>nvotes</b>
-parameter must be a positive integer and no greater than <b>nsites</b>,
+parameter must be no greater than <b>nsites</b>,
 or 0 if the election should use the value ((<b>nsites</b> / 2) + 1) as
-the <b>nvotes</b> argument.
-<dt><b>flags</b><dd>The <b>flags</b> parameter is currently unused, and must be set to 0.
-</dl>
+the <b>nvotes</b> argument.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter is currently unused, and must be set to 0.</ul>
+<br>
 <p>Elections are done in two parts: first, replication sites collect
 information from the other replication sites they know about, and
 second, replication sites cast their votes for a new master.  The second
@@ -101,23 +102,23 @@ section in the Berkeley DB Reference Guide for more information.)</p>
 election, but can also result in election failure, and is usually not
 recommended.</p>
 <a name="2"><!--meow--></a>
-<h3>Errors</h3>
+<br><b>Errors</b>
 <p>The DB_ENV-&gt;rep_elect method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>DB_REP_UNAVAIL<dd>The replication group was unable to elect a master, or was unable to
+<br>
+<b>DB_REP_UNAVAIL</b><ul compact><li>The replication group was unable to elect a master, or was unable to
 complete the election in the election timeout period (see
-<a href="../api_c/rep_timeout.html">DB_ENV-&gt;rep_set_timeout</a> method for more information).
-</dl>
+<a href="../api_c/rep_timeout.html">DB_ENV-&gt;rep_set_timeout</a> method for more information).</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/rep_list.html">Replication and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

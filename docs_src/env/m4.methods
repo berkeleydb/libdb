@@ -1,4 +1,4 @@
-m4_comment([$Id: m4.methods,v 10.17 2006/08/25 16:40:00 bostic Exp $])
+m4_comment([$Id: m4.methods,v 10.18 2008/01/12 13:42:40 bostic Exp $])
 
 m4_table_begin(, _center)
 
@@ -34,6 +34,7 @@ m4_comment([DbEnv::set_event_notify])m4_table_element(m4_ref(dbenv_set_event_not
 m4_comment([DbEnv::set_feedback])m4_table_element(m4_ref(dbenv_set_feedback), Set feedback callback)
 m4_comment([DbEnv::set_flags])m4_table_element(m4_ref(dbenv_set_flags), Environment configuration)
 m4_comment([DbEnv::set_isalive])m4_table_element(m4_ref(dbenv_set_isalive), Set thread is-alive callback)
+m4_comment([DbEnv::set_intermediate_dir_mode])m4_table_element(m4_ref(dbenv_set_intermediate_dir_mode), Set intermediate directory creation mode)
 m4_comment([DbEnv::set_rpc_server])m4_table_element(m4_ref(dbenv_set_rpc_server), Establish an RPC server connection)
 m4_comment([DbEnv::set_shm_key])m4_table_element(m4_ref(dbenv_set_shm_key), Set system memory shared segment ID)
 m4_comment([DbEnv::set_thread_id])m4_table_element(m4_ref(dbenv_set_thread_id), Set thread of control ID function)

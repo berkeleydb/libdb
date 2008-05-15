@@ -1,5 +1,5 @@
 <!--$Id: db_set_h_nelem.so,v 10.36 2004/09/28 15:04:19 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB-&gt;set_h_nelem</h3>
+<b>DB-&gt;set_h_nelem</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DB-&gt;set_h_nelem(DB *db, u_int32_t h_nelem);
 <p>
 int
 DB-&gt;get_h_nelem(DB *db, u_int32_t *h_nelemp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB-&gt;set_h_nelem</h3>
+<b>Description: DB-&gt;set_h_nelem</b>
 <p>Set an estimate of the final size of the hash table.</p>
 <p>In order for the estimate to be used when creating the database, the
 <a href="../api_c/db_set_h_ffactor.html">DB-&gt;set_h_ffactor</a> method must also be called.  If the estimate
@@ -46,20 +46,19 @@ be ignored.
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>h_nelem</b><dd>The <b>h_nelem</b> parameter is an estimate of the final size of the
-hash table.
-</dl>
-<h3>Errors</h3>
+<b>Parameters</b> <br>
+ <b>h_nelem</b><ul compact><li>The <b>h_nelem</b> parameter is an estimate of the final size of the
+hash table.</ul>
+<br>
+<br><b>Errors</b>
 <p>The DB-&gt;set_h_nelem method
 may fail and return one of the following non-zero errors:</p>
-<dl compact>
-<dt>EINVAL<dd>If the method was called after <a href="../api_c/db_open.html">DB-&gt;open</a> was called; or if an
-invalid flag value or parameter was specified.
-</dl>
+<br>
+<b>EINVAL</b><ul compact><li>If the method was called after <a href="../api_c/db_open.html">DB-&gt;open</a> was called; or if an
+invalid flag value or parameter was specified.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DB-&gt;get_h_nelem</h3>
+<b>Description: DB-&gt;get_h_nelem</b>
 <p>The DB-&gt;get_h_nelem method returns the estimate of the final size of the hash table.</p>
 <p>The DB-&gt;get_h_nelem method may be called at any time during the life of the
 application.</p>
@@ -67,20 +66,19 @@ application.</p>
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>h_nelemp</b><dd>The DB-&gt;get_h_nelem method returns  the
-estimate of the final size of the hash table in <b>h_nelemp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>h_nelemp</b><ul compact><li>The DB-&gt;get_h_nelem method returns  the
+estimate of the final size of the hash table in <b>h_nelemp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/db_class.html">DB</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/db_list.html">Databases and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

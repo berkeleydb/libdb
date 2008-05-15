@@ -1,0 +1,21 @@
+m4_comment([$Id: disk.so,v 1.6 2008/04/17 13:54:00 carol Exp $])
+
+m4_ref_title(Upgrading m4_db Applications,
+    Release 4.7: upgrade requirements,,
+    upgrade.4.7/log, test/run)
+
+m4_p([dnl
+The log file format changed in the m4_db 4.7 release.])
+
+m4_p([dnl
+No database formats changed in the m4_db 4.7 release.])
+
+m4_p([dnl
+The m4_db 4.7 release does not support live replication upgrade from the
+4.2 or 4.3 releases, only from the 4.4 and later releases.])
+
+m4_p([dnl
+For further information on upgrading m4_db installations, see
+m4_link(M4RELDIR/ref/upgrade/process, Upgrading m4_db installations).])
+
+m4_page_footer

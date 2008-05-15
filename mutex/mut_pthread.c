@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_pthread.c,v 12.24 2007/06/21 16:39:20 ubell Exp $
+ * $Id: mut_pthread.c,v 12.30 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -51,11 +51,11 @@
  * __db_pthread_mutex_init --
  *	Initialize a pthread mutex.
  *
- * PUBLIC: int __db_pthread_mutex_init __P((DB_ENV *, db_mutex_t, u_int32_t));
+ * PUBLIC: int __db_pthread_mutex_init __P((ENV *, db_mutex_t, u_int32_t));
  */
 int
-__db_pthread_mutex_init(dbenv, mutex, flags)
-	DB_ENV *dbenv;
+__db_pthread_mutex_init(env, mutex, flags)
+	ENV *env;
 	db_mutex_t mutex;
 	u_int32_t flags;
 {
@@ -64,7 +64,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 	DB_MUTEXREGION *mtxregion;
 	int ret;
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 	ret = 0;
@@ -157,7 +157,7 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
 #endif
 
 	if (ret != 0) {
-		__db_err(dbenv, ret, "unable to initialize mutex");
+		__db_err(env, ret, "unable to initialize mutex");
 	}
 	return (ret);
 }
@@ -166,24 +166,29 @@ __db_pthread_mutex_init(dbenv, mutex, flags)
  * __db_pthread_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_pthread_mutex_lock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_pthread_mutex_lock __P((ENV *, db_mutex_t));
  */
 int
-__db_pthread_mutex_lock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_pthread_mutex_lock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	int i, ret;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
+
+	CHECK_MTX_THREAD(env, mutexp);
 
 #if defined(HAVE_STATISTICS) && !defined(HAVE_MUTEX_HYBRID)
 	/*
@@ -243,7 +248,6 @@ __db_pthread_mutex_lock(dbenv, mutex)
 #else
 		F_SET(mutexp, DB_MUTEX_LOCKED);
 		dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-		CHECK_MTX_THREAD(dbenv, mutexp);
 #endif
 
 		/*
@@ -267,7 +271,7 @@ __db_pthread_mutex_lock(dbenv, mutex)
 			char buf[DB_THREADID_STRLEN];
 			(void)dbenv->thread_id_string(dbenv,
 			    mutexp->pid, mutexp->tid, buf);
-			__db_errx(dbenv,
+			__db_errx(env,
 		    "pthread lock failed: lock currently in use: pid/tid: %s",
 			    buf);
 			ret = EINVAL;
@@ -276,7 +280,6 @@ __db_pthread_mutex_lock(dbenv, mutex)
 #endif
 		F_SET(mutexp, DB_MUTEX_LOCKED);
 		dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
-		CHECK_MTX_THREAD(dbenv, mutexp);
 	}
 
 #ifdef DIAGNOSTIC
@@ -285,42 +288,45 @@ __db_pthread_mutex_lock(dbenv, mutex)
 	 * we get a mutex to ensure contention.
 	 */
 	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
-		__os_yield(dbenv);
+		__os_yield(env, 0, 0);
 #endif
 	return (0);
 
-err:	__db_err(dbenv, ret, "pthread lock failed");
-	return (__db_panic(dbenv, ret));
+err:	__db_err(env, ret, "pthread lock failed");
+	return (__env_panic(env, ret));
 }
 
 /*
  * __db_pthread_mutex_unlock --
  *	Release a mutex.
  *
- * PUBLIC: int __db_pthread_mutex_unlock __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_pthread_mutex_unlock __P((ENV *, db_mutex_t));
  */
 int
-__db_pthread_mutex_unlock(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_pthread_mutex_unlock(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
+	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
 	int i, ret;
 
-	if (!MUTEX_ON(dbenv) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
+	dbenv = env->dbenv;
+
+	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
 #if !defined(HAVE_MUTEX_HYBRID) && defined(DIAGNOSTIC)
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 		__db_errx(
-		    dbenv, "pthread unlock failed: lock already unlocked");
-		return (__db_panic(dbenv, EACCES));
+		    env, "pthread unlock failed: lock already unlocked");
+		return (__env_panic(env, EACCES));
 	}
 #endif
 	if (F_ISSET(mutexp, DB_MUTEX_SELF_BLOCK)) {
@@ -343,8 +349,8 @@ __db_pthread_mutex_unlock(dbenv, mutex)
 	} while (ret == EFAULT && --i > 0);
 
 err:	if (ret != 0) {
-		__db_err(dbenv, ret, "pthread unlock failed");
-		return (__db_panic(dbenv, ret));
+		__db_err(env, ret, "pthread unlock failed");
+		return (__env_panic(env, ret));
 	}
 	return (ret);
 }
@@ -353,11 +359,11 @@ err:	if (ret != 0) {
  * __db_pthread_mutex_destroy --
  *	Destroy a mutex.
  *
- * PUBLIC: int __db_pthread_mutex_destroy __P((DB_ENV *, db_mutex_t));
+ * PUBLIC: int __db_pthread_mutex_destroy __P((ENV *, db_mutex_t));
  */
 int
-__db_pthread_mutex_destroy(dbenv, mutex)
-	DB_ENV *dbenv;
+__db_pthread_mutex_destroy(env, mutex)
+	ENV *env;
 	db_mutex_t mutex;
 {
 	DB_MUTEX *mutexp;
@@ -365,10 +371,10 @@ __db_pthread_mutex_destroy(dbenv, mutex)
 	DB_MUTEXREGION *mtxregion;
 	int ret, t_ret;
 
-	if (!MUTEX_ON(dbenv))
+	if (!MUTEX_ON(env))
 		return (0);
 
-	mtxmgr = dbenv->mutex_handle;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	mutexp = MUTEXP_SET(mutex);
 
@@ -376,11 +382,11 @@ __db_pthread_mutex_destroy(dbenv, mutex)
 	if (F_ISSET(mutexp, DB_MUTEX_SELF_BLOCK)) {
 		RET_SET((pthread_cond_destroy(&mutexp->cond)), ret);
 		if (ret != 0)
-			__db_err(dbenv, ret, "unable to destroy cond");
+			__db_err(env, ret, "unable to destroy cond");
 	}
 	RET_SET((pthread_mutex_destroy(&mutexp->mutex)), t_ret);
 	if (t_ret != 0) {
-		__db_err(dbenv, t_ret, "unable to destroy mutex");
+		__db_err(env, t_ret, "unable to destroy mutex");
 		if (ret == 0)
 			ret = t_ret;
 	}

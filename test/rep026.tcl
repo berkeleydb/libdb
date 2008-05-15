@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: rep026.tcl,v 12.18 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep026.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep026
 # TEST	Replication elections - simulate a crash after sending
@@ -56,10 +56,11 @@ proc rep026_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global machids
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -123,7 +124,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set pri($i) 10
 		if { $rep_verbose == 1 } {
 			$clientenv($i) errpfx CLIENT$i
-			$clientenv($i) verbose rep on
+			$clientenv($i) verbose $verbose_type on
 			$clientenv($i) errfile /dev/stderr
 			set env_cmd($i) [concat $env_cmd($i) \
 			    "-errpfx CLIENT$i -errfile /dev/stderr"]
@@ -177,8 +178,8 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set crash($elector) 1
 		setpriority pri $nclients $winner
 		set err_cmd($elector) "electvote1"
-		run_election env_cmd envlist err_cmd pri crash \
-		    $qdir $msg $elector $nsites $nvotes $nclients $winner 0
+		run_election env_cmd envlist err_cmd pri crash $qdir \
+		    $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 		set msg "\tRep$tnum.$let.3"
 		puts "\t$msg: Close and reopen elector with recovery."
@@ -228,8 +229,8 @@ proc rep026_sub { method nclients tnum logset largs } {
 		puts "\t$msg: Call second election."
 		set err_cmd($elector) "none"
 		set crash($elector) 0
-		run_election env_cmd envlist err_cmd pri crash \
-		    $qdir $msg $elector2 $nsites $nvotes $nclients $winner 1
+		run_election env_cmd envlist err_cmd pri crash $qdir \
+		    $msg $elector2 $nsites $nvotes $nclients $winner 1 test.db
 
 		# Second chance to restore messages.
 		if { $restore == "after" } {

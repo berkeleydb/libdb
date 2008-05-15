@@ -1,16 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_codegen.c,v 1.2 2007/05/17 15:14:58 bostic Exp $
+ * $Id: db_codegen.c,v 1.3 2008/01/08 20:58:12 bostic Exp $
  */
 
 #include "db_codegen.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 static int usage __P((void));

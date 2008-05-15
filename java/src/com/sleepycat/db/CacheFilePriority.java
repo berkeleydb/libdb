@@ -1,24 +1,42 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: CacheFilePriority.java,v 12.6 2007/06/28 14:23:36 mjc Exp $
+ * $Id: CacheFilePriority.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
  */
 
 package com.sleepycat.db;
 
 import com.sleepycat.db.internal.DbConstants;
 
+/**
+ * Priorities that can be assigned to files in the cache.
+ */
 public final class CacheFilePriority {
+    /**
+    The default priority.
+    */
     public static final CacheFilePriority DEFAULT =
         new CacheFilePriority("DEFAULT", DbConstants.DB_PRIORITY_DEFAULT);
+    /**
+    The second highest priority.
+    */
     public static final CacheFilePriority HIGH =
         new CacheFilePriority("HIGH", DbConstants.DB_PRIORITY_HIGH);
+    /**
+    The second lowest priority.
+    */
     public static final CacheFilePriority LOW =
         new CacheFilePriority("LOW", DbConstants.DB_PRIORITY_LOW);
+    /**
+    The highest priority: pages are the least likely to be discarded.
+    */
     public static final CacheFilePriority VERY_HIGH =
         new CacheFilePriority("VERY_HIGH", DbConstants.DB_PRIORITY_VERY_HIGH);
+    /**
+    The lowest priority: pages are the most likely to be discarded.
+    */
     public static final CacheFilePriority VERY_LOW =
         new CacheFilePriority("VERY_LOW", DbConstants.DB_PRIORITY_VERY_LOW);
 
@@ -50,6 +68,7 @@ public final class CacheFilePriority {
         this.flag = flag;
     }
 
+    /** {@inheritDoc} */
     public String toString() {
         return "CacheFilePriority." + priorityName;
     }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2007 Oracle.  All rights reserved.
+# Copyright (c) 2003,2008 Oracle.  All rights reserved.
 #
-# $Id: rep017.tcl,v 12.15 2007/06/21 20:09:57 carol Exp $
+# $Id: rep017.tcl,v 12.17 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep017
 # TEST	Concurrency with checkpoints.
@@ -53,10 +53,11 @@ proc rep017_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
 	global perm_response_list
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	env_cleanup $testdir
@@ -130,7 +131,7 @@ proc rep017_sub { method niter tnum logset recargs largs } {
 	puts "\tRep$tnum.c: Fork child process on client."
 	set pid [exec $tclsh_path $test_path/wrap.tcl \
 	    rep017script.tcl $testdir/repscript.log \
-	    $masterdir $clientdir &]
+	    $masterdir $clientdir $rep_verbose $verbose_type &]
 
 
 	# We need to wait until we know that the client is processing a

@@ -1,5 +1,18 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.34  27th March 2008 
+
+        * Updates to support building with Berkeley DB version 4.7
+
+        * Typo in #ifdef for ThreadCount support. Spotted by Mark Hindley
+
+        * Updated dbinfo
+
+0.33  17th January 2008 
+
+        * Added failchk, set_isalive, lock_stat_print & mutex_stat_print.
+          Patch provided by Thomas Busch.
+
 0.32  10th July 2007 
 
         * Updates to support Berkeley DB 4.6

@@ -1,5 +1,5 @@
 <!--$Id: env_set_errfile.so,v 10.37 2006/10/26 15:33:59 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbEnv::set_errfile</h3>
+<b>DbEnv::set_errfile</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 void
@@ -26,9 +26,9 @@ DbEnv::set_errfile(FILE *errfile);
 <p>
 void
 DbEnv::get_errfile(FILE **errfilep);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbEnv::set_errfile</h3>
+<b>Description: DbEnv::set_errfile</b>
 When an error occurs in the Berkeley DB library, an exception is thrown or an
 error return value is returned by the interface.  In some cases,
 however, the exception or returned value may be insufficient to
@@ -68,13 +68,12 @@ as during application debugging.</p>
 database environment.</p>
 <p>The DbEnv::set_errfile method may be called at any time during the life of the
 application.</p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>errfile</b><dd>The <b>errfile</b> parameter is a C library FILE * to be used for
-displaying additional Berkeley DB error information.
-</dl>
+<b>Parameters</b> <br>
+ <b>errfile</b><ul compact><li>The <b>errfile</b> parameter is a C library FILE * to be used for
+displaying additional Berkeley DB error information.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbEnv::get_errfile</h3>
+<b>Description: DbEnv::get_errfile</b>
 <p>The DbEnv::get_errfile method returns the FILE *.</p>
 <p>The DbEnv::get_errfile method may be called at any time during the life of the
 application.</p>
@@ -83,20 +82,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>errfilep</b><dd>The DbEnv::get_errfile method returns  the
-FILE * in <b>errfilep</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>errfilep</b><ul compact><li>The DbEnv::get_errfile method returns  the
+FILE * in <b>errfilep</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

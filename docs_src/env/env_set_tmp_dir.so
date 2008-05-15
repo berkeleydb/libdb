@@ -1,4 +1,4 @@
-m4_comment([$Id: env_set_tmp_dir.so,v 10.26 2004/09/28 15:04:20 bostic Exp $])
+m4_comment([$Id: env_set_tmp_dir.so,v 10.27 2008/01/15 13:07:24 bostic Exp $])
 
 define(M4PAGELOCAL, [dbenv_set_tmp_dir, dbenv_get_tmp_dir])
 include(m4/m4.seealso)
@@ -59,7 +59,7 @@ m4_env_config(dbenv_set_tmp_dir,
 
 m4_scope_dbenv(dbenv_set_tmp_dir)
 
-m4_when_envopen(dbenv_set_tmp_dir, corrupt)
+m4_when_any(dbenv_set_tmp_dir)
 
 m4_return(dbenv_set_tmp_dir, std)
 

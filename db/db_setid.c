@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: db_setid.c,v 12.26 2007/05/26 00:13:14 ubell Exp $
+ * $Id: db_setid.c,v 12.32 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -14,11 +14,12 @@
 #include "dbinc/db_am.h"
 #include "dbinc/mp.h"
 
-static int __env_fileid_reset __P((DB_ENV *, const char *, int));
+static int __env_fileid_reset __P((ENV *,
+	    DB_THREAD_INFO *, const char *, int));
 
 /*
  * __env_fileid_reset_pp --
- *	DB_ENV->fileid_reset pre/post processing.
+ *	ENV->fileid_reset pre/post processing.
  *
  * PUBLIC: int __env_fileid_reset_pp __P((DB_ENV *, const char *, u_int32_t));
  */
@@ -29,10 +30,12 @@ __env_fileid_reset_pp(dbenv, name, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
-	int handle_check, ret, t_ret;
+	ENV *env;
+	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_ILLEGAL_BEFORE_OPEN(dbenv, "DB_ENV->fileid_reset");
+	env = dbenv->env;
+
+	ENV_ILLEGAL_BEFORE_OPEN(env, "DB_ENV->fileid_reset");
 
 	/*
 	 * !!!
@@ -40,21 +43,13 @@ __env_fileid_reset_pp(dbenv, name, flags)
 	 * the replication block.
 	 */
 	if (flags != 0 && flags != DB_ENCRYPT)
-		return (__db_ferr(dbenv, "DB_ENV->fileid_reset", 0));
+		return (__db_ferr(env, "DB_ENV->fileid_reset", 0));
 
-	ENV_ENTER(dbenv, ip);
-
-	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
-	if (handle_check && (ret = __env_rep_enter(dbenv, 1)) != 0)
-		goto err;
-
-	ret = __env_fileid_reset(dbenv, name, LF_ISSET(DB_ENCRYPT) ? 1 : 0);
-
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
-		ret = t_ret;
-
-err:	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__env_fileid_reset(env, ip, name, LF_ISSET(DB_ENCRYPT) ? 1 : 0)),
+	    1, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -63,8 +58,9 @@ err:	ENV_LEAVE(dbenv, ip);
  *	Reset the file IDs for every database in the file.
  */
 static int
-__env_fileid_reset(dbenv, name, encrypted)
-	DB_ENV *dbenv;
+__env_fileid_reset(env, ip, name, encrypted)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	const char *name;
 	int encrypted;
 {
@@ -88,11 +84,11 @@ __env_fileid_reset(dbenv, name, encrypted)
 
 	/* Get the real backing file name. */
 	if ((ret =
-	    __db_appname(dbenv, DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
+	    __db_appname(env, DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
 		return (ret);
 
 	/* Get a new file ID. */
-	if ((ret = __os_fileid(dbenv, real_name, 1, fileid)) != 0)
+	if ((ret = __os_fileid(env, real_name, 1, fileid)) != 0)
 		goto err;
 
 	/*
@@ -101,16 +97,16 @@ __env_fileid_reset(dbenv, name, encrypted)
 	 * updating the file ID on page 0, we might connect to the file from
 	 * which the copy was made.
 	 */
-	if ((ret = __os_open(dbenv, real_name, 0, 0, 0, &fhp)) != 0) {
-		__db_err(dbenv, ret, "%s", real_name);
+	if ((ret = __os_open(env, real_name, 0, 0, 0, &fhp)) != 0) {
+		__db_err(env, ret, "%s", real_name);
 		goto err;
 	}
-	if ((ret = __os_read(dbenv, fhp, mbuf, sizeof(mbuf), &n)) != 0)
+	if ((ret = __os_read(env, fhp, mbuf, sizeof(mbuf), &n)) != 0)
 		goto err;
 
 	if (n != sizeof(mbuf)) {
 		ret = EINVAL;
-		__db_errx(dbenv,
+		__db_errx(env,
 		    "%s: unexpected file type or format", real_name);
 		goto err;
 	}
@@ -118,14 +114,14 @@ __env_fileid_reset(dbenv, name, encrypted)
 	/*
 	 * Create the DB object.
 	 */
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		goto err;
 
 	/* If configured with a password, the databases are encrypted. */
 	if (encrypted && (ret = __db_set_flags(dbp, DB_ENCRYPT)) != 0)
 		goto err;
 
-	if ((ret = __db_meta_setup(dbenv,
+	if ((ret = __db_meta_setup(env,
 	    dbp, real_name, (DBMETA *)mbuf, 0, DB_CHK_META)) != 0)
 		goto err;
 	memcpy(((DBMETA *)mbuf)->uid, fileid, DB_FILE_ID_LEN);
@@ -134,13 +130,13 @@ __env_fileid_reset(dbenv, name, encrypted)
 	cookie.type = dbp->type;
 	key.data = &cookie;
 
-	if ((ret = __db_pgout(dbenv, 0, mbuf, &key)) != 0)
+	if ((ret = __db_pgout(env->dbenv, 0, mbuf, &key)) != 0)
 		goto err;
-	if ((ret = __os_seek(dbenv, fhp, 0, 0, 0)) != 0)
+	if ((ret = __os_seek(env, fhp, 0, 0, 0)) != 0)
 		goto err;
-	if ((ret = __os_write(dbenv, fhp, mbuf, sizeof(mbuf), &n)) != 0)
+	if ((ret = __os_write(env, fhp, mbuf, sizeof(mbuf), &n)) != 0)
 		goto err;
-	if ((ret = __os_fsync(dbenv, fhp)) != 0)
+	if ((ret = __os_fsync(env, fhp)) != 0)
 		goto err;
 
 	/*
@@ -158,7 +154,7 @@ __env_fileid_reset(dbenv, name, encrypted)
 	 * Note DB_RDWRMASTER flag, we need to open the master database file
 	 * for writing in this case.
 	 */
-	if ((ret = __db_open(dbp, NULL,
+	if ((ret = __db_open(dbp, ip, NULL,
 	    name, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0, PGNO_BASE_MD)) != 0)
 		goto err;
 
@@ -174,7 +170,7 @@ __env_fileid_reset(dbenv, name, encrypted)
 	mpf = dbp->mpf;
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
-	if ((ret = __db_cursor(dbp, NULL, &dbcp, 0)) != 0)
+	if ((ret = __db_cursor(dbp, ip, NULL, &dbcp, 0)) != 0)
 		goto err;
 	while ((ret = __dbc_get(dbcp, &key, &data, DB_NEXT)) == 0) {
 		/*
@@ -184,12 +180,12 @@ __env_fileid_reset(dbenv, name, encrypted)
 		 * Do it explicitly, now.
 		 */
 		memcpy(&pgno, data.data, sizeof(db_pgno_t));
-		DB_NTOHL(&pgno);
-		if ((ret = __memp_fget(mpf, &pgno, NULL,
+		DB_NTOHL_SWAP(env, &pgno);
+		if ((ret = __memp_fget(mpf, &pgno, ip, NULL,
 		    DB_MPOOL_DIRTY, &pagep)) != 0)
 			goto err;
 		memcpy(((DBMETA *)pagep)->uid, fileid, DB_FILE_ID_LEN);
-		if ((ret = __memp_fput(mpf, pagep, dbcp->priority)) != 0)
+		if ((ret = __memp_fput(mpf, ip, pagep, dbcp->priority)) != 0)
 			goto err;
 	}
 	if (ret == DB_NOTFOUND)
@@ -200,10 +196,10 @@ err:	if (dbcp != NULL && (t_ret = __dbc_close(dbcp)) != 0 && ret == 0)
 	if (dbp != NULL && (t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
 		ret = t_ret;
 	if (fhp != NULL &&
-	    (t_ret = __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
+	    (t_ret = __os_closehandle(env, fhp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 
 	return (ret);
 }

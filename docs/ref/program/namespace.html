@@ -1,5 +1,5 @@
 <!--$Id: namespace.so,v 10.22 2004/03/08 15:09:20 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,12 +10,11 @@
 <body bgcolor=white>
 <a name="2"><!--meow--></a>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Programmer Notes</dl></b></td>
 <td align=right><a href="../program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/ram.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Name spaces</h3>
-<h3>C Language Name Space</h3>
+<p align=center><b>Name spaces</b></p>
+<b>C Language Name Space</b>
 <p>The Berkeley DB library is careful to avoid C language programmer name spaces,
 but there are a few potential areas for concern, mostly in the Berkeley DB
 include file db.h.  The db.h include file defines a number of types and
@@ -33,7 +32,7 @@ u_int32_t, u_char, u_short, u_int, and u_long.</p>
 are prefixed with the strings "db_".  All internal Berkeley DB routines are
 prefixed with the strings "__XXX_", where "XXX" is the subsystem prefix
 (for example, "__db_XXX_" and "__txn_XXX_").</p>
-<h3>Filesystem Name Space</h3>
+<b>Filesystem Name Space</b>
 <p>Berkeley DB environments create or use some number of files in environment
 home directories.  These files are named <a href="../../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a>, "log.NNNNN"
 (for example, log.0000000003, where the number of digits following the
@@ -50,6 +49,6 @@ are the digits 0 through 9.  Applications should never remove any files
 named with the prefix "__db" or "log", other than "__db.###" files.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../program/scope.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/ram.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

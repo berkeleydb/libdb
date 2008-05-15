@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1987, 1993, 1994
@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: getopt.c,v 12.6 2007/05/17 15:14:54 bostic Exp $
+ * $Id: getopt.c,v 12.8 2008/03/12 17:50:25 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -86,9 +86,9 @@ getopt(nargc, nargv, ostr)
 	}
 	if (!progname) {
 		if ((progname = __db_rpath(*nargv)) == NULL)
-	                progname = *nargv;
-        	else
-                	++progname;
+			progname = *nargv;
+		else
+			++progname;
 	}
 
 	if (optreset || !*place) {		/* update scanning pointer */
@@ -136,7 +136,7 @@ getopt(nargc, nargv, ostr)
 				    progname, optopt);
 			return (BADCH);
 		}
-	 	else				/* white space */
+		else				/* white space */
 			optarg = nargv[optind];
 		place = EMSG;
 		++optind;

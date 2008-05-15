@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: OperationStatus.java,v 12.5 2007/05/17 15:15:41 bostic Exp $
+ * $Id: OperationStatus.java,v 12.7 2008/01/17 05:04:53 mjc Exp $
  */
 
 package com.sleepycat.db;
@@ -11,13 +11,30 @@ package com.sleepycat.db;
 import com.sleepycat.db.internal.DbConstants;
 import com.sleepycat.db.internal.DbEnv;
 
+/**
+Status values from database operations.
+*/
 public final class OperationStatus {
+    /**
+    The operation was successful.
+    */
     public static final OperationStatus SUCCESS =
         new OperationStatus("SUCCESS", 0);
+    /**
+    The operation to insert data was configured to not allow overwrite
+    and the key already exists in the database.
+    */
     public static final OperationStatus KEYEXIST =
         new OperationStatus("KEYEXIST", DbConstants.DB_KEYEXIST);
+    /**
+    The cursor operation was unsuccessful because the current record
+    was deleted.
+    */
     public static final OperationStatus KEYEMPTY =
         new OperationStatus("KEYEMPTY", DbConstants.DB_KEYEMPTY);
+    /**
+    The requested key/data pair was not found.
+    */
     public static final OperationStatus NOTFOUND =
         new OperationStatus("NOTFOUND", DbConstants.DB_NOTFOUND);
 
@@ -47,6 +64,7 @@ public final class OperationStatus {
         this.errCode = errCode;
     }
 
+    /** {@inheritDoc} */
     public String toString() {
         return "OperationStatus." + statusName;
     }

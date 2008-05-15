@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
- * $Id: txn_recover.c,v 12.29 2007/06/29 00:25:02 margo Exp $
+ * $Id: txn_recover.c,v 12.37 2008/04/19 15:47:42 mjc Exp $
  */
 
 #include "db_config.h"
@@ -21,12 +21,12 @@
  * __txn_map_gid
  *	Return the txn that corresponds to this global ID.
  *
- * PUBLIC: int __txn_map_gid __P((DB_ENV *,
+ * PUBLIC: int __txn_map_gid __P((ENV *,
  * PUBLIC:     u_int8_t *, TXN_DETAIL **, roff_t *));
  */
 int
-__txn_map_gid(dbenv, gid, tdp, offp)
-	DB_ENV *dbenv;
+__txn_map_gid(env, gid, tdp, offp)
+	ENV *env;
 	u_int8_t *gid;
 	TXN_DETAIL **tdp;
 	roff_t *offp;
@@ -34,7 +34,7 @@ __txn_map_gid(dbenv, gid, tdp, offp)
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
 	/*
@@ -42,11 +42,11 @@ __txn_map_gid(dbenv, gid, tdp, offp)
 	 * matching xid.  If this is a performance hit, then we
 	 * can create a hash table, but I doubt it's worth it.
 	 */
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 	SH_TAILQ_FOREACH(*tdp, &region->active_txn, links, __txn_detail)
 		if (memcmp(gid, (*tdp)->xid, sizeof((*tdp)->xid)) == 0)
 			break;
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	if (*tdp == NULL)
 		return (EINVAL);
@@ -57,7 +57,7 @@ __txn_map_gid(dbenv, gid, tdp, offp)
 
 /*
  * __txn_recover_pp --
- *	DB_ENV->txn_recover pre/post processing.
+ *	ENV->txn_recover pre/post processing.
  *
  * PUBLIC: int __txn_recover_pp
  * PUBLIC:     __P((DB_ENV *, DB_PREPLIST *, long, long *, u_int32_t));
@@ -70,38 +70,40 @@ __txn_recover_pp(dbenv, preplist, count, retp, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(
-	    dbenv, dbenv->tx_handle, "txn_recover", DB_INIT_TXN);
+	env = dbenv->env;
 
-	if (F_ISSET((DB_TXNREGION *)dbenv->tx_handle->reginfo.primary,
+	ENV_REQUIRES_CONFIG(
+	    env, env->tx_handle, "txn_recover", DB_INIT_TXN);
+
+	if (F_ISSET((DB_TXNREGION *)env->tx_handle->reginfo.primary,
 	    TXN_IN_RECOVERY)) {
-		__db_errx(dbenv, "operation not permitted while in recovery");
+		__db_errx(env, "operation not permitted while in recovery");
 		return (EINVAL);
 	}
 
 	if (flags != DB_FIRST && flags != DB_NEXT)
-		return (__db_ferr(dbenv, "DB_ENV->txn_recover", 0));
+		return (__db_ferr(env, "DB_ENV->txn_recover", 0));
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv,
-	    (__txn_recover(dbenv, preplist, count, retp, flags)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__txn_recover(env, preplist, count, retp, flags)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __txn_recover --
- *	DB_ENV->txn_recover.
+ *	ENV->txn_recover.
  *
- * PUBLIC: int __txn_recover
- * PUBLIC:         __P((DB_ENV *, DB_PREPLIST *, long, long *, u_int32_t));
+ * PUBLIC: int __txn_recover __P((ENV *,
+ * PUBLIC:         DB_PREPLIST *, long, long *, u_int32_t));
  */
 int
-__txn_recover(dbenv, preplist, count, retp, flags)
-	DB_ENV *dbenv;
+__txn_recover(env, preplist, count, retp, flags)
+	ENV *env;
 	DB_PREPLIST *preplist;
 	long count, *retp;
 	u_int32_t flags;
@@ -111,7 +113,7 @@ __txn_recover(dbenv, preplist, count, retp, flags)
 	 * transactions.  See __txn_get_prepared for details.  This function
 	 * and __db_xa_recover both wrap that one.
 	 */
-	return (__txn_get_prepared(dbenv, NULL, preplist, count, retp, flags));
+	return (__txn_get_prepared(env, NULL, preplist, count, retp, flags));
 }
 
 /*
@@ -124,12 +126,12 @@ __txn_recover(dbenv, preplist, count, retp, flags)
  *	entries	returned in the xids/txns array.  Flags indicates the operation,
  *	one of DB_FIRST or DB_NEXT.
  *
- * PUBLIC: int __txn_get_prepared __P((DB_ENV *,
+ * PUBLIC: int __txn_get_prepared __P((ENV *,
  * PUBLIC:     XID *, DB_PREPLIST *, long, long *, u_int32_t));
  */
 int
-__txn_get_prepared(dbenv, xids, txns, count, retp, flags)
-	DB_ENV *dbenv;
+__txn_get_prepared(env, xids, txns, count, retp, flags)
+	ENV *env;
 	XID *xids;
 	DB_PREPLIST *txns;
 	long count;		/* This is long for XA compatibility. */
@@ -138,6 +140,7 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 {
 	DB_LSN min;
 	DB_PREPLIST *prepp;
+	DB_THREAD_INFO *ip;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td;
@@ -160,7 +163,7 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	 * next time with a continue.
 	 */
 
-	mgr = dbenv->tx_handle;
+	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
 	/*
@@ -170,7 +173,7 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	 * and the ones that we are collecting are restored (if they aren't
 	 * restored, then we never crashed; just the main server did).
 	 */
-	TXN_SYSTEM_LOCK(dbenv);
+	TXN_SYSTEM_LOCK(env);
 
 	/* Now begin collecting active transactions. */
 	for (td = SH_TAILQ_FIRST(&region->active_txn, __txn_detail);
@@ -197,14 +200,20 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 		}
 
 		if (txns != NULL) {
-			if ((ret = __os_calloc(dbenv,
+			if ((ret = __os_calloc(env,
 			    1, sizeof(DB_TXN), &prepp->txn)) != 0) {
-				TXN_SYSTEM_UNLOCK(dbenv);
+				TXN_SYSTEM_UNLOCK(env);
 				goto err;
 			}
-			if ((ret = __txn_continue(dbenv, prepp->txn, td)) != 0)
+			if ((ret = __txn_continue(env, prepp->txn, td)) != 0)
 				goto err;
 			F_SET(prepp->txn, TXN_MALLOC);
+			if (F_ISSET(env->dbenv, DB_ENV_TXN_NOSYNC))
+				F_SET(prepp->txn, TXN_NOSYNC);
+			else if (F_ISSET(env->dbenv, DB_ENV_TXN_WRITE_NOSYNC))
+				F_SET(prepp->txn, TXN_WRITE_NOSYNC);
+			else
+				F_SET(prepp->txn, TXN_SYNC);
 			memcpy(prepp->gid, td->xid, sizeof(td->xid));
 			prepp++;
 		}
@@ -219,25 +228,25 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	if (flags == DB_FIRST)
 		for (; td != NULL; td = SH_TAILQ_NEXT(td, links, __txn_detail))
 			F_CLR(td, TXN_DTL_COLLECTED);
-	TXN_SYSTEM_UNLOCK(dbenv);
+	TXN_SYSTEM_UNLOCK(env);
 
 	/*
 	 * Now link all the transactions into the transaction manager's list.
 	 */
 	if (txns != NULL && *retp != 0) {
-		MUTEX_LOCK(dbenv, mgr->mutex);
+		MUTEX_LOCK(env, mgr->mutex);
 		for (i = 0; i < *retp; i++)
 			TAILQ_INSERT_TAIL(&mgr->txn_chain, txns[i].txn, links);
-		MUTEX_UNLOCK(dbenv, mgr->mutex);
+		MUTEX_UNLOCK(env, mgr->mutex);
 
 		/*
 		 * If we are restoring, update our count of outstanding
 		 * transactions.
 		 */
-		if (REP_ON(dbenv)) {
-			REP_SYSTEM_LOCK(dbenv);
-			dbenv->rep_handle->region->op_cnt += (u_long)*retp;
-			REP_SYSTEM_UNLOCK(dbenv);
+		if (REP_ON(env)) {
+			REP_SYSTEM_LOCK(env);
+			env->rep_handle->region->op_cnt += (u_long)*retp;
+			REP_SYSTEM_UNLOCK(env);
 		}
 
 	}
@@ -246,11 +255,13 @@ __txn_get_prepared(dbenv, xids, txns, count, retp, flags)
 	 * do it here.
 	 */
 	if (restored != 0 && flags == DB_FIRST &&
-	    !F_ISSET(dbenv->lg_handle, DBLOG_OPENFILES))
-		ret = __txn_openfiles(dbenv, &min, 0);
+	    !F_ISSET(env->lg_handle, DBLOG_OPENFILES)) {
+		ENV_GET_THREAD_INFO(env, ip);
+		ret = __txn_openfiles(env, ip, &min, 0);
+	}
 
 	if (0) {
-err:		TXN_SYSTEM_UNLOCK(dbenv);
+err:		TXN_SYSTEM_UNLOCK(env);
 	}
 	return (ret);
 }
@@ -259,11 +270,12 @@ err:		TXN_SYSTEM_UNLOCK(dbenv);
  * __txn_openfiles --
  *	Call env_openfiles.
  *
- * PUBLIC: int __txn_openfiles __P((DB_ENV *, DB_LSN *, int));
+ * PUBLIC: int __txn_openfiles __P((ENV *, DB_THREAD_INFO *, DB_LSN *, int));
  */
 int
-__txn_openfiles(dbenv, min, force)
-	DB_ENV *dbenv;
+__txn_openfiles(env, ip, min, force)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	DB_LSN *min;
 	int force;
 {
@@ -279,19 +291,19 @@ __txn_openfiles(dbenv, min, force)
 	 * start_lsn in the region.
 	 */
 	logc = NULL;
-	if ((ret = __log_cursor(dbenv, &logc)) != 0)
+	if ((ret = __log_cursor(env, &logc)) != 0)
 		goto err;
 
 	memset(&data, 0, sizeof(data));
-	if ((ret = __txn_getckp(dbenv, &open_lsn)) == 0)
+	if ((ret = __txn_getckp(env, &open_lsn)) == 0)
 		while (!IS_ZERO_LSN(open_lsn) && (ret =
 		    __logc_get(logc, &open_lsn, &data, DB_SET)) == 0 &&
 		    (force ||
 		    (min != NULL && LOG_COMPARE(min, &open_lsn) < 0))) {
 			/* Format the log record. */
-			if ((ret = __txn_ckp_read(dbenv,
-			    data.data, &ckp_args)) != 0) {
-				__db_errx(dbenv,
+			if ((ret = __txn_ckp_read(
+			    env, data.data, &ckp_args)) != 0) {
+				__db_errx(env,
 			    "Invalid checkpoint record at [%lu][%lu]",
 				    (u_long)open_lsn.file,
 				    (u_long)open_lsn.offset);
@@ -304,7 +316,7 @@ __txn_openfiles(dbenv, min, force)
 			 */
 			open_lsn = force ? ckp_args->ckp_lsn :
 			    ckp_args->last_ckp;
-			__os_free(dbenv, ckp_args);
+			__os_free(env, ckp_args);
 			if (force) {
 				if ((ret = __logc_get(logc, &open_lsn,
 				    &data, DB_SET)) != 0)
@@ -324,16 +336,16 @@ __txn_openfiles(dbenv, min, force)
 	 */
 	if ((ret == DB_NOTFOUND || IS_ZERO_LSN(open_lsn)) && (ret =
 	    __logc_get(logc, &open_lsn, &data, DB_FIRST)) != 0) {
-		__db_errx(dbenv, "No log records");
+		__db_errx(env, "No log records");
 		goto err;
 	}
 
-	if ((ret = __db_txnlist_init(dbenv, 0, 0, NULL, &txninfo)) != 0)
+	if ((ret = __db_txnlist_init(env, ip, 0, 0, NULL, &txninfo)) != 0)
 		goto err;
-	ret = __env_openfiles(dbenv, logc,
-	    txninfo, &data, &open_lsn, NULL, 0, 0);
+	ret = __env_openfiles(
+	    env, logc, txninfo, &data, &open_lsn, NULL, (double)0, 0);
 	if (txninfo != NULL)
-		__db_txnlist_end(dbenv, txninfo);
+		__db_txnlist_end(env, txninfo);
 
 err:
 	if (logc != NULL && (t_ret = __logc_close(logc)) != 0 && ret == 0)

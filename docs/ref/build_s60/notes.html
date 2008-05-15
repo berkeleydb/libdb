@@ -1,0 +1,32 @@
+<!--$Id: notes.so,v 1.2 2007/10/31 18:08:31 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB Reference Guide: S60 notes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Building Berkeley DB for S60</dl></b></td>
+<td align=right><a href="../build_s60/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_unix/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>S60 notes</b></p>
+<ol>
+<p><li>The stack size on the S60 is small by default, and the application will
+silently fail if the stack is too small.  Setting EPOCSTACKSIZE to an
+appropriate value in the application's mmp file will resolve this
+problem.
+<p><li>The Berkeley DB build on the S60 is a "small build", disabling some of the
+Berkeley DB library features.  This build is equivalent to the
+<b>--enable-smallbuild</b> configuration option described in
+<a href="../../ref/build_unix/small.html">Building a small memory footprint
+library</a>.
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../build_s60/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../build_unix/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
+</body>
+</html>

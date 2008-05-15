@@ -57,42 +57,40 @@ done
 
 cat <<END_OF_TEXT
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Check that pubdef.in has everything listed in db.in.
+Check that pubdef.in has everything listed in db.in plus api_flags.in.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 END_OF_TEXT
 
-f=$d/dbinc/db.in
-sed -n \
+cat $d/dbinc/db.in $d/dbinc_auto/api_flags.in | sed -n \
     -e 's/^#define[	 ]*\(DB_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/^[	 ]*\(DB_[A-Z_]*\)=[0-9].*/\1/p' \
-    -e d < $f |
+    -e d |
 while read name; do
 	if `egrep -w "$name" $p > /dev/null`; then
 		:
 	else
-		echo "$f: $name is missing from $p"
+		echo "db.in/api_flags.in: $name is missing from $p"
 		exitv=1
 	fi
 done
 
 cat <<END_OF_TEXT
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Check that db.in has everything listed in pubdef.in.
+Check that api_flags.in plus db.in has everything listed in pubdef.in.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 END_OF_TEXT
 
-f=$d/dbinc/db.in
 sed '/^#/d' $p |
 while read name isdoc isinc isjava; do
 	if `egrep -w "#define[	 ]$name|[	 ][	 ]*$name=[0-9][0-9]*" \
-	    $f > /dev/null`; then
+	    $d/dbinc/db.in $d/dbinc_auto/api_flags.in > /dev/null`; then
 		[ "X$isinc" != "XI" ] && {
-			echo "$name should not appear in $f"
+			echo "$name should not appear in db.in/api_flags.in"
 			exitv=1
 		}
 	else
 		[ "X$isinc" = "XI" ] && {
-			echo "$name does not appear in $f"
+			echo "$name does not appear in db.in/api_flags.in"
 			exitv=1
 		}
 	fi
@@ -144,11 +142,15 @@ Check that all constants in pubdef.in are wrapped by the Java API.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 END_OF_TEXT
 
+#Strip out Javadoc comments
+t=__1
+cat $j/*.java $d/rpc_server/java/*.java \
+    $j/internal/Db.java $j/internal/DbEnv.java \
+    $j/internal/db_javaJNI.java | sed '/\/\*\*/,/\*\// d' > $t
+
 sed '/^#/d' $p |
 while read name isdoc isinc isjava; do
-	if `egrep -w "$name" $j/*.java $d/rpc_server/java/*.java \
-	    $j/internal/Db.java $j/internal/DbEnv.java \
-	    $j/internal/db_javaJNI.java > /dev/null`; then
+	if `egrep -w "$name" $t > /dev/null`; then
 		[ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in the Java API"
 			exitv=1

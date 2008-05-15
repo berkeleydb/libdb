@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2007 Oracle.  All rights reserved.
+# Copyright (c) 2005,2008 Oracle.  All rights reserved.
 #
-# $Id: rep056.tcl,v 1.8 2007/05/17 15:15:55 bostic Exp $
+# $Id: rep056.tcl,v 1.9 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST  rep056
 # TEST	Replication test with in-memory named databases.

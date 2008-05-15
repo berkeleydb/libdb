@@ -1,4 +1,4 @@
-m4_comment([$Id: db_sync.so,v 10.36 2004/08/13 03:38:56 bostic Exp $])
+m4_comment([$Id: db_sync.so,v 10.37 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL, dbh_sync)
 include(m4/m4.seealso)
@@ -38,7 +38,7 @@ m4_parambegin
 m4_unusedflags
 m4_paramend
 
-m4_err(dbh_sync, repinval, einval)
+m4_err(dbh_sync, rephandle, replockout, einval)
 
 m4_seealso(Db)
 m4_page_footer

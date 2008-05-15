@@ -1,12 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2001,2008 Oracle.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield,
  * -- astubble@rice.edu.
  *
- * $Id: hmac.c,v 12.11 2007/05/17 15:15:39 bostic Exp $
+ * $Id: hmac.c,v 12.13 2008/01/08 20:58:34 bostic Exp $
  */
 
 #include "db_config.h"
@@ -152,12 +152,12 @@ __db_derive_mac(passwd, plen, mac_key)
  *
  *	Return 0 on success, >0 (errno) on error, -1 on checksum mismatch.
  *
- * PUBLIC: int __db_check_chksum __P((DB_ENV *,
+ * PUBLIC: int __db_check_chksum __P((ENV *,
  * PUBLIC:     void *, DB_CIPHER *, u_int8_t *, void *, size_t, int));
  */
 int
-__db_check_chksum(dbenv, hdr, db_cipher, chksum, data, data_len, is_hmac)
-	DB_ENV *dbenv;
+__db_check_chksum(env, hdr, db_cipher, chksum, data, data_len, is_hmac)
+	ENV *env;
 	void *hdr;
 	DB_CIPHER *db_cipher;
 	u_int8_t *chksum;
@@ -177,7 +177,7 @@ __db_check_chksum(dbenv, hdr, db_cipher, chksum, data, data_len, is_hmac)
 	 */
 	if (is_hmac == 0) {
 		if (db_cipher != NULL) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "Unencrypted checksum with a supplied encryption key");
 			return (EINVAL);
 		}
@@ -185,7 +185,7 @@ __db_check_chksum(dbenv, hdr, db_cipher, chksum, data, data_len, is_hmac)
 		mac_key = NULL;
 	} else {
 		if (db_cipher == NULL) {
-			__db_errx(dbenv,
+			__db_errx(env,
     "Encrypted checksum: no encryption key specified");
 			return (EINVAL);
 		}

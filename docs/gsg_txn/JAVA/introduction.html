@@ -79,7 +79,9 @@
       </div>
       <p>
     This book provides a thorough introduction and discussion on transactions as
-    used with Berkeley DB (DB). It begins by offering a general overview to
+    used with Berkeley DB (DB). <span>Both the
+            base API as well as the Direct Persistence Layer API is used in this
+            manual.</span> It begins by offering a general overview to
     transactions, the guarantees they provide, and the general application
     infrastructure required to obtain full transactional protection for your
     data. 
@@ -274,6 +276,12 @@
                     applications.
                 </p>
                 <p>
+                    Environments are optional for non-transactional
+                    applications that use the base API, but they are required for transactional
+                    applications. (Of course, applications that use the
+                    DPL always require the DPL.)
+                </p>
+                <p>
                     Environment usage is described in detail in 
                     <a href="usingtxns.html">Transaction Basics</a>.
                 </p>
@@ -335,6 +343,18 @@
               </li>
               <li>
                 <p>
+                            Entity Store
+                    </p>
+                <p>
+                            If you are using the DPL, then you must
+                            configure your entity stores for transactional
+                            support before opening them (that is, before
+                            obtaining a primary key from them for the first
+                            time).
+                    </p>
+              </li>
+              <li>
+                <p>
                     <span>Database</span>
                     
                     open requirements.
@@ -354,6 +374,13 @@
                     protected. The database open and secondary index
                     association are commonly transaction protected using
                     auto commit.
+                </p>
+                <p>
+                        Note that if you are using the DPL, you do not
+                        have to explicitly do anything to the underlying
+                        databases unless you want to modify their default
+                        behavior — such as the isolation level that they
+                        use, for example.
                 </p>
               </li>
               <li>

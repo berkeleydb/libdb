@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: mut_failchk.c,v 12.5 2007/05/17 15:15:45 bostic Exp $
+ * $Id: mut_failchk.c,v 12.8 2008/01/08 20:58:43 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,24 +15,26 @@
  * __mut_failchk --
  *	Check for mutexes held by dead processes.
  *
- * PUBLIC: int __mut_failchk __P((DB_ENV *));
+ * PUBLIC: int __mut_failchk __P((ENV *));
  */
 int
-__mut_failchk(dbenv)
-	DB_ENV *dbenv;
+__mut_failchk(env)
+	ENV *env;
 {
+	DB_ENV *dbenv;
+	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_MUTEXREGION *mtxregion;
-	DB_MUTEX *mutexp;
 	db_mutex_t i;
 	int ret;
 	char buf[DB_THREADID_STRLEN];
 
-	mtxmgr = dbenv->mutex_handle;
+	dbenv = env->dbenv;
+	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
 	ret = 0;
 
-	MUTEX_SYSTEM_LOCK(dbenv);
+	MUTEX_SYSTEM_LOCK(env);
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
 		mutexp = MUTEXP_SET(i);
 
@@ -52,17 +54,17 @@ __mut_failchk(dbenv)
 		    dbenv, mutexp->pid, 0, DB_MUTEX_PROCESS_ONLY))
 			continue;
 
-		__db_msg(dbenv, "Freeing mutex for process: %s",
+		__db_msg(env, "Freeing mutex for process: %s",
 		    dbenv->thread_id_string(dbenv, mutexp->pid, 0, buf));
 
 		/* Unlock and free the mutex. */
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED))
-			MUTEX_UNLOCK(dbenv, i);
+			MUTEX_UNLOCK(env, i);
 
-		if ((ret = __mutex_free_int(dbenv, 0, &i)) != 0)
+		if ((ret = __mutex_free_int(env, 0, &i)) != 0)
 			break;
 	}
-	MUTEX_SYSTEM_UNLOCK(dbenv);
+	MUTEX_SYSTEM_UNLOCK(env);
 
 	return (ret);
 }

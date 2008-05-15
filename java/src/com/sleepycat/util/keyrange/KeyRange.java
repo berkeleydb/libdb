@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: KeyRange.java,v 1.4 2007/05/04 00:28:27 mark Exp $
+ * $Id: KeyRange.java,v 1.6 2008/02/19 19:41:51 mark Exp $
  */
 
 package com.sleepycat.util.keyrange;
@@ -333,7 +333,7 @@ public class KeyRange {
      *
      * @param dbt the thang to convert.
      *
-     * @param the resulting string.
+     * @return the resulting string.
      */
     public static String toString(DatabaseEntry dbt) {
 

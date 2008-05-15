@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: test121.tcl,v 1.9 2007/05/24 18:20:47 carol Exp $
+# $Id: test121.tcl,v 1.11 2008/03/26 14:43:20 carol Exp $
 #
 # TEST	test121
 # TEST	Tests of multi-version concurrency control.
@@ -47,7 +47,7 @@ proc test121 { method {tnum "121"} args } {
 
 	# Raise cachesize so this test focuses on cursor adjustment
 	# and not on small cache issues.
-	set cachesize [expr 1024 * 1024]
+	set cachesize [expr 2 * 1024 * 1024]
 	set max_locks 2000
 	set max_objects 2000
 	set env [eval {berkdb_env -create -cachesize "0 $cachesize 1"}\

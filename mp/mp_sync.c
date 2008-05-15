@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_sync.c,v 12.52 2007/06/01 18:32:44 bostic Exp $
+ * $Id: mp_sync.c,v 12.59 2008/01/17 13:59:12 bostic Exp $
  */
 
 #include "db_config.h"
@@ -22,22 +22,22 @@ typedef struct {
 } BH_TRACK;
 
 static int __bhcmp __P((const void *, const void *));
-static int __memp_close_flush_files __P((DB_ENV *, int));
-static int __memp_sync_files __P((DB_ENV *));
-static int __memp_sync_file __P((DB_ENV *,
+static int __memp_close_flush_files __P((ENV *, int));
+static int __memp_sync_files __P((ENV *));
+static int __memp_sync_file __P((ENV *,
 		MPOOLFILE *, void *, u_int32_t *, u_int32_t));
 
 /*
  * __memp_walk_files --
- * PUBLIC: int __memp_walk_files __P((DB_ENV *, MPOOL *,
- * PUBLIC:	int (*) __P((DB_ENV *, MPOOLFILE *, void *,
+ * PUBLIC: int __memp_walk_files __P((ENV *, MPOOL *,
+ * PUBLIC:	int (*) __P((ENV *, MPOOLFILE *, void *,
  * PUBLIC:	u_int32_t *, u_int32_t)), void *, u_int32_t *, u_int32_t));
  */
 int
-__memp_walk_files(dbenv, mp, func, arg, countp, flags)
-	DB_ENV *dbenv;
+__memp_walk_files(env, mp, func, arg, countp, flags)
+	ENV *env;
 	MPOOL *mp;
-	int (*func)__P((DB_ENV *, MPOOLFILE *, void *, u_int32_t *, u_int32_t));
+	int (*func)__P((ENV *, MPOOLFILE *, void *, u_int32_t *, u_int32_t));
 	void *arg;
 	u_int32_t *countp;
 	u_int32_t flags;
@@ -47,21 +47,21 @@ __memp_walk_files(dbenv, mp, func, arg, countp, flags)
 	MPOOLFILE *mfp;
 	int i, ret, t_ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	ret = 0;
 
 	hp = R_ADDR(dbmp->reginfo, mp->ftab);
 	for (i = 0; i < MPOOL_FILE_BUCKETS; i++, hp++) {
-		MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MUTEX_LOCK(env, hp->mtx_hash);
 		SH_TAILQ_FOREACH(mfp, &hp->hash_bucket, q, __mpoolfile) {
-			if ((t_ret = func(dbenv,
+			if ((t_ret = func(env,
 			    mfp, arg, countp, flags)) != 0 && ret == 0)
 				ret = t_ret;
-			if (ret != 0 && !LF_ISSET(DB_STAT_NOERROR))
+			if (ret != 0 && !LF_ISSET(DB_STAT_MEMP_NOERROR))
 				break;
 		}
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
-		if (ret != 0 && !LF_ISSET(DB_STAT_NOERROR))
+		MUTEX_UNLOCK(env, hp->mtx_hash);
+		if (ret != 0 && !LF_ISSET(DB_STAT_MEMP_NOERROR))
 			break;
 	}
 	return (ret);
@@ -69,7 +69,7 @@ __memp_walk_files(dbenv, mp, func, arg, countp, flags)
 
 /*
  * __memp_sync_pp --
- *	DB_ENV->memp_sync pre/post processing.
+ *	ENV->memp_sync pre/post processing.
  *
  * PUBLIC: int __memp_sync_pp __P((DB_ENV *, DB_LSN *));
  */
@@ -79,35 +79,37 @@ __memp_sync_pp(dbenv, lsnp)
 	DB_LSN *lsnp;
 {
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_REQUIRES_CONFIG(dbenv,
-	    dbenv->mp_handle, "memp_sync", DB_INIT_MPOOL);
+	env = dbenv->env;
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->mp_handle, "memp_sync", DB_INIT_MPOOL);
 
 	/*
 	 * If no LSN is provided, flush the entire cache (reasonable usage
 	 * even if there's no log subsystem configured).
 	 */
 	if (lsnp != NULL)
-		ENV_REQUIRES_CONFIG(dbenv,
-		    dbenv->lg_handle, "memp_sync", DB_INIT_LOG);
+		ENV_REQUIRES_CONFIG(env,
+		    env->lg_handle, "memp_sync", DB_INIT_LOG);
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv, (__memp_sync(dbenv, DB_SYNC_CACHE, lsnp)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__memp_sync(env, DB_SYNC_CACHE, lsnp)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
 /*
  * __memp_sync --
- *	DB_ENV->memp_sync.
+ *	ENV->memp_sync.
  *
- * PUBLIC: int __memp_sync __P((DB_ENV *, u_int32_t, DB_LSN *));
+ * PUBLIC: int __memp_sync __P((ENV *, u_int32_t, DB_LSN *));
  */
 int
-__memp_sync(dbenv, flags, lsnp)
-	DB_ENV *dbenv;
+__memp_sync(env, flags, lsnp)
+	ENV *env;
 	u_int32_t flags;
 	DB_LSN *lsnp;
 {
@@ -115,30 +117,30 @@ __memp_sync(dbenv, flags, lsnp)
 	MPOOL *mp;
 	int interrupted, ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 
 	/* If we've flushed to the requested LSN, return that information. */
 	if (lsnp != NULL) {
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MPOOL_SYSTEM_LOCK(env);
 		if (LOG_COMPARE(lsnp, &mp->lsn) <= 0) {
 			*lsnp = mp->lsn;
 
-			MPOOL_SYSTEM_UNLOCK(dbenv);
+			MPOOL_SYSTEM_UNLOCK(env);
 			return (0);
 		}
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
 	}
 
 	if ((ret =
-	    __memp_sync_int(dbenv, NULL, 0, flags, NULL, &interrupted)) != 0)
+	    __memp_sync_int(env, NULL, 0, flags, NULL, &interrupted)) != 0)
 		return (ret);
 
 	if (!interrupted && lsnp != NULL) {
-		MPOOL_SYSTEM_LOCK(dbenv);
+		MPOOL_SYSTEM_LOCK(env);
 		if (LOG_COMPARE(lsnp, &mp->lsn) > 0)
 			mp->lsn = *lsnp;
-		MPOOL_SYSTEM_UNLOCK(dbenv);
+		MPOOL_SYSTEM_UNLOCK(env);
 	}
 
 	return (0);
@@ -154,18 +156,17 @@ int
 __memp_fsync_pp(dbmfp)
 	DB_MPOOLFILE *dbmfp;
 {
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int ret;
 
-	dbenv = dbmfp->dbenv;
+	env = dbmfp->env;
 
-	PANIC_CHECK(dbenv);
 	MPF_ILLEGAL_BEFORE_OPEN(dbmfp, "DB_MPOOLFILE->sync");
 
-	ENV_ENTER(dbenv, ip);
-	REPLICATION_WRAP(dbenv, (__memp_fsync(dbmfp)), ret);
-	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env, (__memp_fsync(dbmfp)), 0, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -199,7 +200,7 @@ __memp_fsync(dbmfp)
 		return (0);
 
 	return (__memp_sync_int(
-	    dbmfp->dbenv, dbmfp, 0, DB_SYNC_FILE, NULL, NULL));
+	    dbmfp->env, dbmfp, 0, DB_SYNC_FILE, NULL, NULL));
 }
 
 /*
@@ -233,7 +234,7 @@ __mp_xxx_fh(dbmfp, fhp)
 		return (0);
 
 	if ((ret = __memp_sync_int(
-	    dbmfp->dbenv, dbmfp, 0, DB_SYNC_FILE, NULL, NULL)) == 0)
+	    dbmfp->env, dbmfp, 0, DB_SYNC_FILE, NULL, NULL)) == 0)
 		*fhp = dbmfp->fhp;
 	return (ret);
 }
@@ -242,12 +243,12 @@ __mp_xxx_fh(dbmfp, fhp)
  * __memp_sync_int --
  *	Mpool sync internal function.
  *
- * PUBLIC: int __memp_sync_int __P((DB_ENV *,
+ * PUBLIC: int __memp_sync_int __P((ENV *,
  * PUBLIC:     DB_MPOOLFILE *, u_int32_t, u_int32_t, u_int32_t *, int *));
  */
 int
-__memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
-	DB_ENV *dbenv;
+__memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
+	ENV *env;
 	DB_MPOOLFILE *dbmfp;
 	u_int32_t trickle_max, flags, *wrote_totalp;
 	int *interruptedp;
@@ -264,7 +265,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	int filecnt, maxopenfd, pass, required_write, ret, t_ret;
 	int wait_cnt, wrote_cnt;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	last_mf_offset = INVALID_ROFF;
 	filecnt = pass = wrote_total = 0;
@@ -284,14 +285,14 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	    DB_SYNC_CHECKPOINT | DB_SYNC_FILE | DB_SYNC_QUEUE_EXTENT);
 
 	/* Get shared configuration information. */
-	MPOOL_SYSTEM_LOCK(dbenv);
+	MPOOL_SYSTEM_LOCK(env);
 	maxopenfd = mp->mp_maxopenfd;
-	MPOOL_SYSTEM_UNLOCK(dbenv);
+	MPOOL_SYSTEM_UNLOCK(env);
 
 	/* Assume one dirty page per bucket. */
 	ar_max = mp->nreg * mp->htab_buckets;
 	if ((ret =
-	    __os_malloc(dbenv, ar_max * sizeof(BH_TRACK), &bharray)) != 0)
+	    __os_malloc(env, ar_max * sizeof(BH_TRACK), &bharray)) != 0)
 		return (ret);
 
 	/*
@@ -319,7 +320,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 				continue;
 
 			dirty = 0;
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MUTEX_LOCK(env, hp->mtx_hash);
 			SH_TAILQ_FOREACH(bhp, &hp->hash_bucket, hq, __bh) {
 				/* Always ignore clean pages. */
 				if (!F_ISSET(bhp, BH_DIRTY))
@@ -374,21 +375,21 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 				 * to minimize disk seeks.
 				 */
 				if (ar_cnt >= ar_max) {
-					if ((ret = __os_realloc(dbenv,
+					if ((ret = __os_realloc(env,
 					    (ar_max * 2) * sizeof(BH_TRACK),
 					    &bharray)) != 0)
 						break;
 					ar_max *= 2;
 				}
 			}
-			DB_ASSERT(dbenv, dirty == hp->hash_page_dirty);
+			DB_ASSERT(env, dirty == hp->hash_page_dirty);
 			if (dirty != hp->hash_page_dirty) {
-				__db_errx(dbenv,
+				__db_errx(env,
 				    "memp_sync: correcting dirty count %lu %lu",
 				    (u_long)hp->hash_page_dirty, (u_long)dirty);
 				hp->hash_page_dirty = dirty;
 			}
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
 
 			if (ret != 0)
 				goto err;
@@ -430,7 +431,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * flushed the log), but in general this will at least avoid any I/O
 	 * on the log's part.
 	 */
-	if (LOGGING_ON(dbenv) && (ret = __log_flush(dbenv, NULL)) != 0)
+	if (LOGGING_ON(env) && (ret = __log_flush(env, NULL)) != 0)
 		goto err;
 
 	/*
@@ -442,14 +443,14 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		if (i >= ar_cnt) {
 			i = 0;
 			++pass;
-			__os_sleep(dbenv, 1, 0);
+			__os_yield(env, 1, 0);
 		}
 		if ((hp = bharray[i].track_hp) == NULL)
 			continue;
 
 		/* Lock the hash bucket and find the buffer. */
 		mutex = hp->mtx_hash;
-		MUTEX_LOCK(dbenv, mutex);
+		MUTEX_LOCK(env, mutex);
 		SH_TAILQ_FOREACH(bhp, &hp->hash_bucket, hq, __bh)
 			if (bhp->pgno == bharray[i].track_pgno &&
 			    bhp->mf_offset == bharray[i].track_off)
@@ -463,7 +464,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		 * needed.
 		 */
 		if (bhp == NULL || !F_ISSET(bhp, BH_DIRTY)) {
-			MUTEX_UNLOCK(dbenv, mutex);
+			MUTEX_UNLOCK(env, mutex);
 			--remaining;
 			bharray[i].track_hp = NULL;
 			continue;
@@ -481,7 +482,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		 * write it.
 		 */
 		if (F_ISSET(bhp, BH_LOCKED) || (bhp->ref != 0 && pass < 2)) {
-			MUTEX_UNLOCK(dbenv, mutex);
+			MUTEX_UNLOCK(env, mutex);
 			if (!required_write) {
 				--remaining;
 				bharray[i].track_hp = NULL;
@@ -510,11 +511,11 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		 */
 		bhp->ref_sync = bhp->ref - 1;
 		if (bhp->ref_sync != 0) {
-			MUTEX_UNLOCK(dbenv, mutex);
+			MUTEX_UNLOCK(env, mutex);
 			for (wait_cnt = 1;
 			    bhp->ref_sync != 0 && wait_cnt < 4; ++wait_cnt)
-				__os_sleep(dbenv, 1, 0);
-			MUTEX_LOCK(dbenv, mutex);
+				__os_yield(env, 1, 0);
+			MUTEX_LOCK(env, mutex);
 		}
 
 		/*
@@ -525,7 +526,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			if (++filecnt >= maxopenfd) {
 				filecnt = 0;
 				if ((t_ret = __memp_close_flush_files(
-				    dbenv, 1)) != 0 && ret == 0)
+				    env, 1)) != 0 && ret == 0)
 					ret = t_ret;
 			}
 			last_mf_offset = bhp->mf_offset;
@@ -554,7 +555,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 				if (ret == 0)
 					ret = t_ret;
 				__db_errx
-				    (dbenv, "%s: unable to flush page: %lu",
+				    (env, "%s: unable to flush page: %lu",
 				    __memp_fns(dbmp, mfp), (u_long)bhp->pgno);
 
 			}
@@ -583,11 +584,11 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		 */
 		if (F_ISSET(hp, IO_WAITER)) {
 			F_CLR(hp, IO_WAITER);
-			MUTEX_UNLOCK(dbenv, hp->mtx_io);
+			MUTEX_UNLOCK(env, hp->mtx_io);
 		}
 
 		/* Release the hash bucket mutex. */
-		MUTEX_UNLOCK(dbenv, mutex);
+		MUTEX_UNLOCK(env, mutex);
 
 		/* Check if the call has been interrupted. */
 		if (LF_ISSET(DB_SYNC_INTERRUPT_OK) &&
@@ -607,8 +608,7 @@ __memp_sync_int(dbenv, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		    !FLD_ISSET(mp->config_flags, DB_MEMP_SUPPRESS_WRITE) &&
 		    mp->mp_maxwrite != 0 && wrote_cnt >= mp->mp_maxwrite) {
 			wrote_cnt = 0;
-			__os_sleep(
-			    dbenv, 0, (u_long)mp->mp_maxwrite_sleep);
+			__os_yield(env, 0, (u_long)mp->mp_maxwrite_sleep);
 		}
 	}
 
@@ -621,16 +621,16 @@ done:	/*
 	 */
 	if (ret == 0 && required_write) {
 		if (dbmfp == NULL)
-			ret = __memp_sync_files(dbenv);
+			ret = __memp_sync_files(env);
 		else
-			ret = __os_fsync(dbenv, dbmfp->fhp);
+			ret = __os_fsync(env, dbmfp->fhp);
 	}
 
 	/* If we've opened files to flush pages, close them. */
-	if ((t_ret = __memp_close_flush_files(dbenv, 0)) != 0 && ret == 0)
+	if ((t_ret = __memp_close_flush_files(env, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
-err:	__os_free(dbenv, bharray);
+err:	__os_free(env, bharray);
 	if (wrote_totalp != NULL)
 		*wrote_totalp = wrote_total;
 
@@ -638,8 +638,8 @@ err:	__os_free(dbenv, bharray);
 }
 
 static int
-__memp_sync_file(dbenv, mfp, argp, countp, flags)
-	DB_ENV *dbenv;
+__memp_sync_file(env, mfp, argp, countp, flags)
+	ENV *env;
 	MPOOLFILE *mfp;
 	void *argp;
 	u_int32_t *countp;
@@ -675,20 +675,20 @@ __memp_sync_file(dbenv, mfp, argp, countp, flags)
 	 * sure the MPOOLFILE wasn't marked dead while we waited for
 	 * the mutex.
 	 */
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	MUTEX_LOCK(env, mfp->mutex);
 	if (!mfp->file_written || mfp->deadfile) {
-		MUTEX_UNLOCK(dbenv, mfp->mutex);
+		MUTEX_UNLOCK(env, mfp->mutex);
 		return (0);
 	}
 	++mfp->mpf_cnt;
-	MUTEX_UNLOCK(dbenv, mfp->mutex);
+	MUTEX_UNLOCK(env, mfp->mutex);
 
 	/*
 	 * Look for an already open, writeable handle (fsync doesn't
 	 * work on read-only Windows handles).
 	 */
-	dbmp = dbenv->mp_handle;
-	MUTEX_LOCK(dbenv, dbmp->mutex);
+	dbmp = env->mp_handle;
+	MUTEX_LOCK(env, dbmp->mutex);
 	TAILQ_FOREACH(dbmfp, &dbmp->dbmfq, q) {
 		if (dbmfp->mfp != mfp || F_ISSET(dbmfp, MP_READONLY))
 			continue;
@@ -700,23 +700,23 @@ __memp_sync_file(dbenv, mfp, argp, countp, flags)
 		++dbmfp->ref;
 		break;
 	}
-	MUTEX_UNLOCK(dbenv, dbmp->mutex);
+	MUTEX_UNLOCK(env, dbmp->mutex);
 
 	/* If we don't find a handle we can use, open one. */
 	if (dbmfp == NULL) {
 		if ((ret = __memp_mf_sync(dbmp, mfp, 1)) != 0) {
-			__db_err(dbenv, ret,
+			__db_err(env, ret,
 			    "%s: unable to flush", (char *)
 			    R_ADDR(dbmp->reginfo, mfp->path_off));
 		}
 	} else
-		ret = __os_fsync(dbenv, dbmfp->fhp);
+		ret = __os_fsync(env, dbmfp->fhp);
 
 	/*
 	 * Re-acquire the MPOOLFILE mutex, we need it to modify the
 	 * reference count.
 	 */
-	MUTEX_LOCK(dbenv, mfp->mutex);
+	MUTEX_LOCK(env, mfp->mutex);
 
 	/*
 	 * If we wrote the file and there are no other references (or there
@@ -762,7 +762,7 @@ __memp_sync_file(dbenv, mfp, argp, countp, flags)
 	--mfp->mpf_cnt;
 
 	/* Unlock the MPOOLFILE. */
-	MUTEX_UNLOCK(dbenv, mfp->mutex);
+	MUTEX_UNLOCK(env, mfp->mutex);
 	return (ret);
 }
 
@@ -771,8 +771,8 @@ __memp_sync_file(dbenv, mfp, argp, countp, flags)
  *	Sync all the files in the environment, open or not.
  */
 static int
-__memp_sync_files(dbenv)
-	DB_ENV *dbenv;
+__memp_sync_files(env)
+	ENV *env;
 {
 	DB_MPOOL *dbmp;
 	DB_MPOOL_HASH *hp;
@@ -780,12 +780,12 @@ __memp_sync_files(dbenv)
 	MPOOLFILE *mfp, *next_mfp;
 	int i, need_discard_pass, ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	need_discard_pass = ret = 0;
 
-	ret = __memp_walk_files(dbenv,
-	    mp, __memp_sync_file, &need_discard_pass, 0, DB_STAT_NOERROR);
+	ret = __memp_walk_files(env,
+	    mp, __memp_sync_file, &need_discard_pass, 0, DB_STAT_MEMP_NOERROR);
 
 	/*
 	 * We may need to do a last pass through the MPOOLFILE list -- if we
@@ -796,7 +796,7 @@ __memp_sync_files(dbenv)
 
 	hp = R_ADDR(dbmp->reginfo, mp->ftab);
 	for (i = 0; i < MPOOL_FILE_BUCKETS; i++, hp++) {
-retry:		MUTEX_LOCK(dbenv, hp->mtx_hash);
+retry:		MUTEX_LOCK(env, hp->mtx_hash);
 		for (mfp = SH_TAILQ_FIRST(&hp->hash_bucket,
 		    __mpoolfile); mfp != NULL; mfp = next_mfp) {
 			next_mfp = SH_TAILQ_NEXT(mfp, q, __mpoolfile);
@@ -809,16 +809,16 @@ retry:		MUTEX_LOCK(dbenv, hp->mtx_hash);
 			    mfp->block_cnt != 0 || mfp->mpf_cnt != 0)
 				continue;
 
-			MUTEX_LOCK(dbenv, mfp->mutex);
+			MUTEX_LOCK(env, mfp->mutex);
 			if (!mfp->deadfile &&
 			    mfp->block_cnt == 0 && mfp->mpf_cnt == 0) {
-				MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+				MUTEX_UNLOCK(env, hp->mtx_hash);
 				(void)__memp_mf_discard(dbmp, mfp);
 				goto retry;
 			} else
-				MUTEX_UNLOCK(dbenv, mfp->mutex);
+				MUTEX_UNLOCK(env, mfp->mutex);
 		}
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 	}
 	return (ret);
 }
@@ -835,15 +835,15 @@ __memp_mf_sync(dbmp, mfp, locked)
 	MPOOLFILE *mfp;
 	int locked;
 {
-	DB_ENV *dbenv;
 	DB_FH *fhp;
 	DB_MPOOL_HASH *hp;
+	ENV *env;
 	MPOOL *mp;
 	int ret, t_ret;
 	char *rpath;
 
 	COMPQUIET(hp, NULL);
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 
 	/*
 	 * We need to be holding the hash lock: we're using the path name
@@ -854,22 +854,22 @@ __memp_mf_sync(dbmp, mfp, locked)
 		hp = R_ADDR(dbmp->reginfo, mp->ftab);
 		hp += FNBUCKET(
 		    R_ADDR(dbmp->reginfo, mfp->fileid_off), DB_FILE_ID_LEN);
-		MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MUTEX_LOCK(env, hp->mtx_hash);
 	}
 
-	if ((ret = __db_appname(dbenv, DB_APP_DATA,
+	if ((ret = __db_appname(env, DB_APP_DATA,
 	    R_ADDR(dbmp->reginfo, mfp->path_off), 0, NULL, &rpath)) == 0) {
-		if ((ret = __os_open(dbenv, rpath, 0, 0, 0, &fhp)) == 0) {
-			ret = __os_fsync(dbenv, fhp);
+		if ((ret = __os_open(env, rpath, 0, 0, 0, &fhp)) == 0) {
+			ret = __os_fsync(env, fhp);
 			if ((t_ret =
-			    __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
+			    __os_closehandle(env, fhp)) != 0 && ret == 0)
 				ret = t_ret;
 		}
-		__os_free(dbenv, rpath);
+		__os_free(env, rpath);
 	}
 
 	if (!locked)
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 
 	return (ret);
 }
@@ -879,8 +879,8 @@ __memp_mf_sync(dbmp, mfp, locked)
  *	Close files opened only to flush buffers.
  */
 static int
-__memp_close_flush_files(dbenv, dosync)
-	DB_ENV *dbenv;
+__memp_close_flush_files(env, dosync)
+	ENV *env;
 	int dosync;
 {
 	DB_MPOOL *dbmp;
@@ -888,7 +888,7 @@ __memp_close_flush_files(dbenv, dosync)
 	MPOOLFILE *mfp;
 	int ret;
 
-	dbmp = dbenv->mp_handle;
+	dbmp = env->mp_handle;
 
 	/*
 	 * The routine exists because we must close files opened by sync to
@@ -903,11 +903,11 @@ __memp_close_flush_files(dbenv, dosync)
 	 * MP_FLUSH flag.  Here we walk through our file descriptor list,
 	 * and, if a file was opened by __memp_bhwrite(), we close it.
 	 */
-retry:	MUTEX_LOCK(dbenv, dbmp->mutex);
+retry:	MUTEX_LOCK(env, dbmp->mutex);
 	TAILQ_FOREACH(dbmfp, &dbmp->dbmfq, q)
 		if (F_ISSET(dbmfp, MP_FLUSH)) {
 			F_CLR(dbmfp, MP_FLUSH);
-			MUTEX_UNLOCK(dbenv, dbmp->mutex);
+			MUTEX_UNLOCK(env, dbmp->mutex);
 			if (dosync) {
 				/*
 				 * If we have the only open handle on the file,
@@ -918,19 +918,19 @@ retry:	MUTEX_LOCK(dbenv, dbmp->mutex);
 				 */
 				mfp = dbmfp->mfp;
 				if (mfp->mpf_cnt == 1) {
-					MUTEX_LOCK(dbenv, mfp->mutex);
+					MUTEX_LOCK(env, mfp->mutex);
 					if (mfp->mpf_cnt == 1)
 						mfp->file_written = 0;
-					MUTEX_UNLOCK(dbenv, mfp->mutex);
+					MUTEX_UNLOCK(env, mfp->mutex);
 				}
-				if ((ret = __os_fsync(dbenv, dbmfp->fhp)) != 0)
+				if ((ret = __os_fsync(env, dbmfp->fhp)) != 0)
 					return (ret);
 			}
 			if ((ret = __memp_fclose(dbmfp, 0)) != 0)
 				return (ret);
 			goto retry;
 		}
-	MUTEX_UNLOCK(dbenv, dbmp->mutex);
+	MUTEX_UNLOCK(env, dbmp->mutex);
 
 	return (0);
 }

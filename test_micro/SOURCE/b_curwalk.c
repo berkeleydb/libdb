@@ -1,37 +1,45 @@
 /*
- * $Id: b_curwalk.c,v 1.10 2007/05/29 17:39:15 bostic Exp $
+ * $Id: b_curwalk.c,v 1.12 2008/02/05 20:43:41 bostic Exp $
  */
 #include "bench.h"
 
-int usage(void);
+static int usage(void);
 
 int
-main(int argc, char *argv[])
+b_curwalk(int argc, char *argv[])
 {
+	extern char *optarg;
+	extern int optind;
 	DB *dbp;
 	DBTYPE type;
 	DBC *dbc;
 	DBT key, data;
 	db_recno_t recno;
-	u_int32_t walkflags;
+	u_int32_t cachesize, pagesize, walkflags;
 	int ch, i, count, dupcount, j;
 	int prev, ret, skipdupwalk, sorted, walkcount;
 	char *ts, dbuf[32], kbuf[32];
 
-	cleanup_test_dir();
-
+	type = DB_BTREE;
+	cachesize = 10 * MEGABYTE;
+	pagesize = 16 * 1024;
 	count = 100000;
 	dupcount = prev = skipdupwalk = sorted = 0;
 	walkcount = 1000;
 	ts = "Btree";
-	type = DB_BTREE;
-	while ((ch = getopt(argc, argv, "c:d:pSst:w:")) != EOF)
+	while ((ch = getopt(argc, argv, "C:c:d:P:pSst:w:")) != EOF)
 		switch (ch) {
+		case 'C':
+			cachesize = (u_int32_t)atoi(optarg);
+			break;
 		case 'c':
 			count = atoi(optarg);
 			break;
 		case 'd':
 			dupcount = atoi(optarg);
+			break;
+		case 'P':
+			pagesize = (u_int32_t)atoi(optarg);
 			break;
 		case 'p':
 			prev = 1;
@@ -49,10 +57,14 @@ main(int argc, char *argv[])
 				type = DB_BTREE;
 				break;
 			case 'H': case 'h':
+				if (b_util_have_hash())
+					return (0);
 				ts = "Hash";
 				type = DB_HASH;
 				break;
 			case 'Q': case 'q':
+				if (b_util_have_queue())
+					return (0);
 				ts = "Queue";
 				type = DB_QUEUE;
 				break;
@@ -95,12 +107,10 @@ main(int argc, char *argv[])
 	 */
 	return (0);
 #endif
-
 	/* Create the database. */
 	DB_BENCH_ASSERT(db_create(&dbp, NULL, 0) == 0);
-	DB_BENCH_ASSERT(
-	    dbp->set_cachesize(dbp, 0, 10 * 1024 * 1024 /* 10MB */, 0) == 0);
-	DB_BENCH_ASSERT(dbp->set_pagesize(dbp, 16 * 1024 /* 16KB */) == 0);
+	DB_BENCH_ASSERT(dbp->set_cachesize(dbp, 0, cachesize, 0) == 0);
+	DB_BENCH_ASSERT(dbp->set_pagesize(dbp, pagesize) == 0);
 	dbp->set_errfile(dbp, stderr);
 
 	/* Set record length for Queue. */
@@ -114,10 +124,10 @@ main(int argc, char *argv[])
 
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 	DB_BENCH_ASSERT(dbp->open(
-	    dbp, NULL, "a", NULL, type, DB_CREATE, 0666) == 0);
+	    dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #else
 	DB_BENCH_ASSERT(dbp->open(
-	    dbp, "a", NULL, type, DB_CREATE, 0666) == 0);
+	    dbp, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #endif
 
 	/* Initialize the data. */
@@ -154,7 +164,8 @@ main(int argc, char *argv[])
 	TIMER_START;
 	for (i = 0; i < walkcount; ++i) {
 		DB_BENCH_ASSERT(dbp->cursor(dbp, NULL, &dbc, 0) == 0);
-		while ((ret = dbc->c_get(dbc, &key, &data, walkflags)) == 0);
+		while ((ret = dbc->c_get(dbc, &key, &data, walkflags)) == 0)
+			;
 		DB_BENCH_ASSERT(ret == DB_NOTFOUND);
 		DB_BENCH_ASSERT(dbc->c_close(dbc) == 0);
 	}
@@ -168,15 +179,26 @@ main(int argc, char *argv[])
 	if (dupcount != 0)
 		printf(" with %d dups", dupcount);
 	printf("\n");
-	TIMER_DISPLAY(count);
+
+	/*
+	 * An "operation" is traversal of a single key/data pair -- not a
+	 * return of the key/data pair, since some versions of this test
+	 * skip duplicate key/data pairs.
+	 *
+	 * Use a "double" so we don't overflow.
+	 */
+	TIMER_DISPLAY((double)count * walkcount);
+
+	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
 
 	return (EXIT_SUCCESS);
 }
 
-int
+static int
 usage()
 {
-	(void)fprintf(stderr,
-    "usage: b_curwalk [-pSs] [-c cnt] [-d dupcnt] [-t type] [-w walkcnt]\n");
+	(void)fprintf(stderr, "%s\n\t%s\n",
+	    "usage: b_curwalk [-pSs] [-C cachesz]",
+	    "[-c cnt] [-d dupcnt] [-P pagesz] [-t type] [-w walkcnt]");
 	return (EXIT_FAILURE);
 }

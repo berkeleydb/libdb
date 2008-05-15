@@ -1,7 +1,7 @@
 /*-
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: second.javas,v 10.7 2007/05/17 15:15:11 bostic Exp $
+ * $Id: second.javas,v 10.8 2008/01/08 20:58:22 bostic Exp $
  */
 package db;
 

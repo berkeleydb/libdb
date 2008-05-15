@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_dbclient.c,v 12.5 2007/05/17 15:15:12 bostic Exp $
+ * $Id: ex_dbclient.c,v 12.7 2008/01/08 20:58:23 bostic Exp $
  */
 
 #include <sys/types.h>
@@ -85,7 +85,7 @@ ex_dbclient_run(home, errfp, host, progname)
 		return (1);
 	}
 	retry = 0;
-retry:
+loop:
 	while (retry < 5) {
 		/*
 		 * Set the server host we are talking to.
@@ -125,14 +125,14 @@ retry:
 		dbenv->err(dbenv, ret, "environment open: %s", home);
 		dbenv->close(dbenv, 0);
 		if (ret == DB_NOSERVER)
-			goto retry;
+			goto loop;
 		return (1);
 	}
 
 	ret = db_clientrun(dbenv, progname);
 	printf("db_clientrun returned %d\n", ret);
 	if (ret == DB_NOSERVER)
-		goto retry;
+		goto loop;
 
 	/* Close the handle. */
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {

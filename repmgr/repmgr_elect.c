@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: repmgr_elect.c,v 1.31 2007/05/17 15:15:50 bostic Exp $
+ * $Id: repmgr_elect.c,v 1.41 2008/03/13 17:31:28 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -11,32 +11,32 @@
 #define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
-static int __repmgr_is_ready __P((DB_ENV *));
-static int __repmgr_elect_main __P((DB_ENV *));
+static int __repmgr_is_ready __P((ENV *));
+static int __repmgr_elect_main __P((ENV *));
 static void *__repmgr_elect_thread __P((void *));
-static int start_election_thread __P((DB_ENV *));
+static int start_election_thread __P((ENV *));
 
 /*
  * Starts the election thread, or wakes up an existing one, starting off with
  * the specified operation (an election, or a call to rep_start(CLIENT), or
  * nothing).  Avoid multiple concurrent elections.
  *
- * PUBLIC: int __repmgr_init_election __P((DB_ENV *, int));
+ * PUBLIC: int __repmgr_init_election __P((ENV *, int));
  *
  * !!!
  * Caller must hold mutex.
  */
 int
-__repmgr_init_election(dbenv, initial_operation)
-	DB_ENV *dbenv;
+__repmgr_init_election(env, initial_operation)
+	ENV *env;
 	int initial_operation;
 {
 	DB_REP *db_rep;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 	if (db_rep->finished) {
-		RPRINT(dbenv, (dbenv,
+		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 		    "ignoring elect thread request %d; repmgr is finished",
 		    initial_operation));
 		return (0);
@@ -44,18 +44,20 @@ __repmgr_init_election(dbenv, initial_operation)
 
 	db_rep->operation_needed = initial_operation;
 	if (db_rep->elect_thread == NULL)
-		ret = start_election_thread(dbenv);
+		ret = start_election_thread(env);
 	else if (db_rep->elect_thread->finished) {
-		RPRINT(dbenv, (dbenv, "join dead elect thread"));
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "join dead elect thread"));
 		if ((ret = __repmgr_thread_join(db_rep->elect_thread)) != 0)
 			return (ret);
-		__os_free(dbenv, db_rep->elect_thread);
+		__os_free(env, db_rep->elect_thread);
 		db_rep->elect_thread = NULL;
-		ret = start_election_thread(dbenv);
+		ret = start_election_thread(env);
 	} else {
-		RPRINT(dbenv, (dbenv, "reusing existing elect thread"));
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "reusing existing elect thread"));
 		if ((ret = __repmgr_signal(&db_rep->check_election)) != 0)
-			__db_err(dbenv, ret, "can't signal election thread");
+			__db_err(env, ret, "can't signal election thread");
 	}
 	return (ret);
 }
@@ -65,25 +67,25 @@ __repmgr_init_election(dbenv, initial_operation)
  * Caller holds mutex.
  */
 static int
-start_election_thread(dbenv)
-	DB_ENV *dbenv;
+start_election_thread(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 	REPMGR_RUNNABLE *elector;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	if ((ret = __os_malloc(dbenv, sizeof(REPMGR_RUNNABLE), &elector))
+	if ((ret = __os_malloc(env, sizeof(REPMGR_RUNNABLE), &elector))
 	    != 0)
 		return (ret);
-	elector->dbenv = dbenv;
+	elector->env = env;
 	elector->run = __repmgr_elect_thread;
 
-	if ((ret = __repmgr_thread_start(dbenv, elector)) == 0)
+	if ((ret = __repmgr_thread_start(env, elector)) == 0)
 		db_rep->elect_thread = elector;
 	else
-		__os_free(dbenv, elector);
+		__os_free(env, elector);
 
 	return (ret);
 }
@@ -92,38 +94,40 @@ static void *
 __repmgr_elect_thread(args)
 	void *args;
 {
-	DB_ENV *dbenv = args;
+	ENV *env = args;
 	int ret;
 
-	RPRINT(dbenv, (dbenv, "starting election thread"));
+	RPRINT(env, DB_VERB_REPMGR_MISC, (env, "starting election thread"));
 
-	if ((ret = __repmgr_elect_main(dbenv)) != 0) {
-		__db_err(dbenv, ret, "election thread failed");
-		__repmgr_thread_failure(dbenv, ret);
+	if ((ret = __repmgr_elect_main(env)) != 0) {
+		__db_err(env, ret, "election thread failed");
+		__repmgr_thread_failure(env, ret);
 	}
 
-	RPRINT(dbenv, (dbenv, "election thread is exiting"));
+	RPRINT(env, DB_VERB_REPMGR_MISC, (env, "election thread is exiting"));
 	return (NULL);
 }
 
 static int
-__repmgr_elect_main(dbenv)
-	DB_ENV *dbenv;
+__repmgr_elect_main(env)
+	ENV *env;
 {
-	DB_REP *db_rep;
 	DBT my_addr;
+	DB_ENV *dbenv;
+	DB_REP *db_rep;
 #ifdef DB_WIN32
 	DWORD duration;
 #else
 	struct timespec deadline;
 #endif
-	u_int nsites, nvotes;
+	u_int32_t nsites, nvotes;
 	int done, failure_recovery, last_op;
 	int need_success, ret, succeeded, to_do;
 
 	COMPQUIET(need_success, TRUE);
 
-	db_rep = dbenv->rep_handle;
+	dbenv = env->dbenv;
+	db_rep = env->rep_handle;
 	last_op = 0;
 	failure_recovery = succeeded = FALSE;
 
@@ -175,20 +179,28 @@ __repmgr_elect_main(dbenv)
 		need_success = FALSE;
 		break;
 	default:
-		DB_ASSERT(dbenv, FALSE);
+		DB_ASSERT(env, FALSE);
 	}
 	/* Here, need_success has been initialized. */
 
 	for (;;) {
-		RPRINT(dbenv, (dbenv, "elect thread to do: %d", to_do));
+		RPRINT(env, DB_VERB_REPMGR_MISC,
+		    (env, "elect thread to do: %d", to_do));
 		switch (to_do) {
 		case ELECT_ELECTION:
 			nsites = __repmgr_get_nsites(db_rep);
 			/*
 			 * With only 2 sites in the group, even a single failure
-			 * could make it impossible to get a majority.
+			 * could make it impossible to get a majority.  So,
+			 * fudge a little, unless the user really wants strict
+			 * safety.
 			 */
-			nvotes = nsites == 2 ? 1 : ELECTION_MAJORITY(nsites);
+			if (nsites == 2 &&
+			    !FLD_ISSET(db_rep->region->config,
+			    REP_C_2SITE_STRICT))
+				nvotes = 1;
+			else
+				nvotes = ELECTION_MAJORITY(nsites);
 
 			/*
 			 * If we're doing an election because we noticed that
@@ -197,12 +209,18 @@ __repmgr_elect_main(dbenv)
 			 * vote, we can probably complete the election faster.
 			 * But note that we shouldn't allow this to affect
 			 * nvotes calculation.
+			 *
+			 * However, if we have 2 sites, and strict majority is
+			 * turned on, now nvotes would be 2, and it doesn't make
+			 * sense to rep_elect to see nsites of 1 in that case.
+			 * So only decrement nsites if it currently exceeds
+			 * nvotes.
 			 */
-			if (failure_recovery)
+			if (failure_recovery && nsites > nvotes)
 				nsites--;
 
-			switch (ret = __rep_elect(dbenv,
-			    (int)nsites, (int)nvotes, 0)) {
+			switch (ret =
+			    __rep_elect(dbenv, nsites, nvotes, 0)) {
 			case DB_REP_UNAVAIL:
 				break;
 
@@ -211,26 +229,26 @@ __repmgr_elect_main(dbenv)
 				if (db_rep->takeover_pending) {
 					db_rep->takeover_pending = FALSE;
 					if ((ret =
-					    __repmgr_become_master(dbenv)) != 0)
+					    __repmgr_become_master(env)) != 0)
 						return (ret);
 				}
 				break;
 
 			default:
 				__db_err(
-				    dbenv, ret, "unexpected election failure");
+				    env, ret, "unexpected election failure");
 				return (ret);
 			}
 			last_op = ELECT_ELECTION;
 			break;
 		case ELECT_REPSTART:
 			if ((ret =
-			    __repmgr_prepare_my_addr(dbenv, &my_addr)) != 0)
+			    __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 				return (ret);
 			ret = __rep_start(dbenv, &my_addr, DB_REP_CLIENT);
-			__os_free(dbenv, my_addr.data);
+			__os_free(env, my_addr.data);
 			if (ret != 0) {
-				__db_err(dbenv, ret, "rep_start");
+				__db_err(env, ret, "rep_start");
 				return (ret);
 			}
 			last_op = ELECT_REPSTART;
@@ -243,11 +261,18 @@ __repmgr_elect_main(dbenv)
 			last_op = 0;
 			break;
 		default:
-			DB_ASSERT(dbenv, FALSE);
+			DB_ASSERT(env, FALSE);
 		}
 
+		/*
+		 * Only the first election after a crashed master should be
+		 * "fast".  If that election fails and we have to retry, the
+		 * crashed master may have rebooted in the interim.
+		 */
+		failure_recovery = FALSE;
+
 		LOCK_MUTEX(db_rep->mutex);
-		while (!succeeded && !__repmgr_is_ready(dbenv)) {
+		while (!succeeded && !__repmgr_is_ready(env)) {
 #ifdef DB_WIN32
 			duration = db_rep->election_retry_wait / US_PER_MS;
 			ret = SignalObjectAndWait(db_rep->mutex,
@@ -255,15 +280,15 @@ __repmgr_elect_main(dbenv)
 			LOCK_MUTEX(db_rep->mutex);
 			if (ret == WAIT_TIMEOUT)
 				break;
-			DB_ASSERT(dbenv, ret == WAIT_OBJECT_0);
+			DB_ASSERT(env, ret == WAIT_OBJECT_0);
 #else
-			__repmgr_compute_wait_deadline(dbenv, &deadline,
+			__repmgr_compute_wait_deadline(env, &deadline,
 			    db_rep->election_retry_wait);
 			if ((ret = pthread_cond_timedwait(
 			    &db_rep->check_election, &db_rep->mutex, &deadline))
 			    == ETIMEDOUT)
 				break;
-			DB_ASSERT(dbenv, ret == 0);
+			DB_ASSERT(env, ret == 0);
 #endif
 		}
 
@@ -329,14 +354,14 @@ __repmgr_elect_main(dbenv)
  * Tests whether another thread has signalled for our attention.
  */
 static int
-__repmgr_is_ready(dbenv)
-	DB_ENV *dbenv;
+__repmgr_is_ready(env)
+	ENV *env;
 {
 	DB_REP *db_rep;
 
-	db_rep = dbenv->rep_handle;
+	db_rep = env->rep_handle;
 
-	RPRINT(dbenv, (dbenv,
+	RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 	    "repmgr elect: opcode %d, finished %d, master %d",
 	    db_rep->operation_needed, db_rep->finished, db_rep->master_eid));
 
@@ -344,17 +369,19 @@ __repmgr_is_ready(dbenv)
 }
 
 /*
- * PUBLIC: int __repmgr_become_master __P((DB_ENV *));
+ * PUBLIC: int __repmgr_become_master __P((ENV *));
  */
 int
-__repmgr_become_master(dbenv)
-	DB_ENV *dbenv;
+__repmgr_become_master(env)
+	ENV *env;
 {
-	DB_REP *db_rep;
 	DBT my_addr;
+	DB_ENV *dbenv;
+	DB_REP *db_rep;
 	int ret;
 
-	db_rep = dbenv->rep_handle;
+	dbenv = env->dbenv;
+	db_rep = env->rep_handle;
 	db_rep->master_eid = SELF_EID;
 	db_rep->found_master = TRUE;
 
@@ -364,11 +391,12 @@ __repmgr_become_master(dbenv)
 	 * avoid the trouble of allocating and freeing this memory.  But might
 	 * this conceivably change in the future?
 	 */
-	if ((ret = __repmgr_prepare_my_addr(dbenv, &my_addr)) != 0)
+	if ((ret = __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 		return (ret);
 	ret = __rep_start(dbenv, &my_addr, DB_REP_MASTER);
-	__os_free(dbenv, my_addr.data);
-	__repmgr_stash_generation(dbenv);
+	__os_free(env, my_addr.data);
+	if (ret == 0)
+		__repmgr_stash_generation(env);
 
 	return (ret);
 }

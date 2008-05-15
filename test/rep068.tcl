@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2007 Oracle.  All rights reserved.
+# Copyright (c) 2006,2008 Oracle.  All rights reserved.
 #
-# $Id: rep068.tcl,v 1.10 2007/07/11 02:15:03 moshen Exp $
+# $Id: rep068.tcl,v 1.13 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep068
 # TEST	Verify replication of dbreg operations does not hang clients.
@@ -38,6 +38,13 @@ proc rep068 { method { tnum "068" } args } {
 	}
 	if { [is_btree $method] == 0 } {
 		puts "Rep$tnum: skipping for non-btree method."
+		return
+	}
+
+	# This test requires a second handle on an env, and HP-UX 
+	# doesn't support that.
+	if { $is_hp_test } {
+		puts "Skipping rep$tnum for HP-UX."
 		return
 	}
 
@@ -78,10 +85,11 @@ proc rep068 { method { tnum "068" } args } {
 proc rep068_sub { method tnum logset recargs nosync largs } {
 	global testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set KEY "any old key"

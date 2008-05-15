@@ -1,5 +1,5 @@
-<!--$Id: app.so,v 10.28 2006/02/28 16:30:53 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: app.so,v 10.29 2007/12/07 21:09:25 bostic Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Transactional Data Store Applications</dl></b></td>
 <td align=right><a href="../transapp/fail.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Architecting Transactional Data Store applications</h3>
+<p align=center><b>Architecting Transactional Data Store applications</b></p>
 <p>When building Transactional Data Store applications, the architecture
 decisions involve application startup (running recovery) and handling
 system or application failure.  For details on performing recovery,
@@ -160,17 +159,30 @@ then the open will proceed normally.  If recovery needs to be performed
 and <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a> is not specified, <a href="../../ref/program/errorret.html#DB_RUNRECOVERY">DB_RUNRECOVERY</a> will be
 returned.  If recovery does not need to be performed, <a href="../../api_c/env_open.html#DB_RECOVER">DB_RECOVER</a>
 will be ignored.</p>
-<p>There are two additional requirements for the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a>
-architecture to work: First, all applications using the database
-environment must specify the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag when opening the
-environment.  However, there is no additional requirement the
-application choose a single process to recover the environment, as the
-first process to open the database environment will know to perform
-recovery.  Second, there can only be a single <a href="../../api_c/env_class.html">DB_ENV</a> handle per
-database environment in each process.  As the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a>
-locking is per-process, not per-thread, multiple <a href="../../api_c/env_class.html">DB_ENV</a> handles
-in a single environment could race with each other, potentially causing
-data corruption.</p>
+<p>There are three additional requirements for the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a>
+architecture to work:</p>
+<p><ul type=disc>
+<li>First, all applications using the database environment must specify the
+<a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag when opening the environment.  However, there
+is no additional requirement the application choose a single process to
+recover the environment, as the first process to open the database
+environment will know to perform recovery.
+<li>Second, there can only be a single <a href="../../api_c/env_class.html">DB_ENV</a> handle per database
+environment in each process.  As the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> locking is
+per-process, not per-thread, multiple <a href="../../api_c/env_class.html">DB_ENV</a> handles in a single
+environment could race with each other, potentially causing data
+corruption.
+<li>Third, the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> implementation does not explicitly
+terminate processes using the database environment which is being
+recovered.  Instead, it relies on the processes themselves noticing the
+database environment has been discarded from underneath them.  For this
+reason, the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag should be used with a mutex
+implementation that does not block in the operating system, as that
+risks a thread of control blocking forever on a mutex which will never
+be granted.  Using any test-and-set mutex implementation ensures this
+cannot happen, and for that reason the <a href="../../api_c/env_open.html#DB_REGISTER">DB_REGISTER</a> flag is
+generally used with a test-and-set mutex implementation.
+</ul>
 <p>A second solution for groups of unrelated processes is also based on a
 "watcher process".  This solution is intended for systems where it is
 not practical to monitor the processes sharing a database environment,
@@ -210,6 +222,6 @@ control, it is important the watcher process' code be as simple and
 well-tested as possible, because the application may hang if it fails.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../transapp/fail.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../transapp/env_open.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

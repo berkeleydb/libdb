@@ -211,9 +211,17 @@
                             
                             <span>
                                 specifying <tt class="literal">true</tt> to 
+
                                 <span>
                                 <tt class="methodname">DatabaseConfig.setReadUncommitted()</tt>.
+                                (If you are using the DPL, you must
+                                provide this
+                                <tt class="classname">DatabaseConfig</tt>
+                                object to the entity store using the 
+                                <tt class="methodname">EntityStore.setPrimaryConfig()</tt>
+                                method.)
                                 </span>
+
                                 
                             </span>
                     </p>
@@ -252,6 +260,7 @@ import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.Transaction;
@@ -277,6 +286,7 @@ try {
     DatabaseConfig dbConfig = new DatabaseConfig();
     dbConfig.setTransactional(true);
     dbConfig.setType(DatabaseType.BTREE);
+    dbConfig.setAllowCreate(true);
     dbConfig.setReadUncommitted(true);      // Enable uncommitted reads.
     myDatabase = myEnv.openDatabase(null,              // txn handle
                                     "sampleDatabase",  // db file name
@@ -288,6 +298,68 @@ try {
     Transaction txn = myEnv.beginTransaction(null, txnConfig);
 
     // From here, you perform your database reads and writes as normal,
+    // committing and aborting the transactions as is necessary, and
+    // testing for deadlock exceptions as normal (omitted for brevity). 
+        
+    ...</pre>
+        <p>
+        If you are using the DPL:
+</p>
+        <pre class="programlisting">package persist.txn;
+                                                                                                                                     
+import com.sleepycat.db.DatabaseConfig;
+import com.sleepycat.db.DatabaseEntry;
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.DatabaseType;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.Transaction;
+import com.sleepycat.db.TransactionConfig;
+
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.StoreConfig;
+
+import java.io.File;
+
+...
+                                                                                                                                     
+EntityStore myStore = null;
+Environment myEnv = null;
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setTransactional(true);
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    // Open the store.
+    StoreConfig myStoreConfig = new StoreConfig();
+    myStoreConfig.setAllowCreate(true);
+    myStoreConfig.setTransactional(true);
+
+    // You must set all these fields if you are going to use
+    // a DatabaseConfig object with your new entity store.
+    DatabaseConfig dbConfig = new DatabaseConfig();
+    dbConfig.setTransactional(true);
+    dbConfig.setAllowCreate(true);
+    dbConfig.setType(DatabaseType.BTREE);
+    dbConfig.setReadUncommitted(true);      // Enable uncommitted reads.
+
+    myStore = new EntityStore(myEnv, "store_name", myStoreConfig);
+
+    // Set the DatabaseConfig object, so that the underlying
+    // database is configured for uncommitted reads.
+    myStore.setPrimaryConfig(SomeEntityClass.class, dbConfig);
+
+    TransactionConfig txnConfig = new TransactionConfig();
+    txnConfig.setReadUncommitted(true);          // Use uncommitted reads 
+                                                 // for this transaction.
+    Transaction txn = myEnv.beginTransaction(null, txnConfig);
+
+    // From here, you perform your store reads and writes as normal,
     // committing and aborting the transactions as is necessary, and
     // testing for deadlock exceptions as normal (omitted for brevity). 
         
@@ -326,6 +398,34 @@ try {
 } catch (Exception e) {
     // Exception handling goes here
 } </pre>
+        <p>
+            Using the DPL:
+    </p>
+        <pre class="programlisting">package persist.txn;
+
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.LockMode;
+import com.sleepycat.db.Transaction;
+
+import com.sleepycat.persist.PrimaryIndex;
+...
+
+Environment myEnv = null;
+Transaction txn = null;
+
+try {
+
+    // Environment and database open omitted
+
+    ...
+
+    txn = myEnv.beginTransaction(null, null);
+
+    AnEntityClass aec = aPrimaryIndex.get(txn, "pKeya", 
+                            LockMode.READ_UNCOMMITTED);
+} catch (Exception e) {
+    // Exception handling goes here
+} </pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -341,13 +441,15 @@ try {
                 read by a transactional cursor is consistent so long as it
                 is being addressed by the cursor. However, once the cursor is done reading the 
                     
+                    
                     <span>
-                        record (that is, reading records from the page that it currently has locked),
+                        object or record (that is, reading records from the page that it currently has locked),
                     </span>
                 the cursor releases its lock on that
                     
+                    
                     <span>
-                        record or page.
+                            object, record or page.
                     </span>
                  This means that the data the cursor has read and released
                  may change before the cursor's transaction has completed.
@@ -362,8 +464,9 @@ try {
                 R</tt> before <tt class="literal">Ta</tt> completes, so long as the reading cursor is no longer
                 addressing the 
                     
+                    
                     <span>
-                        record or page.
+                        object, record or page.
                     </span>
              </p>
         <p>
@@ -466,6 +569,55 @@ try {
         
     ...</pre>
         <p>
+    Using the DPL:
+</p>
+        <pre class="programlisting">package persist.txn;
+                                                                                                                                     
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.Transaction;
+import com.sleepycat.db.TransactionConfig;
+
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.StoreConfig;
+
+import java.io.File;
+                                                                                                                                     
+...
+                                                                                                                                     
+EntityStore myStore = null;
+Environment myEnv = null;
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setTransactional(true);
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    // Instantiate the store.
+    StoreConfig myStoreConfig = new StoreConfig();
+    myStoreConfig.setAllowCreate(true);
+    myStoreConfig.setTransactional(true);
+
+    TransactionConfig txnConfig = new TransactionConfig();
+
+    // Open the transaction and enable committed reads. All cursors open
+    // with this transaction handle will use read committed isolation.
+    txnConfig.setReadCommitted(true);
+    Transaction txn = myEnv.beginTransaction(null, txnConfig);
+
+    // From here, you perform your store reads and writes as normal,
+    // committing and aborting the transactions as is necessary, and
+    // testing for deadlock exceptions as normal (omitted for brevity). 
+
+    // Using transactional cursors with concurrent applications is 
+    // described in more detail in the following section.
+        
+    ...</pre>
+        <p>
         You can also configure read committed isolation on a read-by-read basis
         by specifying <tt class="literal">LockMode.READ_COMMITTED</tt>:
     </p>
@@ -496,6 +648,37 @@ try {
     DatabaseEntry theData = new DatabaseEntry();
 
     myDb.get(txn, theKey, theData, LockMode.READ_COMMITTED);
+} catch (Exception e) {
+    // Exception handling goes here
+} </pre>
+        <p>
+            Using the DPL:
+    </p>
+        <pre class="programlisting">package persist.txn;
+
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.LockMode;
+import com.sleepycat.db.Transaction;
+
+import com.sleepycat.persist.PrimaryIndex;
+...
+
+Environment myEnv = null;
+Transaction txn = null;
+
+try {
+
+    // Environment and database open omitted
+
+    ...
+
+    txn = myEnv.beginTransaction(null, null);
+
+    // Primary index creation omitted
+    ...
+
+    AnEntityClass aec = aPrimaryIndex.get(txn, "pKeya", 
+                            LockMode.READ_COMMITTED);
 } catch (Exception e) {
     // Exception handling goes here
 } </pre>
@@ -534,6 +717,16 @@ try {
                     copy. This frees other writers from blocking due to a
                     read lock held on the page.
             </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                        Snapshot isolation is strongly recommended for read-only threads when writer
+                        threads are also running, as this will eliminate read-write contention and
+                        greatly improve transaction throughput for your writer threads. However, in
+                        order for snapshot isolation to work for your reader-only threads, you must
+                        of course use transactions for your DB reads.
+                    </p>
+        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
@@ -652,11 +845,17 @@ try {
             <ul type="disc">
               <li>
                 <p>
-                                           Opening the database with
+                                           Opening the database <span>or store</span> with
                                            multiversion support. You can
                                            configure this either when you
                                            open your environment or when
-                                           you open your database.
+                                           you open your 
+                                           
+                                           
+                                           <span>
+                                                   database or store.
+                                           </span>
+
                                            <span>
                                             Use the
                                            <tt class="literal">DB_MULTIVERSION</tt>
@@ -753,6 +952,56 @@ try {
                                     "sampleDatabase",   // db file name
                                     null,             // db name
                                     dbConfig);
+
+...
+
+    <b class="userinput"><tt>TransactionConfig txnConfig = new TransactionConfig();
+    txnConfig.setSnapshot(true);</tt></b>
+    txn = myEnv.beginTransaction(null, <b class="userinput"><tt>txnConfig</tt></b>);
+
+...
+
+} catch (DatabaseException de) {
+    // Exception handling goes here
+} catch (FileNotFoundException fnfe) {
+    // Exception handling goes here
+}</pre>
+          <p>
+        When using the DPL:
+</p>
+          <pre class="programlisting">package persist.txn;
+
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+
+import com.sleepycat.persist.EntityStore;
+import com.sleepycat.persist.StoreConfig;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+
+...
+
+EntityStore myStore = null;
+Environment myEnv = null;
+try {
+    EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+    myEnvConfig.setInitializeCache(true);
+    myEnvConfig.setInitializeLocking(true);
+    myEnvConfig.setInitializeLogging(true);
+    myEnvConfig.setTransactional(true);
+    <b class="userinput"><tt>myEnvConfig.setMultiversion(true);</tt></b>
+
+    myEnv = new Environment(new File("/my/env/home"),
+                              myEnvConfig);
+
+    // Instantiate the store
+    StoreConfig myStoreConfig = new StoreConfig();
+    myStoreConfig.setAllowCreate(true);
+    myStoreConfig.setTransactional(true);
+
+    myStore = new EntityStore(myEnv, storeName, myStoreConfig);
 
 ...
 

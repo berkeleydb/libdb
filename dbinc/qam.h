@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: qam.h,v 12.14 2007/05/17 17:22:36 bostic Exp $
+ * $Id: qam.h,v 12.16 2008/01/08 20:58:18 bostic Exp $
  */
 
 #ifndef	_DB_QAM_H_
@@ -161,15 +161,15 @@ typedef enum {
 	QAM_NAME_REMOVE
 } qam_name_op;
 
-#define	__qam_fget(dbp, pgnoaddr, lsnp, flags, addrp)			\
-	__qam_fprobe(dbp, *pgnoaddr,					\
-	    lsnp, addrp, QAM_PROBE_GET, DB_PRIORITY_UNCHANGED, flags)
+#define	__qam_fget(dbc, pgnoaddr, flags, addrp)		\
+	__qam_fprobe(dbc, *pgnoaddr,					\
+	    addrp, QAM_PROBE_GET, DB_PRIORITY_UNCHANGED, flags)
 
-#define	__qam_fput(dbp, pgno, addrp, priority) \
-	__qam_fprobe(dbp, pgno, NULL, addrp, QAM_PROBE_PUT, priority, 0)
+#define	__qam_fput(dbc, pgno, addrp, priority) 			\
+	__qam_fprobe(dbc, pgno, addrp, QAM_PROBE_PUT, priority, 0)
 
-#define	__qam_dirty(dbp, pgno, pagep, lsnp, priority) \
-	__qam_fprobe(dbp, pgno, lsnp, pagep, QAM_PROBE_DIRTY, priority, 0)
+#define	__qam_dirty(dbc, pgno, pagep, priority) 		\
+	__qam_fprobe(dbc, pgno, pagep, QAM_PROBE_DIRTY, priority, 0)
 
 #if defined(__cplusplus)
 }

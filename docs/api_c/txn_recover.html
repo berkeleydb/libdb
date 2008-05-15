@@ -1,5 +1,5 @@
 <!--$Id: txn_recover.so,v 10.28 2007/05/30 17:24:41 margo Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DB_ENV-&gt;txn_recover</h3>
+<b>DB_ENV-&gt;txn_recover</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,15 +18,15 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
     long count, long *retp, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DB_ENV-&gt;txn_recover</h3>
+<b>Description: DB_ENV-&gt;txn_recover</b>
 <p>Database environment recovery restores transactions that were prepared,
 but not yet resolved at the time of the system shut down or crash, to
 their state prior to the shut down or crash, including any locks
@@ -44,46 +44,45 @@ be filled in with a list of transactions that must be resolved by the
 application (committed, aborted or discarded).  The <b>preplist</b>
 parameter is a structure of type DB_PREPLIST; the following DB_PREPLIST
 fields will be filled in:</p>
-<dl compact>
-<dt>DB_TXN * txn;<dd>The transaction handle for the transaction.
-<dt>u_int8_t gid[DB_XIDDATASIZE];<dd>The global transaction ID for the transaction.  The global transaction
+<br>
+<b>DB_TXN * txn;</b><ul compact><li>The transaction handle for the transaction.</ul>
+<b>u_int8_t gid[DB_XIDDATASIZE];</b><ul compact><li>The global transaction ID for the transaction.  The global transaction
 ID is the one specified when the transaction was prepared.  The
 application is responsible for ensuring uniqueness among global
-transaction IDs.
-</dl>
+transaction IDs.</ul>
+<br>
 <p>The DB_ENV-&gt;txn_recover method
 returns a non-zero error value on failure
 and 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>count</b><dd>The <b>count</b> parameter specifies the number of available entries
+<b>Parameters</b> <br>
+ <b>count</b><ul compact><li>The <b>count</b> parameter specifies the number of available entries
 in the passed-in <b>preplist</b> array.  The <b>retp</b> parameter
 returns the number of entries DB_ENV-&gt;txn_recover has filled in, in the
-array.
-<dt><b>flags</b><dd>The <b>flags</b> parameter must be set to one of the following values:
-<dl compact>
-<dt><a name="DB_FIRST">DB_FIRST</a><dd>Begin returning a list of prepared, but not yet resolved transactions.
+array.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to one of the following values:
+<br>
+<b><a name="DB_FIRST">DB_FIRST</a></b><ul compact><li>Begin returning a list of prepared, but not yet resolved transactions.
 Specifying this flag begins a new pass over all prepared, but not yet
 completed transactions, regardless of whether they have already been returned
 in previous calls to DB_ENV-&gt;txn_recover.
 Calls to DB_ENV-&gt;txn_recover from different threads of control should not
-be intermixed in the same environment.
-<dt><a name="DB_NEXT">DB_NEXT</a><dd>Continue returning a list of prepared, but not yet resolved transactions,
-starting where the last call to DB_ENV-&gt;txn_recover left off.
-</dl>
-<dt><b>preplist</b><dd>The <b>preplist</b> parameter references memory into which
- the list of transactions to be resolved by the application is copied. 
-</dl>
+be intermixed in the same environment.</ul>
+<b><a name="DB_NEXT">DB_NEXT</a></b><ul compact><li>Continue returning a list of prepared, but not yet resolved transactions,
+starting where the last call to DB_ENV-&gt;txn_recover left off.</ul>
+<br></ul>
+ <b>preplist</b><ul compact><li>The <b>preplist</b> parameter references memory into which
+ the list of transactions to be resolved by the application is copied.</ul> 
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_c/env_class.html">DB_ENV</a>, <a href="../api_c/txn_class.html">DB_TXN</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/txn_list.html">Transaction Subsystem and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

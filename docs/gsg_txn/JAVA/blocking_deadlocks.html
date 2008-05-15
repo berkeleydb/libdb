@@ -102,7 +102,7 @@
                         For non-transactional operations, the locker is a cursor or a
                             
                             
-                            <span>Database</span>
+                            <span>Database or Store</span>
                             
                         handle. 
                         </span>
@@ -436,10 +436,8 @@
                 <p>
                                 In addition, by default transactional cursors hold read
                                 locks until such a time as the transaction is completed.
-                                For this reason, try to
-                                minimize the time you keep
-                                transactional cursors
-                                opened, or reduce your isolation
+                                For this reason, try to minimize the time you keep
+                                transactional cursors opened, or reduce your isolation
                                 levels – see below.
                             </p>
               </li>
@@ -458,8 +456,7 @@
               </li>
               <li>
                 <p>
-                                Reduce your application's isolation
-                                guarantees.
+                                Reduce your application's isolation guarantees.
                             </p>
                 <p>
                                 By reducing your isolation guarantees, you
@@ -490,6 +487,26 @@
                                 levels, see 
                                 <a href="isolation.html">Isolation</a>.
                             </p>
+              </li>
+              <li>
+                <p>
+                                        Use snapshot isolation for
+                                        read-only threads.
+                                </p>
+                <p>
+                                        Snapshot isolation causes the
+                                        transaction to make a copy of the
+                                        page on which it is holding a lock.
+                                        When a reader makes a copy of a
+                                        page, write locks can still be
+                                        obtained for the original page.
+                                        This eliminates entirely read-write
+                                        contention.
+                                </p>
+                <p>
+                                        Snapshot isolation is described in
+                                        <a href="isolation.html#snapshot_isolation">Using Snapshot Isolation</a>.
+                                </p>
               </li>
               <li>
                 <p>

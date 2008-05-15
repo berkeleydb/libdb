@@ -1,5 +1,5 @@
-<!--$Id: config.so,v 10.4 2002/06/05 21:09:14 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: config.so,v 10.5 2007/12/13 03:05:54 margo Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Application Specific Logging and Recovery</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Application Specific Logging and Recovery</dl></b></td>
 <td align=right><a href="../apprec/auto.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/appsignals.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Application configuration</h3>
+<p align=center><b>Application configuration</b></p>
 <p>The application should include a dispatch function that dispatches to
 appropriate printing and/or recovery functions based on the log record
 type and the operation code.  The dispatch function should take the same
@@ -33,7 +32,7 @@ apprec_dispatch(dbenv, dbt, lsn, op)
 	memcpy(&rectype, dbt-&gt;data, sizeof(rectype));
 	switch (rectype) {
 	case DB_ex_apprec_mkdir:
-		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op, NULL));
+		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op));
 	default:
 		/*
 		 * We've hit an unexpected, allegedly user-defined record
@@ -122,6 +121,6 @@ to stable storage before calling the <a href="../../api_c/txn_checkpoint.html">D
 to allow the periodic removal of database environment log files.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../apprec/auto.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../program/appsignals.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

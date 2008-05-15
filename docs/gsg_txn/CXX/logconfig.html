@@ -257,10 +257,11 @@
               <p>
                         Specify
                             <span>
-                                <tt class="literal">DB_LOG_INMEMORY</tt> to the
+                                <tt class="literal">DB_LOG_IN_MEMORY</tt> to the
                                 
-                                <tt class="methodname">DbEnv::set_flags()</tt>
+                                <tt class="methodname">DbEnv::log_set_config()</tt>
                             </span>
+                            
                             
                             method. Note that you must specify this before
                             your application opens its first environment
@@ -296,7 +297,7 @@ int main(void)
         // Indicate that logging is to be performed only in memory. 
         // Doing this means that we give up our transactional durability
         // guarantee.
-        myEnv.set_flags(DB_LOG_INMEMORY, 1);
+        myEnv.log_set_config(DB_LOG_IN_MEMORY, 1);
 
         // Configure the size of our log memory buffer. This must be
         // large enough to hold all the logging information likely

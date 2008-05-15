@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1998,2008 Oracle.  All rights reserved.
  *
- * $Id: os_handle.c,v 1.5 2007/05/17 15:15:47 bostic Exp $
+ * $Id: os_handle.c,v 1.8 2008/01/31 18:40:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *      Open a file, using BREW open flags.
  */
 int
-__os_openhandle(dbenv, name, flags, mode, fhpp)
-	DB_ENV *dbenv;
+__os_openhandle(env, name, flags, mode, fhpp)
+	ENV *env;
 	const char *name;
 	int flags, mode;
 	DB_FH **fhpp;
@@ -28,7 +28,7 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 
 	COMPQUIET(mode, 0);
 
-	FILE_MANAGER_CREATE(dbenv, pIFileMgr, ret);
+	FILE_MANAGER_CREATE(env, pIFileMgr, ret);
 	if (ret != 0)
 		return (ret);
 
@@ -38,9 +38,9 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 	 * can't unlink temporary files immediately, we use the name to unlink
 	 * the temporary file when the file handle is closed.
 	 */
-	if ((ret = __os_calloc(dbenv, 1, sizeof(DB_FH), &fhp)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_FH), &fhp)) != 0)
 		return (ret);
-	if ((ret = __os_strdup(dbenv, name, &fhp->name)) != 0)
+	if ((ret = __os_strdup(env, name, &fhp->name)) != 0)
 		goto err;
 
 	/*
@@ -56,7 +56,7 @@ __os_openhandle(dbenv, name, flags, mode, fhpp)
 
 	if ((pIFile =
 	    IFILEMGR_OpenFile(pIFileMgr, name, (OpenFileMode)flags)) == NULL) {
-		FILE_MANAGER_ERR(dbenv,
+		FILE_MANAGER_ERR(env,
 		    pIFileMgr, name, "IFILEMGR_OpenFile", ret);
 		goto err;
 	}
@@ -73,7 +73,7 @@ err:	if (pIFile != NULL)
 	IFILEMGR_Release(pIFileMgr);
 
 	if (fhp != NULL)
-		(void)__os_closehandle(dbenv, fhp);
+		(void)__os_closehandle(env, fhp);
 	return (ret);
 }
 
@@ -82,8 +82,8 @@ err:	if (pIFile != NULL)
  *      Close a file.
  */
 int
-__os_closehandle(dbenv, fhp)
-	DB_ENV *dbenv;
+__os_closehandle(env, fhp)
+	ENV *env;
 	DB_FH *fhp;
 {
 	/* Discard any underlying system file reference. */
@@ -92,11 +92,11 @@ __os_closehandle(dbenv, fhp)
 
 	/* Unlink the file if we haven't already done so. */
 	if (F_ISSET(fhp, DB_FH_UNLINK))
-		(void)__os_unlink(dbenv, fhp->name);
+		(void)__os_unlink(env, fhp->name, 0);
 
 	if (fhp->name != NULL)
-		__os_free(dbenv, fhp->name);
-	__os_free(dbenv, fhp);
+		__os_free(env, fhp->name);
+	__os_free(env, fhp);
 
 	return (0);
 }

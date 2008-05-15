@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: mutex_int.h,v 12.39 2007/06/21 16:39:20 ubell Exp $
+ * $Id: mutex_int.h,v 12.41 2008/01/08 20:58:18 bostic Exp $
  */
 
 #ifndef _DB_MUTEX_INT_H_
@@ -229,7 +229,7 @@ typedef volatile unsigned char tsl_t;
 #define	MUTEX_SET(tsl)		(!(int)_BBSSI(0, tsl))
 #endif
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -327,7 +327,7 @@ typedef unsigned char tsl_t;
 })
 
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -413,7 +413,7 @@ typedef unsigned char tsl_t;
 })
 
 #define	MUTEX_UNSET(tsl)	(*(volatile tsl_t *)(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -464,7 +464,7 @@ typedef volatile unsigned char tsl_t;
  * semantics.
  */
 #define	MUTEX_UNSET(tsl)	(*(tsl_t *)(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -548,7 +548,7 @@ typedef int tsl_t;
  */
 #define	MUTEX_SET(tsl)		(!cs(&zero, (tsl), 1))
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -576,7 +576,7 @@ MUTEX_SET(tsl_t *tsl) {							\
 }
 
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -607,7 +607,7 @@ _tsl_set(void *tsl)
 
 #define	MUTEX_SET(tsl)		_tsl_set(tsl)
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -643,7 +643,7 @@ typedef unsigned char tsl_t;
 })
 
 #define	MUTEX_UNSET(tsl)	(*(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #define	MUTEX_MEMBAR(x)          ({asm volatile("stbar");})
 #endif
 #endif
@@ -695,7 +695,7 @@ MUTEX_SET(tsl_t *tsl) {
 }
 
 #define	MUTEX_UNSET(tsl)        (*(volatile tsl_t *)(tsl) = 0)
-#define	MUTEX_INIT(tsl)         MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)         (MUTEX_UNSET(tsl), 0)
 #endif
 #endif
 
@@ -710,8 +710,8 @@ typedef unsigned char tsl_t;
 /* gcc/x86: 0 is clear, 1 is set. */
 #define	MUTEX_SET(tsl) ({						\
 	tsl_t __r;							\
-	asm volatile("movb $1, %b0\n\t"				\
-		"xchgb %b0,%1"					\
+	asm volatile("movb $1, %b0\n\t"					\
+		"xchgb %b0,%1"						\
 	    : "=&q" (__r)						\
 	    : "m" (*(volatile tsl_t *)(tsl))				\
 	    : "memory", "cc");						\
@@ -719,7 +719,7 @@ typedef unsigned char tsl_t;
 })
 
 #define	MUTEX_UNSET(tsl)        (*(volatile tsl_t *)(tsl) = 0)
-#define	MUTEX_INIT(tsl)		MUTEX_UNSET(tsl)
+#define	MUTEX_INIT(tsl)		(MUTEX_UNSET(tsl), 0)
 /*
  * We need to pass a valid address to generate the memory barrier
  * otherwise PURIFY will complain.  Use something referenced recently

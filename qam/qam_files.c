@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: qam_files.c,v 12.31 2007/06/08 17:34:56 bostic Exp $
+ * $Id: qam_files.c,v 12.37 2008/03/13 15:44:50 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -25,21 +25,21 @@
  *
  * Calculate which extent the page is in, open and create if necessary.
  *
- * PUBLIC: int __qam_fprobe __P((DB *, db_pgno_t,
- * PUBLIC:     DB_TXN *, void *, qam_probe_mode, DB_CACHE_PRIORITY, u_int32_t));
+ * PUBLIC: int __qam_fprobe __P((DBC *, db_pgno_t,
+ * PUBLIC:     void *, qam_probe_mode, DB_CACHE_PRIORITY, u_int32_t));
  */
 int
-__qam_fprobe(dbp, pgno, txn, addrp, mode, priority, flags)
-	DB *dbp;
+__qam_fprobe(dbc, pgno, addrp, mode, priority, flags)
+	DBC *dbc;
 	db_pgno_t pgno;
-	DB_TXN *txn;
 	void *addrp;
 	qam_probe_mode mode;
 	DB_CACHE_PRIORITY priority;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	DB *dbp;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	MPFARRAY *array;
 	QUEUE *qp;
 	u_int8_t fid[DB_FILE_ID_LEN];
@@ -47,7 +47,8 @@ __qam_fprobe(dbp, pgno, txn, addrp, mode, priority, flags)
 	char buf[DB_MAXPATHLEN];
 	int ftype, less, ret, t_ret;
 
-	dbenv = dbp->dbenv;
+	dbp = dbc->dbp;
+	env = dbp->env;
 	qp = (QUEUE *)dbp->q_internal;
 	ret = 0;
 
@@ -55,11 +56,14 @@ __qam_fprobe(dbp, pgno, txn, addrp, mode, priority, flags)
 		mpf = dbp->mpf;
 		switch (mode) {
 		case QAM_PROBE_GET:
-			return (__memp_fget(mpf, &pgno, txn, flags, addrp));
+			return (__memp_fget(mpf, &pgno,
+			    dbc->thread_info, dbc->txn, flags, addrp));
 		case QAM_PROBE_PUT:
-			return (__memp_fput(mpf, addrp, priority));
+			return (__memp_fput(mpf,
+			    dbc->thread_info, addrp, priority));
 		case QAM_PROBE_DIRTY:
-			return (__memp_dirty(mpf, addrp, txn, priority, flags));
+			return (__memp_dirty(mpf, addrp,
+			    dbc->thread_info, dbc->txn, priority, flags));
 		case QAM_PROBE_MPF:
 			*(DB_MPOOLFILE **)addrp = mpf;
 			return (0);
@@ -73,7 +77,7 @@ __qam_fprobe(dbp, pgno, txn, addrp, mode, priority, flags)
 	 * The file cannot go away because we must have a record locked
 	 * in that file.
 	 */
-	MUTEX_LOCK(dbenv, dbp->mutex);
+	MUTEX_LOCK(env, dbp->mutex);
 	extid = QAM_PAGE_EXTENT(dbp, pgno);
 
 	/* Array1 will always be in use if array2 is in use. */
@@ -157,7 +161,7 @@ retry:
 			    / (qp->page_ext * qp->rec_page);
 			if (offset >= maxext/2) {
 				array = &qp->array2;
-				DB_ASSERT(dbenv, array->n_extent == 0);
+				DB_ASSERT(env, array->n_extent == 0);
 				oldext = 0;
 				array->n_extent = 4;
 				array->low_extent = extid;
@@ -202,7 +206,7 @@ retry:
 increase:			array->n_extent += offset;
 				array->n_extent <<= 2;
 			}
-alloc:			if ((ret = __os_realloc(dbenv,
+alloc:			if ((ret = __os_realloc(env,
 			    array->n_extent * sizeof(struct __qmpf),
 			    &array->mpfarray)) != 0)
 				goto err;
@@ -240,7 +244,7 @@ alloc:			if ((ret = __os_realloc(dbenv,
 	if (array->mpfarray[offset].mpf == NULL) {
 		QAM_EXNAME(qp, extid, buf, sizeof(buf));
 		if ((ret = __memp_fcreate(
-		    dbenv, &array->mpfarray[offset].mpf)) != 0)
+		    env, &array->mpfarray[offset].mpf)) != 0)
 			goto err;
 		mpf = array->mpfarray[offset].mpf;
 		(void)__memp_set_lsn_offset(mpf, 0);
@@ -257,7 +261,7 @@ alloc:			if ((ret = __os_realloc(dbenv,
 			openflags |= DB_CREATE;
 		if (F_ISSET(dbp, DB_AM_RDONLY))
 			openflags |= DB_RDONLY;
-		if (F_ISSET(dbenv, DB_ENV_DIRECT_DB))
+		if (F_ISSET(env->dbenv, DB_ENV_DIRECT_DB))
 			openflags |= DB_DIRECT;
 		if ((ret = __memp_fopen(
 		    mpf, NULL, buf, openflags, qp->mode, dbp->pgsize)) != 0) {
@@ -284,32 +288,34 @@ alloc:			if ((ret = __os_realloc(dbenv,
 		(void)__memp_set_flags(mpf, DB_MPOOL_UNLINK, 0);
 
 err:
-	MUTEX_UNLOCK(dbenv, dbp->mutex);
+	MUTEX_UNLOCK(env, dbp->mutex);
 
 	if (ret == 0) {
 		pgno--;
 		pgno %= qp->page_ext;
 		switch (mode) {
 		case QAM_PROBE_GET:
-			ret = __memp_fget(mpf, &pgno, txn, flags, addrp);
+			ret = __memp_fget(mpf, &pgno,
+			    dbc->thread_info, dbc->txn, flags, addrp);
 			if (ret == 0)
 				return (0);
 			break;
 		case QAM_PROBE_PUT:
-			ret = __memp_fput(mpf, addrp, dbp->priority);
+			ret = __memp_fput(mpf,
+			    dbc->thread_info, addrp, dbp->priority);
 			break;
 		case QAM_PROBE_DIRTY:
-			return (__memp_dirty(mpf,
-			    addrp, txn, dbp->priority, flags));
+			return (__memp_dirty(mpf, addrp,
+			    dbc->thread_info, dbc->txn, dbp->priority, flags));
 		case QAM_PROBE_MPF:
 			*(DB_MPOOLFILE **)addrp = mpf;
 			return (0);
 		}
 
-		MUTEX_LOCK(dbenv, dbp->mutex);
+		MUTEX_LOCK(env, dbp->mutex);
 		/* Recalculate because we dropped the lock. */
 		offset = extid - array->low_extent;
-		DB_ASSERT(dbenv, array->mpfarray[offset].pinref > 0);
+		DB_ASSERT(env, array->mpfarray[offset].pinref > 0);
 		if (--array->mpfarray[offset].pinref == 0 &&
 		    (mode == QAM_PROBE_GET || ret == 0)) {
 			/* Check to see if this file will be unlinked. */
@@ -321,7 +327,7 @@ err:
 					ret = t_ret;
 			}
 		}
-		MUTEX_UNLOCK(dbenv, dbp->mutex);
+		MUTEX_UNLOCK(env, dbp->mutex);
 	}
 	return (ret);
 }
@@ -339,18 +345,18 @@ __qam_fclose(dbp, pgnoaddr)
 	DB *dbp;
 	db_pgno_t pgnoaddr;
 {
-	DB_ENV *dbenv;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	MPFARRAY *array;
 	QUEUE *qp;
 	u_int32_t extid, offset;
 	int ret;
 
 	ret = 0;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	qp = (QUEUE *)dbp->q_internal;
 
-	MUTEX_LOCK(dbenv, dbp->mutex);
+	MUTEX_LOCK(env, dbp->mutex);
 
 	extid = QAM_PAGE_EXTENT(dbp, pgnoaddr);
 	array = &qp->array1;
@@ -358,7 +364,7 @@ __qam_fclose(dbp, pgnoaddr)
 		array = &qp->array2;
 	offset = extid - array->low_extent;
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    extid >= array->low_extent && offset < array->n_extent);
 
 	/* If other threads are still using this file, leave it. */
@@ -370,7 +376,7 @@ __qam_fclose(dbp, pgnoaddr)
 	ret = __memp_fclose(mpf, 0);
 
 done:
-	MUTEX_UNLOCK(dbenv, dbp->mutex);
+	MUTEX_UNLOCK(env, dbp->mutex);
 	return (ret);
 }
 
@@ -388,18 +394,18 @@ __qam_fremove(dbp, pgnoaddr)
 	DB *dbp;
 	db_pgno_t pgnoaddr;
 {
-	DB_ENV *dbenv;
 	DB_MPOOLFILE *mpf;
+	ENV *env;
 	MPFARRAY *array;
 	QUEUE *qp;
 	u_int32_t extid, offset;
 	int ret;
 
 	qp = (QUEUE *)dbp->q_internal;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	ret = 0;
 
-	MUTEX_LOCK(dbenv, dbp->mutex);
+	MUTEX_LOCK(env, dbp->mutex);
 
 	extid = QAM_PAGE_EXTENT(dbp, pgnoaddr);
 	array = &qp->array1;
@@ -407,7 +413,7 @@ __qam_fremove(dbp, pgnoaddr)
 		array = &qp->array2;
 	offset = extid - array->low_extent;
 
-	DB_ASSERT(dbenv,
+	DB_ASSERT(env,
 	    extid >= array->low_extent && offset < array->n_extent);
 
 	mpf = array->mpfarray[offset].mpf;
@@ -419,7 +425,7 @@ __qam_fremove(dbp, pgnoaddr)
 	 * The log must be flushed before the file is deleted.  We depend on
 	 * the log record of the last delete to recreate the file if we crash.
 	 */
-	if (LOGGING_ON(dbenv) && (ret = __log_flush(dbenv, NULL)) != 0)
+	if (LOGGING_ON(env) && (ret = __log_flush(env, NULL)) != 0)
 		goto err;
 
 	(void)__memp_set_flags(mpf, DB_MPOOL_UNLINK, 1);
@@ -447,7 +453,7 @@ __qam_fremove(dbp, pgnoaddr)
 			array->hi_extent--;
 	}
 
-err:	MUTEX_UNLOCK(dbenv, dbp->mutex);
+err:	MUTEX_UNLOCK(env, dbp->mutex);
 
 	return (ret);
 }
@@ -471,7 +477,7 @@ __qam_sync(dbp)
 		return (ret);
 	if (((QUEUE *)dbp->q_internal)->page_ext != 0)
 		return (__memp_sync_int(
-		    dbp->dbenv, NULL, 0, DB_SYNC_QUEUE_EXTENT, NULL, NULL));
+		    dbp->env, NULL, 0, DB_SYNC_QUEUE_EXTENT, NULL, NULL));
 	return (0);
 }
 
@@ -480,23 +486,26 @@ __qam_sync(dbp)
  *	Another thread may close the handle so this should only
  *	be used single threaded or with care.
  *
- * PUBLIC: int __qam_gen_filelist __P((DB *, QUEUE_FILELIST **));
+ * PUBLIC: int __qam_gen_filelist __P((DB *,
+ * PUBLIC:      DB_THREAD_INFO *, QUEUE_FILELIST **));
  */
 int
-__qam_gen_filelist(dbp, filelistp)
+__qam_gen_filelist(dbp, ip, filelistp)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	QUEUE_FILELIST **filelistp;
 {
-	DB_ENV *dbenv;
+	DBC *dbc;
 	DB_MPOOLFILE *mpf;
-	QUEUE *qp;
+	ENV *env;
 	QMETA *meta;
+	QUEUE *qp;
 	size_t extent_cnt;
 	db_recno_t i, current, first, stop, rec_extent;
 	QUEUE_FILELIST *fp;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	mpf = dbp->mpf;
 	qp = (QUEUE *)dbp->q_internal;
 	*filelistp = NULL;
@@ -510,13 +519,13 @@ __qam_gen_filelist(dbp, filelistp)
 
 	/* Find out the first and last record numbers in the database. */
 	i = PGNO_BASE_MD;
-	if ((ret = __memp_fget(mpf, &i, NULL, 0, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &i, ip, NULL, 0, &meta)) != 0)
 		return (ret);
 
 	current = meta->cur_recno;
 	first = meta->first_recno;
 
-	if ((ret = __memp_fput(mpf, meta, dbp->priority)) != 0)
+	if ((ret = __memp_fput(mpf, ip, meta, dbp->priority)) != 0)
 		return (ret);
 
 	/*
@@ -537,10 +546,12 @@ __qam_gen_filelist(dbp, filelistp)
 
 	if (extent_cnt == 0)
 		return (0);
-	if ((ret = __os_calloc(dbenv,
+	if ((ret = __os_calloc(env,
 	    extent_cnt, sizeof(QUEUE_FILELIST), filelistp)) != 0)
 		return (ret);
 	fp = *filelistp;
+	if ((ret = __db_cursor(dbp, ip, NULL, &dbc, 0)) != 0)
+		return (ret);
 
 again:
 	if (current >= first)
@@ -558,15 +569,15 @@ again:
 	first += stop % rec_extent;
 
 	for (i = first; i >= first && i <= stop; i += rec_extent) {
-		if ((ret = __qam_fprobe(dbp, QAM_RECNO_PAGE(dbp, i), NULL,
+		if ((ret = __qam_fprobe(dbc, QAM_RECNO_PAGE(dbp, i),
 		    &fp->mpf, QAM_PROBE_MPF, dbp->priority, 0)) != 0) {
 			if (ret == ENOENT)
 				continue;
-			return (ret);
+			goto err;
 		}
 		fp->id = QAM_RECNO_EXTENT(dbp, i);
 		fp++;
-		DB_ASSERT(dbenv, (size_t)(fp - *filelistp) < extent_cnt);
+		DB_ASSERT(env, (size_t)(fp - *filelistp) < extent_cnt);
 	}
 
 	if (current < first) {
@@ -574,21 +585,23 @@ again:
 		goto again;
 	}
 
-	return (0);
+err:	(void)__dbc_close(dbc);
+	return (ret);
 }
 
 /*
  * __qam_extent_names -- generate a list of extent files names.
  *
- * PUBLIC: int __qam_extent_names __P((DB_ENV *, char *, char ***));
+ * PUBLIC: int __qam_extent_names __P((ENV *, char *, char ***));
  */
 int
-__qam_extent_names(dbenv, name, namelistp)
-	DB_ENV *dbenv;
+__qam_extent_names(env, name, namelistp)
+	ENV *env;
 	char *name;
 	char ***namelistp;
 {
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	QUEUE *qp;
 	QUEUE_FILELIST *filelist, *fp;
 	size_t len;
@@ -597,16 +610,17 @@ __qam_extent_names(dbenv, name, namelistp)
 
 	*namelistp = NULL;
 	filelist = NULL;
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	ENV_GET_THREAD_INFO(env, ip);
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		return (ret);
-	if ((ret = __db_open(dbp,
+	if ((ret = __db_open(dbp, ip,
 	    NULL, name, NULL, DB_QUEUE, DB_RDONLY, 0, PGNO_BASE_MD)) != 0)
 		goto done;
 	qp = dbp->q_internal;
 	if (qp->page_ext == 0)
 		goto done;
 
-	if ((ret = __qam_gen_filelist(dbp, &filelist)) != 0)
+	if ((ret = __qam_gen_filelist(dbp, ip, &filelist)) != 0)
 		goto done;
 
 	if (filelist == NULL)
@@ -620,7 +634,7 @@ __qam_extent_names(dbenv, name, namelistp)
 	len = (size_t)cnt * (sizeof(**namelistp) +
 	    strlen(QUEUE_EXTENT) + strlen(qp->dir) + strlen(qp->name) + 6);
 
-	if ((ret = __os_malloc(dbp->dbenv, len, namelistp)) != 0)
+	if ((ret = __os_malloc(dbp->env, len, namelistp)) != 0)
 		goto done;
 	cp = *namelistp;
 	freep = (char *)(cp + cnt + 1);
@@ -635,7 +649,7 @@ __qam_extent_names(dbenv, name, namelistp)
 
 done:
 	if (filelist != NULL)
-		__os_free(dbp->dbenv, filelist);
+		__os_free(dbp->env, filelist);
 	if ((t_ret = __db_close(dbp, NULL, DB_NOSYNC)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -694,7 +708,7 @@ __qam_nameop(dbp, txn, newname, op)
 	const char *newname;
 	qam_name_op op;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	QUEUE *qp;
 	size_t exlen, fulllen, len;
 	u_int8_t fid[DB_FILE_ID_LEN];
@@ -704,7 +718,7 @@ __qam_nameop(dbp, txn, newname, op)
 	char *endname, *endpath, *exname, *fullname, **names;
 	char *ndir, *namep, *new, *cp;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	qp = (QUEUE *)dbp->q_internal;
 	cnt = ret = t_ret = 0;
 	namep = exname = fullname = NULL;
@@ -729,7 +743,7 @@ __qam_nameop(dbp, txn, newname, op)
 	 */
 	QAM_EXNAME(qp, 0, buf, sizeof(buf));
 	if ((ret =
-	    __db_appname(dbenv, DB_APP_DATA, buf, 0, NULL, &fullname)) != 0)
+	    __db_appname(env, DB_APP_DATA, buf, 0, NULL, &fullname)) != 0)
 		return (ret);
 
 	/* We should always have a path separator here. */
@@ -744,7 +758,7 @@ __qam_nameop(dbp, txn, newname, op)
 	 * Get the list of all names in the directory and restore the
 	 * path separator.
 	 */
-	if ((ret = __os_dirlist(dbenv, fullname, &names, &cnt)) != 0)
+	if ((ret = __os_dirlist(env, fullname, 0, &names, &cnt)) != 0)
 		goto err;
 	*endpath = sepsave;
 
@@ -771,12 +785,12 @@ __qam_nameop(dbp, txn, newname, op)
 
 	/* Allocate space for a full extent name.  */
 	exlen = fulllen + 20;
-	if ((ret = __os_malloc(dbenv, exlen, &exname)) != 0)
+	if ((ret = __os_malloc(env, exlen, &exname)) != 0)
 		goto err;
 
 	ndir = new = NULL;
 	if (newname != NULL) {
-		if ((ret = __os_strdup(dbenv, newname, &namep)) != 0)
+		if ((ret = __os_strdup(env, newname, &namep)) != 0)
 			goto err;
 		ndir = namep;
 		if ((new = __db_rpath(namep)) != NULL)
@@ -808,7 +822,7 @@ __qam_nameop(dbp, txn, newname, op)
 		case QAM_NAME_DISCARD:
 			snprintf(exname, exlen,
 			     "%s%s", fullname, names[i] + len);
-			if ((t_ret = __memp_nameop(dbenv,
+			if ((t_ret = __memp_nameop(dbp->env,
 			    fid, NULL, exname, NULL,
 			    F_ISSET(dbp, DB_AM_INMEM))) != 0 && ret == 0)
 				ret = t_ret;
@@ -818,7 +832,7 @@ __qam_nameop(dbp, txn, newname, op)
 			snprintf(nbuf, sizeof(nbuf), QUEUE_EXTENT,
 			     ndir, PATH_SEPARATOR[0], new, exid);
 			QAM_EXNAME(qp, exid, buf, sizeof(buf));
-			if ((ret = __fop_rename(dbenv,
+			if ((ret = __fop_rename(env,
 			    txn, buf, nbuf, fid, DB_APP_DATA, 1,
 			    F_ISSET(dbp, DB_AM_NOT_DURABLE) ?
 			    DB_LOG_NOT_DURABLE : 0)) != 0)
@@ -827,7 +841,7 @@ __qam_nameop(dbp, txn, newname, op)
 
 		case QAM_NAME_REMOVE:
 			QAM_EXNAME(qp, exid, buf, sizeof(buf));
-			if ((ret = __fop_remove(dbenv, txn, fid, buf,
+			if ((ret = __fop_remove(env, txn, fid, buf,
 			    DB_APP_DATA, F_ISSET(dbp, DB_AM_NOT_DURABLE) ?
 			    DB_LOG_NOT_DURABLE : 0)) != 0)
 				goto err;
@@ -836,12 +850,12 @@ __qam_nameop(dbp, txn, newname, op)
 	}
 
 err:	if (fullname != NULL)
-		__os_free(dbenv, fullname);
+		__os_free(env, fullname);
 	if (exname != NULL)
-		__os_free(dbenv, exname);
+		__os_free(env, exname);
 	if (namep != NULL)
-		__os_free(dbenv, namep);
+		__os_free(env, namep);
 	if (names != NULL)
-		__os_dirfree(dbenv, names, cnt);
+		__os_dirfree(env, names, cnt);
 	return (ret);
 }

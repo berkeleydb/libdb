@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_db.h,v 12.11 2007/05/17 15:15:05 bostic Exp $
+ * $Id: tcl_db.h,v 12.13 2008/02/01 18:27:16 sue Exp $
  */
 
 #ifndef _DB_TCL_DB_H_
@@ -23,6 +23,10 @@ enum INFOTYPE {
 
 #define	DBTCL_DBM	1
 #define	DBTCL_NDBM	2
+
+#define	DBTCL_GETCLOCK		0
+#define	DBTCL_GETLIMIT		1
+#define	DBTCL_GETREQ		2
 
 /*
  * Why use a home grown package over the Tcl_Hash functions?

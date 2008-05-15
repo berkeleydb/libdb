@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2007 Oracle.  All rights reserved.
+# Copyright (c) 1996,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc006.tcl,v 12.5 2007/05/17 15:15:55 bostic Exp $
+# $Id: rpc006.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rpc006
 # TEST	Test RPC server and multiple operations to server.
@@ -16,6 +16,7 @@ proc rpc006 { } {
 	source ./include.tcl
 
 	puts "Rpc006: RPC server + multiple operations"
+	puts "Rpc006: Using $rpc_svc"
 	cleanup $testdir NULL
 	set dpid [rpc_server_start]
 	puts "\tRpc006.a: Started server, pid $dpid"

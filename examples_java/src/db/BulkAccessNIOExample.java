@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: BulkAccessNIOExample.java,v 1.6 2007/05/17 15:15:36 bostic Exp $
+ * $Id: BulkAccessNIOExample.java,v 1.7 2008/01/08 20:58:32 bostic Exp $
  */
 
 package db;

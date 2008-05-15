@@ -11,12 +11,12 @@
 #include "dbinc/fop.h"
 
 /*
- * PUBLIC: int __fop_create_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __fop_create_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__fop_create_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__fop_create_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -30,7 +30,7 @@ __fop_create_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __fop_create_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __fop_create_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__fop_create%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -48,17 +48,17 @@ __fop_create_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\tmode: %o\n", argp->mode);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __fop_remove_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __fop_remove_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__fop_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__fop_remove_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -72,7 +72,7 @@ __fop_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __fop_remove_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __fop_remove_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__fop_remove%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -95,17 +95,17 @@ __fop_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __fop_write_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __fop_write_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__fop_write_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__fop_write_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -119,7 +119,7 @@ __fop_write_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __fop_write_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __fop_write_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__fop_write%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -146,17 +146,17 @@ __fop_write_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\tflag: %lu\n", (u_long)argp->flag);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __fop_rename_print __P((DB_ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __fop_rename_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__fop_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__fop_rename_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -170,7 +170,7 @@ __fop_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __fop_rename_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __fop_rename_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__fop_rename%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -199,17 +199,17 @@ __fop_rename_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\n");
 	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __fop_file_remove_print __P((DB_ENV *, DBT *,
- * PUBLIC:     DB_LSN *, db_recops, void *));
+ * PUBLIC: int __fop_file_remove_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
  */
 int
-__fop_file_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
-	DB_ENV *dbenv;
+__fop_file_remove_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
@@ -223,7 +223,7 @@ __fop_file_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __fop_file_remove_read(dbenv, dbtp->data, &argp)) != 0)
+	if ((ret = __fop_file_remove_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
     "[%lu][%lu]__fop_file_remove%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
@@ -253,38 +253,36 @@ __fop_file_remove_print(dbenv, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\tchild: 0x%lx\n", (u_long)argp->child);
 	(void)printf("\n");
-	__os_free(dbenv, argp);
+	__os_free(env, argp);
 	return (0);
 }
 
 /*
- * PUBLIC: int __fop_init_print __P((DB_ENV *, int (***)(DB_ENV *,
- * PUBLIC:     DBT *, DB_LSN *, db_recops, void *), size_t *));
+ * PUBLIC: int __fop_init_print __P((ENV *, DB_DISTAB *));
  */
 int
-__fop_init_print(dbenv, dtabp, dtabsizep)
-	DB_ENV *dbenv;
-	int (***dtabp)__P((DB_ENV *, DBT *, DB_LSN *, db_recops, void *));
-	size_t *dtabsizep;
+__fop_init_print(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
 {
 	int ret;
 
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_create_print, DB___fop_create)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_remove_print, DB___fop_remove)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_write_print, DB___fop_write)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_rename_print, DB___fop_rename)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_rename_print, DB___fop_rename_noundo)) != 0)
 		return (ret);
-	if ((ret = __db_add_recovery(dbenv, dtabp, dtabsizep,
+	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __fop_file_remove_print, DB___fop_file_remove)) != 0)
 		return (ret);
 	return (0);

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2007 Oracle.  All rights reserved.
+# Copyright (c) 2004,2008 Oracle.  All rights reserved.
 #
-# $Id: sdb017.tcl,v 12.8 2007/05/17 15:15:56 bostic Exp $
+# $Id: sdb017.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	sdb017
 # TEST	Test DB->rename() for in-memory named databases.

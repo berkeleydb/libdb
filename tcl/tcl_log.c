@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: tcl_log.c,v 12.14 2007/05/17 15:15:54 bostic Exp $
+ * $Id: tcl_log.c,v 12.18 2008/01/08 20:58:52 bostic Exp $
  */
 
 #include "db_config.h"
@@ -25,11 +25,11 @@ static int tcl_LogcGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_LOGC *));
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogArchive(interp, objc, objv, envp)
+tcl_LogArchive(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	static const char *archopts[] = {
 		"-arch_abs",	"-arch_data",	"-arch_log",	"-arch_remove",
@@ -72,7 +72,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 	}
 	_debug_check();
 	list = NULL;
-	ret = envp->log_archive(envp, &list, flag);
+	ret = dbenv->log_archive(dbenv, &list, flag);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log archive");
 	if (result == TCL_OK) {
 		res = Tcl_NewListObj(0, NULL);
@@ -85,7 +85,7 @@ tcl_LogArchive(interp, objc, objv, envp)
 		Tcl_SetObjResult(interp, res);
 	}
 	if (list != NULL)
-		__os_ufree(envp, list);
+		__os_ufree(dbenv->env, list);
 	return (result);
 }
 
@@ -135,11 +135,11 @@ tcl_LogCompare(interp, objc, objv)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogFile(interp, objc, objv, envp)
+tcl_LogFile(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	DB_LSN lsn;
 	Tcl_Obj *res;
@@ -165,14 +165,14 @@ tcl_LogFile(interp, objc, objv, envp)
 	name = NULL;
 	while (ret == ENOMEM) {
 		if (name != NULL)
-			__os_free(envp, name);
-		ret = __os_malloc(envp, len, &name);
+			__os_free(dbenv->env, name);
+		ret = __os_malloc(dbenv->env, len, &name);
 		if (ret != 0) {
 			Tcl_SetResult(interp, db_strerror(ret), TCL_STATIC);
 			break;
 		}
 		_debug_check();
-		ret = envp->log_file(envp, &lsn, name, len);
+		ret = dbenv->log_file(dbenv, &lsn, name, len);
 		len *= 2;
 	}
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_file");
@@ -182,7 +182,7 @@ tcl_LogFile(interp, objc, objv, envp)
 	}
 
 	if (name != NULL)
-		__os_free(envp, name);
+		__os_free(dbenv->env, name);
 
 	return (result);
 }
@@ -194,11 +194,11 @@ tcl_LogFile(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogFlush(interp, objc, objv, envp)
+tcl_LogFlush(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	DB_LSN lsn, *lsnp;
 	int result, ret;
@@ -221,7 +221,7 @@ tcl_LogFlush(interp, objc, objv, envp)
 		lsnp = NULL;
 
 	_debug_check();
-	ret = envp->log_flush(envp, lsnp);
+	ret = dbenv->log_flush(dbenv, lsnp);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_flush");
 	return (result);
 }
@@ -233,16 +233,16 @@ tcl_LogFlush(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogGet(interp, objc, objv, envp)
+tcl_LogGet(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 
 	COMPQUIET(objv, NULL);
 	COMPQUIET(objc, 0);
-	COMPQUIET(envp, NULL);
+	COMPQUIET(dbenv, NULL);
 
 	Tcl_SetResult(interp, "FAIL: log_get deprecated\n", TCL_STATIC);
 	return (TCL_ERROR);
@@ -255,11 +255,11 @@ tcl_LogGet(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogPut(interp, objc, objv, envp)
+tcl_LogPut(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	static const char *logputopts[] = {
 		"-flush",
@@ -316,7 +316,7 @@ tcl_LogPut(interp, objc, objv, envp)
 		return (result);
 
 	_debug_check();
-	ret = envp->log_put(envp, &lsn, &data, flag);
+	ret = dbenv->log_put(dbenv, &lsn, &data, flag);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log_put");
 	if (result == TCL_ERROR)
 		return (result);
@@ -337,11 +337,11 @@ tcl_LogPut(interp, objc, objv, envp)
  * PUBLIC:    Tcl_Obj * CONST*, DB_ENV *));
  */
 int
-tcl_LogStat(interp, objc, objv, envp)
+tcl_LogStat(interp, objc, objv, dbenv)
 	Tcl_Interp *interp;		/* Interpreter */
 	int objc;			/* How many arguments? */
 	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DB_ENV *envp;			/* Environment pointer */
+	DB_ENV *dbenv;			/* Environment pointer */
 {
 	DB_LOG_STAT *sp;
 	Tcl_Obj *res;
@@ -356,7 +356,7 @@ tcl_LogStat(interp, objc, objv, envp)
 		return (TCL_ERROR);
 	}
 	_debug_check();
-	ret = envp->log_stat(envp, &sp, 0);
+	ret = dbenv->log_stat(dbenv, &sp, 0);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "log stat");
 	if (result == TCL_ERROR)
 		return (result);
@@ -398,7 +398,7 @@ tcl_LogStat(interp, objc, objv, envp)
 #endif
 	Tcl_SetObjResult(interp, res);
 error:
-	__os_ufree(envp, sp);
+	__os_ufree(dbenv->env, sp);
 	return (result);
 }
 
@@ -619,11 +619,152 @@ tcl_LogcGet(interp, objc, objv, logc)
 	Tcl_SetObjResult(interp, res);
 
 	if (0) {
-memerr:		if (res != NULL)
+memerr:		if (res != NULL) {
 			Tcl_DecrRefCount(res);
+		}
 		Tcl_SetResult(interp, "allocation failed", TCL_STATIC);
 	}
 
+	return (result);
+}
+
+static const char *confwhich[] = {
+	"autoremove",
+	"direct",
+	"dsync",
+	"inmemory",
+	"zero",
+	NULL
+};
+enum logwhich {
+	LOGCONF_AUTO,
+	LOGCONF_DIRECT,
+	LOGCONF_DSYNC,
+	LOGCONF_INMEMORY,
+	LOGCONF_ZERO
+};
+
+/*
+ * tcl_LogConfig --
+ *	Call DB_ENV->rep_set_config().
+ *
+ * PUBLIC: int tcl_LogConfig
+ * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+ */
+int
+tcl_LogConfig(interp, dbenv, list)
+	Tcl_Interp *interp;		/* Interpreter */
+	DB_ENV *dbenv;			/* Environment pointer */
+	Tcl_Obj *list;			/* {which on|off} */
+{
+	static const char *confonoff[] = {
+		"off",
+		"on",
+		NULL
+	};
+	enum confonoff {
+		LOGCONF_OFF,
+		LOGCONF_ON
+	};
+	Tcl_Obj **myobjv, *onoff, *which;
+	int myobjc, on, optindex, result, ret;
+	u_int32_t wh;
+
+	result = Tcl_ListObjGetElements(interp, list, &myobjc, &myobjv);
+	if (myobjc != 2)
+		Tcl_WrongNumArgs(interp, 2, myobjv, "?{which onoff}?");
+	which = myobjv[0];
+	onoff = myobjv[1];
+	if (result != TCL_OK)
+		return (result);
+	if (Tcl_GetIndexFromObj(interp, which, confwhich, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(which));
+
+	switch ((enum logwhich)optindex) {
+	case LOGCONF_AUTO:
+		wh = DB_LOG_AUTO_REMOVE;
+		break;
+	case LOGCONF_DIRECT:
+		wh = DB_LOG_DIRECT;
+		break;
+	case LOGCONF_DSYNC:
+		wh = DB_LOG_DSYNC;
+		break;
+	case LOGCONF_INMEMORY:
+		wh = DB_LOG_IN_MEMORY;
+		break;
+	case LOGCONF_ZERO:
+		wh = DB_LOG_ZERO;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	if (Tcl_GetIndexFromObj(interp, onoff, confonoff, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(onoff));
+	switch ((enum confonoff)optindex) {
+	case LOGCONF_OFF:
+		on = 0;
+		break;
+	case LOGCONF_ON:
+		on = 1;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	ret = dbenv->log_set_config(dbenv, wh, on);
+	return (_ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "env rep_config"));
+}
+
+/*
+ * tcl_LogGetConfig --
+ *	Call DB_ENV->rep_get_config().
+ *
+ * PUBLIC: int tcl_LogGetConfig
+ * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+ */
+int
+tcl_LogGetConfig(interp, dbenv, which)
+	Tcl_Interp *interp;		/* Interpreter */
+	DB_ENV *dbenv;			/* Environment pointer */
+	Tcl_Obj *which;			/* which flag */
+{
+	Tcl_Obj *res;
+	int on, optindex, result, ret;
+	u_int32_t wh;
+
+	if (Tcl_GetIndexFromObj(interp, which, confwhich, "option",
+	    TCL_EXACT, &optindex) != TCL_OK)
+		return (IS_HELP(which));
+
+	res = NULL;
+	switch ((enum logwhich)optindex) {
+	case LOGCONF_AUTO:
+		wh = DB_LOG_AUTO_REMOVE;
+		break;
+	case LOGCONF_DIRECT:
+		wh = DB_LOG_DIRECT;
+		break;
+	case LOGCONF_DSYNC:
+		wh = DB_LOG_DSYNC;
+		break;
+	case LOGCONF_INMEMORY:
+		wh = DB_LOG_IN_MEMORY;
+		break;
+	case LOGCONF_ZERO:
+		wh = DB_LOG_ZERO;
+		break;
+	default:
+		return (TCL_ERROR);
+	}
+	ret = dbenv->log_get_config(dbenv, wh, &on);
+	if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+	    "env log_config")) == TCL_OK) {
+		res = Tcl_NewIntObj(on);
+		Tcl_SetObjResult(interp, res);
+	}
 	return (result);
 }
 #endif

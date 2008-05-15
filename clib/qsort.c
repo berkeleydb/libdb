@@ -42,23 +42,23 @@ static char	*med3 __P((char *,
 		    char *, char *, int (*)(const void *, const void *)));
 static void	 swapfunc __P((char *, char *, int, int));
 
-#define min(a, b)	(a) < (b) ? a : b
+#define	min(a, b)	(a) < (b) ? a : b
 
 /*
  * Qsort routine from Bentley & McIlroy's "Engineering a Sort Function".
  */
-#define swapcode(TYPE, parmi, parmj, n) { 		\
-	long i = (n) / sizeof (TYPE); 			\
-	register TYPE *pi = (TYPE *) (parmi); 		\
-	register TYPE *pj = (TYPE *) (parmj); 		\
-	do { 						\
+#define	swapcode(TYPE, parmi, parmj, n) {		\
+	long i = (n) / sizeof(TYPE);			\
+	register TYPE *pi = (TYPE *) (parmi);		\
+	register TYPE *pj = (TYPE *) (parmj);		\
+	do {						\
 		register TYPE	t = *pi;		\
 		*pi++ = *pj;				\
 		*pj++ = t;				\
-        } while (--i > 0);				\
+	} while (--i > 0);				\
 }
 
-#define SWAPINIT(a, es) swaptype = ((char *)a - (char *)0) % sizeof(long) || \
+#define	SWAPINIT(a, es) swaptype = ((char *)a - (char *)0) % sizeof(long) || \
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
 static inline void
@@ -66,13 +66,13 @@ swapfunc(a, b, n, swaptype)
 	char *a, *b;
 	int n, swaptype;
 {
-	if(swaptype <= 1)
+	if (swaptype <= 1)
 		swapcode(long, a, b, n)
 	else
 		swapcode(char, a, b, n)
 }
 
-#define swap(a, b)					\
+#define	swap(a, b)					\
 	if (swaptype == 0) {				\
 		long t = *(long *)(a);			\
 		*(long *)(a) = *(long *)(b);		\
@@ -80,7 +80,7 @@ swapfunc(a, b, n, swaptype)
 	} else						\
 		swapfunc(a, b, es, swaptype)
 
-#define vecswap(a, b, n) 	if ((n) > 0) swapfunc(a, b, n, swaptype)
+#define	vecswap(a, b, n)	if ((n) > 0) swapfunc(a, b, n, swaptype)
 
 static inline char *
 med3(a, b, c, cmp)
@@ -89,7 +89,7 @@ med3(a, b, c, cmp)
 {
 	return cmp(a, b) < 0 ?
 	       (cmp(b, c) < 0 ? b : (cmp(a, c) < 0 ? c : a ))
-              :(cmp(b, c) > 0 ? b : (cmp(a, c) < 0 ? a : c ));
+	      :(cmp(b, c) > 0 ? b : (cmp(a, c) < 0 ? a : c ));
 }
 
 /*

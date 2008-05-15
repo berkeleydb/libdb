@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2007 Oracle.  All rights reserved.
+# Copyright (c) 1999,2008 Oracle.  All rights reserved.
 #
-# $Id: rpc.src,v 12.30 2007/06/22 17:50:28 bostic Exp $
+# $Id: rpc.src,v 12.38 2008/05/09 17:06:02 bschmeck Exp $
 #
 # Syntax:
 # BEGIN	function_name  {CODE | LINKONLY | RETCODE}
@@ -90,18 +90,19 @@ LOCAL	env_err
 LOCAL	env_errx
 NOFUNC	env_failchk		DB_ENV *, u_int32_t
 NOFUNC	env_fileid_reset	DB_ENV *, const char *, u_int32_t
+NOFUNC	env_get_cache_max	DB_ENV *, u_int32_t *, u_int32_t *
 BEGIN	env_get_cachesize	CODE
 ARG	ID	DB_ENV *	dbenv
 ARET	INT	u_int32_t	gbytes
 ARET	INT	u_int32_t	bytes
 ARET	INT	int		ncache
 END
-NOFUNC	env_get_cache_max	DB_ENV *, u_int32_t *, u_int32_t *
 NOFUNC	env_get_data_dirs	DB_ENV *, const char ***
 BEGIN	env_get_encrypt_flags	CODE
 ARG	ID	DB_ENV *	dbenv
 ARET	INT	u_int32_t	flags
 END
+LOCAL	env_get_errcall
 LOCAL	env_get_errfile
 LOCAL	env_get_errpfx
 BEGIN	env_get_flags		CODE
@@ -112,6 +113,7 @@ BEGIN	env_get_home		CODE
 ARG	ID	DB_ENV *	dbenv
 ARET	STRING	const char *	home
 END
+NOFUNC	env_get_intermediate_dir_mode	DB_ENV *, const char **
 NOFUNC	env_get_lg_bsize	DB_ENV *, u_int32_t *
 NOFUNC	env_get_lg_dir		DB_ENV *, const char **
 NOFUNC	env_get_lg_filemode	DB_ENV *, int *
@@ -122,6 +124,7 @@ NOFUNC	env_get_lk_detect	DB_ENV *, u_int32_t *
 NOFUNC	env_get_lk_max_lockers	DB_ENV *, u_int32_t *
 NOFUNC	env_get_lk_max_locks	DB_ENV *, u_int32_t *
 NOFUNC	env_get_lk_max_objects	DB_ENV *, u_int32_t *
+NOFUNC	env_get_lk_partitions	DB_ENV *, u_int32_t *
 NOFUNC	env_get_mp_max_openfd	DB_ENV *, int *
 NOFUNC	env_get_mp_max_write	DB_ENV *, int *, db_timeout_t *
 NOFUNC	env_get_mp_mmapsize	DB_ENV *, size_t *
@@ -150,8 +153,10 @@ NOFUNC	env_log_archive		DB_ENV *, char ***, u_int32_t
 NOFUNC	env_log_cursor		DB_ENV *, DB_LOGC **, u_int32_t
 NOFUNC	env_log_file		DB_ENV *, const DB_LSN *, char *, size_t
 NOFUNC	env_log_flush		DB_ENV *, const DB_LSN *
+NOFUNC	env_log_get_config	DB_ENV *, u_int32_t, int *
 NOFUNC	env_log_printf		DB_ENV *, DB_TXN *, const char *, ...
 NOFUNC	env_log_put		DB_ENV *, DB_LSN *, const DBT *, u_int32_t
+NOFUNC	env_log_set_config	DB_ENV *, u_int32_t, int
 NOFUNC	env_log_stat		DB_ENV *, DB_LOG_STAT **, u_int32_t
 NOFUNC	env_log_stat_print	DB_ENV *, u_int32_t
 NOFUNC	env_lsn_reset		DB_ENV *, const char *, u_int32_t
@@ -187,19 +192,22 @@ ARG	ID	DB_ENV *	dbenv
 ARG	STRING	const char *	home
 ARG	INT	u_int32_t	flags
 END
-NOFUNC	env_rep_elect		DB_ENV *, int, int, u_int32_t
+NOFUNC	env_rep_elect		DB_ENV *, u_int32_t, u_int32_t, u_int32_t
 NOFUNC	env_rep_flush		DB_ENV *
+NOFUNC	env_rep_get_clockskew	DB_ENV *, u_int32_t *, u_int32_t *
 NOFUNC	env_rep_get_config	DB_ENV *, u_int32_t, int *
 NOFUNC	env_rep_get_limit	DB_ENV *, u_int32_t *, u_int32_t *
-NOFUNC	env_rep_get_nsites	DB_ENV *, int *
-NOFUNC	env_rep_get_priority	DB_ENV *, int *
+NOFUNC	env_rep_get_nsites	DB_ENV *, u_int32_t *
+NOFUNC	env_rep_get_priority	DB_ENV *, u_int32_t *
+NOFUNC	env_rep_get_request	DB_ENV *, u_int32_t *, u_int32_t *
 NOFUNC	env_rep_get_timeout	DB_ENV *, int, db_timeout_t *
 NOFUNC	env_rep_process_message	DB_ENV *, DBT *, DBT *, int, DB_LSN *
+NOFUNC	env_rep_set_clockskew	DB_ENV *, u_int32_t, u_int32_t
 NOFUNC	env_rep_set_config	DB_ENV *, u_int32_t, int
-NOFUNC	env_rep_set_lease	DB_ENV *, u_int32_t, u_int32_t
 NOFUNC	env_rep_set_limit	DB_ENV *, u_int32_t, u_int32_t
-NOFUNC	env_rep_set_nsites	DB_ENV *, int
-NOFUNC	env_rep_set_priority	DB_ENV *, int
+NOFUNC	env_rep_set_nsites	DB_ENV *, u_int32_t
+NOFUNC	env_rep_set_priority	DB_ENV *, u_int32_t
+NOFUNC	env_rep_set_request	DB_ENV *, u_int32_t, u_int32_t
 NOFUNC	env_rep_set_timeout	DB_ENV *, int, db_timeout_t
 NOFUNC	env_rep_set_transport	DB_ENV *, int, int (*)(DB_ENV *, const DBT *, const DBT *, const DB_LSN *, int, u_int32_t)
 NOFUNC	env_rep_start		DB_ENV *, DBT *, u_int32_t
@@ -216,13 +224,13 @@ NOFUNC	env_repmgr_stat		DB_ENV *, DB_REPMGR_STAT **, u_int32_t
 NOFUNC	env_repmgr_stat_print	DB_ENV *, u_int32_t
 NOFUNC	env_set_alloc		DB_ENV *, void *(*)(size_t), void *(*)(void *, size_t), void (*)(void *)
 NOFUNC	env_set_app_dispatch	DB_ENV *, int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)
+NOFUNC	env_set_cache_max	DB_ENV *, u_int32_t, u_int32_t
 BEGIN	env_set_cachesize	CODE
 ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	gbytes
 ARG	INT	u_int32_t	bytes
 ARG	INT	int		ncache
 END
-NOFUNC	env_set_cache_max	DB_ENV *, u_int32_t, u_int32_t
 NOFUNC	env_set_data_dir	DB_ENV *, const char *
 BEGIN	env_set_encrypt		CODE
 ARG	ID	DB_ENV *	dbenv
@@ -239,7 +247,7 @@ ARG	ID	DB_ENV *	dbenv
 ARG	INT	u_int32_t	flags
 ARG	INT	int		onoff
 END
-NOFUNC	env_set_intermediate_dir	DB_ENV *, int, u_int32_t
+NOFUNC	env_set_intermediate_dir_mode	DB_ENV *, const char *
 NOFUNC	env_set_isalive		DB_ENV *, int (*)(DB_ENV *, pid_t, db_threadid_t, u_int32_t)
 NOFUNC	env_set_lg_bsize	DB_ENV *, u_int32_t
 NOFUNC	env_set_lg_dir		DB_ENV *, const char *
@@ -251,13 +259,13 @@ NOFUNC	env_set_lk_detect	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_lockers	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_locks	DB_ENV *, u_int32_t
 NOFUNC	env_set_lk_max_objects	DB_ENV *, u_int32_t
+NOFUNC	env_set_lk_partitions	DB_ENV *, u_int32_t
 NOFUNC	env_set_mp_max_openfd	DB_ENV *, int
 NOFUNC	env_set_mp_max_write	DB_ENV *, int, db_timeout_t
 NOFUNC	env_set_mp_mmapsize	DB_ENV *, size_t
 LOCAL	env_set_msgcall
 LOCAL	env_set_msgfile
 NOFUNC	env_set_paniccall	DB_ENV *, void (*)(DB_ENV *, int)
-NOFUNC	env_set_rep_request	DB_ENV *, u_int32_t, u_int32_t
 BEGIN	env_set_rpc_server	LINKONLY
 ARG	ID	DB_ENV *	dbenv
 END
@@ -359,6 +367,7 @@ ARG	ID	DB *		dbp
 ARET	INT	u_int32_t	flags
 END
 LOCAL	db_get_env
+LOCAL	db_get_errcall
 LOCAL	db_get_errfile
 LOCAL	db_get_errpfx
 BEGIN	db_get_flags		CODE

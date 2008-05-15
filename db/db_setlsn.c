@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: db_setlsn.c,v 12.18 2007/05/17 15:14:57 bostic Exp $
+ * $Id: db_setlsn.c,v 12.22 2008/01/08 20:58:10 bostic Exp $
  */
 
 #include "db_config.h"
@@ -13,11 +13,11 @@
 #include "dbinc/db_am.h"
 #include "dbinc/mp.h"
 
-static int __env_lsn_reset __P((DB_ENV *, const char *, int));
+static int __env_lsn_reset __P((ENV *, DB_THREAD_INFO *, const char *, int));
 
 /*
  * __env_lsn_reset_pp --
- *	DB_ENV->lsn_reset pre/post processing.
+ *	ENV->lsn_reset pre/post processing.
  *
  * PUBLIC: int __env_lsn_reset_pp __P((DB_ENV *, const char *, u_int32_t));
  */
@@ -28,10 +28,12 @@ __env_lsn_reset_pp(dbenv, name, flags)
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
-	int handle_check, ret, t_ret;
+	ENV *env;
+	int ret;
 
-	PANIC_CHECK(dbenv);
-	ENV_ILLEGAL_BEFORE_OPEN(dbenv, "DB_ENV->lsn_reset");
+	env = dbenv->env;
+
+	ENV_ILLEGAL_BEFORE_OPEN(env, "DB_ENV->lsn_reset");
 
 	/*
 	 * !!!
@@ -39,21 +41,13 @@ __env_lsn_reset_pp(dbenv, name, flags)
 	 * the replication block.
 	 */
 	if (flags != 0 && flags != DB_ENCRYPT)
-		return (__db_ferr(dbenv, "DB_ENV->lsn_reset", 0));
+		return (__db_ferr(env, "DB_ENV->lsn_reset", 0));
 
-	ENV_ENTER(dbenv, ip);
-
-	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
-	if (handle_check && (ret = __env_rep_enter(dbenv, 1)) != 0)
-		goto err;
-
-	ret = __env_lsn_reset(dbenv, name, LF_ISSET(DB_ENCRYPT) ? 1 : 0);
-
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
-		ret = t_ret;
-
-err:	ENV_LEAVE(dbenv, ip);
+	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__env_lsn_reset(env, ip, name, LF_ISSET(DB_ENCRYPT) ? 1 : 0)),
+	    1, ret);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -62,8 +56,9 @@ err:	ENV_LEAVE(dbenv, ip);
  *	Reset the LSNs for every page in the file.
  */
 static int
-__env_lsn_reset(dbenv, name, encrypted)
-	DB_ENV *dbenv;
+__env_lsn_reset(env, ip, name, encrypted)
+	ENV *env;
+	DB_THREAD_INFO *ip;
 	const char *name;
 	int encrypted;
 {
@@ -74,7 +69,7 @@ __env_lsn_reset(dbenv, name, encrypted)
 	int t_ret, ret;
 
 	/* Create the DB object. */
-	if ((ret = __db_create_internal(&dbp, dbenv, 0)) != 0)
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		return (ret);
 
 	/* If configured with a password, the databases are encrypted. */
@@ -88,19 +83,21 @@ __env_lsn_reset(dbenv, name, encrypted)
 	 * Note DB_RDWRMASTER flag, we need to open the master database file
 	 * for writing in this case.
 	 */
-	if ((ret = __db_open(dbp, NULL,
+	if ((ret = __db_open(dbp, ip, NULL,
 	    name, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0, PGNO_BASE_MD)) != 0) {
-		__db_err(dbenv, ret, "%s", name);
+		__db_err(env, ret, "%s", name);
 		goto err;
 	}
 
 	/* Reset the LSN on every page of the database file. */
 	mpf = dbp->mpf;
 	for (pgno = 0;
-	    (ret = __memp_fget(mpf, &pgno, NULL, DB_MPOOL_DIRTY, &pagep)) == 0;
+	    (ret = __memp_fget(mpf,
+	    &pgno, ip, NULL, DB_MPOOL_DIRTY, &pagep)) == 0;
 	    ++pgno) {
 		LSN_NOT_LOGGED(pagep->lsn);
-		if ((ret = __memp_fput(mpf, pagep, DB_PRIORITY_UNCHANGED)) != 0)
+		if ((ret = __memp_fput(mpf,
+		    ip, pagep, DB_PRIORITY_UNCHANGED)) != 0)
 			goto err;
 	}
 

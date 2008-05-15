@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007 Oracle.  All rights reserved.
+# Copyright (c) 2007,2008 Oracle.  All rights reserved.
 #
-# $Id: repmgr001.tcl,v 12.2 2007/05/17 18:17:21 bostic Exp $
+# $Id: repmgr001.tcl,v 12.3 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	repmgr001
 # TEST	Check repmgr stats.

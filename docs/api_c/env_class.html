@@ -1,5 +1,5 @@
 <!--$Id: env_class.so,v 10.45 2005/11/30 19:09:47 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>db_env_create</h3>
+<b>db_env_create</b>
 </td>
 <td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,14 +18,14 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db.h&gt;
 <p>
 int
 db_env_create(DB_ENV **dbenvp, u_int32_t flags);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: db_env_create</h3>
+<b>Description: db_env_create</b>
 <p>The DB_ENV object is the handle for a Berkeley DB environment -- a
 collection including support for some or all of caching, locking,
 logging and transaction subsystems, as well as databases and log files.
@@ -54,25 +54,25 @@ and 0 on success.
 </p>
 The <b>flags</b> parameter must be set to 0 or
 the following value:
-<dl compact>
-<dt><a name="DB_RPCCLIENT">DB_RPCCLIENT</a><dd>Create a client environment to connect to a server.
+<br>
+<b><a name="DB_RPCCLIENT">DB_RPCCLIENT</a></b><ul compact><li>Create a client environment to connect to a server.</ul>
 <p>The DB_RPCCLIENT flag indicates to the system that this environment
 is remote on a server.  The use of this flag causes the environment
 methods to use functions that call a server instead of local functions.
 Prior to making any environment or database method calls, the application
 must call the <a href="../api_c/env_set_rpc_server.html">DB_ENV-&gt;set_rpc_server</a> function to establish the
 connection to the server.</p>
-</dl>
-<h3>Errors</h3>
+<br>
+<br><b>Errors</b>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 DB_ENV
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_c/env_list.html">Database Environments and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_c/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

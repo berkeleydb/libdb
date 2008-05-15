@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2000,2008 Oracle.  All rights reserved.
  *
- * $Id: db_server_int.h,v 12.11 2007/05/17 15:15:05 bostic Exp $
+ * $Id: db_server_int.h,v 12.13 2008/01/08 20:58:17 bostic Exp $
  */
 
 #ifndef _DB_SERVER_INT_H_
@@ -149,9 +149,9 @@ extern int __dbsrv_verbose;
 	__dbsrv_active(ctp);						\
 }
 
-#define	FREE_IF_CHANGED(dbenv, p, orig) do {				\
+#define	FREE_IF_CHANGED(env, p, orig) do {				\
 	if ((p) != NULL && (p) != (orig))				\
-		__os_ufree((dbenv), (p));				\
+		__os_ufree((env), (p));				\
 } while (0)
 
 #if defined(__cplusplus)

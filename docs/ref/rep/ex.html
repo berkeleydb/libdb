@@ -1,5 +1,5 @@
 <!--$Id: ex.so,v 1.8 2006/10/05 01:06:08 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Berkeley DB Replication</dl></b></td>
 <td align=right><a href="../rep/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/ex_comm.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Ex_rep: a replication example</h3>
+<p align=center><b>Ex_rep: a replication example</b></p>
 <p>Ex_rep, found in the <b>examples_c/ex_rep</b> subdirectory
 of the Berkeley DB distribution, is a simple but complete demonstration of a
 replicated application.  The application is a mock stock ticker.  The
@@ -36,21 +35,21 @@ them.</p>
 <pre>ex_rep_xxx [<b>-MC</b>] [<b>-h home</b>] [<b>-m host:port</b>] [<b>-o host:port</b>] [<b>-n sites</b>] [<b>-p priority</b>]</pre>
 <p>where "ex_rep_xxx" is either "ex_rep_mgr" or "ex_rep_base".</p>
 <p>The options, to either version of the program, are as follows:</p>
-<dl compact>
-<dt><b>-M</b><dd>Configure this process as a master.
-<dt><b>-C</b><dd>Configure this process as a client.
-<dt><b>-h</b><dd>Specify a home directory for the database environment; by
-default, the current working directory is used.
-<dt><b>-m</b><dd>Listen on port "port" of host "host" for incoming connections.
-<dt><b>-o</b><dd>Attempt to connect to another member of the replication group which is
+<br>
+<b>-M</b><ul compact><li>Configure this process as a master.</ul>
+<b>-C</b><ul compact><li>Configure this process as a client.</ul>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment; by
+default, the current working directory is used.</ul>
+<b>-m</b><ul compact><li>Listen on port "port" of host "host" for incoming connections.</ul>
+<b>-o</b><ul compact><li>Attempt to connect to another member of the replication group which is
 listening on host "host" at port "port".  Members of a replication group
 should be able to find all other members of a replication group so long
 as they are in contact with at least one other member of the replication
-group.
-<dt><b>-n</b><dd>Specify the total number of sites in the replication group.
-<dt><b>-p</b><dd>Set the election priority.  See <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> for more
-information.
-</dl>
+group.</ul>
+<b>-n</b><ul compact><li>Specify the total number of sites in the replication group.</ul>
+<b>-p</b><ul compact><li>Set the election priority.  See <a href="../../api_c/rep_elect.html">DB_ENV-&gt;rep_elect</a> for more
+information.</ul>
+<br>
 <p>A typical ex_rep session begins with a command such as the
 following, to start a master:</p>
 <blockquote><pre>ex_rep_mgr -M -p 100 -n 4 -h DIR1 -m localhost:6000</pre></blockquote>
@@ -66,6 +65,6 @@ having particular clients take over as master in the case that the
 master fails.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../rep/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../rep/ex_comm.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

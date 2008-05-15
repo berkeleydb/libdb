@@ -1,4 +1,4 @@
-m4_comment([$Id: db_stat.so,v 10.92 2007/06/22 16:57:15 bostic Exp $])
+m4_comment([$Id: db_stat.so,v 10.95 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL, [dbh_stat, dbh_stat_print, DB_FAST_STAT])
 include(m4/m4.seealso)
@@ -68,7 +68,7 @@ If the database was not opened read-only and the m4_ref(DB_FAST_STAT)
 flag was not specified, the cached key and record numbers will be
 updated after the statistical information has been gathered.])
 
-m4_when_after_dbopen(dbh_stat)
+m4_when(dbh_stat, before, dbh_open)
 
 m4_return(dbh_stat, std)
 
@@ -153,8 +153,8 @@ m4_ref(DB_FAST_STAT) flag is not specified, the count will be exact and
 will not include deleted or implicitly created records.])
 m4_p([dnl
 Returned if m4_ref(DB_FAST_STAT) is set.])])
-m4_field(u_int32_t, bt_ndata,
-[For the Btree Access Method, the number of key/data pairs in the
+m4_field(u_int32_t, bt_ndata, [dnl
+For the Btree Access Method, the number of key/data pairs in the
 database.  If the m4_ref(DB_FAST_STAT) flag is not specified, the count
 will be exact.  Otherwise, the count will be the last saved value unless
 it has never been calculated, in which case it will be 0.
@@ -167,10 +167,10 @@ include deleted and implicitly created records; if the
 m4_ref(DB_FAST_STAT) flag is not specified, the count will be exact and
 will not include deleted or implicitly created records.])
 m4_p([dnl
+Returned if m4_ref(DB_FAST_STAT) is set.])])
 m4_field(u_int32_t, bt_pagecnt,
 [The number of pages in the database.  Returned if m4_ref(DB_FAST_STAT)
 is set.])
-Returned if m4_ref(DB_FAST_STAT) is set.])])
 m4_field(u_int32_t, bt_pagesize,
 [The underlying database page size, in bytes.  Returned if
 m4_ref(DB_FAST_STAT) is set.])
@@ -251,7 +251,7 @@ m4_field(u_int32_t, qs_cur_recno,
 [Next available record number.  Returned if m4_ref(DB_FAST_STAT) is set.])
 m4_tagend
 
-m4_err(dbh_stat, repinval, einval)
+m4_err(dbh_stat, rephandle, replockout, einval)
 
 m4_stat_print(dbh_stat_print, database, dbh_stat)
 

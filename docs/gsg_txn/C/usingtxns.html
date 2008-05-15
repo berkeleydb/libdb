@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
     <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;        " />
+    <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;            &#10;        " />
     <link rel="next" href="abortresults.html" title="Aborting a Transaction" />
   </head>
   <body>
@@ -292,10 +292,11 @@ err:
 
             
 
-            Logging causes all database write operations to be identified in
+            Logging causes all database  write operations to be identified in
 
             <span>logs, and by default these
             logs are backed by files on disk.  These logs are used to restore your databases 
+            
             </span>
 
             
@@ -306,7 +307,9 @@ err:
         <p>
             Moreover, DB performs <span class="emphasis"><em>write-ahead</em></span>
             logging. This means that information is written to the logs
-            <span class="emphasis"><em>before</em></span> the actual database is changed.
+            <span class="emphasis"><em>before</em></span> the actual database 
+            
+            is changed.
             This means that all write activity performed under the
             protection of the transaction is noted in the log before
             the transaction is committed. Be aware, however, that database
@@ -401,6 +404,7 @@ err:
         </div>
         <p>
             Be aware that because your transaction commit caused database
+            
             modifications recorded in your logs to be forced to disk, your modifications
             are by default "persistent" in that they can be recovered in the event of
             an application or system failure. However, recovery time is
@@ -577,6 +581,7 @@ err:
         <tr>
           <td width="40%" align="left" valign="top">Opening a Transactional Environment and
             Database
+            
             
          </td>
           <td width="20%" align="center">

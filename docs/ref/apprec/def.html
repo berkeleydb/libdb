@@ -1,5 +1,5 @@
-<!--$Id: def.so,v 10.7 2007/04/05 20:37:29 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--$Id: def.so,v 10.9 2007/12/15 01:18:15 alanb Exp $-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -9,11 +9,10 @@
 </head>
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
-<td><h3><dl><dt>Berkeley DB Reference Guide:<dd>Application Specific Logging and Recovery</dl></h3></td>
+<td><b><dl><dt>Berkeley DB Reference Guide:<dd>Application Specific Logging and Recovery</dl></b></td>
 <td align=right><a href="../apprec/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../apprec/auto.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p>
-<h3 align=center>Defining application-specific log records</h3>
+<p align=center><b>Defining application-specific log records</b></p>
 <p>By convention, log records are described in files named <b>XXX.src</b>,
 where "XXX" is typically a descriptive name for a subsystem or other
 logical group of logging functions.  These files contain interface
@@ -33,27 +32,14 @@ automatically generated functions.  The include files should be listed
 in order, prefixed by the keyword INCLUDE.  For example, the Berkeley DB
 application-specific recovery example lists the following include
 files:</p>
-<blockquote><pre>INCLUDE #include &lt;ctype.h&gt;
-INCLUDE #include &lt;errno.h&gt;
-INCLUDE #include &lt;stdlib.h&gt;
-INCLUDE #include &lt;string.h&gt;
-INCLUDE
-INCLUDE #include &lt;db.h&gt;
-INCLUDE
-INCLUDE #include "ex_apprec.h"</pre></blockquote>
+<blockquote><pre>INCLUDE #include "ex_apprec.h"</pre></blockquote>
 <p>The rest of the XXX.src file consists of log record descriptions.  Each
 log record description begins with one of the following lines:</p>
 <blockquote><pre>BEGIN <i>RECORD_NAME</i> <i>DB_VERSION_NUMBER</i> <i>RECORD_NUMBER</i></pre></blockquote>
-<blockquote><pre>BEGIN_BUF <i>RECORD_NAME</i> <i>DB_VERSION_NUMBER</i></pre></blockquote>
 <blockquote><pre>BEGIN_COMPAT <i>RECORD_NAME</i> <i>DB_VERSION_NUMBER</i> <i>RECORD_NUMBER</i></pre></blockquote>
 <p>and ends with the line:</p>
 <blockquote><pre>END</pre></blockquote>
 <p>The <i>BEGIN</i> line should be used for most record types.</p>
-<p>The <i>BEGIN_BUF</i> is used for records that need only marshalling and
-unmarshalling of the record, that is logging and reading routines, but not
-a recovery routine.  These records are specific to the replication system's
-internal initialization process, which sends variable length records containing
-file data and file description records.</p>
 <p>The <i>BEGIN_COMPAT</i> is used for log record compatibility to facilitate
 online upgrades of replication groups. Records created with this keyword will
 produce reading and printing routines, but no logging routines.  The recovery
@@ -114,6 +100,6 @@ file btree/btree.src contains the definitions for the log records
 supported by the Berkeley DB Btree access method.</p>
 <table width="100%"><tr><td><br></td><td align=right><a href="../apprec/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../apprec/auto.html"><img src="../../images/next.gif" alt="Next"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

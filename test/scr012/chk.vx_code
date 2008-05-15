@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.vx_code,v 12.1 2005/10/20 18:59:14 bostic Exp $
+# $Id: chk.vx_code,v 12.2 2007/12/21 13:58:29 bostic Exp $
 #
 # Check to make sure the auto-generated utility code in the VxWorks build
 # directory compiles.
@@ -16,24 +16,18 @@ d=../..
 	exit 1
 }
 
-rm -f t.c t1.c t2.c
-
 F="$d/clib/getopt.c $d/common/util_arg.c $d/common/util_cache.c
 	$d/common/util_log.c $d/common/util_sig.c $d/*/*_autop.c"
 
 header()
 {
+	echo "int $1(int, char *[]);"
 	echo "int"
 	echo "main(int argc, char *argv[])"
-	echo "{return ($1(argv[1]));}"
+	echo "{return ($1(argc, argv));}"
 }
 
-(echo "int"
- echo "main(int argc, char *argv[])"
- echo "{"
- echo "int i;") > t1.c
-
-for i in \
+LIST="\
     db_archive \
     db_checkpoint \
     db_deadlock \
@@ -45,27 +39,46 @@ for i in \
     db_stat \
     db_upgrade \
     db_verify \
-    dbdemo; do
-	echo "	compiling build_vxworks/$i"
-	(cat $d/build_vxworks/$i/$i.c; header $i) > t.c
-	if cc -Wall -I.. -I$d t.c $F ../libdb.a -o t; then
+    dbdemo \
+    test_micro"
+
+# Build each program individually.
+for i in $LIST; do
+	echo "	compiling Vxworks version of $i"
+	header $i > MAIN.c
+	if cc -Wall -I.. -I$d -I$d/build_vxworks/$i \
+	    $d/build_vxworks/$i/*.c MAIN.c $F ../libdb.a -o t; then
 		:
 	else
-		echo "FAIL: unable to compile $i"
+		echo "FAIL: unable to compile VxWorks version of $i"
 		exit 1
 	fi
-
-	cat $d/build_vxworks/$i/$i.c >> t2.c
-	echo "i = $i(argv[1]);" >> t1.c
 done
 
-(cat t2.c t1.c; echo "return (0); }") > t.c
+# Build all of the programs as one big binary.
+inc=`echo $LIST | sed 's/[^ ][^ ]*/-I$d\/build_vxworks\/&/g'`
+src=`echo $LIST | sed 's/[^ ][^ ]*/$d\/build_vxworks\/&\/*.c/g'`
 
-echo "	compiling build_vxworks utility composite"
-if cc -Dlint -Wall -I.. -I$d t.c $F ../libdb.a -o t; then
+(
+for i in $LIST; do
+	echo "int ${i}_main(int, char *[]);"
+done
+echo "int"
+echo "main(int argc, char *argv[])"
+echo "{"
+echo "int r;"
+for i in $LIST; do
+	echo "r += ${i}_main(argc, argv);"
+done
+echo "return (r);"
+echo "}"
+) > MAIN.c
+
+echo "	compiling VxWorks utility composite"
+if cc -Wall -I.. -I$d $inc `eval ls $src` MAIN.c $F ../libdb.a -o t; then
 	:
 else
-	echo "FAIL: unable to compile utility composite"
+	echo 'FAIL: unable to compile VxWorks utility composite'
 	exit 1
 fi
 

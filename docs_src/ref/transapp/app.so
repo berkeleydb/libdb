@@ -1,4 +1,4 @@
-m4_comment([$Id: app.so,v 10.28 2006/02/28 16:30:53 bostic Exp $])
+m4_comment([$Id: app.so,v 10.29 2007/12/07 21:09:25 bostic Exp $])
 
 m4_ref_title(m4_tam Applications,
     Architecting Transactional Data Store applications,,
@@ -189,17 +189,36 @@ returned.  If recovery does not need to be performed, m4_ref(DB_RECOVER)
 will be ignored.])
 
 m4_p([dnl
-There are two additional requirements for the m4_ref(DB_REGISTER)
-architecture to work: First, all applications using the database
-environment must specify the m4_ref(DB_REGISTER) flag when opening the
-environment.  However, there is no additional requirement the
-application choose a single process to recover the environment, as the
-first process to open the database environment will know to perform
-recovery.  Second, there can only be a single m4_ref(DbEnv) handle per
-database environment in each process.  As the m4_ref(DB_REGISTER)
-locking is per-process, not per-thread, multiple m4_ref(DbEnv) handles
-in a single environment could race with each other, potentially causing
-data corruption.])
+There are three additional requirements for the m4_ref(DB_REGISTER)
+architecture to work:])
+
+m4_bulletbegin
+m4_bullet([dnl
+First, all applications using the database environment must specify the
+m4_ref(DB_REGISTER) flag when opening the environment.  However, there
+is no additional requirement the application choose a single process to
+recover the environment, as the first process to open the database
+environment will know to perform recovery.])
+
+m4_bullet([dnl
+Second, there can only be a single m4_ref(DbEnv) handle per database
+environment in each process.  As the m4_ref(DB_REGISTER) locking is
+per-process, not per-thread, multiple m4_ref(DbEnv) handles in a single
+environment could race with each other, potentially causing data
+corruption.])
+
+m4_bullet([dnl
+Third, the m4_ref(DB_REGISTER) implementation does not explicitly
+terminate processes using the database environment which is being
+recovered.  Instead, it relies on the processes themselves noticing the
+database environment has been discarded from underneath them.  For this
+reason, the m4_ref(DB_REGISTER) flag should be used with a mutex
+implementation that does not block in the operating system, as that
+risks a thread of control blocking forever on a mutex which will never
+be granted.  Using any test-and-set mutex implementation ensures this
+cannot happen, and for that reason the m4_ref(DB_REGISTER) flag is
+generally used with a test-and-set mutex implementation.])
+m4_bulletend
 
 m4_p([dnl
 A second solution for groups of unrelated processes is also based on a

@@ -1,5 +1,5 @@
 <!--$Id: memp_set_lsn_offset.so,v 10.17 2005/04/14 17:57:54 bostic Exp $-->
-<!--Copyright (c) 1997,2007 Oracle.  All rights reserved.-->
+<!--Copyright (c) 1997,2008 Oracle.  All rights reserved.-->
 <!--See the file LICENSE for redistribution information.-->
 <html>
 <head>
@@ -10,7 +10,7 @@
 <body bgcolor=white>
 <table width="100%"><tr valign=top>
 <td>
-<h3>DbMpoolFile::set_lsn_offset</h3>
+<b>DbMpoolFile::set_lsn_offset</b>
 </td>
 <td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a>
@@ -18,7 +18,7 @@
 </tr></table>
 <hr size=1 noshade>
 <tt>
-<h3><pre>
+<b><pre>
 #include &lt;db_cxx.h&gt;
 <p>
 int
@@ -26,9 +26,9 @@ DbMpoolFile::set(int32_t lsn_offset);
 <p>
 int
 DbMpoolFile::get_lsn_offset(int32_t *lsn_offsetp);
-</pre></h3>
+</pre></b>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::set_lsn_offset</h3>
+<b>Description: DbMpoolFile::set_lsn_offset</b>
 <p>The DbMpoolFile::set_lsn_offset method specifies the zero-based byte offset
 of a log sequence number (<a href="../api_cxx/lsn_class.html">DbLsn</a>) on the file's pages, for the
 purposes of page-flushing as part of transaction checkpoint.  (See the
@@ -47,13 +47,12 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>lsn_offset</b><dd>The <b>lsn_offset</b> parameter is the zero-based byte offset of the
-log sequence number on the file's pages.
-</dl>
+<b>Parameters</b> <br>
+ <b>lsn_offset</b><ul compact><li>The <b>lsn_offset</b> parameter is the zero-based byte offset of the
+log sequence number on the file's pages.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Description: DbMpoolFile::get_lsn_offset</h3>
+<b>Description: DbMpoolFile::get_lsn_offset</b>
 <p>The DbMpoolFile::get_lsn_offset method returns the log sequence number byte offset.</p>
 <p>The DbMpoolFile::get_lsn_offset method may be called at any time during the life of the
 application.</p>
@@ -62,20 +61,19 @@ either returns a non-zero error value
 or throws an exception that encapsulates a non-zero error value on
 failure, and returns 0 on success.
 </p>
-<h3>Parameters</h3>
-<dl compact>
-<dt><b>lsn_offsetp</b><dd>The DbMpoolFile::get_lsn_offset method returns  the
-log sequence number byte offset in <b>lsn_offsetp</b>.
-</dl>
+<b>Parameters</b> <br>
+ <b>lsn_offsetp</b><ul compact><li>The DbMpoolFile::get_lsn_offset method returns  the
+log sequence number byte offset in <b>lsn_offsetp</b>.</ul>
+<br>
 <hr size=1 noshade>
-<h3>Class</h3>
+<br><b>Class</b>
 <a href="../api_cxx/env_class.html">DbEnv</a>, <a href="../api_cxx/mempfile_class.html">DbMpoolFile</a>
-<h3>See Also</h3>
+<br><b>See Also</b>
 <a href="../api_cxx/memp_list.html">Memory Pools and Related Methods</a>
 </tt>
 <table width="100%"><tr><td><br></td><td align=right>
 <a href="../api_cxx/api_core.html"><img src="../images/api.gif" alt="API"></a><a href="../ref/toc.html"><img src="../images/ref.gif" alt="Ref"></a>
 </td></tr></table>
-<p><font size=1>Copyright (c) 1996,2007 Oracle.  All rights reserved.</font>
+<p><font size=1>Copyright (c) 1996,2008 Oracle.  All rights reserved.</font>
 </body>
 </html>

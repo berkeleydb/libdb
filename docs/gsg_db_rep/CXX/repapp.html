@@ -120,6 +120,11 @@
               <a href="fmwrkconnectretry.html">Managing Connection Retries</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect1">
+              <a href="heartbeats.html">Managing Heartbeats</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -352,14 +357,15 @@
          * Add a site to the list of replication environments known to 
          * this application. 
          */
-         dbenv-&gt;repmgr_add_remote_site(other_host, other_port);
+         dbenv-&gt;repmgr_add_remote_site(dbenv, other_host, other_port, 
+                                       NULL, 0);
 
         /*
          * Identify the number of sites in the replication group. This is
          * necessary so that elections and permanent message handling can 
          * be performed correctly.
          */
-         dbenv-&gt;repmgr_add_nsites(2);
+         dbenv-&gt;repmgr_set_nsites(dbenv, 2);
 
         /* Open the environment handle. Note that we add DB_THREAD and
          * DB_INIT_REP to the list of flags. These are required.

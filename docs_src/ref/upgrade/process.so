@@ -1,4 +1,4 @@
-m4_comment([$Id: process.so,v 1.15 2006/10/09 16:51:34 bostic Exp $])
+m4_comment([$Id: process.so,v 1.16 2008/03/17 16:10:24 sue Exp $])
 
 m4_ref_title(Upgrading m4_db Applications,
     Upgrading m4_db installations,,
@@ -164,8 +164,13 @@ m4_nlistns([Restart the application.])
 m4_nlistend
 
 m4_p([dnl
-Finally, upgrading a m4_db replication group requires a few additional
-steps.  To upgrade a replication group, you must:])
+Finally, m4_db supports the live upgrade of a replication
+group, by allowing mixed version operation (replication sites
+running at the newer software version can inter-operate with older
+version sites).  All client sites must be upgraded first; the
+master site must be upgraded last.  In other words, at all times
+the master must be running the lowest version of m4_db.
+To upgrade a replication group, you must:])
 
 m4_nlistbegin
 m4_nlist([Bring all clients up to date with the master (that is, all
@@ -173,9 +178,16 @@ clients must be brought up to the most current log record as measured
 by the master's log sequence number (LSN)).])
 m4_nlistns([Perform the upgrade procedures described previously on each
 of the individual database environments that are part of the replication
-group.])
-m4_nlistns([Restart the replication group.])
+group.  Each individual client may be upgraded and restarted to join
+the replication group.])
+m4_nlistns([Shut down the master site and upgrade that site last.])
 m4_nlistend
+
+m4_p([dnl
+During live replication upgrade, while sites are running at different
+versions, adding new (empty) clients to the replication group is not
+allowed.  Those empty client environments must be added after the
+entire group is upgraded.])
 
 m4_p([dnl
 Alternatively, it may be simpler to discard the contents of all of the

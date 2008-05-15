@@ -1,4 +1,4 @@
-m4_comment([$Id: db_associate.so,v 10.46 2007/03/19 19:45:47 bostic Exp $])
+m4_comment([$Id: db_associate.so,v 10.47 2007/10/24 16:06:06 bostic Exp $])
 
 define(M4PAGELOCAL,
     [dbh_associate, DB_DBT_APPMALLOC, DB_DBT_MULTIPLE, DB_DONOTINDEX,
@@ -176,7 +176,7 @@ m4_param_txn(dbh_associate)
 
 m4_paramend
 
-m4_err(dbh_associate, repinval, einval,
+m4_err(dbh_associate, rephandle, replockout, einval,
 [the secondary database handle has already been associated with this or
 another database handle; the secondary database handle is not open; the
 primary database has been configured to allow duplicates])

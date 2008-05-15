@@ -1,11 +1,12 @@
-m4_comment([$Id: dbc_get.so,v 10.117 2007/05/31 18:52:36 bostic Exp $])
+m4_comment([$Id: dbc_get.so,v 10.121 2007/10/24 16:06:07 bostic Exp $])
 
 define(M4PAGELOCAL,
 	[dbc_get, dbc_pget, DB_CURRENT, DB_FIRST, DB_GET_BOTH,
-	DB_GET_BOTH_RANGE, DB_GET_RECNO, DB_JOIN_ITEM, DB_LAST,
-	DB_MULTIPLE, DB_MULTIPLE_KEY, DB_NEXT, DB_NEXT_DUP,
-	DB_NEXT_NODUP, DB_PREV, DB_PREV_DUP, DB_PREV_NODUP,
-	DB_SECONDARY_BAD, DB_SET, DB_SET_RANGE, DB_SET_RECNO])
+	DB_GET_BOTH_RANGE, DB_GET_RECNO, DB_IGNORE_LEASE, DB_JOIN_ITEM,
+	DB_LAST, DB_MULTIPLE, DB_MULTIPLE_KEY, DB_NEXT, DB_NEXT_DUP,
+	DB_NEXT_NODUP, DB_PREV, DB_PREV_DUP, DB_PREV_NODUP, DB_SET,
+	DB_SET_RANGE, DB_SET_RECNO])
+
 include(m4/m4.seealso)
 
 m4_pf_header(m4_ref(dbc_get),
@@ -243,6 +244,13 @@ m4_tagend
 m4_sf_or_add(1)
 
 m4_tagbegin
+m4_tag(m4_idef(DB_IGNORE_LEASE), [dnl
+Return the data item irrespective of the state of master leases.  The
+item will be returned under all conditions: if master leases are not
+configured, if the request is made to a client, if the request is made
+to a master with a valid lease, or if the request is made to a master
+without a valid lease.])
+
 m4_tag(m4_idef(DB_READ_UNCOMMITTED), [dnl
 Database items read during a transactional call will have degree 1
 isolation, including modified but not yet committed data.  Silently
@@ -326,7 +334,7 @@ m4_paramend
 m4_err(dbc_get,
 buffersmall,
 [requested item could not be returned due to undersized buffer],
-deadlock, repinval, secondary_bad, einval,
+deadlock, rephandle, replease, replockout, secondary_bad, einval,
 [the m4_ref(DB_CURRENT), m4_ref(DB_NEXT_DUP) or m4_ref(DB_PREV_DUP) flags
 were specified and the cursor has not been initialized;
 the m4_refT(dbc_pget) was called with a cursor that does not refer to a

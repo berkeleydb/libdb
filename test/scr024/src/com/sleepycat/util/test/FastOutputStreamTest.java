@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002,2008 Oracle.  All rights reserved.
  *
- * $Id: FastOutputStreamTest.java,v 12.5 2007/05/04 00:28:30 mark Exp $
+ * $Id: FastOutputStreamTest.java,v 12.7 2008/02/07 17:12:33 mark Exp $
  */
 
 package com.sleepycat.util.test;
@@ -12,8 +12,8 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import com.sleepycat.collections.test.DbTestUtil;
 import com.sleepycat.util.FastOutputStream;
+import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
@@ -47,7 +47,7 @@ public class FastOutputStreamTest extends TestCase {
 
     public void setUp() {
 
-        DbTestUtil.printTestName("FastOutputStreamTest." + getName());
+        SharedTestUtils.printTestName("FastOutputStreamTest." + getName());
     }
 
     public void testBufferSizing()

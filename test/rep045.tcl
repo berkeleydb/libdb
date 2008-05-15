@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2007 Oracle.  All rights reserved.
+# Copyright (c) 2005,2008 Oracle.  All rights reserved.
 #
-# $Id: rep045.tcl,v 12.17 2007/05/17 18:17:21 bostic Exp $
+# $Id: rep045.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
 #
 # TEST	rep045
 # TEST
@@ -53,10 +53,11 @@ proc rep045_sub { method tnum logset largs } {
 	source ./include.tcl
 	set orig_tdir $testdir
 	global rep_verbose
+	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
-		set verbargs " -verbose {rep on} "
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
 	set masterdir $testdir/MASTERDIR

@@ -1,7 +1,7 @@
-m4_comment([$Id: partition.so,v 1.6 2006/08/25 12:56:00 bostic Exp $])
+m4_comment([$Id: partition.so,v 1.8 2007/10/03 17:48:44 sue Exp $])
 
 m4_ref_title(m4_db Replication,
-    Network partitions,, rep/trans, rep/faq)
+    Network partitions,, rep/clock_skew, rep/faq)
 
 m4_p([dnl
 The m4_db replication implementation can be affected by network

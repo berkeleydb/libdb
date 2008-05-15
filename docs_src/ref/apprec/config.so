@@ -1,4 +1,4 @@
-m4_comment([$Id: config.so,v 10.4 2002/06/05 21:09:14 bostic Exp $])
+m4_comment([$Id: config.so,v 10.5 2007/12/13 03:05:54 margo Exp $])
 
 m4_ref_title(Application Specific Logging and Recovery,
     Application configuration,,
@@ -28,7 +28,7 @@ apprec_dispatch(dbenv, dbt, lsn, op)
 
 	switch (rectype) {
 	case DB_ex_apprec_mkdir:
-		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op, NULL));
+		return (ex_apprec_mkdir_recover(dbenv, dbt, lsn, op));
 	default:
 		/*
 		 * We've hit an unexpected, allegedly user-defined record

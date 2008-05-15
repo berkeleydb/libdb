@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: os_seek.c,v 12.11 2007/05/17 15:15:49 bostic Exp $
+ * $Id: os_seek.c,v 12.15 2008/01/08 20:58:46 bostic Exp $
  */
 
 #include "db_config.h"
@@ -15,8 +15,8 @@
  *	Seek to a page/byte offset in the file.
  */
 int
-__os_seek(dbenv, fhp, pgno, pgsize, relative)
-	DB_ENV *dbenv;
+__os_seek(env, fhp, pgno, pgsize, relative)
+	ENV *env;
 	DB_FH *fhp;
 	db_pgno_t pgno;
 	u_int32_t pgsize;
@@ -30,13 +30,20 @@ __os_seek(dbenv, fhp, pgno, pgsize, relative)
 			long high;
 		};
 	} offbytes;
+	DB_ENV *dbenv;
 	off_t offset;
 	int ret;
+
+	dbenv = env == NULL ? NULL : env->dbenv;
+
+#if defined(HAVE_STATISTICS)
+	++fhp->seek_count;
+#endif
 
 	offset = (off_t)pgsize * pgno + relative;
 
 	if (dbenv != NULL && FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS_ALL))
-		__db_msg(dbenv,
+		__db_msg(env,
 		    "fileops: seek %s to %lu", fhp->name, (u_long)offset);
 
 	offbytes.bigint = offset;
@@ -48,7 +55,7 @@ __os_seek(dbenv, fhp, pgno, pgsize, relative)
 		fhp->pgno = pgno;
 		fhp->offset = relative;
 	} else {
-		__db_syserr(dbenv, ret,
+		__db_syserr(env, ret,
 		    "seek: %lu: (%lu * %lu) + %lu", (u_long)offset,
 		    (u_long)pgno, (u_long)pgsize, (u_long)relative);
 		ret = __os_posix_err(ret);

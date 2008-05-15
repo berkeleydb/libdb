@@ -1,4 +1,4 @@
-m4_comment([$Id: env_set_thread_id_string.so,v 10.1 2005/10/20 17:16:02 bostic Exp $])
+m4_comment([$Id: env_set_thread_id_string.so,v 10.2 2007/09/26 15:11:30 bostic Exp $])
 
 define(M4PAGELOCAL, [dbenv_set_thread_id_string, DB_THREADID_STRLEN])
 include(m4/m4.seealso)
@@ -46,7 +46,7 @@ The m4_arg(pid) argument is a process ID.])
 m4_tag(m4_arg(tid), [dnl
 The m4_arg(tid) argument is a thread ID.])
 m4_tag(m4_arg(buf), [dnl
-m4_idefz(DB_NOSERVER)
+m4_idefz(DB_THREADID_STRLEN)
 The m4_arg(buf) argument is character array of at least
 m4_ref(DB_THREADID_STRLEN) bytes in length, into which the identifier
 pair should be formatted.])

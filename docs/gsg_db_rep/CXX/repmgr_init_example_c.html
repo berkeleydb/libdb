@@ -414,7 +414,7 @@ individually in turn:
       <pre class="programlisting">    <b class="userinput"><tt>for ( REP_HOST_INFO *cur = app_config-&gt;other_hosts; cur != NULL;
         cur = cur-&gt;next) {
         if ((ret = dbenv.repmgr_add_remote_site(cur-&gt;host, cur-&gt;port,
-                                                0)) != 0) {
+                                                NULL, 0)) != 0) {
                 cerr &lt;&lt; "could not add site." &lt;&lt; endl
         }
     } </tt></b> </pre>

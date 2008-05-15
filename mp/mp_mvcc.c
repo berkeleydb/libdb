@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2006,2008 Oracle.  All rights reserved.
  *
- * $Id: mp_mvcc.c,v 12.34 2007/06/05 11:55:28 mjc Exp $
+ * $Id: mp_mvcc.c,v 12.42 2008/01/31 18:40:45 bostic Exp $
  */
 
 #include "db_config.h"
@@ -40,66 +40,6 @@ __memp_bh_priority(bhp)
 }
 
 /*
- * __memp_bucket_reorder --
- *	Adjust a hash queue so that the given bhp is in priority order.
- *
- * PUBLIC: void __memp_bucket_reorder __P((DB_ENV *, DB_MPOOL_HASH *, BH *));
- */
-void
-__memp_bucket_reorder(dbenv, hp, bhp)
-	DB_ENV *dbenv;
-	DB_MPOOL_HASH *hp;
-	BH *bhp;
-{
-	BH *first_bhp, *last_bhp, *next;
-	u_int32_t priority;
-
-	DB_ASSERT(dbenv, bhp != NULL);
-	COMPQUIET(dbenv, NULL);
-
-	/*
-	 * Buffers on hash buckets are sorted by priority -- move the buffer to
-	 * the correct position in the list.  We only need to do any work if
-	 * there are two or more buffers in the bucket.
-	 */
-	if ((first_bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) ==
-	     (last_bhp = SH_TAILQ_LAST(&hp->hash_bucket, hq, __bh)))
-		goto done;
-
-	while (SH_CHAIN_HASNEXT(bhp, vc))
-		bhp = SH_CHAIN_NEXTP(bhp, vc, __bh);
-
-	priority = BH_PRIORITY(bhp);
-
-	/* Optimize common cases. */
-	if (bhp != first_bhp && priority <= BH_PRIORITY(first_bhp)) {
-		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
-		SH_TAILQ_INSERT_HEAD(&hp->hash_bucket, bhp, hq, __bh);
-	} else if (bhp != last_bhp && priority >= BH_PRIORITY(last_bhp)) {
-		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
-		SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
-	} else {
-		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
-		for (next = SH_TAILQ_FIRST(&hp->hash_bucket, __bh);
-		    next != NULL && priority > BH_PRIORITY(next);
-		    next = SH_TAILQ_NEXT(next, hq, __bh))
-			;
-		if (next == NULL)
-			SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, bhp, hq);
-		else
-			SH_TAILQ_INSERT_BEFORE(&hp->hash_bucket,
-			    next, bhp, hq, __bh);
-	}
-
-done:	/*
-	 * Reset the hash bucket's priority -- the chain is never empty in
-	 * this case, so bhp will never be NULL.
-	 */
-	if ((bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) != NULL)
-		hp->hash_priority = BH_PRIORITY(bhp);
-}
-
-/*
  * __memp_bh_settxn --
  *	Set the transaction that owns the given buffer.
  *
@@ -112,26 +52,26 @@ __memp_bh_settxn(dbmp, mfp, bhp, vtd)
 	BH *bhp;
 	void *vtd;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	TXN_DETAIL *td;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	td = (TXN_DETAIL *)vtd;
 
 	if (td == NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
 		      "%s: non-transactional update to a multiversion file",
 		    __memp_fns(dbmp, mfp));
 		return (EINVAL);
 	}
 
 	if (bhp->td_off != INVALID_ROFF) {
-		DB_ASSERT(dbenv, BH_OWNER(dbenv, bhp) == td);
+		DB_ASSERT(env, BH_OWNER(env, bhp) == td);
 		return (0);
 	}
 
-	bhp->td_off = R_OFFSET(&dbenv->tx_handle->reginfo, td);
-	return (__txn_add_buffer(dbenv, td));
+	bhp->td_off = R_OFFSET(&env->tx_handle->reginfo, td);
+	return (__txn_add_buffer(env, td));
 }
 
 /*
@@ -147,18 +87,18 @@ __memp_skip_curadj(dbc, pgno)
 	db_pgno_t pgno;
 {
 	BH *bhp;
-	DB_ENV *dbenv;
 	DB_MPOOL *dbmp;
-	DB_MPOOL_HASH *hp;
 	DB_MPOOLFILE *dbmfp;
+	DB_MPOOL_HASH *hp;
 	DB_TXN *txn;
+	ENV *env;
 	MPOOLFILE *mfp;
 	REGINFO *infop;
 	roff_t mf_offset;
 	int ret, skip;
 
-	dbenv = dbc->dbp->dbenv;
-	dbmp = dbenv->mp_handle;
+	env = dbc->env;
+	dbmp = env->mp_handle;
 	dbmfp = dbc->dbp->mpf;
 	mfp = dbmfp->mfp;
 	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
@@ -172,10 +112,10 @@ __memp_skip_curadj(dbc, pgno)
 	 * local pointers to them.  Reset on each pass through this code, the
 	 * page number can change.
 	 */
-	MP_GET_BUCKET(dbmfp, pgno, &infop, hp, ret);
+	MP_GET_BUCKET(env, mfp, pgno, &infop, hp, ret);
 	if (ret != 0) {
 		/* Panic: there is no way to return the error. */
-		(void)__db_panic(dbenv, ret);
+		(void)__env_panic(env, ret);
 		return (0);
 	}
 
@@ -183,11 +123,11 @@ __memp_skip_curadj(dbc, pgno)
 		if (bhp->pgno != pgno || bhp->mf_offset != mf_offset)
 			continue;
 
-		if (!BH_OWNED_BY(dbenv, bhp, txn))
+		if (!BH_OWNED_BY(env, bhp, txn))
 			skip = 1;
 		break;
 	}
-	MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+	MUTEX_UNLOCK(env, hp->mtx_hash);
 
 	return (skip);
 }
@@ -214,8 +154,8 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 {
 	BH *frozen_bhp;
 	BH_FROZEN_ALLOC *frozen_alloc;
-	DB_ENV *dbenv;
 	DB_FH *fhp;
+	ENV *env;
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
 	db_pgno_t maxpgno, newpgno, nextfree;
@@ -224,7 +164,7 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	u_int32_t magic, nbucket, ncache, pagesize;
 	char filename[100], *real_name;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	c_mp = infop->primary;
 	ret = 0;
 	/* Find the associated MPOOLFILE. */
@@ -233,16 +173,16 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	real_name = NULL;
 	fhp = NULL;
 
-	DB_ASSERT(dbenv, bhp->ref == 0);
-	DB_ASSERT(dbenv, !F_ISSET(bhp, BH_DIRTY | BH_FROZEN | BH_LOCKED));
+	DB_ASSERT(env, bhp->ref == 0);
+	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY | BH_FROZEN | BH_LOCKED));
 
 	++bhp->ref;
 	F_SET(bhp, BH_LOCKED);
 	MVCC_MPROTECT(bhp->buf, pagesize, PROT_READ | PROT_WRITE);
 
-	MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+	MUTEX_UNLOCK(env, hp->mtx_hash);
 
-	MPOOL_REGION_LOCK(dbenv, infop);
+	MPOOL_REGION_LOCK(env, infop);
 	frozen_bhp = SH_TAILQ_FIRST(&c_mp->free_frozen, __bh);
 	if (frozen_bhp != NULL) {
 		SH_TAILQ_REMOVE(&c_mp->free_frozen, frozen_bhp, hq, __bh);
@@ -259,8 +199,8 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 			    frozen_alloc, links);
 		}
 	}
-	MPOOL_REGION_UNLOCK(dbenv, infop);
-	MUTEX_LOCK(dbenv, hp->mtx_hash);
+	MPOOL_REGION_UNLOCK(env, infop);
+	MUTEX_LOCK(env, hp->mtx_hash);
 
 	/*
 	 * If we can't get a frozen buffer header, return ENOMEM immediately:
@@ -279,35 +219,35 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	 */
 	ncache = (u_int32_t)(infop - dbmp->reginfo);
 	nbucket = (u_int32_t)(hp - (DB_MPOOL_HASH *)R_ADDR(infop, c_mp->htab));
-	snprintf(filename, sizeof(filename), "__db.freezer.%u.%u.%uK",
-	    ncache, nbucket, pagesize / 1024);
+	snprintf(filename, sizeof(filename), "__db.freezer.%lu.%lu.%luK",
+	    (u_long)ncache, (u_long)nbucket, (u_long)pagesize / 1024);
 
-	if ((ret = __db_appname(dbenv, DB_APP_NONE, filename,
+	if ((ret = __db_appname(env, DB_APP_NONE, filename,
 	    0, NULL, &real_name)) != 0)
 		goto err;
-	if ((ret = __os_open(dbenv, real_name, pagesize,
-	    DB_OSO_CREATE | DB_OSO_EXCL, dbenv->db_mode, &fhp)) == 0) {
+	if ((ret = __os_open(env, real_name, pagesize,
+	    DB_OSO_CREATE | DB_OSO_EXCL, env->db_mode, &fhp)) == 0) {
 		/* We're creating the file -- initialize the metadata page. */
 		magic = DB_FREEZER_MAGIC;
 		maxpgno = newpgno = 0;
-		if ((ret = __os_write(dbenv, fhp, &magic, sizeof(u_int32_t),
+		if ((ret = __os_write(env, fhp, &magic, sizeof(u_int32_t),
 		    &nio)) < 0 || nio == 0 ||
-		    (ret = __os_write(dbenv, fhp, &newpgno, sizeof(db_pgno_t),
+		    (ret = __os_write(env, fhp, &newpgno, sizeof(db_pgno_t),
 		    &nio)) < 0 || nio == 0 ||
-		    (ret = __os_write(dbenv, fhp, &maxpgno, sizeof(db_pgno_t),
+		    (ret = __os_write(env, fhp, &maxpgno, sizeof(db_pgno_t),
 		    &nio)) < 0 || nio == 0 ||
-		    (ret = __os_seek(dbenv, fhp, 0, 0, 0)) != 0)
+		    (ret = __os_seek(env, fhp, 0, 0, 0)) != 0)
 			goto err;
 	} else if (ret == EEXIST)
 		ret = __os_open(
-		    dbenv, real_name, pagesize, 0, dbenv->db_mode, &fhp);
+		    env, real_name, pagesize, 0, env->db_mode, &fhp);
 	if (ret != 0)
 		goto err;
-	if ((ret = __os_read(dbenv, fhp, &magic, sizeof(u_int32_t),
+	if ((ret = __os_read(env, fhp, &magic, sizeof(u_int32_t),
 	    &nio)) < 0 || nio == 0 ||
-	    (ret = __os_read(dbenv, fhp, &newpgno, sizeof(db_pgno_t),
+	    (ret = __os_read(env, fhp, &newpgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0 ||
-	    (ret = __os_read(dbenv, fhp, &maxpgno, sizeof(db_pgno_t),
+	    (ret = __os_read(env, fhp, &maxpgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0)
 		goto err;
 	if (magic != DB_FREEZER_MAGIC) {
@@ -316,25 +256,25 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	}
 	if (newpgno == 0) {
 		newpgno = ++maxpgno;
-		if ((ret = __os_seek(dbenv,
+		if ((ret = __os_seek(env,
 		    fhp, 0, 0, sizeof(u_int32_t) + sizeof(db_pgno_t))) != 0 ||
-		    (ret = __os_write(dbenv, fhp, &maxpgno, sizeof(db_pgno_t),
+		    (ret = __os_write(env, fhp, &maxpgno, sizeof(db_pgno_t),
 		    &nio)) < 0 || nio == 0)
 			goto err;
 	} else {
-		if ((ret = __os_seek(dbenv, fhp, newpgno, pagesize, 0)) != 0 ||
-		    (ret = __os_read(dbenv, fhp, &nextfree, sizeof(db_pgno_t),
+		if ((ret = __os_seek(env, fhp, newpgno, pagesize, 0)) != 0 ||
+		    (ret = __os_read(env, fhp, &nextfree, sizeof(db_pgno_t),
 		    &nio)) < 0 || nio == 0)
 			goto err;
 		if ((ret =
-		    __os_seek(dbenv, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
-		    (ret = __os_write(dbenv, fhp, &nextfree, sizeof(db_pgno_t),
+		    __os_seek(env, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
+		    (ret = __os_write(env, fhp, &nextfree, sizeof(db_pgno_t),
 		    &nio)) < 0 || nio == 0)
 			goto err;
 	}
 
 	/* Write the buffer to the allocated page. */
-	if ((ret = __os_io(dbenv, DB_IO_WRITE, fhp, newpgno, pagesize, 0,
+	if ((ret = __os_io(env, DB_IO_WRITE, fhp, newpgno, pagesize, 0,
 	    pagesize, bhp->buf, &nio)) != 0 || nio == 0)
 		goto err;
 
@@ -360,8 +300,8 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	 * transaction.
 	 */
 	if (frozen_bhp->td_off != INVALID_ROFF &&
-	    (ret = __txn_add_buffer(dbenv, BH_OWNER(dbenv, frozen_bhp))) != 0) {
-		(void)__db_panic(dbenv, ret);
+	    (ret = __txn_add_buffer(env, BH_OWNER(env, frozen_bhp))) != 0) {
+		(void)__env_panic(env, ret);
 		goto err;
 	}
 
@@ -382,9 +322,9 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	 * Increment the file's block count -- freeing the original buffer will
 	 * decrement it.
 	 */
-	MUTEX_LOCK(dbenv, bh_mfp->mutex);
+	MUTEX_LOCK(env, bh_mfp->mutex);
 	++bh_mfp->block_cnt;
-	MUTEX_UNLOCK(dbenv, bh_mfp->mutex);
+	MUTEX_UNLOCK(env, bh_mfp->mutex);
 
 	STAT(++hp->hash_frozen);
 
@@ -392,21 +332,21 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 err:		if (ret == 0)
 			ret = EIO;
 		if (frozen_bhp != NULL) {
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
-			MPOOL_REGION_LOCK(dbenv, infop);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
+			MPOOL_REGION_LOCK(env, infop);
 			SH_TAILQ_INSERT_TAIL(&c_mp->free_frozen,
 			    frozen_bhp, hq);
-			MPOOL_REGION_UNLOCK(dbenv, infop);
-			MUTEX_LOCK(dbenv, hp->mtx_hash);
+			MPOOL_REGION_UNLOCK(env, infop);
+			MUTEX_LOCK(env, hp->mtx_hash);
 		}
 	}
 	if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 	if (fhp != NULL &&
-	    (t_ret = __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
+	    (t_ret = __os_closehandle(env, fhp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (ret != 0 && ret != ENOMEM)
-		__db_err(dbenv, ret, "__memp_bh_freeze");
+		__db_err(env, ret, "__memp_bh_freeze");
 	F_CLR(bhp, BH_LOCKED);
 	--bhp->ref;
 
@@ -415,7 +355,7 @@ err:		if (ret == 0)
 	 */
 	if (F_ISSET(hp, IO_WAITER)) {
 		F_CLR(hp, IO_WAITER);
-		MUTEX_UNLOCK(dbenv, hp->mtx_io);
+		MUTEX_UNLOCK(env, hp->mtx_io);
 	}
 	return (ret);
 }
@@ -449,8 +389,8 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	BH *frozen_bhp, *alloc_bhp;
 {
 	BH *next_bhp;
-	DB_ENV *dbenv;
 	DB_FH *fhp;
+	ENV *env;
 #ifdef DIAGNOSTIC
 	DB_LSN vlsn;
 #endif
@@ -459,14 +399,13 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	db_pgno_t *freelist, *ppgno, freepgno, maxpgno, spgno;
 	size_t nio;
 	u_int32_t listsize, magic, nbucket, ncache, ntrunc, nfree, pagesize;
-	u_int32_t priority;
 #ifdef HAVE_FTRUNCATE
 	int i;
 #endif
-	int needfree, reorder, ret, t_ret;
+	int needfree, ret, t_ret;
 	char filename[100], *real_name;
 
-	dbenv = dbmp->dbenv;
+	env = dbmp->env;
 	fhp = NULL;
 	c_mp = infop->primary;
 	bh_mfp = R_ADDR(dbmp->reginfo, frozen_bhp->mf_offset);
@@ -475,9 +414,9 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	ret = 0;
 	real_name = NULL;
 
-	DB_ASSERT(dbenv, F_ISSET(frozen_bhp, BH_FROZEN));
-	DB_ASSERT(dbenv, !F_ISSET(frozen_bhp, BH_LOCKED));
-	DB_ASSERT(dbenv, alloc_bhp != NULL ||
+	DB_ASSERT(env, F_ISSET(frozen_bhp, BH_FROZEN));
+	DB_ASSERT(env, !F_ISSET(frozen_bhp, BH_LOCKED));
+	DB_ASSERT(env, alloc_bhp != NULL ||
 	    BH_OBSOLETE(frozen_bhp, hp->old_reader, vlsn));
 
 	spgno = ((BH_FROZEN_PAGE *)frozen_bhp)->spgno;
@@ -502,26 +441,26 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	 */
 	ncache = (u_int32_t)(infop - dbmp->reginfo);
 	nbucket = (u_int32_t)(hp - (DB_MPOOL_HASH *)R_ADDR(infop, c_mp->htab));
-	snprintf(filename, sizeof(filename), "__db.freezer.%u.%u.%uK",
-	    ncache, nbucket, pagesize / 1024);
+	snprintf(filename, sizeof(filename), "__db.freezer.%lu.%lu.%luK",
+	    (u_long)ncache, (u_long)nbucket, (u_long)pagesize / 1024);
 
-	if ((ret = __db_appname(dbenv, DB_APP_NONE, filename, 0, NULL,
-	    &real_name)) != 0)
+	if ((ret = __db_appname(
+	    env, DB_APP_NONE, filename, 0, NULL, &real_name)) != 0)
 		goto err;
 
 	if ((ret = __os_open(
-	    dbenv, real_name, pagesize, 0, dbenv->db_mode, &fhp)) != 0)
+	    env, real_name, pagesize, 0, env->db_mode, &fhp)) != 0)
 		goto err;
 
 	/*
 	 * Read the first free page number -- we're about to free the page
 	 * after we we read it.
 	 */
-	if ((ret = __os_read(dbenv, fhp, &magic, sizeof(u_int32_t),
+	if ((ret = __os_read(env, fhp, &magic, sizeof(u_int32_t),
 	    &nio)) < 0 || nio == 0 ||
-	    (ret = __os_read(dbenv, fhp, &freepgno, sizeof(db_pgno_t),
+	    (ret = __os_read(env, fhp, &freepgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0 ||
-	    (ret = __os_read(dbenv, fhp, &maxpgno, sizeof(db_pgno_t),
+	    (ret = __os_read(env, fhp, &maxpgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0)
 		goto err;
 
@@ -532,7 +471,7 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 
 	/* Read the buffer from the frozen page. */
 	if (alloc_bhp != NULL &&
-	    ((ret = __os_io(dbenv, DB_IO_READ, fhp, spgno, pagesize,
+	    ((ret = __os_io(env, DB_IO_READ, fhp, spgno, pagesize,
 	    0, pagesize, alloc_bhp->buf, &nio)) != 0 || nio == 0))
 		goto err;
 
@@ -543,22 +482,22 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	needfree = 1;
 	if (spgno == maxpgno) {
 		listsize = 100;
-		if ((ret = __os_malloc(dbenv,
+		if ((ret = __os_malloc(env,
 		    listsize * sizeof(db_pgno_t), &freelist)) != 0)
 			goto err;
 		nfree = 0;
 		while (freepgno != 0) {
 			if (nfree == listsize - 1) {
 				listsize *= 2;
-				if ((ret = __os_realloc(dbenv,
+				if ((ret = __os_realloc(env,
 				    listsize * sizeof(db_pgno_t),
 				    &freelist)) != 0)
 					goto err;
 			}
 			freelist[nfree++] = freepgno;
 			if ((ret = __os_seek(
-			    dbenv, fhp, freepgno, pagesize, 0)) != 0 ||
-			    (ret = __os_read(dbenv, fhp, &freepgno,
+			    env, fhp, freepgno, pagesize, 0)) != 0 ||
+			    (ret = __os_read(env, fhp, &freepgno,
 			    sizeof(db_pgno_t), &nio)) < 0 || nio == 0)
 				goto err;
 		}
@@ -570,33 +509,33 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 		ntrunc = (u_int32_t)(&freelist[nfree] - ppgno);
 		if (ntrunc == (u_int32_t)maxpgno) {
 			needfree = 0;
-			ret = __os_closehandle(dbenv, fhp);
+			ret = __os_closehandle(env, fhp);
 			fhp = NULL;
 			if (ret != 0 ||
-			    (ret = __os_unlink(dbenv, real_name)) != 0)
+			    (ret = __os_unlink(env, real_name, 0)) != 0)
 				goto err;
 		}
 #ifdef HAVE_FTRUNCATE
 		else {
 			maxpgno -= (db_pgno_t)ntrunc;
-			if ((ret = __os_truncate(dbenv, fhp,
+			if ((ret = __os_truncate(env, fhp,
 			    maxpgno + 1, pagesize)) != 0)
 				goto err;
 
 			/* Fix up the linked list */
 			freelist[nfree - ntrunc] = 0;
 			if ((ret = __os_seek(
-			    dbenv, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
-			    (ret = __os_write(dbenv, fhp, &freelist[0],
+			    env, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
+			    (ret = __os_write(env, fhp, &freelist[0],
 			    sizeof(db_pgno_t), &nio)) < 0 || nio == 0 ||
-			    (ret = __os_write(dbenv, fhp, &maxpgno,
+			    (ret = __os_write(env, fhp, &maxpgno,
 			    sizeof(db_pgno_t), &nio)) < 0 || nio == 0)
 				goto err;
 
 			for (i = 0; i < (int)(nfree - ntrunc); i++)
-				if ((ret = __os_seek(dbenv,
+				if ((ret = __os_seek(env,
 				    fhp, freelist[i], pagesize, 0)) != 0 ||
-				    (ret = __os_write(dbenv, fhp,
+				    (ret = __os_write(env, fhp,
 				    &freelist[i + 1], sizeof(db_pgno_t),
 				    &nio)) < 0 || nio == 0)
 					goto err;
@@ -605,11 +544,11 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 #endif
 	}
 	if (needfree &&
-	    ((ret = __os_seek(dbenv, fhp, spgno, pagesize, 0)) != 0 ||
-	    (ret = __os_write(dbenv, fhp, &freepgno, sizeof(db_pgno_t),
+	    ((ret = __os_seek(env, fhp, spgno, pagesize, 0)) != 0 ||
+	    (ret = __os_write(env, fhp, &freepgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0 ||
-	    (ret = __os_seek(dbenv, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
-	    (ret = __os_write(dbenv, fhp, &spgno, sizeof(db_pgno_t),
+	    (ret = __os_seek(env, fhp, 0, 0, sizeof(u_int32_t))) != 0 ||
+	    (ret = __os_write(env, fhp, &spgno, sizeof(db_pgno_t),
 	    &nio)) < 0 || nio == 0))
 		goto err;
 
@@ -630,11 +569,8 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 			    frozen_bhp, alloc_bhp, hq, __bh);
 			SH_TAILQ_REMOVE(&hp->hash_bucket, frozen_bhp, hq, __bh);
 		}
-		priority = BH_PRIORITY(alloc_bhp);
-		reorder = (priority == alloc_bhp->priority ||
-		    priority == frozen_bhp->priority);
-	} else
-		reorder = BH_PRIORITY(frozen_bhp) == frozen_bhp->priority;
+	}
+
 	if ((next_bhp = SH_CHAIN_NEXT(frozen_bhp, vc, __bh)) == NULL) {
 		if ((next_bhp = SH_CHAIN_PREV(frozen_bhp, vc, __bh)) != NULL)
 			SH_TAILQ_INSERT_BEFORE(&hp->hash_bucket, frozen_bhp,
@@ -642,13 +578,6 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 		SH_TAILQ_REMOVE(&hp->hash_bucket, frozen_bhp, hq, __bh);
 	}
 	SH_CHAIN_REMOVE(frozen_bhp, vc, __bh);
-	if (reorder) {
-		if (next_bhp != NULL)
-			__memp_bucket_reorder(dbenv, hp, next_bhp);
-		else if (!SH_TAILQ_EMPTY(&hp->hash_bucket))
-			hp->hash_priority = BH_PRIORITY(SH_TAILQ_FIRSTP(
-			    &hp->hash_bucket, __bh));
-	}
 
 	/*
 	 * If other threads are waiting for this buffer as well, they will have
@@ -656,12 +585,12 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	 * For that reason, we can't unconditionally free the memory here.
 	 */
 	if (--frozen_bhp->ref == 0) {
-		MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 
 		if (alloc_bhp == NULL && frozen_bhp->td_off != INVALID_ROFF &&
-		    (ret = __txn_remove_buffer(dbenv,
-		    BH_OWNER(dbenv, frozen_bhp), MUTEX_INVALID)) != 0) {
-			(void)__db_panic(dbenv, ret);
+		    (ret = __txn_remove_buffer(env,
+		    BH_OWNER(env, frozen_bhp), MUTEX_INVALID)) != 0) {
+			(void)__env_panic(env, ret);
 			goto err;
 		}
 
@@ -669,10 +598,10 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 		 * We need to be careful in the error case, because our caller
 		 * will attempt to free frozen_bhp.
 		 */
-		MPOOL_REGION_LOCK(dbenv, infop);
+		MPOOL_REGION_LOCK(env, infop);
 		SH_TAILQ_INSERT_TAIL(&c_mp->free_frozen, frozen_bhp, hq);
-		MPOOL_REGION_UNLOCK(dbenv, infop);
-		MUTEX_LOCK(dbenv, hp->mtx_hash);
+		MPOOL_REGION_UNLOCK(env, infop);
+		MUTEX_LOCK(env, hp->mtx_hash);
 	} else {
 		F_SET(frozen_bhp, BH_THAWED);
 		F_CLR(frozen_bhp, BH_LOCKED);
@@ -690,21 +619,21 @@ err:		if (ret == 0)
 			ret = EIO;
 	}
 	if (real_name != NULL)
-		__os_free(dbenv, real_name);
+		__os_free(env, real_name);
 	if (freelist != NULL)
-		__os_free(dbenv, freelist);
+		__os_free(env, freelist);
 	if (fhp != NULL &&
-	    (t_ret = __os_closehandle(dbenv, fhp)) != 0 && ret == 0)
+	    (t_ret = __os_closehandle(env, fhp)) != 0 && ret == 0)
 		ret = t_ret;
 	if (ret != 0)
-		__db_err(dbenv, ret, "__memp_bh_thaw");
+		__db_err(env, ret, "__memp_bh_thaw");
 
 	/*
 	 * If a thread of control is waiting on this buffer, wake it up.
 	 */
 	if (F_ISSET(hp, IO_WAITER)) {
 		F_CLR(hp, IO_WAITER);
-		MUTEX_UNLOCK(dbenv, hp->mtx_io);
+		MUTEX_UNLOCK(env, hp->mtx_io);
 	}
 
 	return (ret);

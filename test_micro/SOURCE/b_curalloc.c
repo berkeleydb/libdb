@@ -1,18 +1,18 @@
 /*
- * $Id: b_curalloc.c,v 1.8 2007/05/29 17:39:15 bostic Exp $
+ * $Id: b_curalloc.c,v 1.9 2007/12/21 13:58:30 bostic Exp $
  */
 #include "bench.h"
 
-int usage(void);
+static int usage(void);
 
 int
-main(int argc, char *argv[])
+b_curalloc(int argc, char *argv[])
 {
+	extern char *optarg;
+	extern int optind;
 	DB *dbp;
 	DBC *curp;
 	int ch, i, count;
-
-	cleanup_test_dir();
 
 	count = 100000;
 	while ((ch = getopt(argc, argv, "c:")) != EOF)
@@ -34,11 +34,11 @@ main(int argc, char *argv[])
 	dbp->set_errfile(dbp, stderr);
 
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
-	DB_BENCH_ASSERT(
-	    dbp->open(dbp, NULL, "a", NULL, DB_BTREE, DB_CREATE, 0666) == 0);
+	DB_BENCH_ASSERT(dbp->open(
+	    dbp, NULL, TESTFILE, NULL, DB_BTREE, DB_CREATE, 0666) == 0);
 #else
 	DB_BENCH_ASSERT(
-	    dbp->open(dbp, "a", NULL, DB_BTREE, DB_CREATE, 0666) == 0);
+	    dbp->open(dbp, TESTFILE, NULL, DB_BTREE, DB_CREATE, 0666) == 0);
 #endif
 
 	/* Allocate a cursor count times. */
@@ -52,10 +52,12 @@ main(int argc, char *argv[])
 	printf("# %d cursor allocations\n", count);
 	TIMER_DISPLAY(count);
 
+	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
+
 	return (0);
 }
 
-int
+static int
 usage()
 {
 	(void)fprintf(stderr, "usage: b_curalloc [-c count]\n");

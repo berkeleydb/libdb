@@ -2,9 +2,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: db_cxx.in,v 12.40 2007/06/28 13:02:50 mjc Exp $
+ * $Id: db_cxx.in,v 12.49 2008/01/12 13:42:37 bostic Exp $
  */
 
 #ifndef _DB_CXX_H_
@@ -285,6 +285,11 @@ public:
 	virtual DbEnv *get_env();
 	virtual DbMpoolFile *get_mpf();
 
+	virtual ENV *get_ENV()
+	{
+		return imp_->env;
+	}
+
 	virtual DB *get_DB()
 	{
 		return imp_;
@@ -316,7 +321,7 @@ private:
 
 	// instance data
 	DB *imp_;
-	DbEnv *env_;
+	DbEnv *dbenv_;
 	DbMpoolFile *mpf_;
 	int construct_error_;
 	u_int32_t flags_;
@@ -423,7 +428,8 @@ public:
 	virtual int get_data_dirs(const char ***);
 	virtual int set_data_dir(const char *);
 	virtual int get_encrypt_flags(u_int32_t *);
-	virtual int set_intermediate_dir(int, u_int32_t);
+	virtual int get_intermediate_dir_mode(const char **);
+	virtual int set_intermediate_dir_mode(const char *);
 	virtual int set_isalive(
 			int (*)(DbEnv *, pid_t, db_threadid_t, u_int32_t));
 	virtual int set_encrypt(const char *, u_int32_t);
@@ -507,11 +513,11 @@ public:
 	virtual void set_message_stream(__DB_STD(ostream) *);
 
 	// used internally
-	static void runtime_error(DbEnv *env, const char *caller, int err,
+	static void runtime_error(DbEnv *dbenv, const char *caller, int err,
 				  int error_policy);
-	static void runtime_error_dbt(DbEnv *env, const char *caller, Dbt *dbt,
+	static void runtime_error_dbt(DbEnv *dbenv, const char *caller, Dbt *dbt,
 				  int error_policy);
-	static void runtime_error_lock_get(DbEnv *env, const char *caller,
+	static void runtime_error_lock_get(DbEnv *dbenv, const char *caller,
 				  int err, db_lockop_t op, db_lockmode_t mode,
 				  const Dbt *obj, DbLock lock, int index,
 				  int error_policy);
@@ -536,9 +542,10 @@ public:
 	virtual int log_cursor(DbLogc **cursorp, u_int32_t flags);
 	virtual int log_file(DbLsn *lsn, char *namep, size_t len);
 	virtual int log_flush(const DbLsn *lsn);
+	virtual int log_get_config(u_int32_t, int *);
 	virtual int log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);
 	virtual int log_printf(DbTxn *, const char *, ...);
-
+	virtual int log_set_config(u_int32_t, int);
 	virtual int log_stat(DB_LOG_STAT **spp, u_int32_t flags);
 	virtual int log_stat_print(u_int32_t flags);
 
@@ -583,33 +590,35 @@ public:
 
 	// Replication functions
 	//
-	virtual int rep_elect(int, int, u_int32_t);
+	virtual int rep_elect(u_int32_t, u_int32_t, u_int32_t);
 	virtual int rep_flush();
 	virtual int rep_process_message(Dbt *, Dbt *, int, DbLsn *);
 	virtual int rep_start(Dbt *, u_int32_t);
 	virtual int rep_stat(DB_REP_STAT **statp, u_int32_t flags);
 	virtual int rep_stat_print(u_int32_t flags);
-	virtual int rep_set_lease(u_int32_t, u_int32_t);
+	virtual int rep_get_clockskew(u_int32_t *, u_int32_t *);
+	virtual int rep_set_clockskew(u_int32_t, u_int32_t);
 	virtual int rep_get_limit(u_int32_t *, u_int32_t *);
 	virtual int rep_set_limit(u_int32_t, u_int32_t);
 	virtual int rep_set_transport(int, int (*)(DbEnv *,
 	    const Dbt *, const Dbt *, const DbLsn *, int, u_int32_t));
-	virtual int set_rep_request(u_int32_t, u_int32_t);
+	virtual int rep_set_request(u_int32_t, u_int32_t);
+	virtual int rep_get_request(u_int32_t *, u_int32_t *);
 	virtual int get_thread_count(u_int32_t *);
 	virtual int set_thread_count(u_int32_t);
 	virtual int set_thread_id(void (*)(DbEnv *, pid_t *, db_threadid_t *));
 	virtual int set_thread_id_string(char *(*)(DbEnv *,
 	    pid_t, db_threadid_t, char *));
-	virtual int rep_set_config(u_int32_t which, int onoff);
-	virtual int rep_get_config(u_int32_t which, int *onoffp);
+	virtual int rep_set_config(u_int32_t, int);
+	virtual int rep_get_config(u_int32_t, int *);
 	virtual int rep_sync(u_int32_t flags);
 
 	// Advanced replication functions
 	//
-	virtual int rep_get_nsites(int *n);
-	virtual int rep_set_nsites(int n);
-	virtual int rep_get_priority(int *priorityp);
-	virtual int rep_set_priority(int priority);
+	virtual int rep_get_nsites(u_int32_t *n);
+	virtual int rep_set_nsites(u_int32_t n);
+	virtual int rep_get_priority(u_int32_t *priorityp);
+	virtual int rep_set_priority(u_int32_t priority);
 	virtual int rep_get_timeout(int which, db_timeout_t *timeout);
 	virtual int rep_set_timeout(int which, db_timeout_t timeout);
 	virtual int repmgr_add_remote_site(const char * host, u_int16_t port,
@@ -625,6 +634,11 @@ public:
 
 	// Conversion functions
 	//
+	virtual ENV *get_ENV()
+	{
+		return imp_->env;
+	}
+
 	virtual DB_ENV *get_DB_ENV()
 	{
 		return imp_;
@@ -652,27 +666,27 @@ public:
 	// via C functions.  They should never be called by users
 	// of this class.
 	//
-	static int _app_dispatch_intercept(DB_ENV *env, DBT *dbt, DB_LSN *lsn,
+	static int _app_dispatch_intercept(DB_ENV *dbenv, DBT *dbt, DB_LSN *lsn,
 				       db_recops op);
-	static void _paniccall_intercept(DB_ENV *env, int errval);
-	static void _feedback_intercept(DB_ENV *env, int opcode, int pct);
-	static void  _event_func_intercept(DB_ENV *env, u_int32_t, void *);
-	static int _isalive_intercept(DB_ENV *env, pid_t pid,
+	static void _paniccall_intercept(DB_ENV *dbenv, int errval);
+	static void _feedback_intercept(DB_ENV *dbenv, int opcode, int pct);
+	static void  _event_func_intercept(DB_ENV *dbenv, u_int32_t, void *);
+	static int _isalive_intercept(DB_ENV *dbenv, pid_t pid,
 	    db_threadid_t thrid, u_int32_t flags);
-	static int _rep_send_intercept(DB_ENV *env, const DBT *cntrl,
+	static int _rep_send_intercept(DB_ENV *dbenv, const DBT *cntrl,
 	    const DBT *data, const DB_LSN *lsn, int id, u_int32_t flags);
-	static void _stream_error_function(const DB_ENV *env,
+	static void _stream_error_function(const DB_ENV *dbenv,
 	    const char *prefix, const char *message);
-	static void _stream_message_function(const DB_ENV *env,
+	static void _stream_message_function(const DB_ENV *dbenv,
 	    const char *message);
-	static void _thread_id_intercept(DB_ENV *env, pid_t *pidp,
+	static void _thread_id_intercept(DB_ENV *dbenv, pid_t *pidp,
 	    db_threadid_t *thridp);
-	static char *_thread_id_string_intercept(DB_ENV *env, pid_t pid,
+	static char *_thread_id_string_intercept(DB_ENV *dbenv, pid_t pid,
 	    db_threadid_t thrid, char *buf);
 
 private:
 	void cleanup();
-	int initialize(DB_ENV *env);
+	int initialize(DB_ENV *dbenv);
 	int error_policy();
 
 	// For internal use only.
@@ -1077,7 +1091,7 @@ public:
 	int get_errno() const;
 	virtual const char *what() const throw();
 	DbEnv *get_env() const;
-	void set_env(DbEnv *env);
+	void set_env(DbEnv *dbenv);
 
 	DbException(const DbException &);
 	DbException &operator = (const DbException &);
@@ -1087,7 +1101,7 @@ private:
 
 	char *what_;
 	int err_;                   // errno
-	DbEnv *env_;
+	DbEnv *dbenv_;
 };
 
 //

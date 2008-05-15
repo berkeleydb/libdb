@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: db_verify.c,v 12.11 2007/05/17 15:15:05 bostic Exp $
+ * $Id: db_verify.c,v 12.13 2008/01/08 20:58:17 bostic Exp $
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2007 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
 #endif
 
 int db_verify_main __P((int, char *[]));
@@ -172,7 +172,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			goto shutdown;
 		}
 
-		if (TXN_ON(dbenv) &&
+		if (TXN_ON(dbenv->env) &&
 		    (ret = dbp->set_flags(dbp, DB_TXN_NOT_DURABLE)) != 0) {
 			dbenv->err(
 			    dbenv, ret, "%s: db_set_flags", progname);
@@ -194,7 +194,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 				goto shutdown;
 			}
 
-			if (TXN_ON(dbenv) && (ret =
+			if (TXN_ON(dbenv->env) && (ret =
 			    dbp1->set_flags(dbp1, DB_TXN_NOT_DURABLE)) != 0) {
 				dbenv->err(
 				    dbenv, ret, "%s: db_set_flags", progname);

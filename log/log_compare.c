@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1996,2008 Oracle.  All rights reserved.
  *
- * $Id: log_compare.c,v 12.11 2007/05/17 15:15:44 bostic Exp $
+ * $Id: log_compare.c,v 12.13 2008/01/08 20:58:41 bostic Exp $
  */
 
 #include "db_config.h"
@@ -28,37 +28,37 @@ log_compare(lsn0, lsn1)
  * __log_check_page_lsn --
  *	Panic if the page's lsn in past the end of the current log.
  *
- * PUBLIC: int __log_check_page_lsn __P((DB_ENV *, DB *, DB_LSN *));
+ * PUBLIC: int __log_check_page_lsn __P((ENV *, DB *, DB_LSN *));
  */
 int
-__log_check_page_lsn(dbenv, dbp, lsnp)
-	DB_ENV *dbenv;
+__log_check_page_lsn(env, dbp, lsnp)
+	ENV *env;
 	DB *dbp;
 	DB_LSN *lsnp;
 {
 	LOG *lp;
 	int ret;
 
-	lp = dbenv->lg_handle->reginfo.primary;
-	LOG_SYSTEM_LOCK(dbenv);
+	lp = env->lg_handle->reginfo.primary;
+	LOG_SYSTEM_LOCK(env);
 
 	ret = LOG_COMPARE(lsnp, &lp->lsn);
 
-	LOG_SYSTEM_UNLOCK(dbenv);
+	LOG_SYSTEM_UNLOCK(env);
 
 	if (ret < 0)
 		return (0);
 
-	__db_errx(dbenv,
+	__db_errx(env,
 	    "file %s has LSN %lu/%lu, past end of log at %lu/%lu",
 	    dbp == NULL || dbp->fname == NULL ? "unknown" : dbp->fname,
 	    (u_long)lsnp->file, (u_long)lsnp->offset,
 	    (u_long)lp->lsn.file, (u_long)lp->lsn.offset);
-	__db_errx(dbenv, "%s",
+	__db_errx(env, "%s",
     "Commonly caused by moving a database from one database environment");
-	__db_errx(dbenv, "%s",
+	__db_errx(env, "%s",
     "to another without clearing the database LSNs, or by removing all of");
-	__db_errx(dbenv, "%s",
+	__db_errx(env, "%s",
     "the log files from a database environment");
 	return (EINVAL);
 }

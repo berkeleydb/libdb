@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2005,2008 Oracle.  All rights reserved.
  *
- * $Id: brew_posix.h,v 1.4 2007/05/17 15:15:08 bostic Exp $
+ * $Id: brew_posix.h,v 1.5 2008/01/08 20:58:20 bostic Exp $
  */
 
 typedef void *AEEAppInfo;

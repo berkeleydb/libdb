@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: qam_stat.c,v 12.11 2007/05/17 15:15:50 bostic Exp $
+ * $Id: qam_stat.c,v 12.15 2008/01/08 20:58:47 bostic Exp $
  */
 
 #include "db_config.h"
@@ -52,7 +52,7 @@ __qam_stat(dbc, spp, flags)
 		return (0);
 
 	/* Allocate and clear the structure. */
-	if ((ret = __os_umalloc(dbp->dbenv, sizeof(*sp), &sp)) != 0)
+	if ((ret = __os_umalloc(dbp->env, sizeof(*sp), &sp)) != 0)
 		goto err;
 	memset(sp, 0, sizeof(*sp));
 
@@ -61,7 +61,8 @@ __qam_stat(dbc, spp, flags)
 	/* Determine the last page of the database. */
 	if ((ret = __db_lget(dbc, 0, t->q_meta, DB_LOCK_READ, 0, &lock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &t->q_meta, dbc->txn, 0, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &t->q_meta,
+	    dbc->thread_info, dbc->txn, 0, &meta)) != 0)
 		goto err;
 
 	if (flags == DB_FAST_STAT) {
@@ -73,7 +74,7 @@ __qam_stat(dbc, spp, flags)
 	first = QAM_RECNO_PAGE(dbp, meta->first_recno);
 	last = QAM_RECNO_PAGE(dbp, meta->cur_recno);
 
-	ret = __memp_fput(mpf, meta, dbc->priority);
+	ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
 	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 	if (ret != 0)
@@ -93,7 +94,7 @@ begin:
 		if ((ret =
 		    __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
 			goto err;
-		ret = __qam_fget(dbp, &pgno, dbc->txn, 0, &h);
+		ret = __qam_fget(dbc, &pgno, 0, &h);
 		if (ret == ENOENT) {
 			pgno += pg_ext - 1;
 			continue;
@@ -123,7 +124,7 @@ begin:
 				sp->qs_pgfree += re_len;
 		}
 
-		ret = __qam_fput(dbp, pgno, h, dbc->priority);
+		ret = __qam_fput(dbc, pgno, h, dbc->priority);
 		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
@@ -144,7 +145,7 @@ begin:
 	    0, t->q_meta, F_ISSET(dbp, DB_AM_RDONLY) ?
 	    DB_LOCK_READ : DB_LOCK_WRITE, 0, &lock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &t->q_meta, dbc->txn,
+	if ((ret = __memp_fget(mpf, &t->q_meta, dbc->thread_info, dbc->txn,
 	    F_ISSET(dbp, DB_AM_RDONLY) ? 0 : DB_MPOOL_DIRTY, &meta)) != 0)
 		goto err;
 
@@ -166,7 +167,7 @@ meta_only:
 	sp->qs_cur_recno = meta->cur_recno;
 
 	/* Discard the meta-data page. */
-	ret = __memp_fput(mpf, meta, dbc->priority);
+	ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
 	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 	if (ret != 0)
@@ -176,7 +177,7 @@ meta_only:
 
 	if (0) {
 err:		if (sp != NULL)
-			__os_ufree(dbp->dbenv, sp);
+			__os_ufree(dbp->env, sp);
 	}
 
 	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
@@ -197,41 +198,41 @@ __qam_stat_print(dbc, flags)
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_QUEUE_STAT *sp;
+	ENV *env;
 	int ret;
 
 	dbp = dbc->dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	if ((ret = __qam_stat(dbc, &sp, LF_ISSET(DB_FAST_STAT))) != 0)
 		return (ret);
 
 	if (LF_ISSET(DB_STAT_ALL)) {
-		__db_msg(dbenv, "%s", DB_GLOBAL(db_line));
-		__db_msg(dbenv, "Default Queue database information:");
+		__db_msg(env, "%s", DB_GLOBAL(db_line));
+		__db_msg(env, "Default Queue database information:");
 	}
-	__db_msg(dbenv, "%lx\tQueue magic number", (u_long)sp->qs_magic);
-	__db_msg(dbenv, "%lu\tQueue version number", (u_long)sp->qs_version);
-	__db_dl(dbenv, "Fixed-length record size", (u_long)sp->qs_re_len);
-	__db_msg(dbenv, "%#x\tFixed-length record pad", (int)sp->qs_re_pad);
-	__db_dl(dbenv,
+	__db_msg(env, "%lx\tQueue magic number", (u_long)sp->qs_magic);
+	__db_msg(env, "%lu\tQueue version number", (u_long)sp->qs_version);
+	__db_dl(env, "Fixed-length record size", (u_long)sp->qs_re_len);
+	__db_msg(env, "%#x\tFixed-length record pad", (int)sp->qs_re_pad);
+	__db_dl(env,
 	    "Underlying database page size", (u_long)sp->qs_pagesize);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Underlying database extent size", (u_long)sp->qs_extentsize);
-	__db_dl(dbenv,
+	__db_dl(env,
 	    "Number of records in the database", (u_long)sp->qs_nkeys);
-	__db_dl(dbenv, "Number of database pages", (u_long)sp->qs_pages);
-	__db_dl_pct(dbenv,
+	__db_dl(env, "Number of database pages", (u_long)sp->qs_pages);
+	__db_dl_pct(env,
 	    "Number of bytes free in database pages",
 	    (u_long)sp->qs_pgfree,
 	    DB_PCT_PG(sp->qs_pgfree, sp->qs_pages, sp->qs_pagesize), "ff");
-	__db_msg(dbenv,
+	__db_msg(env,
 	    "%lu\tFirst undeleted record", (u_long)sp->qs_first_recno);
-	__db_msg(dbenv,
+	__db_msg(env,
 	    "%lu\tNext available record number", (u_long)sp->qs_cur_recno);
 
-	__os_ufree(dbenv, sp);
+	__os_ufree(env, sp);
 
 	return (0);
 }
@@ -247,6 +248,6 @@ __qam_stat(dbc, spp, flags)
 	COMPQUIET(spp, NULL);
 	COMPQUIET(flags, 0);
 
-	return (__db_stat_not_built(dbc->dbp->dbenv));
+	return (__db_stat_not_built(dbc->env));
 }
 #endif

@@ -28,7 +28,7 @@ dnl Note: This macro can work with the autoconf M4 macros for Java programs.
 dnl This particular macro is not part of the original set of macros.
 dnl
 dnl @author Don Anderson
-dnl @version $Id: ac_jni_include_dirs.m4,v 12.1 2006/08/24 14:45:36 bostic Exp $
+dnl @version $Id: ac_jni_include_dirs.m4,v 12.2 2007/11/16 15:48:09 bschmeck Exp $
 dnl
 AC_DEFUN(AC_JNI_INCLUDE_DIR,[
 
@@ -75,6 +75,7 @@ if test "$_JTOPDIR" != "/usr"; then
 	case "$host_os" in
 	aix*)		_JNI_INC_SUBDIRS="aix";;
 	bsdi*)		_JNI_INC_SUBDIRS="bsdos";;
+	cygwin*)	_JNI_INC_SUBDIRS="win32";;
 	freebsd*)	_JNI_INC_SUBDIRS="freebsd";;
 	hp*)		_JNI_INC_SUBDIRS="hp-ux";;
 	linux*)		_JNI_INC_SUBDIRS="linux genunix";;

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2004,2008 Oracle.  All rights reserved.
  *
- * $Id: sequence.c,v 12.46 2007/05/17 17:18:04 bostic Exp $
+ * $Id: sequence.c,v 12.54 2008/05/05 20:25:09 mbrey Exp $
  */
 
 #include "db_config.h"
@@ -24,16 +24,6 @@
 #endif
 
 #ifdef HAVE_64BIT_TYPES
-#define	SEQ_ILLEGAL_AFTER_OPEN(seq, name)				\
-	if (seq->seq_key.data != NULL)					\
-		return (__db_mi_open((seq)->seq_dbp->dbenv, name, 1));
-
-#define	SEQ_ILLEGAL_BEFORE_OPEN(seq, name)				\
-	if (seq->seq_key.data == NULL)					\
-		return (__db_mi_open((seq)->seq_dbp->dbenv, name, 0));
-
-#define	SEQ_IS_OPEN(seq)	((seq)->seq_key.data != NULL)
-
 /*
  * Sequences must be architecture independent but they are stored as user
  * data in databases so the code here must handle the byte ordering.  We
@@ -53,25 +43,25 @@
 		M_64_SWAP((rp)->seq_min);				\
 	} while (0)
 
-#define	SEQ_SWAP_IN(seq) \
+#define	SEQ_SWAP_IN(env, seq) \
 	do {								\
-		if (__db_isbigendian()) {				\
+		if (!F_ISSET((env), ENV_LITTLEENDIAN)) {		\
 			memcpy(&seq->seq_record, seq->seq_data.data,	\
 			     sizeof(seq->seq_record));			\
 			SEQ_SWAP(&seq->seq_record);			\
 		}							\
 	} while (0)
 
-#define	SEQ_SWAP_OUT(seq) \
+#define	SEQ_SWAP_OUT(env, seq) \
 	do {								\
-		if (__db_isbigendian()) {				\
+		if (!F_ISSET((env), ENV_LITTLEENDIAN)) {		\
 			memcpy(seq->seq_data.data,			\
 			     &seq->seq_record, sizeof(seq->seq_record));\
 			SEQ_SWAP((DB_SEQ_RECORD*)seq->seq_data.data);	\
 		}							\
 	} while (0)
 
-static int __seq_chk_cachesize __P((DB_ENV *, int32_t, db_seq_t, db_seq_t));
+static int __seq_chk_cachesize __P((ENV *, int32_t, db_seq_t, db_seq_t));
 static int __seq_close __P((DB_SEQUENCE *, u_int32_t));
 static int __seq_get
 	       __P((DB_SEQUENCE *, DB_TXN *, int32_t,  db_seq_t *, u_int32_t));
@@ -86,7 +76,8 @@ static int __seq_remove __P((DB_SEQUENCE *, DB_TXN *, u_int32_t));
 static int __seq_set_cachesize __P((DB_SEQUENCE *, int32_t));
 static int __seq_set_flags __P((DB_SEQUENCE *, u_int32_t));
 static int __seq_set_range __P((DB_SEQUENCE *, db_seq_t, db_seq_t));
-static int __seq_update __P((DB_SEQUENCE *, DB_TXN *, int32_t, u_int32_t));
+static int __seq_update
+	__P((DB_SEQUENCE *, DB_THREAD_INFO *, DB_TXN *, int32_t, u_int32_t));
 
 /*
  * db_sequence_create --
@@ -100,16 +91,16 @@ db_sequence_create(seqp, dbp, flags)
 	DB *dbp;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_SEQUENCE *seq;
+	ENV *env;
 	int ret;
 
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "db_sequence_create");
 #ifdef HAVE_RPC
-	if (RPC_ON(dbenv))
-		return (__dbcl_dbenv_illegal(dbenv));
+	if (RPC_ON(dbp->dbenv))
+		return (__dbcl_dbenv_illegal(dbp->dbenv));
 #endif
 
 	/* Check for invalid function flags. */
@@ -117,11 +108,11 @@ db_sequence_create(seqp, dbp, flags)
 	case 0:
 		break;
 	default:
-		return (__db_ferr(dbenv, "db_sequence_create", 0));
+		return (__db_ferr(env, "db_sequence_create", 0));
 	}
 
 	/* Allocate the sequence. */
-	if ((ret = __os_calloc(dbenv, 1, sizeof(*seq), &seq)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(*seq), &seq)) != 0)
 		return (ret);
 
 	seq->seq_dbp = dbp;
@@ -159,36 +150,36 @@ __seq_open_pp(seq, txn, keyp, flags)
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_SEQ_RECORD *rp;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	u_int32_t tflags;
 	int handle_check, txn_local, ret, t_ret;
 #define	SEQ_OPEN_FLAGS	(DB_CREATE | DB_EXCL | DB_THREAD)
 
 	dbp = seq->seq_dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	txn_local = 0;
 
 	STRIP_AUTO_COMMIT(flags);
 	SEQ_ILLEGAL_AFTER_OPEN(seq, "DB_SEQUENCE->open");
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check &&
 	    (ret = __db_rep_enter(dbp, 1, 0, txn != NULL)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
 
-	if ((ret = __db_fchk(dbenv,
+	if ((ret = __db_fchk(env,
 	    "DB_SEQUENCE->open", flags, SEQ_OPEN_FLAGS)) != 0)
 		goto err;
 
 	if (keyp->size == 0) {
-		__db_errx(dbenv, "Zero length sequence key specified");
+		__db_errx(env, "Zero length sequence key specified");
 		ret = EINVAL;
 		goto err;
 	}
@@ -196,57 +187,54 @@ __seq_open_pp(seq, txn, keyp, flags)
 	if ((ret = __db_get_flags(dbp, &tflags)) != 0)
 		goto err;
 
-	/*
-	 * We can let replication clients open sequences, but must
-	 * check later that they do not update them.
-	 */
-	if (F_ISSET(dbp, DB_AM_RDONLY)) {
-		ret = __db_rdonly(dbp->dbenv, "DB_SEQUENCE->open");
+	if (DB_IS_READONLY(dbp)) {
+		ret = __db_rdonly(dbp->env, "DB_SEQUENCE->open");
 		goto err;
 	}
 	if (FLD_ISSET(tflags, DB_DUP)) {
-		__db_errx(dbenv,
+		__db_errx(env,
 	"Sequences not supported in databases configured for duplicate data");
 		ret = EINVAL;
 		goto err;
 	}
 
 	if (LF_ISSET(DB_THREAD)) {
-		if (RPC_ON(dbenv)) {
-			__db_errx(dbenv,
+		if (RPC_ON(dbp->dbenv)) {
+			__db_errx(env,
 		    "DB_SEQUENCE->open: DB_THREAD not supported with RPC");
 			goto err;
 		}
-		if ((ret = __mutex_alloc(dbenv,
+		if ((ret = __mutex_alloc(env,
 		    MTX_SEQUENCE, DB_MUTEX_PROCESS_ONLY, &seq->mtx_seq)) != 0)
 			goto err;
 	}
 
 	memset(&seq->seq_data, 0, sizeof(DBT));
-	if (__db_isbigendian()) {
-		if ((ret = __os_umalloc(dbenv,
+	if (F_ISSET(env, ENV_LITTLEENDIAN)) {
+		seq->seq_data.data = &seq->seq_record;
+		seq->seq_data.flags = DB_DBT_USERMEM;
+	} else {
+		if ((ret = __os_umalloc(env,
 		     sizeof(seq->seq_record), &seq->seq_data.data)) != 0)
 			goto err;
 		seq->seq_data.flags = DB_DBT_REALLOC;
-	} else {
-		seq->seq_data.data = &seq->seq_record;
-		seq->seq_data.flags = DB_DBT_USERMEM;
 	}
 
 	seq->seq_data.ulen = seq->seq_data.size = sizeof(seq->seq_record);
 	seq->seq_rp = &seq->seq_record;
 
-	if ((ret = __dbt_usercopy(dbenv, keyp)) != 0)
+	if ((ret = __dbt_usercopy(env, keyp)) != 0)
 		goto err;
 
 	memset(&seq->seq_key, 0, sizeof(DBT));
-	if ((ret = __os_malloc(dbenv, keyp->size, &seq->seq_key.data)) != 0)
+	if ((ret = __os_malloc(env, keyp->size, &seq->seq_key.data)) != 0)
 		goto err;
 	memcpy(seq->seq_key.data, keyp->data, keyp->size);
 	seq->seq_key.size = seq->seq_key.ulen = keyp->size;
 	seq->seq_key.flags = DB_DBT_USERMEM;
 
-retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
+retry:	if ((ret = __db_get(dbp, ip,
+	    txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 		if (ret == DB_BUFFER_SMALL &&
 		    seq->seq_data.size > sizeof(seq->seq_record)) {
 			seq->seq_data.flags = DB_DBT_REALLOC;
@@ -256,11 +244,6 @@ retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 		if ((ret != DB_NOTFOUND && ret != DB_KEYEMPTY) ||
 		    !LF_ISSET(DB_CREATE))
 			goto err;
-		if (IS_REP_CLIENT(dbenv) &&
-		    !F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
-			ret = __db_rdonly(dbenv, "DB_SEQUENCE->open");
-			goto err;
-		}
 		ret = 0;
 
 		rp = &seq->seq_record;
@@ -276,22 +259,22 @@ retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 
 		if (rp->seq_value > rp->seq_max ||
 		    rp->seq_value < rp->seq_min) {
-			__db_errx(dbenv, "Sequence value out of range");
+			__db_errx(env, "Sequence value out of range");
 			ret = EINVAL;
 			goto err;
 		} else {
-			SEQ_SWAP_OUT(seq);
+			SEQ_SWAP_OUT(env, seq);
 			/* Create local transaction as necessary. */
 			if (IS_DB_AUTO_COMMIT(dbp, txn)) {
 				if ((ret =
-				    __txn_begin(dbenv, NULL, &txn, 0)) != 0)
+				    __txn_begin(env, ip, NULL, &txn, 0)) != 0)
 					goto err;
 				txn_local = 1;
 			}
 
-			if ((ret = __db_put(dbp, txn, &seq->seq_key,
+			if ((ret = __db_put(dbp, ip, txn, &seq->seq_key,
 			     &seq->seq_data, DB_NOOVERWRITE)) != 0) {
-				__db_errx(dbenv, "Sequence create failed");
+				__db_errx(env, "Sequence create failed");
 				goto err;
 			}
 		}
@@ -299,12 +282,12 @@ retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 		ret = EEXIST;
 		goto err;
 	} else if (seq->seq_data.size < sizeof(seq->seq_record)) {
-		__db_errx(dbenv, "Bad sequence record format");
+		__db_errx(env, "Bad sequence record format");
 		ret = EINVAL;
 		goto err;
 	}
 
-	if (!__db_isbigendian())
+	if (F_ISSET(env, ENV_LITTLEENDIAN))
 		seq->seq_rp = seq->seq_data.data;
 
 	/*
@@ -313,30 +296,25 @@ retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 	 */
 	rp = seq->seq_data.data;
 	if (rp->seq_version == DB_SEQUENCE_OLDVER) {
-oldver:		if (IS_REP_CLIENT(dbenv) &&
-		    !F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
-			ret = __db_rdonly(dbenv, "DB_SEQUENCE->open");
-			goto err;
-		}
-		rp->seq_version = DB_SEQUENCE_VERSION;
-		if (__db_isbigendian()) {
+oldver:		rp->seq_version = DB_SEQUENCE_VERSION;
+		if (!F_ISSET(env, ENV_LITTLEENDIAN)) {
 			if (IS_DB_AUTO_COMMIT(dbp, txn)) {
 				if ((ret =
-				    __txn_begin(dbenv, NULL, &txn, 0)) != 0)
+				    __txn_begin(env, ip, NULL, &txn, 0)) != 0)
 					goto err;
 				txn_local = 1;
 				goto retry;
 			}
 			memcpy(&seq->seq_record, rp, sizeof(seq->seq_record));
-			SEQ_SWAP_OUT(seq);
+			SEQ_SWAP_OUT(env, seq);
 		}
 		if ((ret = __db_put(dbp,
-		     txn, &seq->seq_key, &seq->seq_data, 0)) != 0)
+		     ip, txn, &seq->seq_key, &seq->seq_data, 0)) != 0)
 			goto err;
 	}
 	rp = seq->seq_rp;
 
-	SEQ_SWAP_IN(seq);
+	SEQ_SWAP_IN(env, seq);
 
 	if (rp->seq_version != DB_SEQUENCE_VERSION) {
 		/*
@@ -356,7 +334,7 @@ oldver:		if (IS_REP_CLIENT(dbenv) &&
 			goto oldver;
 		}
 		M_32_SWAP(rp->seq_version);
-		__db_errx(dbenv,
+		__db_errx(env,
 		     "Unsupported sequence version: %d", rp->seq_version);
 		goto err;
 	}
@@ -371,22 +349,22 @@ oldver:		if (IS_REP_CLIENT(dbenv) &&
 	 * It's an error to specify a cache larger than the range of sequences.
 	 */
 	if (seq->seq_cache_size != 0 && (ret = __seq_chk_cachesize(
-	    dbenv, seq->seq_cache_size, rp->seq_max, rp->seq_min)) != 0)
+	    env, seq->seq_cache_size, rp->seq_max, rp->seq_min)) != 0)
 		goto err;
 
 err:	if (txn_local &&
-	    (t_ret = __db_txn_auto_resolve(dbenv, txn, 0, ret)) && ret == 0)
+	    (t_ret = __db_txn_auto_resolve(env, txn, 0, ret)) && ret == 0)
 		ret = t_ret;
 	if (ret != 0) {
-		__os_free(dbenv, seq->seq_key.data);
+		__os_free(env, seq->seq_key.data);
 		seq->seq_key.data = NULL;
 	}
 	/* Release replication block. */
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-	ENV_LEAVE(dbenv, ip);
-	__dbt_userfree(dbenv, keyp, NULL, NULL);
+	ENV_LEAVE(env, ip);
+	__dbt_userfree(env, keyp, NULL, NULL);
 	return (ret);
 }
 
@@ -416,20 +394,20 @@ __seq_set_cachesize(seq, cachesize)
 	DB_SEQUENCE *seq;
 	int32_t cachesize;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret;
 
-	dbenv = seq->seq_dbp->dbenv;
+	env = seq->seq_dbp->env;
 
 	if (cachesize < 0) {
-		__db_errx(dbenv, "Cache size must be >= 0");
+		__db_errx(env, "Cache size must be >= 0");
 		return (EINVAL);
 	}
 
 	/*
 	 * It's an error to specify a cache larger than the range of sequences.
 	 */
-	if (SEQ_IS_OPEN(seq) && (ret = __seq_chk_cachesize(dbenv,
+	if (SEQ_IS_OPEN(seq) && (ret = __seq_chk_cachesize(env,
 	    cachesize, seq->seq_rp->seq_max, seq->seq_rp->seq_min)) != 0)
 		return (ret);
 
@@ -464,19 +442,19 @@ __seq_set_flags(seq, flags)
 	DB_SEQUENCE *seq;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
 	DB_SEQ_RECORD *rp;
+	ENV *env;
 	int ret;
 
-	dbenv = seq->seq_dbp->dbenv;
+	env = seq->seq_dbp->env;
 	rp = seq->seq_rp;
 
 	SEQ_ILLEGAL_AFTER_OPEN(seq, "DB_SEQUENCE->set_flags");
 
 	if ((ret = __db_fchk(
-	    dbenv, "DB_SEQUENCE->set_flags", flags, SEQ_SET_FLAGS)) != 0)
+	    env, "DB_SEQUENCE->set_flags", flags, SEQ_SET_FLAGS)) != 0)
 		return (ret);
-	if ((ret = __db_fcchk(dbenv,
+	if ((ret = __db_fcchk(env,
 	     "DB_SEQUENCE->set_flags", flags, DB_SEQ_DEC, DB_SEQ_INC)) != 0)
 		return (ret);
 
@@ -497,16 +475,16 @@ __seq_initial_value(seq, value)
 	DB_SEQUENCE *seq;
 	db_seq_t value;
 {
-	DB_ENV *dbenv;
 	DB_SEQ_RECORD *rp;
+	ENV *env;
 
-	dbenv = seq->seq_dbp->dbenv;
+	env = seq->seq_dbp->env;
 	SEQ_ILLEGAL_AFTER_OPEN(seq, "DB_SEQUENCE->initial_value");
 
 	rp = seq->seq_rp;
 	if (F_ISSET(rp, DB_SEQ_RANGE_SET) &&
 	     (value > rp->seq_max || value < rp->seq_min)) {
-		__db_errx(dbenv, "Sequence value out of range");
+		__db_errx(env, "Sequence value out of range");
 		return (EINVAL);
 	}
 
@@ -542,13 +520,13 @@ __seq_set_range(seq, min, max)
 	DB_SEQUENCE *seq;
 	db_seq_t min, max;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 
-	dbenv = seq->seq_dbp->dbenv;
+	env = seq->seq_dbp->env;
 	SEQ_ILLEGAL_AFTER_OPEN(seq, "DB_SEQUENCE->set_range");
 
 	if (min >= max) {
-		__db_errx(dbenv,
+		__db_errx(env,
 	    "Minimum sequence value must be less than maximum sequence value");
 		return (EINVAL);
 	}
@@ -561,20 +539,21 @@ __seq_set_range(seq, min, max)
 }
 
 static int
-__seq_update(seq, txn, delta, flags)
+__seq_update(seq, ip, txn, delta, flags)
 	DB_SEQUENCE *seq;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	int32_t delta;
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_SEQ_RECORD *rp;
+	ENV *env;
 	int32_t adjust;
 	int ret, txn_local;
 
 	dbp = seq->seq_dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 
 	/*
 	 * Create a local transaction as necessary, check for consistent
@@ -582,7 +561,7 @@ __seq_update(seq, txn, delta, flags)
 	 * locking on, acquire a locker id for the handle lock acquisition.
 	 */
 	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
-		if ((ret = __txn_begin(dbenv, NULL, &txn, 0)) != 0)
+		if ((ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
 			return (ret);
 		txn_local = 1;
 	} else
@@ -592,7 +571,8 @@ __seq_update(seq, txn, delta, flags)
 	if ((ret = __db_check_txn(dbp, txn, DB_LOCK_INVALIDID, 0)) != 0)
 		goto err;
 
-retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
+retry:	if ((ret = __db_get(dbp, ip,
+	    txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 		if (ret == DB_BUFFER_SMALL &&
 		    seq->seq_data.size > sizeof(seq->seq_record)) {
 			seq->seq_data.flags = DB_DBT_REALLOC;
@@ -602,16 +582,16 @@ retry:	if ((ret = __db_get(dbp, txn, &seq->seq_key, &seq->seq_data, 0)) != 0) {
 		goto err;
 	}
 
-	if (!__db_isbigendian())
+	if (F_ISSET(env, ENV_LITTLEENDIAN))
 		seq->seq_rp = seq->seq_data.data;
-	SEQ_SWAP_IN(seq);
+	SEQ_SWAP_IN(env, seq);
 	rp = seq->seq_rp;
 
 	if (F_ISSET(rp, DB_SEQ_WRAPPED))
 		goto overflow;
 
 	if (seq->seq_data.size < sizeof(seq->seq_record)) {
-		__db_errx(dbenv, "Bad sequence record format");
+		__db_errx(env, "Bad sequence record format");
 		ret = EINVAL;
 		goto err;
 	}
@@ -638,7 +618,7 @@ again:	if (F_ISSET(rp, DB_SEQ_INC)) {
 			if (F_ISSET(rp, DB_SEQ_WRAP))
 				rp->seq_value = rp->seq_min;
 			else {
-overflow:			__db_errx(dbenv, "Sequence overflow");
+overflow:			__db_errx(env, "Sequence overflow");
 				ret = EINVAL;
 				goto err;
 			}
@@ -668,11 +648,11 @@ overflow:			__db_errx(dbenv, "Sequence overflow");
 	}
 
 	rp->seq_value += adjust;
-	SEQ_SWAP_OUT(seq);
-	ret = __db_put(dbp, txn, &seq->seq_key, &seq->seq_data, 0);
+	SEQ_SWAP_OUT(env, seq);
+	ret = __db_put(dbp, ip, txn, &seq->seq_key, &seq->seq_data, 0);
 	rp->seq_value -= adjust;
 	if (ret != 0) {
-		__db_errx(dbenv, "Sequence update failed");
+		__db_errx(env, "Sequence update failed");
 		goto err;
 	}
 	seq->seq_last_value = rp->seq_value + adjust;
@@ -682,7 +662,7 @@ overflow:			__db_errx(dbenv, "Sequence overflow");
 		seq->seq_last_value++;
 
 err:	return (txn_local ? __db_txn_auto_resolve(
-	    dbenv, txn, LF_ISSET(DB_TXN_NOSYNC), ret) : ret);
+	    env, txn, LF_ISSET(DB_TXN_NOSYNC), ret) : ret);
 }
 
 static int
@@ -694,13 +674,13 @@ __seq_get(seq, txn, delta, retp, flags)
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_SEQ_RECORD *rp;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret;
 
 	dbp = seq->seq_dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	rp = seq->seq_rp;
 	ret = 0;
 
@@ -708,40 +688,34 @@ __seq_get(seq, txn, delta, retp, flags)
 	SEQ_ILLEGAL_BEFORE_OPEN(seq, "DB_SEQUENCE->get");
 
 	if (delta <= 0) {
-		__db_errx(dbenv, "Sequence delta must be greater than 0");
+		__db_errx(env, "Sequence delta must be greater than 0");
 		return (EINVAL);
 	}
 
 	if (seq->seq_cache_size != 0 && txn != NULL) {
-		__db_errx(dbenv,
+		__db_errx(env,
 	    "Sequence with non-zero cache may not specify transaction handle");
 		return (EINVAL);
 	}
 
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check && (ret = __db_rep_enter(dbp, 1, 0, txn != NULL)) != 0)
 		return (ret);
 
-	MUTEX_LOCK(dbenv, seq->mtx_seq);
-
-	if (handle_check && IS_REP_CLIENT(dbenv) &&
-	    !F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
-		ret = __db_rdonly(dbenv, "DB_SEQUENCE->get");
-		goto err;
-	}
+	MUTEX_LOCK(env, seq->mtx_seq);
 
 	if (rp->seq_min + delta > rp->seq_max) {
-		__db_errx(dbenv, "Sequence overflow");
+		__db_errx(env, "Sequence overflow");
 		ret = EINVAL;
 		goto err;
 	}
 
 	if (F_ISSET(rp, DB_SEQ_INC)) {
 		if (seq->seq_last_value + 1 - rp->seq_value < delta &&
-		   (ret = __seq_update(seq, txn, delta, flags)) != 0)
+		   (ret = __seq_update(seq, ip, txn, delta, flags)) != 0)
 			goto err;
 
 		rp = seq->seq_rp;
@@ -749,7 +723,7 @@ __seq_get(seq, txn, delta, retp, flags)
 		rp->seq_value += delta;
 	} else {
 		if ((rp->seq_value - seq->seq_last_value) + 1 < delta &&
-		    (ret = __seq_update(seq, txn, delta, flags)) != 0)
+		    (ret = __seq_update(seq, ip, txn, delta, flags)) != 0)
 			goto err;
 
 		rp = seq->seq_rp;
@@ -757,13 +731,13 @@ __seq_get(seq, txn, delta, retp, flags)
 		rp->seq_value -= delta;
 	}
 
-err:	MUTEX_UNLOCK(dbenv, seq->mtx_seq);
+err:	MUTEX_UNLOCK(env, seq->mtx_seq);
 
 	/* Release replication block. */
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -794,7 +768,7 @@ __seq_get_key(seq, key)
 	SEQ_ILLEGAL_BEFORE_OPEN(seq, "DB_SEQUENCE->get_key");
 
 	if (F_ISSET(key, DB_DBT_USERCOPY))
-		return (__db_retcopy(seq->seq_dbp->dbenv, key,
+		return (__db_retcopy(seq->seq_dbp->env, key,
 		    seq->seq_key.data, seq->seq_key.size, NULL, 0));
 
 	key->data = seq->seq_key.data;
@@ -813,27 +787,27 @@ __seq_close(seq, flags)
 	DB_SEQUENCE *seq;
 	u_int32_t flags;
 {
-	DB_ENV *dbenv;
+	ENV *env;
 	int ret, t_ret;
 
 	ret = 0;
-	dbenv = seq->seq_dbp->dbenv;
+	env = seq->seq_dbp->env;
 
 	if (flags != 0)
-		ret = __db_ferr(dbenv, "DB_SEQUENCE->close", 0);
+		ret = __db_ferr(env, "DB_SEQUENCE->close", 0);
 
-	if ((t_ret = __mutex_free(dbenv, &seq->mtx_seq)) != 0 && ret == 0)
+	if ((t_ret = __mutex_free(env, &seq->mtx_seq)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (seq->seq_key.data != NULL)
-		__os_free(dbenv, seq->seq_key.data);
+		__os_free(env, seq->seq_key.data);
 	if (seq->seq_data.data != NULL &&
 	    seq->seq_data.data != &seq->seq_record)
-		__os_ufree(dbenv, seq->seq_data.data);
+		__os_ufree(env, seq->seq_data.data);
 	seq->seq_key.data = NULL;
 
 	memset(seq, CLEAR_BYTE, sizeof(*seq));
-	__os_free(dbenv, seq);
+	__os_free(env, seq);
 
 	return (ret);
 }
@@ -849,26 +823,26 @@ __seq_remove(seq, txn, flags)
 	u_int32_t flags;
 {
 	DB *dbp;
-	DB_ENV *dbenv;
 	DB_THREAD_INFO *ip;
+	ENV *env;
 	int handle_check, ret, t_ret, txn_local;
 
 	dbp = seq->seq_dbp;
-	dbenv = dbp->dbenv;
+	env = dbp->env;
 	txn_local = 0;
 
 	SEQ_ILLEGAL_BEFORE_OPEN(seq, "DB_SEQUENCE->remove");
-	ENV_ENTER(dbenv, ip);
+	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
-	handle_check = IS_ENV_REPLICATED(dbenv);
+	handle_check = IS_ENV_REPLICATED(env);
 	if (handle_check &&
 	    (ret = __db_rep_enter(dbp, 1, 0, txn != NULL)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
 	if (flags != 0) {
-		ret = __db_ferr(dbenv, "DB_SEQUENCE->remove", 0);
+		ret = __db_ferr(env, "DB_SEQUENCE->remove", 0);
 		goto err;
 	}
 
@@ -878,7 +852,7 @@ __seq_remove(seq, txn, flags)
 	 * locking on, acquire a locker id for the handle lock acquisition.
 	 */
 	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
-		if ((ret = __txn_begin(dbenv, NULL, &txn, 0)) != 0)
+		if ((ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
 			return (ret);
 		txn_local = 1;
 	}
@@ -887,19 +861,19 @@ __seq_remove(seq, txn, flags)
 	if ((ret = __db_check_txn(dbp, txn, DB_LOCK_INVALIDID, 0)) != 0)
 		goto err;
 
-	ret = __db_del(dbp, txn, &seq->seq_key, 0);
+	ret = __db_del(dbp, ip, txn, &seq->seq_key, 0);
 
 	if ((t_ret = __seq_close(seq, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Release replication block. */
-	if (handle_check && (t_ret = __env_db_rep_exit(dbenv)) != 0 && ret == 0)
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
 err:	if (txn_local && (t_ret =
-	    __db_txn_auto_resolve(dbenv, txn, 0, ret)) != 0 && ret == 0)
+	    __db_txn_auto_resolve(env, txn, 0, ret)) != 0 && ret == 0)
 		ret = t_ret;
 
-	ENV_LEAVE(dbenv, ip);
+	ENV_LEAVE(env, ip);
 	return (ret);
 }
 
@@ -908,8 +882,8 @@ err:	if (txn_local && (t_ret =
  *	Validate the cache size vs. the range.
  */
 static int
-__seq_chk_cachesize(dbenv, cachesize, max, min)
-	DB_ENV *dbenv;
+__seq_chk_cachesize(env, cachesize, max, min)
+	ENV *env;
 	int32_t cachesize;
 	db_seq_t max, min;
 {
@@ -921,7 +895,7 @@ __seq_chk_cachesize(dbenv, cachesize, max, min)
 	 * Assume a 2's complement machine, and simply subtract.
 	 */
 	if ((u_int32_t)cachesize > (u_int64_t)max - (u_int64_t)min) {
-		__db_errx(dbenv,
+		__db_errx(env,
     "Number of items to be cached is larger than the sequence range");
 		return (EINVAL);
 	}
@@ -938,7 +912,7 @@ db_sequence_create(seqp, dbp, flags)
 {
 	COMPQUIET(seqp, NULL);
 	COMPQUIET(flags, 0);
-	__db_errx(dbp->dbenv,
+	__db_errx(dbp->env,
 	    "library build did not include support for sequences");
 	return (DB_OPNOTSUP);
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2007 Oracle.  All rights reserved.
+# Copyright (c) 2005,2008 Oracle.  All rights reserved.
 #
-# $Id: log008script.tcl,v 12.6 2007/05/17 15:15:55 bostic Exp $
+# $Id: log008script.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
 #
 # Log008 script - dbreg_ckp and txn_ckp records spanning log files.
 #

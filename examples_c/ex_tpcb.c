@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1997,2008 Oracle.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 12.8 2007/05/17 15:15:12 bostic Exp $
+ * $Id: ex_tpcb.c,v 12.11 2008/04/21 23:46:02 alexg Exp $
  */
 
 #include <sys/types.h>
@@ -13,10 +13,27 @@
 #include <string.h>
 #include <time.h>
 
+#define	NS_PER_MS	1000000		/* Nanoseconds in a millisecond */
+#define	NS_PER_US	1000		/* Nanoseconds in a microsecond */
 #ifdef _WIN32
+#include <sys/timeb.h>
 extern int getopt(int, char * const *, const char *);
+/* Implement a basic high res timer with a POSIX interface for Windows. */
+struct timeval {
+	time_t tv_sec;
+	long tv_usec;
+};
+int gettimeofday(struct timeval *tv, struct timezone *tz)
+{
+	struct _timeb now;
+	_ftime(&now);
+	tv->tv_sec = now.time;
+	tv->tv_usec = now.millitm * NS_PER_US;
+	return (0);
+}
 #else
 #include <unistd.h>
+#include <sys/time.h>
 #endif
 
 #include <db.h>
@@ -501,7 +518,8 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 {
 	DB *adb, *bdb, *hdb, *tdb;
 	int failed, ret, txns;
-	time_t start_time, end_time;
+	struct timeval start_tv, end_tv;
+	double start_time, end_time;
 
 	adb = bdb = hdb = tdb = NULL;
 
@@ -545,16 +563,23 @@ tp_run(dbenv, n, accounts, branches, tellers, verbose)
 		goto err;
 	}
 
-	(void)time(&start_time);
+	(void)gettimeofday(&start_tv, NULL);
+
 	for (txns = n, failed = 0; n-- > 0;)
 		if ((ret = tp_txn(dbenv, adb, bdb, tdb, hdb,
 		    accounts, branches, tellers, verbose)) != 0)
 			++failed;
-	(void)time(&end_time);
+
+	(void)gettimeofday(&end_tv, NULL);
+
+	start_time = start_tv.tv_sec + ((start_tv.tv_usec + 0.0)/NS_PER_MS);
+	end_time = end_tv.tv_sec + ((end_tv.tv_usec + 0.0)/NS_PER_MS);
 	if (end_time == start_time)
-		++end_time;
-	printf("%s: %d txns: %d failed, %.2f TPS\n", progname,
-	    txns, failed, (txns - failed) / (double)(end_time - start_time));
+		end_time += 1/NS_PER_MS;
+
+	printf("%s: %d txns: %d failed, %.3f sec, %.2f TPS\n", progname,
+	    txns, failed, (end_time - start_time),
+	    (txns - failed) / (double)(end_time - start_time));
 
 err:	if (adb != NULL)
 		(void)adb->close(adb, 0);

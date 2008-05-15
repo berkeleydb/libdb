@@ -1,14 +1,21 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2007 Oracle.  All rights reserved.
+ * Copyright (c) 1999,2008 Oracle.  All rights reserved.
  *
- * $Id: DeadlockException.java,v 12.6 2007/05/17 15:15:41 bostic Exp $
+ * $Id: DeadlockException.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
  */
 package com.sleepycat.db;
 
 import com.sleepycat.db.internal.DbEnv;
 
+/**
+DeadlockException is thrown to a thread of control when multiple threads
+competing for a lock are
+deadlocked, when a lock request has timed out
+or when a lock request would need to block and the transaction has been
+configured to not wait for locks.
+*/
 public class DeadlockException extends DatabaseException {
     /* package */ DeadlockException(final String s,
                                 final int errno,
