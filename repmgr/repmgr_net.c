@@ -100,6 +100,8 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 		    control, rec, &nsites_sent, &npeers_sent)) != 0)
 			goto out;
 	} else {
+		DB_ASSERT(env, IS_KNOWN_REMOTE_SITE(eid));
+
 		/*
 		 * If this is a request that can be sent anywhere, then see if
 		 * we can send it to our peer (to save load on the master), but

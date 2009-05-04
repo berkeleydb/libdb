@@ -374,6 +374,7 @@ typedef struct {
 #define	SITE_FROM_EID(eid)	(&db_rep->sites[eid])
 #define	EID_FROM_SITE(s)	((int)((s) - (&db_rep->sites[0])))
 #define	IS_VALID_EID(e)		((e) >= 0)
+#define	IS_KNOWN_REMOTE_SITE(e)	((e) >= 0 && ((u_int)(e)) < db_rep->site_cnt)
 #define	SELF_EID		INT_MAX
 
 #define	IS_PEER_POLICY(p) ((p) == DB_REPMGR_ACKS_ALL_PEERS ||		\
