@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Designing Your Application for Recovery</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="recovery.html" title="Recovery Procedures" />
+    <link rel="prev" href="recovery.html" title="Recovery Procedures" />
     <link rel="next" href="hotfailover.html" title="Using Hot Failovers" />
   </head>
   <body>
@@ -32,7 +32,20 @@
             <h2 class="title" style="clear: both"><a id="architectrecovery"></a>Designing Your Application for Recovery</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="architectrecovery.html#multithreadrecovery">Recovery for Multi-Threaded Applications</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="architectrecovery.html#multiprocessrecovery">Recovery in Multi-Process Applications</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             When building your DB application, you should consider how you will run recovery. If you are building a
@@ -52,7 +65,6 @@
               <h3 class="title"><a id="multithreadrecovery"></a>Recovery for Multi-Threaded Applications</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 If your application uses only one environment handle, then handling recovery for a multi-threaded
@@ -60,7 +72,7 @@
                 in the application's main thread, and then pass that handle to each of the threads that will be
                 performing DB operations. We illustrate this with our final example in this book (see 
                 
-                <a href="txnexample_java.html">Base API Transaction Example</a>
+                <a class="xref" href="txnexample_java.html" title="Base API Transaction Example">Base API Transaction Example</a>
                 
                 
                 for more information).
@@ -113,7 +125,7 @@
               <p>
                         Open new handles, running recovery as you open
                         them.
-                        See <a href="recovery.html#normalrecovery">Normal Recovery</a> for more information.
+                        See <a class="xref" href="recovery.html#normalrecovery" title="Normal Recovery">Normal Recovery</a> for more information.
                     </p>
             </li>
             <li>
@@ -175,7 +187,6 @@
               <h3 class="title"><a id="multiprocessrecovery"></a>Recovery in Multi-Process Applications</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Frequently, DB applications use multiple processes to interact with the databases. For example, you may
@@ -228,7 +239,6 @@
                 <h4 class="title"><a id="mp_recover_effects"></a>Effects of Multi-Process Recovery</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     Before continuing, it is worth noting that the following sections describe recovery processes than
@@ -255,7 +265,6 @@
                 <h4 class="title"><a id="db_register"></a>Process Registration</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     One way to handle multi-process recovery is for every process to "register" its environment. In
@@ -277,21 +286,39 @@
                         
 
                         <span>
-                            <tt class="literal">true</tt> to the <tt class="methodname">EnvironmentConfig.setRegister()</tt>
-                            method when you open your environment. Note that you must also specify
-                            <tt class="literal">true</tt> to either <tt class="methodname">EnvironmentConfig.setRunRecovery()</tt>
-                            or <tt class="methodname">EnvironmentConfig.setRunFatalRecovery()</tt>.
+                            <code class="literal">true</code> to the <code class="methodname">EnvironmentConfig.setRegister()</code>
+                            method when you open your environment. You may also specify
+                            <code class="literal">true</code> to <code class="methodname">EnvironmentConfig.setRunRecovery()</code>.
+                            However, it is an error to specify <code class="literal">true</code> to
+                            <code class="methodname">EnvironmentConfig.setRunFatalRecovery()</code> when
+                            you are also registering your environment with the <code class="methodname">setRegister()</code>
+                            method.
                         </span>
-                        If during the open, DB determines that recovery must be run, this indicates the type of
-                        recovery that is run. If you do not specify either type of recovery, then no recovery is run if
-                        the registration process identifies a need for it. In this case, the environment open simply
-                        fails by 
+                        If during the open, DB determines that recovery must be run, it will automatically run the correct 
+                        type of recovery for you, so long as you specify normal recovery
+                        on your environment open. If you do not specify normal recovery, and you register your environment, 
+                        then no recovery is run if the registration process identifies a need for it. In this case, 
+                        the environment open simply fails by 
                             
-                            <span>throwing <tt class="classname">RunRecoveryException</tt>.</span>
+                            <span>throwing <code class="classname">RunRecoveryException</code>.</span>
                 </p>
+          <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+            <h3 class="title">Note</h3>
+            <p>
+                        If you do not specify normal recovery when you open your first registered environment
+                        in the application, then that application will fail the environment open by
+                            
+                            <span>throwing <code class="classname">RunRecoveryException</code>.</span>
+                        This is because the first process to register must create an internal
+                        registration file, and recovery is forced when that file is created. To
+                        avoid an abnormal termination of the environment open, specify recovery on
+                        the environment open for at least the first process starting in your
+                        application.
+                    </p>
+          </div>
           <p>
                     Be aware that there are some limitations/requirements if you want your various processes to
-                    coordinate recovery using this registration process:
+                    coordinate recovery using registration:
                 </p>
           <div class="orderedlist">
             <ol type="1">

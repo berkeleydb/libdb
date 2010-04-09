@@ -1,13 +1,23 @@
-/*-
+/*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mutex.h,v 12.31 2008/01/08 20:58:18 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_MUTEX_H_
 #define	_DB_MUTEX_H_
+
+#ifdef HAVE_MUTEX_SUPPORT
+/* The inlined trylock calls need access to the details of mutexes. */
+#define	LOAD_ACTUAL_MUTEX_CODE
+#include "dbinc/mutex_int.h"
+
+#ifndef HAVE_SHARED_LATCHES
+ #error "Shared latches are required in DB 4.8 and above"
+#endif
+#endif
 
 #if defined(__cplusplus)
 extern "C" {
@@ -30,38 +40,40 @@ extern "C" {
  * We track mutex allocations by ID.
  */
 #define	MTX_APPLICATION		 1
-#define	MTX_DB_HANDLE		 2
-#define	MTX_ENV_DBLIST		 3
-#define	MTX_ENV_HANDLE		 4
-#define	MTX_ENV_REGION		 5
-#define	MTX_LOCK_REGION		 6
-#define	MTX_LOGICAL_LOCK	 7
-#define	MTX_LOG_FILENAME	 8
-#define	MTX_LOG_FLUSH		 9
-#define	MTX_LOG_HANDLE		10
-#define	MTX_LOG_REGION		11
-#define	MTX_MPOOLFILE_HANDLE	12
-#define	MTX_MPOOL_FH		13
-#define	MTX_MPOOL_FILE_BUCKET	14
-#define	MTX_MPOOL_HANDLE	15
-#define	MTX_MPOOL_HASH_BUCKET	16
-#define	MTX_MPOOL_IO		17
-#define	MTX_MPOOL_REGION	18
-#define	MTX_MUTEX_REGION	19
-#define	MTX_MUTEX_TEST		20
-#define	MTX_REP_CHKPT		21
-#define	MTX_REP_DATABASE	22
-#define	MTX_REP_EVENT		23
-#define	MTX_REP_REGION		24
-#define	MTX_SEQUENCE		25
-#define	MTX_TWISTER		26
-#define	MTX_TXN_ACTIVE		27
-#define	MTX_TXN_CHKPT		28
-#define	MTX_TXN_COMMIT		29
-#define	MTX_TXN_MVCC		30
-#define	MTX_TXN_REGION		31
+#define	MTX_ATOMIC_EMULATION	 2
+#define	MTX_DB_HANDLE		 3
+#define	MTX_ENV_DBLIST		 4
+#define	MTX_ENV_HANDLE		 5
+#define	MTX_ENV_REGION		 6
+#define	MTX_LOCK_REGION		 7
+#define	MTX_LOGICAL_LOCK	 8
+#define	MTX_LOG_FILENAME	 9
+#define	MTX_LOG_FLUSH		10
+#define	MTX_LOG_HANDLE		11
+#define	MTX_LOG_REGION		12
+#define	MTX_MPOOLFILE_HANDLE	13
+#define	MTX_MPOOL_BH		14
+#define	MTX_MPOOL_FH		15
+#define	MTX_MPOOL_FILE_BUCKET	16
+#define	MTX_MPOOL_HANDLE	17
+#define	MTX_MPOOL_HASH_BUCKET	18
+#define	MTX_MPOOL_REGION	19
+#define	MTX_MUTEX_REGION	20
+#define	MTX_MUTEX_TEST		21
+#define	MTX_REP_CHKPT		22
+#define	MTX_REP_DATABASE	23
+#define	MTX_REP_EVENT		24
+#define	MTX_REP_REGION		25
+#define	MTX_REPMGR		26
+#define	MTX_SEQUENCE		27
+#define	MTX_TWISTER		28
+#define	MTX_TXN_ACTIVE		29
+#define	MTX_TXN_CHKPT		30
+#define	MTX_TXN_COMMIT		31
+#define	MTX_TXN_MVCC		32
+#define	MTX_TXN_REGION		33
 
-#define	MTX_MAX_ENTRY		31
+#define	MTX_MAX_ENTRY		33
 
 /* Redirect mutex calls to the correct functions. */
 #if !defined(HAVE_MUTEX_HYBRID) && (					\
@@ -72,21 +84,96 @@ extern "C" {
 #define	__mutex_lock(a, b)		__db_pthread_mutex_lock(a, b)
 #define	__mutex_unlock(a, b)		__db_pthread_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_pthread_mutex_destroy(a, b)
+#define	__mutex_trylock(a, b)		__db_pthread_mutex_trylock(a, b)
+/*
+ * These trylock versions do not support DB_ENV_FAILCHK. Callers which loop
+ * checking mutexes which are held by dead processes or threads might spin.
+ * These have ANSI-style definitions because this file can be included by
+ * C++ files, and extern "C" affects linkage only, not argument typing.
+ */
+static inline int __db_pthread_mutex_trylock(ENV *env, db_mutex_t mutex)
+{
+	int ret;
+	DB_MUTEX *mutexp;
+	if (!MUTEX_ON(env) || F_ISSET(env->dbenv, DB_ENV_NOLOCKING))
+		return (0);
+	mutexp = MUTEXP_SET(env->mutex_handle, mutex);
+#ifdef HAVE_SHARED_LATCHES
+	if (F_ISSET(mutexp, DB_MUTEX_SHARED))
+		ret = pthread_rwlock_trywrlock(&mutexp->u.rwlock);
+	    else
+#endif
+	if ((ret = pthread_mutex_trylock(&mutexp->u.m.mutex)) == 0)
+		F_SET(mutexp, DB_MUTEX_LOCKED);
+	if (ret == EBUSY)
+		ret = DB_LOCK_NOTGRANTED;
+#ifdef HAVE_STATISTICS
+	if (ret == 0)
+		++mutexp->mutex_set_nowait;
+#endif
+	return (ret);
+}
+#ifdef HAVE_SHARED_LATCHES
+#define	__mutex_rdlock(a, b)		__db_pthread_mutex_readlock(a, b)
+#define	__mutex_tryrdlock(a, b)		__db_pthread_mutex_tryreadlock(a, b)
+static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
+{
+	int ret;
+	DB_MUTEX *mutexp;
+	if (!MUTEX_ON(env) || F_ISSET(env->dbenv, DB_ENV_NOLOCKING))
+		return (0);
+	mutexp = MUTEXP_SET(env->mutex_handle, mutex);
+	if (F_ISSET(mutexp, DB_MUTEX_SHARED))
+		ret = pthread_rwlock_tryrdlock(&mutexp->u.rwlock);
+	else
+		return (EINVAL);
+	if (ret == EBUSY)
+		ret = DB_LOCK_NOTGRANTED;
+#ifdef HAVE_STATISTICS
+	if (ret == 0)
+		++mutexp->mutex_set_rd_nowait;
+#endif
+	return (ret);
+}
+#endif
 #elif defined(HAVE_MUTEX_WIN32) || defined(HAVE_MUTEX_WIN32_GCC)
 #define	__mutex_init(a, b, c)		__db_win32_mutex_init(a, b, c)
 #define	__mutex_lock(a, b)		__db_win32_mutex_lock(a, b)
+#define	__mutex_trylock(a, b)		__db_win32_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_win32_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_win32_mutex_destroy(a, b)
+#ifdef HAVE_SHARED_LATCHES
+#define	__mutex_rdlock(a, b)		__db_win32_mutex_readlock(a, b)
+#define	__mutex_tryrdlock(a, b)		__db_win32_mutex_tryreadlock(a, b)
+#endif
 #elif defined(HAVE_MUTEX_FCNTL)
 #define	__mutex_init(a, b, c)		__db_fcntl_mutex_init(a, b, c)
 #define	__mutex_lock(a, b)		__db_fcntl_mutex_lock(a, b)
+#define	__mutex_trylock(a, b)		__db_fcntl_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_fcntl_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_fcntl_mutex_destroy(a, b)
 #else
 #define	__mutex_init(a, b, c)		__db_tas_mutex_init(a, b, c)
 #define	__mutex_lock(a, b)		__db_tas_mutex_lock(a, b)
+#define	__mutex_trylock(a, b)		__db_tas_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_tas_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_tas_mutex_destroy(a, b)
+#if defined(HAVE_SHARED_LATCHES)
+#define	__mutex_rdlock(a, b)		__db_tas_mutex_readlock(a, b)
+#define	__mutex_tryrdlock(a,b)		__db_tas_mutex_tryreadlock(a, b)
+#endif
+#endif
+
+/*
+ * When there is no method to get a shared latch, fall back to
+ * implementing __mutex_rdlock() as getting an exclusive one.
+ * This occurs either when !HAVE_SHARED_LATCHES or HAVE_MUTEX_FCNTL.
+ */
+#ifndef __mutex_rdlock
+#define	__mutex_rdlock(a, b)		__mutex_lock(a, b)
+#endif
+#ifndef __mutex_tryrdlock
+#define	__mutex_tryrdlock(a, b)		__mutex_trylock(a, b)
 #endif
 
 /*
@@ -98,27 +185,48 @@ extern "C" {
  * return value of the mutex routine.
  */
 #ifdef HAVE_MUTEX_SUPPORT
-#define	MUTEX_LOCK(dbenv, mutex) do {					\
+#define	MUTEX_LOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
-	    __mutex_lock(dbenv, mutex) != 0)				\
+	    __mutex_lock(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
-#define	MUTEX_UNLOCK(dbenv, mutex) do {					\
+
+/*
+ * Always check the return value of MUTEX_TRYLOCK()!  Expect 0 on success,
+ * or DB_LOCK_NOTGRANTED, or possibly DB_RUNRECOVERY for failchk.
+ */
+#define	MUTEX_TRYLOCK(env, mutex)					\
+	(((mutex) == MUTEX_INVALID) ? 0 : __mutex_trylock(env, mutex))
+
+/*
+ * Acquire a DB_MUTEX_SHARED "mutex" in shared mode.
+ */
+#define	MUTEX_READLOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
-	    __mutex_unlock(dbenv, mutex) != 0)				\
+	    __mutex_rdlock(env, mutex) != 0)				\
+		return (DB_RUNRECOVERY);				\
+} while (0)
+#define	MUTEX_TRY_READLOCK(env, mutex)					\
+	((mutex) != MUTEX_INVALID ? __mutex_tryrdlock(env, mutex) : 0)
+
+#define	MUTEX_UNLOCK(env, mutex) do {					\
+	if ((mutex) != MUTEX_INVALID &&					\
+	    __mutex_unlock(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
 #else
 /*
- * XXX
  * There are calls to lock/unlock mutexes outside of #ifdef's -- replace
  * the call with something the compiler can discard, but which will make
  * if-then-else blocks work correctly.
  */
-#define	MUTEX_LOCK(dbenv, mutex)					\
-	(mutex) = (mutex);
-#define	MUTEX_UNLOCK(dbenv, mutex)					\
-	(mutex) = (mutex);
+#define	MUTEX_LOCK(env, mutex)		(mutex) = (mutex)
+#define	MUTEX_TRYLOCK(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_READLOCK(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_TRY_READLOCK(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_UNLOCK(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_REQUIRED(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_REQUIRED_READ(env, mutex)	(mutex) = (mutex)
 #endif
 
 /*

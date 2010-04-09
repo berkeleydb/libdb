@@ -1,20 +1,22 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleBindingTest.java,v 12.9 2008/02/07 17:12:30 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple.test;
 
+import java.math.BigInteger;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import java.math.BigInteger;
 
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.EntryBinding;
+import com.sleepycat.bind.tuple.BigIntegerBinding;
 import com.sleepycat.bind.tuple.BooleanBinding;
 import com.sleepycat.bind.tuple.ByteBinding;
 import com.sleepycat.bind.tuple.CharacterBinding;
@@ -23,7 +25,6 @@ import com.sleepycat.bind.tuple.FloatBinding;
 import com.sleepycat.bind.tuple.IntegerBinding;
 import com.sleepycat.bind.tuple.LongBinding;
 import com.sleepycat.bind.tuple.ShortBinding;
-import com.sleepycat.bind.tuple.BigIntegerBinding;
 import com.sleepycat.bind.tuple.SortedDoubleBinding;
 import com.sleepycat.bind.tuple.SortedFloatBinding;
 import com.sleepycat.bind.tuple.StringBinding;
@@ -34,8 +35,8 @@ import com.sleepycat.bind.tuple.TupleMarshalledBinding;
 import com.sleepycat.bind.tuple.TupleOutput;
 import com.sleepycat.bind.tuple.TupleTupleMarshalledBinding;
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.util.FastOutputStream;
 import com.sleepycat.util.ExceptionUnwrapper;
+import com.sleepycat.util.FastOutputStream;
 import com.sleepycat.util.test.SharedTestUtils;
 
 /**
@@ -46,9 +47,7 @@ public class TupleBindingTest extends TestCase {
     private DatabaseEntry buffer;
     private DatabaseEntry keyBuffer;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -59,9 +58,7 @@ public class TupleBindingTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(TupleBindingTest.class);
         return suite;
     }
@@ -71,6 +68,7 @@ public class TupleBindingTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp() {
 
         SharedTestUtils.printTestName("TupleBindingTest." + getName());
@@ -78,6 +76,7 @@ public class TupleBindingTest extends TestCase {
         keyBuffer = new DatabaseEntry();
     }
 
+    @Override
     public void tearDown() {
 
         /* Ensure that GC can cleanup. */
@@ -85,6 +84,7 @@ public class TupleBindingTest extends TestCase {
         keyBuffer = null;
     }
 
+    @Override
     public void runTest()
         throws Throwable {
 
@@ -177,7 +177,7 @@ public class TupleBindingTest extends TestCase {
                              new Double(123.123), 8);
 
         DatabaseEntry entry = new DatabaseEntry();
-	
+
         StringBinding.stringToEntry("abc", entry);
 	assertEquals(4, entry.getData().length);
         assertEquals("abc", StringBinding.entryToString(entry));
@@ -256,7 +256,7 @@ public class TupleBindingTest extends TestCase {
         assertEquals(9, entry.getData().length);
         forMoreCoverageTest(new BigIntegerBinding(),
                             new BigInteger("1234567890123456"));
-	
+
         SortedFloatBinding.floatToEntry((float) 123.123, entry);
 	assertEquals(4, entry.getData().length);
         assertTrue(((float) 123.123) ==
@@ -355,16 +355,19 @@ public class TupleBindingTest extends TestCase {
             super();
         }
 
+        @Override
         public TupleOutput getTupleOutput(Object object) {
             TupleOutput out = super.getTupleOutput(object);
             bufSize = out.getBufferBytes().length;
             return out;
         }
 
+        @Override
         public Object entryToObject(TupleInput input) {
             return input.readString();
         }
 
+        @Override
         public void objectToEntry(Object object, TupleOutput output) {
             assertEquals(bufSize, output.getBufferBytes().length);
             output.writeString((String) object);
@@ -402,16 +405,19 @@ public class TupleBindingTest extends TestCase {
             this.out = out;
         }
 
+        @Override
         public TupleOutput getTupleOutput(Object object) {
             out.reset();
             used = true;
             return out;
         }
 
+        @Override
         public Object entryToObject(TupleInput input) {
             return input.readString();
         }
 
+        @Override
         public void objectToEntry(Object object, TupleOutput output) {
             assertSame(out, output);
             output.writeString((String) object);

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 3. Testing and Certifying the Port</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Porting Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Porting Berkeley DB" />
     <link rel="up" href="index.html" title="Porting Berkeley DB" />
-    <link rel="previous" href="buildtarget.html" title=" Building on the Target Platform" />
+    <link rel="prev" href="buildtarget.html" title="Building on the Target Platform" />
     <link rel="next" href="modifytest.html" title="Modifying the Tests" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="testport"></a>Chapter 3. Testing and Certifying the Port</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -73,33 +72,33 @@
       </div>
       <p>
 There are several different types of tests available for validating your
-port of Berkeley DB as discussed in <a href="testport.html#testtypes">Types of Tests for Berkeley DB</a>. Testing your port involves:
+port of Berkeley DB as discussed in <a class="xref" href="testport.html#testtypes" title="Types of Tests for Berkeley DB">Types of Tests for Berkeley DB</a>. Testing your port involves:
 </p>
       <div class="itemizedlist">
         <ul type="disc">
           <li>
             <p>
-<a href="modifytest.html">Modifying the Tests</a>
+<a class="xref" href="modifytest.html" title="Modifying the Tests">Modifying the Tests</a>
 </p>
           </li>
           <li>
             <p>
-<a href="testrun.html">Running the Tests</a>
+<a class="xref" href="testrun.html" title="Running the Tests">Running the Tests</a>
 </p>
           </li>
           <li>
             <p>
-        <a href="testreview.html">Reviewing the Results of the Tests</a>
+        <a class="xref" href="testreview.html" title="Reviewing the Results of the Tests">Reviewing the Results of the Tests</a>
 </p>
           </li>
           <li>
             <p>
-<a href="sourceintegrate.html">Integrating Changes into the Berkeley DB Source Code</a>
+<a class="xref" href="sourceintegrate.html" title="Integrating Changes into the Berkeley DB Source Code">Integrating Changes into the Berkeley DB Source Code</a>
 </p>
           </li>
           <li>
             <p>
-        <a href="certport.html">Certifying a Port of Berkeley DB</a>
+        <a class="xref" href="certport.html" title="Certifying a Port of Berkeley DB">Certifying a Port of Berkeley DB</a>
 </p>
           </li>
         </ul>
@@ -111,7 +110,6 @@ port of Berkeley DB as discussed in <a href="testport.html#testtypes">Types of T
               <h2 class="title" style="clear: both"><a id="testtypes"></a>Types of Tests for Berkeley DB</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
 There are two types of tests available for testing your port of Berkeley DB:
@@ -127,24 +125,24 @@ There are three types of C tests for Berkeley DB. Each of these is in its own di
                 <ul type="circle">
                   <li>
                     <p>
-<tt class="literal">test_os</tt> 
+<code class="literal">test_os</code> 
 contains files that test the system primitives. See the
-<tt class="literal">test_os/Test_OS_Technical_Detail</tt> file for detailed information on these tests (for example, how each function is tested).
+<code class="literal">test_os/Test_OS_Technical_Detail</code> file for detailed information on these tests (for example, how each function is tested).
 </p>
                   </li>
                   <li>
                     <p>
-<tt class="literal">test_mutex</tt> 
+<code class="literal">test_mutex</code> 
 contains files that test the use of mutexes in Berkeley DB.
 </p>
                   </li>
                   <li>
                     <p>
-<tt class="literal">test_micro</tt> 
+<code class="literal">test_micro</code> 
 contains the C tests that exercise the most common code paths, but it is
 not intended to be an exhaustive Test Suite. Additionally, it tests the
 different versions of Berkeley DB (including the new port) against each
-other.  The <tt class="literal">test_micro</tt> tests can either be run in a shell or as simple C tests.
+other.  The <code class="literal">test_micro</code> tests can either be run in a shell or as simple C tests.
 </p>
                   </li>
                 </ul>
@@ -153,7 +151,7 @@ other.  The <tt class="literal">test_micro</tt> tests can either be run in a she
             <li>
               <p>The Berkeley DB Test Suite</p>
               <p>
-The <tt class="literal">test</tt> directory contains the Berkeley DB Test Suite that tests all of the code in Berkeley DB. Using the Test Suite involves using Tool Command Language (Tcl) version 8.4 or later. Running the standard version of the Test Suite executes tests the major functionality of Berkeley DB. A more exhaustive version of the Test Suite runs all the tests several more times, testing encryption, replication, and different page sizes.
+The <code class="literal">test</code> directory contains the Berkeley DB Test Suite that tests all of the code in Berkeley DB. Using the Test Suite involves using Tool Command Language (Tcl) version 8.4 or later. Running the standard version of the Test Suite executes tests the major functionality of Berkeley DB. A more exhaustive version of the Test Suite runs all the tests several more times, testing encryption, replication, and different page sizes.
 </p>
             </li>
           </ul>
@@ -165,9 +163,7 @@ The <tt class="literal">test</tt> directory contains the Berkeley DB Test Suite 
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="buildtarget.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="modifytest.html">Next</a></td>
         </tr>
         <tr>

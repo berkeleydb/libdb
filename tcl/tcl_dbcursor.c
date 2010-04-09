@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_dbcursor.c,v 12.19 2008/01/08 20:58:52 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -18,6 +18,7 @@
  * Prototypes for procedures defined later in this file:
  */
 static int tcl_DbcDup __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
+static int tcl_DbcCompare __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
 static int tcl_DbcGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *, int));
 static int tcl_DbcPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DBC *));
 
@@ -39,6 +40,7 @@ dbc_Cmd(clientData, interp, objc, objv)
 		"pget",
 #endif
 		"close",
+		"cmp",
 		"del",
 		"dup",
 		"get",
@@ -50,6 +52,7 @@ dbc_Cmd(clientData, interp, objc, objv)
 		DBCPGET,
 #endif
 		DBCCLOSE,
+		DBCCOMPARE,
 		DBCDELETE,
 		DBCDUP,
 		DBCGET,
@@ -107,6 +110,14 @@ dbc_Cmd(clientData, interp, objc, objv)
 			_DeleteInfo(dbip);
 		}
 		break;
+	case DBCCOMPARE:
+		if (objc > 3) {
+			Tcl_WrongNumArgs(interp, 3, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		result = tcl_DbcCompare(interp, objc, objv, dbc);
+		break;
 	case DBCDELETE:
 		/*
 		 * No args for this.  Error if there are some.
@@ -152,6 +163,7 @@ tcl_DbcPut(interp, objc, objv, dbc)
 		"-current",
 		"-keyfirst",
 		"-keylast",
+		"-overwritedup",
 		"-partial",
 		NULL
 	};
@@ -164,6 +176,7 @@ tcl_DbcPut(interp, objc, objv, dbc)
 		DBCPUT_CURRENT,
 		DBCPUT_KEYFIRST,
 		DBCPUT_KEYLAST,
+		DBCPUT_OVERWRITE_DUP,
 		DBCPUT_PART
 	};
 	DB *thisdbp;
@@ -237,6 +250,10 @@ tcl_DbcPut(interp, objc, objv, dbc)
 		case DBCPUT_KEYLAST:
 			FLAG_CHECK(flag);
 			flag = DB_KEYLAST;
+			break;
+		case DBCPUT_OVERWRITE_DUP:
+			FLAG_CHECK(flag);
+			flag = DB_OVERWRITE_DUP;
 			break;
 		case DBCPUT_PART:
 			if (i > (objc - 2)) {
@@ -486,7 +503,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 
 #define	FLAG_CHECK2_STDARG	\
 	(DB_RMW | DB_MULTIPLE | DB_MULTIPLE_KEY | DB_IGNORE_LEASE | \
-	DB_READ_UNCOMMITTED)
+	DB_READ_UNCOMMITTED | DB_READ_COMMITTED)
 
 		switch ((enum dbcgetopts)optindex) {
 #ifdef CONFIG_TEST
@@ -852,6 +869,72 @@ out:
 		__os_free(NULL, dtmp);
 	if (freekey)
 		__os_free(NULL, ktmp);
+	return (result);
+
+}
+
+/*
+ * tcl_DbcCompare --
+ */
+static int
+tcl_DbcCompare(interp, objc, objv, dbc)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DBC *dbc;			/* Cursor pointer */
+{
+	DBC *odbc;
+	DBTCL_INFO *dbcip, *dbip;
+	Tcl_Obj *res;
+	int cmp_res, result, ret;
+	char *arg, msg[MSG_SIZE];
+
+	result = TCL_OK;
+	res = NULL;
+
+	if (objc != 3) {
+		Tcl_WrongNumArgs(interp, 3, objv, "?-args?");
+		return (TCL_ERROR);
+	}
+
+	dbcip = _PtrToInfo(dbc);
+	if (dbcip == NULL) {
+		Tcl_SetResult(interp, "Cursor without info structure",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+		goto out;
+	} else {
+		dbip = dbcip->i_parent;
+		if (dbip == NULL) {
+			Tcl_SetResult(interp, "Cursor without parent database",
+			    TCL_STATIC);
+			result = TCL_ERROR;
+			goto out;
+		}
+	}
+	/*
+	 * When we get here, we better have:
+	 * 2 args one DBC and an int address for the result
+	 */
+	arg = Tcl_GetStringFromObj(objv[2], NULL);
+	odbc = NAME_TO_DBC(arg);
+	if (odbc == NULL) {
+		snprintf(msg, MSG_SIZE,
+		    "Cmp: Invalid cursor: %s\n", arg);
+		Tcl_SetResult(interp, msg, TCL_VOLATILE);
+		result = TCL_ERROR;
+		goto out;
+	}
+
+	ret = dbc->cmp(dbc, odbc, &cmp_res, 0);
+	if (ret != 0) {
+		result = _ReturnSetup(interp, ret,
+		    DB_RETOK_STD(ret), "dbc cmp");
+		return (result);
+	}
+	res = Tcl_NewIntObj(cmp_res);
+	Tcl_SetObjResult(interp, res);
+out:
 	return (result);
 
 }

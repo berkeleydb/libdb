@@ -1,5 +1,9 @@
 /*
- * $Id: b_inmem.c,v 1.15 2008/04/14 02:21:47 david Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 
 #include "bench.h"
@@ -20,7 +24,6 @@ u_int32_t numitems;
 u_int32_t pagesize = 32 * 1024;
 
 FILE *fp;
-char *progname;
 
 static void op_ds __P((u_int, int));
 static void op_ds_bulk __P((u_int, u_int *));
@@ -77,8 +80,8 @@ op_ds(u_int ops, int update)
 		TIMER_STOP;
 	}
 
-	(void)dbenv->memp_stat(dbenv, &gsp, NULL, 0);
-	DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
+	if (dbenv->memp_stat(dbenv, &gsp, NULL, 0) == 0)
+		DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
 
 	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
 }
@@ -149,8 +152,8 @@ op_ds_bulk(u_int ops, u_int *totalp)
 	TIMER_STOP;
 	*totalp = total;
 
-	(void)dbenv->memp_stat(dbenv, &gsp, NULL, 0);
-	DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
+	if (dbenv->memp_stat(dbenv, &gsp, NULL, 0) == 0)
+	    DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
 
 #if 0
 	fp = fopen("before", "w");
@@ -234,8 +237,8 @@ op_tds(u_int ops, int update, u_int32_t env_flags, u_int32_t log_flags)
 			    dbp->put(dbp, NULL, &key, &data, 0) == 0);
 		TIMER_STOP;
 
-		(void)dbenv->memp_stat(dbenv, &gsp, NULL, 0);
-		DB_BENCH_ASSERT(gsp->st_page_out == 0);
+		if (dbenv->memp_stat(dbenv, &gsp, NULL, 0) == 0)
+			DB_BENCH_ASSERT(gsp->st_page_out == 0);
 	} else {
 		DB_BENCH_ASSERT(dbp->put(dbp, NULL, &key, &data, 0) == 0);
 		(void)dbenv->memp_stat(dbenv, &gsp, NULL, DB_STAT_CLEAR);
@@ -250,8 +253,8 @@ op_tds(u_int ops, int update, u_int32_t env_flags, u_int32_t log_flags)
 		}
 		TIMER_STOP;
 
-		(void)dbenv->memp_stat(dbenv, &gsp, NULL, 0);
-		DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
+		if (dbenv->memp_stat(dbenv, &gsp, NULL, 0) == 0)
+			DB_BENCH_ASSERT(gsp->st_cache_miss == 0);
 	}
 
 	DB_BENCH_ASSERT(dbp->close(dbp, 0) == 0);
@@ -314,7 +317,7 @@ b_inmem(int argc, char *argv[])
 			ops = DEFAULT_OPS;
 		op_ds(ops, 0);
 		printf(
-		    "# %u in-memory Btree database reads of %u/%u byte key/data pairs\n",
+	"# %u in-memory Btree database reads of %u/%u byte key/data pairs\n",
 		    ops, keysize, datasize);
 	} else if (strcasecmp(argv[0], "bulk") == 0) {
 		if (keysize < 8) {
@@ -333,22 +336,22 @@ b_inmem(int argc, char *argv[])
 		op_ds_bulk(ops, &total);
 		ops = total;
 		printf(
-		    "# %u bulk in-memory Btree database reads of %u/%u byte key/data pairs\n",
+    "# %u bulk in-memory Btree database reads of %u/%u byte key/data pairs\n",
 		    ops, keysize, datasize);
 	} else if (strcasecmp(argv[0], "write") == 0) {
 		if (ops == 0)
 			ops = DEFAULT_OPS;
 		op_ds(ops, 1);
 		printf(
-		    "# %u in-memory Btree database writes of %u/%u byte key/data pairs\n",
+	"# %u in-memory Btree database writes of %u/%u byte key/data pairs\n",
 		    ops, keysize, datasize);
 	} else if (strcasecmp(argv[0], "txn-read") == 0) {
 		if (ops == 0)
 			ops = DEFAULT_OPS;
 		op_tds(ops, 0, 0, 0);
 		printf(
-		    "# %u transactional in-memory Btree database reads of %u/%u byte key/data pairs\n",
-		    ops, keysize, datasize);
+		"# %u transactional in-memory Btree database reads of %u/%u %s",
+		    ops, keysize, datasize, "byte key/data pairs\n");
 	} else if (strcasecmp(argv[0], "txn-write") == 0) {
 		if (ops == 0)
 			ops = DEFAULT_OPS;
@@ -359,8 +362,8 @@ b_inmem(int argc, char *argv[])
 		op_tds(ops, 1, 0, DB_LOG_IN_MEMORY);
 #endif
 		printf(
-		    "# %u transactional in-memory logging Btree database writes of %u/%u byte key/data pairs\n",
-		    ops, keysize, datasize);
+	"# %u transactional in-memory logging Btree database writes of %u/%u%s",
+		    ops, keysize, datasize, " byte key/data pairs\n");
 #else
 		return (EXIT_SUCCESS);
 #endif
@@ -369,16 +372,16 @@ b_inmem(int argc, char *argv[])
 			ops = DEFAULT_OPS;
 		op_tds(ops, 1, DB_TXN_NOSYNC, 0);
 		printf(
-		    "# %u transactional nosync logging Btree database writes of %u/%u byte key/data pairs\n",
-		    ops, keysize, datasize);
+	"# %u transactional nosync logging Btree database writes of %u/%u %s",
+		    ops, keysize, datasize, "byte key/data pairs\n");
 	} else if (strcasecmp(argv[0], "txn-write-nosync") == 0) {
 		if (ops == 0)
 			ops = DEFAULT_OPS;
 #ifdef DB_TXN_WRITE_NOSYNC
 		op_tds(ops, 1, DB_TXN_WRITE_NOSYNC, 0);
 		printf(
-		    "# %u transactional OS-write/nosync logging Btree database writes of %u/%u byte key/data pairs\n",
-		    ops, keysize, datasize);
+  "# %u transactional OS-write/nosync logging Btree database writes of %u/%u%s",
+		    ops, keysize, datasize, " byte key/data pairs\n");
 #else
 		return (EXIT_SUCCESS);
 #endif
@@ -391,8 +394,8 @@ b_inmem(int argc, char *argv[])
 			ops = 100000;
 		op_tds(ops, 1, 0, 0);
 		printf(
-		    "# %u transactional logging Btree database writes of %u/%u byte key/data pairs\n",
-		    ops, keysize, datasize);
+	"# %u transactional logging Btree database writes of %u/%u %s",
+		    ops, keysize, datasize, "byte key/data pairs\n");
 	} else {
 		fprintf(stderr, "%s: unknown keyword %s\n", progname, argv[0]);
 		return (EXIT_FAILURE);

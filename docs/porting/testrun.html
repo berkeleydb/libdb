@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Running the Tests</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Porting Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Porting Berkeley DB" />
     <link rel="up" href="testport.html" title="Chapter 3. Testing and Certifying the Port" />
-    <link rel="previous" href="modifytest.html" title="Modifying the Tests" />
+    <link rel="prev" href="modifytest.html" title="Modifying the Tests" />
     <link rel="next" href="testreview.html" title="Reviewing the Results of the Tests" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="testrun"></a>Running the Tests</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 You test your new port of Berkeley DB by running the tests in the following order:
@@ -48,26 +47,26 @@ Run the C tests in the following order:
                 <li>
                   <p>
 Tests for the system primitives located in the
-<tt class="literal">test_os</tt> directory. To run the tests, follow the
-instructions in the <tt class="literal">test_os/readme</tt> file.
+<code class="literal">test_os</code> directory. To run the tests, follow the
+instructions in the <code class="literal">test_os/readme</code> file.
 </p>
                 </li>
                 <li>
                   <p>
 
-Tests for mutexes located in the <tt class="literal">test_mutex</tt>
+Tests for mutexes located in the <code class="literal">test_mutex</code>
 directory. To run the tests, follow the instructions in the
-<tt class="literal">test_mutex/readme</tt> file.
+<code class="literal">test_mutex/readme</code> file.
 </p>
                 </li>
                 <li>
                   <p>
 Tests for the common code paths located in the
-<tt class="literal">test_micro</tt> directory. To run the tests in a shell
+<code class="literal">test_micro</code> directory. To run the tests in a shell
 script, follow the instructions in the
-<tt class="literal">test_micro/readme</tt> file. To run the tests as
+<code class="literal">test_micro/readme</code> file. To run the tests as
 simple C tests, follow the instructions in the
-<tt class="literal">test_micro/readme_embedded</tt> file.
+<code class="literal">test_micro/readme_embedded</code> file.
 </p>
                 </li>
               </ol>
@@ -84,11 +83,11 @@ How you run the Test Suite varies depending on the target platform:
                   <p>
 If the target platform supports a UNIX-like version of Tcl, then set up Tcl
 and build the Test Suite as described in "Running the Test Suite under
-UNIX" in <i class="citetitle">Berkeley DB Programmer's Reference Guide</i> at 
-<a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_unix/test.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_unix/test.html</a>
+UNIX" in <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> at 
+<a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_unix/test.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_unix/test.html</a>
 and, then, run the Test Suite as described in "Running the Test Suite" in 
-<i class="citetitle">Berkeley DB Programmer's Reference Guide</i> at
-<a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/test/run.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/test/run.html</a>.
+<em class="citetitle">Berkeley DB Programmer's Reference Guide</em> at
+<a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/test/run.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/test/run.html</a>.
 </p>
                 </li>
                 <li>
@@ -97,8 +96,8 @@ and, then, run the Test Suite as described in "Running the Test Suite" in
         If the target platform supports a Windows-like version of Tcl, then
         setup Tcl, and build and run the Test Suite as described in
         "Running the Test Suite under Windows" in
-        <i class="citetitle">Berkeley DB Programmer's Reference Guide</i> at 
-        <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_win/test.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_win/test.html</a>
+        <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> at 
+        <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_win/test.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/build_win/test.html</a>
 
 </p>
                 </li>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_dispatch.c,v 12.45 2008/03/12 20:28:09 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -196,7 +196,7 @@ __db_dispatch(env, dtab, db, lsnp, redo, info)
 			make_call = 1;
 			if (status == TXN_OK &&
 			    (ret = __db_txnlist_update(env,
-			    info, txnid, rectype == DB___txn_xa_regop ?
+			    info, txnid, rectype == DB___txn_prepare ?
 			    TXN_PREPARE : TXN_ABORT, NULL, &status, 0)) != 0)
 				return (ret);
 		}

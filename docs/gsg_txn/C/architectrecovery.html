@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Designing Your Application for Recovery</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="recovery.html" title="Recovery Procedures" />
+    <link rel="prev" href="recovery.html" title="Recovery Procedures" />
     <link rel="next" href="hotfailover.html" title="Using Hot Failovers" />
   </head>
   <body>
@@ -32,7 +32,20 @@
             <h2 class="title" style="clear: both"><a id="architectrecovery"></a>Designing Your Application for Recovery</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="architectrecovery.html#multithreadrecovery">Recovery for Multi-Threaded Applications</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="architectrecovery.html#multiprocessrecovery">Recovery in Multi-Process Applications</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             When building your DB application, you should consider how you will run recovery. If you are building a
@@ -52,14 +65,13 @@
               <h3 class="title"><a id="multithreadrecovery"></a>Recovery for Multi-Threaded Applications</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 If your application uses only one environment handle, then handling recovery for a multi-threaded
                 application is no more difficult than for a single threaded application. You simply open the environment
                 in the application's main thread, and then pass that handle to each of the threads that will be
                 performing DB operations. We illustrate this with our final example in this book (see 
-                <a href="txnexample_c.html">Transaction Example</a>
+                <a class="xref" href="txnexample_c.html" title="Transaction Example">Transaction Example</a>
                 
                 
                 
@@ -113,7 +125,7 @@
               <p>
                         Open new handles, running recovery as you open
                         them.
-                        See <a href="recovery.html#normalrecovery">Normal Recovery</a> for more information.
+                        See <a class="xref" href="recovery.html#normalrecovery" title="Normal Recovery">Normal Recovery</a> for more information.
                     </p>
             </li>
             <li>
@@ -175,7 +187,6 @@
               <h3 class="title"><a id="multiprocessrecovery"></a>Recovery in Multi-Process Applications</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Frequently, DB applications use multiple processes to interact with the databases. For example, you may
@@ -228,7 +239,6 @@
                 <h4 class="title"><a id="mp_recover_effects"></a>Effects of Multi-Process Recovery</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     Before continuing, it is worth noting that the following sections describe recovery processes than
@@ -255,7 +265,6 @@
                 <h4 class="title"><a id="db_register"></a>Process Registration</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     One way to handle multi-process recovery is for every process to "register" its environment. In
@@ -275,22 +284,56 @@
           <p>
                     To cause your application to register its environment, you specify
                         <span>
-                            the <tt class="literal">DB_REGISTER</tt> flag when you open your environment.
-                            Note that you must also specify <tt class="literal">DB_RECOVER</tt> or 
-                            <tt class="literal">DB_RECOVER_FATAL</tt> for your environment open.
+                            the <code class="literal">DB_REGISTER</code> flag when you open your environment.
+                            You may also specify <code class="literal">DB_RECOVER</code>. However, it is an error to specify
+                            <code class="literal">DB_RECOVER_FATAL</code> when using
+                            the <code class="literal">DB_REGISTER</code> flag.
                         </span>
 
                         
-                        If during the open, DB determines that recovery must be run, this indicates the type of
-                        recovery that is run. If you do not specify either type of recovery, then no recovery is run if
-                        the registration process identifies a need for it. In this case, the environment open simply
-                        fails by 
-                            <span>returning <tt class="literal">DB_RUNRECOVERY</tt>.</span>
+                        If during the open, DB determines that recovery must be run, it will automatically run the correct 
+                        type of recovery for you, so long as you specify normal recovery
+                        on your environment open. If you do not specify normal recovery, and you register your environment, 
+                        then no recovery is run if the registration process identifies a need for it. In this case, 
+                        the environment open simply fails by 
+                            <span>returning <code class="literal">DB_RUNRECOVERY</code>.</span>
                             
+                </p>
+          <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+            <h3 class="title">Note</h3>
+            <p>
+                        If you do not specify normal recovery when you open your first registered environment
+                        in the application, then that application will fail the environment open by
+                            <span>returning <code class="literal">DB_RUNRECOVERY</code>.</span>
+                            
+                        This is because the first process to register must create an internal
+                        registration file, and recovery is forced when that file is created. To
+                        avoid an abnormal termination of the environment open, specify recovery on
+                        the environment open for at least the first process starting in your
+                        application.
+                    </p>
+          </div>
+          <p>
+                    In addition, if you specify <code class="literal">DB_ENV_FAILCHK</code>
+                    when you register your environment, then a fail check is performed on
+                    environment open (fail checks are described in the next section). If, during the
+                    fail check process, an abnormal termination is detected for any of the processes
+                    involved in the application, DB releases any read locks held by the dead
+                    process and performs transaction aborts as necessary. This is done in an attempt
+                    to clean up the environment.
+                </p>
+          <p>
+                    In this situation, if a general cleanup of the
+                    environment is not possible and normal recovery is not specified on environment
+                    open, then the open will abort, 
+                    <span>returning <code class="literal">DB_RUNRECOVERY</code>.</span>
+                    
+                    However, if this situation occurs and recovery was specified, then the appropriate type of recovery 
+                    (normal or fatal) is run so as to bring the environment back to a healthy state.
                 </p>
           <p>
                     Be aware that there are some limitations/requirements if you want your various processes to
-                    coordinate recovery using this registration process:
+                    coordinate recovery using registration:
                 </p>
           <div class="orderedlist">
             <ol type="1">
@@ -308,13 +351,6 @@
                             in terms of your application's ability to recognize that recovery must be run.
                         </p>
               </li>
-              <li>
-                <p>
-                            You can not use this mechanism with the <tt class="methodname">failchk()</tt>
-                             mechanism
-                            described in the next section.
-                        </p>
-              </li>
             </ol>
           </div>
         </div>
@@ -325,7 +361,6 @@
                 <h4 class="title"><a id="failchk"></a>Failure Checking</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     For very large and robust multi-process applications, the most common way to ensure all the
@@ -359,11 +394,12 @@
               <li>
                 <p> 
                             <span>
-                                Provide an <tt class="function">is_alive()</tt> call back using the 
-                                <tt class="methodname">DB_ENV-&gt;set_isalive()</tt> 
+                                Provide an <code class="function">is_alive()</code> call back using the 
+                                <code class="methodname">DB_ENV-&gt;set_isalive()</code> 
                                  
                                 method. 
                             </span>
+                            
                             
                                 DB uses this method to determine whether a specified process and thread
                                 is alive when the failure checking is performed.
@@ -374,15 +410,18 @@
                             Possibly provide a 
                             
                                 <span>
-                                <tt class="literal">thread_id</tt> callback 
+                                <code class="literal">thread_id</code> callback 
                                 </span>
                                 
+                            
                                 
                                 
                             that uniquely identifies a process
                             and thread of control. This 
                                 <span>callback</span>
+                            
                                 
+
                             is only necessary if the standard process and thread
                             identification functions for your platform are not sufficient to for use by failure
                             checking. This is rarely necessary and is usually because the thread and/or process ids 
@@ -390,7 +429,7 @@
                         </p>
                 <p>
                             You provide this callback using the
-                                <tt class="methodname">DB_ENV-&gt;set_thread_id()</tt>
+                                <code class="methodname">DB_ENV-&gt;set_thread_id()</code>
                                 
                             method. See the API reference for this method for more information on when setting a thread
                             id callback might be necessary.
@@ -399,9 +438,11 @@
               <li>
                 <p>
                             Call the 
-                                <tt class="methodname">DB_ENV-&gt;failchk()</tt>
+                                <code class="methodname">DB_ENV-&gt;failchk()</code>
                                 
+                            
                                 
+
                             method periodically. You can do this either periodically (once per minute, for example), or
                             whenever a thread of control exits for your application.
                         </p>
@@ -410,16 +451,13 @@
                             are automatically released. If the thread of control exited with an unresolved transaction,
                             that transaction is aborted. If any other problems exist beyond these such that the
                             environment must be recovered, the method will
-                                <span>return <tt class="literal">DB_RUNRECOVERY</tt>.</span>
+                                <span>return <code class="literal">DB_RUNRECOVERY</code>.</span>
+                            
                                 
                         </p>
               </li>
             </ol>
           </div>
-          <p>
-                    Note that this mechanism should not be mixed with the process registration method of multi-process
-                    recovery described in the previous section.
-                </p>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 #! /bin/sh
-#	$Id: dd.sh,v 12.1 2006/08/30 16:11:57 bostic Exp $
+#	$Id$
 #
 # Display environment's deadlocks based on "db_stat -Co" output.
 

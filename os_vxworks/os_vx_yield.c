@@ -1,14 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_vx_yield.c,v 1.6 2008/01/08 20:58:45 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
+
+/* vxworks API to get system clock rate */
+int sysClkRateGet (void);
 
 /*
  * __os_yield --

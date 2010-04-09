@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleTupleBinding.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -27,8 +27,8 @@ import com.sleepycat.db.DatabaseEntry;
  *
  * @author Mark Hayes
  */
-public abstract class TupleTupleBinding extends TupleBase
-    implements EntityBinding {
+public abstract class TupleTupleBinding<E> extends TupleBase<E>
+    implements EntityBinding<E> {
 
     /**
      * Creates a tuple-tuple entity binding.
@@ -37,14 +37,14 @@ public abstract class TupleTupleBinding extends TupleBase
     }
 
     // javadoc is inherited
-    public Object entryToObject(DatabaseEntry key, DatabaseEntry data) {
+    public E entryToObject(DatabaseEntry key, DatabaseEntry data) {
 
         return entryToObject(TupleBinding.entryToInput(key),
                              TupleBinding.entryToInput(data));
     }
 
     // javadoc is inherited
-    public void objectToKey(Object object, DatabaseEntry key) {
+    public void objectToKey(E object, DatabaseEntry key) {
 
         TupleOutput output = getTupleOutput(object);
         objectToKey(object, output);
@@ -52,7 +52,7 @@ public abstract class TupleTupleBinding extends TupleBase
     }
 
     // javadoc is inherited
-    public void objectToData(Object object, DatabaseEntry data) {
+    public void objectToData(E object, DatabaseEntry data) {
 
         TupleOutput output = getTupleOutput(object);
         objectToData(object, output);
@@ -71,8 +71,7 @@ public abstract class TupleTupleBinding extends TupleBase
      *
      * @return the entity object constructed from the key and data.
      */
-    public abstract Object entryToObject(TupleInput keyInput,
-                                         TupleInput dataInput);
+    public abstract E entryToObject(TupleInput keyInput, TupleInput dataInput);
 
     /**
      * Extracts a key tuple from an entity object.
@@ -82,7 +81,7 @@ public abstract class TupleTupleBinding extends TupleBase
      * @param output is the {@link TupleOutput} to which the key should be
      * written.
      */
-    public abstract void objectToKey(Object object, TupleOutput output);
+    public abstract void objectToKey(E object, TupleOutput output);
 
     /**
      * Extracts a key tuple from an entity object.
@@ -92,5 +91,5 @@ public abstract class TupleTupleBinding extends TupleBase
      * @param output is the {@link TupleOutput} to which the data should be
      * written.
      */
-    public abstract void objectToData(Object object, TupleOutput output);
+    public abstract void objectToData(E object, TupleOutput output);
 }

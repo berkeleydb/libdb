@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1996
@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn_rec.c,v 12.29 2008/03/13 20:48:48 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -129,20 +129,20 @@ err:		__db_errx(env,
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_recover
+ * PUBLIC: int __txn_prepare_recover
  * PUBLIC:    __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  *
  * These records are only ever written for prepares.
  */
 int
-__txn_xa_regop_recover(env, dbtp, lsnp, op, info)
+__txn_prepare_recover(env, dbtp, lsnp, op, info)
 	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops op;
 	void *info;
 {
-	__txn_xa_regop_args *argp;
+	__txn_prepare_args *argp;
 	DBT *lock_dbt;
 	DB_TXNHEAD *headp;
 	DB_LOCKTAB *lt;
@@ -150,10 +150,10 @@ __txn_xa_regop_recover(env, dbtp, lsnp, op, info)
 	int ret;
 
 #ifdef DEBUG_RECOVER
-	(void)__txn_xa_regop_print(env, dbtp, lsnp, op, info);
+	(void)__txn_prepare_print(env, dbtp, lsnp, op, info);
 #endif
 
-	if ((ret = __txn_xa_regop_read(env, dbtp->data, &argp)) != 0)
+	if ((ret = __txn_prepare_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 
 	if (argp->opcode != TXN_PREPARE && argp->opcode != TXN_ABORT) {
@@ -405,20 +405,20 @@ out:	__os_free(env, argp);
  * lsnp is the LSN of the returned LSN
  * argp is the prepare record (in an appropriate structure)
  *
- * PUBLIC: int __txn_restore_txn __P((ENV *, DB_LSN *, __txn_xa_regop_args *));
+ * PUBLIC: int __txn_restore_txn __P((ENV *, DB_LSN *, __txn_prepare_args *));
  */
 int
 __txn_restore_txn(env, lsnp, argp)
 	ENV *env;
 	DB_LSN *lsnp;
-	__txn_xa_regop_args *argp;
+	__txn_prepare_args *argp;
 {
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td;
 	int ret;
 
-	if (argp->xid.size == 0)
+	if (argp->gid.size == 0)
 		return (0);
 
 	mgr = env->tx_handle;
@@ -447,11 +447,7 @@ __txn_restore_txn(env, lsnp, argp)
 	td->mvcc_mtx = MUTEX_INVALID;
 	td->status = TXN_PREPARED;
 	td->flags = TXN_DTL_RESTORED;
-	td->xa_status = TXN_XA_PREPARED;
-	memcpy(td->xid, argp->xid.data, argp->xid.size);
-	td->bqual = argp->bqual;
-	td->gtrid = argp->gtrid;
-	td->format = argp->formatID;
+	memcpy(td->gid, argp->gid.data, argp->gid.size);
 	td->nlog_dbs = 0;
 	td->nlog_slots = TXN_NSLOTS;
 	td->log_dbs = R_OFFSET(&mgr->reginfo, td->slots);

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_open.c,v 12.115 2008/03/25 16:00:28 ubell Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -17,7 +17,6 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
-static int __env_refresh __P((DB_ENV *, u_int32_t, int));
 static int __file_handle_cleanup __P((ENV *));
 
 /*
@@ -62,7 +61,8 @@ __env_open_pp(dbenv, db_home, flags, mode)
 	(DB_CREATE | DB_INIT_CDB | DB_INIT_LOCK | DB_INIT_LOG |		\
 	DB_INIT_MPOOL | DB_INIT_REP | DB_INIT_TXN | DB_LOCKDOWN |	\
 	DB_PRIVATE | DB_RECOVER | DB_RECOVER_FATAL | DB_REGISTER |	\
-	DB_SYSTEM_MEM | DB_THREAD | DB_USE_ENVIRON | DB_USE_ENVIRON_ROOT)
+	DB_SYSTEM_MEM | DB_THREAD | DB_USE_ENVIRON | DB_FAILCHK |	\
+	DB_USE_ENVIRON_ROOT)
 #undef	OKFLAGS_CDB
 #define	OKFLAGS_CDB							\
 	(DB_CREATE | DB_INIT_CDB | DB_INIT_MPOOL | DB_LOCKDOWN |	\
@@ -77,7 +77,7 @@ __env_open_pp(dbenv, db_home, flags, mode)
 	if (LF_ISSET(DB_REGISTER)) {
 		if (!__os_support_db_register()) {
 			__db_errx(env,
-	     "Berkeley DB library does not support DB_REGISTER on this system");
+	    "Berkeley DB library does not support DB_REGISTER on this system");
 			return (EINVAL);
 		}
 		if ((ret = __db_fcchk(env, "DB_ENV->open", flags,
@@ -92,7 +92,7 @@ __env_open_pp(dbenv, db_home, flags, mode)
 	if (LF_ISSET(DB_INIT_REP)) {
 		if (!__os_support_replication()) {
 			__db_errx(env,
-	     "Berkeley DB library does not support replication on this system");
+	    "Berkeley DB library does not support replication on this system");
 			return (EINVAL);
 		}
 		if (!LF_ISSET(DB_INIT_LOCK)) {
@@ -120,6 +120,18 @@ __env_open_pp(dbenv, db_home, flags, mode)
 		if (!LF_ISSET(DB_INIT_TXN)) {
 			__db_errx(
 			    env, "recovery requires transaction support");
+			return (EINVAL);
+		}
+	}
+	if (LF_ISSET(DB_FAILCHK)) {
+		if (!ALIVE_ON(env)) {
+			__db_errx(env,
+			 "DB_FAILCHK requires DB_ENV->is_alive be configured");
+			return (EINVAL);
+		}
+		if (dbenv->thr_max == 0) {
+			__db_errx(env,
+		 "DB_FAILCHK requires DB_ENV->set_thread_count be configured");
 			return (EINVAL);
 		}
 	}
@@ -180,13 +192,12 @@ __env_open(dbenv, db_home, flags, mode)
 {
 	DB_THREAD_INFO *ip;
 	ENV *env;
-	REGINFO *infop;
-	u_int32_t init_flags, orig_flags;
-	int create_ok, register_recovery, rep_check, ret, t_ret;
+	u_int32_t orig_flags;
+	int register_recovery, ret, t_ret;
 
 	ip = NULL;
 	env = dbenv->env;
-	register_recovery = rep_check = 0;
+	register_recovery = 0;
 
 	/* Initial configuration. */
 	if ((ret = __env_config(dbenv, db_home, flags, mode)) != 0)
@@ -206,7 +217,8 @@ __env_open(dbenv, db_home, flags, mode)
 	 * thing we do.
 	 */
 	if (LF_ISSET(DB_REGISTER)) {
-		if ((ret = __envreg_register(env, &register_recovery)) != 0)
+		if ((ret =
+		    __envreg_register(env, &register_recovery, flags)) != 0)
 			goto err;
 		if (register_recovery) {
 			if (!LF_ISSET(DB_RECOVER)) {
@@ -240,276 +252,19 @@ __env_open(dbenv, db_home, flags, mode)
 		    (ret = __env_refresh(dbenv, orig_flags, 0)) != 0)
 			goto err;
 
-	/* Convert the DB_ENV->open flags to internal flags. */
-	create_ok = LF_ISSET(DB_CREATE) ? 1 : 0;
-	if (LF_ISSET(DB_LOCKDOWN))
-		F_SET(env, ENV_LOCKDOWN);
-	if (LF_ISSET(DB_PRIVATE))
-		F_SET(env, ENV_PRIVATE);
-	if (LF_ISSET(DB_RECOVER_FATAL))
-		F_SET(env, ENV_RECOVER_FATAL);
-	if (LF_ISSET(DB_SYSTEM_MEM))
-		F_SET(env, ENV_SYSTEM_MEM);
-	if (LF_ISSET(DB_THREAD))
-		F_SET(env, ENV_THREAD);
-
-	/*
-	 * Flags saved in the init_flags field of the environment, representing
-	 * flags to DB_ENV->set_flags and DB_ENV->open that need to be set.
-	 */
-#define	DB_INITENV_CDB		0x0001	/* DB_INIT_CDB */
-#define	DB_INITENV_CDB_ALLDB	0x0002	/* DB_INIT_CDB_ALLDB */
-#define	DB_INITENV_LOCK		0x0004	/* DB_INIT_LOCK */
-#define	DB_INITENV_LOG		0x0008	/* DB_INIT_LOG */
-#define	DB_INITENV_MPOOL	0x0010	/* DB_INIT_MPOOL */
-#define	DB_INITENV_REP		0x0020	/* DB_INIT_REP */
-#define	DB_INITENV_TXN		0x0040	/* DB_INIT_TXN */
-
-	/*
-	 * Create/join the environment.  We pass in the flags of interest to
-	 * a thread subsequently joining an environment we create.  If we're
-	 * not the ones to create the environment, our flags will be updated
-	 * to match the existing environment.
-	 */
-	init_flags = 0;
-	if (LF_ISSET(DB_INIT_CDB))
-		FLD_SET(init_flags, DB_INITENV_CDB);
-	if (F_ISSET(dbenv, DB_ENV_CDB_ALLDB))
-		FLD_SET(init_flags, DB_INITENV_CDB_ALLDB);
-	if (LF_ISSET(DB_INIT_LOCK))
-		FLD_SET(init_flags, DB_INITENV_LOCK);
-	if (LF_ISSET(DB_INIT_LOG))
-		FLD_SET(init_flags, DB_INITENV_LOG);
-	if (LF_ISSET(DB_INIT_MPOOL))
-		FLD_SET(init_flags, DB_INITENV_MPOOL);
-	if (LF_ISSET(DB_INIT_REP))
-		FLD_SET(init_flags, DB_INITENV_REP);
-	if (LF_ISSET(DB_INIT_TXN))
-		FLD_SET(init_flags, DB_INITENV_TXN);
-	if ((ret = __env_attach(env, &init_flags, create_ok, 1)) != 0)
+	if ((ret = __env_attach_regions(dbenv, flags, orig_flags, 1)) != 0)
 		goto err;
 
-	/*
-	 * __env_attach will return the saved init_flags field, which contains
-	 * the DB_INIT_* flags used when the environment was created.
-	 *
-	 * We may be joining an environment -- reset our flags to match the
-	 * ones in the environment.
-	 */
-	if (FLD_ISSET(init_flags, DB_INITENV_CDB))
-		LF_SET(DB_INIT_CDB);
-	if (FLD_ISSET(init_flags, DB_INITENV_LOCK))
-		LF_SET(DB_INIT_LOCK);
-	if (FLD_ISSET(init_flags, DB_INITENV_LOG))
-		LF_SET(DB_INIT_LOG);
-	if (FLD_ISSET(init_flags, DB_INITENV_MPOOL))
-		LF_SET(DB_INIT_MPOOL);
-	if (FLD_ISSET(init_flags, DB_INITENV_REP))
-		LF_SET(DB_INIT_REP);
-	if (FLD_ISSET(init_flags, DB_INITENV_TXN))
-		LF_SET(DB_INIT_TXN);
-	if (FLD_ISSET(init_flags, DB_INITENV_CDB_ALLDB) &&
-	    (ret = __env_set_flags(dbenv, DB_CDB_ALLDB, 1)) != 0)
-		goto err;
-
-	/* Initialize for CDB product. */
-	if (LF_ISSET(DB_INIT_CDB)) {
-		LF_SET(DB_INIT_LOCK);
-		F_SET(env, ENV_CDB);
-	}
-
-	/*
-	 * Update the flags to match the database environment.  The application
-	 * may have specified flags of 0 to join the environment, and this line
-	 * replaces that value with the flags corresponding to the existing,
-	 * underlying set of subsystems.  This means the DbEnv.get_open_flags
-	 * method returns the flags to open the existing environment instead of
-	 * the specific flags passed to the DbEnv.open method.
-	 */
-	env->open_flags = flags;
-
-	/*
-	 * The DB_ENV structure has now been initialized.  Turn off further
-	 * use of the DB_ENV structure and most initialization methods, we're
-	 * about to act on the values we currently have.
-	 */
-	F_SET(env, ENV_OPEN_CALLED);
-
-	/*
-	 * Initialize thread tracking and enter the API.
-	 */
-	infop = env->reginfo;
-	if ((ret =
-	    __env_thread_init(env, F_ISSET(infop, REGION_CREATE) ? 1 : 0)) != 0)
-		goto err;
-
-	ENV_ENTER(env, ip);
-
-	/*
-	 * Initialize the subsystems.
-	 */
-#ifdef HAVE_MUTEX_SUPPORT
-	/*
-	 * Initialize the mutex regions first.  There's no ordering requirement,
-	 * but it's simpler to get this in place so we don't have to keep track
-	 * of mutexes for later allocation, once the mutex region is created we
-	 * can go ahead and do the allocation for real.
-	 */
-	if ((ret = __mutex_open(env, create_ok)) != 0)
-		goto err;
-#endif
-	/*
-	 * We can now acquire/create mutexes: increment the region's reference
-	 * count.
-	 */
-	if ((ret = __env_ref_increment(env)) != 0)
-		goto err;
-
-	/*
-	 * Initialize the handle mutexes.
-	 */
-	if ((ret = __mutex_alloc(env,
-	    MTX_ENV_HANDLE, DB_MUTEX_PROCESS_ONLY, &dbenv->mtx_db_env)) != 0 ||
-	    (ret = __mutex_alloc(env,
-	    MTX_ENV_HANDLE, DB_MUTEX_PROCESS_ONLY, &env->mtx_env)) != 0)
-		goto err;
-
-	/*
-	 * Initialize the replication area next, so that we can lock out this
-	 * call if we're currently running recovery for replication.
-	 */
-	if (LF_ISSET(DB_INIT_REP) && (ret = __rep_open(env)) != 0)
-		goto err;
-
-	rep_check = IS_ENV_REPLICATED(env) ? 1 : 0;
-	if (rep_check && (ret = __env_rep_enter(env, 0)) != 0)
-		goto err;
-
-	if (LF_ISSET(DB_INIT_MPOOL)) {
-		if ((ret = __memp_open(env, create_ok)) != 0)
+	/* after attached to env, run failchk if not doing register recovery */
+	if (LF_ISSET(DB_FAILCHK) && !register_recovery) {
+		ENV_ENTER(env, ip);
+		if ((ret = __env_failchk_int(dbenv)) != 0)
 			goto err;
-
-		/*
-		 * BDB does do cache I/O during recovery and when starting up
-		 * replication.  If creating a new environment, then suppress
-		 * any application max-write configuration.
-		 */
-		if (create_ok)
-			(void)__memp_set_config(
-			    dbenv, DB_MEMP_SUPPRESS_WRITE, 1);
-
-		/*
-		 * Initialize the DB list and its mutex.  If the mpool is
-		 * not initialized, we can't ever open a DB handle, which
-		 * is why this code lives here.
-		 */
-		TAILQ_INIT(&env->dblist);
-		if ((ret = __mutex_alloc(env, MTX_ENV_DBLIST,
-		    DB_MUTEX_PROCESS_ONLY, &env->mtx_dblist)) != 0)
-			goto err;
-
-		/* Register DB's pgin/pgout functions.  */
-		if ((ret = __memp_register(
-		    env, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0)
-			goto err;
-	}
-
-	/*
-	 * Initialize the ciphering area prior to any running of recovery so
-	 * that we can initialize the keys, etc. before recovery, including
-	 * the MT mutex.
-	 *
-	 * !!!
-	 * This must be after the mpool init, but before the log initialization
-	 * because log_open may attempt to run log_recover during its open.
-	 */
-	if (LF_ISSET(DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN) &&
-	    (ret = __crypto_region_init(env)) != 0)
-		goto err;
-	if ((ret = __mutex_alloc(
-	    env, MTX_TWISTER, DB_MUTEX_PROCESS_ONLY, &env->mtx_mt)) != 0)
-		goto err;
-
-	/*
-	 * Transactions imply logging but do not imply locking.  While almost
-	 * all applications want both locking and logging, it would not be
-	 * unreasonable for a single threaded process to want transactions for
-	 * atomicity guarantees, but not necessarily need concurrency.
-	 */
-	if (LF_ISSET(DB_INIT_LOG | DB_INIT_TXN))
-		if ((ret = __log_open(env, create_ok)) != 0)
-			goto err;
-	if (LF_ISSET(DB_INIT_LOCK))
-		if ((ret = __lock_open(env, create_ok)) != 0)
-			goto err;
-
-	if (LF_ISSET(DB_INIT_TXN)) {
-		if ((ret = __txn_open(env, create_ok)) != 0)
-			goto err;
-
-		/*
-		 * If the application is running with transactions, initialize
-		 * the function tables.
-		 */
-		if ((ret = __env_init_rec(env, DB_LOGVERSION)) != 0)
-			goto err;
-	}
-
-	/* Perform recovery for any previous run. */
-	if (LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL) &&
-	    (ret = __db_apprec(env, ip, NULL, NULL, 1,
-	    LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL))) != 0)
-		goto err;
-
-	/*
-	 * If we've created the regions, are running with transactions, and did
-	 * not just run recovery, we need to log the fact that the transaction
-	 * IDs got reset.
-	 *
-	 * If we ran recovery, there may be prepared-but-not-yet-committed
-	 * transactions that need to be resolved.  Recovery resets the minimum
-	 * transaction ID and logs the reset if that's appropriate, so we
-	 * don't need to do anything here in the recover case.
-	 */
-	if (TXN_ON(env) &&
-	    !FLD_ISSET(dbenv->lg_flags, DB_LOG_IN_MEMORY) &&
-	    F_ISSET(infop, REGION_CREATE) &&
-	    !LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL) &&
-	    (ret = __txn_reset(env)) != 0)
-		goto err;
-
-	/* The database environment is ready for business. */
-	if ((ret = __env_turn_on(env)) != 0)
-		goto err;
-
-	if (rep_check)
-		ret = __env_db_rep_exit(env);
-
-	/* Turn any application-specific max-write configuration back on. */
-	if (LF_ISSET(DB_INIT_MPOOL))
-		(void)__memp_set_config(dbenv, DB_MEMP_SUPPRESS_WRITE, 0);
-
-err:	if (ret == 0)
 		ENV_LEAVE(env, ip);
-	else {
-		/*
-		 * If we fail after creating the regions, panic and remove them.
-		 *
-		 * !!!
-		 * No need to call __env_db_rep_exit, that work is done by the
-		 * calls to __env_refresh.
-		 */
-		infop = env->reginfo;
-		if (infop != NULL && F_ISSET(infop, REGION_CREATE)) {
-			ret = __env_panic(env, ret);
-
-			/* Refresh the DB_ENV so can use it to call remove. */
-			(void)__env_refresh(dbenv, orig_flags, rep_check);
-			(void)__env_remove_env(env);
-			(void)__env_refresh(dbenv, orig_flags, 0);
-		} else
-			(void)__env_refresh(dbenv, orig_flags, rep_check);
 	}
+
+err:	if (ret != 0)
+		(void)__env_refresh(dbenv, orig_flags, 0);
 
 	if (register_recovery) {
 		/*
@@ -646,9 +401,10 @@ __env_close_pp(dbenv, flags)
 	DB_THREAD_INFO *ip;
 	ENV *env;
 	int rep_check, ret, t_ret;
+	u_int32_t flags_orig;
 
 	env = dbenv->env;
-	ret = 0;
+	ret = flags_orig = 0;
 
 	/*
 	 * Validate arguments, but as a DB_ENV handle destructor, we can't
@@ -663,6 +419,21 @@ __env_close_pp(dbenv, flags)
 	 * the important resources.
 	 */
 	if (PANIC_ISSET(env)) {
+		/* clean up from registry file */
+		if (dbenv->registry != NULL) {
+			/* 
+			 * Temporarily set no panic so we do not trigger the 
+			 * LAST_PANIC_CHECK_BEFORE_IO check in __os_physwrite
+			 * thus allowing the unregister to happen correctly.
+			 */
+			flags_orig = F_ISSET(dbenv, DB_ENV_NOPANIC);
+			F_SET(dbenv, DB_ENV_NOPANIC);
+			(void)__envreg_unregister(env, 0);
+			dbenv->registry = NULL;
+			if (!flags_orig)
+				F_CLR(dbenv, DB_ENV_NOPANIC);
+		}
+
 		/* Close all underlying file handles. */
 		(void)__file_handle_cleanup(env);
 
@@ -784,8 +555,9 @@ __env_close(dbenv, rep_check)
 /*
  * __env_refresh --
  *	Refresh the DB_ENV structure.
+ * PUBLIC: int __env_refresh __P((DB_ENV *, u_int32_t, int));
  */
-static int
+int
 __env_refresh(dbenv, orig_flags, rep_check)
 	DB_ENV *dbenv;
 	u_int32_t orig_flags;
@@ -1045,4 +817,305 @@ __env_get_open_flags(dbenv, flagsp)
 
 	*flagsp = env->open_flags;
 	return (0);
+}
+/*
+ * __env_attach_regions --
+ *	Perform attaches to env and required regions (subsystems)
+ *
+ * PUBLIC: int __env_attach_regions __P((DB_ENV *,  u_int32_t, u_int32_t, int));
+ */
+int
+__env_attach_regions(dbenv, flags, orig_flags, retry_ok)
+	DB_ENV *dbenv;
+	u_int32_t flags;
+	u_int32_t orig_flags;
+	int retry_ok;
+{
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	REGINFO *infop;
+	u_int32_t init_flags;
+	int create_ok, rep_check, ret;
+
+	ip = NULL;
+	env = dbenv->env;
+	rep_check = 0;
+
+	/* Convert the DB_ENV->open flags to internal flags. */
+	create_ok = LF_ISSET(DB_CREATE) ? 1 : 0;
+	if (LF_ISSET(DB_LOCKDOWN))
+		F_SET(env, ENV_LOCKDOWN);
+	if (LF_ISSET(DB_PRIVATE))
+		F_SET(env, ENV_PRIVATE);
+	if (LF_ISSET(DB_RECOVER_FATAL))
+		F_SET(env, ENV_RECOVER_FATAL);
+	if (LF_ISSET(DB_SYSTEM_MEM))
+		F_SET(env, ENV_SYSTEM_MEM);
+	if (LF_ISSET(DB_THREAD))
+		F_SET(env, ENV_THREAD);
+
+	/*
+	 * Flags saved in the init_flags field of the environment, representing
+	 * flags to DB_ENV->set_flags and DB_ENV->open that need to be set.
+	 */
+#define	DB_INITENV_CDB		0x0001	/* DB_INIT_CDB */
+#define	DB_INITENV_CDB_ALLDB	0x0002	/* DB_INIT_CDB_ALLDB */
+#define	DB_INITENV_LOCK		0x0004	/* DB_INIT_LOCK */
+#define	DB_INITENV_LOG		0x0008	/* DB_INIT_LOG */
+#define	DB_INITENV_MPOOL	0x0010	/* DB_INIT_MPOOL */
+#define	DB_INITENV_REP		0x0020	/* DB_INIT_REP */
+#define	DB_INITENV_TXN		0x0040	/* DB_INIT_TXN */
+
+	/*
+	 * Create/join the environment.  We pass in the flags of interest to
+	 * a thread subsequently joining an environment we create.  If we're
+	 * not the ones to create the environment, our flags will be updated
+	 * to match the existing environment.
+	 */
+	init_flags = 0;
+	if (LF_ISSET(DB_INIT_CDB))
+		FLD_SET(init_flags, DB_INITENV_CDB);
+	if (F_ISSET(dbenv, DB_ENV_CDB_ALLDB))
+		FLD_SET(init_flags, DB_INITENV_CDB_ALLDB);
+	if (LF_ISSET(DB_INIT_LOCK))
+		FLD_SET(init_flags, DB_INITENV_LOCK);
+	if (LF_ISSET(DB_INIT_LOG))
+		FLD_SET(init_flags, DB_INITENV_LOG);
+	if (LF_ISSET(DB_INIT_MPOOL))
+		FLD_SET(init_flags, DB_INITENV_MPOOL);
+	if (LF_ISSET(DB_INIT_REP))
+		FLD_SET(init_flags, DB_INITENV_REP);
+	if (LF_ISSET(DB_INIT_TXN))
+		FLD_SET(init_flags, DB_INITENV_TXN);
+	if ((ret = __env_attach(env, &init_flags, create_ok, retry_ok)) != 0)
+		goto err;
+
+	/*
+	 * __env_attach will return the saved init_flags field, which contains
+	 * the DB_INIT_* flags used when the environment was created.
+	 *
+	 * We may be joining an environment -- reset our flags to match the
+	 * ones in the environment.
+	 */
+	if (FLD_ISSET(init_flags, DB_INITENV_CDB))
+		LF_SET(DB_INIT_CDB);
+	if (FLD_ISSET(init_flags, DB_INITENV_LOCK))
+		LF_SET(DB_INIT_LOCK);
+	if (FLD_ISSET(init_flags, DB_INITENV_LOG))
+		LF_SET(DB_INIT_LOG);
+	if (FLD_ISSET(init_flags, DB_INITENV_MPOOL))
+		LF_SET(DB_INIT_MPOOL);
+	if (FLD_ISSET(init_flags, DB_INITENV_REP))
+		LF_SET(DB_INIT_REP);
+	if (FLD_ISSET(init_flags, DB_INITENV_TXN))
+		LF_SET(DB_INIT_TXN);
+	if (FLD_ISSET(init_flags, DB_INITENV_CDB_ALLDB) &&
+	    (ret = __env_set_flags(dbenv, DB_CDB_ALLDB, 1)) != 0)
+		goto err;
+
+	/* Initialize for CDB product. */
+	if (LF_ISSET(DB_INIT_CDB)) {
+		LF_SET(DB_INIT_LOCK);
+		F_SET(env, ENV_CDB);
+	}
+
+	/*
+	 * Update the flags to match the database environment.  The application
+	 * may have specified flags of 0 to join the environment, and this line
+	 * replaces that value with the flags corresponding to the existing,
+	 * underlying set of subsystems.  This means the DbEnv.get_open_flags
+	 * method returns the flags to open the existing environment instead of
+	 * the specific flags passed to the DbEnv.open method.
+	 */
+	env->open_flags = flags;
+
+	/*
+	 * The DB_ENV structure has now been initialized.  Turn off further
+	 * use of the DB_ENV structure and most initialization methods, we're
+	 * about to act on the values we currently have.
+	 */
+	F_SET(env, ENV_OPEN_CALLED);
+
+	infop = env->reginfo;
+
+#ifdef HAVE_MUTEX_SUPPORT
+	/*
+	 * Initialize the mutex regions first before ENV_ENTER().
+	 * Mutexes need to be 'on' when attaching to an existing env
+	 * in order to safely allocate the thread tracking info.
+	 */
+	if ((ret = __mutex_open(env, create_ok)) != 0)
+		goto err;
+	/* The MUTEX_REQUIRED() in __env_alloc() expectes this to be set. */
+	infop->mtx_alloc = ((REGENV *)infop->primary)->mtx_regenv;
+#endif
+	/*
+	 * Initialize thread tracking and enter the API.
+	 */
+	if ((ret =
+	    __env_thread_init(env, F_ISSET(infop, REGION_CREATE) ? 1 : 0)) != 0)
+		goto err;
+
+	ENV_ENTER(env, ip);
+
+	/*
+	 * Initialize the subsystems.
+	 */
+	/*
+	 * We can now acquire/create mutexes: increment the region's reference
+	 * count.
+	 */
+	if ((ret = __env_ref_increment(env)) != 0)
+		goto err;
+
+	/*
+	 * Initialize the handle mutexes.
+	 */
+	if ((ret = __mutex_alloc(env,
+	    MTX_ENV_HANDLE, DB_MUTEX_PROCESS_ONLY, &dbenv->mtx_db_env)) != 0 ||
+	    (ret = __mutex_alloc(env,
+	    MTX_ENV_HANDLE, DB_MUTEX_PROCESS_ONLY, &env->mtx_env)) != 0)
+		goto err;
+
+	/*
+	 * Initialize the replication area next, so that we can lock out this
+	 * call if we're currently running recovery for replication.
+	 */
+	if (LF_ISSET(DB_INIT_REP) && (ret = __rep_open(env)) != 0)
+		goto err;
+	infop->mtx_alloc = ((REGENV *)infop->primary)->mtx_regenv;
+
+	rep_check = IS_ENV_REPLICATED(env) ? 1 : 0;
+	if (rep_check && (ret = __env_rep_enter(env, 0)) != 0)
+		goto err;
+
+	if (LF_ISSET(DB_INIT_MPOOL)) {
+		if ((ret = __memp_open(env, create_ok)) != 0)
+			goto err;
+
+		/*
+		 * BDB does do cache I/O during recovery and when starting up
+		 * replication.  If creating a new environment, then suppress
+		 * any application max-write configuration.
+		 */
+		if (create_ok)
+			(void)__memp_set_config(
+			    dbenv, DB_MEMP_SUPPRESS_WRITE, 1);
+
+		/*
+		 * Initialize the DB list and its mutex.  If the mpool is
+		 * not initialized, we can't ever open a DB handle, which
+		 * is why this code lives here.
+		 */
+		TAILQ_INIT(&env->dblist);
+		if ((ret = __mutex_alloc(env, MTX_ENV_DBLIST,
+		    DB_MUTEX_PROCESS_ONLY, &env->mtx_dblist)) != 0)
+			goto err;
+
+		/* Register DB's pgin/pgout functions.  */
+		if ((ret = __memp_register(
+		    env, DB_FTYPE_SET, __db_pgin, __db_pgout)) != 0)
+			goto err;
+	}
+
+	/*
+	 * Initialize the ciphering area prior to any running of recovery so
+	 * that we can initialize the keys, etc. before recovery, including
+	 * the MT mutex.
+	 *
+	 * !!!
+	 * This must be after the mpool init, but before the log initialization
+	 * because log_open may attempt to run log_recover during its open.
+	 */
+	if (LF_ISSET(DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN) &&
+	    (ret = __crypto_region_init(env)) != 0)
+		goto err;
+	if ((ret = __mutex_alloc(
+	    env, MTX_TWISTER, DB_MUTEX_PROCESS_ONLY, &env->mtx_mt)) != 0)
+		goto err;
+
+	/*
+	 * Transactions imply logging but do not imply locking.  While almost
+	 * all applications want both locking and logging, it would not be
+	 * unreasonable for a single threaded process to want transactions for
+	 * atomicity guarantees, but not necessarily need concurrency.
+	 */
+	if (LF_ISSET(DB_INIT_LOG | DB_INIT_TXN))
+		if ((ret = __log_open(env, create_ok)) != 0)
+			goto err;
+	if (LF_ISSET(DB_INIT_LOCK))
+		if ((ret = __lock_open(env, create_ok)) != 0)
+			goto err;
+
+	if (LF_ISSET(DB_INIT_TXN)) {
+		if ((ret = __txn_open(env, create_ok)) != 0)
+			goto err;
+
+		/*
+		 * If the application is running with transactions, initialize
+		 * the function tables.
+		 */
+		if ((ret = __env_init_rec(env, DB_LOGVERSION)) != 0)
+			goto err;
+	}
+
+	/* Perform recovery for any previous run. */
+	if (LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL) &&
+	    (ret = __db_apprec(env, ip, NULL, NULL, 1,
+	    LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL))) != 0)
+		goto err;
+
+	/*
+	 * If we've created the regions, are running with transactions, and did
+	 * not just run recovery, we need to log the fact that the transaction
+	 * IDs got reset.
+	 *
+	 * If we ran recovery, there may be prepared-but-not-yet-committed
+	 * transactions that need to be resolved.  Recovery resets the minimum
+	 * transaction ID and logs the reset if that's appropriate, so we
+	 * don't need to do anything here in the recover case.
+	 */
+	if (TXN_ON(env) &&
+	    !FLD_ISSET(dbenv->lg_flags, DB_LOG_IN_MEMORY) &&
+	    F_ISSET(infop, REGION_CREATE) &&
+	    !LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL) &&
+	    (ret = __txn_reset(env)) != 0)
+		goto err;
+
+	/* The database environment is ready for business. */
+	if ((ret = __env_turn_on(env)) != 0)
+		goto err;
+
+	if (rep_check)
+		ret = __env_db_rep_exit(env);
+
+	/* Turn any application-specific max-write configuration back on. */
+	if (LF_ISSET(DB_INIT_MPOOL))
+		(void)__memp_set_config(dbenv, DB_MEMP_SUPPRESS_WRITE, 0);
+
+err:	if (ret == 0)
+		ENV_LEAVE(env, ip);
+	else {
+		/*
+		 * If we fail after creating regions, panic and remove them.
+		 *
+		 * !!!
+		 * No need to call __env_db_rep_exit, that work is done by the
+		 * calls to __env_refresh.
+		 */
+		infop = env->reginfo;
+		if (infop != NULL && F_ISSET(infop, REGION_CREATE)) {
+			ret = __env_panic(env, ret);
+
+			/* Refresh the DB_ENV so can use it to call remove. */
+			(void)__env_refresh(dbenv, orig_flags, rep_check);
+			(void)__env_remove_env(env);
+			(void)__env_refresh(dbenv, orig_flags, 0);
+		} else
+			(void)__env_refresh(dbenv, orig_flags, rep_check);
+		/* clear the fact that the region had been opened */
+		F_CLR(env, ENV_OPEN_CALLED);
+	}
+
+	return (ret);
 }

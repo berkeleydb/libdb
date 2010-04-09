@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: env_method.c,v 12.87 2008/02/18 20:06:07 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -29,26 +29,36 @@
 static int  __db_env_init __P((DB_ENV *));
 static void __env_err __P((const DB_ENV *, int, const char *, ...));
 static void __env_errx __P((const DB_ENV *, const char *, ...));
+static int  __env_get_create_dir __P((DB_ENV *, const char **));
 static int  __env_get_data_dirs __P((DB_ENV *, const char ***));
 static int  __env_get_flags __P((DB_ENV *, u_int32_t *));
 static int  __env_get_home __P((DB_ENV *, const char **));
 static int  __env_get_intermediate_dir_mode __P((DB_ENV *, const char **));
 static int  __env_get_shm_key __P((DB_ENV *, long *));
 static int  __env_get_thread_count __P((DB_ENV *, u_int32_t *));
+static int  __env_get_thread_id_fn __P((DB_ENV *,
+		void (**)(DB_ENV *, pid_t *, db_threadid_t *)));
+static int  __env_get_thread_id_string_fn __P((DB_ENV *,
+		char * (**)(DB_ENV *, pid_t, db_threadid_t, char *)));
+static int  __env_get_timeout __P((DB_ENV *, db_timeout_t *, u_int32_t));
 static int  __env_get_tmp_dir __P((DB_ENV *, const char **));
 static int  __env_get_verbose __P((DB_ENV *, u_int32_t, int *));
+static int  __env_get_app_dispatch
+		__P((DB_ENV *, int (**)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
 static int  __env_set_app_dispatch
 		__P((DB_ENV *, int (*)(DB_ENV *, DBT *, DB_LSN *, db_recops)));
 static int __env_set_event_notify
 		__P((DB_ENV *, void (*)(DB_ENV *, u_int32_t, void *)));
+static int  __env_get_feedback __P((DB_ENV *, void (**)(DB_ENV *, int, int)));
 static int  __env_set_feedback __P((DB_ENV *, void (*)(DB_ENV *, int, int)));
+static int  __env_get_isalive __P((DB_ENV *,
+		int (**)(DB_ENV *, pid_t, db_threadid_t, u_int32_t)));
 static int  __env_set_isalive __P((DB_ENV *,
 		int (*)(DB_ENV *, pid_t, db_threadid_t, u_int32_t)));
 static int  __env_set_thread_id __P((DB_ENV *, void (*)(DB_ENV *,
 		pid_t *, db_threadid_t *)));
 static int  __env_set_thread_id_string __P((DB_ENV *,
 		char * (*)(DB_ENV *, pid_t, db_threadid_t, char *)));
-static int  __env_set_thread_count __P((DB_ENV *, u_int32_t));
 static int  __env_set_rpc_server
 		__P((DB_ENV *, void *, const char *, long, long, u_int32_t));
 
@@ -178,6 +188,7 @@ __db_env_init(dbenv)
 	 * Initialize the method handles.
 	 */
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
+	dbenv->add_data_dir = __env_add_data_dir;
 	dbenv->cdsgroup_begin = __cdsgroup_begin;
 	dbenv->close = __env_close_pp;
 	dbenv->dbremove = __env_dbremove_pp;
@@ -186,16 +197,21 @@ __db_env_init(dbenv)
 	dbenv->errx = __env_errx;
 	dbenv->failchk = __env_failchk_pp;
 	dbenv->fileid_reset = __env_fileid_reset_pp;
+	dbenv->get_alloc = __env_get_alloc;
+	dbenv->get_app_dispatch = __env_get_app_dispatch;
 	dbenv->get_cache_max = __memp_get_cache_max;
 	dbenv->get_cachesize = __memp_get_cachesize;
+	dbenv->get_create_dir = __env_get_create_dir;
 	dbenv->get_data_dirs = __env_get_data_dirs;
 	dbenv->get_encrypt_flags = __env_get_encrypt_flags;
 	dbenv->get_errcall = __env_get_errcall;
 	dbenv->get_errfile = __env_get_errfile;
 	dbenv->get_errpfx = __env_get_errpfx;
+	dbenv->get_feedback = __env_get_feedback;
 	dbenv->get_flags = __env_get_flags;
 	dbenv->get_home = __env_get_home;
 	dbenv->get_intermediate_dir_mode = __env_get_intermediate_dir_mode;
+	dbenv->get_isalive = __env_get_isalive;
 	dbenv->get_lg_bsize = __log_get_lg_bsize;
 	dbenv->get_lg_dir = __log_get_lg_dir;
 	dbenv->get_lg_filemode = __log_get_lg_filemode;
@@ -210,11 +226,16 @@ __db_env_init(dbenv)
 	dbenv->get_mp_max_openfd = __memp_get_mp_max_openfd;
 	dbenv->get_mp_max_write = __memp_get_mp_max_write;
 	dbenv->get_mp_mmapsize = __memp_get_mp_mmapsize;
+	dbenv->get_mp_pagesize = __memp_get_mp_pagesize;
+	dbenv->get_mp_tablesize = __memp_get_mp_tablesize;
+	dbenv->get_msgcall = __env_get_msgcall;
 	dbenv->get_msgfile = __env_get_msgfile;
 	dbenv->get_open_flags = __env_get_open_flags;
 	dbenv->get_shm_key = __env_get_shm_key;
 	dbenv->get_thread_count = __env_get_thread_count;
-	dbenv->get_timeout = __lock_get_env_timeout;
+	dbenv->get_thread_id_fn = __env_get_thread_id_fn;
+	dbenv->get_thread_id_string_fn = __env_get_thread_id_string_fn;
+	dbenv->get_timeout = __env_get_timeout;
 	dbenv->get_tmp_dir = __env_get_tmp_dir;
 	dbenv->get_tx_max = __txn_get_tx_max;
 	dbenv->get_tx_timestamp = __txn_get_tx_timestamp;
@@ -261,7 +282,7 @@ __db_env_init(dbenv)
 	dbenv->mutex_unlock = __mutex_unlock_pp;
 	dbenv->open = __env_open_pp;
 	dbenv->remove = __env_remove;
-	dbenv->rep_elect = __rep_elect;
+	dbenv->rep_elect = __rep_elect_pp;
 	dbenv->rep_flush = __rep_flush;
 	dbenv->rep_get_clockskew = __rep_get_clockskew;
 	dbenv->rep_get_config = __rep_get_config;
@@ -270,7 +291,7 @@ __db_env_init(dbenv)
 	dbenv->rep_get_priority = __rep_get_priority;
 	dbenv->rep_get_request = __rep_get_request;
 	dbenv->rep_get_timeout = __rep_get_timeout;
-	dbenv->rep_process_message = __rep_process_message;
+	dbenv->rep_process_message = __rep_process_message_pp;
 	dbenv->rep_set_clockskew = __rep_set_clockskew;
 	dbenv->rep_set_config = __rep_set_config;
 	dbenv->rep_set_limit = __rep_set_limit;
@@ -278,8 +299,8 @@ __db_env_init(dbenv)
 	dbenv->rep_set_priority = __rep_set_priority;
 	dbenv->rep_set_request = __rep_set_request;
 	dbenv->rep_set_timeout = __rep_set_timeout;
-	dbenv->rep_set_transport = __rep_set_transport;
-	dbenv->rep_start = __rep_start;
+	dbenv->rep_set_transport = __rep_set_transport_pp;
+	dbenv->rep_start = __rep_start_pp;
 	dbenv->rep_stat = __rep_stat_pp;
 	dbenv->rep_stat_print = __rep_stat_print_pp;
 	dbenv->rep_sync = __rep_sync;
@@ -295,6 +316,7 @@ __db_env_init(dbenv)
 	dbenv->set_app_dispatch = __env_set_app_dispatch;
 	dbenv->set_cache_max = __memp_set_cache_max;
 	dbenv->set_cachesize = __memp_set_cachesize;
+	dbenv->set_create_dir = __env_set_create_dir;
 	dbenv->set_data_dir = __env_set_data_dir;
 	dbenv->set_encrypt = __env_set_encrypt;
 	dbenv->set_errcall = __env_set_errcall;
@@ -319,6 +341,8 @@ __db_env_init(dbenv)
 	dbenv->set_mp_max_openfd = __memp_set_mp_max_openfd;
 	dbenv->set_mp_max_write = __memp_set_mp_max_write;
 	dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
+	dbenv->set_mp_pagesize = __memp_set_mp_pagesize;
+	dbenv->set_mp_tablesize = __memp_set_mp_tablesize;
 	dbenv->set_msgcall = __env_set_msgcall;
 	dbenv->set_msgfile = __env_set_msgfile;
 	dbenv->set_paniccall = __env_set_paniccall;
@@ -327,7 +351,7 @@ __db_env_init(dbenv)
 	dbenv->set_thread_count = __env_set_thread_count;
 	dbenv->set_thread_id = __env_set_thread_id;
 	dbenv->set_thread_id_string = __env_set_thread_id_string;
-	dbenv->set_timeout = __lock_set_env_timeout;
+	dbenv->set_timeout = __env_set_timeout;
 	dbenv->set_tmp_dir = __env_set_tmp_dir;
 	dbenv->set_tx_max = __txn_set_tx_max;
 	dbenv->set_tx_timestamp = __txn_set_tx_timestamp;
@@ -414,6 +438,30 @@ __env_get_home(dbenv, homep)
 }
 
 /*
+ * __env_get_alloc --
+ *	{DB_ENV,DB}->get_alloc.
+ *
+ * PUBLIC: int  __env_get_alloc __P((DB_ENV *, void *(**)(size_t),
+ * PUBLIC:          void *(**)(void *, size_t), void (**)(void *)));
+ */
+int
+__env_get_alloc(dbenv, mal_funcp, real_funcp, free_funcp)
+	DB_ENV *dbenv;
+	void *(**mal_funcp) __P((size_t));
+	void *(**real_funcp) __P((void *, size_t));
+	void (**free_funcp) __P((void *));
+{
+
+	if (mal_funcp != NULL)
+		*mal_funcp = dbenv->db_malloc;
+	if (real_funcp != NULL)
+		*real_funcp = dbenv->db_realloc;
+	if (free_funcp != NULL)
+		*free_funcp = dbenv->db_free;
+	return (0);
+}
+
+/*
  * __env_set_alloc --
  *	{DB_ENV,DB}->set_alloc.
  *
@@ -436,6 +484,21 @@ __env_set_alloc(dbenv, mal_func, real_func, free_func)
 	dbenv->db_malloc = mal_func;
 	dbenv->db_realloc = real_func;
 	dbenv->db_free = free_func;
+	return (0);
+}
+
+/*
+ * __env_get_app_dispatch --
+ *	Get the transaction abort recover function.
+ */
+static int
+__env_get_app_dispatch(dbenv, app_dispatchp)
+	DB_ENV *dbenv;
+	int (**app_dispatchp) __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
+{
+
+	if (app_dispatchp != NULL)
+		*app_dispatchp = dbenv->app_dispatch;
 	return (0);
 }
 
@@ -674,7 +737,7 @@ __env_set_flags(dbenv, flags, on)
 {
 	ENV *env;
 	u_int32_t mapped_flags;
-	int ret;
+	int mem_on, ret;
 
 	env = dbenv->env;
 
@@ -718,13 +781,25 @@ __env_set_flags(dbenv, flags, on)
 	/*
 	 * DB_LOG_IN_MEMORY, DB_TXN_NOSYNC and DB_TXN_WRITE_NOSYNC are
 	 * mutually incompatible.  If we're setting one of them, clear all
-	 * current settings.
+	 * current settings.  If the environment is open, check to see that
+	 * logging is not in memory.
 	 */
 	if (LF_ISSET(DB_TXN_NOSYNC | DB_TXN_WRITE_NOSYNC)) {
 		F_CLR(dbenv, DB_ENV_TXN_NOSYNC | DB_ENV_TXN_WRITE_NOSYNC);
-		if ((LOGGING_ON(env) || !F_ISSET(env, ENV_OPEN_CALLED)) &&
-		    (ret = __log_set_config(dbenv, DB_LOG_IN_MEMORY, 0)) != 0)
-			return (ret);
+		if (!F_ISSET(env, ENV_OPEN_CALLED)) {
+		    if ((ret =
+			__log_set_config(dbenv, DB_LOG_IN_MEMORY, 0)) != 0)
+				return (ret);
+		} else if (LOGGING_ON(env)) {
+			if ((ret = __log_get_config(dbenv,
+			    DB_LOG_IN_MEMORY, &mem_on)) != 0)
+				return (ret);
+			if (mem_on == 1) {
+				__db_errx(env,
+"DB_TXN_NOSYNC and DB_TXN_WRITE_NOSYNC may not be used with DB_LOG_IN_MEMORY");
+				return (EINVAL);
+			}
+		}
 	}
 
 	mapped_flags = 0;
@@ -757,10 +832,33 @@ __env_set_data_dir(dbenv, dir)
 	DB_ENV *dbenv;
 	const char *dir;
 {
+	int ret;
+
+	if ((ret = __env_add_data_dir(dbenv, dir)) != 0)
+		return (ret);
+
+	if (dbenv->data_next == 1)
+		return (__env_set_create_dir(dbenv, dir));
+
+	return (0);
+}
+
+/*
+ * __env_add_data_dir --
+ *	DB_ENV->add_data_dir.
+ *
+ * PUBLIC: int  __env_add_data_dir __P((DB_ENV *, const char *));
+ */
+int
+__env_add_data_dir(dbenv, dir)
+	DB_ENV *dbenv;
+	const char *dir;
+{
 	ENV *env;
 	int ret;
 
 	env = dbenv->env;
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->add_data_dir");
 
 	/*
 	 * The array is NULL-terminated so it can be returned by get_data_dirs
@@ -785,6 +883,47 @@ __env_set_data_dir(dbenv, dir)
 	    dir, &dbenv->db_data_dir[dbenv->data_next++]);
 	dbenv->db_data_dir[dbenv->data_next] = NULL;
 	return (ret);
+}
+
+/*
+ * __env_set_create_dir --
+ *	DB_ENV->set_create_dir.
+ * The list of directories cannot change after opening the env and setting
+ * a pointer must be atomic so we do not need to mutex here even if multiple
+ * threads are using the DB_ENV handle.
+ *
+ * PUBLIC: int  __env_set_create_dir __P((DB_ENV *, const char *));
+ */
+int
+__env_set_create_dir(dbenv, dir)
+	DB_ENV *dbenv;
+	const char *dir;
+{
+	ENV *env;
+	int i;
+
+	env = dbenv->env;
+
+	for (i = 0; i < dbenv->data_next; i++)
+		if (strcmp(dir, dbenv->db_data_dir[i]) == 0)
+			break;
+
+	if (i == dbenv->data_next) {
+		__db_errx(env, "Directory %s not in environment list.", dir);
+		return (EINVAL);
+	}
+
+	dbenv->db_create_dir = dbenv->db_data_dir[i];
+	return (0);
+}
+
+static int
+__env_get_create_dir(dbenv, dirp)
+	DB_ENV *dbenv;
+	const char **dirp;
+{
+	*dirp = dbenv->db_create_dir;
+	return (0);
 }
 
 static int
@@ -949,11 +1088,35 @@ __env_set_errpfx(dbenv, errpfx)
 }
 
 static int
+__env_get_feedback(dbenv, feedbackp)
+	DB_ENV *dbenv;
+	void (**feedbackp) __P((DB_ENV *, int, int));
+{
+	if (feedbackp != NULL)
+		*feedbackp = dbenv->db_feedback;
+	return (0);
+}
+
+static int
 __env_set_feedback(dbenv, feedback)
 	DB_ENV *dbenv;
 	void (*feedback) __P((DB_ENV *, int, int));
 {
 	dbenv->db_feedback = feedback;
+	return (0);
+}
+
+/*
+ * __env_get_thread_id_fn --
+ *	DB_ENV->get_thread_id_fn
+ */
+static int
+__env_get_thread_id_fn(dbenv, idp)
+	DB_ENV *dbenv;
+	void (**idp) __P((DB_ENV *, pid_t *, db_threadid_t *));
+{
+	if (idp != NULL)
+		*idp = dbenv->thread_id;
 	return (0);
 }
 
@@ -971,6 +1134,21 @@ __env_set_thread_id(dbenv, id)
 }
 
 /*
+ * __env_get_threadid_string_fn --
+ *	DB_ENV->get_threadid_string_fn
+ */
+static int
+__env_get_thread_id_string_fn(dbenv, thread_id_stringp)
+	DB_ENV *dbenv;
+	char *(**thread_id_stringp)
+	    __P((DB_ENV *, pid_t, db_threadid_t, char *));
+{
+	if (thread_id_stringp != NULL)
+		*thread_id_stringp = dbenv->thread_id_string;
+	return (0);
+}
+
+/*
  * __env_set_threadid_string --
  *	DB_ENV->set_threadid_string
  */
@@ -980,6 +1158,29 @@ __env_set_thread_id_string(dbenv, thread_id_string)
 	char *(*thread_id_string) __P((DB_ENV *, pid_t, db_threadid_t, char *));
 {
 	dbenv->thread_id_string = thread_id_string;
+	return (0);
+}
+
+/*
+ * __env_get_isalive --
+ *	DB_ENV->get_isalive
+ */
+static int
+__env_get_isalive(dbenv, is_alivep)
+	DB_ENV *dbenv;
+	int (**is_alivep) __P((DB_ENV *, pid_t, db_threadid_t, u_int32_t));
+{
+	ENV *env;
+
+	env = dbenv->env;
+
+	if (F_ISSET(env, ENV_OPEN_CALLED) && env->thr_nbucket == 0) {
+		__db_errx(env,
+		    "is_alive method specified but no thread region allocated");
+		return (EINVAL);
+	}
+	if (is_alivep != NULL)
+		*is_alivep = dbenv->is_alive;
 	return (0);
 }
 
@@ -1021,8 +1222,10 @@ __env_get_thread_count(dbenv, countp)
 /*
  * __env_set_thread_count --
  *	DB_ENV->set_thread_count
+ *
+ * PUBLIC: int  __env_set_thread_count __P((DB_ENV *, u_int32_t));
  */
-static int
+int
 __env_set_thread_count(dbenv, count)
 	DB_ENV *dbenv;
 	u_int32_t count;
@@ -1035,6 +1238,22 @@ __env_set_thread_count(dbenv, count)
 	dbenv->thr_max = count;
 
 	return (0);
+}
+
+/*
+ * __env_get_msgcall --
+ *	{DB_ENV,DB}->get_msgcall.
+ *
+ * PUBLIC: void __env_get_msgcall
+ * PUBLIC:     __P((DB_ENV *, void (**)(const DB_ENV *, const char *)));
+ */
+void
+__env_get_msgcall(dbenv, msgcallp)
+	DB_ENV *dbenv;
+	void (**msgcallp) __P((const DB_ENV *, const char *));
+{
+	if (msgcallp != NULL)
+		*msgcallp = dbenv->db_msgcall;
 }
 
 /*
@@ -1185,6 +1404,7 @@ __env_get_verbose(dbenv, which, onoffp)
 	case DB_VERB_REP_MISC:
 	case DB_VERB_REP_MSGS:
 	case DB_VERB_REP_SYNC:
+	case DB_VERB_REP_TEST:
 	case DB_VERB_REPMGR_CONNFAIL:
 	case DB_VERB_REPMGR_MISC:
 	case DB_VERB_WAITSFOR:
@@ -1220,6 +1440,7 @@ __env_set_verbose(dbenv, which, on)
 	case DB_VERB_REP_MISC:
 	case DB_VERB_REP_MSGS:
 	case DB_VERB_REP_SYNC:
+	case DB_VERB_REP_TEST:
 	case DB_VERB_REPMGR_CONNFAIL:
 	case DB_VERB_REPMGR_MISC:
 	case DB_VERB_WAITSFOR:
@@ -1327,4 +1548,46 @@ __env_set_rpc_server(dbenv, cl, host, tsec, ssec, flags)
 
 	__db_errx(env, "Berkeley DB was not configured for RPC support");
 	return (DB_OPNOTSUP);
+}
+
+/*
+ * __env_get_timeout --
+ *	DB_ENV->get_timeout
+ */
+static int
+__env_get_timeout(dbenv, timeoutp, flags)
+	DB_ENV *dbenv;
+	db_timeout_t *timeoutp;
+	u_int32_t flags;
+{
+	int ret;
+
+	ret = 0;
+	if (flags == DB_SET_REG_TIMEOUT) {
+		*timeoutp = dbenv->envreg_timeout;
+	} else
+		ret = __lock_get_env_timeout(dbenv, timeoutp, flags);
+	return (ret);
+}
+
+/*
+ * __env_set_timeout --
+ *	DB_ENV->set_timeout
+ *
+ * PUBLIC: int __env_set_timeout __P((DB_ENV *, db_timeout_t, u_int32_t));
+ */
+int
+__env_set_timeout(dbenv, timeout, flags)
+	DB_ENV *dbenv;
+	db_timeout_t timeout;
+	u_int32_t flags;
+{
+	int ret;
+
+	ret = 0;
+	if (flags == DB_SET_REG_TIMEOUT)
+		dbenv->envreg_timeout = timeout;
+	else
+		ret = __lock_set_env_timeout(dbenv, timeout, flags);
+	return (ret);
 }

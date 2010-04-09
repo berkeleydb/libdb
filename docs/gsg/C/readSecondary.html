@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Reading Secondary Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="keyCreator.html" title="Implementing Key &#10;        &#10;        Extractors&#10;        " />
+    <link rel="prev" href="keyCreator.html" title="Implementing Key Extractors" />
     <link rel="next" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
   </head>
   <body>
@@ -32,17 +32,16 @@
             <h2 class="title" style="clear: both"><a id="readSecondary"></a>Reading Secondary Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Like a primary database, you can read records from your secondary
         database either by using the 
             
             <span>
-                <tt class="methodname">DB-&gt;get()</tt>
+                <code class="methodname">DB-&gt;get()</code>
                 
                 or
-                <tt class="methodname">DB-&gt;pget()</tt>
+                <code class="methodname">DB-&gt;pget()</code>
                 
             methods, 
             </span>
@@ -99,10 +98,10 @@ my_secondary_database-&gt;pget(my_secondary_database, NULL,
         if your secondary database supports duplicate records then
              
             <span>
-                <tt class="methodname">DB-&gt;get()</tt> 
+                <code class="methodname">DB-&gt;get()</code> 
                  
                 and
-                <tt class="methodname">DB-&gt;pget()</tt> 
+                <code class="methodname">DB-&gt;pget()</code> 
                  
             </span>
         only return the first record found in a matching duplicates set. If you 
@@ -110,7 +109,7 @@ my_secondary_database-&gt;pget(my_secondary_database, NULL,
             
             <span>
                 cursor opened on the secondary database. Cursors are described in 
-                <a href="Cursors.html">Using Cursors</a>.
+                <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.
             </span>
      </p>
     </div>
@@ -127,7 +126,7 @@ my_secondary_database-&gt;pget(my_secondary_database, NULL,
         <tr>
           <td width="40%" align="left" valign="top">Implementing Key 
         
-        Extractors
+        <span>Extractors</span>
          </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>

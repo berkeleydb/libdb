@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Reading Secondary Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="keyCreator.html" title="Implementing Key &#10;        &#10;        Extractors&#10;        " />
+    <link rel="prev" href="keyCreator.html" title="Implementing Key Extractors" />
     <link rel="next" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="readSecondary"></a>Reading Secondary Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Like a primary database, you can read records from your secondary
@@ -40,10 +39,10 @@
             
             <span>
                 
-                <tt class="methodname">Db::get()</tt>
+                <code class="methodname">Db::get()</code>
                 or
                 
-                <tt class="methodname">Db::pget()</tt>
+                <code class="methodname">Db::pget()</code>
             methods, 
             </span>
         or by using  
@@ -93,17 +92,17 @@ my_secondary_database.pget(NULL, &amp;key, &amp;pkey, &amp;pdata, 0);</pre>
              
             <span>
                  
-                <tt class="methodname">Db::get()</tt> 
+                <code class="methodname">Db::get()</code> 
                 and
                  
-                <tt class="methodname">Db::pget()</tt> 
+                <code class="methodname">Db::pget()</code> 
             </span>
         only return the first record found in a matching duplicates set. If you 
         want to see all the records related to a specific secondary key, then use a
             
             <span>
                 cursor opened on the secondary database. Cursors are described in 
-                <a href="Cursors.html">Using Cursors</a>.
+                <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.
             </span>
      </p>
     </div>
@@ -120,7 +119,7 @@ my_secondary_database.pget(NULL, &amp;key, &amp;pkey, &amp;pdata, 0);</pre>
         <tr>
           <td width="40%" align="left" valign="top">Implementing Key 
         
-        Extractors
+        <span>Extractors</span>
          </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>

@@ -7,18 +7,17 @@ use lib 't' ;
 
 use BerkeleyDB; 
 use util ;
+use Test::More;
 
-BEGIN
-{
-    if ($BerkeleyDB::db_version < 2) {
-        print "1..0 # Skip: this needs Berkeley DB 2.x.x or better\n" ;
-        exit 0 ;
-    }
+
+
+BEGIN {
+    plan(skip_all => "this needs BerkeleyDB 2.x or better" )
+        if $BerkeleyDB::db_version < 2;
+
+    plan tests => 12;    
 }
 
-
-
-print "1..12\n";
 
 my $Dfile = "dbhash.tmp";
 unlink $Dfile;
@@ -31,20 +30,20 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
 
     my $home = "./fred" ;
-    ok 1, my $lexD = new LexDir($home) ;
+    ok my $lexD = new LexDir($home) ;
 
-    ok 2, my $env = new BerkeleyDB::Env -Flags => DB_CREATE|DB_INIT_MPOOL,
+    ok my $env = new BerkeleyDB::Env -Flags => DB_CREATE|DB_INIT_MPOOL,
     					 -Home => $home, @StdErrFile ;
 
-    ok 3, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+    ok my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
-    ok 4, ! $env->cds_enabled() ;
-    ok 5, ! $db->cds_enabled() ;
+    ok ! $env->cds_enabled() ;
+    ok ! $db->cds_enabled() ;
 
     eval { $db->cds_lock() };
-    ok 6, $@ =~ /CDS not enabled for this database/;
+    ok $@ =~ /CDS not enabled for this database/;
 
     undef $db;
     undef $env ;
@@ -54,20 +53,20 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
 
     my $home = "./fred" ;
-    ok 7, my $lexD = new LexDir($home) ;
+    ok my $lexD = new LexDir($home) ;
 
-    ok 8, my $env = new BerkeleyDB::Env -Flags => DB_INIT_CDB|DB_CREATE|DB_INIT_MPOOL,
+    ok my $env = new BerkeleyDB::Env -Flags => DB_INIT_CDB|DB_CREATE|DB_INIT_MPOOL,
     					 -Home => $home, @StdErrFile ;
 
-    ok 9, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+    ok my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
-    ok 10,   $env->cds_enabled() ;
-    ok 11,   $db->cds_enabled() ;
+    ok $env->cds_enabled() ;
+    ok $db->cds_enabled() ;
 
     my $cds = $db->cds_lock() ;
-    ok 12, $cds ;
+    ok $cds ;
 
     undef $db;
     undef $env ;

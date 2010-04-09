@@ -3,19 +3,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>ExampleDatabasePut.class</title>
+    <title>ExampleDatabasePut.java</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dpl_example.html" title="Chapter 6. A DPL Example" />
-    <link rel="previous" href="dataaccessorclass.html" title="DataAccessor.class" />
-    <link rel="next" href="dpl_exampleinventoryread.html" title="ExampleInventoryRead.class" />
+    <link rel="prev" href="dataaccessorclass.html" title="DataAccessor.java" />
+    <link rel="next" href="dpl_exampleinventoryread.html" title="ExampleInventoryRead.java" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">ExampleDatabasePut.class</th>
+          <th colspan="3" align="center">ExampleDatabasePut.java</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="dataaccessorclass.html">Prev</a> </td>
@@ -29,16 +29,15 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="dpl_exampledatabaseput"></a>ExampleDatabasePut.class</h2>
+            <h2 class="title" style="clear: both"><a id="dpl_exampledatabaseput"></a>ExampleDatabasePut.java</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                    Our example reads inventory and vendor information from
                    flat text files, encapsulates this data in objects of
                    the appropriate type, and then writes each object to an
-                   <tt class="classname">EntityStore</tt>.
+                   <code class="classname">EntityStore</code>.
            </p>
       <p>
                 To begin, we import the Java classes that our example
@@ -67,12 +66,12 @@ import com.sleepycat.db.DatabaseException; </pre>
             Now we can begin the class itself. Here we set default paths
             for the on-disk resources that we require (the environment
             home, and the location of the text files containing our sample
-            data). We also declare <tt class="classname">DataAccessor</tt>
-            and <tt class="classname">MyDbEnv</tt> members. We describe these
+            data). We also declare <code class="classname">DataAccessor</code>
+            and <code class="classname">MyDbEnv</code> members. We describe these
             classes and show their implementation in
-            <a href="dataaccessorclass.html">DataAccessor.class</a>
+            <a class="xref" href="dataaccessorclass.html" title="DataAccessor.java">DataAccessor.java</a>
             and
-            <a href="mydbenv-persist.html">MyDbEnv</a>.
+            <a class="xref" href="mydbenv-persist.html" title="MyDbEnv">MyDbEnv</a>.
         </p>
       <pre class="programlisting">public class ExampleDatabasePut {
 
@@ -85,7 +84,7 @@ import com.sleepycat.db.DatabaseException; </pre>
     // Encapsulates the environment and data store.
     private static MyDbEnv myDbEnv = new MyDbEnv();</pre>
       <p>
-            Next, we provide our <tt class="methodname">usage()</tt>
+            Next, we provide our <code class="methodname">usage()</code>
             method. The command line options provided there are necessary
             only if the default values to the on-disk resources are not
             sufficient.
@@ -96,19 +95,19 @@ import com.sleepycat.db.DatabaseException; </pre>
         System.exit(-1);
     } </pre>
       <p>
-        Our <tt class="methodname">main()</tt> method is also reasonably
+        Our <code class="methodname">main()</code> method is also reasonably
         self-explanatory. We simply instantiate an
-        <tt class="classname">ExampleDatabasePut</tt> object there and then
-        call its <tt class="methodname">run()</tt> method. We also provide a
-        top-level <tt class="literal">try</tt> block there for any exceptions that might be thrown
+        <code class="classname">ExampleDatabasePut</code> object there and then
+        call its <code class="methodname">run()</code> method. We also provide a
+        top-level <code class="literal">try</code> block there for any exceptions that might be thrown
         during runtime.
     </p>
       <p>
-        Notice that the <tt class="literal">finally</tt> statement in the
-        top-level <tt class="literal">try</tt> block calls
-        <tt class="methodname">MyDbEnv.close()</tt>. This method closes our
-        <tt class="classname">EntityStore</tt> and <tt class="classname">Environment</tt>
-        objects. By placing it here in the <tt class="literal">finally</tt>
+        Notice that the <code class="literal">finally</code> statement in the
+        top-level <code class="literal">try</code> block calls
+        <code class="methodname">MyDbEnv.close()</code>. This method closes our
+        <code class="classname">EntityStore</code> and <code class="classname">Environment</code>
+        objects. By placing it here in the <code class="literal">finally</code>
         statement, we can make sure that our store and environment are
         always cleanly closed.
     </p>
@@ -128,23 +127,23 @@ import com.sleepycat.db.DatabaseException; </pre>
         System.out.println("All done.");
     } </pre>
       <p>
-               Our <tt class="methodname">run()</tt> method does four
-            things. It calls <tt class="methodname">MyDbEnv.setup()</tt>,
-            which opens our <tt class="classname">Environment</tt> and
-            <tt class="classname">EntityStore</tt>.  It then instantiates a
-            <tt class="classname">DataAccessor</tt> object, which we will use
+               Our <code class="methodname">run()</code> method does four
+            things. It calls <code class="methodname">MyDbEnv.setup()</code>,
+            which opens our <code class="classname">Environment</code> and
+            <code class="classname">EntityStore</code>.  It then instantiates a
+            <code class="classname">DataAccessor</code> object, which we will use
             to write data to the store.  It calls
-            <tt class="methodname">loadVendorsDb()</tt> which loads all of the
+            <code class="methodname">loadVendorsDb()</code> which loads all of the
             vendor information. And then it calls
-            <tt class="methodname">loadInventoryDb()</tt> which loads all of
+            <code class="methodname">loadInventoryDb()</code> which loads all of
             the inventory information.
        </p>
       <p>
-            Notice that the <tt class="classname">MyDbEnv</tt>
+            Notice that the <code class="classname">MyDbEnv</code>
             object is being setup as read-write. This results in the
-            <tt class="classname">EntityStore</tt> being opened for
+            <code class="classname">EntityStore</code> being opened for
             transactional support. 
-            (See <a href="mydbenv-persist.html">MyDbEnv</a>
+            (See <a class="xref" href="mydbenv-persist.html" title="MyDbEnv">MyDbEnv</a>
             for implementation details.)
         </p>
       <pre class="programlisting">    private void run(String args[])
@@ -166,23 +165,23 @@ import com.sleepycat.db.DatabaseException; </pre>
         loadInventoryDb();
     } </pre>
       <p>
-            We can now implement the <tt class="methodname">loadVendorsDb()</tt>
+            We can now implement the <code class="methodname">loadVendorsDb()</code>
             method. This method is responsible for reading the vendor
             contact information from the appropriate flat-text file,
-            populating <tt class="classname">Vendor</tt> class objects with the
-            data and then writing it to the <tt class="classname">EntityStore</tt>.
+            populating <code class="classname">Vendor</code> class objects with the
+            data and then writing it to the <code class="classname">EntityStore</code>.
             As explained above, each individual object is written with
             transactional support. However, because a transaction handle is
             not explicitly used, the write is performed using auto-commit.
-            This happens because the <tt class="classname">EntityStore</tt>
+            This happens because the <code class="classname">EntityStore</code>
             was opened to support transactions.
     </p>
       <p>
             To actually write each class to the
-            <tt class="classname">EntityStore</tt>, we simply call the
-            <tt class="methodname">PrimaryIndex.put()</tt> method for the
-            <tt class="classname">Vendor</tt> entity instance. We obtain this
-            method from our <tt class="classname">DataAccessor</tt>
+            <code class="classname">EntityStore</code>, we simply call the
+            <code class="methodname">PrimaryIndex.put()</code> method for the
+            <code class="classname">Vendor</code> entity instance. We obtain this
+            method from our <code class="classname">DataAccessor</code>
             class.
     </p>
       <pre class="programlisting">    private void loadVendorsDb()
@@ -212,9 +211,9 @@ import com.sleepycat.db.DatabaseException; </pre>
         }
     } </pre>
       <p>
-            Now we can implement our <tt class="methodname">loadInventoryDb()</tt>
+            Now we can implement our <code class="methodname">loadInventoryDb()</code>
             method. This does exactly the same thing as the
-            <tt class="methodname">loadVendorsDb()</tt>
+            <code class="methodname">loadVendorsDb()</code>
             method.
     </p>
       <pre class="programlisting">    private void loadInventoryDb()
@@ -322,11 +321,11 @@ import com.sleepycat.db.DatabaseException; </pre>
           <td width="40%" align="right"> <a accesskey="n" href="dpl_exampleinventoryread.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DataAccessor.class </td>
+          <td width="40%" align="left" valign="top">DataAccessor.java </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> ExampleInventoryRead.class</td>
+          <td width="40%" align="right" valign="top"> ExampleInventoryRead.java</td>
         </tr>
       </table>
     </div>

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredSortedKeySet.java,v 12.8 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -33,7 +33,9 @@ import com.sleepycat.db.Database;
  *
  * @author Mark Hayes
  */
-public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
+public class StoredSortedKeySet<K>
+    extends StoredKeySet<K>
+    implements SortedSet<K> {
 
     /**
      * Creates a sorted key set view of a {@link Database}.
@@ -52,7 +54,8 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredSortedKeySet(Database database, EntryBinding keyBinding,
+    public StoredSortedKeySet(Database database,
+                              EntryBinding<K> keyBinding,
                               boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, null, null,
@@ -73,7 +76,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      *
      * @return null.
      */
-    public Comparator comparator() {
+    public Comparator<? super K> comparator() {
 
         return null;
     }
@@ -87,7 +90,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object first() {
+    public K first() {
 
         return getFirstOrLast(true);
     }
@@ -101,7 +104,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object last() {
+    public K last() {
 
         return getFirstOrLast(false);
     }
@@ -121,7 +124,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toKey) {
+    public SortedSet<K> headSet(K toKey) {
 
         return subSet(null, false, toKey, false);
     }
@@ -143,7 +146,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toKey, boolean toInclusive) {
+    public SortedSet<K> headSet(K toKey, boolean toInclusive) {
 
         return subSet(null, false, toKey, toInclusive);
     }
@@ -163,7 +166,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromKey) {
+    public SortedSet<K> tailSet(K fromKey) {
 
         return subSet(fromKey, true, null, false);
     }
@@ -185,7 +188,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromKey, boolean fromInclusive) {
+    public SortedSet<K> tailSet(K fromKey, boolean fromInclusive) {
 
         return subSet(fromKey, fromInclusive, null, false);
     }
@@ -207,7 +210,7 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromKey, Object toKey) {
+    public SortedSet<K> subSet(K fromKey, K toKey) {
 
         return subSet(fromKey, true, toKey, false);
     }
@@ -234,9 +237,10 @@ public class StoredSortedKeySet extends StoredKeySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromKey, boolean fromInclusive,
-                            Object toKey, boolean toInclusive) {
-
+    public SortedSet<K> subSet(K fromKey,
+                               boolean fromInclusive,
+                               K toKey,
+                               boolean toInclusive) {
         try {
             return new StoredSortedKeySet(
                view.subView(fromKey, fromInclusive, toKey, toInclusive, null));

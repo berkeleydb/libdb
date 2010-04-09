@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: testall,v 12.0 2004/11/17 03:44:48 bostic Exp $
+#	$Id$
 #
 # Run all the C++ regression tests
 

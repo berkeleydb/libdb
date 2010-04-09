@@ -1,5 +1,9 @@
 /*
- * $Id: b_util.c,v 1.7 2008/04/10 06:25:25 david Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 
 #include "bench.h"
@@ -79,7 +83,7 @@ b_util_dir_teardown()
 
 /*
  * testdir_remove --
- *	Remove a directory and all its contents, the "dir" must contain no 
+ *	Remove a directory and all its contents, the "dir" must contain no
  *	subdirectories, because testdir_remove will not recursively delete
  *	all subdirectories.
  */
@@ -128,7 +132,6 @@ file_err:		fprintf(stderr, "%s: %s: %s\n",
 		    "%s: %s: %s\n", progname, dir, db_strerror(errno));
 	return (ret);
 }
-
 
 void
 b_util_abort()

@@ -3,19 +3,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>ExampleInventoryRead.class</title>
+    <title>ExampleInventoryRead.java</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dpl_example.html" title="Chapter 6. A DPL Example" />
-    <link rel="previous" href="dpl_exampledatabaseput.html" title="ExampleDatabasePut.class" />
+    <link rel="prev" href="dpl_exampledatabaseput.html" title="ExampleDatabasePut.java" />
     <link rel="next" href="baseapi.html" title="Part II. Programming with the Base API" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">ExampleInventoryRead.class</th>
+          <th colspan="3" align="center">ExampleInventoryRead.java</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="dpl_exampledatabaseput.html">Prev</a> </td>
@@ -29,33 +29,32 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="dpl_exampleinventoryread"></a>ExampleInventoryRead.class</h2>
+            <h2 class="title" style="clear: both"><a id="dpl_exampleinventoryread"></a>ExampleInventoryRead.java</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-                    <tt class="classname">ExampleInventoryRead</tt>
+                    <code class="classname">ExampleInventoryRead</code>
                     retrieves
                     inventory information from our entity store and
                     displays it. When it displays each inventory item, it
                     also displays the related vendor contact information.
             </p>
       <p>
-                    <tt class="classname">ExampleInventoryRead</tt>
+                    <code class="classname">ExampleInventoryRead</code>
                     can do one of two things. If you provide no search
                     criteria, it displays all of the inventory items in the
                     store. If you provide an item name (using the
-                    <tt class="literal">-s</tt> command line switch), then just
+                    <code class="literal">-s</code> command line switch), then just
                     those inventory items using that name are displayed.
             </p>
       <p>
                     The beginning of our example is almost identical to our
-                    <tt class="classname">ExampleDatabasePut</tt>
+                    <code class="classname">ExampleDatabasePut</code>
                     example program. We
                     repeat that example code here for the sake of
                     completeness. For a complete walk-through of it, see
-                    the previous section (<a href="dpl_exampledatabaseput.html">ExampleDatabasePut.class</a>).
+                    the previous section (<a class="xref" href="dpl_exampledatabaseput.html" title="ExampleDatabasePut.java">ExampleDatabasePut.java</a>).
             </p>
       <pre class="programlisting">package persist.gettingStarted;
 
@@ -122,21 +121,21 @@ public class ExampleInventoryRead {
             The first method that we provide is used to show inventory
             items related to a given inventory name. This method is called
             only if an inventory name is passed to
-            <tt class="classname">ExampleInventoryRead</tt>
-            via the <tt class="literal">-s</tt> option. Given the sample data
+            <code class="classname">ExampleInventoryRead</code>
+            via the <code class="literal">-s</code> option. Given the sample data
             that we provide with this example, each matching inventory name
             will result in the display of three inventory objects.
     </p>
       <p>
             To display these objects we use the
-            <tt class="classname">Inventory</tt> class'
-            <tt class="literal">inventoryByName</tt> secondary index to retrieve
-            an <tt class="classname">EntityCursor</tt>, and then we iterate
+            <code class="classname">Inventory</code> class'
+            <code class="literal">inventoryByName</code> secondary index to retrieve
+            an <code class="classname">EntityCursor</code>, and then we iterate
             over the resulting objects using the cursor.
     </p>
       <p>
             Notice that this method calls
-            <tt class="methodname">displayInventoryRecord()</tt>
+            <code class="methodname">displayInventoryRecord()</code>
             to display each individual object. We show this
             method a little later in the example.
     </p>
@@ -157,11 +156,11 @@ public class ExampleInventoryRead {
         }
     } </pre>
       <p>
-            Next we implement <tt class="methodname">showAllInventory()</tt>,
-            which shows all of the <tt class="classname">Inventory</tt>
+            Next we implement <code class="methodname">showAllInventory()</code>,
+            which shows all of the <code class="classname">Inventory</code>
             objects in the store.  To do this, we
-            obtain an <tt class="classname">EntityCursor</tt>
-            from the <tt class="classname">Inventory</tt> class'
+            obtain an <code class="classname">EntityCursor</code>
+            from the <code class="classname">Inventory</code> class'
             primary index and, again, we iterate using that cursor. 
      </p>
       <pre class="programlisting">    // Displays all the inventory items in the store
@@ -183,14 +182,14 @@ public class ExampleInventoryRead {
     } </pre>
       <p>
                 Now we implement
-                <tt class="methodname">displayInventoryRecord()</tt>. This
-                uses the getter methods on the <tt class="classname">Inventory</tt> 
+                <code class="methodname">displayInventoryRecord()</code>. This
+                uses the getter methods on the <code class="classname">Inventory</code> 
                 class to obtain the information that we want to display.
                 The only thing interesting about this method is that we
-                obtain <tt class="classname">Vendor</tt> objects within.
-                The vendor objects are retrieved <tt class="classname">Vendor</tt> 
+                obtain <code class="classname">Vendor</code> objects within.
+                The vendor objects are retrieved <code class="classname">Vendor</code> 
                 objects using their primary index. We get the key
-                for the retrieval from the <tt class="classname">Inventory</tt>
+                for the retrieval from the <code class="classname">Inventory</code>
                 object that we are displaying at the time.
             </p>
       <pre class="programlisting">    private void displayInventoryRecord(Inventory theInventory)
@@ -257,7 +256,7 @@ public class ExampleInventoryRead {
           <td width="40%" align="right"> <a accesskey="n" href="baseapi.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">ExampleDatabasePut.class </td>
+          <td width="40%" align="left" valign="top">ExampleDatabasePut.java </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

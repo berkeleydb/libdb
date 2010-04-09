@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: recd020.tcl,v 12.8 2008/01/12 13:42:47 bostic Exp $
+# $Id$
 #
 # TEST	recd020
 # TEST	Test creation of intermediate directories -- an
@@ -63,7 +63,7 @@ proc recd020 { method args } {
 	error_check_good env [is_valid_env $env] TRUE
 
 	puts "\tRecd020.d: Reopen test file to verify success."
-	set db [berkdb_open -env $env $intdir/$testfile]
+	set db [eval {berkdb_open} -env $env $args $intdir/$testfile]
 	error_check_good db_open [is_valid_db $db] TRUE
 	for { set i 1 } { $i <= $nentries } { incr i } {
 		set ret [$db get $i]

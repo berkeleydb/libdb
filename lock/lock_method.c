@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_method.c,v 12.25 2008/05/07 12:27:35 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -92,7 +92,7 @@ __lock_get_lk_conflicts(dbenv, lk_conflictsp, lk_modesp)
 			*lk_conflictsp = lt->conflicts;
 		if (lk_modesp != NULL)
 			*lk_modesp = ((DB_LOCKREGION *)
-			    (lt->reginfo.primary))->stat.st_nmodes;
+			    (lt->reginfo.primary))->nmodes;
 	} else {
 		if (lk_conflictsp != NULL)
 			*lk_conflictsp = dbenv->lk_conflicts;

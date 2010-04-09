@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep026.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep026
 # TEST	Replication elections - simulate a crash after sending
@@ -12,6 +12,9 @@ proc rep026 { method args } {
 	source ./include.tcl
 
 	global mixed_mode_logging
+	global databases_in_memory 
+	global repfiles_in_memory
+
 	set tnum "026"
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -28,11 +31,20 @@ proc rep026 { method args } {
 		return
 	}
 
-	# This test uses recovery, so mixed-mode testing isn't
-	# appropriate.
-	if { $mixed_mode_logging > 0 } {
+	# This test uses recovery, so mixed-mode testing and in-memory
+	# database testing aren't appropriate.
+	if { $mixed_mode_logging > 0  } {
 		puts "Rep$tnum: Skipping for mixed-mode logging."
 		return
+	}
+	if { $databases_in_memory == 1 } {
+		puts "Rep$tnum: Skipping for in-memory databases."
+		return
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
 	}
 
 	global rand_init
@@ -42,7 +54,7 @@ proc rep026 { method args } {
 	set logsets [create_logsets [expr $nclients + 1]]
 	foreach l $logsets {
 		puts "Rep$tnum ($method): Election generations -\
-		    simulate crash after sending a vote."
+		    simulate crash after sending a vote $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		for { set i 0 } { $i < $nclients } { incr i } {
 			puts "Rep$tnum: Client $i logs are\
@@ -55,12 +67,18 @@ proc rep026 { method args } {
 proc rep026_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global machids
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -86,7 +104,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env -create -log_max 1000000 $verbargs \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -97,7 +115,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -event rep_event \
+		    -event rep_event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -111,7 +129,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
@@ -180,7 +198,6 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set err_cmd($elector) "electvote1"
 		run_election env_cmd envlist err_cmd pri crash $qdir \
 		    $msg $elector $nsites $nvotes $nclients $winner 0 test.db
-
 		set msg "\tRep$tnum.$let.3"
 		puts "\t$msg: Close and reopen elector with recovery."
 		error_check_good \
@@ -209,7 +226,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 			set clientenv($i) [lindex $pair 0]
 			set newegen($i) [stat_field $clientenv($i) \
 			    rep_stat "Election generation number"]
-			if { $i == $elector } {
+			if { $i == $elector && $repfiles_in_memory == 0 } {
 				error_check_good \
 				    egen+1 $newegen($i) [expr $egen($i) + 1]
 			} else {
@@ -245,7 +262,15 @@ proc rep026_sub { method nclients tnum logset largs } {
 			set clientenv($i) [lindex $pair 0]
 			set newegen($i) [stat_field \
 			    $clientenv($i) rep_stat "Election generation number"]
-			set mingen [expr $egen($i) + 2]
+
+			# If rep files are in-memory, egen value must come
+			# from other sites instead of the egen file, and 
+			# will not increase as quickly.
+			if { $repfiles_in_memory } {
+				set mingen [expr $egen($i) + 1]
+			} else {
+				set mingen [expr $egen($i) + 2]
+			}
 			error_check_good egen+more($i) \
 			    [expr $newegen($i) >= $mingen] 1
 		}

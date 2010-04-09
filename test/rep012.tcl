@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep012.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep012
 # TEST	Replication and dead DB handles.
@@ -15,6 +15,9 @@
 proc rep012 { method { niter 10 } { tnum "012" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -27,6 +30,21 @@ proc rep012 { method { niter 10 } { tnum "012" } args } {
 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
+	
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
 
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
@@ -38,7 +56,7 @@ proc rep012 { method { niter 10 } { tnum "012" } args } {
 				continue
 			}
 			puts "Rep$tnum ($method $r):\
-			    Replication and dead db handles."
+			    Replication and dead db handles $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 			puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
@@ -49,6 +67,8 @@ proc rep012 { method { niter 10 } { tnum "012" } args } {
 
 proc rep012_sub { method niter tnum logset recargs largs } {
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global verbose_check_secondaries
 	global rep_verbose
 	global verbose_type
@@ -56,6 +76,11 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -86,7 +111,7 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -errpfx ENV0 $verbargs \
+	    $m_logargs -errpfx ENV0 $verbargs $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env0 [eval $ma_envcmd $recargs -rep_master]
 	set masterenv $env0
@@ -94,20 +119,26 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -errpfx ENV1 $verbargs \
+	    $c_logargs -errpfx ENV1 $verbargs $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env1 [eval $cl_envcmd $recargs -rep_client]
 	set clientenv $env1
 
 	repladd 3
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -errpfx ENV2 $verbargs \
+	    $c2_logargs -errpfx ENV2 $verbargs $repmemargs \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set cl2env [eval $cl2_envcmd $recargs -rep_client]
 
-	set testfile "test$tnum.db"
-	set pname "primary$tnum.db"
-	set sname "secondary$tnum.db"
+	if { $databases_in_memory } {
+		set testfile { "" test$tnum.db }
+		set pname { "" primary$tnum.db }
+		set sname { "" secondary$tnum.db }
+	} else {
+		set testfile "test$tnum.db"
+		set pname "primary$tnum.db"
+		set sname "secondary$tnum.db"
+	}
 	set omethod [convert_method $method]
 	set env0db [eval {berkdb_open_noerr -env $env0 -auto_commit \
 	    -create -mode 0644} $largs $omethod $testfile]
@@ -145,7 +176,7 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a.0: Running rep_test in replicated env."
-	eval rep_test $method $masterenv $masterdb $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv $masterdb $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	if { $do_secondary } {
@@ -159,10 +190,24 @@ proc rep012_sub { method niter tnum logset recargs largs } {
 	} else {
 		puts "\tRep$tnum.b: Skipping secondaries for method $method"
 	}
-	set nstart $niter
+
+	# Check that databases are in-memory or on-disk as expected.
+	# We can only check the secondaries if secondaries are allowed for 
+	# this access method. 
+	set names [list $testfile]
+	if { $do_secondary } {
+		lappend names $pname $sname
+	}
+	foreach name $names {
+		eval check_db_location $masterenv $name
+		eval check_db_location $clientenv $name
+		eval check_db_location $cl2env $name
+	}
+	
 	puts "\tRep$tnum.c: Run test in master and client 2 only"
+	set nstart $niter
 	eval rep_test\
-	    $method $masterenv $masterdb $niter $nstart $nstart 0 0 $largs
+	    $method $masterenv $masterdb $niter $nstart $nstart 0 $largs
 
 	# Ignore messages for $env1.
 	set envlist "{$env0 1} {$cl2env 3}"

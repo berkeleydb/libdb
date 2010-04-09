@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: hash_verify.c,v 12.33 2008/03/12 22:33:03 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,6 +13,7 @@
 #include "dbinc/db_verify.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
+#include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
 static int __ham_dups_unsorted __P((DB *, u_int8_t *, u_int32_t));
@@ -184,6 +185,7 @@ __ham_vrfy(dbp, vdp, h, pgno, flags)
 	db_pgno_t pgno;
 	u_int32_t flags;
 {
+	DBC *dbc;
 	ENV *env;
 	VRFY_PAGEINFO *pip;
 	u_int32_t ent, himark, inpend;
@@ -242,8 +244,11 @@ __ham_vrfy(dbp, vdp, h, pgno, flags)
 				goto err;
 		}
 
-	if (!LF_ISSET(DB_NOORDERCHK) && TYPE(h) == P_HASH && (ret =
-	    __ham_verify_sorted_page(dbp, vdp->thread_info, NULL, h)) != 0)
+	if ((ret = __db_cursor_int(dbp, vdp->thread_info, NULL, DB_HASH,
+	    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
+		return (ret);
+	if (!LF_ISSET(DB_NOORDERCHK) && TYPE(h) == P_HASH &&
+	    (ret = __ham_verify_sorted_page(dbc, h)) != 0)
 		isbad = 1;
 
 err:	if ((t_ret =
@@ -657,13 +662,15 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 						goto err;
 				}
 			}
+		/* Close the cursor on vdp, open one on dbp */
 		if ((ret = __db_vrfy_ccclose(cc)) != 0)
 			goto err;
-		cc = NULL;
-
+		if ((ret = __db_cursor_int(dbp, vdp->thread_info, NULL,
+		    DB_HASH, PGNO_INVALID, 0, DB_LOCK_INVALIDID, &cc)) != 0)
+			goto err;
 		/* If it's safe to check that things hash properly, do so. */
 		if (isbad == 0 && !LF_ISSET(DB_NOORDERCHK) &&
-		    (ret = __ham_vrfy_hashing(dbp, pip->entries,
+		    (ret = __ham_vrfy_hashing(cc, pip->entries,
 		    m, bucket, pgno, flags, hfunc)) != 0) {
 			if (ret == DB_VERIFY_BAD)
 				isbad = 1;
@@ -717,13 +724,13 @@ err:	if (cc != NULL && ((t_ret = __db_vrfy_ccclose(cc)) != 0) && ret == 0)
  * __ham_vrfy_hashing --
  *	Verify that all items on a given hash page hash correctly.
  *
- * PUBLIC: int __ham_vrfy_hashing __P((DB *,
+ * PUBLIC: int __ham_vrfy_hashing __P((DBC *,
  * PUBLIC:     u_int32_t, HMETA *, u_int32_t, db_pgno_t, u_int32_t,
  * PUBLIC:     u_int32_t (*) __P((DB *, const void *, u_int32_t))));
  */
 int
-__ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
-	DB *dbp;
+__ham_vrfy_hashing(dbc, nentries, m, thisbucket, pgno, flags, hfunc)
+	DBC *dbc;
 	u_int32_t nentries;
 	HMETA *m;
 	u_int32_t thisbucket;
@@ -731,6 +738,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 	u_int32_t flags;
 	u_int32_t (*hfunc) __P((DB *, const void *, u_int32_t));
 {
+	DB *dbp;
 	DBT dbt;
 	DB_MPOOLFILE *mpf;
 	DB_THREAD_INFO *ip;
@@ -739,6 +747,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 	int ret, t_ret, isbad;
 	u_int32_t hval, bucket;
 
+	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	ret = isbad = 0;
 
@@ -758,8 +767,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 		 * can tweak this a bit if this proves to be a bottleneck,
 		 * but for now, take the easy route.
 		 */
-		if ((ret = __db_ret(dbp, ip,
-		     NULL, h, i, &dbt, NULL, NULL)) != 0)
+		if ((ret = __db_ret(dbc, h, i, &dbt, NULL, NULL)) != 0)
 			goto err;
 		hval = hfunc(dbp, dbt.data, dbt.size);
 
@@ -804,7 +812,7 @@ __ham_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 	DBT dbt, key_dbt, unkdbt;
 	db_pgno_t dpgno;
 	int ret, err_ret, t_ret;
-	u_int32_t himark, i;
+	u_int32_t himark, i, ovfl_bufsz;
 	u_int8_t *hk, *p;
 	void *buf, *key_buf;
 	db_indx_t dlen, len, tlen;
@@ -822,6 +830,7 @@ __ham_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 	 */
 	if ((ret = __os_malloc(dbp->env, dbp->pgsize, &buf)) != 0)
 		return (ret);
+    ovfl_bufsz = dbp->pgsize;
 
 	himark = dbp->pgsize;
 	for (i = 0;; i++) {
@@ -829,14 +838,21 @@ __ham_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 		if (!LF_ISSET(DB_AGGRESSIVE) && i >= NUM_ENT(h))
 			break;
 
-		/* Verify the current item. */
+		/* 
+		 * Verify the current item. If we're beyond NUM_ENT errors are
+		 * expected and ignored.
+		 */
 		ret = __db_vrfy_inpitem(dbp,
 		    h, pgno, i, 0, flags, &himark, NULL);
 		/* If this returned a fatality, it's time to break. */
-		if (ret == DB_VERIFY_FATAL)
+		if (ret == DB_VERIFY_FATAL) {
+			if (i >= NUM_ENT(h))
+				ret = 0;
 			break;
-
-		if (ret == 0) {
+		} else if (ret != 0 && i >= NUM_ENT(h)) {
+			/* Not a reportable error, but don't salvage the item. */
+			ret = 0;
+		} else if (ret == 0) {
 			/* Set len to total entry length. */
 			len = LEN_HITEM(dbp, h, dbp->pgsize, i);
 			hk = P_ENTRY(dbp, h, i);
@@ -866,7 +882,7 @@ keydata:			memcpy(buf, HKEYDATA_DATA(hk), len);
 				memcpy(&dpgno,
 				    HOFFPAGE_PGNO(hk), sizeof(dpgno));
 				if ((ret = __db_safe_goff(dbp, vdp,
-				    dpgno, &dbt, &buf, flags)) != 0) {
+				    dpgno, &dbt, &buf, &ovfl_bufsz, flags)) != 0) {
 					err_ret = ret;
 					(void)__db_vrfy_prdbt(&unkdbt, 0, " ",
 					    handle, callback, 0, vdp);

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: testparams.tcl,v 12.119 2008/02/06 15:13:44 sue Exp $
+# $Id$
 
 source ./include.tcl
 global is_freebsd_test
@@ -13,8 +13,8 @@ global serial_tests
 set serial_tests {rep002 rep005 rep016 rep020 rep022 rep026 rep031 rep063 \
     rep078 rep079}
 
-set subs {bigfile dead env fop lock log memp plat recd rep rpc rsrc\
-	sdb sdbtest sec si test txn}
+set subs {bigfile dead env fop lock log memp multi_repmgr mutex plat recd rep \
+	repmgr rpc rsrc sdb sdbtest sec si test txn}
 
 set test_names(bigfile)	[list bigfile001 bigfile002]
 set test_names(compact) [list test111 test112 test113 test114 test115 test117]
@@ -23,30 +23,46 @@ set test_names(dead)    [list dead001 dead002 dead003 dead004 dead005 dead006 \
 set test_names(elect)	[list rep002 rep005 rep016 rep020 rep022 rep026 \
     rep063 rep067 rep069 rep076]
 set test_names(env)	[list env001 env002 env003 env004 env005 env006 \
-    env007 env008 env009 env010 env011 env012 env013 env014 env015 env016]
+    env007 env008 env009 env010 env011 env012 env013 env014 env015 env016 \
+    env017 env018]
 set test_names(fop)	[list fop001 fop002 fop003 fop004 fop005 fop006 \
     fop007 fop008]
 set test_names(init)	[list rep029 rep030 rep031 rep033 rep037 rep038 rep039\
-    rep055 rep057 rep060 rep061 rep062 rep070 rep072]
-set test_names(inmemdb)	[list fop007 fop008 rep056 rep057 sdb013 sdb014 \
+    rep055 rep060 rep061 rep062 rep070 rep072 rep084 rep085 rep086 rep087]
+set test_names(inmemdb)	[list fop007 fop008 sdb013 sdb014 \
     sdb015 sdb016 sdb017 sdb018 sdb019 sdb020]
 set test_names(lock)    [list lock001 lock002 lock003 lock004 lock005 lock006]
 set test_names(log)     [list log001 log002 log003 log004 log005 log006 \
     log007 log008 log009]
 set test_names(memp)	[list memp001 memp002 memp003 memp004]
+set test_names(mutex)	[list mut001 mut002 mut003]
 set test_names(plat)	[list plat001]
 set test_names(recd)	[list recd001 recd002 recd003 recd004 recd005 recd006 \
     recd007 recd008 recd009 recd010 recd011 recd012 recd013 recd014 recd015 \
-    recd016 recd017 recd018 recd019 recd020 recd022 recd023]
+    recd016 recd017 recd018 recd019 recd020 recd022 recd023 recd024]
 set test_names(rep)	[list rep001 rep002 rep003 rep005 rep006 rep007 \
     rep008 rep009 rep010 rep011 rep012 rep013 rep014 rep015 rep016 rep017 \
     rep018 rep019 rep020 rep021 rep022 rep023 rep024 rep025 rep026 rep027 \
     rep028 rep029 rep030 rep031 rep032 rep033 rep034 rep035 rep036 rep037 \
     rep038 rep039 rep040 rep041 rep042 rep043 rep044 rep045 rep046 rep047 \
-    rep048 rep049 rep050 rep051 rep052 rep053 rep054 rep055 rep056 rep057 \
+    rep048 rep049 rep050 rep051 rep052 rep053 rep054 rep055 \
     rep058 rep060 rep061 rep062 rep063 rep064 rep065 rep066 rep067 \
     rep068 rep069 rep070 rep071 rep072 rep073 rep074 rep075 rep076 rep077 \
-    rep078 rep079 rep080]
+    rep078 rep079 rep080 rep081 rep082 rep083 rep084 rep085 rep086 rep087 rep088]
+set test_names(rep_inmem) [list rep001 rep005 rep006 rep007 rep010 rep012 rep013\
+    rep014 rep016 rep019 rep020 rep021 rep022 rep023 rep024 rep025 \
+    rep026 rep028 rep029 rep030 rep031 rep032 rep033 rep034 rep035 \
+    rep037 rep038 rep039 rep040 rep041 rep044 rep045 rep046 rep047 \
+    rep048 rep049 rep050 rep051 rep052 rep053 rep054 rep055 rep060 \
+    rep061 rep062 rep063 rep064 rep066 rep067 rep069 rep070 rep071 \
+    rep072 rep073 rep074 rep075 rep076 rep077 rep080 ]
+set test_names(repmgr)	[list repmgr001 repmgr002 repmgr003 repmgr004 \
+    repmgr005 repmgr006 repmgr007 repmgr008 repmgr009 repmgr010 repmgr011 \
+    repmgr012 repmgr013 repmgr014 repmgr015 repmgr016 repmgr017 repmgr018 \
+    repmgr019]
+set test_names(multi_repmgr) [list repmgr022 repmgr023 repmgr024 \
+    repmgr025 repmgr026 repmgr027 repmgr028 repmgr029 repmgr030 repmgr031 \
+    repmgr032]
 set test_names(rpc)	[list rpc001 rpc002 rpc003 rpc004 rpc005 rpc006]
 set test_names(rsrc)	[list rsrc001 rsrc002 rsrc003 rsrc004]
 set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
@@ -68,7 +84,8 @@ set test_names(test)	[list test001 test002 test003 test004 test005 \
     test087 test088 test089 test090 test091 test092 test093 test094 test095 \
     test096 test097 test098 test099 test100 test101 test102 test103 test107 \
     test109 test110 test111 test112 test113 test114 test115 test116 test117 \
-    test119 test120 test121 test122 test123]
+    test119 test120 test121 test122 test123 test125]
+
 set test_names(txn)	[list txn001 txn002 txn003 txn004 txn005 txn006 \
     txn007 txn008 txn009 txn010 txn011 txn012 txn013 txn014]
 
@@ -174,6 +191,7 @@ set parms(recd019) 50
 set parms(recd020) ""
 set parms(recd022) ""
 set parms(recd023) ""
+set parms(recd024) ""
 set parms(rep001) {1000 "001"}
 set parms(rep002) {10 3 "002"}
 set parms(rep003) "003"
@@ -223,20 +241,18 @@ set parms(rep047) {200 "047"}
 set parms(rep048) {3000 "048"}
 set parms(rep049) {10 "049"}
 set parms(rep050) {10 "050"}
-set parms(rep051) {5000 "051"}
+set parms(rep051) {1000 "051"}
 set parms(rep052) {200 "052"}
 set parms(rep053) {200 "053"}
 set parms(rep054) {200 "054"}
 set parms(rep055) {200 "055"}
-set parms(rep056) ""
-set parms(rep057) ""
 set parms(rep058) "058"
 set parms(rep060) {200 "060"}
 set parms(rep061) {500 "061"}
 set parms(rep062) "062"
 set parms(rep063) ""
 set parms(rep064) {10 "064"}
-set parms(rep065} {3}
+set parms(rep065) {3}
 set parms(rep066) {10 "066"}
 set parms(rep067) ""
 set parms(rep068) {"068"}
@@ -252,6 +268,44 @@ set parms(rep077) {"077"}
 set parms(rep078) {"078"}
 set parms(rep079) {"079"}
 set parms(rep080) {200 "080"}
+set parms(rep081) {200 "081"}
+set parms(rep082) {200 "082"}
+set parms(rep083) {200 "083"}
+set parms(rep084) {200 "084"}
+set parms(rep085) {20 "085"}
+set parms(rep086) {"086"}
+set parms(rep087) {200 "087"}
+set parms(rep088) {20 "088"}
+set parms(repmgr001) {100 "001"}
+set parms(repmgr002) {100 "002"}
+set parms(repmgr003) {100 "003"}
+set parms(repmgr004) {100 "004"}
+set parms(repmgr005) {100 "005"}
+set parms(repmgr006) {1000 "006"}
+set parms(repmgr007) {100 "007"}
+set parms(repmgr008) {100 "008"}
+set parms(repmgr009) {10 "009"}
+set parms(repmgr010) {100 "010"}
+set parms(repmgr011) {100 "011"}
+set parms(repmgr012) {100 "012"}
+set parms(repmgr013) {100 "013"}
+set parms(repmgr014) {100 "014"}
+set parms(repmgr015) {100 "015"}
+set parms(repmgr016) {100 "016"}
+set parms(repmgr017) {1000 "017"}
+set parms(repmgr018) {100 "018"}
+set parms(repmgr019) {100 "019"}
+set parms(repmgr022) ""
+set parms(repmgr023) ""
+set parms(repmgr024) ""
+set parms(repmgr025) ""
+set parms(repmgr026) ""
+set parms(repmgr027) ""
+set parms(repmgr028) ""
+set parms(repmgr029) ""
+set parms(repmgr030) ""
+set parms(repmgr031) ""
+set parms(repmgr032) ""
 set parms(subdb001) ""
 set parms(subdb002) 10000
 set parms(subdb003) 1000
@@ -323,7 +377,7 @@ set parms(test028) ""
 set parms(test029) 10000
 set parms(test030) 10000
 set parms(test031) {10000 5 "031"}
-set parms(test032) {10000 5 "032"}
+set parms(test032) {10000 5 "032" 0}
 set parms(test033) {10000 5 "033"}
 set parms(test034) 10000
 set parms(test035) 10000
@@ -408,6 +462,7 @@ set parms(test120) {"120"}
 set parms(test121) {"121"}
 set parms(test122) {"122"}
 set parms(test123) ""
+set parms(test125) ""
 
 # RPC server executables.  Each of these is tested (if it exists)
 # when running the RPC tests.
@@ -448,7 +503,7 @@ set shelltest_list {
 	{ scr028	chk.rtc }
 	{ scr029	chk.get }
 	{ scr030	chk.build }
-	{ scr031	chk.xa }
+	{ scr031	chk.copy }
 	{ scr032	chk.rpc }
 	{ scr033	chk.codegen }
 	{ scr034	chk.mtx }

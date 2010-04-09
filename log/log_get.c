@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: log_get.c,v 12.56 2008/05/05 02:01:21 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -323,6 +323,13 @@ __logc_get(logc, alsn, dbt, flags)
 		*alsn = saved_lsn;
 		return (ret);
 	}
+	/*
+	 * The DBT was populated by the call to __logc_get_int, copy the data
+	 * out of DB_DBT_USERMEM space if it is there.
+	 */
+	if ((ret = __dbt_usercopy(env, dbt)) != 0)
+		return (ret);
+
 	if (alsn->offset == 0 && (flags == DB_FIRST ||
 	    flags == DB_NEXT || flags == DB_LAST || flags == DB_PREV)) {
 		switch (flags) {
@@ -352,11 +359,12 @@ __logc_get(logc, alsn, dbt, flags)
 		}
 		if ((ret = __logc_get_int(logc, alsn, dbt, flags)) != 0) {
 			*alsn = saved_lsn;
-			return (ret);
+			goto err;
 		}
 	}
 
-	return (0);
+err:	__dbt_userfree(env, dbt, NULL, NULL);
+	return (ret);
 }
 
 /*
@@ -378,7 +386,7 @@ __logc_get_int(logc, alsn, dbt, flags)
 	LOG *lp;
 	RLOCK rlock;
 	logfile_validity status;
-	u_int32_t cnt;
+	u_int32_t cnt, version;
 	u_int8_t *rp;
 	int eof, is_hmac, need_cksum, ret;
 
@@ -623,8 +631,23 @@ cksum:	/*
 	 */
 	if ((ret = __db_check_chksum(env, &hdr, db_cipher,
 	    hdr.chksum, rp + hdr.size, hdr.len - hdr.size, is_hmac)) != 0) {
+		/*
+		 * We may be dealing with a version that does not
+		 * checksum the header.  Try again without the header.
+		 * Set the cursor to the LSN we are trying to look at.
+		 */
+		last_lsn = logc->lsn;
+		logc->lsn = nlsn;
+		if (__logc_version(logc, &version) == 0  &&
+		    version < DB_LOGCHKSUM &&
+		    __db_check_chksum(env, NULL,  db_cipher, hdr.chksum,
+		    rp + hdr.size, hdr.len - hdr.size, is_hmac) == 0) {
+			logc->lsn = last_lsn;
+			goto from_memory;
+		}
+
 		if (F_ISSET(logc, DB_LOG_SILENT_ERR)) {
-			if (ret == 0 || ret == -1)
+			if (ret == -1)
 				ret = EIO;
 		} else if (ret == -1) {
 			__db_errx(env,
@@ -634,6 +657,7 @@ cksum:	/*
 		    "DB_LOGC->get: catastrophic recovery may be required");
 			ret = __env_panic(env, DB_RUNRECOVERY);
 		}
+		logc->lsn = last_lsn;
 		goto err;
 	}
 

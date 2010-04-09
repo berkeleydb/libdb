@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_verify.c,v 12.13 2008/01/08 20:58:17 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 int main __P((int, char *[]));

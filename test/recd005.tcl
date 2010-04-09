@@ -1,15 +1,15 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd005.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd005
 # TEST	Verify reuse of file ids works on catastrophic recovery.
 # TEST
 # TEST	Make sure that we can do catastrophic recovery even if we open
 # TEST	files using the same log file id.
-proc recd005 { method {select 0 } args } {
+proc recd005 { method args } {
 	source ./include.tcl
 	global rand_init
 
@@ -67,14 +67,16 @@ proc recd005 { method {select 0 } args } {
 
 			set dbenv [eval $env_cmd]
 			puts "\tRecd005.$tnum.b: Populating databases"
-			do_one_file \
-			    $testdir $method $dbenv $env_cmd $testfile1 $s1 $op1
-			do_one_file \
-			    $testdir $method $dbenv $env_cmd $testfile2 $s2 $op2
+			eval {do_one_file  $testdir \
+			    $method $dbenv $env_cmd $testfile1 $s1 $op1 } $args
+			eval {do_one_file  $testdir \
+			    $method $dbenv $env_cmd $testfile2 $s2 $op2 } $args
 
 			puts "\tRecd005.$tnum.c: Verifying initial population"
-			check_file $testdir $env_cmd $testfile1 $op1
-			check_file $testdir $env_cmd $testfile2 $op2
+			eval {check_file \
+			    $testdir $env_cmd $testfile1 $op1 } $args
+			eval {check_file \
+			    $testdir $env_cmd $testfile2 $op2 } $args
 
 			# Now, close the environment (so that recovery will work
 			# on NT which won't allow delete of an open file).
@@ -130,8 +132,10 @@ proc recd005 { method {select 0 } args } {
 			puts "complete"
 
 			set dbenv [eval $env_cmd]
-			check_file $testdir $env_cmd $testfile1 $op1
-			check_file $testdir $env_cmd $testfile2 $op2
+			eval {check_file \
+			    $testdir $env_cmd $testfile1 $op1 } $args
+			eval {check_file \
+			    $testdir $env_cmd $testfile2 $op2 } $args
 			reset_env $dbenv
 
 			puts "\tRecd005.$tnum.f:\
@@ -146,7 +150,7 @@ proc recd005 { method {select 0 } args } {
 	}
 }
 
-proc do_one_file { dir method env env_cmd filename num op } {
+proc do_one_file { dir method env env_cmd filename num op args} {
 	source ./include.tcl
 
 	set init_file $dir/$filename.t1
@@ -157,11 +161,11 @@ proc do_one_file { dir method env env_cmd filename num op } {
 	file copy -force $dir/$filename $dir/$filename.init
 	copy_extent_file $dir $filename init
 	set oflags "-auto_commit -unknown -env $env"
-	set db [eval {berkdb_open} $oflags $filename]
+	set db [eval {berkdb_open} $oflags $args $filename]
 
 	# Dump out file contents for initial case
-	open_and_dump_file $filename $env $init_file nop \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $filename $env $init_file nop \
+	    dump_file_direction "-first" "-next" $args
 
 	set txn [$env txn]
 	error_check_bad txn_begin $txn NULL
@@ -175,8 +179,8 @@ proc do_one_file { dir method env env_cmd filename num op } {
 	error_check_good sync:$db [$db sync] 0
 	file copy -force $dir/$filename $dir/$filename.afterop
 	copy_extent_file $dir $filename afterop
-	open_and_dump_file $testdir/$filename.afterop NULL \
-	    $afterop_file nop dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testdir/$filename.afterop NULL \
+	    $afterop_file nop dump_file_direction "-first" "-next" $args
 	error_check_good txn_$op:$txn [$txn $op] 0
 
 	if { $op == "commit" } {
@@ -187,8 +191,8 @@ proc do_one_file { dir method env env_cmd filename num op } {
 
 	# Dump out file and save a copy.
 	error_check_good sync:$db [$db sync] 0
-	open_and_dump_file $testdir/$filename NULL $final_file nop \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testdir/$filename NULL $final_file nop \
+	    dump_file_direction "-first" "-next" $args
 	file copy -force $dir/$filename $dir/$filename.final
 	copy_extent_file $dir $filename final
 
@@ -212,15 +216,15 @@ proc do_one_file { dir method env env_cmd filename num op } {
 	error_check_good close:$db [$db close] 0
 }
 
-proc check_file { dir env_cmd filename op } {
+proc check_file { dir env_cmd filename op args} {
 	source ./include.tcl
 
 	set init_file $dir/$filename.t1
 	set afterop_file $dir/$filename.t2
 	set final_file $dir/$filename.t3
 
-	open_and_dump_file $testdir/$filename NULL $final_file nop \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testdir/$filename NULL $final_file nop \
+	    dump_file_direction "-first" "-next" $args
 	if { $op == "abort" } {
 		filesort $init_file $init_file.sort
 		filesort $final_file $final_file.sort

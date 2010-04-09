@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: fileops.src,v 12.13 2008/01/30 04:30:41 mjc Exp $
+ * $Id$
  */
 
 DBPRIVATE
@@ -25,8 +25,15 @@ INCLUDE
  * appname: indicates if the name needs to go through __db_appname
  * mode: file system mode
  */
-BEGIN create		42	143
+BEGIN_COMPAT create		42	143
 DBT	name		DBT		s
+ARG	appname		u_int32_t	lu
+ARG	mode		u_int32_t	o
+END
+
+BEGIN create		48	143
+DBT	name		DBT		s
+DBT	dirname		DBT		s
 ARG	appname		u_int32_t	lu
 ARG	mode		u_int32_t	o
 END
@@ -55,8 +62,19 @@ END
  * flag: non-0 indicates that this is a tempfile, so we needn't undo
  *	these modifications (we'll toss the file).
  */
-BEGIN write	42	145
+BEGIN_COMPAT write	42	145
 DBT	name		DBT		s
+ARG	appname		u_int32_t	lu
+ARG	pgsize		u_int32_t	lu
+ARG	pageno		db_pgno_t	lu
+ARG	offset		u_int32_t	lu
+DBT	page		DBT		s
+ARG	flag		u_int32_t	lu
+END
+
+BEGIN write	48	145
+DBT	name		DBT		s
+DBT	dirname		DBT		s
 ARG	appname		u_int32_t	lu
 ARG	pgsize		u_int32_t	lu
 ARG	pageno		db_pgno_t	lu
@@ -80,7 +98,7 @@ END
  * These two record types use the same structure, read, and print functions,
  * but have different recovery functions.
  */
-BEGIN rename	42	146
+BEGIN_COMPAT rename	42	146
 DUPLICATE rename_noundo	46	150
 DBT	oldname		DBT		s
 DBT	newname		DBT		s
@@ -88,6 +106,14 @@ DBT	fileid		DBT		s
 ARG	appname		u_int32_t	lu
 END
 
+BEGIN rename	48	146
+DUPLICATE rename_noundo	46	150
+DBT	oldname		DBT		s
+DBT	newname		DBT		s
+DBT	dirname		DBT		s
+DBT	fileid		DBT		s
+ARG	appname		u_int32_t	lu
+END
 
 /*
  * File removal record.  This is a DB-level log record that indicates

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: StoreConfig.java,v 1.1 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist;
@@ -53,10 +53,25 @@ public class StoreConfig implements Cloneable {
 
     /**
      * Returns a shallow copy of the configuration.
+     *
+     * @deprecated As of JE 4.0.13, replaced by {@link
+     * StoreConfig#clone()}.</p>
      */
     public StoreConfig cloneConfig() {
         try {
-            return (StoreConfig) clone();
+            return (StoreConfig) super.clone();
+        } catch (CloneNotSupportedException cannotHappen) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns a shallow copy of the configuration.
+     */
+    @Override
+    public StoreConfig clone() {
+        try {
+            return (StoreConfig) super.clone();
         } catch (CloneNotSupportedException cannotHappen) {
             return null;
         }
@@ -137,7 +152,6 @@ public class StoreConfig implements Cloneable {
     public boolean getReadOnly() {
         return readOnly;
     }
-
 
 
     /**

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: dbreg_util.c,v 12.40 2008/04/02 17:09:26 sue Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -205,7 +205,8 @@ __dbreg_close_files(env, do_restored)
 				continue;
 			MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 			if (F_ISSET(dbp, DB_AM_RECOVER))
-				t_ret = __db_close(dbp, NULL, DB_NOSYNC);
+				t_ret = __db_close(dbp,
+				    NULL, dbp->mpf == NULL ? DB_NOSYNC : 0);
 			else
 				t_ret = __dbreg_revoke_id(
 				     dbp, 0, DB_LOGFILEID_INVALID);
@@ -354,14 +355,14 @@ __dbreg_id_to_db(env, txn, dbpp, ndx, tryopen)
 	 * to open the file if no mapping is found.  During recovery, the
 	 * recovery routines all want to try to open the file (and this is
 	 * called from __dbreg_id_to_db), however, if we have a multi-process
-	 * environment where some processes may not have the files open (e.g.,
-	 * XA), then we also get called from __dbreg_assign_id and it's OK if
+	 * environment where some processes may not have the files open,
+	 * then we also get called from __dbreg_assign_id and it's OK if
 	 * there is no mapping.
 	 *
-	 * Under XA, a process different than the one issuing DB operations
-	 * may abort a transaction.  In this case, the "recovery" routines
-	 * are run by a process that does not necessarily have the file open,
-	 * so we we must open the file explicitly.
+	 * Under failchk, a process different than the one issuing DB
+	 * operations may abort a transaction.  In this case, the "recovery"
+	 * routines are run by a process that does not necessarily have the
+	 * file open, so we we must open the file explicitly.
 	 */
 	if (ndx >= dblp->dbentry_cnt ||
 	    (!dblp->dbentry[ndx].deleted && dblp->dbentry[ndx].dbp == NULL)) {
@@ -574,13 +575,15 @@ __dbreg_do_open(env,
 {
 	DB *dbp;
 	u_int32_t cstat, ret_stat;
-	int ret, try_inmem;
+	int ret, t_ret, try_inmem;
 	char *dname, *fname;
 
 	cstat = TXN_EXPECTED;
 	fname = name;
 	dname = NULL;
 	try_inmem = 0;
+
+retry_inmem:
 	if ((ret = __db_create_internal(&dbp, lp->env, 0)) != 0)
 		return (ret);
 
@@ -589,8 +592,8 @@ __dbreg_do_open(env,
 	 * First, we can open a file during a normal txn_abort, if that file
 	 * was opened and closed during the transaction (as is the master
 	 * database of a sub-database).
-	 * Second, we might be aborting a transaction in XA and not have
-	 * it open in the process that is actually doing the abort.
+	 * Second, we might be aborting a transaction in a process other than
+	 * the one that did it (failchk).
 	 * Third, we might be in recovery.
 	 * In case 3, there is no locking, so there is no issue.
 	 * In cases 1 and 2, we are guaranteed to already hold any locks
@@ -611,13 +614,12 @@ __dbreg_do_open(env,
 		goto skip_open;
 	}
 
-	if (opcode == DBREG_REOPEN) {
+	if (opcode == DBREG_REOPEN || try_inmem) {
 		MAKE_INMEM(dbp);
 		fname = NULL;
 		dname = name;
 	}
 
-retry_inmem:
 	if ((ret = __db_open(dbp, NULL, txn, fname, dname, ftype,
 	    DB_DURABLE_UNKNOWN | DB_ODDFILESIZE,
 	    DB_MODE_600, meta_pgno)) == 0) {
@@ -634,7 +636,7 @@ skip_open:
 			cstat = TXN_EXPECTED;
 
 		/* Assign the specific dbreg id to this dbp. */
-		if ((ret = __dbreg_assign_id(dbp, ndx)) != 0)
+		if ((ret = __dbreg_assign_id(dbp, ndx, 0)) != 0)
 			goto err;
 
 		/*
@@ -651,33 +653,53 @@ err:		if (cstat == TXN_UNEXPECTED)
 			goto not_right;
 		return (ret);
 	} else if (ret == ENOENT) {
-		/* 
-		 * If we are on a checkpoint record and open failed, try
-		 * it as a named in-mem database.  Currently checkpoint
-		 * records do not distinguish between a named in-memory
-		 * database and one on-disk.  Therefore, an internal init
-		 * via replication that is trying to open and access this
-		 * as a named in-men database will not find it on-disk, and
-		 * we need to try to open it in-memory too.
+		/*
+		 * If the open failed with ENOENT, retry it as a named in-mem
+		 * database.  Some record types do not distinguish between a
+		 * named in-memory database and one on-disk.  Therefore, an
+		 * internal init via replication that is trying to open and
+		 * access this as a named in-mem database will not find it
+		 * on-disk, and we need to try to open it in-memory too.
+		 *     But don't do this for [P]REOPEN, since we're already
+		 * handling those cases specially, above.
 		 */
-		if (try_inmem == 0 && opcode == DBREG_CHKPNT) {
-			MAKE_INMEM(dbp);
-			fname = NULL;
-			dname = name;
+		if (try_inmem == 0 &&
+		    opcode != DBREG_PREOPEN && opcode != DBREG_REOPEN) {
+			if ((ret = __db_close(dbp, NULL, DB_NOSYNC)) != 0)
+				return (ret);
 			try_inmem = 1;
 			goto retry_inmem;
 		} else if (try_inmem != 0)
 			CLR_INMEM(dbp);
 
-		/* Record that the open failed in the txnlist. */
-		if (id != TXN_INVALID)
-			ret = __db_txnlist_update(env, info,
-			    id, TXN_UNEXPECTED, NULL, &ret_stat, 1);
+		/*
+		 * If it exists neither on disk nor in memory
+		 * record that the open failed in the txnlist.
+		 */
+		if (id != TXN_INVALID && (ret = __db_txnlist_update(env,
+		    info, id, TXN_UNEXPECTED, NULL, &ret_stat, 1)) != 0)
+			goto not_right;
+		
+		/*
+		 * If this is file is missing then we may have crashed
+		 * without writing the corresponding close, record
+		 * the open so recovery will write a close record
+		 * with its checkpoint.
+		 */
+		if ((opcode == DBREG_CHKPNT || opcode == DBREG_OPEN) &&
+		    dbp->log_filename == NULL &&
+		    (ret = __dbreg_setup(dbp, name, NULL, id)) != 0)
+			return (ret);
+		ret = __dbreg_assign_id(dbp, ndx, 1);
+		return (ret);
 	}
 not_right:
-	(void)__db_close(dbp, NULL, DB_NOSYNC);
+	if ((t_ret = __db_close(dbp, NULL, DB_NOSYNC)) != 0)
+		return (ret == 0 ? t_ret : ret);
+
 	/* Add this file as deleted. */
-	(void)__dbreg_add_dbentry(env, lp, NULL, ndx);
+	if ((t_ret = __dbreg_add_dbentry(env, lp, NULL, ndx)) != 0 && ret == 0)
+		ret = t_ret;
 	return (ret);
 }
 

@@ -21,7 +21,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id793397"></a>Writing In-Memory Berkeley DB Applications</h1>
+            <h1 class="title"><a id="id387251"></a>Writing In-Memory Berkeley DB Applications</h1>
           </div>
           <div>
             <div class="legalnotice">
@@ -55,7 +55,7 @@
             </div>
           </div>
           <div>
-            <p class="pubdate">4/25/2008</p>
+            <p class="pubdate">4/12/2010</p>
           </div>
         </div>
         <div></div>
@@ -120,6 +120,11 @@
           <dt>
             <span class="sect1">
               <a href="index.html#logs">Keeping Logs in Memory</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="index.html#in-mem-rep">In-Memory Replicated Applications</a>
             </span>
           </dt>
           <dt>
@@ -293,6 +298,14 @@
             </li>
           </ul>
         </div>
+        <p>
+                    In addition to these, if you are writing a replicated application (see
+                    <i class="citetitle">Berkeley DB Getting Started with Replicated Applications</i> for an introduction to writing replicated
+                    applications), there is internal replication information that is normally kept
+                    on-disk.  You can cause this information to be kept in-memory if you are
+                    willing to accept some limitations in how your replicated application operates.
+                    See <a href="index.html#in-mem-rep">In-Memory Replicated Applications</a> for more information.
+                </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -347,6 +360,17 @@
                         runtime; for example, only at application shutdown.
                 </p>
         <p>
+                        Another way to obtain a data durability guarantee
+                        for in-memory configurations is to use DB
+                        replication to commit data to the network. To support this
+                        strategy, the disk-less system is required to
+                        be the master server.  The use of replication in this 
+                        way actually results
+                        in a fairly high durability guarantee for your
+                        data while providing the benefit of avoiding disk
+                        I/O on transaction commit.
+                </p>
+        <p>
                         The point here is to be aware that a great many
                         options are available to you when writing an
                         in-memory only application. That said, the focus of
@@ -354,6 +378,11 @@
                         is, systems that provide no means by which 
                         data can be written to persistent media. 
                  </p>
+        <p>
+                        For an introductory description of 
+                        DB replication, please see the 
+                        <i class="citetitle">Berkeley DB Getting Started with Replicated Applications</i> guide.
+                </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -988,6 +1017,81 @@ err:
             ret = ret_c
         }
     } </pre>
+      </div>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="in-mem-rep"></a>In-Memory Replicated Applications</h2>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+                If you are unfamiliar with writing DB replicated applications, or if you are
+                simply uninterested in this topic, you can skip this section.
+            </p>
+        <p>
+                There are many internal resources used by the DB replication subsystem which are
+                by default backed by disk.  These internal resources help the DB subsystem
+                ensure election accuracy. While a complete description of these resources is beyond
+                the scope of this article, you should know that you can cause all of these resources
+                to be held entirely in-memory.  But you do so with some small chance of operational
+                errors in your replicated application.
+            </p>
+        <p>
+                If you cause a replicated application to keep its internal replication resources
+                in-memory, you run a small risk that elections will fail or be unable to complete.
+                However, calling additional elections should eventually yield a winner.
+            </p>
+        <p>
+                In addition, there is a slight possibility that the wrong site might win an
+                election, which could result in the loss of data. This can happen if you have a site
+                that is repeatedly crashing and trying to come back up. A site like this  might be
+                repeatedly sending out election information, and the repeated messages might confuse
+                other sites.  For replication applications that are not in-memory, these extra
+                messages would be ignored by other sites because they would also contain some state
+                information that allows other sites to know which election messages are relevant.
+                But strictly in-memory replicated applications cannot maintain this state
+                information, and so some other sites might become confused. The result might be that
+                the wrong site could be elected master due to the inconsistent information that is
+                available to them.
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                    This is very much a corner case that you probably will never see in your
+                    production systems, especially if your sites are all stable and well-behaved.
+                </p>
+        </div>
+        <p>
+                If an election is won by the wrong site (site A), then some other site (site B) probably has
+                more recent log files than the winner does. But since the wrong site A won the
+                election, site B will sync with the new master. This will cause site B (and
+                therefore, your entire replication group) to lose any log files it contains that are
+                more recent than the files contained by site A.
+            </p>
+        <p>
+                Also, when running an in-memory replicated application, it is often-times desireable for
+                the master to run in-memory and the clients to commit data to disk. This helps to
+                improve write through-put on the master by avoiding disk I/O. Instead, the master
+                simply "commits to the network," and then eliminates its message ackowledgement
+                expectations so that it is no longer waiting for clients to respond to the commit.
+            </p>
+        <p>
+                If you are running a master that is configured to run with internal
+                replication resources in-memory, you should never allow that site to
+                appoint itself master again immediately after crashing or rebooting.
+                Doing so results in a slightly higher risk of your client sites
+                crashing. To determine your next master, you should either hold an
+                election or appoint a different site to be master.
+            </p>
+        <p>
+                In order to cause a replication site to run entire in-memory, do all of the things
+                described previously in this document to place all other DB resources in-memory.
+                Then, when configuring replication, specify <tt class="literal">DB_REP_CONF_INMEM</tt> to
+                the <tt class="methodname">DB_ENV-&gt;rep_set_config()</tt> method.
+            </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">

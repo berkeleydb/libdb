@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_vx_abs.c,v 12.6 2008/01/08 20:58:45 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -26,7 +26,7 @@ __os_abspath(path)
 	 * VxWorks devices can be rooted at any name at all.
 	 * Use iosDevFind() to see if name matches any of our devices.
 	 */
-	if ((dummy = iosDevFind((char *)path, &ptail)) == NULL)
+	if ((dummy = iosDevFind(path, (const char**)&ptail)) == NULL)
 		return (0);
 	/*
 	 * If the routine used a device, then ptail points to the

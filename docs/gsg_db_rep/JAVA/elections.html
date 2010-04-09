@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Holding Elections</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="introduction.html" title="Chapter 1. Introduction" />
-    <link rel="previous" href="apioverview.html" title="The Replication APIs" />
+    <link rel="prev" href="apioverview.html" title="The Replication APIs" />
     <link rel="next" href="permmessages.html" title="Permanent Message Handling" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="elections"></a>Holding Elections</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="elections.html#influencingelections">Influencing Elections</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="elections.html#winningelections">Winning Elections</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="elections.html#switchingmasters">Switching Masters</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
                     Finding a master environment is one of the fundamental activities that 
@@ -44,7 +62,7 @@
       <p>
                 How elections are held depends upon the API that you use to
                 implement replication. For example, if you are using the
-                replication framework elections are held transparently without any
+                Replication Manager elections are held transparently without any
                 input from your application's code. In this case, 
                 DB will determine which environment is the master and which
                 are replicas.
@@ -56,17 +74,16 @@
               <h3 class="title"><a id="influencingelections"></a>Influencing Elections</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 If you want to control the election process, you can declare
-                a specific environment to be the master. Note that for the replication framework,
+                a specific environment to be the master. Note that for the Replication Manager,
                 it is only possible to do this at application startup.
                 Should the master become unavailable during run-time for any
                 reason, an election is held. The environment that receives
                 the most number of votes, wins the election and becomes the
                 master. A machine receives a vote because it has the most
-                number of log records.
+                up-to-date log records.
             </p>
         <p>
                     Because ties are possible when elections are held, 
@@ -77,12 +94,13 @@
                 elections.
             </p>
         <p>
-                    One such mechanism is priorities.  When votes are
-                    cast during an election, both the number of log records
-                    contained in the environment <span class="emphasis"><em>and</em></span>
-                    the environment's priority are considered. So given two
-                    environments with the same number of log records, votes
-                    are cast for the environment with the higher priority.
+                    One such mechanism is priorities.  When votes are cast
+                    during an election, the winner is determined first by
+                    the environment with the most up-to-date log records.
+                    But if this is a tie, the the environment's priority is
+                    considered.  So given two environments with log records
+                    that are equally recent, votes are cast for the
+                    environment with the higher priority.
             </p>
         <p>
                     Therefore, if you have a machine that you prefer to
@@ -99,7 +117,6 @@
               <h3 class="title"><a id="winningelections"></a>Winning Elections</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         To win an election:
@@ -136,7 +153,7 @@
           </ol>
         </div>
         <p>
-                        If you are using the replication framework, then in the event of a
+                        If you are using the Replication Manager, then in the event of a
                         tie vote the environment with the highest priority wins
                         the election. If two or more environments receive the same
                         number of votes and have the same priority, then
@@ -154,7 +171,6 @@
               <h3 class="title"><a id="switchingmasters"></a>Switching Masters</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         To switch masters:

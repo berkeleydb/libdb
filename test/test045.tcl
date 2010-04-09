@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test045.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test045
 # TEST	Small random tester
@@ -109,12 +109,12 @@ proc test045 { method {nops 10000} args } {
 	# Now the database is initialized, run a test
 	puts "$tclsh_path\
 	    $test_path/dbscript.tcl $method $f $nops $cursors $delete $adds \
-	    $keyavg $dataavg $dups $errpct > $testdir/test045.log"
+	    $keyavg $dataavg $dups $errpct $oargs > $testdir/test045.log"
 
 	exec $tclsh_path \
 	    $test_path/dbscript.tcl $method $f \
 	    $nops $cursors $delete $adds $keyavg \
-	    $dataavg $dups $errpct \
+	    $dataavg $dups $errpct $oargs\
 	    > $testdir/test045.log
 
 	# Check for test failure

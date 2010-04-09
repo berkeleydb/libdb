@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test070.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test070
 # TEST	Test of DB_CONSUME (Four consumers, 1000 items.)
@@ -32,6 +32,8 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 		puts "Test$tnum skipping for security"
 		return
 	}
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	puts "Test$tnum: $method ($args) Test of DB_$mode flag to DB->get."
 	puts "\tUsing $txn environment."
@@ -48,7 +50,7 @@ proc test070 { method {nconsumers 4} {nproducers 2} \
 	set testfile test$tnum.db
 
 	# Create environment
-	set dbenv [eval {berkdb_env -create $txn -home } $testdir]
+	set dbenv [eval {berkdb_env -create $txn -home } $testdir $pageargs]
 	error_check_good dbenv_create [is_valid_env $dbenv] TRUE
 
 	# Create database

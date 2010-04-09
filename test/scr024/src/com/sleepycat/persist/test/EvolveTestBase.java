@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EvolveTestBase.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.persist.test;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.util.Enumeration;
 
 import junit.framework.TestCase;
@@ -43,6 +43,7 @@ public abstract class EvolveTestBase extends TestCase {
      * class to use for the test.
      */
     private static final String[] ALL = {
+//*
         "DeletedEntity1_ClassRemoved",
         "DeletedEntity1_ClassRemoved_NoMutation",
         "DeletedEntity2_ClassRemoved",
@@ -185,11 +186,15 @@ public abstract class EvolveTestBase extends TestCase {
         null,
         "AllowFieldTypeChanges",
         null,
+        "ConvertFieldContent_Entity",
+        null,
         "ConvertExample1_Entity",
         null,
         "ConvertExample2_Person",
         null,
         "ConvertExample3_Person",
+        null,
+        "ConvertExample3Reverse_Person",
         null,
         "ConvertExample4_Entity",
         null,
@@ -207,16 +212,21 @@ public abstract class EvolveTestBase extends TestCase {
         null,
         "AddEnumConstant_Entity",
         null,
+        "InsertEnumConstant_Entity",
+        null,
         "DeleteEnumConstant_NoMutation",
         null,
         "DisallowChangeKeyRelate",
         null,
         "AllowChangeKeyMetadata",
         null,
+        "AllowChangeKeyMetadataInSubclass",
+        null,
         "AllowAddSecondary",
         null,
         "FieldAddAndConvert",
         null,
+//*/
     };
 
     File envHome;
@@ -296,8 +306,11 @@ public abstract class EvolveTestBase extends TestCase {
         /* Do not delete log files so they can be used by 2nd phase of test. */
     }
 
+    /**
+     * @throws FileNotFoundException from DB core.
+     */
     void openEnv()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         EnvironmentConfig config = TestEnv.TXN.getConfig();
         config.setAllowCreate(true);
@@ -328,7 +341,10 @@ public abstract class EvolveTestBase extends TestCase {
         } catch (Exception e) {
             if (expectException != null) {
                 //e.printStackTrace();
-                EvolveCase.checkEquals(expectException, e.toString());
+                String actualMsg = e.getMessage();
+                EvolveCase.checkEquals
+                    (expectException,
+                     e.getClass().getName() + ": " + actualMsg);
                 return false;
             } else {
                 throw e;
@@ -356,7 +372,9 @@ public abstract class EvolveTestBase extends TestCase {
     void openRawStore()
         throws DatabaseException {
 
-        rawStore = new RawStore(env, EvolveCase.STORE_NAME, null);
+        StoreConfig config = new StoreConfig();
+        config.setTransactional(true);
+        rawStore = new RawStore(env, EvolveCase.STORE_NAME, config);
     }
 
     void closeStore()

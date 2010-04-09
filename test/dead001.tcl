@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: dead001.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	dead001
 # TEST	Use two different configurations to test deadlock detection among a

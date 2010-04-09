@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_log.c,v 12.18 2008/01/08 20:58:52 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -376,25 +376,25 @@ tcl_LogStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST("Log file mode", sp->st_mode);
 	MAKE_STAT_LIST("Log record cache size", sp->st_lg_bsize);
 	MAKE_STAT_LIST("Current log file size", sp->st_lg_size);
-	MAKE_STAT_LIST("Log file records written", sp->st_record);
+	MAKE_WSTAT_LIST("Log file records written", sp->st_record);
 	MAKE_STAT_LIST("Mbytes written", sp->st_w_mbytes);
 	MAKE_STAT_LIST("Bytes written (over Mb)", sp->st_w_bytes);
 	MAKE_STAT_LIST("Mbytes written since checkpoint", sp->st_wc_mbytes);
 	MAKE_STAT_LIST("Bytes written (over Mb) since checkpoint",
 	    sp->st_wc_bytes);
-	MAKE_STAT_LIST("Times log written", sp->st_wcount);
+	MAKE_WSTAT_LIST("Times log written", sp->st_wcount);
 	MAKE_STAT_LIST("Times log written because cache filled up",
 	    sp->st_wcount_fill);
-	MAKE_STAT_LIST("Times log read from disk", sp->st_rcount);
-	MAKE_STAT_LIST("Times log flushed to disk", sp->st_scount);
+	MAKE_WSTAT_LIST("Times log read from disk", sp->st_rcount);
+	MAKE_WSTAT_LIST("Times log flushed to disk", sp->st_scount);
 	MAKE_STAT_LIST("Current log file number", sp->st_cur_file);
 	MAKE_STAT_LIST("Current log file offset", sp->st_cur_offset);
 	MAKE_STAT_LIST("On-disk log file number", sp->st_disk_file);
 	MAKE_STAT_LIST("On-disk log file offset", sp->st_disk_offset);
 	MAKE_STAT_LIST("Max commits in a log flush", sp->st_maxcommitperflush);
 	MAKE_STAT_LIST("Min commits in a log flush", sp->st_mincommitperflush);
-	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
-	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_WSTAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_WSTAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 #endif
 	Tcl_SetObjResult(interp, res);
 error:

@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Creating Bindings and Collections
-	</title>
+    <title>Creating Bindings and Collections</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="opendatabases.html" title="&#10;&#9;&#9;Opening and Closing Databases&#10;&#9;" />
-    <link rel="next" href="implementingmain.html" title="&#10;&#9;&#9;Implementing the Main Program&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="opendatabases.html" title="Opening and Closing Databases" />
+    <link rel="next" href="implementingmain.html" title="Implementing the Main Program" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     <span class="emphasis"><em>Bindings</em></span> translate between stored records and Java objects.
@@ -68,14 +65,14 @@
 	caching of stored raw record data is performed by the database library.
 </p>
       <p>
-    The <tt class="classname">SampleViews</tt> class is used to create the bindings and
-	collections. This class is separate from the <tt class="classname">SampleDatabase</tt>
+    The <code class="classname">SampleViews</code> class is used to create the bindings and
+	collections. This class is separate from the <code class="classname">SampleDatabase</code>
 	class to illustrate the idea that a single set of stored data can
 	be accessed via multiple bindings and collections, or <span class="emphasis"><em>views</em></span>.
-	The skeleton for the <tt class="classname">SampleViews</tt> class follows.
+	The skeleton for the <code class="classname">SampleViews</code> class follows.
 </p>
       <a id="cb_sampleviews"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.EntryBinding;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.bind.serial.ClassCatalog;
 import com.sleepycat.bind.serial.SerialBinding;
 import com.sleepycat.collections.StoredEntrySet;
@@ -92,26 +89,26 @@ public class SampleViews
     public SampleViews(SampleDatabase db)
     {
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
       <p>
     A 
-    <a href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
     
 	field is used for each database. The StoredMap class implements the
 	standard Java 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
     
 	interface, which has methods for obtaining a 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
     
 	of keys, a 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Collection.html" target="_top">Collection</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Collection.html" target="_top">Collection</a>
     
 	of values, or a 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
     
 	of 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
     
 	key/value pairs. Because databases contain key/value pairs, any
 	Berkeley DB database may be represented as a Java map.
@@ -119,14 +116,14 @@ public class SampleViews
       <p>
     The following statements create the key and data bindings using
 	the 
-    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
     
 	class.
 </p>
       <a id="cb_sampleviews1"></a>
       <pre class="programlisting">    public SampleViews(SampleDatabase db)
     {
-<b class="userinput"><tt>        ClassCatalog catalog = db.getClassCatalog();
+<strong class="userinput"><code>        ClassCatalog catalog = db.getClassCatalog();
         EntryBinding partKeyBinding =
             new SerialBinding(catalog, PartKey.class);
         EntryBinding partValueBinding =
@@ -138,12 +135,12 @@ public class SampleViews
         EntryBinding shipmentKeyBinding =
             new SerialBinding(catalog, ShipmentKey.class);
         EntryBinding shipmentValueBinding =
-            new SerialBinding(catalog, ShipmentData.class);</tt></b>
+            new SerialBinding(catalog, ShipmentData.class);</code></strong>
         ...
     } </pre>
       <p>
     The first parameter of the 
-    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
     
 	constructor is the class catalog, and is used to store the class
 	descriptions of the serialized objects.
@@ -151,7 +148,7 @@ public class SampleViews
       <p>
     The second parameter is the base class for the serialized
 	objects and is used for type checking of the stored objects. If
-	<tt class="literal">null</tt> or <tt class="literal">Object.class</tt> is specified, then any Java
+	<code class="literal">null</code> or <code class="literal">Object.class</code> is specified, then any Java
 	class is allowed. Otherwise, all objects stored in that format must
 	be instances of the specified class or derived from the specified
 	class. In the example, specific classes are used to enable strong
@@ -159,7 +156,7 @@ public class SampleViews
 </p>
       <p>
     The following statements create standard Java maps using the
-	<a href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
+	<a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
 	
 	class.
 </p>
@@ -167,7 +164,7 @@ public class SampleViews
       <pre class="programlisting">    public SampleViews(SampleDatabase db)
     {
         ...
-<b class="userinput"><tt>        partMap =
+<strong class="userinput"><code>        partMap =
             new StoredMap(db.getPartDatabase(),
                           partKeyBinding, partValueBinding, true);
         supplierMap =
@@ -175,12 +172,12 @@ public class SampleViews
                           supplierKeyBinding, supplierValueBinding, true);
         shipmentMap =
             new StoredMap(db.getShipmentDatabase(),
-                          shipmentKeyBinding, shipmentValueBinding, true);</tt></b>
+                          shipmentKeyBinding, shipmentValueBinding, true);</code></strong>
     ...
     } </pre>
       <p>
     The first parameter of the 
-    <a href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
     
 	constructor is the database. In a StoredMap, the database keys (the primary
     keys) are used as the map keys. The Index
@@ -204,7 +201,7 @@ public class SampleViews
       <pre class="programlisting">public class SampleViews
 {
     ...
-<b class="userinput"><tt>    public final StoredMap getPartMap()
+<strong class="userinput"><code>    public final StoredMap getPartMap()
     {
         return partMap;
     }
@@ -232,7 +229,7 @@ public class SampleViews
     public final StoredEntrySet getShipmentEntrySet()
     {
         return (StoredEntrySet) shipmentMap.entrySet();
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
@@ -242,7 +239,7 @@ public class SampleViews
 	ask why Map and Set were not returned directly.
 </p>
       <p>
-    <tt class="classname">StoredMap</tt>, <tt class="classname">StoredEntrySet</tt>, 
+    <code class="classname">StoredMap</code>, <code class="classname">StoredEntrySet</code>, 
     and other stored collection classes
 	have a small number of extra methods beyond those in the Java
 	collection interfaces. The stored collection types are therefore
@@ -251,10 +248,10 @@ public class SampleViews
 	follows.
 </p>
       <a id="cb_sampleviews_usage"></a>
-      <pre class="programlisting"><b class="userinput"><tt>    SampleDatabase sd = new SampleDatabase(new String("/home"));
+      <pre class="programlisting"><strong class="userinput"><code>    SampleDatabase sd = new SampleDatabase(new String("/home"));
     SampleViews views = new SampleViews(sd);
     Map partMap = views.getPartMap();
-    Set supplierEntries = views.getSupplierEntrySet();</tt></b> </pre>
+    Set supplierEntries = views.getSupplierEntrySet();</code></strong> </pre>
     </div>
     <div class="navfooter">
       <hr />

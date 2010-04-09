@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_put.c,v 12.29 2008/01/08 20:57:59 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -46,6 +46,7 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
+#include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
 static int __bam_build
@@ -80,6 +81,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	PAGE *h;
 	db_indx_t cnt, indx;
 	u_int32_t data_size, have_bytes, need_bytes, needed, pages, pagespace;
+	char tmp_ch;
 	int cmp, bigkey, bigdata, del, dupadjust;
 	int padrec, replace, ret, t_ret, was_deleted;
 
@@ -125,10 +127,69 @@ __bam_iitem(dbc, key, data, op, flags)
 	}
 
 	/*
-	 * Handle partial puts or short fixed-length records: build the
-	 * real record.
+	 * Handle partial puts or short fixed-length records: check whether we
+	 * can just append the data or else build the real record.  We can't
+	 * append if there are secondaries: we need the whole data item for the
+	 * application's secondary callback.
 	 */
-	if (padrec || F_ISSET(data, DB_DBT_PARTIAL)) {
+	if (op == DB_CURRENT && dbp->dup_compare == NULL &&
+	    F_ISSET(data, DB_DBT_PARTIAL) && !DB_IS_PRIMARY(dbp)) {
+		bk = GET_BKEYDATA(
+		    dbp, h, indx + (TYPE(h) == P_LBTREE ? O_INDX : 0));
+		/*
+		 * If the item is an overflow type, and the input DBT is
+		 * partial, and begins at the length of the current item then
+		 * it is an append. Avoid deleting and re-creating the entire
+		 * offpage item.
+		 */
+		if (B_TYPE(bk->type) == B_OVERFLOW &&
+		    data->doff == ((BOVERFLOW *)bk)->tlen) {
+			/*
+			 * If the cursor has not already cached the last page
+			 * in the offpage chain. We need to walk the chain
+			 * to be sure that the page has been read.
+			 */
+			if (cp->stream_start_pgno != ((BOVERFLOW *)bk)->pgno ||
+			    cp->stream_off > data->doff || data->doff >
+			    cp->stream_off + P_MAXSPACE(dbp, dbp->pgsize)) {
+				memset(&tdbt, 0, sizeof(DBT));
+				tdbt.doff = data->doff - 1;
+				/*
+				 * Set the length to 1, to force __db_goff
+				 * to do the traversal.
+				 */
+				tdbt.dlen = tdbt.ulen = 1;
+				tdbt.data = &tmp_ch;
+				tdbt.flags = DB_DBT_PARTIAL | DB_DBT_USERMEM;
+
+				/*
+				 * Read to the last page.  It will be cached
+				 * in the cursor.
+				 */
+				if ((ret = __db_goff(
+				    dbc, &tdbt, ((BOVERFLOW *)bk)->tlen,
+				    ((BOVERFLOW *)bk)->pgno, NULL, NULL)) != 0)
+					return (ret);
+			}
+
+			/*
+			 * Since this is an append, dlen is irrelevant (there
+			 * are no bytes to overwrite). We need the caller's
+			 * DBT size to end up with the total size of the item.
+			 * From now on, use dlen as the length of the user's
+			 * data that we are going to append.
+			 * Don't futz with the caller's DBT any more than we
+			 * have to in order to send back the size.
+			 */
+			tdbt = *data;
+			tdbt.dlen = data->size;
+			tdbt.size = data_size;
+			data = &tdbt;
+			F_SET(data, DB_DBT_STREAMING);
+		}
+	}
+	if (!F_ISSET(data, DB_DBT_STREAMING) &&
+	    (padrec || F_ISSET(data, DB_DBT_PARTIAL))) {
 		tdbt = *data;
 		if ((ret =
 		    __bam_build(dbc, op, &tdbt, h, indx, data_size)) != 0)
@@ -144,7 +205,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	 * we build the real record so that we're comparing the real items.
 	 */
 	if (op == DB_CURRENT && dbp->dup_compare != NULL) {
-		if ((ret = __bam_cmp(dbp, dbc->thread_info, dbc->txn, data, h,
+		if ((ret = __bam_cmp(dbc, data, h,
 		    indx + (TYPE(h) == P_LBTREE ? O_INDX : 0),
 		    dbp->dup_compare, &cmp)) != 0)
 			return (ret);
@@ -245,12 +306,13 @@ __bam_iitem(dbc, key, data, op, flags)
 			return (__db_space_err(dbp));
 	}
 
-	if ((ret = __memp_dirty(mpf, &h,
-	     dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
-		return (ret);
+	ret = __memp_dirty(mpf, &h,
+	     dbc->thread_info, dbc->txn, dbc->priority, 0);
 	if (cp->csp->page == cp->page)
 		cp->csp->page = h;
 	cp->page = h;
+	if (ret != 0)
+		return (ret);
 
 	/*
 	 * The code breaks it up into five cases:
@@ -340,7 +402,19 @@ __bam_iitem(dbc, key, data, op, flags)
 		 * same slot.
 		 */
 		if (bigdata || B_TYPE(bk->type) != B_KEYDATA) {
-			if ((ret = __bam_ditem(dbc, h, indx)) != 0)
+			/*
+			 * If streaming, don't delete the overflow item,
+			 * just delete the item pointing to the overflow item.
+			 * It will be added back in later, with the new size.
+			 * We can't simply adjust the size of the item on the
+			 * page, because there is no easy way to log a
+			 * modification.
+			 */
+			if (F_ISSET(data, DB_DBT_STREAMING)) {
+				if ((ret = __db_ditem(
+				    dbc, h, indx, BOVERFLOW_SIZE)) != 0)
+					return (ret);
+			} else if ((ret = __bam_ditem(dbc, h, indx)) != 0)
 				return (ret);
 			del = 1;
 			break;
@@ -371,7 +445,7 @@ __bam_iitem(dbc, key, data, op, flags)
 			ret = __db_pitem(dbc, h, indx,
 			    BKEYDATA_SIZE(data->size), &bk_hdr, data);
 		} else if (replace)
-			ret = __bam_ritem(dbc, h, indx, data);
+			ret = __bam_ritem(dbc, h, indx, data, 0);
 		else
 			ret = __db_pitem(dbc, h, indx,
 			    BKEYDATA_SIZE(data->size), NULL, data);
@@ -529,8 +603,8 @@ __bam_build(dbc, op, dbt, h, indx, nbytes)
 		 * in the current record rather than allocate a separate copy.
 		 */
 		memset(&copy, 0, sizeof(copy));
-		if ((ret = __db_goff(dbp, dbc->thread_info, dbc->txn, &copy,
-		    bo->tlen, bo->pgno, &rdata->data, &rdata->ulen)) != 0)
+		if ((ret = __db_goff(dbc, &copy, bo->tlen, bo->pgno,
+		    &rdata->data, &rdata->ulen)) != 0)
 			return (ret);
 
 		/* Skip any leading data from the original record. */
@@ -590,32 +664,54 @@ user_copy:
  * __bam_ritem --
  *	Replace an item on a page.
  *
- * PUBLIC: int __bam_ritem __P((DBC *, PAGE *, u_int32_t, DBT *));
+ * PUBLIC: int __bam_ritem __P((DBC *, PAGE *, u_int32_t, DBT *, u_int32_t));
  */
 int
-__bam_ritem(dbc, h, indx, data)
+__bam_ritem(dbc, h, indx, data, typeflag)
 	DBC *dbc;
 	PAGE *h;
 	u_int32_t indx;
 	DBT *data;
+	u_int32_t typeflag;
 {
 	BKEYDATA *bk;
+	BINTERNAL *bi;
 	DB *dbp;
 	DBT orig, repl;
 	db_indx_t cnt, lo, ln, min, off, prefix, suffix;
 	int32_t nbytes;
+	u_int32_t len;
 	int ret;
 	db_indx_t *inp;
-	u_int8_t *p, *t;
+	u_int8_t *dp, *p, *t, type;
 
 	dbp = dbc->dbp;
+	bi = NULL;
+	bk = NULL;
 
 	/*
 	 * Replace a single item onto a page.  The logic figuring out where
 	 * to insert and whether it fits is handled in the caller.  All we do
 	 * here is manage the page shuffling.
 	 */
-	bk = GET_BKEYDATA(dbp, h, indx);
+	if (TYPE(h) == P_IBTREE) {
+		/* Point at the part of the internal struct past the type. */
+		bi = GET_BINTERNAL(dbp, h, indx);
+		if (B_TYPE(bi->type) == B_OVERFLOW)
+			len = BOVERFLOW_SIZE;
+		else
+			len = bi->len;
+		len += SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
+		dp = &bi->unused;
+		type = typeflag == 0 ? bi->type :
+			(bi->type == B_KEYDATA ? B_OVERFLOW : B_KEYDATA);
+	} else {
+		bk = GET_BKEYDATA(dbp, h, indx);
+		len = bk->len;
+		dp = bk->data;
+		type = bk->type;
+		typeflag = B_DISSET(type);
+	}
 
 	/* Log the change. */
 	if (DBC_LOGGING(dbc)) {
@@ -624,26 +720,26 @@ __bam_ritem(dbc, h, indx, data)
 		 * a common prefix and suffix -- it can save us a lot of log
 		 * message if they're large.
 		 */
-		min = data->size < bk->len ? data->size : bk->len;
+		min = data->size < len ? data->size : len;
 		for (prefix = 0,
-		    p = bk->data, t = data->data;
+		    p = dp, t = data->data;
 		    prefix < min && *p == *t; ++prefix, ++p, ++t)
 			;
 
 		min -= prefix;
 		for (suffix = 0,
-		    p = (u_int8_t *)bk->data + bk->len - 1,
+		    p = (u_int8_t *)dp + len - 1,
 		    t = (u_int8_t *)data->data + data->size - 1;
 		    suffix < min && *p == *t; ++suffix, --p, --t)
 			;
 
 		/* We only log the parts of the keys that have changed. */
-		orig.data = (u_int8_t *)bk->data + prefix;
-		orig.size = bk->len - (prefix + suffix);
+		orig.data = (u_int8_t *)dp + prefix;
+		orig.size = len - (prefix + suffix);
 		repl.data = (u_int8_t *)data->data + prefix;
 		repl.size = data->size - (prefix + suffix);
 		if ((ret = __bam_repl_log(dbp, dbc->txn, &LSN(h), 0, PGNO(h),
-		    &LSN(h), (u_int32_t)indx, (u_int32_t)B_DISSET(bk->type),
+		    &LSN(h), (u_int32_t)indx, typeflag,
 		    &orig, &repl, (u_int32_t)prefix, (u_int32_t)suffix)) != 0)
 			return (ret);
 	} else
@@ -655,7 +751,16 @@ __bam_ritem(dbc, h, indx, data)
 	 */
 	inp = P_INP(dbp, h);
 	p = (u_int8_t *)h + HOFFSET(h);
-	t = (u_int8_t *)bk;
+	if (TYPE(h) == P_IBTREE) {
+		t = (u_int8_t *)bi;
+		lo = (db_indx_t)BINTERNAL_SIZE(bi->len);
+		ln = (db_indx_t)BINTERNAL_SIZE(data->size -
+		    (SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused)));
+	} else {
+		t = (u_int8_t *)bk;
+		lo = (db_indx_t)BKEYDATA_SIZE(bk->len);
+		ln = (db_indx_t)BKEYDATA_SIZE(data->size);
+	}
 
 	/*
 	 * If the entry is growing in size, shift the beginning of the data
@@ -663,8 +768,6 @@ __bam_ritem(dbc, h, indx, data)
 	 * the beginning of the data part of the page up.  Use memmove(3),
 	 * the regions overlap.
 	 */
-	lo = BKEYDATA_SIZE(bk->len);
-	ln = (db_indx_t)BKEYDATA_SIZE(data->size);
 	if (lo != ln) {
 		nbytes = lo - ln;		/* Signed difference. */
 		if (p == t)			/* First index is fast. */
@@ -686,11 +789,59 @@ __bam_ritem(dbc, h, indx, data)
 
 	/* Copy the new item onto the page. */
 	bk = (BKEYDATA *)t;
-	B_TSET(bk->type, B_KEYDATA);
 	bk->len = data->size;
-	memcpy(bk->data, data->data, data->size);
+	B_TSET(bk->type, type);
+	memcpy(bk->data, data->data, bk->len);
+
+	/* Remove the length of the internal header elements. */
+	if (TYPE(h) == P_IBTREE)
+		bk->len -= SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
 
 	return (0);
+}
+
+/*
+ * __bam_irep --
+ *	Replace an item on an internal page.
+ *
+ * PUBLIC: int __bam_irep __P((DBC *, PAGE *, u_int32_t, DBT *, DBT *));
+ */
+int
+__bam_irep(dbc, h, indx, hdr, data)
+	DBC *dbc;
+	PAGE *h;
+	u_int32_t indx;
+	DBT *hdr;
+	DBT *data;
+{
+	BINTERNAL *bi, *bn;
+	DB *dbp;
+	DBT dbt;
+	int ret;
+
+	dbp = dbc->dbp;
+
+	bi = GET_BINTERNAL(dbp, h, indx);
+	bn = (BINTERNAL *) hdr->data;
+
+	if (B_TYPE(bi->type) == B_OVERFLOW &&
+	    (ret = __db_doff(dbc, ((BOVERFLOW *)bi->data)->pgno)) != 0)
+		return (ret);
+
+	memset(&dbt, 0, sizeof(dbt));
+	dbt.size = hdr->size + data->size - SSZ(BINTERNAL, unused);
+	if ((ret = __os_malloc(dbp->env, dbt.size, &dbt.data)) != 0)
+		return (ret);
+	memcpy(dbt.data,
+	     (u_int8_t *)hdr->data + SSZ(BINTERNAL, unused),
+	     hdr->size - SSZ(BINTERNAL, unused));
+	memcpy((u_int8_t *)dbt.data +
+	    hdr->size - SSZ(BINTERNAL, unused), data->data, data->size);
+
+	ret = __bam_ritem(dbc, h, indx, &dbt, bi->type != bn->type);
+
+	__os_free(dbp->env, dbt.data);
+	return (ret);
 }
 
 /*
@@ -779,6 +930,7 @@ __bam_dup_convert(dbc, h, indx, cnt)
 	BKEYDATA *bk;
 	DB *dbp;
 	DBT hdr;
+	DB_LOCK lock;
 	DB_MPOOLFILE *mpf;
 	PAGE *dp;
 	db_indx_t cpindx, dindx, first, *inp;
@@ -794,7 +946,7 @@ __bam_dup_convert(dbc, h, indx, cnt)
 
 	/* Get a new page. */
 	if ((ret = __db_new(dbc,
-	    dbp->dup_compare == NULL ? P_LRECNO : P_LDUP, &dp)) != 0)
+	    dbp->dup_compare == NULL ? P_LRECNO : P_LDUP, &lock, &dp)) != 0)
 		return (ret);
 	P_INIT(dp, dbp->pgsize, dp->pgno,
 	    PGNO_INVALID, PGNO_INVALID, LEAFLEVEL, TYPE(dp));
@@ -870,6 +1022,7 @@ err:	if ((t_ret = __memp_fput(mpf,
 	     dbc->thread_info, dp, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
+	(void)__TLPUT(dbc, lock);
 	return (ret);
 }
 

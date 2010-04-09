@@ -14,7 +14,7 @@ dnl The general documentation, as well as the sample configure.in, is
 dnl included in the AC_PROG_JAVA macro.
 dnl
 dnl @author Stephane Bortzmeyer <bortzmeyer@pasteur.fr>
-dnl @version $Id: ac_check_rqrd_class.m4,v 12.0 2004/11/17 03:43:38 bostic Exp $
+dnl @version $Id$
 dnl
 
 AC_DEFUN([AC_CHECK_RQRD_CLASS],[

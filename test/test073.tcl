@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test073.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test073
 # TEST	Test of cursor stability on duplicate pages.
@@ -55,9 +55,16 @@ proc test073 { method {pagesize 512} {ndups 50} {tnum "073"} args } {
 	if { [is_record_based $method] || [is_rbtree $method] } {
 		puts "Skipping for method $method."
 		return
-	} else {
-		puts "cursor stability on duplicate pages."
+	} 
+
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
 	}
+
+	puts "cursor stability on duplicate pages."
+
 	set pgindex [lsearch -exact $args "-pagesize"]
 	if { $pgindex != -1 } {
 		puts "Test073: skipping for specific pagesizes"

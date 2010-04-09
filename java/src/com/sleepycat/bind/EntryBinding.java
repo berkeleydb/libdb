@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EntryBinding.java,v 12.7 2008/02/08 20:12:36 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind;
@@ -21,7 +21,7 @@ import com.sleepycat.db.DatabaseEntry;
  *
  * @author Mark Hayes
  */
-public interface EntryBinding {
+public interface EntryBinding<E> {
 
     /**
      * Converts a entry buffer into an Object.
@@ -30,7 +30,7 @@ public interface EntryBinding {
      *
      * @return the resulting Object.
      */
-    Object entryToObject(DatabaseEntry entry);
+    E entryToObject(DatabaseEntry entry);
 
     /**
      * Converts an Object into a entry buffer.
@@ -39,5 +39,5 @@ public interface EntryBinding {
      *
      * @param entry is the destination entry buffer.
      */
-    void objectToEntry(Object object, DatabaseEntry entry);
+    void objectToEntry(E object, DatabaseEntry entry);
 }

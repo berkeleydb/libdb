@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: RepConfig.java,v 1.9 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 package db.repquote;
@@ -11,34 +11,37 @@ package db.repquote;
 import java.util.Vector;
 
 import com.sleepycat.db.ReplicationHostAddress;
+import com.sleepycat.db.ReplicationManagerAckPolicy;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
 import com.sleepycat.db.ReplicationManagerSiteInfo;
 
 public class RepConfig
 {
-    // Constant values used in the RepQuote application.
+    /* Constant values used in the RepQuote application. */
     public static final String progname = "RepQuoteExample";
     public static final int CACHESIZE = 10 * 1024 * 1024;
     public static final int SLEEPTIME = 5000;
 
-    // member variables containing configuration information
-    public String home; // String specifying the home directory for rep files.
-    public Vector otherHosts; // stores an optional set of "other" hosts.
-    public int priority; // priority within the replication group.
+    /* Member variables containing configuration information. */
+    public ReplicationManagerAckPolicy ackPolicy;
+    public boolean bulk; /* Whether bulk transfer should be performed. */
+    public String home; /* The home directory for rep files. */
+    public Vector otherHosts; /* Stores an optional set of "other" hosts. */
+    public int priority; /* Priority within the replication group. */
     public ReplicationManagerStartPolicy startPolicy;
-    public ReplicationHostAddress thisHost; // The host address to listen to.
-    // Optional parameter specifying the # of sites in the replication group.
+    public ReplicationHostAddress thisHost; /* Host address to listen to. */
+    /* Optional value specifying the # of sites in the replication group. */
     public int totalSites;
     public boolean verbose;
 
-    // member variables used internally.
+    /* Member variables used internally. */
     private int currOtherHost;
     private boolean gotListenAddress;
 
     public RepConfig()
     {
         startPolicy = ReplicationManagerStartPolicy.REP_ELECTION;
-        home = "TESTDIR";
+        home = "";
         gotListenAddress = false;
         totalSites = 0;
         priority = 100;
@@ -46,6 +49,8 @@ public class RepConfig
         currOtherHost = 0;
         thisHost = new ReplicationHostAddress();
         otherHosts = new Vector();
+        ackPolicy = ReplicationManagerAckPolicy.QUORUM;
+        bulk = false;
     }
 
     public java.io.File getHome()
@@ -74,8 +79,8 @@ public class RepConfig
     public void addOtherHost(String host, int port, boolean peer)
     {
         ReplicationHostAddress newInfo =
-		    new ReplicationHostAddress(host, port);
-	RepRemoteHost newHost = new RepRemoteHost(newInfo, peer);
+            new ReplicationHostAddress(host, port);
+        RepRemoteHost newHost = new RepRemoteHost(newInfo, peer);
         otherHosts.add(newHost);
     }
 

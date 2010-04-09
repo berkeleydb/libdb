@@ -28,7 +28,7 @@ dnl Note: This macro can work with the autoconf M4 macros for Java programs.
 dnl This particular macro is not part of the original set of macros.
 dnl
 dnl @author Don Anderson
-dnl @version $Id: ac_jni_include_dirs.m4,v 12.2 2007/11/16 15:48:09 bschmeck Exp $
+dnl @version $Id$
 dnl
 AC_DEFUN(AC_JNI_INCLUDE_DIR,[
 

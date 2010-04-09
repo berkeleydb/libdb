@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: AccessExample.java,v 12.8 2008/02/07 17:12:19 mark Exp $
+ * $Id$
  */
 
 package collections.access;
@@ -95,6 +95,7 @@ public class AccessExample
             // create the app and run it
             AccessExample app = new AccessExample(env, databaseName);
             app.run();
+            app.close();
         } catch (DatabaseException e) {
             e.printStackTrace();
             System.exit(1);
@@ -149,6 +150,15 @@ public class AccessExample
         this.map = new StoredSortedMap(db, keyBinding, dataBinding, true);
     }
 
+    /**
+     * Close the database and environment.
+     */
+    void close()
+	throws DatabaseException {
+
+        db.close();
+        env.close();
+    }
 
     /**
      *  Main processing method for the AccessExample object

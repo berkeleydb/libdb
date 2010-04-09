@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_region.c,v 12.30 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,7 +13,6 @@
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
-#include "dbinc/mutex_int.h"
 
 static size_t __mutex_align_size __P((ENV *));
 static int __mutex_region_init __P((ENV *, DB_MUTEXMGR *));
@@ -112,6 +111,14 @@ __mutex_open(env, create_ok)
 		}
 		__os_free(env, env->mutex_iq);
 		env->mutex_iq = NULL;
+#ifndef HAVE_ATOMIC_SUPPORT
+		/* If necessary allocate the atomic emulation mutexes.  */
+		for (i = 0; i != MAX_ATOMIC_MUTEXES; i++)
+			if ((ret = __mutex_alloc_int(
+			    env, 0, MTX_ATOMIC_EMULATION,
+			    0, &mtxregion->mtx_atomic[i])) != 0)
+				return (ret);
+#endif
 
 		/*
 		 * This is the first place we can test mutexes and we need to
@@ -126,13 +133,30 @@ __mutex_open(env, create_ok)
 		    __mutex_alloc(env, MTX_MUTEX_TEST, 0, &mutex) != 0) ||
 		    (ret = __mutex_lock(env, mutex)) != 0 ||
 		    (ret = __mutex_unlock(env, mutex)) != 0 ||
+		    (ret = __mutex_trylock(env, mutex)) != 0 ||
+		    (ret = __mutex_unlock(env, mutex)) != 0 ||
 		    (ret = __mutex_free(env, &mutex)) != 0) {
 			__db_errx(env,
 		    "Unable to acquire/release a mutex; check configuration");
 			goto err;
 		}
+#ifdef HAVE_SHARED_LATCHES
+		if ((ret =
+		    __mutex_alloc(env,
+			MTX_MUTEX_TEST, DB_MUTEX_SHARED, &mutex) != 0) ||
+		    (ret = __mutex_lock(env, mutex)) != 0 ||
+		    (ret = __mutex_unlock(env, mutex)) != 0 ||
+		    (ret = __mutex_rdlock(env, mutex)) != 0 ||
+		    (ret = __mutex_rdlock(env, mutex)) != 0 ||
+		    (ret = __mutex_unlock(env, mutex)) != 0 ||
+		    (ret = __mutex_unlock(env, mutex)) != 0 ||
+		    (ret = __mutex_free(env, &mutex)) != 0) {
+			__db_errx(env,
+	    "Unable to acquire/release a shared latch; check configuration");
+			goto err;
+		}
+#endif
 	}
-
 	return (0);
 
 err:	env->mutex_handle = NULL;
@@ -177,6 +201,7 @@ __mutex_region_init(env, mtxmgr)
 	if ((ret = __mutex_alloc(
 	    env, MTX_MUTEX_REGION, 0, &mtxregion->mtx_region)) != 0)
 		return (ret);
+	mtxmgr->reginfo.mtx_alloc = mtxregion->mtx_region;
 
 	mtxregion->mutex_size = __mutex_align_size(env);
 
@@ -220,11 +245,11 @@ __mutex_region_init(env, mtxmgr)
 	 * in each link.
 	 */
 	for (i = 1; i < mtxregion->stat.st_mutex_cnt; ++i) {
-		mutexp = MUTEXP_SET(i);
+		mutexp = MUTEXP_SET(mtxmgr, i);
 		mutexp->flags = 0;
 		mutexp->mutex_next_link = i + 1;
 	}
-	mutexp = MUTEXP_SET(i);
+	mutexp = MUTEXP_SET(mtxmgr, i);
 	mutexp->flags = 0;
 	mutexp->mutex_next_link = MUTEX_INVALID;
 	mtxregion->mutex_next = 1;
@@ -259,6 +284,8 @@ __mutex_env_refresh(env)
 	 * owned by any particular process.
 	 */
 	if (F_ISSET(env, ENV_PRIVATE)) {
+		reginfo->mtx_alloc = MUTEX_INVALID;
+
 #ifdef HAVE_MUTEX_SYSTEM_RESOURCES
 		/*
 		 * If destroying the mutex region, return any system resources
@@ -371,7 +398,7 @@ __mutex_resource_return(env, infop)
 	orig_handle = env->mutex_handle;
 	env->mutex_handle = mtxmgr;
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
-		mutexp = MUTEXP_SET(i);
+		mutexp = MUTEXP_SET(mtxmgr, i);
 		if (F_ISSET(mutexp, DB_MUTEX_ALLOCATED))
 			(void)__mutex_destroy(env, i);
 	}

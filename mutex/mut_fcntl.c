@@ -1,15 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_fcntl.c,v 12.28 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-#include "dbinc/mutex_int.h"
+
+static inline int __db_fcntl_mutex_lock_int __P((ENV *, db_mutex_t, int));
 
 /*
  * __db_fcntl_mutex_init --
@@ -31,20 +32,19 @@ __db_fcntl_mutex_init(env, mutex, flags)
 }
 
 /*
- * __db_fcntl_mutex_lock
- *	Lock on a mutex, blocking if necessary.
- *
- * PUBLIC: int __db_fcntl_mutex_lock __P((ENV *, db_mutex_t));
+ * __db_fcntl_mutex_lock_int
+ *	Internal function to lock a mutex, blocking only when requested
  */
-int
-__db_fcntl_mutex_lock(env, mutex)
+inline int
+__db_fcntl_mutex_lock_int(env, mutex, wait)
 	ENV *env;
 	db_mutex_t mutex;
+	int wait;
 {
 	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
-	DB_MUTEXREGION *mtxregion;
+	DB_THREAD_INFO *ip;
 	struct flock k_lock;
 	int locked, ms, ret;
 
@@ -54,8 +54,7 @@ __db_fcntl_mutex_lock(env, mutex)
 		return (0);
 
 	mtxmgr = env->mutex_handle;
-	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	CHECK_MTX_THREAD(env, mutexp);
 
@@ -71,18 +70,36 @@ __db_fcntl_mutex_lock(env, mutex)
 	k_lock.l_start = mutex;
 	k_lock.l_len = 1;
 
+	/*
+	 * Only check the thread state once, by initializing the thread
+	 * control block pointer to null.  If it is not the failchk
+	 * thread, then ip will have a valid value subsequent times
+	 * in the loop.
+	 */
+	ip = NULL;
+
 	for (locked = 0;;) {
 		/*
 		 * Wait for the lock to become available; wait 1ms initially,
 		 * up to 1 second.
 		 */
 		for (ms = 1; F_ISSET(mutexp, DB_MUTEX_LOCKED);) {
+			if (F_ISSET(dbenv, DB_ENV_FAILCHK) &&
+			    ip == NULL && dbenv->is_alive(dbenv,
+			    mutexp->pid, mutexp->tid, 0) == 0) {
+				ret = __env_set_state(env, &ip, THREAD_VERIFY);
+				if (ret != 0 ||
+				    ip->dbth_state == THREAD_FAILCHK)
+					return (DB_RUNRECOVERY);
+			}
+			if (!wait)
+				return (DB_LOCK_NOTGRANTED);
 			__os_yield(NULL, 0, ms * US_PER_MS);
 			if ((ms <<= 1) > MS_PER_SEC)
 				ms = MS_PER_SEC;
 		}
 
-		/* Acquire an exclusive kernel lock. */
+		/* Acquire an exclusive kernel lock on the byte. */
 		k_lock.l_type = F_WRLCK;
 		if (fcntl(env->lockfhp->fd, F_SETLKW, &k_lock))
 			goto err;
@@ -129,6 +146,34 @@ err:	ret = __os_get_syserr();
 }
 
 /*
+ * __db_fcntl_mutex_lock
+ *	Lock a mutex, blocking if necessary.
+ *
+ * PUBLIC: int __db_fcntl_mutex_lock __P((ENV *, db_mutex_t));
+ */
+int
+__db_fcntl_mutex_lock(env, mutex)
+	ENV *env;
+	db_mutex_t mutex;
+{
+	return (__db_fcntl_mutex_lock_int(env, mutex, 1));
+}
+
+/*
+ * __db_fcntl_mutex_trylock
+ *	Try to lock a mutex, without blocking when it is busy.
+ *
+ * PUBLIC: int __db_fcntl_mutex_trylock __P((ENV *, db_mutex_t));
+ */
+int
+__db_fcntl_mutex_trylock(env, mutex)
+	ENV *env;
+	db_mutex_t mutex;
+{
+	return (__db_fcntl_mutex_lock_int(env, mutex, 0));
+}
+
+/*
  * __db_fcntl_mutex_unlock --
  *	Release a mutex.
  *
@@ -142,7 +187,6 @@ __db_fcntl_mutex_unlock(env, mutex)
 	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
-	DB_MUTEXREGION *mtxregion;
 
 	dbenv = env->dbenv;
 
@@ -150,8 +194,7 @@ __db_fcntl_mutex_unlock(env, mutex)
 		return (0);
 
 	mtxmgr = env->mutex_handle;
-	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 #ifdef DIAGNOSTIC
 	if (!F_ISSET(mutexp, DB_MUTEX_LOCKED)) {

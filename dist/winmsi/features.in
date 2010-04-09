@@ -1,4 +1,4 @@
-# $Id: features.in,v 1.5 2005/04/15 19:03:35 philipr Exp $
+# $Id$
 # Lists features that can be installed on Windows,
 # and their dependencies.
 
@@ -17,6 +17,7 @@
 
 # feature	short name	description	options
 
+CsharpAPI	"C sharp"	".NET C sharp API libraries"
 CoreAPI		"Core Features"	"C/C++ API and required binaries"	+required
 CoreAPI/DCoreAPI	"Debug Core Features"	""	
 CoreTools	"Tools and Utilities"	"Compiled tools for DB maintenance"	+default
@@ -27,6 +28,7 @@ JavaAPI/JavaEx	"Java Examples"	"Java examples JAR"
 JavaAPI/DJavaAPI	"Debug Java"	""	
 JavaAPI/DJavaAPI/DJavaEx	"Debug Java Examples"	""	
 PerlAPI		"Perl"		"Perl API .pm and .pod files"
+StlAPI		"DB STL"	"DB C++ STL API"
 TclAPI		"Tcl"		"Tcl API binaries"
 TclAPI/DTclAPI		"Debug Tcl"	""	
 Docs		"Documentation"	"Documentation for all products"

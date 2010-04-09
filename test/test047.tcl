@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test047.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test047
 # TEST	DBcursor->c_get get test with SET_RANGE option.
@@ -16,7 +16,11 @@ proc test047 { method args } {
 		puts "Test$tnum skipping for method $method"
 		return
 	}
-
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
 	set method "-btree"
 
 	puts "\tTest$tnum: Test of SET_RANGE interface to DB->c_get ($method)."

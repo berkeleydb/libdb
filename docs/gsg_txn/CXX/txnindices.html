@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Secondary Indices with Transaction Applications</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
-    <link rel="previous" href="txncursor.html" title="Transactional Cursors" />
+    <link rel="prev" href="txncursor.html" title="Transactional Cursors" />
     <link rel="next" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
   </head>
   <body>
@@ -32,15 +32,9 @@
             <h2 class="title" style="clear: both"><a id="txnindices"></a>Secondary Indices with Transaction Applications</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-            <span>
-            You 
-            </span>
-            
-
-                can use transactions with your secondary indices so long as you
+            You can use transactions with your secondary indices so long as you
 
             <span>
                 open the secondary index so that it supports transactions (that is,
@@ -54,7 +48,7 @@
                 In addition, you must make sure that when you associate the
                 secondary index with the primary database, the association is
                 performed using a transaction. The easiest thing to do here is
-                to simply specify <tt class="literal">DB_AUTO_COMMIT</tt> when you
+                to simply specify <code class="literal">DB_AUTO_COMMIT</code> when you
                 perform the association.
             </span>
         </p>
@@ -68,7 +62,7 @@
                     against a primary database. 
                 </span>
                 
-                    See <a href="txncursor.html">Transactional Cursors</a> for details.
+                    See <a class="xref" href="txncursor.html" title="Transactional Cursors">Transactional Cursors</a> for details.
         </p>
       <p>
             Note that when you use transactions to protect your database writes, your secondary indices are protected from

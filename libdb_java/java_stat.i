@@ -18,11 +18,11 @@
 		(*jenv)->SetLongField(jenv, jobj, fid,			\
 		    (jlong)statp->name)
 
-#define JAVADB_STAT_XID(jenv, jobj, fid, statp, name) {			\
+#define JAVADB_STAT_GID(jenv, jobj, fid, statp, name) {			\
 	jobject jarr =							\
-	    (*jenv)->NewByteArray(jenv, (jsize)DB_XIDDATASIZE);		\
+	    (*jenv)->NewByteArray(jenv, (jsize)DB_GID_SIZE);		\
 	(*jenv)->SetByteArrayRegion(jenv, jarr,				\
-	    0, (jsize)DB_XIDDATASIZE, (jbyte *)statp->name);		\
+	    0, (jsize)DB_GID_SIZE, (jbyte *)statp->name);		\
 	(*jenv)->SetObjectField(jenv, jobj, fid, jarr);			\
 	}
 

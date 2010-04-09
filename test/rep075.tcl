@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep075.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep075
 # TEST	Replication and prepared transactions.
@@ -13,6 +13,10 @@
 proc rep075 { method { tnum "075" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global mixed_mode_logging
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -30,27 +34,38 @@ proc rep075 { method { tnum "075" } args } {
 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
-	#
+
 	# Swapping the envs is the only thing that should
 	# work for:
 	#   HP, old Windows: can't open two handles on same env.
 	#   in-memory logs: prepared txns don't survive recovery
+	#   NIM databases: can't be recovered
 	#
-	global mixed_mode_logging
 	if { $is_hp_test == 1  || $is_windows9x_test == 1 ||
-	     $mixed_mode_logging > 0 } {
+	     $mixed_mode_logging > 0 || $databases_in_memory == 1 } {
 		set prep {swap}
 	} else {
 		set prep {dbrecover swap resolve recover envrecover}
 	}
 	set ops {commit abort both}
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+
+	}
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach l $logsets {
 		foreach p $prep {
 			foreach o $ops {
 				puts "Rep$tnum ($method $p $o):\
-				    Replication and prepared txns."
+				    Replication and prepared txns $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				puts "Rep$tnum: close DBs after prepare"
@@ -64,6 +79,8 @@ proc rep075 { method { tnum "075" } args } {
 
 proc rep075_sub { method tnum logset prep op after largs } {
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 	global util_path
@@ -72,6 +89,12 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
 	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
+
 	env_cleanup $testdir
 
 	replsetup $testdir/MSGQUEUEDIR
@@ -106,6 +129,7 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $repmemargs \
 	    $m_logargs -errpfx ENV0 -log_max $log_max $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env0 [eval $ma_envcmd -rep_master]
@@ -115,6 +139,7 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	# Open a client.
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $repmemargs \
 	    $c_logargs -errpfx ENV1 -log_max $log_max $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env1 [eval $cl_envcmd -rep_client]
@@ -123,6 +148,7 @@ proc rep075_sub { method tnum logset prep op after largs } {
 
 	repladd 3
 	set cl2_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $repmemargs \
 	    $c_logargs -errpfx ENV2 -log_max $log_max $verbargs \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set env2 [eval $cl2_envcmd -rep_client]
@@ -136,20 +162,28 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	process_msgs $envlist
 
 	#
-	# Run rep_test in a database with a sub database.
+	# Run rep_test in a database with a sub database, or in a
+	# named in-memory database.
 	#
-	set testfile "test$tnum.db"
-	set sub "subdb"
-	set db1 [eval {berkdb_open_noerr -env $masterenv -auto_commit \
-	    -create -mode 0644} $largs $omethod $testfile $sub]
+	if { $databases_in_memory } {
+		set testfile { "" "test1.db" }
+		set testfile2 { "" "test2.db" }
+		set db1 [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		    -create -mode 0644} $largs $omethod $testfile]
+	} else {
+		set testfile "test1.db"
+		set testfile2 "test2.db"
+		set sub "subdb"
+		set db1 [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		    -create -mode 0644} $largs $omethod $testfile $sub]
+	}
 	error_check_good dbopen [is_valid_db $db1] TRUE
 
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 1
-	eval rep_test $method $masterenv $db1 $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv $db1 $niter 0 0 0 $largs
 	process_msgs $envlist
 
-	set testfile2 "test$tnum.2.db"
 	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
 	    -create -mode 0644} $largs $omethod $testfile2]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -436,7 +470,16 @@ proc rep075_sub { method tnum logset prep op after largs } {
 		}
 		error_check_good master [$env0 rep_start -master] 0
 		set gen [stat_field $env0 rep_stat "Generation number"]
-		error_check_bad gen $gen $oldgen
+		#
+		# If in-memory rep, restarting environment puts gen back
+		# to 1, the same as oldgen. envrecover doesn't do the extra
+		# rep_start, so gen is expected to stay at 1 in this case.
+		#
+		if { $repfiles_in_memory != 0 && $prep == "envrecover" } {
+			error_check_good gen $gen $oldgen
+		} else {
+			error_check_bad gen $gen $oldgen
+		}
 		error_check_good client [$env1 rep_start -client] 0
 		set newmaster $env0
 		set envlist "{$env0 1} {$env1 2} {$env2 3}"
@@ -452,7 +495,7 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	#
 	# Run a standard rep_test creating test.db now.
 	#
-	eval rep_test $method $newmaster NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $newmaster NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	#
@@ -462,8 +505,15 @@ proc rep075_sub { method tnum logset prep op after largs } {
 	puts "\tRep$tnum.d: Verify prepared data."
 	foreach e $envlist {
 		set env [lindex $e 0]
-		set db1 [eval {berkdb_open_noerr -env $env -auto_commit \
-		    -create -mode 0644} $largs $omethod $testfile $sub]
+		if { $databases_in_memory } {
+			set db1 [eval {berkdb_open_noerr -env $env\
+			    -auto_commit -create -mode 0644} $largs\
+			    $omethod $testfile]
+		} else {
+			set db1 [eval {berkdb_open_noerr -env $env\
+			    -auto_commit -create -mode 0644} $largs\
+			    $omethod $testfile $sub]
+		}
 		error_check_good dbopen [is_valid_db $db1] TRUE
 		set db2 [eval {berkdb_open_noerr -env $env -auto_commit \
 		    -create -mode 0644} $largs $omethod $testfile2]

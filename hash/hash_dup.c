@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash_dup.c,v 12.29 2008/01/08 20:58:33 bostic Exp $
+ * $Id$
  */
 
 /*
@@ -168,13 +168,22 @@ __ham_add_dup(dbc, nval, flags, pgnop)
 		case DB_KEYFIRST:
 		case DB_KEYLAST:
 		case DB_NODUPDATA:
+		case DB_OVERWRITE_DUP:
 			if (dbp->dup_compare != NULL) {
 				__ham_dsearch(dbc,
 				    nval, &tmp_val.doff, &cmp, flags);
 
-				/* dup dups are not supported w/ sorted dups */
-				if (cmp == 0)
+				/*
+				 * Duplicate duplicates are not supported w/
+				 * sorted dups.  We can either overwrite or
+				 * return DB_KEYEXIST.
+				 */
+				if (cmp == 0) {
+					if (flags == DB_OVERWRITE_DUP)
+						return (__ham_overwrite(dbc,
+						    nval, flags));
 					return (__db_duperr(dbp, flags));
+				}
 			} else {
 				hcp->dup_tlen = LEN_HDATA(dbp, hcp->page,
 				    dbp->pgsize, hcp->indx);
@@ -266,7 +275,7 @@ __ham_dup_convert(dbc)
 	 * Create a new page for the duplicates.
 	 */
 	if ((ret = __db_new(dbc,
-	    dbp->dup_compare == NULL ? P_LRECNO : P_LDUP, &dp)) != 0)
+	    dbp->dup_compare == NULL ? P_LRECNO : P_LDUP, NULL, &dp)) != 0)
 		return (ret);
 	P_INIT(dp, dbp->pgsize,
 	    dp->pgno, PGNO_INVALID, PGNO_INVALID, LEAFLEVEL, TYPE(dp));
@@ -878,12 +887,10 @@ __hamc_chgpg(dbc, old_pgno, old_index, new_pgno, new_index)
 				continue;
 
 			if (hcp->pgno == old_pgno &&
+			    hcp->indx == old_index &&
 			    !MVCC_SKIP_CURADJ(cp, old_pgno)) {
-				if (hcp->indx == old_index) {
-					hcp->pgno = new_pgno;
-					hcp->indx = new_index;
-				} else
-					continue;
+				hcp->pgno = new_pgno;
+				hcp->indx = new_index;
 				if (my_txn != NULL && cp->txn != my_txn)
 					found = 1;
 			}

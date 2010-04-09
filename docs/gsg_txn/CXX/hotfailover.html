@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Using Hot Failovers</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="architectrecovery.html" title="Designing Your Application for Recovery" />
+    <link rel="prev" href="architectrecovery.html" title="Designing Your Application for Recovery" />
     <link rel="next" href="logfileremoval.html" title="Removing Log Files" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="hotfailover"></a>Using Hot Failovers</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             You can maintain a backup that can be used for failover purposes. 
@@ -95,9 +94,9 @@
           <li>
             <p>
                     Copy all the active database files to the failover
-                    directory.  Use the <span><b class="command">db_archive</b></span>
+                    directory.  Use the <span class="command"><strong>db_archive</strong></span>
                     command line utility with the
-                    <tt class="literal">-s</tt> option to identify all the active
+                    <code class="literal">-s</code> option to identify all the active
                     database files.
                 </p>
           </li>
@@ -105,7 +104,7 @@
             <p>
                     Identify all the inactive log files in your production
                     environment and <span class="emphasis"><em>move</em></span> these to the failover
-                    directory.  Use the <span><b class="command">db_archive</b></span>
+                    directory.  Use the <span class="command"><strong>db_archive</strong></span>
                     command with no command line options to obtain a list
                     of these log files.
                 </p>
@@ -115,16 +114,16 @@
                     Identify the active log files in your production
                     environment, and <span class="emphasis"><em>copy</em></span> these to the
                     failover directory. Use the
-                    <span><b class="command">db_archive</b></span> command with the
-                    <tt class="literal">-l</tt> option to obtain a list of these
+                    <span class="command"><strong>db_archive</strong></span> command with the
+                    <code class="literal">-l</code> option to obtain a list of these
                     log files.
                 </p>
           </li>
           <li>
             <p>
                     Run catastrophic recovery against the failover
-                    directory. Use the <span><b class="command">db_recover</b></span>
-                    command with the <tt class="literal">-c</tt> option to do
+                    directory. Use the <span class="command"><strong>db_recover</strong></span>
+                    command with the <code class="literal">-c</code> option to do
                     this.
                 </p>
           </li>
@@ -150,7 +149,7 @@
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
-            Rather than use the previous procedure, you can use the <span><b class="command">db_hotbackup</b></span> command line utility
+            Rather than use the previous procedure, you can use the <span class="command"><strong>db_hotbackup</strong></span> command line utility
             to do the same thing. This utility will (optionally) run a checkpoint and then copy all necessary files to a target
             directory for you.  
         </p>

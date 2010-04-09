@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: CharacterBinding.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -25,24 +25,24 @@ import com.sleepycat.db.DatabaseEntry;
  * TupleBinding#getPrimitiveBinding} method.</li>
  * </ol>
  */
-public class CharacterBinding extends TupleBinding {
+public class CharacterBinding extends TupleBinding<Character> {
 
     private static final int CHAR_SIZE = 2;
 
     // javadoc is inherited
-    public Object entryToObject(TupleInput input) {
+    public Character entryToObject(TupleInput input) {
 
-        return new Character(input.readChar());
+        return input.readChar();
     }
 
     // javadoc is inherited
-    public void objectToEntry(Object object, TupleOutput output) {
+    public void objectToEntry(Character object, TupleOutput output) {
 
-        output.writeChar(((Character) object).charValue());
+        output.writeChar(object);
     }
 
     // javadoc is inherited
-    protected TupleOutput getTupleOutput(Object object) {
+    protected TupleOutput getTupleOutput(Character object) {
 
         return sizedOutput();
     }

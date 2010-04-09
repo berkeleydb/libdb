@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_err.c,v 12.72 2008/03/12 19:11:53 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -165,7 +165,16 @@ __env_panic_msg(env)
 
 	if (dbenv->db_paniccall != NULL)		/* Deprecated */
 		dbenv->db_paniccall(dbenv, ret);
-	DB_EVENT(env, DB_EVENT_PANIC, &ret);
+
+	/* Must check for DB_EVENT_REG_PANIC panic first because it is never
+	 * set by itself.  If set, it means panic came from DB_REGISTER code
+	 * only, otherwise it could be from many possible places in the code.
+	 */
+	if ((env->reginfo != NULL) &&
+	    (((REGENV *)env->reginfo->primary)->reg_panic))
+		DB_EVENT(env, DB_EVENT_REG_PANIC, &ret);
+	else
+		DB_EVENT(env, DB_EVENT_PANIC, &ret);
 
 	return (ret);
 }
@@ -192,7 +201,17 @@ __env_panic(env, errval)
 
 		if (dbenv->db_paniccall != NULL)	/* Deprecated */
 			dbenv->db_paniccall(dbenv, errval);
-		DB_EVENT(env, DB_EVENT_PANIC, &errval);
+
+		/* Must check for DB_EVENT_REG_PANIC first because it is never
+		 * set by itself.  If set, it means panic came from DB_REGISTER
+		 * code only, otherwise it could be from many possible places
+		 * in the code.
+		 */
+		if ((env->reginfo != NULL) &&
+		    (((REGENV *)env->reginfo->primary)->reg_panic))
+			DB_EVENT(env, DB_EVENT_REG_PANIC, &errval);
+		else
+			DB_EVENT(env, DB_EVENT_PANIC, &errval);
 	}
 
 #if defined(DIAGNOSTIC) && !defined(CONFIG_TEST)
@@ -281,7 +300,7 @@ db_strerror(error)
 	case DB_REP_HOLDELECTION:
 		return ("DB_REP_HOLDELECTION: Need to hold an election");
 	case DB_REP_IGNORE:
-		return ("DB_REP_IGNORE: Replication record ignored");
+		return ("DB_REP_IGNORE: Replication record/operation ignored");
 	case DB_REP_ISPERM:
 		return ("DB_REP_ISPERM: Permanent record written");
 	case DB_REP_JOIN_FAILURE:

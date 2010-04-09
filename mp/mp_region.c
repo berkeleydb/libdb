@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_region.c,v 12.39 2008/05/08 03:15:38 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,6 +13,8 @@
 
 static int	__memp_init_config __P((ENV *, MPOOL *));
 static void	__memp_region_size __P((ENV *, roff_t *, u_int32_t *));
+
+#define	MPOOL_DEFAULT_PAGESIZE	(4 * 1024)
 
 /*
  * __memp_open --
@@ -222,7 +224,7 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 			     MTX_MPOOL_FILE_BUCKET, 0, &htab[i].mtx_hash)) != 0)
 				return (ret);
 			SH_TAILQ_INIT(&htab[i].hash_bucket);
-			htab[i].hash_page_dirty = 0;
+			atomic_init(&htab[i].hash_page_dirty, 0);
 		}
 
 		/*
@@ -233,18 +235,12 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 		mtx_base = mtx_prev = MUTEX_INVALID;
 		for (i = 0; i < mp->max_nreg * htab_buckets; i++) {
 			if ((ret = __mutex_alloc(env, MTX_MPOOL_HASH_BUCKET,
-			    0, &mtx_discard)) != 0)
+			    DB_MUTEX_SHARED, &mtx_discard)) != 0)
 				return (ret);
 			if (i == 0) {
 				mtx_base = mtx_discard;
 				mtx_prev = mtx_discard - 1;
 			}
-			DB_ASSERT(env, mtx_discard == mtx_prev + 1 ||
-			    mtx_base == MUTEX_INVALID);
-			mtx_prev = mtx_discard;
-			if ((ret = __mutex_alloc(env, MTX_MPOOL_IO,
-			    DB_MUTEX_SELF_BLOCK, &mtx_discard)) != 0)
-				return (ret);
 			DB_ASSERT(env, mtx_discard == mtx_prev + 1 ||
 			    mtx_base == MUTEX_INVALID);
 			mtx_prev = mtx_discard;
@@ -258,11 +254,10 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 	/*
 	 * We preallocated all of the mutexes in a block, so for regions after
 	 * the first, we skip mutexes in use in earlier regions.  Each region
-	 * has the same number of buckets and there are two mutexes per hash
-	 * bucket (the bucket mutex and the I/O mutex).
+	 * has the same number of buckets
 	 */
 	if (mtx_base != MUTEX_INVALID)
-		mtx_base += reginfo_off * htab_buckets * 2;
+		mtx_base += reginfo_off * htab_buckets;
 
 	/* Allocate hash table space and initialize it. */
 	if ((ret = __env_alloc(infop,
@@ -272,11 +267,9 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 	for (i = 0; i < htab_buckets; i++) {
 		hp = &htab[i];
 		hp->mtx_hash = (mtx_base == MUTEX_INVALID) ? MUTEX_INVALID :
-		    mtx_base + i * 2;
-		hp->mtx_io = (mtx_base == MUTEX_INVALID) ? MUTEX_INVALID :
-		    mtx_base + i * 2 + 1;
+		    mtx_base + i;
 		SH_TAILQ_INIT(&hp->hash_bucket);
-		hp->hash_page_dirty = 0;
+		atomic_init(&hp->hash_page_dirty, 0);
 #ifdef HAVE_STATISTICS
 		hp->hash_io_wait = 0;
 		hp->hash_frozen = hp->hash_thawed = hp->hash_frozen_freed = 0;
@@ -287,6 +280,8 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 	mp->htab_buckets = htab_buckets;
 #ifdef HAVE_STATISTICS
 	mp->stat.st_hash_buckets = htab_buckets;
+	mp->stat.st_pagesize = dbenv->mp_pagesize == 0 ?
+	    MPOOL_DEFAULT_PAGESIZE : dbenv->mp_pagesize;
 #endif
 
 	SH_TAILQ_INIT(&mp->free_frozen);
@@ -300,8 +295,9 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 	if ((ret = __env_alloc(infop,
 	    sizeof(BH_FROZEN_ALLOC) + sizeof(BH_FROZEN_PAGE), &frozen)) != 0)
 		goto mem_err;
-	frozen_bhp = (BH *)(frozen + 1);
 	SH_TAILQ_INSERT_TAIL(&mp->alloc_frozen, frozen, links);
+	frozen_bhp = (BH *)(frozen + 1);
+	frozen_bhp->mtx_buf = MUTEX_INVALID;
 	SH_TAILQ_INSERT_TAIL(&mp->free_frozen, frozen_bhp, hq);
 
 	/*
@@ -310,6 +306,7 @@ __memp_init(env, dbmp, reginfo_off, htab_buckets, max_nreg)
 	 */
 	mp->stat.st_gbytes = dbenv->mp_gbytes;
 	mp->stat.st_bytes = dbenv->mp_bytes;
+	infop->mtx_alloc = mp->mtx_region;
 	return (0);
 
 mem_err:__db_errx(env, "Unable to allocate memory for mpool region");
@@ -354,6 +351,7 @@ __memp_region_size(env, reg_sizep, htab_bucketsp)
 {
 	DB_ENV *dbenv;
 	roff_t reg_size, cache_size;
+	u_int32_t pgsize;
 
 	dbenv = env->dbenv;
 
@@ -368,10 +366,11 @@ __memp_region_size(env, reg_sizep, htab_bucketsp)
 
 	/*
 	 * Figure out how many hash buckets each region will have.  Assume we
-	 * want to keep the hash chains with under 10 pages on each chain.  We
+	 * want to keep the hash chains with under 3 pages on each chain.  We
 	 * don't know the pagesize in advance, and it may differ for different
-	 * files.  Use a pagesize of 1K for the calculation -- we walk these
-	 * chains a lot, they must be kept short.
+	 * files.  Use a pagesize of 4K for the calculation -- we walk these
+	 * chains a lot, they must be kept short.  We use 2.5 as this maintains
+	 * compatibility with previous releases.
 	 *
 	 * XXX
 	 * Cache sizes larger than 10TB would cause 32-bit wrapping in the
@@ -379,9 +378,16 @@ __memp_region_size(env, reg_sizep, htab_bucketsp)
 	 * something we need to worry about right now, but is checked when the
 	 * cache size is set.
 	 */
-	if (htab_bucketsp != NULL)
-		*htab_bucketsp =
-		    __db_tablesize((u_int32_t)(reg_size / (10 * 1024)));
+	if (htab_bucketsp != NULL) {
+		if (dbenv->mp_tablesize != 0)
+			*htab_bucketsp = __db_tablesize(dbenv->mp_tablesize);
+		else {
+			if ((pgsize = dbenv->mp_pagesize) == 0)
+				pgsize = MPOOL_DEFAULT_PAGESIZE;
+			*htab_bucketsp = __db_tablesize(
+				(u_int32_t)(reg_size / (2.5 * pgsize)));
+		}
+	}
 }
 
 /*
@@ -396,18 +402,24 @@ __memp_region_mutex_count(env)
 {
 	DB_ENV *dbenv;
 	u_int32_t htab_buckets;
+	roff_t reg_size;
+	u_int32_t num_per_cache, pgsize;
 
 	dbenv = env->dbenv;
 
-	__memp_region_size(env, NULL, &htab_buckets);
+	__memp_region_size(env, &reg_size, &htab_buckets);
+	if ((pgsize = dbenv->mp_pagesize) == 0)
+		pgsize = MPOOL_DEFAULT_PAGESIZE;
 
 	/*
 	 * We need a couple of mutexes for the region itself, one for each
 	 * file handle (MPOOLFILE) the application allocates, one for each
-	 * of the MPOOL_FILE_BUCKETS, and each cache has two mutexes per
-	 * hash bucket.
+	 * of the MPOOL_FILE_BUCKETS, and each cache has one mutex per
+	 * hash bucket. We then need one mutex per page in the cache,
+	 * the worst case is really big if the pages are 512 bytes.
 	 */
-	return (dbenv->mp_ncache * htab_buckets * 2 + 50 + MPOOL_FILE_BUCKETS);
+	num_per_cache = htab_buckets + (u_int32_t)(reg_size / pgsize);
+	return ((dbenv->mp_ncache * num_per_cache) + 50 + MPOOL_FILE_BUCKETS);
 }
 
 /*
@@ -490,28 +502,33 @@ __memp_env_refresh(env)
 					    hq, __bh);
 				else {
 					if (F_ISSET(bhp, BH_DIRTY)) {
-						--hp->hash_page_dirty;
+						atomic_dec(env,
+						     &hp->hash_page_dirty);
 						F_CLR(bhp,
 						    BH_DIRTY | BH_DIRTY_CREATE);
 					}
-					if ((t_ret = __memp_bhfree(
-					    dbmp, infop, hp, bhp,
+					atomic_inc(env, &bhp->ref);
+					if ((t_ret = __memp_bhfree(dbmp, infop,
+					    R_ADDR(dbmp->reginfo,
+					    bhp->mf_offset), hp, bhp,
 					    BH_FREE_FREEMEM |
 					    BH_FREE_UNLOCKED)) != 0 && ret == 0)
 						ret = t_ret;
 				}
 		}
+		MPOOL_REGION_LOCK(env, infop);
 		while ((frozen_alloc = SH_TAILQ_FIRST(
 		    &c_mp->alloc_frozen, __bh_frozen_a)) != NULL) {
 			SH_TAILQ_REMOVE(&c_mp->alloc_frozen, frozen_alloc,
 			    links, __bh_frozen_a);
 			__env_alloc_free(infop, frozen_alloc);
 		}
+		MPOOL_REGION_UNLOCK(env, infop);
 	}
 
 	/* Discard hash bucket mutexes. */
 	if (mtx_base != MUTEX_INVALID)
-		for (i = 0; i < 2 * max_nreg * htab_buckets; ++i) {
+		for (i = 0; i < max_nreg * htab_buckets; ++i) {
 			mtx = mtx_base + i;
 			if ((t_ret = __mutex_free(env, &mtx)) != 0 &&
 			    ret == 0)
@@ -539,16 +556,18 @@ not_priv:
 	if (F_ISSET(env, ENV_PRIVATE)) {
 		/* Discard REGION IDs. */
 		infop = &dbmp->reginfo[0];
-		__memp_free(infop, NULL, R_ADDR(infop, mp->regids));
+		infop->mtx_alloc = MUTEX_INVALID;
+		__memp_free(infop, R_ADDR(infop, mp->regids));
 
 		/* Discard the File table. */
-		__memp_free(infop, NULL, R_ADDR(infop, mp->ftab));
+		__memp_free(infop, R_ADDR(infop, mp->ftab));
 
 		/* Discard Hash tables. */
 		for (i = 0; i < nreg; ++i) {
 			infop = &dbmp->reginfo[i];
 			c_mp = infop->primary;
-			__memp_free(infop, NULL, R_ADDR(infop, c_mp->htab));
+			infop->mtx_alloc = MUTEX_INVALID;
+			__memp_free(infop, R_ADDR(infop, c_mp->htab));
 		}
 	}
 

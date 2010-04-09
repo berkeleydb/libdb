@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: rep045script.tcl,v 12.11 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Rep045 script - replication with version dbs.
 #
@@ -18,7 +18,7 @@ source $test_path/reputils.tcl
 set usage "repscript clientdir vfile"
 
 # Verify usage
-if { $argc != 2 } {
+if { $argc != 3 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -26,6 +26,8 @@ if { $argc != 2 } {
 # Initialize arguments
 set clientdir [ lindex $argv 0 ]
 set vfile [ lindex $argv 1 ]
+global databases_in_memory
+set databases_in_memory [ lindex $argv 2 ]
 set niter 50
 
 # Join the queue env.  We assume the rep test convention of

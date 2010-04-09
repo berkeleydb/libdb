@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: wrap.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Sentinel file wrapper for multi-process tests.  This is designed to avoid a
 # set of nasty bugs, primarily on Windows, where pid reuse causes watch_procs
@@ -13,19 +13,24 @@ source ./include.tcl
 source $test_path/testutils.tcl
 
 # Arguments:
-if { $argc < 3 } {
-	puts "FAIL: wrap.tcl: Usage: wrap.tcl script log scriptargs"
+if { $argc < 2 } {
+	puts "FAIL: wrap.tcl: Usage: wrap.tcl script log [scriptargs]"
 	exit
 }
 
 set script [lindex $argv 0]
 set logfile [lindex $argv 1]
-set skip [lindex $argv 2]
-set args [lrange $argv 3 end]
+if { $argc >= 2 } {
+	set skip [lindex $argv 2]
+	set args [lrange $argv 3 end]
+} else {
+	set skip ""
+	set args ""
+}
 #
 # Account in args for SKIP command, or not.
 #
-if { $skip != "SKIP" } {
+if { $skip != "SKIP" && $argc >= 2 } {
 	set args [lrange $argv 2 end]
 }
 
@@ -63,7 +68,13 @@ puts $t "set script $script"
 puts $t "set argc [llength $args]"
 puts $t "set argv [list $args]"
 
-set scr $test_path/$script
+set has_path [file dirname $script]
+if { $has_path != "." } {
+	set scr $script
+} else {
+	set scr $test_path/$script
+}
+#puts "Script $script: path $has_path, scr $scr"
 puts $t "set scr $scr"
 puts $t {set ret [catch { source $scr } result]}
 puts $t {if { [string length $result] > 0 } { puts $result }}

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredKeySet.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -26,7 +26,7 @@ import com.sleepycat.db.OperationStatus;
  *
  * @author Mark Hayes
  */
-public class StoredKeySet extends StoredCollection implements Set {
+public class StoredKeySet<K> extends StoredCollection<K> implements Set<K> {
 
     /**
      * Creates a key set view of a {@link Database}.
@@ -45,7 +45,8 @@ public class StoredKeySet extends StoredCollection implements Set {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredKeySet(Database database, EntryBinding keyBinding,
+    public StoredKeySet(Database database,
+                        EntryBinding<K> keyBinding,
                         boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, null, null,
@@ -70,7 +71,7 @@ public class StoredKeySet extends StoredCollection implements Set {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean add(Object key) {
+    public boolean add(K key) {
 
         DataCursor cursor = null;
         boolean doAutoCommit = beginAutoCommit();
@@ -120,12 +121,12 @@ public class StoredKeySet extends StoredCollection implements Set {
         return false;
     }
 
-    Object makeIteratorData(BaseIterator iterator,
-                            DatabaseEntry keyEntry,
-                            DatabaseEntry priKeyEntry,
-                            DatabaseEntry valueEntry) {
+    K makeIteratorData(BaseIterator iterator,
+                       DatabaseEntry keyEntry,
+                       DatabaseEntry priKeyEntry,
+                       DatabaseEntry valueEntry) {
 
-        return view.makeKey(keyEntry, priKeyEntry);
+        return (K) view.makeKey(keyEntry, priKeyEntry);
     }
 
     boolean iterateDuplicates() {

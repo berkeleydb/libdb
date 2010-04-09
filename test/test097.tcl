@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test097.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test097
 # TEST	Open up a large set of database files simultaneously.
@@ -30,8 +30,13 @@ proc test097 { method {ndbs 500} {nentries 400} args } {
 	}
 	env_cleanup $testdir
 	set env [eval {berkdb_env -create -log_regionmax 131072 \
-	     -cachesize { 0 1048576 1 } -txn} -home $testdir $encargs]
+	    -pagesize 512 -cachesize { 0 1048576 1 } -txn} \
+	    -home $testdir $encargs]
 	error_check_good dbenv [is_valid_env $env] TRUE
+
+	if { [is_partitioned $args] == 1 } {
+		set ndbs [expr $ndbs / 10]
+	}
 
 	# Create the database and open the dictionary
 	set basename test097

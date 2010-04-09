@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.q,v 12.0 2004/11/17 03:44:51 bostic Exp $
+# $Id$
 #
 # Check to make sure the queue macros pass our tests.
 

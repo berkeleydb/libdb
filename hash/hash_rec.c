@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash_rec.c,v 12.44 2008/02/18 04:46:43 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -204,6 +204,7 @@ __ham_newpage_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 	if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == PUTOVFL) ||
 	    (cmp_n == 0 && DB_UNDO(op) && argp->opcode == DELOVFL)) {
@@ -236,6 +237,7 @@ ppage:	if (argp->prev_pgno != PGNO_INVALID) {
 		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->prevlsn);
 		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->prevlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 		change = 0;
 
 		if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == PUTOVFL) ||
@@ -269,6 +271,7 @@ npage:	if (argp->next_pgno != PGNO_INVALID) {
 		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nextlsn);
 		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->nextlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 		change = 0;
 
 		if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == PUTOVFL) ||
@@ -340,6 +343,7 @@ __ham_replace_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 	memset(&dbt, 0, sizeof(dbt));
 	modified = 0;
@@ -459,6 +463,7 @@ __ham_splitdata_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 	/*
 	 * There are three types of log messages here. Two are related
@@ -569,6 +574,7 @@ donext:	/* Now fix up the "next" page. */
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nextlsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->nextlsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		LSN(pagep) = *lsnp;
@@ -590,6 +596,7 @@ do_nn:	if (argp->nnext_pgno == PGNO_INVALID)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nnextlsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->nnextlsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
@@ -699,8 +706,8 @@ __ham_metagroup_recover(env, dbtp, lsnp, op, info)
 			    ip, pagep, DB_PRIORITY_VERY_LOW)) != 0)
 				goto out;
 			pagep = NULL;
-			if ((ret =
-			    __memp_ftruncate(mpf, ip, argp->pgno, 0)) != 0)
+			if ((ret = __memp_ftruncate(mpf, NULL, ip,
+			    argp->pgno, 0)) != 0)
 				goto out;
 		} else {
 			/*
@@ -715,6 +722,28 @@ __ham_metagroup_recover(env, dbtp, lsnp, op, info)
 	    (ret = __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)
 		goto out;
 
+	/*
+	 * If a earlier aborted allocation used one of our pages it may
+	 * be in the wrong state, read all the pages in the group and init
+	 * them to be empty.
+	 */
+	if (DB_REDO(op) && argp->newalloc) {
+		for (pgno = argp->pgno;
+		    pgno < argp->pgno + argp->bucket; pgno++) {
+			if ((ret = __memp_fget(mpf,
+			    &pgno, ip, NULL, DB_MPOOL_CREATE, &pagep)) != 0)
+				goto out;
+
+			if (IS_ZERO_LSN(LSN(pagep)))
+				P_INIT(pagep, file_dbp->pgsize,
+				    PGNO_INVALID, PGNO_INVALID, PGNO_INVALID,
+				    0, P_HASH);
+			if ((ret =
+			    __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)
+				goto out;
+		}
+	}
+
 do_meta:
 	/* Now we have to update the meta-data page. */
 	hcp = (HASH_CURSOR *)dbc->internal;
@@ -723,6 +752,7 @@ do_meta:
 	cmp_n = LOG_COMPARE(lsnp, &hcp->hdr->dbmeta.lsn);
 	cmp_p = LOG_COMPARE(&hcp->hdr->dbmeta.lsn, &argp->metalsn);
 	CHECK_LSN(env, op, cmp_p, &hcp->hdr->dbmeta.lsn, &argp->metalsn);
+	CHECK_ABORT(env, op, cmp_n, &hcp->hdr->dbmeta.lsn, lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Redo the actual updating of bucket counts. */
 		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
@@ -853,6 +883,7 @@ __ham_groupalloc_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(mmeta));
 	cmp_p = LOG_COMPARE(&LSN(mmeta), &argp->meta_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(mmeta), &argp->meta_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(mmeta), lsnp);
 
 	/*
 	 * Basically, we used mpool to allocate a chunk of pages.
@@ -895,7 +926,7 @@ __ham_groupalloc_recover(env, dbtp, lsnp, op, info)
 			if ((ret = __memp_fput(mpf, ip,
 			    pagep, DB_PRIORITY_VERY_LOW)) != 0)
 				goto out;
-			if ((ret = __memp_ftruncate(mpf,
+			if ((ret = __memp_ftruncate(mpf, NULL,
 			     ip, argp->start_pgno, 0)) != 0)
 				goto out;
 		}

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test123.tcl,v 12.2 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test123
 # TEST	Concurrent Data Store cdsgroup smoke test.
@@ -28,10 +28,16 @@ proc test123 { method args } {
 		puts "Skipping test123 for method $method"
 		return
 	}
+	if { [is_partitioned $args] == 1 } {
+		puts "Test123 skipping for partitioned $method"
+		return
+	}
 	set args [convert_args $method $args]
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 	set dbname test123.db
 	set tnum "123"
 
@@ -40,7 +46,8 @@ proc test123 { method args } {
 
 	# Open environment and start cdsgroup "transaction".
 	puts "\tTest$tnum.a: Open env."
-	set env [eval {berkdb_env -create} $encargs -cdb -cdb_alldb -home $testdir]
+	set env [eval {berkdb_env -create} \
+	     $pageargs $encargs -cdb -cdb_alldb -home $testdir]
 	error_check_good dbenv [is_valid_env $env] TRUE
 	set txn [$env cdsgroup]
 

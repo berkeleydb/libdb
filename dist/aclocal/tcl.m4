@@ -1,4 +1,4 @@
-# $Id: tcl.m4,v 12.2 2005/06/28 20:45:25 gmf Exp $
+# $Id$
 
 # The SC_* macros in this file are from the unix/tcl.m4 files in the Tcl
 # 8.3.0 distribution, with some minor changes.  For this reason, license
@@ -104,14 +104,12 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 	# If the DB Tcl library isn't loaded with the Tcl spec and library
 	# flags on AIX, the resulting libdb_tcl-X.Y.so.0 will drop core at
 	# load time. [#4843]  Furthermore, with Tcl 8.3, the link flags
-	# given by the Tcl spec are insufficient for our use.  [#5779]
+	# given by the Tcl spec are insufficient for our use.  [#5779],[#17109]
 	#
 	case "$host_os" in
-	aix4.[[2-9]].*)
+	aix*)
 		LIBTSO_LIBS="$LIBTSO_LIBS $TCL_LIB_SPEC $TCL_LIB_FLAG"
 		LIBTSO_LIBS="$LIBTSO_LIBS -L$TCL_EXEC_PREFIX/lib -ltcl$TCL_VERSION";;
-	aix*)
-		LIBTSO_LIBS="$LIBTSO_LIBS $TCL_LIB_SPEC $TCL_LIB_FLAG";;
 	esac
 	AC_SUBST(TCL_BIN_DIR)
 	AC_SUBST(TCL_INCLUDE_SPEC)
@@ -124,7 +122,7 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 
 # Optional Tcl API.
 AC_DEFUN(AM_TCL_LOAD, [
-	if test `$LIBTOOL_PROG --config | grep build_libtool_libs | grep no` 2>/dev/null; then
+	if test "$enable_shared" != "yes"; then
 		AC_MSG_ERROR([Tcl requires shared libraries])
 	fi
 

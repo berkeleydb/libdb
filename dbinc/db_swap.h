@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_swap.h,v 12.13 2008/05/05 20:26:04 mbrey Exp $
+ * $Id$
  */
 
 #ifndef _DB_SWAP_H_
@@ -233,26 +233,26 @@ extern "C" {
 	if (LOG_SWAPPED(env))						\
 		P_32_COPYSWAP((p), (x));				\
 	else								\
-		memcpy((x), (p), sizeof (u_int32_t));			\
+		memcpy((x), (p), sizeof(u_int32_t));			\
 } while (0)
 
 #define	LOGCOPY_16(env, x, p) do {					\
 	if (LOG_SWAPPED(env))						\
 		P_16_COPYSWAP((p), (x));				\
 	else								\
-		memcpy((x), (p), sizeof (u_int16_t));			\
+		memcpy((x), (p), sizeof(u_int16_t));			\
 } while (0)
 
 #define	LOGCOPY_TOLSN(env, lsnp, p) do {				\
 	LOGCOPY_32((env), &(lsnp)->file, (p));				\
-	LOGCOPY_32((env), &(lsnp)->offset, 				\
-	    (u_int8_t *)(p) + sizeof (u_int32_t));			\
+	LOGCOPY_32((env), &(lsnp)->offset,				\
+	    (u_int8_t *)(p) + sizeof(u_int32_t));			\
 } while (0)
 
 #define	LOGCOPY_FROMLSN(env, p, lsnp) do {				\
 	LOGCOPY_32((env), (p), &(lsnp)->file);				\
 	LOGCOPY_32((env),						\
-	    (u_int8_t *)(p) + sizeof (u_int32_t), &(lsnp)->offset);	\
+	    (u_int8_t *)(p) + sizeof(u_int32_t), &(lsnp)->offset);	\
 } while (0)
 
 #if defined(__cplusplus)

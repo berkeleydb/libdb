@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: ForeignKeyTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
@@ -18,6 +18,7 @@ import java.util.Enumeration;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
+import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Transaction;
 import com.sleepycat.persist.EntityStore;
@@ -48,12 +49,13 @@ public class ForeignKeyTest extends TxnTestCase {
         "CASCADE",
     };
 
+    static protected Class<?> testClass = ForeignKeyTest.class;
+
     public static Test suite() {
         TestSuite suite = new TestSuite();
         for (int i = 0; i < ACTIONS.length; i += 1) {
 	    for (int j = 0; j < 2; j++) {
-		TestSuite txnSuite = txnTestSuite
-		    (ForeignKeyTest.class, null, null);
+		TestSuite txnSuite = txnTestSuite(testClass, null, null);
 		Enumeration e = txnSuite.tests();
 		while (e.hasMoreElements()) {
 		    ForeignKeyTest test = (ForeignKeyTest) e.nextElement();
@@ -78,7 +80,8 @@ public class ForeignKeyTest extends TxnTestCase {
     private String onDeleteLabel;
     private boolean useSubclass;
     private String useSubclassLabel;
-    
+
+    @Override
     public void tearDown()
         throws Exception {
 
@@ -145,11 +148,12 @@ public class ForeignKeyTest extends TxnTestCase {
                 pri1.delete(txn, "pk1");
                 fail();
             } catch (DatabaseException expected) {
+                assertTrue(!DbCompat.NEW_JE_EXCEPTIONS);
                 txnAbort(txn);
                 txn = txnBegin();
             }
 
-            /* 
+            /*
 	     * Test that we can put a record into store2 with a null foreign
              * key value.
 	     */
@@ -159,13 +163,13 @@ public class ForeignKeyTest extends TxnTestCase {
             assertNotNull(pri2.put(txn, o2));
             assertEquals(o2, pri2.get(txn, "pk2", null));
 
-            /* 
+            /*
 	     * The index2 record should have been deleted since the key was set
              * to null above.
 	     */
             assertNull(sec2.get(txn, "pk1", null));
 
-            /* 
+            /*
 	     * Test that now we can delete the record in store1, since it is no
              * longer referenced.
 	     */
@@ -180,7 +184,7 @@ public class ForeignKeyTest extends TxnTestCase {
             assertNull(pri1.get(txn, "pk1", null));
             assertNull(sec1.get(txn, "sk1", null));
 
-            /* 
+            /*
 	     * The store2 record should still exist, but should have an empty
              * secondary key since it was nullified.
 	     */
@@ -215,9 +219,10 @@ public class ForeignKeyTest extends TxnTestCase {
             pri2.put(txn, o3);
             fail();
         } catch (DatabaseException expected) {
+            assertTrue(!DbCompat.NEW_JE_EXCEPTIONS);
         }
 
-        txnCommit(txn);
+        txnAbort(txn);
         close();
     }
 

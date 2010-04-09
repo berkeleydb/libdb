@@ -55,8 +55,8 @@ typedef struct ___txn_child_args {
 	DB_LSN	c_lsn;
 } __txn_child_args;
 
-#define	DB___txn_xa_regop	13
-typedef struct ___txn_xa_regop_args {
+#define	DB___txn_xa_regop_42	13
+typedef struct ___txn_xa_regop_42_args {
 	u_int32_t type;
 	DB_TXN *txnp;
 	DB_LSN prev_lsn;
@@ -67,7 +67,18 @@ typedef struct ___txn_xa_regop_args {
 	u_int32_t	bqual;
 	DB_LSN	begin_lsn;
 	DBT	locks;
-} __txn_xa_regop_args;
+} __txn_xa_regop_42_args;
+
+#define	DB___txn_prepare	13
+typedef struct ___txn_prepare_args {
+	u_int32_t type;
+	DB_TXN *txnp;
+	DB_LSN prev_lsn;
+	u_int32_t	opcode;
+	DBT	gid;
+	DB_LSN	begin_lsn;
+	DBT	locks;
+} __txn_prepare_args;
 
 #define	DB___txn_recycle	14
 typedef struct ___txn_recycle_args {

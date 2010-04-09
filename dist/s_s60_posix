@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_s60_posix,v 1.2 2007/07/06 16:29:16 bostic Exp $
+#	$Id$
 #
 # Build the S60 files on a POSIX system.
 

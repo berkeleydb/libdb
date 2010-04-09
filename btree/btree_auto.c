@@ -77,8 +77,14 @@ __bam_split_read(env, dbpp, td, recbuf, argpp)
 	bp += sizeof(DB_LSN);
 
 	LOGCOPY_32(env, &uinttmp, bp);
-	argp->root_pgno = (db_pgno_t)uinttmp;
+	argp->ppgno = (db_pgno_t)uinttmp;
 	bp += sizeof(uinttmp);
+
+	LOGCOPY_TOLSN(env, &argp->plsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &argp->pindx, bp);
+	bp += sizeof(argp->pindx);
 
 	memset(&argp->pg, 0, sizeof(argp->pg));
 	LOGCOPY_32(env,&argp->pg.size, bp);
@@ -92,6 +98,18 @@ __bam_split_read(env, dbpp, td, recbuf, argpp)
 			return (t_ret);
 	}
 
+	memset(&argp->pentry, 0, sizeof(argp->pentry));
+	LOGCOPY_32(env,&argp->pentry.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->pentry.data = bp;
+	bp += argp->pentry.size;
+
+	memset(&argp->rentry, 0, sizeof(argp->rentry));
+	LOGCOPY_32(env,&argp->rentry.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->rentry.data = bp;
+	bp += argp->rentry.size;
+
 	LOGCOPY_32(env, &argp->opflags, bp);
 	bp += sizeof(argp->opflags);
 
@@ -102,11 +120,13 @@ __bam_split_read(env, dbpp, td, recbuf, argpp)
 /*
  * PUBLIC: int __bam_split_log __P((DB *, DB_TXN *, DB_LSN *,
  * PUBLIC:     u_int32_t, db_pgno_t, DB_LSN *, db_pgno_t, DB_LSN *, u_int32_t,
- * PUBLIC:     db_pgno_t, DB_LSN *, db_pgno_t, const DBT *, u_int32_t));
+ * PUBLIC:     db_pgno_t, DB_LSN *, db_pgno_t, DB_LSN *, u_int32_t, const DBT *,
+ * PUBLIC:     const DBT *, const DBT *, u_int32_t));
  */
 int
 __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
-    npgno, nlsn, root_pgno, pg, opflags)
+    npgno, nlsn, ppgno, plsn, pindx, pg,
+    pentry, rentry, opflags)
 	DB *dbp;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
@@ -118,8 +138,12 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 	u_int32_t indx;
 	db_pgno_t npgno;
 	DB_LSN * nlsn;
-	db_pgno_t root_pgno;
+	db_pgno_t ppgno;
+	DB_LSN * plsn;
+	u_int32_t pindx;
 	const DBT *pg;
+	const DBT *pentry;
+	const DBT *rentry;
 	u_int32_t opflags;
 {
 	DBT logrec;
@@ -180,7 +204,11 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 	    + sizeof(u_int32_t)
 	    + sizeof(*nlsn)
 	    + sizeof(u_int32_t)
+	    + sizeof(*plsn)
+	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t) + (pg == NULL ? 0 : pg->size)
+	    + sizeof(u_int32_t) + (pentry == NULL ? 0 : pentry->size)
+	    + sizeof(u_int32_t) + (rentry == NULL ? 0 : rentry->size)
 	    + sizeof(u_int32_t);
 	if (CRYPTO_ON(env)) {
 		npad = env->crypto_handle->adj_size(logrec.size);
@@ -231,7 +259,7 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(llsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, llsn) != 0))
+			    __log_check_page_lsn(env, dbp, llsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, llsn);
@@ -247,7 +275,7 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(rlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, rlsn) != 0))
+			    __log_check_page_lsn(env, dbp, rlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, rlsn);
@@ -266,7 +294,7 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(nlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, nlsn) != 0))
+			    __log_check_page_lsn(env, dbp, nlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, nlsn);
@@ -274,9 +302,24 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 		memset(bp, 0, sizeof(*nlsn));
 	bp += sizeof(*nlsn);
 
-	uinttmp = (u_int32_t)root_pgno;
+	uinttmp = (u_int32_t)ppgno;
 	LOGCOPY_32(env,bp, &uinttmp);
 	bp += sizeof(uinttmp);
+
+	if (plsn != NULL) {
+		if (txnp != NULL) {
+			LOG *lp = env->lg_handle->reginfo.primary;
+			if (LOG_COMPARE(plsn, &lp->lsn) >= 0 && (ret =
+			    __log_check_page_lsn(env, dbp, plsn)) != 0)
+				return (ret);
+		}
+		LOGCOPY_FROMLSN(env, bp, plsn);
+	} else
+		memset(bp, 0, sizeof(*plsn));
+	bp += sizeof(*plsn);
+
+	LOGCOPY_32(env, bp, &pindx);
+	bp += sizeof(pindx);
 
 	if (pg == NULL) {
 		zero = 0;
@@ -291,6 +334,28 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 			    (PAGE *)bp, (size_t)pg->size, (DBT *)NULL, 0)) != 0)
 				return (ret);
 		bp += pg->size;
+	}
+
+	if (pentry == NULL) {
+		zero = 0;
+		LOGCOPY_32(env, bp, &zero);
+		bp += sizeof(u_int32_t);
+	} else {
+		LOGCOPY_32(env, bp, &pentry->size);
+		bp += sizeof(pentry->size);
+		memcpy(bp, pentry->data, pentry->size);
+		bp += pentry->size;
+	}
+
+	if (rentry == NULL) {
+		zero = 0;
+		LOGCOPY_32(env, bp, &zero);
+		bp += sizeof(u_int32_t);
+	} else {
+		LOGCOPY_32(env, bp, &rentry->size);
+		bp += sizeof(rentry->size);
+		memcpy(bp, rentry->data, rentry->size);
+		bp += rentry->size;
 	}
 
 	LOGCOPY_32(env, bp, &opflags);
@@ -338,6 +403,90 @@ __bam_split_log(dbp, txnp, ret_lsnp, flags, left, llsn, right, rlsn, indx,
 	if (is_durable || txnp == NULL)
 		__os_free(env, logrec.data);
 #endif
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __bam_split_42_read __P((ENV *, DB **, void *,
+ * PUBLIC:     void *, __bam_split_42_args **));
+ */
+int
+__bam_split_42_read(env, dbpp, td, recbuf, argpp)
+	ENV *env;
+	DB **dbpp;
+	void *td;
+	void *recbuf;
+	__bam_split_42_args **argpp;
+{
+	__bam_split_42_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__bam_split_42_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	argp->txnp->td = td;
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->fileid = (int32_t)uinttmp;
+	bp += sizeof(uinttmp);
+	if (dbpp != NULL) {
+		*dbpp = NULL;
+		ret = __dbreg_id_to_db(
+		    env, argp->txnp, dbpp, argp->fileid, 1);
+	}
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->left = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_TOLSN(env, &argp->llsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->right = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_TOLSN(env, &argp->rlsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &argp->indx, bp);
+	bp += sizeof(argp->indx);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->npgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_TOLSN(env, &argp->nlsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->root_pgno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	memset(&argp->pg, 0, sizeof(argp->pg));
+	LOGCOPY_32(env,&argp->pg.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->pg.data = bp;
+	bp += argp->pg.size;
+
+	LOGCOPY_32(env, &argp->opflags, bp);
+	bp += sizeof(argp->opflags);
+
+	*argpp = argp;
 	return (ret);
 }
 
@@ -579,7 +728,7 @@ __bam_rsplit_log(dbp, txnp, ret_lsnp, flags, pgno, pgdbt, root_pgno, nrec, roote
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(rootlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, rootlsn) != 0))
+			    __log_check_page_lsn(env, dbp, rootlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, rootlsn);
@@ -816,7 +965,7 @@ __bam_adj_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, indx, indx_copy, is_insert)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -1062,7 +1211,7 @@ __bam_cadjust_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, indx, adjust, opflags)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -1298,7 +1447,7 @@ __bam_cdel_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, indx)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -1560,7 +1709,7 @@ __bam_repl_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, indx, isdeleted, orig,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -1825,7 +1974,7 @@ __bam_root_log(dbp, txnp, ret_lsnp, flags, meta_pgno, root_pgno, meta_lsn)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(meta_lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, meta_lsn) != 0))
+			    __log_check_page_lsn(env, dbp, meta_lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, meta_lsn);
@@ -2639,7 +2788,7 @@ __bam_relink_log(dbp, txnp, ret_lsnp, flags, pgno, new_pgno, prev, lsn_prev, nex
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn_prev, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn_prev) != 0))
+			    __log_check_page_lsn(env, dbp, lsn_prev)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn_prev);
@@ -2655,7 +2804,7 @@ __bam_relink_log(dbp, txnp, ret_lsnp, flags, pgno, new_pgno, prev, lsn_prev, nex
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn_next, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn_next) != 0))
+			    __log_check_page_lsn(env, dbp, lsn_next)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn_next);
@@ -2997,7 +3146,7 @@ __bam_merge_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, npgno, nlsn, hdr,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -3013,7 +3162,7 @@ __bam_merge_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, npgno, nlsn, hdr,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(nlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, nlsn) != 0))
+			    __log_check_page_lsn(env, dbp, nlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, nlsn);
@@ -3284,7 +3433,7 @@ __bam_pgno_log(dbp, txnp, ret_lsnp, flags, pgno, lsn, indx, opgno, npgno)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);

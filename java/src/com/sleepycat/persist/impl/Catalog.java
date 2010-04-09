@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Catalog.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -61,10 +61,14 @@ interface Catalog {
      * Returns a format for a given class, or throws an exception.  This method
      * is used when writing an object that was passed in by the user.
      *
+     * @param checkEntitySubclassIndexes is true if we're expecting this format
+     * to be an entity subclass and therefore subclass secondary indexes should
+     * be opened.
+     *
      * @throws IllegalArgumentException if the class is not persistent.  This
      * is a user error.
      */
-    Format getFormat(Class cls);
+    Format getFormat(Class cls, boolean checkEntitySubclassIndexes);
 
     /**
      * Returns a format by class name.  Unlike {@link #getFormat(Class)}, the

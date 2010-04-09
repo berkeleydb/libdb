@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: DatabaseException.java,v 12.9 2008/02/07 17:12:18 mark Exp $
+ * $Id$
  */
 package com.sleepycat.db;
 

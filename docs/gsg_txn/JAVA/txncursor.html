@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Transactional Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
-    <link rel="previous" href="nestedtxn.html" title="Nested Transactions" />
+    <link rel="prev" href="nestedtxn.html" title="Nested Transactions" />
     <link rel="next" href="txnindices.html" title="Secondary Indices with Transaction Applications" />
   </head>
   <body>
@@ -32,7 +32,15 @@
             <h2 class="title" style="clear: both"><a id="txncursor"></a>Transactional Cursors</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="txncursor.html#dplcursors">Using Transactional DPL Cursors</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             You can transaction-protect your cursor operations by
@@ -112,15 +120,14 @@ try {
               <h3 class="title"><a id="dplcursors"></a>Using Transactional DPL Cursors</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             When using the DPL, you create the cursor using the entity
             class's primary or secondary index (see the
             
-            <i class="citetitle">Getting Started with Berkeley DB for Java</i>
+            <em class="citetitle">Getting Started with Berkeley DB for Java</em>
             guide for details). At the time that you create the cursor, you
-            pass a transaction handle to the <tt class="methodname">entities()</tt>
+            pass a transaction handle to the <code class="methodname">entities()</code>
             method, and this causes all subsequent operations performed
             using that cursor to be performed within the scope of the
             transaction.

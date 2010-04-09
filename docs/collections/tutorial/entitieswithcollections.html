@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Using Entities with Collections
-	</title>
+    <title>Using Entities with Collections</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Entity.html" title="Chapter 4. &#10;        Using Entity Classes&#9;&#10;&#9;" />
-    <link rel="previous" href="collectionswithentities.html" title="&#10;&#9;&#9;Creating Collections with Entity Bindings&#10;&#9;" />
-    <link rel="next" href="Tuple.html" title="Chapter 5. &#10;&#9;&#9;Using Tuples&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Entity.html" title="Chapter 4.  Using Entity Classes" />
+    <link rel="prev" href="collectionswithentities.html" title="Creating Collections with Entity Bindings" />
+    <link rel="next" href="Tuple.html" title="Chapter 5.  Using Tuples" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     In this example entity objects, rather than key and value
@@ -52,23 +49,23 @@
       <p>
     For adding and iterating entities, the collection of entities
 	returned by 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
     
 	is used. In general, when using an entity binding, all Java
 	collection methods that are passed or returned a value object will
 	be passed or returned an entity object instead.
 </p>
       <p>
-    The <tt class="classname">Sample</tt> class has been changed in this example to add
+    The <code class="classname">Sample</code> class has been changed in this example to add
 	objects using the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>
     
 	method rather than the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>
     
 	method that was used in the prior examples. Entity objects are
 	constructed and passed to 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>.
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>.
 </p>
       <a id="entity_addsuppliers"></a>
       <pre class="programlisting">import java.util.Set;
@@ -78,7 +75,7 @@ public class Sample
     ...
     private void addSuppliers()
     {
-<b class="userinput"><tt>        Set suppliers = views.getSupplierSet();
+<strong class="userinput"><code>        Set suppliers = views.getSupplierSet();
         if (suppliers.isEmpty())
         {
             System.out.println("Adding Suppliers");
@@ -87,12 +84,12 @@ public class Sample
             suppliers.add(new Supplier("S3", "Blake", 30, "Paris"));
             suppliers.add(new Supplier("S4", "Clark", 20, "London"));
             suppliers.add(new Supplier("S5", "Adams", 30, "Athens"));
-        }</tt></b>
+        }</code></strong>
     }
 
     private void addParts()
     {
-<b class="userinput"><tt>        Set parts = views.getPartSet();
+<strong class="userinput"><code>        Set parts = views.getPartSet();
         if (parts.isEmpty())
         {
             System.out.println("Adding Parts");
@@ -108,12 +105,12 @@ public class Sample
                       new Weight(12.0, Weight.GRAMS), "Paris"));
             parts.add(new Part("P6", "Cog", "Red",
                       new Weight(19.0, Weight.GRAMS), "London"));
-        }</tt></b>
+        }</code></strong>
     }
 
     private void addShipments()
     {
-<b class="userinput"><tt>        Set shipments = views.getShipmentSet();
+<strong class="userinput"><code>        Set shipments = views.getShipmentSet();
         if (shipments.isEmpty())
         {
             System.out.println("Adding Shipments");
@@ -129,15 +126,15 @@ public class Sample
             shipments.add(new Shipment("P2", "S4", 200));
             shipments.add(new Shipment("P4", "S4", 300));
             shipments.add(new Shipment("P5", "S4", 400));
-        }</tt></b>
+        }</code></strong>
     } </pre>
       <p>
     Instead of printing the key/value pairs by iterating over the
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>
 	
 	as done in the prior example, this example
 	iterates over the entities in the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
     
 	collection.
 </p>
@@ -153,15 +150,15 @@ public class Sample
         public void doWork()
             throws Exception
         {
-<b class="userinput"><tt>            printValues("Parts",
+<strong class="userinput"><code>            printValues("Parts",
                          views.getPartSet().iterator());
             printValues("Suppliers",
-                         views.getSupplierSet().iterator());</tt></b>
+                         views.getSupplierSet().iterator());</code></strong>
             printValues("Suppliers for City Paris",
                          views.getSupplierByCityMap().duplicates(
                                             "Paris").iterator());
-<b class="userinput"><tt>            printValues("Shipments",
-                         views.getShipmentSet().iterator());</tt></b>
+<strong class="userinput"><code>            printValues("Shipments",
+                         views.getShipmentSet().iterator());</code></strong>
             printValues("Shipments for Part P1",
                          views.getShipmentByPartMap().duplicates(
                                             new PartKey("P1")).iterator());

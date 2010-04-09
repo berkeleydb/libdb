@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: bench_001.c,v 12.9 2008/01/08 20:58:23 bostic Exp $
+ * $Id$
  */
 
 /*

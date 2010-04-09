@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Secondary Database Properties</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 10. Secondary Databases" />
-    <link rel="previous" href="keyCreator.html" title="Implementing Key &#10;        Creators&#10;        &#10;        " />
+    <link rel="prev" href="keyCreator.html" title="Implementing Key Creators" />
     <link rel="next" href="readSecondary.html" title="Reading Secondary Databases" />
   </head>
   <body>
@@ -32,20 +32,19 @@
             <h2 class="title" style="clear: both"><a id="secondaryProps"></a>Secondary Database Properties</h2>
           </div>
         </div>
-        <div></div>
       </div>
-      <p>Secondary databases accept <tt class="classname">SecondaryConfig</tt>
-	objects. <tt class="classname">SecondaryConfig</tt> is a subclass of <tt class="classname">DatabaseConfig</tt>,
-	so it can manage all of the same properties as does <tt class="classname">DatabaseConfig</tt>.
-    See <a href="DBConfig.html">Database Properties</a> for more information.</p>
-      <p>In addition to the <tt class="classname">DatabaseConfig</tt> properties, 
-	<tt class="classname">SecondaryConfig</tt> also allows you to manage the following properties:
+      <p>Secondary databases accept <code class="classname">SecondaryConfig</code>
+	objects. <code class="classname">SecondaryConfig</code> is a subclass of <code class="classname">DatabaseConfig</code>,
+	so it can manage all of the same properties as does <code class="classname">DatabaseConfig</code>.
+    See <a class="xref" href="DBConfig.html" title="Database Properties">Database Properties</a> for more information.</p>
+      <p>In addition to the <code class="classname">DatabaseConfig</code> properties, 
+	<code class="classname">SecondaryConfig</code> also allows you to manage the following properties:
 	</p>
       <div class="itemizedlist">
         <ul type="disc">
           <li>
             <p>
-              <tt class="methodname">SecondaryConfig.setAllowPopulate()</tt>
+              <code class="methodname">SecondaryConfig.setAllowPopulate()</code>
             </p>
             <p>If true, the secondary database can be auto-populated. This means
         that on open, if the secondary database is empty then the primary
@@ -54,10 +53,10 @@
           </li>
           <li>
             <p>
-              <tt class="methodname">SecondaryConfig.setKeyCreator()</tt>
+              <code class="methodname">SecondaryConfig.setKeyCreator()</code>
             </p>
             <p>Identifies the key creator object to be used for secondary key
-        creation. See <a href="keyCreator.html">Implementing Key 
+        creation. See <a class="xref" href="keyCreator.html" title="Implementing Key Creators">Implementing Key 
         <span>Creators</span>
         
         </a>
@@ -78,7 +77,7 @@
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Implementing Key 
-        Creators
+        <span>Creators</span>
         
          </td>
           <td width="20%" align="center">

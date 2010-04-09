@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: log_archive.c,v 12.34 2008/02/26 01:34:55 ubell Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -472,7 +472,7 @@ free_continue:	__os_free(env, argp);
 
 		/* Get the real name. */
 		if ((ret = __db_appname(env,
-		    DB_APP_DATA, array[last], 0, NULL, &real_name)) != 0)
+		    DB_APP_DATA, array[last], NULL, &real_name)) != 0)
 			goto err2;
 
 		/* If the file doesn't exist, ignore it. */

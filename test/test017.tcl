@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test017.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test017
 # TEST	Basic offpage duplicate test.
@@ -14,6 +14,12 @@ proc test017 { method {contents 0} {ndups 19} {tnum "017"} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
 
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Test$tnum skipping for method $method"

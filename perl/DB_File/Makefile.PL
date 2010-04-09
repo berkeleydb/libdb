@@ -23,7 +23,7 @@ if (defined $DB_NAME)
   { $LIBS = $DB_NAME }
 else {
     if ($^O eq 'MSWin32')
-      { $LIBS = '-llibdb' }
+      { $LIBS = $Config{cc} =~ /gcc/ ? '-ldb' : '-llibdb' }
     else
       { $LIBS = '-ldb' }
 }
@@ -44,7 +44,6 @@ my $WALL = '' ;
 WriteMakefile(
 	NAME 		=> 'DB_File',
 	LIBS 		=> ["-L${LIB_DIR} $LIBS"],
-        #MAN3PODS        => {},         # Pods will be built by installman.
 	INC		=> "-I$INC_DIR",
     VERSION_FROM	=> 'DB_File.pm',
 	XS_VERSION      => eval MM->parse_version('DB_File.pm'),

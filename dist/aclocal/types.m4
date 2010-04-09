@@ -1,4 +1,4 @@
-# $Id: types.m4,v 12.8 2008/03/10 13:40:15 mjc Exp $
+# $Id$
 
 # Check the sizes we know about, and see if any of them match what's needed.
 #

@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 4. 
-        Using Entity Classes	
-	</title>
+    <title>Chapter 4.  Using Entity Classes</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="retrievingbyindexkey.html" title="&#10;&#9;&#9;Retrieving Items by Index Key&#10;&#9;" />
-    <link rel="next" href="creatingentitybindings.html" title="&#10;&#9;&#9;Creating Entity Bindings&#10;&#9;" />
+    <link rel="prev" href="retrievingbyindexkey.html" title="Retrieving Items by Index Key" />
+    <link rel="next" href="creatingentitybindings.html" title="Creating Entity Bindings" />
   </head>
   <body>
     <div class="navheader">
@@ -38,7 +36,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -77,10 +74,10 @@
       </div>
       <p>
     In the prior examples, the keys and values of each store were
-	represented using separate classes. For example, a <tt class="classname">PartKey</tt>
-	and a <tt class="classname">PartData</tt> class were used. Many times it is desirable
+	represented using separate classes. For example, a <code class="classname">PartKey</code>
+	and a <code class="classname">PartData</code> class were used. Many times it is desirable
 	to have a single class representing both the key and the value, for
-	example, a <tt class="classname">Part</tt> class.
+	example, a <code class="classname">Part</code> class.
 </p>
       <p>
     Such a combined key and value class is called an <span class="emphasis"><em>entity
@@ -117,11 +114,11 @@
 	collection, and split the entity into a key and value yourself
 	before writing it to a collection. But this would detract from the
 	convenience of the using the Java collections API. It is convenient
-	to obtain a <tt class="classname">Part</tt> object directly from 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get</a>
+	to obtain a <code class="classname">Part</code> object directly from 
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get</a>
 	
-	and to add a <tt class="classname">Part</tt> object using 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>.
+	and to add a <code class="classname">Part</code> object using 
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#add" target="_top">Set.add</a>.
 	Collections having entity bindings can be used naturally without
 	combining and splitting objects each time a collection method is
 	called; however, an entity binding class must be defined by the
@@ -131,16 +128,16 @@
     In addition to showing how to use entity bindings, this example
 	illustrates a key feature of all bindings: Bindings are independent
 	of database storage parameters and formats. Compare this example to
-	the prior Index example and you'll see that the <tt class="classname">Sample</tt> and
-	<tt class="classname">SampleViews</tt> classes have been changed to use entity
-	bindings, but the <tt class="classname">SampleDatabase</tt> class was not changed at
+	the prior Index example and you'll see that the <code class="classname">Sample</code> and
+	<code class="classname">SampleViews</code> classes have been changed to use entity
+	bindings, but the <code class="classname">SampleDatabase</code> class was not changed at
 	all. In fact, the Entity program and the Index program can be used
 	interchangeably to access the same physical database files. This
 	demonstrates that bindings are only a "view" onto the physical
 	stored data.
 </p>
       <p>
-    <tt class="classname">Warning:</tt> When using multiple bindings for the same
+    <code class="classname">Warning:</code> When using multiple bindings for the same
 	database, it is the application's responsibility to ensure that the
 	same format is used for all bindings. For example, a serial binding
 	and a tuple binding cannot be used to access the same records.
@@ -158,12 +155,11 @@
 	</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
     As described in the prior section, <span class="emphasis"><em>entity classes</em></span> are
 	combined key/value classes that are managed by entity bindings. In
-	this example the <tt class="classname">Part</tt>, <tt class="classname">Supplier</tt> and <tt class="classname">Shipment</tt>
+	this example the <code class="classname">Part</code>, <code class="classname">Supplier</code> and <code class="classname">Shipment</code>
 	classes are entity classes. These classes contain fields that are a
 	union of the fields of the key and value classes that were defined
 	earlier for each store.
@@ -175,7 +171,7 @@
 	and entity objects.
 </p>
         <p>
-    The <tt class="classname">Part</tt>, <tt class="classname">Supplier</tt> and <tt class="classname">Shipment</tt> 
+    The <code class="classname">Part</code>, <code class="classname">Supplier</code> and <code class="classname">Shipment</code> 
     entity classes are
 	defined below.
 </p>
@@ -183,7 +179,7 @@
     An important difference between the entity classes defined here
 	and the key and value classes defined earlier is that the entity
 	classes are not serializable (do not implement the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/Serializable.html" target="_top">Serializable</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/Serializable.html" target="_top">Serializable</a>
     
 	interface). This is because the entity classes are not directly
 	stored. The entity binding decomposes an entity object into key and
@@ -192,13 +188,13 @@
 </p>
         <p>
     One advantage of using entities can already be seen in the
-	<tt class="methodname">toString()</tt> method of the classes below. These return debugging
+	<code class="methodname">toString()</code> method of the classes below. These return debugging
 	output for the combined key and value, and will be used later to
 	create a listing of the database that is more readable than in the
 	prior examples.
 </p>
         <a id="entity_part"></a>
-        <pre class="programlisting"><b class="userinput"><tt>public class Part
+        <pre class="programlisting"><strong class="userinput"><code>public class Part
 {
     private String number;
     private String name;
@@ -249,9 +245,9 @@
                " weight=" + weight +
                " city=" + city + '.';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <a id="entity_supplier"></a>
-        <pre class="programlisting"><b class="userinput"><tt>public class Supplier
+        <pre class="programlisting"><strong class="userinput"><code>public class Supplier
 {
     private String number;
     private String name;
@@ -293,9 +289,9 @@
                " status=" + status +
                " city=" + city + '.';
     }
-} </tt></b> </pre>
+} </code></strong> </pre>
         <a id="entity_shipment"></a>
-        <pre class="programlisting"><b class="userinput"><tt>public class Shipment
+        <pre class="programlisting"><strong class="userinput"><code>public class Shipment
 {
     private String partNumber;
     private String supplierNumber;
@@ -329,7 +325,7 @@
                 " supplier=" + supplierNumber +
                 " quantity=" + quantity + '.';
     }
-} </tt></b> </pre>
+} </code></strong> </pre>
       </div>
     </div>
     <div class="navfooter">
@@ -337,9 +333,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="retrievingbyindexkey.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="creatingentitybindings.html">Next</a></td>
         </tr>
         <tr>

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_reclaim.c,v 12.12 2008/01/31 14:58:41 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -69,12 +69,27 @@ __bam_truncate(dbc, countp)
 	u_int32_t count;
 	int ret;
 
+#ifdef HAVE_COMPRESSION
+	u_int32_t comp_count;
+
+	comp_count = 0;
+	if (DB_IS_COMPRESSED(dbc->dbp) &&
+	    (ret = __bam_compress_count(dbc, NULL, &comp_count)) != 0)
+		return (ret);
+#endif
+
 	count = 0;
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc,
 	    DB_LOCK_WRITE, dbc->internal->root, __db_truncate_callback, &count);
 
+#ifdef HAVE_COMPRESSION
+	if (DB_IS_COMPRESSED(dbc->dbp)) {
+		if (countp != NULL)
+			*countp = comp_count;
+	} else
+#endif
 	if (countp != NULL)
 		*countp = count;
 

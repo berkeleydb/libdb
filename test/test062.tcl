@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test062.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test062
 # TEST	Test of partial puts (using DB_CURRENT) onto duplicate pages.
@@ -23,6 +23,13 @@ proc test062 { method {nentries 200} {ndups 200} {tnum "062"} args } {
 		puts "Test$tnum skipping for method $omethod"
 		return
 	}
+
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
+
 	# Create the database and open the dictionary
 	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]

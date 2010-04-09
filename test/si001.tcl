@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: si001.tcl,v 12.14 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	si001
 # TEST	Secondary index put/delete with lorder test
@@ -17,6 +17,7 @@
 proc si001 { methods {nentries 200} {tnum "001"} args } {
 	source ./include.tcl
 	global dict nsecondaries
+	global default_pagesize
 
 	# Primary method/args.
 	set pmethod [lindex $methods 0]
@@ -59,12 +60,17 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 	set argses [convert_argses $methods $args]
 	set omethods [convert_methods $methods]
 
+	set mutexargs " -mutex_set_max 10000 "
+	if { $default_pagesize <= 2048 } {
+		set mutexargs "-mutex_set_max 40000 "
+	}
 	# If we are given an env, use it.  Otherwise, open one.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
 		env_cleanup $testdir
 		set cacheargs " -cachesize {0 4194304 1} "
-		set env [eval berkdb_env -create $cacheargs -home $testdir]
+		set env [eval {berkdb_env} -create \
+		    $cacheargs $mutexargs -home $testdir]
 		error_check_good env_open [is_valid_env $env] TRUE
 	} else {
 		incr eindex
@@ -249,8 +255,8 @@ proc si001 { methods {nentries 200} {tnum "001"} args } {
 				puts "\tSi$tnum.h:\
 				    Truncate secondary (should fail)"
 
-				set env [berkdb_env_noerr\
-				    -create -home $testdir]
+				set env [eval {berkdb_env_noerr}\
+				    -create $mutexargs -home $testdir]
 				error_check_good\
 				    env_open [is_valid_env $env] TRUE
 

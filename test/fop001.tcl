@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: fop001.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	fop001.tcl
 # TEST	Test file system operations, combined in a transaction. [#7363]
@@ -208,10 +208,11 @@ proc database_exists { inmem testdir name } {
 # The last field printed for a file is Flags
 # If the file is dead, deadfile will show up in the flags
 proc inmem_exists { dir filename } {
+      source ./include.tcl
       set infile 0
       set islive 0
       set name ""
-      set s [exec ./db_stat -MA -h $dir]
+      set s [exec $util_path/db_stat -MA -h $dir]
       foreach i $s {
               if { $i == "File" } {
                       set infile 1

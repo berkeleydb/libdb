@@ -1,5 +1,5 @@
 /*-
- * $Id: brew_db.in,v 1.5 2006/11/15 13:36:48 bostic Exp $
+ * $Id$
  *
  * The following provides the information necessary to build Berkeley DB
  * on BREW.

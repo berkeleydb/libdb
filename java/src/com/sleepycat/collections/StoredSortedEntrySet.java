@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredSortedEntrySet.java,v 12.8 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -25,14 +25,16 @@ import java.util.SortedSet;
  * following methods for stored sorted sets only.  Note that the use of these
  * methods is not compatible with the standard Java collections interface.</p>
  * <ul>
- * <li>{@link #headSet(Object, boolean)}</li>
- * <li>{@link #tailSet(Object, boolean)}</li>
- * <li>{@link #subSet(Object, boolean, Object, boolean)}</li>
+ * <li>{@link #headSet(Map.Entry, boolean)}</li>
+ * <li>{@link #tailSet(Map.Entry, boolean)}</li>
+ * <li>{@link #subSet(Map.Entry, boolean, Map.Entry, boolean)}</li>
  * </ul>
  *
  * @author Mark Hayes
  */
-public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
+public class StoredSortedEntrySet<K,V>
+    extends StoredEntrySet<K,V>
+    implements SortedSet<Map.Entry<K,V>> {
 
     StoredSortedEntrySet(DataView mapView) {
 
@@ -48,7 +50,7 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      *
      * @return null.
      */
-    public Comparator comparator() {
+    public Comparator<? super Map.Entry<K,V>> comparator() {
 
         return null;
     }
@@ -62,7 +64,7 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object first() {
+    public Map.Entry<K,V> first() {
 
         return getFirstOrLast(true);
     }
@@ -76,7 +78,7 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object last() {
+    public Map.Entry<K,V> last() {
 
         return getFirstOrLast(false);
     }
@@ -96,7 +98,7 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toMapEntry) {
+    public SortedSet<Map.Entry<K,V>> headSet(Map.Entry<K,V> toMapEntry) {
 
         return subSet(null, false, toMapEntry, false);
     }
@@ -118,7 +120,8 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toMapEntry, boolean toInclusive) {
+    public SortedSet<Map.Entry<K,V>> headSet(Map.Entry<K,V> toMapEntry,
+                                             boolean toInclusive) {
 
         return subSet(null, false, toMapEntry, toInclusive);
     }
@@ -138,7 +141,7 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromMapEntry) {
+    public SortedSet<Map.Entry<K,V>> tailSet(Map.Entry<K,V> fromMapEntry) {
 
         return subSet(fromMapEntry, true, null, false);
     }
@@ -160,7 +163,8 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromMapEntry, boolean fromInclusive) {
+    public SortedSet<Map.Entry<K,V>> tailSet(Map.Entry<K,V> fromMapEntry,
+                                             boolean fromInclusive) {
 
         return subSet(fromMapEntry, fromInclusive, null, false);
     }
@@ -182,7 +186,8 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromMapEntry, Object toMapEntry) {
+    public SortedSet<Map.Entry<K,V>> subSet(Map.Entry<K,V> fromMapEntry,
+                                            Map.Entry<K,V> toMapEntry) {
 
         return subSet(fromMapEntry, true, toMapEntry, false);
     }
@@ -209,15 +214,15 @@ public class StoredSortedEntrySet extends StoredEntrySet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromMapEntry, boolean fromInclusive,
-                            Object toMapEntry, boolean toInclusive) {
+    public SortedSet<Map.Entry<K,V>> subSet(Map.Entry<K,V> fromMapEntry,
+                                            boolean fromInclusive,
+                                            Map.Entry<K,V> toMapEntry,
+                                            boolean toInclusive) {
 
-        Object fromKey = (fromMapEntry != null) ?
-            ((Map.Entry) fromMapEntry).getKey() : null;
-        Object toKey = (toMapEntry != null) ?
-            ((Map.Entry) toMapEntry).getKey() : null;
+        Object fromKey = (fromMapEntry != null) ? fromMapEntry.getKey() : null;
+        Object toKey = (toMapEntry != null) ? toMapEntry.getKey() : null;
         try {
-            return new StoredSortedEntrySet(
+            return new StoredSortedEntrySet<K,V>(
                view.subView(fromKey, fromInclusive, toKey, toInclusive, null));
         } catch (Exception e) {
             throw StoredContainer.convertException(e);

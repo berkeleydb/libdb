@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
  * http://www.apache.org/licenses/LICENSE-2.0.txt
  * 
@@ -48,6 +48,9 @@ int env_locks_init()
     mm_lock(mm, MM_LOCK_RW);
     ref_counts = mm_hash_new(mm, NULL);
     mm_unlock(mm);
+    if (!ref_counts) {
+        return -1;
+    }
     if((semset = md4_sem_create(NUM_SEMS, start)) < 0) {
         return -1;
     }
@@ -563,7 +566,7 @@ int mod_db4_db_create(DB **dbp, DB_ENV *dbenv, u_int32_t flags)
 flags = 0;
 
     if((ret = db_create(dbp, dbenv, flags)) == 0) {
-        // FIXME this should be removed I think register_db(*dbp);
+        /* FIXME this should be removed I think register_db(*dbp); */
         /* overload DB->open */
         if(old_db_open == NULL) {
             old_db_open = (*dbp)->open;

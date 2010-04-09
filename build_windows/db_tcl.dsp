@@ -19,16 +19,6 @@ CFG=db_tcl - Win32 Debug x86
 !MESSAGE 
 !MESSAGE "db_tcl - Win32 Release x86" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "db_tcl - Win32 Debug x86" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 ASCII Debug x86" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 ASCII Release x86" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - x64 Debug AMD64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - x64 Release AMD64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - x64 Debug IA64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - x64 Release IA64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 Debug AMD64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 Release AMD64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 Debug IA64" (based on "Win32 (x86) Dynamic-Link Library")
-!MESSAGE "db_tcl - Win32 Release IA64" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
@@ -43,13 +33,13 @@ RSC=rc.exe
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release"
-# PROP BASE Intermediate_Dir "Release/db_tcl"
+# PROP BASE Output_Dir "Win32/Release"
+# PROP BASE Intermediate_Dir "Win32/Release/db_tcl"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release"
-# PROP Intermediate_Dir "Release/db_tcl"
+# PROP Output_Dir "Win32/Release"
+# PROP Intermediate_Dir "Win32/Release/db_tcl"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
@@ -62,20 +52,20 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 libdb47.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
+# ADD BASE LINK32 libdb48.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /machine:I386
+# ADD LINK32 libdb48.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Win32/Release/libdb_tcl48.dll" /libpath:"$(OUTDIR)"
 
 !ELSEIF  "$(CFG)" == "db_tcl - Win32 Debug x86"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug"
-# PROP BASE Intermediate_Dir "Debug/db_tcl"
+# PROP BASE Output_Dir "Win32/Debug"
+# PROP BASE Intermediate_Dir "Win32/Debug/db_tcl"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug"
-# PROP Intermediate_Dir "Debug/db_tcl"
+# PROP Output_Dir "Win32/Debug"
+# PROP Intermediate_Dir "Win32/Debug/db_tcl"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MDd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
@@ -89,286 +79,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 libdb47d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /pdb:none /debug /machine:I386 /out:"Debug/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 ASCII Debug x86"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_ASCII"
-# PROP BASE Intermediate_Dir "Debug_ASCII/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_ASCII"
-# PROP Intermediate_Dir "Debug_ASCII/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /pdb:none /debug /machine:I386 /out:"Debug_ASCII/libdb_tcl47d.dll" /fixed:no
-# ADD LINK32 libdb47d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /pdb:none /debug /machine:I386 /out:"Debug_ASCII/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 ASCII Release x86"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_ASCII"
-# PROP BASE Intermediate_Dir "Release_ASCII/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_ASCII"
-# PROP Intermediate_Dir "Release_ASCII/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "." /I ".." /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release_ASCII/libdb_tcl47.dll"
-# ADD LINK32 libdb47.lib tcl84.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:I386 /out:"Release_ASCII/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - x64 Debug AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_AMD64"
-# PROP BASE Intermediate_Dir "Debug_AMD64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_AMD64"
-# PROP Intermediate_Dir "Debug_AMD64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /Wp64 /c
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:AMD64 /out:"Debug_AMD64/libdb_tcl47d.dll" /fixed:no
-# ADD LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:AMD64 /out:"Debug_AMD64/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - x64 Release AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_AMD64"
-# PROP BASE Intermediate_Dir "Release_AMD64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_AMD64"
-# PROP Intermediate_Dir "Release_AMD64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb_tcl47.dll"
-# ADD LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - x64 Debug IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_IA64"
-# PROP BASE Intermediate_Dir "Debug_IA64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_IA64"
-# PROP Intermediate_Dir "Debug_IA64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:IA64 /out:"Debug_IA64/libdb_tcl47d.dll" /fixed:no
-# ADD LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:IA64 /out:"Debug_IA64/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - x64 Release IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_IA64"
-# PROP BASE Intermediate_Dir "Release_IA64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_IA64"
-# PROP Intermediate_Dir "Release_IA64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb_tcl47.dll"
-# ADD LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 Debug AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_AMD64"
-# PROP BASE Intermediate_Dir "Debug_AMD64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_AMD64"
-# PROP Intermediate_Dir "Debug_AMD64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /FD /Wp64 /c
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:AMD64 /out:"Debug_AMD64/libdb_tcl47d.dll" /fixed:no
-# ADD LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:AMD64 /out:"Debug_AMD64/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 Release AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_AMD64"
-# PROP BASE Intermediate_Dir "Release_AMD64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_AMD64"
-# PROP Intermediate_Dir "Release_AMD64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb_tcl47.dll"
-# ADD LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:AMD64 /out:"Release_AMD64/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 Debug IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_IA64"
-# PROP BASE Intermediate_Dir "Debug_IA64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_IA64"
-# PROP Intermediate_Dir "Debug_IA64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# SUBTRACT BASE CPP /Fr
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "DIAGNOSTIC" /D "CONFIG_TEST" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# SUBTRACT CPP /Fr
-# ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "_DEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /debug /machine:IA64 /out:"Debug_IA64/libdb_tcl47d.dll" /fixed:no
-# ADD LINK32 libdb47d.lib tcl84g.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /debug /machine:IA64 /out:"Debug_IA64/libdb_tcl47d.dll" /fixed:no /libpath:"$(OUTDIR)"
-
-!ELSEIF  "$(CFG)" == "db_tcl - Win32 Release IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_IA64"
-# PROP BASE Intermediate_Dir "Release_IA64/db_tcl"
-# PROP BASE Ignore_Export_Lib 0
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_IA64"
-# PROP Intermediate_Dir "Release_IA64/db_tcl"
-# PROP Ignore_Export_Lib 0
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /Ob2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "DB_CREATE_DLL" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE" /D "DB_TCL_SUPPORT" /Wp64 /FD /c
-# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /o "NUL" /win32
-# ADD BASE RSC /l 0x409 /d "NDEBUG"
-# ADD RSC /l 0x409 /d "NDEBUG"
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LINK32=link.exe
-# ADD BASE LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb_tcl47.dll"
-# ADD LINK32 libdb47.lib tcl84.lib bufferoverflowU.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /machine:IA64 /out:"Release_IA64/libdb_tcl47.dll" /libpath:"$(OUTDIR)"
+# ADD BASE LINK32 libdb48d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /subsystem:windows /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 libdb48d.lib tcl84g.lib kernel32.lib user32.lib advapi32.lib shell32.lib /nologo /base:"0x13000000" /subsystem:windows /dll /export:__db_assert /pdb:none /debug /machine:I386 /out:"Win32/Debug/libdb_tcl48d.dll" /fixed:no /libpath:"$(OUTDIR)"
 
 !ENDIF 
 
@@ -376,16 +88,6 @@ LINK32=link.exe
 
 # Name "db_tcl - Win32 Release x86"
 # Name "db_tcl - Win32 Debug x86"
-# Name "db_tcl - Win32 ASCII Debug x86"
-# Name "db_tcl - Win32 ASCII Release x86"
-# Name "db_tcl - x64 Debug AMD64"
-# Name "db_tcl - x64 Release AMD64"
-# Name "db_tcl - x64 Debug IA64"
-# Name "db_tcl - x64 Release IA64"
-# Name "db_tcl - Win32 Debug AMD64"
-# Name "db_tcl - Win32 Release AMD64"
-# Name "db_tcl - Win32 Debug IA64"
-# Name "db_tcl - Win32 Release IA64"
 # Begin Source File
 
 SOURCE=.\libdb_tcl.def
@@ -433,6 +135,10 @@ SOURCE=..\tcl\tcl_log.c
 # Begin Source File
 
 SOURCE=..\tcl\tcl_mp.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\tcl\tcl_mutex.c
 # End Source File
 # Begin Source File
 

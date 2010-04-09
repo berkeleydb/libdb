@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.offt,v 12.4 2008/05/07 12:40:56 bschmeck Exp $
+# $Id$
 #
 # Make sure that no off_t's have snuck into the release.
 

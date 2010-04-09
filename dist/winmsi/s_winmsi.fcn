@@ -1,4 +1,4 @@
-#	$Id: s_winmsi.fcn,v 1.15 2008/04/17 01:59:10 alexg Exp $
+#	$Id$
 #
 # The common functions used by the s_winmsi scripts (both
 # for core DB and DB/XML).
@@ -16,6 +16,7 @@
 #   PRODUCT_MINOR        - e.g. "1", (for release 4.1.25) from dist/RELEASE
 #   PRODUCT_PATCH        - e.g. "25", (for release 4.1.25) from dist/RELEASE
 #   PRODUCT_MAJMIN       - e.g. "41", (for release 4.1.25) from dist/RELEASE
+#   PRODUCT_MSVC_VERSION - e.g. "71" for Visual Studio 7, "80" for VS 8
 #   PRODUCT_STAGE        - the staging directory for temp files and builds
 #   PRODUCT_LICENSEDIR   - the tree containing LICENSE and README
 #   PRODUCT_SUB_BLDDIR  - top of the subproduct build e.g. "dbxml-2.0.1/dbxml"
@@ -957,6 +958,7 @@ CleanInputFile() {
         -e 's:\${PRODUCT_MINOR}:'"${PRODUCT_MINOR}":g \
         -e 's:\${PRODUCT_PATCH}:'"${PRODUCT_PATCH}":g \
         -e 's:\${PRODUCT_MAJMIN}:'"${PRODUCT_MAJMIN}":g \
+        -e 's:\${PRODUCT_MSVC_VERSION}:'"${PRODUCT_MSVC_VERSION}":g \
         -e 's:\${PRODUCT_STAGE}:'"${PRODUCT_STAGE}":g \
 	-e 's:\${PRODUCT_SHARED_WINMSIDIR}:'"${PRODUCT_SHARED_WINMSIDIR}":g \
         -e 's/^[\r \t]*$//' \
@@ -1194,23 +1196,35 @@ CreateDbPerl() {
 
     Progress "building perl"
     cd ../perl/BerkeleyDB
-    BERKELEYDB_INCLUDE="$insdir/installed_include" BERKELEYDB_LIB="$insdir/lib" \
+    BERKELEYDB_INCLUDE="$insdir/include" BERKELEYDB_LIB="$insdir/lib" \
          perl Makefile.PL >>$ERRORLOG   || exit 1
     make >>$ERRORLOG
     cd $here
 }
 
 # CreateWindowsSystem()
-# Copy Window system files
+# Copy Windows system files
 #
 CreateWindowsSystem() {
     local here=`pwd`
-    Progress "Copy Window system files..."
+    Progress "Copy Windows system files..."
     cd "${PRODUCT_SUB_BLDDIR}"
-    cp -f $SYSTEMROOT/system32/msvcr71.dll  build_windows/Release/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcp71.dll  build_windows/Release/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcr71.dll build_windows/Debug/ || exit 1
-    cp -f $SYSTEMROOT/system32/msvcp71.dll build_windows/Debug/ || exit 1
+
+    if [ $PRODUCT_MSVC_VERSION = "80" ]; then
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcm80.dll" build_windows/Win32/Release/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcp80.dll" build_windows/Win32/Release/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcr80.dll" build_windows/Win32/Release/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/Microsoft.VC80.CRT.manifest" build_windows/Win32/Release/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcm80.dll" build_windows/Win32/Debug/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcp80.dll" build_windows/Win32/Debug/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/msvcr80.dll" build_windows/Win32/Debug/ || exit 1
+        cp -f "$MSVC_ROOT_DIR/VC/redist/x86/Microsoft.VC80.CRT/Microsoft.VC80.CRT.manifest" build_windows/Win32/Debug/ || exit 1
+    else
+        cp -f $SYSTEMROOT/system32/msvcr$PRODUCT_MSVC_VERSION.dll  build_windows/Win32/Release/ || exit 1
+        cp -f $SYSTEMROOT/system32/msvcp$PRODUCT_MSVC_VERSION.dll  build_windows/Win32/Release/ || exit 1
+        cp -f $SYSTEMROOT/system32/msvcr$PRODUCT_MSVC_VERSION.dll build_windows/Win32/Debug/ || exit 1
+        cp -f $SYSTEMROOT/system32/msvcp$PRODUCT_MSVC_VERSION.dll build_windows/Win32/Debug/ || exit 1
+    fi
     cd $here
 }
 
@@ -1247,8 +1261,6 @@ CreateWindowsBuild() {
     # This allows us to use our favorite editors on winbuild.bat .
     #
     sed -e 's/$//' < ${PRODUCT_STAGE}/../winbuild.bat | tr '\001' '\015'  > wbuild.bat
-    # TODO: Needed?
-    rm -f build_windows/Berkeley_DB.sln
     rm -f winbld.out winbld.err
     touch winbld.out winbld.err
     echo "Build output and errors are collected in" >> $ERRORLOG
@@ -1271,8 +1283,10 @@ CreateSources() {
     local sources="$1"
 
     Progress "creating the Sources directory in $sources..."
-    rm -rf "$sources"
-    cp -r ${PRODUCT_SRCDIR} "$sources"  || exit 1
+    rm -rf "$sources" "$sources/../docs/"
+    unzip -q -u ../../$OPT_INFILE -d tmp_dir || exit 1
+    mv ./tmp_dir/${dbver}/docs "$sources/../" || exit 1
+    mv ./tmp_dir/${dbver} "$sources" || exit 1
 }
 
 # Usage()
@@ -1298,6 +1312,7 @@ Usage()
 SetupOptions() {
     OPT_USEBUILD=
     OPT_PRESERVE=false
+    OPT_CONTINUE=false
     OPT_INFILE=
     OPT_OUTFILE=
     OPT_SKIPGEN=false
@@ -1307,6 +1322,7 @@ SetupOptions() {
         -usebuild )  OPT_USEBUILD="$1"; shift ;;
         -skipgen )   OPT_SKIPGEN=true ;;
         -preserve )  OPT_PRESERVE=true;;
+        -continue )  OPT_CONTINUE=true;;
         -input )     OPT_INFILE="$1"; shift ;;
         -output )    OPT_OUTFILE="$1"; shift ;;
         * )
@@ -1334,18 +1350,33 @@ CreateStage() {
     if ! $OPT_PRESERVE; then
         trap 'rm -rf ${PRODUCT_STAGE} ; exit 0' 0 1 2 3 13 15
     fi
-    rm -rf ${PRODUCT_STAGE}   || exit 1
-    mkdir ${PRODUCT_STAGE}    || exit 1
+    if ! $OPT_CONTINUE; then
+        rm -rf ${PRODUCT_STAGE}   || exit 1
+    else
+        # Cleanup files that would break :)
+        rm -f ${PRODUCT_STAGE}/*wxs   || exit 1
+        rm -f ${PRODUCT_STAGE}/*wixinc   || exit 1
+        rm -f ${PRODUCT_STAGE}/*tmp   || exit 1
+        rm -f ${PRODUCT_STAGE}/*bdbsc   || exit 1
+        rm -f ${PRODUCT_STAGE}/tallow*   || exit 1
+    fi
+    if [ ! -d ${PRODUCT_STAGE} ]; then
+        mkdir ${PRODUCT_STAGE}    || exit 1
+    fi
 
     cd ${PRODUCT_STAGE}
     
     Progress "extracting $OPT_INFILE..."
-    unzip -q ../../$OPT_INFILE  || exit 1
+    unzip -q -u ../../$OPT_INFILE  || exit 1
     
     if [ ! -d $PRODUCT_LICENSEDIR ]; then
         Error "$OPT_INFILE: no top level $PRODUCT_LICENSEDIR directory"
         exit 1
     fi
+
+    # TODO: In the 4.8.12 package this file was not writable, it needs to
+    # be for the build. Make it so. Remove me.
+    chmod 664 ${PRODUCT_SRCDIR}/csharp/doc/libdb_dotnet${PRODUCT_MAJMIN}.XML
 }
 
 # CreateLicenseRtf(LICENSEIN, LICENSERTF)

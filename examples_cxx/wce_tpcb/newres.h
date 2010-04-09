@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2007-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
+ */
+
 #ifndef __NEWRES_H__
 #define	__NEWRES_H__
 

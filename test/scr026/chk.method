@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.method,v 12.7 2008/05/07 12:47:43 bschmeck Exp $
+# $Id$
 #
 # Check that DB doesn't call DB or DB_ENV methods internally.
 
@@ -61,6 +61,7 @@ sed \
     -e '/^db_printlog\//d' \
     -e '/^db_recover\//d' \
     -e '/^db_stat\//d' \
+    -e '/^db_sql\//d' \
     -e '/^db_upgrade\//d' \
     -e '/^db_verify\//d' \
     -e '/^dbm\//d' \
@@ -69,15 +70,17 @@ sed \
     -e '/^examples_java\//d' \
     -e '/^hsearch\//d' \
     -e '/^libdb_java\//d' \
+    -e '/^libdb_csharp\//d' \
     -e '/^mod_db4\//d' \
     -e '/^mutex\/tm.c:/d' \
     -e '/^php_db4\//d' \
+    -e '/^stl\//d' \
     -e '/^tcl\//d' \
     -e '/^test\//d' \
     -e '/^test_erlang\//d' \
     -e '/^test_perf\//d' \
     -e '/^test_purify\//d' \
-    -e '/^test_rep\//d' \
+    -e '/^test_repmgr\//d' \
     -e '/^test_server\//d' \
     -e '/^test_thread\//d' \
     -e '/^test_vxworks\//d' \

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleTupleMarshalledBinding.java,v 12.8 2008/02/07 17:12:25 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -23,9 +23,11 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public class TupleTupleMarshalledBinding extends TupleTupleBinding {
+public class TupleTupleMarshalledBinding<E extends
+    MarshalledTupleEntry & MarshalledTupleKeyEntity>
+    extends TupleTupleBinding<E> {
 
-    private Class cls;
+    private Class<E> cls;
 
     /**
      * Creates a tuple-tuple marshalled binding object.
@@ -38,7 +40,7 @@ public class TupleTupleMarshalledBinding extends TupleTupleBinding {
      *
      * @param cls is the class of the entity objects.
      */
-    public TupleTupleMarshalledBinding(Class cls) {
+    public TupleTupleMarshalledBinding(Class<E> cls) {
 
         this.cls = cls;
 
@@ -55,13 +57,15 @@ public class TupleTupleMarshalledBinding extends TupleTupleBinding {
     }
 
     // javadoc is inherited
-    public Object entryToObject(TupleInput keyInput, TupleInput dataInput) {
+    public E entryToObject(TupleInput keyInput, TupleInput dataInput) {
 
-        // This "tricky" binding returns the stored data as the entity, but
-        // first it sets the transient key fields from the stored key.
-        MarshalledTupleEntry obj;
+        /*
+         * This "tricky" binding returns the stored data as the entity, but
+         * first it sets the transient key fields from the stored key.
+         */
+        E obj;
         try {
-            obj = (MarshalledTupleEntry) cls.newInstance();
+            obj = cls.newInstance();
         } catch (IllegalAccessException e) {
             throw new RuntimeExceptionWrapper(e);
         } catch (InstantiationException e) {
@@ -70,24 +74,21 @@ public class TupleTupleMarshalledBinding extends TupleTupleBinding {
         if (dataInput != null) { // may be null if used by key extractor
             obj.unmarshalEntry(dataInput);
         }
-        MarshalledTupleKeyEntity entity = (MarshalledTupleKeyEntity) obj;
         if (keyInput != null) { // may be null if used by key extractor
-            entity.unmarshalPrimaryKey(keyInput);
+            obj.unmarshalPrimaryKey(keyInput);
         }
-        return entity;
+        return obj;
     }
 
     // javadoc is inherited
-    public void objectToKey(Object object, TupleOutput output) {
+    public void objectToKey(E object, TupleOutput output) {
 
-        MarshalledTupleKeyEntity entity = (MarshalledTupleKeyEntity) object;
-        entity.marshalPrimaryKey(output);
+        object.marshalPrimaryKey(output);
     }
 
     // javadoc is inherited
-    public void objectToData(Object object, TupleOutput output) {
+    public void objectToData(E object, TupleOutput output) {
 
-        MarshalledTupleEntry entity = (MarshalledTupleEntry) object;
-        entity.marshalEntry(output);
+        object.marshalEntry(output);
     }
 }

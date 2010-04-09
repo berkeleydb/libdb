@@ -1,4 +1,4 @@
-# $Id: sosuffix.m4,v 12.0 2004/11/17 03:43:38 bostic Exp $
+# $Id$
 # Determine shared object suffixes.
 #
 # Our method is to use the libtool variable $library_names_spec,
@@ -9,8 +9,7 @@
 # used to create dlloadable, or java loadable modules.
 # On many (*nix) systems, these all evaluate to .so, but there
 # are some notable exceptions.
-# Before calling this macro, $LIBTOOL_PROG must be set to
-# the correct method of invoking libtool (e.g. $SHELL ./libtool)
+# Before calling this macro, libtool must have been configured.
 
 # This macro is used internally to discover the suffix for the current
 # settings of $module.  The result is stored in $_SOSUFFIX.
@@ -21,11 +20,11 @@ AC_DEFUN(_SOSUFFIX_INTERNAL, [
 	eval _SOSUFFIX=\"$shrext_cmds\"
 	if test "$_SOSUFFIX" = "" ; then
 		_SOSUFFIX=".so"
-		if test `$LIBTOOL_PROG --config | grep build_libtool_libs | grep no` 2>/dev/null; then
+		if test "$enable_shared" != "yes"; then
 			if test "$_SOSUFFIX_MESSAGE" = ""; then
 				_SOSUFFIX_MESSAGE=yes
         			AC_MSG_WARN([libtool may not know about this architecture.])
-               			AC_MSG_WARN([assuming $_SUFFIX suffix for dynamic libraries.])
+               			AC_MSG_WARN([assuming $_SOSUFFIX suffix for dynamic libraries.])
 			fi
         	fi
         fi

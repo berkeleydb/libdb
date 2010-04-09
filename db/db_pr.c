@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_pr.c,v 12.46 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,6 +13,7 @@
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/db_verify.h"
 
@@ -176,6 +177,12 @@ __db_prdb(dbp, flags)
 			__db_msg(env, "bt_compare: %#lx bt_prefix: %#lx",
 			    P_TO_ULONG(bt->bt_compare),
 			    P_TO_ULONG(bt->bt_prefix));
+#ifdef HAVE_COMPRESSION
+		if (!LF_ISSET(DB_PR_RECOVERYTEST))
+			__db_msg(env, "bt_compress: %#lx bt_decompress: %#lx",
+			    P_TO_ULONG(bt->bt_compress),
+			    P_TO_ULONG(bt->bt_decompress));
+#endif
 		__db_msg(env, "bt_lpgno: %lu", (u_long)bt->bt_lpgno);
 		if (dbp->type == DB_RECNO) {
 			__db_msg(env,
@@ -276,8 +283,11 @@ __db_meta(dbp, dbmeta, fn, flags)
 	__db_msg(env, "\tversion: %lu", (u_long)dbmeta->version);
 	__db_msg(env, "\tpagesize: %lu", (u_long)dbmeta->pagesize);
 	__db_msg(env, "\ttype: %lu", (u_long)dbmeta->type);
+	__db_msg(env, "\tmetaflags %#lx", (u_long)dbmeta->metaflags);
 	__db_msg(env, "\tkeys: %lu\trecords: %lu",
 	    (u_long)dbmeta->key_count, (u_long)dbmeta->record_count);
+	if (dbmeta->nparts)
+		__db_msg(env, "\tnparts: %lu", (u_long)dbmeta->nparts);
 
 	/*
 	 * If we're doing recovery testing, don't display the free list,
@@ -345,6 +355,7 @@ __db_bmeta(dbp, h, flags)
 		{ BTM_RENUMBER,	"recno:renumber" },
 		{ BTM_SUBDB,	"multiple-databases" },
 		{ BTM_DUPSORT,	"sorted duplicates" },
+		{ BTM_COMPRESS,	"compressed" },
 		{ 0,		NULL }
 	};
 	ENV *env;
@@ -1513,6 +1524,11 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		if (F_ISSET(pip, VRFY_HAS_DUPSORT))
 			if ((ret = callback(handle, "dupsort=1\n")) != 0)
 				goto err;
+#ifdef HAVE_COMPRESSION
+		if (F_ISSET(pip, VRFY_HAS_COMPRESS))
+			if ((ret = callback(handle, "compressed=1\n")) != 0)
+				goto err;
+#endif
 		/*
 		 * !!!
 		 * We don't know if the page size was the default if we're
@@ -1529,6 +1545,11 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 		if (F_ISSET(dbp, DB_AM_DUPSORT))
 			if ((ret = callback(handle, "dupsort=1\n")) != 0)
 				goto err;
+#ifdef HAVE_COMPRESSION
+		if (DB_IS_COMPRESSED(dbp))
+			if ((ret = callback(handle, "compressed=1\n")) != 0)
+				goto err;
+#endif
 		if (!F_ISSET(dbp, DB_AM_PGDEF)) {
 			snprintf(buf, buflen,
 			    "db_pagesize=%lu\n", (u_long)dbp->pgsize);
@@ -1536,6 +1557,27 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 				goto err;
 		}
 	}
+
+#ifdef HAVE_PARTITION
+	if (DB_IS_PARTITIONED(dbp) &&
+	    F_ISSET((DB_PARTITION *)dbp->p_internal, PART_RANGE)) {
+		DBT *keys;
+		u_int32_t i;
+
+		if ((ret = __partition_get_keys(dbp, &tmp_u_int32, &keys)) != 0)
+			goto err;
+		if (tmp_u_int32 != 0) {
+			snprintf(buf,
+			     buflen, "nparts=%lu\n", (u_long)tmp_u_int32);
+			if ((ret = callback(handle, buf)) != 0)
+				goto err;
+			for (i = 0; i < tmp_u_int32 - 1; i++)
+			    if ((ret = __db_prdbt(&keys[i],
+				pflag, " ", handle, callback, 0)) != 0)
+					goto err;
+		}
+	}
+#endif
 
 	if (keyflag && (ret = callback(handle, "keys=1\n")) != 0)
 		goto err;

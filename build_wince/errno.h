@@ -34,11 +34,11 @@
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * FreeBSD: /repoman/r/ncvs/src/sys/sys/errno.h,v 1.28 2005/04/02 12:33:28 das Exp $
  *
- * $Id: errno.h,v 1.4 2006/11/09 14:23:11 bostic Exp $
+ * $Id$
  */
 
 #ifndef _SYS_ERRNO_H_
-#define _SYS_ERRNO_H_
+#define	_SYS_ERRNO_H_
 
 #undef	errno
 #define	errno	DB_GLOBAL(db_errno)
@@ -165,7 +165,7 @@
 #define	EILSEQ		86		/* Illegal byte sequence */
 #define	ENOATTR		87		/* Attribute not found */
 
-#define EDOOFUS		88		/* Programming error */
+#define	EDOOFUS		88		/* Programming error */
 #endif /* _POSIX_SOURCE */
 
 #define	EBADMSG		89		/* Bad message */

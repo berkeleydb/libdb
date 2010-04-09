@@ -32,6 +32,30 @@ extern "C"
 #define MIN(a,b) ((a<b)?(a):(b))
 #endif
 
+#define MALLOC(type, ptr) do {					\
+  void *tmptr = malloc(sizeof(struct type));			\
+  if (tmptr == NULL){						\
+    fprintf(stderr, 						\
+    "In file %s on line %d: malloc failed to allocate memory, exiting...", \
+      __FILE__, __LINE__);					\
+      assert(0);						\
+  }								\
+  ptr = (struct type*)tmptr;					\
+} while (0)
+
+#define MALLOC_N(type, num, ptr) do {				\
+  void *tmptr = NULL;						\
+  assert(num >= 0);						\
+  tmptr = malloc(sizeof(struct type) * num);			\
+  if (tmptr == NULL){						\
+    fprintf(stderr, 						\
+    "In file %s on line %d: malloc failed to allocate memory, exiting...", \
+      __FILE__, __LINE__);					\
+      assert(0);						\
+  }								\
+  ptr = (struct type*)tmptr;					\
+} while (0)
+
 static int get_b_rand(void) {
   static int ph=32; /* More bits than we will ever use */
   static unsigned long randseq;
@@ -66,7 +90,7 @@ static int indexing_compk(void *a, void *b) {
 
 void skiplist_init(Skiplist *sl) {
   skiplisti_init(sl);
-  sl->index = (Skiplist *)malloc(sizeof(Skiplist));
+  MALLOC(_iskiplist, sl->index);
   skiplisti_init(sl->index);
   skiplist_set_compare(sl->index, indexing_comp, indexing_compk);
 }
@@ -93,7 +117,7 @@ void skiplist_add_index(Skiplist *sl,
 #endif
   skiplist_find(sl->index, (void *)comp, &m);
   if(m) return; /* Index already there! */
-  ni = (Skiplist *)malloc(sizeof(Skiplist));
+  MALLOC(_iskiplist, ni);
   skiplisti_init(ni);
   skiplist_set_compare(ni, comp, compk);
   /* Build the new index... This can be expensive! */
@@ -202,8 +226,8 @@ struct skiplistnode *skiplist_insert_compare(Skiplist *sl,
 #endif
   if(!sl->top) {
     sl->height = 1;
-    sl->topend = sl->bottomend = sl->top = sl->bottom = 
-      (struct skiplistnode *)malloc(sizeof(struct skiplistnode));
+    MALLOC(skiplistnode, sl->bottom);
+    sl->topend = sl->bottomend = sl->top = sl->bottom;
     assert(sl->top);
     sl->top->next = (struct skiplistnode *) NULL;
     sl->top->data = (struct skiplistnode *) NULL;
@@ -222,9 +246,7 @@ struct skiplistnode *skiplist_insert_compare(Skiplist *sl,
   /* Now we have the new height at which we wish to insert our new node */
   /* Let us make sure that our tree is a least that tall (grow if necessary)*/
   for(;sl->height<nh;sl->height++) {
-    sl->top->up =
-      (struct skiplistnode *)malloc(sizeof(struct skiplistnode));
-    assert(sl->top->up);
+    MALLOC(skiplistnode, sl->top->up);
     sl->top->up->down = sl->top;
     sl->top = sl->topend = sl->top->up;
     sl->top->prev = sl->top->next = sl->top->nextindex =
@@ -236,7 +258,7 @@ struct skiplistnode *skiplist_insert_compare(Skiplist *sl,
   /* Find the node (or node after which we would insert) */
   /* Keep a stack to pop back through for insertion */
   m = sl->top;
-  stack = (struct skiplistnode **)malloc(sizeof(struct skiplistnode *)*(nh));
+  MALLOC_N(skiplistnode*, nh, stack);
   stacki=0;
   while(m) {
     int compared=-1;
@@ -260,7 +282,7 @@ struct skiplistnode *skiplist_insert_compare(Skiplist *sl,
   p = NULL;
   for(;stacki>0;stacki--) {
     m = stack[stacki-1];
-    tmp = (struct skiplistnode *)malloc(sizeof(struct skiplistnode));
+    MALLOC(skiplistnode, tmp);
     tmp->next = m->next;
     if(m->next) m->next->prev=tmp;
     tmp->prev = m;
@@ -319,8 +341,7 @@ struct skiplistnode *skiplist_append(Skiplist *sl, void *data) {
   if(!lastnode) return skiplist_insert(sl, data);
 
   for(;sl->height<nh;sl->height++) {
-    sl->top->up =
-      (struct skiplistnode *)malloc(sizeof(struct skiplistnode));
+    MALLOC(skiplistnode, sl->top->up); 
     assert(sl->top);
     sl->top->up->down = sl->top;
     sl->top = sl->top->up;
@@ -332,8 +353,7 @@ struct skiplistnode *skiplist_append(Skiplist *sl, void *data) {
   ch = sl->height;
   while(nh) {
     struct skiplistnode *anode;
-    anode =
-      (struct skiplistnode *)malloc(sizeof(struct skiplistnode));
+    MALLOC(skiplistnode, anode); 
     anode->next = lastnode;
     anode->prev = lastnode->prev;
     anode->up = NULL;
@@ -421,7 +441,7 @@ void skiplist_print_struct(Skiplist *sl, char *prefix) {
   p = sl->bottom;
   while(p) {
     q = p;
-    fprintf(stderr, prefix);
+    fprintf(stderr, "%s", prefix);
     while(q) {
       fprintf(stderr, "%p ", q->data);
       q=q->up;

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: IndexTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
@@ -53,8 +53,10 @@ public class IndexTest extends TxnTestCase {
     private static final int N_RECORDS = 5;
     private static final int THREE_TO_ONE = 3;
 
+    static protected Class<?> testClass = IndexTest.class;
+
     public static Test suite() {
-        return txnTestSuite(IndexTest.class, null,
+        return txnTestSuite(testClass, null,
                             null);
                             //new String[] { TxnTestCase.TXN_NULL});
     }
@@ -131,9 +133,17 @@ public class IndexTest extends TxnTestCase {
         rawStore = null;
     }
 
+    @Override
+    public void setUp()
+        throws Exception {
+
+        super.setUp();
+    }
+
     /**
      * The store must be closed before closing the environment.
      */
+    @Override
     public void tearDown()
         throws Exception {
 
@@ -456,7 +466,7 @@ public class IndexTest extends TxnTestCase {
         int valuesSize = expandValueSize(expected);
 
         /* EntityIndex.count */
-        assertEquals("keysSize=" + keysSize, (long) valuesSize, index.count());
+        assertEquals("keysSize=" + keysSize, valuesSize, index.count());
 
         /* Map/Collection size */
         assertEquals(valuesSize, map.size());

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Reading and Writing Database Records</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DBEntry.html" title="Chapter 3. Database Records" />
-    <link rel="previous" href="DBEntry.html" title="Chapter 3. Database Records" />
+    <link rel="prev" href="DBEntry.html" title="Chapter 3. Database Records" />
     <link rel="next" href="cstructs.html" title="Using C Structures with DB" />
   </head>
   <body>
@@ -32,7 +32,30 @@
             <h2 class="title" style="clear: both"><a id="usingDbt"></a>Reading and Writing Database Records</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="usingDbt.html#databaseWrite">Writing Records to the Database</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="usingDbt.html#CoreDatabaseRead">Getting Records from the Database</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="usingDbt.html#recordDelete">Deleting Records</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="usingDbt.html#datapersist">Data Persistence</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         When reading and writing database records, be aware that there are some
@@ -61,11 +84,11 @@
             <p>
             The 
              
-            <tt class="methodname">DBT-&gt;put()</tt> 
+            <code class="methodname">DBT-&gt;put()</code> 
              
             and
              
-            <tt class="methodname">DBT-&gt;get()</tt> 
+            <code class="methodname">DBT-&gt;get()</code> 
              
             methods provide the easiest access for all non-duplicate records in the database. 
             These methods are described in this section.
@@ -74,7 +97,7 @@
           <li>
             <p>Cursors provide several methods for putting and getting database
         records. Cursors and their database access methods are described in
-        <a href="Cursors.html">Using Cursors</a>.</p>
+        <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.</p>
           </li>
         </ul>
       </div>
@@ -85,13 +108,12 @@
               <h3 class="title"><a id="databaseWrite"></a>Writing Records to the Database</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         Records are stored in the database using whatever organization is
         required by the access method that you have selected. In some cases (such as
         BTree), records are stored in a sort order that you may want to define
-        (see <a href="btree.html#comparators">Setting Comparison Functions</a> for more information). 
+        (see <a class="xref" href="btree.html#comparators" title="Setting Comparison Functions">Setting Comparison Functions</a> for more information). 
       </p>
         <p>
         In any case, the mechanics of putting and getting database records do not
@@ -102,20 +124,20 @@
       </p>
         <p>
           You use 
-            <tt class="methodname">DB-&gt;put()</tt>
+            <code class="methodname">DB-&gt;put()</code>
             
         to put, or write, a database record. This method requires you to provide
         the record's key and data in the form of a pair of
-            <span><tt class="methodname">DBT</tt> structures.</span>
+            <span><code class="methodname">DBT</code> structures.</span>
             
         You can also provide one or more flags that control DB's behavior
         for the database write.
       </p>
         <p>
-        Of the flags available to this method, <tt class="literal">DB_NOOVERWRITE</tt>
+        Of the flags available to this method, <code class="literal">DB_NOOVERWRITE</code>
         may be interesting to you. This flag disallows overwriting (replacing)
         an existing record in the database. If the provided key already exists
-        in the database, then this method returns <tt class="literal">DB_KEYEXIST</tt> even if
+        in the database, then this method returns <code class="literal">DB_KEYEXIST</code> even if
         the database supports duplicates.
       </p>
         <p>
@@ -160,42 +182,41 @@ if (ret == DB_KEYEXIST) {
               <h3 class="title"><a id="CoreDatabaseRead"></a>Getting Records from the Database</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         You can use the
-            <tt class="methodname">DB-&gt;get()</tt>
+            <code class="methodname">DB-&gt;get()</code>
             
         method to retrieve database records. Note that if your 
         database supports duplicate records, then by default this method will only
         return the first record in a duplicate set. For this reason, if your
         database supports duplicates, the common solution is to use a cursor to retrieve
-        records from it. Cursors are described in <a href="Cursors.html">Using Cursors</a>.
+        records from it. Cursors are described in <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.
       </p>
         <p>
         (You can also retrieve a set of duplicate records using a bulk get. 
-        To do this, you use the <tt class="literal">DB_MULTIPLE</tt> flag on the 
+        To do this, you use the <code class="literal">DB_MULTIPLE</code> flag on the 
         call to 
-            <span><tt class="methodname">DB-&gt;get()</tt>.</span>
+            <span><code class="methodname">DB-&gt;get()</code>.</span>
             
         
         For more information, see the DB Programmer's Reference Guide).
       </p>
         <p>
           By default, 
-            <tt class="methodname">DB-&gt;get()</tt>
+            <code class="methodname">DB-&gt;get()</code>
             
         returns the first record found whose key matches the key 
         provide on the call to this method. If your database supports 
         duplicate records, you can change this behavior slightly by supplying
-        the <tt class="literal">DB_GET_BOTH</tt> flag. This flag causes
-            <tt class="methodname">DB-&gt;get()</tt>
+        the <code class="literal">DB_GET_BOTH</code> flag. This flag causes
+            <code class="methodname">DB-&gt;get()</code>
             
         to return the first record that matches the provided key and data.
       </p>
         <p>
           If the specified key and/or data does not exist in the database, this
-        method returns <tt class="literal">DB_NOTFOUND</tt>.
+        method returns <code class="literal">DB_NOTFOUND</code>.
       </p>
         <a id="c_dbt4"></a>
         <pre class="programlisting">#include &lt;db.h&gt;
@@ -229,7 +250,7 @@ my_database-&gt;get(my_database, NULL, &amp;key, &amp;data, 0);
  */ </pre>
         <p>
         Note that in this example, the 
-            <tt class="literal">data.size</tt>
+            <code class="literal">data.size</code>
         field would be automatically set to the size of the retrieved data.
     </p>
       </div>
@@ -240,24 +261,23 @@ my_database-&gt;get(my_database, NULL, &amp;key, &amp;data, 0);
               <h3 class="title"><a id="recordDelete"></a>Deleting Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
 
         You can use the 
             
-            <tt class="methodname">DB-&gt;del()</tt>
+            <code class="methodname">DB-&gt;del()</code>
             
         method to delete a record from the database. If your database supports
         duplicate records, then all records associated with the provided key are
         deleted. To delete just one record from a list of duplicates, use a
-        cursor. Cursors are described in <a href="Cursors.html">Using Cursors</a>.
+        cursor. Cursors are described in <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.
 
       </p>
         <p>
           You can also delete every record in the database by using
               
-              <tt class="methodname">DB-&gt;truncate().</tt>
+              <code class="methodname">DB-&gt;truncate().</code>
               
         </p>
         <p>For example:</p>
@@ -288,7 +308,6 @@ my_database-&gt;del(my_database, NULL, &amp;key, 0);</pre>
               <h3 class="title"><a id="datapersist"></a>Data Persistence</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             When you perform a database modification, your modification is made
@@ -316,7 +335,7 @@ my_database-&gt;del(my_database, NULL, &amp;key, 0);</pre>
                 
 
                 <span>
-                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide.
+                <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em> guide.
                 </span>
         </p>
         <p>
@@ -331,7 +350,7 @@ my_database-&gt;del(my_database, NULL, &amp;key, 0);</pre>
             still want some guarantee that your database modifications are
             persistent, then you should periodically
                 
-                <span>call <tt class="methodname">DB-&gt;sync()</tt>.</span>
+                <span>call <code class="methodname">DB-&gt;sync()</code>.</span>
                 
             Syncs cause any dirty entries in the in-memory cache and the
             operating system's file cache to be written to disk. As
@@ -341,16 +360,16 @@ my_database-&gt;del(my_database, NULL, &amp;key, 0);</pre>
             Remember that by default a sync is performed any time a non-transactional
             database is closed cleanly. (You can override this behavior by
             specifying 
-                <tt class="literal">DB_NOSYNC</tt> 
+                <code class="literal">DB_NOSYNC</code> 
                  
             on the call to 
-                <span><tt class="methodname">DB-&gt;close()</tt>.)</span>
+                <span><code class="methodname">DB-&gt;close()</code>.)</span>
                 
                 
             
             That said, you can manually run a sync by calling
             
-                <tt class="methodname">DB-&gt;sync().</tt>
+                <code class="methodname">DB-&gt;sync().</code>
                 
                 
             
@@ -365,10 +384,10 @@ my_database-&gt;del(my_database, NULL, &amp;key, 0);</pre>
                     
                     
                 If your databases do not verify cleanly, use the 
-                <span><b class="command">db_dump</b></span> command to salvage as much of the
-                database as is possible. Use either the <tt class="literal">-R</tt> or
-                <tt class="literal">-r</tt> command line options to control how
-                aggressive <span><b class="command">db_dump</b></span> should be when salvaging
+                <span class="command"><strong>db_dump</strong></span> command to salvage as much of the
+                database as is possible. Use either the <code class="literal">-R</code> or
+                <code class="literal">-r</code> command line options to control how
+                aggressive <span class="command"><strong>db_dump</strong></span> should be when salvaging
                 your databases.
             </p>
         </div>

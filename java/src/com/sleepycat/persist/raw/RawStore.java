@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: RawStore.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.raw;
@@ -13,6 +13,9 @@ import com.sleepycat.db.Environment;
 import com.sleepycat.persist.PrimaryIndex;
 import com.sleepycat.persist.SecondaryIndex;
 import com.sleepycat.persist.StoreConfig;
+import com.sleepycat.persist.StoreExistsException;
+import com.sleepycat.persist.StoreNotFoundException;
+import com.sleepycat.persist.evolve.IncompatibleClassException;
 import com.sleepycat.persist.evolve.Mutations;
 import com.sleepycat.persist.impl.Store;
 import com.sleepycat.persist.model.EntityModel;
@@ -60,9 +63,17 @@ public class RawStore {
      * read-only and the <code>config ReadOnly</code> property is false.
      */
     public RawStore(Environment env, String storeName, StoreConfig config)
-        throws DatabaseException {
+        throws StoreNotFoundException, DatabaseException {
 
-        store = new Store(env, storeName, config, true /*rawAccess*/);
+        try {
+            store = new Store(env, storeName, config, true /*rawAccess*/);
+        } catch (StoreExistsException e) {
+            /* Should never happen, ExclusiveCreate not used. */
+            throw new RuntimeException(e);
+        } catch (IncompatibleClassException e) {
+            /* Should never happen, evolution is not performed. */
+            throw new RuntimeException(e);
+        }
     }
 
     /**

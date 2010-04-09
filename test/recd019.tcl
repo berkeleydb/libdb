@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd019.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd019
 # TEST	Test txn id wrap-around and recovery.
@@ -59,7 +59,7 @@ proc recd019 { method {numid 50} args} {
 	# Convert the args again because fixed_len is now real.
 	# Create the databases and close the environment.
 	# cannot specify db truncate in txn protected env!!!
-	set opts [convert_args $method ""]
+	set opts [convert_args $method $args]
 	set omethod [convert_method $method]
 	set oflags "-create $omethod -mode 0644 \
 	    -env $dbenv -auto_commit $opts $testfile"

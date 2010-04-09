@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_config.c,v 12.84 2008/02/12 15:34:06 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -32,8 +32,8 @@ __env_read_db_config(env)
 
 	/* Parse the config file. */
 	p = NULL;
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, "DB_CONFIG", 0, NULL, &p)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, "DB_CONFIG", NULL, &p)) != 0)
 		return (ret);
 	if (p == NULL)
 		fp = NULL;
@@ -46,11 +46,8 @@ __env_read_db_config(env)
 		return (0);
 
 	for (lc = 1; fgets(buf, sizeof(buf), fp) != NULL; ++lc) {
-		if ((p = strchr(buf, '\n')) == NULL) {
-			__db_errx(env, "DB_CONFIG: line %d: illegal input", lc);
-			ret = EINVAL;
-			break;
-		}
+		if ((p = strchr(buf, '\n')) == NULL)
+			p = buf + strlen(buf);
 		if (p > buf && p[-1] == '\r')
 			--p;
 		*p = '\0';
@@ -59,7 +56,7 @@ __env_read_db_config(env)
 		if (*p == '\0' || *p == '#')
 			continue;
 
-		if ((ret = __config_parse(env, buf, lc)) != 0)
+		if ((ret = __config_parse(env, p, lc)) != 0)
 			break;
 	}
 	(void)fclose(fp);
@@ -281,6 +278,17 @@ format:		__db_errx(env,
 		return (__env_set_data_dir(dbenv, argv[1]));
 	}
 
+	if (strcasecmp(argv[0], "add_data_dir") == 0) {
+		if (nf != 2)
+			goto format;
+		return (__env_add_data_dir(dbenv, argv[1]));
+	}
+	if (strcasecmp(argv[0], "set_create_dir") == 0) {
+		if (nf != 2)
+			goto format;
+		return (__env_set_create_dir(dbenv, argv[1]));
+	}
+
 							/* Compatibility */
 	if (strcasecmp(argv[0], "set_intermediate_dir") == 0) {
 		if (nf != 2)
@@ -431,6 +439,14 @@ format:		__db_errx(env,
 		    dbenv, DB_REGION_INIT, lv1 == 0 ? 0 : 1));
 	}
 
+	if (strcasecmp(argv[0], "set_reg_timeout") == 0) {
+		if (nf != 2)
+			goto format;
+		CONFIG_GET_UINT32(argv[1], &uv1);
+		return (__env_set_timeout(
+		    dbenv, (u_int32_t)uv1, DB_SET_REG_TIMEOUT));
+	}
+
 	if (strcasecmp(argv[0], "set_shm_key") == 0) {
 		if (nf != 2)
 			goto format;
@@ -451,6 +467,7 @@ format:		__db_errx(env,
 		return (__env_set_tmp_dir(dbenv, argv[1]));
 	}
 
+	CONFIG_UINT32("set_thread_count", __env_set_thread_count);
 	CONFIG_UINT32("set_tx_max", __txn_set_tx_max);
 
 	if (strcasecmp(argv[0], "set_txn_timeout") == 0) {
@@ -486,6 +503,8 @@ format:		__db_errx(env,
 			flags = DB_VERB_REP_MSGS;
 		else if (strcasecmp(argv[1], "db_verb_rep_sync") == 0)
 			flags = DB_VERB_REP_SYNC;
+		else if (strcasecmp(argv[1], "db_verb_rep_test") == 0)
+			flags = DB_VERB_REP_TEST;
 		else if (strcasecmp(argv[1], "db_verb_repmgr_connfail") == 0)
 			flags = DB_VERB_REPMGR_CONNFAIL;
 		else if (strcasecmp(argv[1], "db_verb_repmgr_misc") == 0)

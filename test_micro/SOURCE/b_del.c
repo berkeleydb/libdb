@@ -1,5 +1,9 @@
 /*
- * $Id: b_del.c,v 1.15 2008/01/31 17:01:22 bostic Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_log.c,v 12.79 2008/03/13 16:21:04 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -36,7 +36,7 @@ __rep_allreq(env, rp, eid)
 	__rep_newfile_args nf_args;
 	uintptr_t bulkoff;
 	u_int32_t bulkflags, end_flag, flags, use_bulk;
-	int ret, t_ret;
+	int arch_flag, ret, t_ret;
 	u_int8_t buf[__REP_NEWFILE_SIZE];
 	size_t len;
 
@@ -44,6 +44,7 @@ __rep_allreq(env, rp, eid)
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	end_flag = 0;
+	arch_flag = 0;
 
 	if ((ret = __log_cursor(env, &logc)) != 0)
 		return (ret);
@@ -65,6 +66,8 @@ __rep_allreq(env, rp, eid)
 		goto err;
 	memset(&repth, 0, sizeof(repth));
 	REP_SYSTEM_LOCK(env);
+	F_SET(rep, REP_F_NOARCHIVE);
+	arch_flag = 1;
 	repth.gbytes = rep->gbytes;
 	repth.bytes = rep->bytes;
 	oldfilelsn = repth.lsn = rp->lsn;
@@ -101,8 +104,11 @@ __rep_allreq(env, rp, eid)
 	 * VERIFY_FAIL.
 	 */
 	if (ret == 0 && repth.lsn.file != 1 && flags == DB_FIRST) {
-		(void)__rep_send_message(env, eid,
-		    REP_VERIFY_FAIL, &repth.lsn, NULL, 0, 0);
+		if (F_ISSET(rep, REP_F_CLIENT))
+			ret = DB_NOTFOUND;
+		else
+			(void)__rep_send_message(env, eid,
+			    REP_VERIFY_FAIL, &repth.lsn, NULL, 0, 0);
 		goto err;
 	}
 	/*
@@ -197,9 +203,23 @@ __rep_allreq(env, rp, eid)
 	 * free it.
 	 */
 err:
+	/*
+	 * We could have raced an unlink from an earlier log_archive
+	 * and the user is removing the files themselves, now.  If
+	 * we get an error indicating the log file might no longer
+	 * exist, ignore it.
+	 */
+	if (ret == ENOENT)
+		ret = 0;
 	if (bulk.addr != NULL && (t_ret = __rep_bulk_free(env, &bulk,
-	    (REPCTL_RESEND | end_flag))) != 0 && ret == 0)
+	    (REPCTL_RESEND | end_flag))) != 0 && ret == 0 &&
+	    t_ret != DB_REP_UNAVAIL)
 		ret = t_ret;
+	if (arch_flag) {
+		REP_SYSTEM_LOCK(env);
+		F_CLR(rep, REP_F_NOARCHIVE);
+		REP_SYSTEM_UNLOCK(env);
+	}
 	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
@@ -379,7 +399,7 @@ __rep_logreq(env, rp, rec, eid)
 	__rep_newfile_args nf_args;
 	uintptr_t bulkoff;
 	u_int32_t bulkflags, use_bulk;
-	int ret, t_ret;
+	int count, ret, t_ret;
 	u_int8_t buf[__REP_NEWFILE_SIZE];
 	size_t len;
 
@@ -421,16 +441,36 @@ __rep_logreq(env, rp, rec, eid)
 	oldfilelsn = lsn = rp->lsn;
 	if ((ret = __log_cursor(env, &logc)) != 0)
 		return (ret);
-	if ((ret = __logc_get(logc, &firstlsn, &data_dbt, DB_FIRST)) != 0)
-		goto err;
-	ret = __logc_get(logc, &lsn, &data_dbt, DB_SET);
-	if (ret == 0) {		/* Case 1 */
+	REP_SYSTEM_LOCK(env);
+	F_SET(rep, REP_F_NOARCHIVE);
+	REP_SYSTEM_UNLOCK(env);
+	if ((ret = __logc_get(logc, &lsn, &data_dbt, DB_SET)) == 0) {
+		/* Case 1 */
 		(void)__rep_send_message(env,
 		   eid, REP_LOG, &lsn, &data_dbt, REPCTL_RESEND, 0);
 		oldfilelsn.offset += logc->len;
 	} else if (ret == DB_NOTFOUND) {
+		/*
+		 * If logc_get races with log_archive, it might return
+		 * DB_NOTFOUND.  We expect there to be some log record
+		 * that is the first one.  Loop until we either get
+		 * a log record or some error.  Since we only expect
+		 * to get this racing log_archive, bound it to a few
+		 * tries.
+		 */
+		count = 0;
+		do {
+			ret = __logc_get(logc, &firstlsn, &data_dbt, DB_FIRST);
+			count++;
+		} while (ret == DB_NOTFOUND && count < 10);
+		if (ret != 0)
+			goto err;
 		if (LOG_COMPARE(&firstlsn, &rp->lsn) > 0) {
 			/* Case 3 */
+			if (F_ISSET(rep, REP_F_CLIENT)) {
+				ret = DB_NOTFOUND;
+				goto err;
+			}
 			(void)__rep_send_message(env, eid,
 			    REP_VERIFY_FAIL, &rp->lsn, NULL, 0, 0);
 			ret = 0;
@@ -440,16 +480,18 @@ __rep_logreq(env, rp, rec, eid)
 		if (ret == DB_NOTFOUND) {
 			/* Case 4 */
 			/*
-			 * If we're a master, this is a problem.
-			 * If we're a client servicing a request
-			 * just return the DB_NOTFOUND.
+			 * If we still get DB_NOTFOUND the client gave us an
+			 * unknown LSN, perhaps at the end of the log.  Ignore
+			 * it if we're the master.  Return DB_NOTFOUND if
+			 * we are the client.
 			 */
 			if (F_ISSET(rep, REP_F_MASTER)) {
 				__db_errx(env,
-				    "Request for LSN [%lu][%lu] fails",
+				    "Request for LSN [%lu][%lu] not found",
 				    (u_long)rp->lsn.file,
 				    (u_long)rp->lsn.offset);
-				ret = EINVAL;
+				ret = 0;
+				goto err;
 			} else
 				ret = DB_NOTFOUND;
 		}
@@ -542,9 +584,21 @@ __rep_logreq(env, rp, rec, eid)
 	 * free it.
 	 */
 	if (use_bulk && (t_ret = __rep_bulk_free(env, &bulk,
-	    REPCTL_RESEND)) != 0 && ret == 0)
+	    REPCTL_RESEND)) != 0 && ret == 0 &&
+	    t_ret != DB_REP_UNAVAIL)
 		ret = t_ret;
 err:
+	/*
+	 * We could have raced an unlink from an earlier log_archive
+	 * and the user is removing the files themselves, now.  If
+	 * we get an error indicating the log file might no longer
+	 * exist, ignore it.
+	 */
+	if (ret == ENOENT)
+		ret = 0;
+	REP_SYSTEM_LOCK(env);
+	F_CLR(rep, REP_F_NOARCHIVE);
+	REP_SYSTEM_UNLOCK(env);
 	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
@@ -575,7 +629,7 @@ __rep_loggap_req(env, rep, lsnp, gapflags)
 	__rep_logreq_args lr_args;
 	size_t len;
 	u_int32_t ctlflags, flags, type;
-	int ret;
+	int master, ret;
 	u_int8_t buf[__REP_LOGREQ_SIZE];
 
 	dblp = env->lg_handle;
@@ -651,11 +705,11 @@ __rep_loggap_req(env, rep, lsnp, gapflags)
 		 */
 		flags = DB_REP_REREQUEST;
 	}
-	if (rep->master_id != DB_EID_INVALID) {
+	if ((master = rep->master_id) != DB_EID_INVALID) {
 		STAT(rep->stat.st_log_requested++);
 		if (F_ISSET(rep, REP_F_RECOVER_LOG))
 			ctlflags = REPCTL_INIT;
-		(void)__rep_send_message(env, rep->master_id,
+		(void)__rep_send_message(env, master,
 		    type, &next_lsn, max_lsn_dbtp, ctlflags, flags);
 	} else
 		(void)__rep_send_message(env, DB_EID_BROADCAST,
@@ -693,6 +747,7 @@ __rep_logready(env, rep, savetime, last_lsnp)
 		}
 
 		F_CLR(rep, REP_F_RECOVER_LOG);
+		F_SET(rep, REP_F_NIMDBS_LOADED);
 		REP_SYSTEM_UNLOCK(env);
 	} else {
 out:		__db_errx(env,

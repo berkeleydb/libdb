@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: sdb005.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	sdb005
 # TEST	Tests cursor operations in subdbs
@@ -75,19 +75,35 @@ proc sdb005 {method {nentries 100} args } {
 
 		set dbc [eval {$db cursor} $txn]
 		error_check_good db_cursor [is_valid_cursor $dbc $db] TRUE
+
+		# Get a second cursor for cursor comparison test.
+		set dbc2 [eval {$db cursor} $txn]
+		error_check_good db_cursor2 [is_valid_cursor $dbc2 $db] TRUE
+
 		set d [$dbc get -first]
+		set d2 [$dbc2 get -first]
 		error_check_good dbc_get [expr [llength $d] != 0] 1
+
+		# Cursor comparison: both are on get -first.
+		error_check_good dbc2_cmp [$dbc cmp $dbc2] 0
 
 		# Used in 005.b test
 		set db_key($i) [lindex [lindex $d 0] 0]
 
 		set d [$dbc get -prev]
 		error_check_good dbc_get [expr [llength $d] == 0] 1
+
 		set d [$dbc get -last]
 		error_check_good dbc_get [expr [llength $d] != 0] 1
+
+		# Cursor comparison: the first cursor has moved to
+		# get -last.
+		error_check_bad dbc2_cmp [$dbc cmp $dbc2] 0
+
 		set d [$dbc get -next]
 		error_check_good dbc_get [expr [llength $d] == 0] 1
 		error_check_good dbc_close [$dbc close] 0
+		error_check_good dbc2_close [$dbc2 close] 0
 	}
 	#
 	# Get a key from each subdb and try to get this key in a

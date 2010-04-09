@@ -1,5 +1,5 @@
 #!/bin/sh
-#	$Id: vx_buildcd,v 12.1 2006/08/24 14:45:35 bostic Exp $
+#	$Id$
 #
 # Build the Setup SDK CD image on the VxWorks host machine.
 

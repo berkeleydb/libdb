@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep054.tcl,v 1.19 2008/02/08 19:06:04 sue Exp $
+# $Id$
 #
 # TEST	rep054
 # TEST	Test of internal initialization where a far-behind
@@ -20,10 +20,19 @@
 
 proc rep054 { method { nentries 200 } { tnum "054" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
 		return "ALL"
+	}
+
+	# Skip this test for named in-memory databases; it tries
+	# to close and re-open envs, which just won't work.
+	if { $databases_in_memory } {
+		puts "Skipping Rep$tnum for in-memory databases."
+		return
 	}
 
 	# This test needs to set its own pagesize.
@@ -35,6 +44,11 @@ proc rep054 { method { nentries 200 } { tnum "054" } args } {
 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
 
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
@@ -49,7 +63,7 @@ proc rep054 { method { nentries 200 } { tnum "054" } args } {
 			}
 			puts "Rep$tnum ($method $r $args):  Internal\
 			    initialization test: far-behind client\
-			    becomes master."
+			    becomes master $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			puts "Rep$tnum: Client2 logs are [lindex $l 2]"
@@ -63,12 +77,18 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	global testdir
 	global util_path
 	global errorInfo
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -106,7 +126,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -log_max $log_max $verbargs \
+	    $m_logargs -log_max $log_max $verbargs $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
@@ -114,7 +134,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -log_max $log_max $verbargs \
+	    $c_logargs -log_max $log_max $verbargs $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
@@ -122,7 +142,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	# Open 2nd client
 	repladd 3
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -log_max $log_max $verbargs \
+	    $c2_logargs -log_max $log_max $verbargs $repmemargs \
 	    -home $clientdir2 -rep_transport \[list 3 replsend\]"
 	set clientenv2 [eval $cl2_envcmd $recargs -rep_client]
 	error_check_good client2_env [is_valid_env $clientenv2] TRUE
@@ -140,12 +160,13 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	# Run rep_test in the master and in each client.
 	puts "\tRep$tnum.a: Running rep_test in master & clients."
 	set start 0
-	eval rep_test $method $masterenv NULL $nentries $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $nentries $start $start 0 $largs
 	incr start $nentries
 	process_msgs $envlist
 
 	# Master is in sync with both clients.
 	rep_verify $masterdir $masterenv $clientdir $clientenv
+
 	# Process messages again in case we are running with debug_rop.
 	process_msgs $envlist
 	rep_verify $masterdir $masterenv $clientdir2 $clientenv2
@@ -163,7 +184,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 		eval rep_test $method $masterenv NULL $nentries \
-		    $start $start 0 0 $largs
+		    $start $start 0 $largs
 		incr start $nentries
 		replclear 2
 
@@ -184,7 +205,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	set newdb [eval {berkdb_open_noerr -env $masterenv -create \
 	    -auto_commit -mode 0644} $largs $omethod $newfile]
 	error_check_good newdb_open [is_valid_db $newdb] TRUE
-	eval rep_test $method $masterenv $newdb $nentries $start $start 0 0 $largs
+	eval rep_test $method $masterenv $newdb $nentries $start $start 0 $largs
 	set start [expr $start + $nentries]
 	process_msgs $envlist
 
@@ -201,7 +222,7 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	while { $stop == 0 } {
 
 		eval rep_test \
-		    $method $masterenv NULL $nentries $start $start 0 0 $largs
+		    $method $masterenv NULL $nentries $start $start 0 $largs
 		incr start $nentries
 
 		process_msgs $envlist

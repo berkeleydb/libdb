@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Join Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="getmultiple.html" title="Retrieving Multiple Objects" />
+    <link rel="prev" href="getmultiple.html" title="Retrieving Multiple Objects" />
     <link rel="next" href="dpl_delete.html" title="Deleting Entity Objects" />
   </head>
   <body>
@@ -32,14 +32,13 @@
             <h2 class="title" style="clear: both"><a id="dpl_entityjoin"></a>Join Cursors</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                         If you have two or more secondary indexes set for
                         an entity object, then you can retrieve sets of
                         objects based on the intersection of multiple
                         secondary index values. You do this using an
-                        <tt class="classname">EntityJoin</tt>
+                        <code class="classname">EntityJoin</code>
                         class.
                 </p>
       <p>
@@ -53,7 +52,7 @@
       <p>
                         If you created a secondary index based this
                         information, then you could use an
-                        <tt class="classname">EntityJoin</tt> to return
+                        <code class="classname">EntityJoin</code> to return
                         all those objects representing cars with, say, two
                         doors, that were built in 2002, and which are green
                         in color.
@@ -79,7 +78,7 @@
           <li>
             <p>
                                         Instantiate an
-                                        <tt class="classname">EntityJoin</tt>
+                                        <code class="classname">EntityJoin</code>
                                         object (you use the primary index
                                         to do this).
                                 </p>
@@ -87,7 +86,7 @@
           <li>
             <p>
                                         Use two or more calls to 
-                                        <tt class="methodname">EntityJoin.addCondition()</tt>
+                                        <code class="methodname">EntityJoin.addCondition()</code>
                                         to identify the secondary indexes
                                         and their values that you want to use
                                         for the equality match.
@@ -96,7 +95,7 @@
           <li>
             <p>
                                         Call
-                                        <tt class="methodname">EntityJoin.entities()</tt>
+                                        <code class="methodname">EntityJoin.entities()</code>
                                         to obtain a cursor that you can use
                                         to iterate over the join results.
                                 </p>
@@ -158,7 +157,7 @@ join.addCondition(make_sidx,"Toyota");
 join.addCondition(color_sidx,"Red");
 
 // Now iterate over the results of the join operation
-EntityCursor&lt;Automobiles&gt; join_cursor = join.entities();
+ForwardCursor&lt;Automobiles&gt; join_cursor = join.entities();
 try {
     for (Automobiles autoi : join_cursor) {
         // do something with each object "autoi"

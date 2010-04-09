@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_apiflags,v 12.2 2008/02/18 19:43:25 bostic Exp $
+#	$Id$
 #
 # Build the automatically generated API flag #defines.
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: txn_method.c,v 12.11 2008/01/08 20:59:00 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

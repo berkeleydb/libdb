@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: BtRecExample.java,v 12.8 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 
@@ -96,8 +96,8 @@ public class BtRecExample {
             // Start with a fresh key each time, the db.get() routine returns
             // the key and data pair, not just the key!
             //
-            RecnoStringEntry key = new RecnoStringEntry(recno, 100);
-            RecnoStringEntry data = new RecnoStringEntry(100);
+            RecnoStringEntry key = new RecnoStringEntry(recno, 4);
+            RecnoStringEntry data = new RecnoStringEntry(4);
 
             status = cursor.getSearchRecordNumber(key, data, null);
             if (status != OperationStatus.SUCCESS)
@@ -114,7 +114,7 @@ public class BtRecExample {
             // Display the key and data.
             show("next\t", key, data);
 
-            RecnoStringEntry datano = new RecnoStringEntry(100);
+            RecnoStringEntry datano = new RecnoStringEntry(4);
 
             //
             // Retrieve the record number for the following record into
@@ -262,9 +262,8 @@ public class BtRecExample {
 
         RecnoStringEntry(int value, int maxsize) {
             arr = new byte[maxsize];
-            setData(arr);                // use our local array for data
-            setUserBuffer(maxsize, true);
             setRecordNumber(value);
+            setSize(arr.length);
         }
 
         RecnoStringEntry(String value) {

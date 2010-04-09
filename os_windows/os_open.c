@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_open.c,v 12.29 2008/03/26 04:11:35 david Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -177,13 +177,22 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 				    access, share, NULL, createflag, attr, 0);
 		}
 
+#ifdef HAVE_FTRUNCATE
 		/*
-		 * Since WinCE does not support truncate, we don't
-		 * need to open this second handle.
-		 * This code will not work unaltered on WinCE, the
-		 * creation of the second handle fails.
+		 * Older versions of WinCE may not support truncate, if so, the
+		 * HAVE_FTRUNCATE macro should be #undef'ed, and we
+		 * don't need to open this second handle.
+		 *
+		 * WinCE dose not support opening a second handle on the same
+		 * file via CreateFileForMapping, but this dose not matter
+		 * since we are not truncating region files but database files.
+		 *
+		 * But some older versions of WinCE even
+		 * dose not allow a second handle opened via CreateFile. If
+		 * this is the case, users will need to #undef the
+		 * HAVE_FTRUNCATE macro in build_wince/db_config.h.
 		 */
-#ifndef DB_WINCE
+
 		/*
 		 * Windows does not provide truncate directly.  There is no
 		 * safe way to use a handle for truncate concurrently with
@@ -192,15 +201,27 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 		 */
 		if (fhp->handle != INVALID_HANDLE_VALUE &&
 		    !LF_ISSET(DB_OSO_RDONLY | DB_OSO_TEMP) &&
-		    fhp->trunc_handle == INVALID_HANDLE_VALUE)
+		    fhp->trunc_handle == INVALID_HANDLE_VALUE
+#ifdef DB_WINCE
+		    /* Do not open trunc handle for region files. */
+		    && (!LF_ISSET(DB_OSO_REGION))
+#endif
+		    )
 			fhp->trunc_handle = CreateFile(
 			    tname, access, share, NULL, OPEN_EXISTING, attr, 0);
+#endif
 
+#ifndef HAVE_FTRUNCATE
+		if (fhp->handle == INVALID_HANDLE_VALUE)
+#else
 		if (fhp->handle == INVALID_HANDLE_VALUE ||
 		    (!LF_ISSET(DB_OSO_RDONLY | DB_OSO_TEMP) &&
-		    fhp->trunc_handle == INVALID_HANDLE_VALUE))
-#else
-		if (fhp->handle == INVALID_HANDLE_VALUE)
+		    fhp->trunc_handle == INVALID_HANDLE_VALUE
+#ifdef DB_WINCE
+		    /* Do not open trunc handle for region files. */
+		    && (!LF_ISSET(DB_OSO_REGION))
+#endif
+		    ))
 #endif
 		{
 			/*

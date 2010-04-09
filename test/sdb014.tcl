@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: sdb014.tcl,v 12.12 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	sdb014
 # TEST	Tests mixing in-memory named and in-memory unnamed dbs.

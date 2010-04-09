@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2007 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ForeignKeyDeleteAction.java,v 12.1 2008/01/28 15:38:32 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;

@@ -113,8 +113,6 @@ __dbreg_register_log(env, txnp, ret_lsnp, flags,
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
 		if (txnp == NULL)
 			return (0);
-		if (txnp == NULL)
-			return (0);
 		is_durable = 0;
 	} else
 		is_durable = 1;

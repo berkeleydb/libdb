@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: rep045.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep045
 # TEST
@@ -25,6 +25,9 @@
 proc rep045 { method { tnum "045" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -38,10 +41,26 @@ proc rep045 { method { tnum "045" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
 		set logindex [lsearch -exact $l "in-memory"]
 		puts "Rep$tnum ($method): Replication with version\
-		    databases."
+		    databases $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 		puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
@@ -52,12 +71,19 @@ proc rep045 { method { tnum "045" } args } {
 proc rep045_sub { method tnum logset largs } {
 	source ./include.tcl
 	set orig_tdir $testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set masterdir $testdir/MASTERDIR
@@ -88,7 +114,7 @@ proc rep045_sub { method tnum logset largs } {
 	# Open a master.
 	repladd 1
 	set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -errpfx ENV.M0 $verbargs \
+	    $m_logargs -errpfx ENV.M0 $verbargs $repmemargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set menv [eval $envcmd(M0) -rep_master]
@@ -96,7 +122,7 @@ proc rep045_sub { method tnum logset largs } {
 	# Open a client
 	repladd 2
 	set envcmd(C0) "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -errpfx ENV.C0 $verbargs \
+	    $c_logargs -errpfx ENV.C0 $verbargs $repmemargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir0 -rep_transport \[list 2 replsend\]"
 	set cenv0 [eval $envcmd(C0) -rep_client]
@@ -104,7 +130,7 @@ proc rep045_sub { method tnum logset largs } {
 	# Open second client.
 	repladd 3
 	set envcmd(C1) "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -errpfx ENV.C1 $verbargs \
+	    $c2_logargs -errpfx ENV.C1 $verbargs $repmemargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir1 -rep_transport \[list 3 replsend\]"
 	set cenv1 [eval $envcmd(C1) -rep_client]
@@ -122,7 +148,11 @@ proc rep045_sub { method tnum logset largs } {
 	puts "\tRep$tnum.a: Initialize version database."
 	# Set up variables so we cycle through version numbers 1
 	# through maxversion several times.
-	set vname "version.db"
+	if { $databases_in_memory } {
+		set vname { "" "version.db" }
+	} else {
+		set vname "version.db"
+	}
 	set version 0
 	set maxversion 5
 	set iter 12
@@ -141,7 +171,7 @@ proc rep045_sub { method tnum logset largs } {
 	puts "\tRep$tnum.b: Spawn a child tclsh to do client work."
 	set pid [exec $tclsh_path $test_path/wrap.tcl \
 	    rep045script.tcl $testdir/rep045script.log \
-		   $clientdir1 $vname &]
+		   $clientdir1 $vname $databases_in_memory &]
 
 	# Main loop: update query database, process messages (or don't,
 	# simulating a failure), announce the new version, process
@@ -149,8 +179,12 @@ proc rep045_sub { method tnum logset largs } {
 	set version 1
 	for { set i 1 } { $i < $iter } { incr i } {
 
-		# If database.N exists, clean it up.
-		set dbname "db.$version"
+		# If database.N exists on disk, clean it up.
+		if { $databases_in_memory } {
+			set dbname { "" "db.$version" }
+		} else {
+			set dbname "db.$version"
+		}
 		if { [file exists $masterdir/$dbname] == 1 } {
 			puts "\tRep$tnum.c.$i: Removing old version $version."
 			error_check_good dbremove \
@@ -161,7 +195,7 @@ proc rep045_sub { method tnum logset largs } {
 		set db [eval berkdb_open_noerr -create -env $menv\
 		    -auto_commit -mode 0644 $largs $omethod $dbname]
 		error_check_good db_open [is_valid_db $db] TRUE
-		eval rep_test $method $menv $db $nentries $start $start 0 0 $largs
+		eval rep_test $method $menv $db $nentries $start $start 0 $largs
 		incr start $nentries
 		error_check_good db_close [$db close] 0
 

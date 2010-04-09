@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: recd023.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd023
 # TEST	Test recover of reverse split.
@@ -19,6 +19,12 @@ proc recd023 { method args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+
+	if { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 
 	puts "Recd$tnum ($omethod $args): Recovery of reverse split."
 	set testfile recd$tnum.db
@@ -66,7 +72,8 @@ proc recd023 { method args } {
 	}
 
 	error_check_good db_close [$db close] 0
-	error_check_good verify_dir [verify_dir $testdir "\tRecd$tnum.d: "] 0
+	error_check_good verify_dir\
+	    [verify_dir $testdir "\tRecd$tnum.d: " 0 0 $nodump] 0
 
 	# Overwrite the current database with the saved database.
 	file copy -force $testdir/$testfile.save $testdir/$testfile
@@ -79,5 +86,6 @@ proc recd023 { method args } {
 	error_check_good log_flush [$env log_flush] 0
 	error_check_good env_close [$env close] 0
 
-	error_check_good verify_dir [verify_dir $testdir "\tRecd$tnum.e: "] 0
+	error_check_good verify_dir\
+	     [verify_dir $testdir "\tRecd$tnum.e: " 0 0 $nodump] 0
 }

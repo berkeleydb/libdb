@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_stat.c,v 12.36 2008/03/26 21:44:29 ubell Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -65,7 +65,8 @@ __rep_stat(env, statp, flags)
 	DB_REP_STAT *stats;
 	LOG *lp;
 	REP *rep;
-	u_int32_t queued, startupdone;
+	u_int32_t startupdone;
+	uintmax_t queued;
 	int dolock, ret;
 
 	db_rep = env->rep_handle;
@@ -285,7 +286,8 @@ __rep_print_stats(env, flags)
 	    "Current environment priority", (u_long)sp->st_env_priority);
 	__db_dl(env, "Current generation number", (u_long)sp->st_gen);
 	__db_dl(env,
-	    "Current election generation number", (u_long)sp->st_egen);
+	    "Election generation number for the current or next election",
+	    (u_long)sp->st_egen);
 	__db_dl(env, "Number of duplicate log records received",
 	    (u_long)sp->st_log_duplicated);
 	__db_dl(env, "Number of log records currently queued",
@@ -353,23 +355,30 @@ __rep_print_stats(env, flags)
 	} else {
 		__db_dl(env, "Current election phase",
 		    (u_long)sp->st_election_status);
-		__db_dl(env, "Election winner",
+		__db_dl(env,
+    "Environment ID of the winner of the current or last election",
 		    (u_long)sp->st_election_cur_winner);
-		__db_dl(env, "Election generation number",
+		__db_dl(env,
+    "Master generation number of the winner of the current or last election",
 		    (u_long)sp->st_election_gen);
-		__db_msg(env, "%lu/%lu\tMaximum LSN of election winner",
+		__db_msg(env,
+    "%lu/%lu\tMaximum LSN of the winner of the current or last election",
 		    (u_long)sp->st_election_lsn.file,
 		    (u_long)sp->st_election_lsn.offset);
 		__db_dl(env,
-		    "Number of sites expected to participate in elections",
+    "Number of sites responding to this site during the current election",
 		    (u_long)sp->st_election_nsites);
-		__db_dl(env, "Number of votes needed to win an election",
+		__db_dl(env,
+    "Number of votes required in the current or last election",
 		    (u_long)sp->st_election_nvotes);
 		__db_dl(env,
-		    "Election priority", (u_long)sp->st_election_priority);
-		__db_dl(env, "Election tiebreaker value",
+		    "Priority of the winner of the current or last election",
+		    (u_long)sp->st_election_priority);
+		__db_dl(env,
+    "Tiebreaker value of the winner of the current or last election",
 		    (u_long)sp->st_election_tiebreaker);
-		__db_dl(env, "Votes received this election round",
+		__db_dl(env,
+		    "Number of votes received during the current election",
 		    (u_long)sp->st_election_votes);
 	}
 	__db_dl(env, "Number of bulk buffer sends triggered by full buffer",
@@ -408,24 +417,40 @@ __rep_print_all(env, flags)
 	u_int32_t flags;
 {
 	static const FN rep_fn[] = {
+		{ REP_F_ABBREVIATED,	"REP_F_ABBREVIATED" },
+		{ REP_F_APP_BASEAPI,	"REP_F_APP_BASEAPI" },
+		{ REP_F_APP_REPMGR,	"REP_F_APP_REPMGR" },
 		{ REP_F_CLIENT,		"REP_F_CLIENT" },
+		{ REP_F_DELAY,		"REP_F_DELAY" },
+		{ REP_F_EGENUPDATE,	"REP_F_EGENUPDATE" },
+		{ REP_F_EPHASE0,	"REP_F_EPHASE0" },
 		{ REP_F_EPHASE1,	"REP_F_EPHASE1" },
 		{ REP_F_EPHASE2,	"REP_F_EPHASE2" },
+		{ REP_F_GROUP_ESTD,	"REP_F_GROUP_ESTD" },
 		{ REP_F_INREPELECT,	"REP_F_INREPELECT" },
+		{ REP_F_INREPSTART,	"REP_F_INREPSTART" },
+		{ REP_F_LEASE_EXPIRED,	"REP_F_LEASE_EXPIRED" },
 		{ REP_F_MASTER,		"REP_F_MASTER" },
 		{ REP_F_MASTERELECT,	"REP_F_MASTERELECT" },
+		{ REP_F_NEWFILE,	"REP_F_NEWFILE" },
+		{ REP_F_NIMDBS_LOADED,	"REP_F_NIMDBS_LOADED" },
 		{ REP_F_NOARCHIVE,	"REP_F_NOARCHIVE" },
 		{ REP_F_READY_API,	"REP_F_READY_API" },
+		{ REP_F_READY_APPLY,	"REP_F_READY_APPLY" },
 		{ REP_F_READY_MSG,	"REP_F_READY_MSG" },
 		{ REP_F_READY_OP,	"REP_F_READY_OP" },
 		{ REP_F_RECOVER_LOG,	"REP_F_RECOVER_LOG" },
 		{ REP_F_RECOVER_PAGE,	"REP_F_RECOVER_PAGE" },
 		{ REP_F_RECOVER_UPDATE,	"REP_F_RECOVER_UPDATE" },
 		{ REP_F_RECOVER_VERIFY,	"REP_F_RECOVER_VERIFY" },
+		{ REP_F_SKIPPED_APPLY,	"REP_F_SKIPPED_APPLY" },
+		{ REP_F_START_CALLED,	"REP_F_START_CALLED" },
 		{ REP_F_TALLY,		"REP_F_TALLY" },
 		{ 0,			NULL }
 	};
 	static const FN dbrep_fn[] = {
+		{ DBREP_APP_BASEAPI,	"DBREP_APP_BASEAPI" },
+		{ DBREP_APP_REPMGR,	"DBREP_APP_REPMGR" },
 		{ DBREP_OPENFILES,	"DBREP_OPENFILES" },
 		{ 0,			NULL }
 	};
@@ -465,7 +490,6 @@ __rep_print_all(env, flags)
 	STAT_LONG("Master environment ID", rep->master_id);
 	STAT_ULONG("Election generation", rep->egen);
 	STAT_ULONG("Election generation number", rep->gen);
-	STAT_ULONG("Last generation number in log", rep->recover_gen);
 	STAT_LONG("Space allocated for sites", rep->asites);
 	STAT_LONG("Sites in group", rep->nsites);
 	STAT_LONG("Votes needed for election", rep->nvotes);
@@ -513,6 +537,7 @@ __rep_print_all(env, flags)
 	STAT_LONG("Maximum lease timestamp microseconds",
 	    lp->max_lease_ts.tv_nsec / NS_PER_US);
 	MUTEX_UNLOCK(env, rep->mtx_clientdb);
+	ENV_LEAVE(env, ip);
 
 	return (0);
 }

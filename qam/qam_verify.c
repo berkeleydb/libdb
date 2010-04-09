@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: qam_verify.c,v 12.18 2008/03/13 15:44:50 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -128,7 +128,7 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	 */
 
 	if ((ret = __db_appname(env,
-	    DB_APP_DATA, qp->dir, 0, NULL, &buf)) != 0)
+	    DB_APP_DATA, qp->dir, NULL, &buf)) != 0)
 		goto err;
 	if ((ret = __os_dirlist(env, buf, 0, &names, &count)) != 0)
 		goto err;
@@ -174,6 +174,117 @@ err:	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 	   (t_ret = __db_salvage_markdone(vdp, pgno)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret == 0 && isbad == 1 ? DB_VERIFY_BAD : ret);
+}
+
+/*
+ * __qam_meta2pgset --
+ * For a given Queue meta page, add all of the db's pages to the pgset.  Dealing
+ * with extents complicates things, as it is possible for there to be gaps in
+ * the page number sequence (the user could have re-inserted record numbers that
+ * had been on deleted extents) so we test the existence of each extent before
+ * adding its pages to the pgset.  If there are no extents, just loop from
+ * first_recno to last_recno.
+ *
+ * PUBLIC: int __qam_meta2pgset __P((DB *, VRFY_DBINFO *, DB *));
+ */
+int
+__qam_meta2pgset(dbp, vdp, pgset)
+	DB *dbp;
+	VRFY_DBINFO *vdp;
+	DB *pgset;
+{
+	DBC *dbc;
+	PAGE *h;
+	db_pgno_t first, last, pgno, pg_ext, stop;
+	int ret, t_ret;
+	u_int32_t i;
+
+	ret = 0;
+	h = NULL;
+	if (vdp->last_recno <= vdp->first_recno)
+		return 0;
+
+	pg_ext = vdp->page_ext;
+
+	first = QAM_RECNO_PAGE(dbp, vdp->first_recno);
+
+	/*
+	 * last_recno gives the next recno to be allocated, we want the last
+	 * allocated recno.
+	 */
+	last = QAM_RECNO_PAGE(dbp, vdp->last_recno - 1);
+
+	if (first == PGNO_INVALID || last == PGNO_INVALID)
+		return (DB_VERIFY_BAD);
+
+	pgno = first;
+	if (first > last)
+		stop = QAM_RECNO_PAGE(dbp, UINT32_MAX);
+	else
+		stop = last;
+
+	/*
+	 * If this db doesn't have extents, just add all page numbers from first
+	 * to last.
+	 */
+	if (pg_ext == 0) {
+		for (pgno = first; pgno <= stop; pgno++)
+			if ((ret = __db_vrfy_pgset_inc(
+			    pgset, vdp->thread_info, pgno)) != 0)
+				break;
+		if (first > last)
+			for (pgno = 1; pgno <= last; pgno++)
+				if ((ret = __db_vrfy_pgset_inc(
+				    pgset, vdp->thread_info, pgno)) != 0)
+					break;
+
+		return ret;
+	}
+
+	if ((ret = __db_cursor(dbp, vdp->thread_info, NULL, &dbc, 0)) != 0)
+		return (ret);
+	/*
+	 * Check if we can get the first page of each extent.  If we can, then
+	 * add all of that extent's pages to the pgset.  If we can't, assume the
+	 * extent doesn't exist and don't add any pages, if we're wrong we'll
+	 * find the pages in __db_vrfy_walkpages.
+	 */
+begin:	for (; pgno <= stop; pgno += pg_ext) {
+		if ((ret = __qam_fget(dbc, &pgno, 0, &h)) != 0) {
+			if (ret == ENOENT || ret == DB_PAGE_NOTFOUND) {
+				ret = 0;
+				continue;
+			}
+			goto err;
+		}
+		if ((ret = __qam_fput(dbc, pgno, h, dbp->priority)) != 0)
+			goto err;
+
+		for (i = 0; i < pg_ext && pgno + i <= last; i++)
+			if ((ret = __db_vrfy_pgset_inc(
+			    pgset, vdp->thread_info, pgno + i)) != 0)
+				goto err;
+
+		/* The first recno won't always occur on the first page of the
+		 * extent.  Back up to the beginning of the extent before the
+		 * end of the loop so that the increment works correctly.
+		 */
+		if (pgno == first)
+			pgno = pgno % pg_ext + 1;
+	}
+
+	if (first > last) {
+		pgno = 1;
+		first = last;
+		stop = last;
+		goto begin;
+	}
+
+err:
+	if ((t_ret = __dbc_close(dbc)) != 0 && ret == 0)
+		ret = t_ret;
+
+	return ret;
 }
 
 /*
@@ -367,7 +478,7 @@ begin:	for (; i <= stop; i++) {
 			 * bomb hits.  May as well return that something
 			 * was screwy, however.
 			 */
-			if ((t_ret = __db_salvage(dbp,
+			if ((t_ret = __db_salvage_pg(dbp,
 			    vdp, i, h, handle, callback, flags)) != 0) {
 				if (ret == 0)
 					ret = t_ret;
@@ -447,13 +558,11 @@ put:			if ((ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0)
 	}
 
 	if (0) {
-err:		if (h != NULL &&
-		     (t_ret = __qam_fput(dbc, i, h, dbp->priority)) != 0
-		     && ret == 0)
+err:		if (h != NULL && (t_ret =
+		    __qam_fput(dbc, i, h, dbp->priority)) != 0 && ret == 0)
 			ret = t_ret;
-		if (pip != NULL &&
-		     (t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0
-		     && ret == 0)
+		if (pip != NULL && (t_ret =
+		    __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 err1:	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0 && ret == 0)

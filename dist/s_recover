@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_recover,v 12.2 2008/01/11 18:49:48 sue Exp $
+#	$Id$
 #
 # Build the automatically generated logging/recovery files.
 

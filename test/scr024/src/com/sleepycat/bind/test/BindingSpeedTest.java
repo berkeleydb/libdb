@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: BindingSpeedTest.java,v 12.9 2008/02/07 17:12:30 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.test;
@@ -54,9 +54,7 @@ public class BindingSpeedTest extends TestCase {
     static final int RUN_COUNT = 1000;
     static final boolean VERBOSE = false;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -96,6 +94,7 @@ public class BindingSpeedTest extends TestCase {
         command = name;
     }
 
+    @Override
     public void runTest()
         throws Exception {
 
@@ -212,6 +211,7 @@ public class BindingSpeedTest extends TestCase {
         }
     }
 
+    @Override
     public void tearDown() {
 
         /* Ensure that GC can cleanup. */
@@ -223,9 +223,7 @@ public class BindingSpeedTest extends TestCase {
         parser = null;
     }
 
-    void initSerialUnshared()
-        throws Exception {
-
+    void initSerialUnshared() {
         fo = new FastOutputStream();
     }
 
@@ -242,9 +240,7 @@ public class BindingSpeedTest extends TestCase {
         return bytes.length;
     }
 
-    void initSerialShared()
-        throws Exception {
-
+    void initSerialShared() {
         jtc = new TestClassCatalog();
         fo = new FastOutputStream();
     }
@@ -275,16 +271,12 @@ public class BindingSpeedTest extends TestCase {
         return (bytes.length - SerialOutput.getStreamHeader().length);
     }
 
-    void initTuple()
-        throws Exception {
-
+    void initTuple() {
         buf = new byte[500];
         to = new TupleOutput(buf);
     }
 
-    int runTuple()
-        throws Exception {
-
+    int runTuple() {
         to.reset();
         new Data().writeTuple(to);
 
@@ -414,7 +406,7 @@ public class BindingSpeedTest extends TestCase {
         public Data2() {}
 
         public void readExternal(ObjectInput in)
-            throws IOException, ClassNotFoundException {
+            throws IOException {
 
             field1 = in.readUTF();
             field2 = in.readUTF();
@@ -434,6 +426,7 @@ public class BindingSpeedTest extends TestCase {
         }
     }
 
+    @SuppressWarnings("serial")
     static class Data implements Serializable {
 
         public String field1 = "field1";

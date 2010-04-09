@@ -3,15 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-        Using Secondary Cursors
-        
-    </title>
+    <title>Using Secondary Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 10. Secondary Databases" />
-    <link rel="previous" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
+    <link rel="prev" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
     <link rel="next" href="joins.html" title="Database Joins" />
   </head>
   <body>
@@ -19,7 +16,7 @@
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">
-        Using Secondary Cursors
+        <span>Using Secondary Cursors</span>
         
     </th>
         </tr>
@@ -41,7 +38,6 @@
     </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Just like cursors on a primary database, you can use 
@@ -59,7 +55,7 @@
         or last record in the database, to get the next duplicate record, 
             
         and so forth. For a complete description on cursors and their capabilities, see
-        <a href="Cursors.html">Using Cursors</a>.
+        <a class="xref" href="Cursors.html" title="Chapter 9. Using Cursors">Using Cursors</a>.
     </p>
       <p>
         However, when you use 
@@ -76,7 +72,7 @@
           </li>
           <li>
             <p>
-            <tt class="methodname">SecondaryCursor.getSearchBoth()</tt> and
+            <code class="methodname">SecondaryCursor.getSearchBoth()</code> and
             related methods do not search based on a key/data pair. Instead, you
             search based on a secondary key and a primary key. The data returned
             is the primary data that most closely matches the two keys provided
@@ -89,7 +85,7 @@
         For example, suppose you are using the databases, classes, and key
         <span>creators</span>
         
-        described in <a href="keyCreator.html">Implementing Key 
+        described in <a class="xref" href="keyCreator.html" title="Implementing Key Creators">Implementing Key 
         <span>Creators</span>
         
         </a>. 

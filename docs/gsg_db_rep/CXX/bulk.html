@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Bulk Transfers</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="addfeatures.html" title="Chapter 5. Additional Features" />
-    <link rel="previous" href="c2ctransfer.html" title="Client to Client Transfer" />
+    <link rel="prev" href="c2ctransfer.html" title="Client to Client Transfer" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,6 @@
             <h2 class="title" style="clear: both"><a id="bulk"></a>Bulk Transfers</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     By default, messages are sent from the master to replicas as they are generated.
@@ -56,7 +55,7 @@
                     replica.
             </p>
       <p>
-                    If the servicing environment is a master environment, then bulk a bulk transfer
+                    If the servicing environment is a master environment, then bulk transfer
                     occurs when:
             </p>
       <div class="orderedlist">
@@ -107,11 +106,11 @@
                     To configure bulk transfers, specify
 
                     <span>
-                        <tt class="literal">DB_REP_CONF_BULK</tt> to
+                        <code class="literal">DB_REP_CONF_BULK</code> to
                             
-                            <tt class="methodname">DbEnv::rep_set_config()</tt>
-                        and then specify <tt class="literal">1</tt> to the <tt class="literal">onoff</tt>
-                        parameter. (Specify <tt class="literal">0</tt> to turn the feature off.)
+                            <code class="methodname">DbEnv::rep_set_config()</code>
+                        and then specify <code class="literal">1</code> to the <code class="literal">onoff</code>
+                        parameter. (Specify <code class="literal">0</code> to turn the feature off.)
                     </span>
                     
             </p>

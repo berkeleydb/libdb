@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.db185,v 12.0 2004/11/17 03:44:50 bostic Exp $
+# $Id$
 #
 # Check to make sure we can run DB 1.85 code.
 
@@ -9,7 +9,12 @@
 	exit 1
 }
 
-if cc -g -Wall -I.. t.c ../libdb.a -o t; then
+# set -enable-compat185 when configure to get proper h files.
+# if compile on linux blade server, add -pthread on cc
+CINC=-I..
+[ `uname` = "Linux" ] && CINC="$CINC -pthread"
+
+if cc -g -Wall $CINC t.c ../libdb.a -o t; then
 	:
 else
 	echo "FAIL: unable to compile test program t.c"

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: ex_tpcb.c,v 12.11 2008/04/21 23:46:02 alexg Exp $
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -269,6 +269,7 @@ db_init(home, prefix, cachesize, flags)
 	}
 	dbenv->set_errfile(dbenv, stderr);
 	dbenv->set_errpfx(dbenv, prefix);
+	(void)dbenv->set_lk_detect(dbenv, DB_LOCK_DEFAULT);
 	(void)dbenv->set_cachesize(dbenv, 0,
 	    cachesize == 0 ? 4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
 

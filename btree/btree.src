@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: btree.src,v 12.16 2008/02/11 04:22:02 mjc Exp $
+ * $Id$
  */
 
 DBPRIVATE
@@ -28,11 +28,31 @@ INCLUDE
  * indx:	the number of entries that went to the left page.
  * npgno:	the next page number
  * nlsn:	the next page's original LSN (or 0 if no next page).
- * root_pgno:	the root page number
+ * pgno:	the parent page number
+ * plsn:	the parent page's original LSN.
  * pg:		the split page's contents before the split.
  * opflags:	SPL_NRECS: if splitting a tree that maintains a record count.
+ * pindx:	index of new record in parent page.
  */
-BEGIN split		42	62
+BEGIN split		48	62
+DB	fileid		int32_t		ld
+ARG	left		db_pgno_t	lu
+POINTER	llsn		DB_LSN *	lu
+ARG	right		db_pgno_t	lu
+POINTER	rlsn		DB_LSN *	lu
+ARG	indx		u_int32_t	lu
+ARG	npgno		db_pgno_t	lu
+POINTER	nlsn		DB_LSN *	lu
+ARG	ppgno		db_pgno_t	lu
+POINTER	plsn		DB_LSN *	lu
+ARG	pindx		u_int32_t	lu
+PGDBT	pg		DBT		s
+DBT	pentry		DBT		s
+DBT	rentry		DBT		s
+ARG	opflags		u_int32_t	lu
+END
+
+BEGIN_COMPAT split	42	62
 DB	fileid		int32_t		ld
 ARG	left		db_pgno_t	lu
 POINTER	llsn		DB_LSN *	lu

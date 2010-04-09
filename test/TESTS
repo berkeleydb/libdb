@@ -2,6 +2,19 @@
 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Allocate and lock a self-blocking mutex.  Start another process. 
+	Try to lock the mutex again -- it will block.  
+	Unlock the mutex from the other process, and the blocked 
+	lock should be obtained.  Clean up.
+	Do another test with a "-process-only" mutex.  The second 
+	process should not be able to unlock the mutex.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Allocate, lock, unlock, and free a bunch of mutexes. 
+	Set basic configuration options and check mutex_stat and 
+	the mutex getters for the correct values. 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 backup
 	Test of hotbackup functionality. 
 
@@ -39,6 +52,10 @@ dbm
 	After all are entered, retrieve all; compare output to original.
 	Then reopen the file, re-retrieve everything.  Finally, delete
 	everything.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+db_reptest
+	Wrapper to configure and run the db_reptest program.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dead001
@@ -169,6 +186,24 @@ env012
 	if there were empty slots in the process registry file.  Verify
 	that recovery doesn't automatically run if there is an empty slot.
 
+	6. Verify process cannot connect when specifying -failchk and an
+	isalive function has not been declared.
+
+	7. Verify that a 2nd process can enter the existing env with -register
+	and -failchk and having specified an isalive function
+
+	8. Kill the 1st process, and verify that the 2nd process can enter
+	with "-register -failchk -recover"
+
+	9. 2nd process enters with "-register -failchk".  Kill the 1st process.
+	2nd process may get blocked on a mutex held by process one.  Verify
+	3rd process can enter with "-register -recover -failchk".   3rd process
+	should run failchk, clear out open txn/log from process 1.   It will
+	enter env without need for any additional recovery.   We look for 
+	"Freeing log information .." sentence in the log for 3rd process as 
+	an indication that failchk ran.   If DB_RUNRECOVERY were returned 
+	instead it would mean failchk could not recover. 
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env013
 	Test of basic functionality of fileid_reset.
@@ -200,6 +235,33 @@ env016
 
 	Create a DB_CONFIG for various replication settings.  Use
 	rep_stat or getter functions to verify they're set correctly.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+env017
+	Check documented "stat" fields against the fields
+	returned by the "stat" functions.  Make sure they
+	match, and that none are missing.	
+	These are the stat functions we test:
+	env log_stat
+	env lock_stat
+	env txn_stat
+	env mutex_stat
+	env rep_stat
+	env repmgr_stat
+	env mpool_stat
+	db_stat
+	seq_stat
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+env018
+	Test getters when joining an env.  When a second handle is 
+	opened on an existing env, get_open_flags needs to return 
+	the correct flags to the second handle so it knows what sort
+	of environment it's just joined.
+
+	For several different flags to env_open, open an env.  Open
+	a second handle on the same env, get_open_flags and verify 
+	the flag is returned.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 fop001.tcl
@@ -372,6 +434,19 @@ memp004
 	Test that small read-only databases are mapped into memory.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mut001
+	Exercise the mutex API.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mut002
+	Two-process mutex test.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+mut003
+	Try doing mutex operations out of order.  Make sure 
+	we get appropriate errors.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 plat001
 
 	Test of portability of sequences.
@@ -519,6 +594,16 @@ recd023
 	Test recover of reverse split.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+recd024
+	Test recovery of streaming partial insert operations. These are 
+	operations that do multiple partial puts that append to an existing
+	data item (as long as the data item is on an overflow page).
+	The interesting cases are:
+	* Simple streaming operations
+	* Operations that cause the overflow item to flow onto another page.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep001
 	Replication rename and forced-upgrade test.
 
@@ -550,7 +635,7 @@ rep003
 rep005
 	Replication election test with error handling.
 
-	Run a modified version of test001 in a replicated master environment;
+	Run rep_test in a replicated master environment;
 	hold an election among a group of clients to make sure they select
 	a proper master from amongst themselves, forcing errors at various
 	locations in the election path.
@@ -573,6 +658,8 @@ rep007
 	Close the master.  Open the client as the new master.
 	Make several different changes.  Open the old master as
 	the client.  Verify periodically that contents are correct.
+	This test is not appropriate for named in-memory db testing
+	because the databases are lost when both envs are closed.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep008
@@ -874,7 +961,7 @@ rep038
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep039
-	Test of interrupted internal initialization changes.  The
+	Test of interrupted internal initialization.  The
 	interruption is due to a changed master, or the client crashing,
 	or both.
 
@@ -1073,21 +1160,6 @@ rep055
 	Get list of archivable files from db_archive and restart client.
 	As client is in the middle of internal init, remove
 	the log files returned earlier by db_archive.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-rep056
-	Replication test with in-memory named databases.
-
-	Rep056 is just a driver to run rep001 with in-memory
-	named databases.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-rep057
-	Replication test of internal initialization with
-	in-memory named databases.
-
-	Rep057 is just a driver to run rep029 with in-memory
-	named databases.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep058
@@ -1328,11 +1400,376 @@ rep080
 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep081
+	Test of internal initialization and missing database files.
+
+	One master, one client, two databases.
+	Generate several log files.
+	Remove old master log files.
+	Start up client.
+	Remove or replace one master database file while client initialization 
+	is in progress, make sure other master database can keep processing.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep082
+	Sending replication requests to correct master site.
+
+	Regression test for a bug [#16592] where a client could send an
+	UPDATE_REQ to another client instead of the master.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep083
+	Replication clients must never send VERIFY_FAIL to a c2c request.
+
+	Regression test for a bug [#16592] where a client could send a
+	VERIFY_FAIL to another client, which is illegal.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep084
+	Abbreviated internal init for named in-memory databases (NIMDBs).
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep085
+	Skipping unnecessary abbreviated internal init.
+
+	Make sure that once we've materialized NIMDBs, we don't bother
+	trying to do it again on subsequent sync without recovery.  Make
+	sure we do probe for the need to materialize NIMDBs, but don't do
+	any internal init at all if there are no NIMDBs.  Note that in order to
+	do this test we don't even need any NIMDBs.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep086
+	Interrupted abbreviated internal init.
+
+	Make sure we cleanly remove partially loaded named in-memory
+	databases (NIMDBs).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep087
+	Abbreviated internal init with open file handles.
+
+	Client has open handle to an on-disk DB when abbreviated
+	internal init starts.  Make sure we lock out access, and make sure
+	it ends up as HANDLE_DEAD.  Also, make sure that if there are
+	no NIMDBs, that we *don't* get HANDLE_DEAD.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep088
+	Replication roll-back preserves checkpoint.
+
+	Create a situation where a client has to roll back its
+	log, discarding some existing transactions, in order to sync
+	with a new master.
+
+	1. When the client still has its entire log file history, all
+	the way back to log file #1, it's OK if the roll-back discards
+	any/all checkpoints.
+	2. When old log files have been archived, if the roll-back would
+	remove all existing checkpoints it must be forbidden.  The log
+	must always have a checkpoint (or all files back through #1).
+	The client must do internal init or return JOIN_FAILURE.
+	3. (the normal case) Old log files archived, and a checkpoint
+	still exists in the portion of the log which will remain after
+	the roll-back: no internal-init/JOIN_FAILURE necessary.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr001
-	Check repmgr stats.
+	Basic repmgr test. 
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
 
 	Run for btree only because access method shouldn't matter.
 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr002
+	Basic repmgr election test. 
+
+	Open three clients of different priorities and make sure repmgr 
+	elects expected master. Shut master down, make sure repmgr elects 
+	expected remaining client master, make sure former master can join 
+	as client.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr003
+	Basic repmgr internal init test. 
+
+	Start an appointed master site and two clients, processing 
+	transactions between each additional site. Verify all expected 
+	transactions are replicated.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr004
+	Basic repmgr test with in-memory logs.
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr005
+	Basic repmgr test with in-memory databases. 
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr006
+	Basic repmgr test with bulk processing. 
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr007
+	Basic repmgr client shutdown/restart test.
+
+	Start an appointed master site and two clients. Shutdown and
+	restart each client, processing transactions after each restart.
+	Verify all expected transactions are replicated.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr008
+	Basic repmgr test with client-to-client configuration.
+
+	Create a master and two clients, process some records and verify 
+	resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr009
+	repmgr API error test.
+
+	Try a variety of repmgr calls that result in errors. Also
+	try combinations of repmgr and base replication API calls
+	that result in errors.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr010
+	Acknowledgement policy and timeout test. 
+
+	Verify that "quorum" acknowledgement policy succeeds with fewer than 
+	nsites running. Verify that "all" acknowledgement policy results in 
+	ack failures with fewer than nsites running.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr011
+	repmgr two site strict majority test.
+
+	Start an appointed master and one client with 2 site strict
+	majority set. Shut down the master site, wait and verify that
+	the client site was not elected master. Start up master site
+	and verify that transactions are processed as expected.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr012
+	repmgr heartbeat test.
+
+	Start an appointed master and one client site. Set heartbeat
+	send and monitor values and process some transactions. Stop
+	sending heartbeats from master and verify that client sees
+	a dropped connection.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr013
+	Site list test. 
+
+	Configure a master and two clients where one client is a peer of 
+	the other and verify resulting site lists.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr014
+	Basic repmgr in-memory test. 
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases. Put databases, logs and replication files
+	in-memory.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr015
+	Basic repmgr in-memory election test. 
+
+	Open three clients of different priorities and make sure repmgr 
+	elects expected master. Shut master down, make sure repmgr elects 
+	expected remaining client master, make sure former master can join 
+	as client. Replication files are in-memory; databases, logs and
+	environment regions are on-disk.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr016
+	Basic repmgr in-memory internal init test. 
+
+	Start an appointed master site and two clients, processing 
+	transactions between each additional site. Verify all expected 
+	transactions are replicated. Replication files are in-memory; 
+	databases, logs and environment regions are on-disk.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr017
+	repmgr in-memory cache overflow test. 
+
+	Start an appointed master site and one client, putting databases,
+	environment regions, logs and replication files in-memory. Set 
+	very small cachesize and run enough transactions to overflow cache. 
+	Shut down and restart master and client, giving master a larger cache. 
+	Run and verify a small number of transactions.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr018
+	Check repmgr stats.
+
+	Start an appointed master and one client. Shut down the client,
+	run some transactions at the master and verify that there are
+	acknowledgement failures and one dropped connection. Shut down
+	and restart client again and verify that there are two dropped
+	connections.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr019
+	Basic repmgr test with in-memory databases and in-memory logs. 
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr022
+	Basic test of repmgr's multi-process master support.
+
+	Set up a simple 2-site group, create data and replicate it.
+	Add a second process at the master and have it write some
+	updates.  It does not explicitly start repmgr (nor do any
+	replication configuration, for that matter).  Its first
+	update triggers initiation of connections, and so it doesn't
+	get to the client without a log request.  But later updates
+	should go directly.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr023
+	Repmgr support for multi-process master.
+
+	Start two processes at the master.
+	Add a client site (not previously known to the master 
+	processes), and make sure
+	both master processes connect to it.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr024
+	Ensuring exactly one listener process.
+
+	Start a repmgr process with a listener.
+	Start a second process, and see that it does not become the listener.
+	Shut down the first process (gracefully).  Now a second process should
+	become listener.
+	Kill the listener process abruptly.  Running failchk should show that
+	recovery is necessary.  Run recovery and start a clean listener.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr025
+	Repmgr site address discovery via handshakes.
+
+	Master with 2 processes, does not know client's address.
+	Client processes start in either order, connect to master.
+	Master learns of client's address via handshake message.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr026
+	Repmgr site address discovery via NEWSITE
+
+	New client, previously unknown to (main) master process, connects to an
+	existing client, which broadcasts NEWSITE message.
+	This causes master to discover its address, and connect to it.
+	Other new clients may also have been added to master's configuration in
+	the interim (via a subordinate master process).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr027
+	Repmgr recognition of peer setting, across processes.
+
+	Set up a master and two clients, synchronized with some data.
+	Add a new client, configured to use c2c sync with one of the original
+	clients.  Check stats to make sure the correct c2c peer was used.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr028
+	Simple smoke test for repmgr elections with multi-process envs.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr029
+	Repmgr combined with replication-unaware process at master.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr030
+	Subordinate connections and processes should not trigger elections.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr031
+	Test repmgr's internal juggling of peer EID's.
+
+	Set up master and 2 clients, A and B.
+	Add a third client (C), with two processes.
+	The first process will be configured to know about A.
+	The second process will know about B, and set that as peer,
+	but when it joins the env site B will have to be shuffled
+	into a later position in the list, because A is already first.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr032
+	Multi-process repmgr start-up policies.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rpc001
@@ -1631,6 +2068,8 @@ si002
 
 	Cursor put data in primary db and check that pget
 	on secondary index finds the right entries.
+	Open and use a second cursor to exercise the cursor
+	comparison API on secondaries.  
 	Overwrite while walking primary, check pget again.
 	Overwrite while walking secondary (use c_pget), check
 	pget again.
@@ -1979,7 +2418,8 @@ test032
 	self as key and "ndups" duplicates.   For the data field, prepend the
 	letters of the alphabet in a random order so we force the duplicate
 	sorting code to do something.  By setting ndups large, we can make
-	this an off-page test.
+	this an off-page test. By setting overflow to be 1, we can make
+	this an overflow test.
 
 	Test the DB_GET_BOTH functionality by retrieving each dup in the file
 	explicitly.  Test the DB_GET_BOTH_RANGE functionality by retrieving
@@ -2000,8 +2440,11 @@ test033
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test034
-	test032 with off-page duplicates
-	DB_GET_BOTH, DB_GET_BOTH_RANGE functionality with off-page duplicates.
+	test032 with off-page or overflow case with non-duplicates
+	and duplicates.
+
+	DB_GET_BOTH, DB_GET_BOTH_RANGE functionality with off-page 
+	or overflow case within non-duplicates and duplicates.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test035
@@ -2670,6 +3113,21 @@ test123
 	in both within the same txn.  This should succeed.  
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test125
+	Test cursor comparison API.
+
+	The cursor comparison API reports whether two cursors within
+	the same database are at the same position.  It does not report
+	any information about relative position.
+
+	1. Test two uninitialized cursors (error).
+	2. Test one uninitialized cursor, one initialized (error). 
+	3. Test two cursors in different databases (error).
+	4. Put two cursors in the same place, test for match.  Walk
+	them back and forth a bit, more matching. 
+	5. Two cursors in the same spot.  Delete through one.  
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001
 	Begin, commit, abort testing.
 
@@ -2708,7 +3166,7 @@ txn011
 	dbs), then a purely non-durable env.  Make sure commit
 	and abort work, and that only the log records we
 	expect are written.
-	Test that we can't get a durable handle on a ND
+	Test that we can't get a durable handle on an open ND
 	database, or vice versa.  Test that all subdb's
 	must be of the same type (D or ND).
 

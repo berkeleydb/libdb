@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Exception Handling</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB " />
-    <link rel="previous" href="environments.html" title="Environments" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB" />
+    <link rel="prev" href="environments.html" title="Environments" />
     <link rel="next" href="returns.html" title="Error Returns" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="coreExceptions"></a>Exception Handling</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Before continuing, it is useful to spend a few moments on exception
@@ -43,14 +42,14 @@
         <span>By default, most</span>
         
         DB methods throw 
-            <tt class="classname">DbException</tt>
+            <code class="classname">DbException</code>
             
         in the event of a serious error. 
         
         <span>
         However, be aware that
-        <tt class="classname">DbException</tt> does not inherit from
-        <tt class="classname">std::exception</tt> so your <tt class="literal">try</tt>
+        <code class="classname">DbException</code> does not inherit from
+        <code class="classname">std::exception</code> so your <code class="literal">try</code>
         blocks should catch both types of exceptions. For example:
         </span>
         
@@ -72,25 +71,25 @@ catch(std::exception &amp;e)
 } </pre>
       <p>
         You can obtain the DB error number for a
-        <tt class="classname">DbException</tt> 
+        <code class="classname">DbException</code> 
          
         by using
         <span>
-            <tt class="methodname">DbException::get_errno()</tt>. 
+            <code class="methodname">DbException::get_errno()</code>. 
             You can also obtain the informational message associated with that error
-            number using <tt class="methodname">DbException::what()</tt>.
+            number using <code class="methodname">DbException::what()</code>.
         </span>
         
     </p>
       <p>
         If for some reason you do not want to manage
-        <tt class="classname">DbException</tt> objects in your
-        <tt class="literal">try</tt> blocks, you can configure DB to suppress them
-        by setting <tt class="literal">DB_CXX_NO_EXCEPTIONS</tt> for your database and
+        <code class="classname">DbException</code> objects in your
+        <code class="literal">try</code> blocks, you can configure DB to suppress them
+        by setting <code class="literal">DB_CXX_NO_EXCEPTIONS</code> for your database and
         environment handles. In this event, you must manage your DB error
         conditions using the integer value returned by all DB methods. Be
         aware that this manual assumes that you want to manage your error
-        conditions using <tt class="classname">DbException</tt> objects. 
+        conditions using <code class="classname">DbException</code> objects. 
     </p>
     </div>
     <div class="navfooter">

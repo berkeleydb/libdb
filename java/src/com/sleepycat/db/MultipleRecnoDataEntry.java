@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: MultipleRecnoDataEntry.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -72,7 +72,7 @@ public class MultipleRecnoDataEntry extends MultipleEntry {
     <code>data.getData()<code> will return <code>null</code> for deleted
     records.
     <p>
-    @param recno
+    @param recnoEntry
     an entry that is set to refer to the next record number in the returned
     set.
     <p>
@@ -84,14 +84,14 @@ public class MultipleRecnoDataEntry extends MultipleEntry {
     indicates whether a value was found.  A return of <code>false</code>
     indicates that the end of the set was reached.
     */
-    public boolean next(final DatabaseEntry recno, final DatabaseEntry data) {
+    public boolean next(final DatabaseEntry recnoEntry, final DatabaseEntry data) {
         if (pos == 0)
             pos = ulen - INT32SZ;
 
-        final int keyoff = DbUtil.array2int(this.data, pos);
+        final int recno = DbUtil.array2int(this.data, pos);
 
         // crack out the key offset and the data offset and length.
-        if (keyoff < 0)
+        if (recno == 0)
             return false;
 
         pos -= INT32SZ;
@@ -100,14 +100,70 @@ public class MultipleRecnoDataEntry extends MultipleEntry {
         final int datasz = DbUtil.array2int(this.data, pos);
         pos -= INT32SZ;
 
-        recno.setData(this.data);
-        recno.setOffset(keyoff);
-        recno.setSize(INT32SZ);
-
+        recnoEntry.setRecordNumber(recno);
         data.setData(this.data);
         data.setOffset(dataoff);
         data.setSize(datasz);
 
         return true;
+    }
+
+    /**
+    Append a record number / data item pair to the bulk buffer.
+    <p>
+    @param recno
+    the record number of the record to be added.
+    @param data
+    an array containing the value to be added.
+    @param offset
+    the position in the <b>data</b> array where the record starts.
+    @param len
+    the length of the record, in bytes, to be copied from the <b>data</b> array.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(int recno, final byte[] data, int offset, int len)
+        throws DatabaseException {
+
+        return append_internal(data, doff, dlen, recno);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param recno
+    the record number of the record to be added.
+    @param data
+    the value to be appended, using the offset and size specified in the
+    {@link com.sleepycat.db.DatabaseEntry DatabaseEntry}.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(int recno, final DatabaseEntry data)
+        throws DatabaseException {
+
+        return append(recno, data.data, data.offset, data.size);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param recno
+    the record number of the record to be added.
+    @param data
+    an array containing the value to be added.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(int recno, final byte[] data)
+        throws DatabaseException {
+
+        return append(recno, data, 0, data.length);
     }
 }

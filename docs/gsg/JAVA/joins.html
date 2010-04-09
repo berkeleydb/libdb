@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Joins</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 10. Secondary Databases" />
-    <link rel="previous" href="secondaryCursor.html" title="&#10;        Using Secondary Cursors&#10;        &#10;    " />
+    <link rel="prev" href="secondaryCursor.html" title="Using Secondary Cursors" />
     <link rel="next" href="javaindexusage.html" title="Secondary Database Example" />
   </head>
   <body>
@@ -32,13 +32,26 @@
             <h2 class="title" style="clear: both"><a id="joins"></a>Database Joins</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="joins.html#joinUsage">Using Join Cursors</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="joins.html#joinconfig">JoinCursor Properties</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         If you have two or more secondary databases associated with a primary
         database, then you can retrieve primary records based on the intersection of 
         multiple secondary entries. You do this using a
-        <span><tt class="classname">JoinCursor</tt>.</span>
+        <span><code class="classname">JoinCursor</code>.</span>
         
     </p>
       <p>
@@ -73,9 +86,9 @@
         <span>
             You would
             also have to create some mechanism by which you would move instances of
-            this class in and out of Java <tt class="literal">byte</tt> arrays. We
+            this class in and out of Java <code class="literal">byte</code> arrays. We
             described the concepts and mechanisms by which you can perform these
-            activities in <a href="DBEntry.html">Database Records</a>.
+            activities in <a class="xref" href="DBEntry.html" title="Chapter 8. Database Records">Database Records</a>.
         </span>
     </p>
       <p>
@@ -102,7 +115,7 @@
         For example, you might want to find all the automobiles that are red,
         and that were built by Toyota, and that are minivans. You can do this
         using a 
-            <span><tt class="classname">JoinCursor</tt> class instance.</span>
+            <span><code class="classname">JoinCursor</code> class instance.</span>
             
     </p>
       <div class="sect2" lang="en" xml:lang="en">
@@ -112,7 +125,6 @@
               <h3 class="title"><a id="joinUsage"></a>Using Join Cursors</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             To use a join cursor:
@@ -135,10 +147,10 @@
                     Position each such cursor to the secondary key
                     value in which you are interested. For example, to build on
                     the previous description, the cursor for the color
-                    database is positioned to the <tt class="literal">red</tt> records
+                    database is positioned to the <code class="literal">red</code> records
                     while the cursor for the model database is positioned to the
-                    <tt class="literal">minivan</tt> records, and the cursor for the
-                    make database is positioned to <tt class="literal">Toyota</tt>.
+                    <code class="literal">minivan</code> records, and the cursor for the
+                    make database is positioned to <code class="literal">Toyota</code>.
                 </p>
             </li>
             <li>
@@ -154,7 +166,7 @@
               <p>
 
                     Obtain a join cursor. You do this using the 
-                        <tt class="methodname">Database.join()</tt> 
+                        <code class="methodname">Database.join()</code> 
                          
                          
                     method.  You must pass this method the array of secondary cursors that you
@@ -164,9 +176,9 @@
             <li>
               <p>
                     Iterate over the set of matching records
-                        <span>using <tt class="methodname">JoinCursor.getNext()</tt></span>
+                        <span>using <code class="methodname">JoinCursor.getNext()</code></span>
                     until
-                    <span><tt class="classname">OperationStatus</tt> is not <tt class="literal">SUCCESS</tt>.</span>
+                    <span><code class="classname">OperationStatus</code> is not <code class="literal">SUCCESS</code>.</span>
                     
                 </p>
             </li>
@@ -302,18 +314,17 @@ try {
               <h3 class="title"><a id="joinconfig"></a>JoinCursor Properties</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-            You can set <tt class="classname">JoinCursor</tt> properties using the
-            <tt class="classname">JoinConfig</tt> class. Currently there is just one property that you can
+            You can set <code class="classname">JoinCursor</code> properties using the
+            <code class="classname">JoinConfig</code> class. Currently there is just one property that you can
             set:
         </p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                    <tt class="methodname">JoinConfig.setNoSort()</tt>
+                    <code class="methodname">JoinConfig.setNoSort()</code>
                 </p>
               <p>
                     Specifies whether automatic sorting of input cursors is disabled. The cursors are sorted from the
@@ -326,7 +337,7 @@ try {
 					scenario.
 				</p>
               <p>
-					The default value is <tt class="literal">false</tt> (automatic cursor sorting is performed).
+					The default value is <code class="literal">false</code> (automatic cursor sorting is performed).
 				</p>
               <p>
                     For example:
@@ -353,7 +364,7 @@ JoinCursor joinCursor = myDb.join(cursorArray, config); </pre>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">
-        Using Secondary Cursors
+        <span>Using Secondary Cursors</span>
         
      </td>
           <td width="20%" align="center">

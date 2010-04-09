@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash_page.c,v 12.53 2008/05/07 12:27:34 bschmeck Exp $
+ * $Id$
  */
 
 /*
@@ -648,8 +648,6 @@ __ham_getindex_unsorted(dbc, p, key, match, indx)
 {
 	DB *dbp;
 	DBT pg_dbt;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
 	HASH *t;
 	db_pgno_t pgno;
 	int i, n, res, ret;
@@ -657,8 +655,6 @@ __ham_getindex_unsorted(dbc, p, key, match, indx)
 	u_int8_t *hk;
 
 	dbp = dbc->dbp;
-	txn = dbc->txn;
-	ip = dbc->thread_info;
 	n = NUM_ENT(p);
 	t = dbp->h_internal;
 	res = 1;
@@ -673,8 +669,8 @@ __ham_getindex_unsorted(dbc, p, key, match, indx)
 			if (tlen == key->size) {
 				memcpy(&pgno,
 				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
-				if ((ret = __db_moff(dbp, ip, txn, key,
-				     pgno, tlen, t->h_compare, &res)) != 0)
+				if ((ret = __db_moff(dbc, key, pgno, tlen,
+				    t->h_compare, &res)) != 0)
 					return (ret);
 			}
 			break;
@@ -723,8 +719,6 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 {
 	DB *dbp;
 	DBT tmp_dbt;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
 	HASH *t;
 	HOFFPAGE *offp;
 	db_indx_t indx;
@@ -735,8 +729,6 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 	void *data;
 
 	dbp = dbc->dbp;
-	txn = dbc->txn;
-	ip = dbc->thread_info;
 	DB_ASSERT(dbp->env, p->type == P_HASH );
 
 	t = dbp->h_internal;
@@ -744,7 +736,7 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 	res = indx = 0;
 
 	/* Do a binary search for the element. */
-	DB_BINARY_SEARCH_FOR(base, lim, p, 2) {
+	DB_BINARY_SEARCH_FOR(base, lim, NUM_ENT(p), 2) {
 		DB_BINARY_SEARCH_INCR(indx, base, lim, 2);
 		data = HKEYDATA_DATA(H_PAIRKEY(dbp, p, indx));
 		/*
@@ -780,18 +772,16 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 					memset(&tmp_dbt, 0, sizeof(tmp_dbt));
 					tmp_dbt.size = HOFFPAGE_SIZE;
 					tmp_dbt.data = offp;
-					if ((ret = __db_coff(dbp, ip, txn, key,
-					    &tmp_dbt, t->h_compare, &res))
-					    != 0)
+					if ((ret = __db_coff(dbc, key, &tmp_dbt,
+					    t->h_compare, &res)) != 0)
 						return (ret);
 				}
 			} else {
 				/* Case 2 */
 				(void)__ua_memcpy(&off_pgno,
 				    HOFFPAGE_PGNO(offp), sizeof(db_pgno_t));
-				if ((ret = __db_moff(dbp, ip, txn, key,
-				    off_pgno, itemlen, t->h_compare, &res))
-				    != 0)
+				if ((ret = __db_moff(dbc, key, off_pgno,
+				    itemlen, t->h_compare, &res)) != 0)
 					return (ret);
 			}
 		} else {
@@ -805,9 +795,8 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 				    HOFFPAGE_PGNO(offp), sizeof(db_pgno_t));
 				(void)__ua_memcpy(&off_len, HOFFPAGE_TLEN(offp),
 				    sizeof(u_int32_t));
-				if ((ret = __db_moff(dbp, ip, txn, &tmp_dbt,
-				    off_pgno, off_len, t->h_compare,
-				    &res)) != 0)
+				if ((ret = __db_moff(dbc, &tmp_dbt, off_pgno,
+				    off_len, t->h_compare, &res)) != 0)
 					return (ret);
 				/*
 				 * Since we switched the key/match parameters
@@ -848,20 +837,18 @@ __ham_getindex_sorted(dbc, p, key, key_type, match, indxp)
 }
 
 /*
- * PUBLIC: int __ham_verify_sorted_page __P((DB *,
- * PUBLIC:      DB_THREAD_INFO *, DB_TXN *, PAGE *));
+ * PUBLIC: int __ham_verify_sorted_page __P((DBC *, PAGE *));
  *
  * The__ham_verify_sorted_page function is used to determine the correctness
  * of sorted hash pages. The checks are used by verification, they are
  * implemented in the hash code because they are also useful debugging aids.
  */
 int
-__ham_verify_sorted_page (dbp, ip, txn, p)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
+__ham_verify_sorted_page (dbc, p)
+	DBC *dbc;
 	PAGE *p;
 {
+	DB *dbp;
 	DBT prev_dbt, curr_dbt;
 	ENV *env;
 	HASH *t;
@@ -874,6 +861,7 @@ __ham_verify_sorted_page (dbp, ip, txn, p)
 
 	/* Validate that next, prev pointers are OK */
 	n = NUM_ENT(p);
+	dbp = dbc->dbp;
 	DB_ASSERT(dbp->env, n%2 == 0 );
 
 	env = dbp->env;
@@ -897,7 +885,7 @@ __ham_verify_sorted_page (dbp, ip, txn, p)
 			prev_dbt.size = curr_dbt.size = HOFFPAGE_SIZE;
 			prev_dbt.data = H_PAIRKEY(dbp, p, i-2);
 			curr_dbt.data = H_PAIRKEY(dbp, p, i);
-			if ((ret = __db_coff(dbp, ip, txn,
+			if ((ret = __db_coff(dbc,
 			    &prev_dbt, &curr_dbt, t->h_compare, &res)) != 0)
 				return (ret);
 		} else if (HPAGE_TYPE(dbp, p, i-2) == H_OFFPAGE) {
@@ -908,7 +896,7 @@ __ham_verify_sorted_page (dbp, ip, txn, p)
 			    sizeof(u_int32_t));
 			memcpy(&tpgno, HOFFPAGE_PGNO(H_PAIRKEY(dbp, p, i-2)),
 			    sizeof(db_pgno_t));
-			if ((ret = __db_moff(dbp, ip, txn,
+			if ((ret = __db_moff(dbc,
 			    &curr_dbt, tpgno, tlen, t->h_compare, &res)) != 0)
 				return (ret);
 		} else if (HPAGE_TYPE(dbp, p, i) == H_OFFPAGE) {
@@ -919,7 +907,7 @@ __ham_verify_sorted_page (dbp, ip, txn, p)
 			    sizeof(u_int32_t));
 			memcpy(&tpgno, HOFFPAGE_PGNO(H_PAIRKEY(dbp, p, i)),
 			    sizeof(db_pgno_t));
-			if ((ret = __db_moff(dbp, ip, txn,
+			if ((ret = __db_moff(dbc,
 			    &prev_dbt, tpgno, tlen, t->h_compare, &res)) != 0)
 				return (ret);
 		} else
@@ -1081,14 +1069,15 @@ __ham_del_pair(dbc, flags)
 	 * to remove the big item and then update the page to remove the
 	 * entry referring to the big item.
 	 */
-	if (HPAGE_PTYPE(H_PAIRKEY(dbp, p, ndx)) == H_OFFPAGE) {
+	if (!LF_ISSET(HAM_DEL_IGNORE_OFFPAGE) &&
+	    HPAGE_PTYPE(H_PAIRKEY(dbp, p, ndx)) == H_OFFPAGE) {
 		memcpy(&pgno, HOFFPAGE_PGNO(P_ENTRY(dbp, p, H_KEYINDEX(ndx))),
 		    sizeof(db_pgno_t));
 		ret = __db_doff(dbc, pgno);
 	} else
 		ret = 0;
 
-	if (ret == 0)
+	if (!LF_ISSET(HAM_DEL_IGNORE_OFFPAGE) && ret == 0)
 		switch (HPAGE_PTYPE(H_PAIRDATA(dbp, p, ndx))) {
 		case H_OFFPAGE:
 			memcpy(&pgno,
@@ -1140,6 +1129,9 @@ __ham_del_pair(dbc, flags)
 	 */
 	F_SET(hcp, H_DELETED);
 	F_CLR(hcp, H_OK);
+
+	/* Clear any cache streaming information. */
+	hcp->stream_start_pgno = PGNO_INVALID;
 
 	/*
 	 * If we are locking, we will not maintain this, because it is
@@ -1213,11 +1205,11 @@ __ham_del_pair(dbc, flags)
 
 		if (nn_pagep != NULL) {
 			PREV_PGNO(nn_pagep) = PGNO(p);
-			if ((ret = __memp_fput(mpf,
-			    dbc->thread_info, nn_pagep, dbc->priority)) != 0) {
-				nn_pagep = NULL;
+			ret = __memp_fput(mpf,
+			    dbc->thread_info, nn_pagep, dbc->priority);
+			nn_pagep = NULL;
+			if (ret != 0)
 				goto err;
-			}
 		}
 
 		tmp_pgno = PGNO(p);
@@ -1359,15 +1351,16 @@ __ham_replpair(dbc, dbt, make_dup)
 	ENV *env;
 	HASH_CURSOR *hcp, *cp;
 	db_indx_t orig_indx;
-	db_pgno_t orig_pgno;
+	db_pgno_t off_pgno, orig_pgno;
 	u_int32_t change;
 	u_int32_t dup_flag, len, memsize, newlen;
+	char tmp_ch;
 	int beyond_eor, is_big, is_plus, ret, type, i, found, t_ret;
 	u_int8_t *beg, *dest, *end, *hk, *src;
 	void *memp;
 
 	/*
-	 * Items that were already offpage (ISBIG) were handled before
+	 * Most items that were already offpage (ISBIG) were handled before
 	 * we get in here.  So, we need only handle cases where the old
 	 * key is on a regular page.  That leaves us 6 cases:
 	 * 1. Original data onpage; new data is smaller
@@ -1378,16 +1371,23 @@ __ham_replpair(dbc, dbt, make_dup)
 	 *    does not fit on page
 	 * 5. Original data onpage; New data is an off-page item.
 	 * 6. Original data was offpage; new item is smaller.
+	 * 7. Original data was offpage; new item is supplied as a partial.
 	 *
 	 * Cases 1-3 are essentially the same (and should be the common case).
-	 * We handle 4-6 as delete and add.
+	 * We handle 4-6 as delete and add. 7 is generally a delete and add,
+	 * unless it is an append, when we extend the offpage item, and
+	 * update the HOFFPAGE item on the current page to have the new size
+	 * via a delete/add.
 	 */
 	dbp = dbc->dbp;
 	env = dbp->env;
 	hcp = (HASH_CURSOR *)dbc->internal;
-	found = 0;
-	dbc_n = memp = NULL;
 	carray = NULL;
+	dbc_n = memp = NULL;
+	found = 0;
+	new_dbt = NULL;
+	off_pgno = PGNO_INVALID;
+	type = 0;
 
 	/*
 	 * We need to compute the number of bytes that we are adding or
@@ -1409,9 +1409,10 @@ __ham_replpair(dbc, dbt, make_dup)
 	hk = H_PAIRDATA(dbp, hcp->page, hcp->indx);
 	is_big = HPAGE_PTYPE(hk) == H_OFFPAGE;
 
-	if (is_big)
+	if (is_big) {
 		memcpy(&len, HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
-	else
+		memcpy(&off_pgno, HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
+	} else
 		len = LEN_HKEYDATA(dbp, hcp->page,
 		    dbp->pgsize, H_DATAINDEX(hcp->indx));
 
@@ -1435,9 +1436,8 @@ __ham_replpair(dbc, dbt, make_dup)
 	}
 
 	newlen = (is_plus ? len + change : len - change);
-	if (ISBIG(hcp, newlen) ||
-	    (is_plus && change > P_FREESPACE(dbp, hcp->page)) ||
-	    beyond_eor || is_big) {
+	if (is_big || beyond_eor || ISBIG(hcp, newlen) ||
+	    (is_plus && change > P_FREESPACE(dbp, hcp->page))) {
 		/*
 		 * If we are in cases 4 or 5 then is_plus will be true.
 		 * If we don't have a transaction then we cannot roll back,
@@ -1459,10 +1459,57 @@ __ham_replpair(dbc, dbt, make_dup)
 		 * key, this could be a performance hit).
 		 */
 		memset(&tmp, 0, sizeof(tmp));
-		if ((ret = __db_ret(dbp, dbc->thread_info, dbc->txn,
-		    hcp->page, H_KEYINDEX(hcp->indx), &tmp,
-		    &dbc->my_rkey.data, &dbc->my_rkey.ulen)) != 0)
+		if ((ret = __db_ret(dbc, hcp->page, H_KEYINDEX(hcp->indx),
+		    &tmp, &dbc->my_rkey.data, &dbc->my_rkey.ulen)) != 0)
 			return (ret);
+
+		/* Preserve duplicate info. */
+		dup_flag = F_ISSET(hcp, H_ISDUP);
+		/* Streaming insert. */
+		if (is_big && !dup_flag && !DB_IS_PRIMARY(dbp) &&
+		    F_ISSET(dbt, DB_DBT_PARTIAL) && dbt->doff == len) {
+			/*
+			 * If the cursor has not already cached the last page
+			 * in the offpage chain, we need to walk the chain to
+			 * be sure that the page has been read.
+			 */
+			if (hcp->stream_start_pgno != off_pgno ||
+			    hcp->stream_off > dbt->doff || dbt->doff >
+			    hcp->stream_off + P_MAXSPACE(dbp, dbp->pgsize)) {
+				memset(&tdata, 0, sizeof (DBT));
+				tdata.doff = dbt->doff - 1;
+				/*
+				 * Set the length to 1, to force __db_goff
+				 * to do the traversal.
+				 */
+				tdata.dlen = tdata.ulen = 1;
+				tdata.data = &tmp_ch;
+				tdata.flags = DB_DBT_PARTIAL | DB_DBT_USERMEM;
+
+				/*
+				 * Read to the last page.  It will be cached
+				 * in the cursor.
+				 */
+				if ((ret = __db_goff(dbc, &tdata, len,
+				    off_pgno, NULL, NULL)) != 0)
+					return (ret);
+			}
+			/*
+			 * Since this is an append, dlen is irrelevant (there
+			 * are no bytes to overwrite). We need the caller's
+			 * DBT size to end up with the total size of the item.
+			 * From now on, use dlen as the length of the user's
+			 * data that we are going to append.
+			 * Don't futz with the caller's DBT any more than we
+			 * have to in order to send back the size.
+			 */
+			tdata = *dbt;
+			tdata.dlen = dbt->size;
+			tdata.size = newlen;
+			new_dbt = &tdata;
+			F_SET(new_dbt, DB_DBT_STREAMING);
+			type = H_KEYDATA;
+		}
 
 		/*
 		 * In cases 4-6, a delete and insert works, but we need to
@@ -1475,19 +1522,17 @@ __ham_replpair(dbc, dbt, make_dup)
 		    orig_pgno, orig_indx, &carray)) != 0)
 			goto err;
 
-		/* Preserve duplicate info. */
-		dup_flag = F_ISSET(hcp, H_ISDUP);
 		if (dbt->doff == 0 && dbt->dlen == len) {
 			type = (dup_flag ? H_DUPLICATE : H_KEYDATA);
 			new_dbt = dbt;
-		} else {					/* Case B */
+		} else if (!F_ISSET(dbt, DB_DBT_STREAMING)) {	/* Case B */
 			type = HPAGE_PTYPE(hk) != H_OFFPAGE ?
 			    HPAGE_PTYPE(hk) : H_KEYDATA;
 			memset(&tdata, 0, sizeof(tdata));
 			memsize = 0;
-			if ((ret = __db_ret(dbp, dbc->thread_info,
-			    dbc->txn, hcp->page, H_DATAINDEX(hcp->indx),
-			    &tdata, &memp, &memsize)) != 0)
+			if ((ret = __db_ret(dbc, hcp->page,
+			    H_DATAINDEX(hcp->indx), &tdata,
+			    &memp, &memsize)) != 0)
 				goto err;
 
 			/* Now shift old data around to make room for new. */
@@ -1519,7 +1564,9 @@ __ham_replpair(dbc, dbt, make_dup)
 				tdata.size -= change;
 			new_dbt = &tdata;
 		}
-		if ((ret = __ham_del_pair(dbc, HAM_DEL_NO_CURSOR)) != 0)
+		if ((ret = __ham_del_pair(dbc, HAM_DEL_NO_CURSOR |
+		    (F_ISSET(dbt, DB_DBT_STREAMING) ? HAM_DEL_IGNORE_OFFPAGE :
+		    0))) != 0)
 			goto err;
 		/*
 		 * Save the state of the cursor after the delete, so that we
@@ -1774,8 +1821,7 @@ __ham_split_page(dbc, obucket, nbucket)
 			goto err;
 
 		for (n = 0; n < (db_indx_t)NUM_ENT(temp_pagep); n += 2) {
-			if ((ret = __db_ret(dbp, dbc->thread_info,
-			    dbc->txn, temp_pagep, H_KEYINDEX(n),
+			if ((ret = __db_ret(dbc, temp_pagep, H_KEYINDEX(n),
 			    &key, &big_buf, &big_len)) != 0)
 				goto err;
 
@@ -2286,7 +2332,7 @@ __ham_add_ovflpage(dbc, pagep, release, pp)
 
 	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
 
-	if ((ret = __db_new(dbc, P_HASH, &new_pagep)) != 0)
+	if ((ret = __db_new(dbc, P_HASH, NULL, &new_pagep)) != 0)
 		return (ret);
 
 	if (DBC_LOGGING(dbc)) {
@@ -2349,6 +2395,7 @@ __ham_get_cpage(dbc, mode)
 			if ((ret = __TLPUT(dbc, hcp->lock)) != 0)
 				return (ret);
 			LOCK_INIT(hcp->lock);
+			hcp->stream_start_pgno = PGNO_INVALID;
 		}
 
 		/*
@@ -2385,6 +2432,7 @@ __ham_get_cpage(dbc, mode)
 			hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
 		if ((ret = __memp_fget(mpf,
 		    &hcp->pgno, dbc->thread_info, dbc->txn,
+		    (mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0) |
 		    DB_MPOOL_CREATE, &hcp->page)) != 0)
 			return (ret);
 	}
@@ -2416,6 +2464,7 @@ __ham_next_cpage(dbc, pgno)
 	if (hcp->page != NULL && (ret = __memp_fput(mpf,
 	    dbc->thread_info, hcp->page, dbc->priority)) != 0)
 		return (ret);
+	hcp->stream_start_pgno = PGNO_INVALID;
 	hcp->page = NULL;
 
 	if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,

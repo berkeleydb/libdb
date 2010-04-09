@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test011.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test011
 # TEST	Duplicate test
@@ -23,6 +23,12 @@ proc test011 { method {nentries 10000} {ndups 5} {tnum "011"} args } {
 	source ./include.tcl
 
 	set dlist ""
+
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
 
 	if { [is_rbtree $method] == 1 } {
 		puts "Test$tnum skipping for method $method"
@@ -448,14 +454,14 @@ proc test011_recno { method {nentries 10000} {tnum "011"} largs } {
 	error_check_good db_close [$db close] 0
 
 	puts "\tTest$tnum.c: close, open, and dump file"
-	open_and_dump_file $testfile $env $t1 test011_check \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testfile $env $t1 test011_check \
+	    dump_file_direction "-first" "-next" $largs
 	error_check_good Test$tnum:diff($t2,$t1) \
 	    [filecmp $t2 $t1] 0
 
 	puts "\tTest$tnum.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $t1 test011_check \
-	    dump_file_direction "-last" "-prev"
+	eval open_and_dump_file $testfile $env $t1 test011_check \
+	    dump_file_direction "-last" "-prev" $largs
 
 	filesort $t1 $t3 -n
 	error_check_good Test$tnum:diff($t2,$t3) \

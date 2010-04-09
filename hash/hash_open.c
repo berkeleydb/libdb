@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash_open.c,v 12.33 2008/01/30 12:18:22 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -50,6 +50,7 @@
 #include "dbinc/log.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 #include "dbinc/btree.h"
 #include "dbinc/fop.h"
 
@@ -109,10 +110,12 @@ __ham_open(dbp, ip, txn, name, base_pgno, flags)
 			F_SET(dbp, DB_AM_DUPSORT);
 		if (F_ISSET(&hcp->hdr->dbmeta, DB_HASH_SUBDB))
 			F_SET(dbp, DB_AM_SUBDB);
+#ifndef HAVE_FTRUNCATE
 		if (PGNO(hcp->hdr) == PGNO_BASE_MD &&
-		     !F_ISSET(dbp, DB_AM_RECOVER))
+		    !F_ISSET(dbp, DB_AM_RECOVER) && !IS_VERSION(dbp, hcp->hdr))
 			__memp_set_last_pgno(dbp->mpf,
 			    hcp->hdr->dbmeta.last_pgno);
+#endif
 	} else if (!IS_RECOVERING(env) && !F_ISSET(dbp, DB_AM_RECOVER)) {
 		__db_errx(env,
 		    "%s: Invalid hash meta page %lu", name, (u_long)base_pgno);
@@ -245,6 +248,9 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 	db_pgno_t pgno;
 	DB_LSN *lsnp;
 {
+#ifdef HAVE_PARTITION
+	DB_PARTITION *part;
+#endif
 	ENV *env;
 	HASH *hashp;
 	db_pgno_t nbuckets;
@@ -293,6 +299,16 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 		F_SET(&meta->dbmeta, DB_HASH_SUBDB);
 	if (dbp->dup_compare != NULL)
 		F_SET(&meta->dbmeta, DB_HASH_DUPSORT);
+
+#ifdef HAVE_PARTITION
+	if ((part = dbp->p_internal) != NULL) {
+		meta->dbmeta.nparts = part->nparts;
+		if (F_ISSET(part, PART_CALLBACK))
+			FLD_SET(meta->dbmeta.metaflags, DBMETA_PART_CALLBACK);
+		if (F_ISSET(part, PART_RANGE))
+			FLD_SET(meta->dbmeta.metaflags, DBMETA_PART_RANGE);
+	}
+#endif
 
 	/*
 	 * Create the first and second buckets pages so that we have the
@@ -402,7 +418,8 @@ __ham_new_file(dbp, ip, txn, fhp, name)
 		if ((ret =
 		    __db_pgout(env->dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, dbp->dirname,
+		    DB_APP_DATA, fhp,
 		    dbp->pgsize, 0, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -418,7 +435,8 @@ __ham_new_file(dbp, ip, txn, fhp, name)
 		LSN_NOT_LOGGED(page->lsn);
 		if ((ret = __db_pgout(env->dbenv, lpgno, buf, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, dbp->dirname,
+		    DB_APP_DATA, fhp,
 		    dbp->pgsize, lpgno, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;

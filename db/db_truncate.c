@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: db_truncate.c,v 12.30 2008/03/18 17:13:16 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -15,6 +15,7 @@
 #include "dbinc/qam.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/partition.h"
 #include "dbinc/txn.h"
 
 static int __db_cursor_check __P((DB *));
@@ -138,7 +139,7 @@ __db_truncate(dbp, ip, txn, countp)
 	 * returned is the count of the primary only.  QUEUE uses normal
 	 * processing to truncate so it will update the secondaries normally.
 	 */
-	if (dbp->type != DB_QUEUE && LIST_FIRST(&dbp->s_secondaries) != NULL) {
+	if (dbp->type != DB_QUEUE && DB_IS_PRIMARY(dbp)) {
 		if ((ret = __db_s_first(dbp, &sdbp)) != 0)
 			return (ret);
 		for (; sdbp != NULL && ret == 0; ret = __db_s_next(&sdbp, txn))
@@ -157,7 +158,11 @@ __db_truncate(dbp, ip, txn, countp)
 		return (ret);
 
 	DEBUG_LWRITE(dbc, txn, "DB->truncate", NULL, NULL, 0);
-
+#ifdef HAVE_PARTITION
+	if (DB_IS_PARTITIONED(dbp))
+		ret = __part_truncate(dbc, countp);
+	else
+#endif
 	switch (dbp->type) {
 	case DB_BTREE:
 	case DB_RECNO:

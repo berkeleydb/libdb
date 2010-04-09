@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: dbreg.c,v 12.38 2008/03/12 20:46:37 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -346,12 +346,13 @@ err:
  * __dbreg_assign_id --
  *	Assign a particular dbreg id to this database handle.
  *
- * PUBLIC: int __dbreg_assign_id __P((DB *, int32_t));
+ * PUBLIC: int __dbreg_assign_id __P((DB *, int32_t, int));
  */
 int
-__dbreg_assign_id(dbp, id)
+__dbreg_assign_id(dbp, id, deleted)
 	DB *dbp;
 	int32_t id;
+	int deleted;
 {
 	DB *close_dbp;
 	DB_LOG *dblp;
@@ -426,6 +427,8 @@ cont:	if ((ret = __dbreg_pluck_id(env, id)) != 0)
 	 */
 	if ((ret = __dbreg_add_dbentry(env, dblp, dbp, id)) != 0)
 		(void)__dbreg_revoke_id(dbp, 1, id);
+	else
+		dblp->dbentry[id].deleted = deleted;
 
 err:	MUTEX_UNLOCK(env, lp->mtx_filelist);
 
@@ -921,18 +924,25 @@ __dbreg_log_id(dbp, txn, id, needlock)
 	FNAME *fnp;
 	LOG *lp;
 	u_int32_t op;
-	int ret;
+	int i, ret;
 
 	env = dbp->env;
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 	fnp = dbp->log_filename;
 
-	/* Verify that the fnp has been initialized. */
-	if (fnp->s_type == DB_UNKNOWN) {
+	/*
+	 * Verify that the fnp has been initialized, by seeing if it
+	 * has any non-zero bytes in it.
+	 */
+	for (i = 0; i < DB_FILE_ID_LEN; i++)
+		if (fnp->ufid[i] != 0)
+			break;
+	if (i == DB_FILE_ID_LEN)
 		memcpy(fnp->ufid, dbp->fileid, DB_FILE_ID_LEN);
+
+	if (fnp->s_type == DB_UNKNOWN)
 		fnp->s_type = dbp->type;
-	}
 
 	/*
 	 * Log the registry.  We should only request a new ID in situations

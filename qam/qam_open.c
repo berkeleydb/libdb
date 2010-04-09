@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: qam_open.c,v 12.24 2008/01/30 12:18:23 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -90,7 +90,8 @@ __qam_open(dbp, ip, txn, name, base_pgno, mode, flags)
 
 	/* If the magic number is incorrect, that's a fatal error. */
 	if (qmeta->dbmeta.magic != DB_QAMMAGIC) {
-		__db_errx(env, "%s: unexpected file type or format", name);
+		__db_errx(env, "__qam_open: %s: unexpected file type or format",
+		    name);
 		ret = EINVAL;
 		goto err;
 	}
@@ -340,7 +341,7 @@ err1:		if ((t_ret =
 		if ((ret =
 		    __db_pgout(env->dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
 			goto err2;
-		ret = __fop_write(env, txn, name,
+		ret = __fop_write(env, txn, name, dbp->dirname,
 		    DB_APP_DATA, fhp, dbp->pgsize, 0, 0, meta, dbp->pgsize, 1,
 		    F_ISSET(dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0);
 

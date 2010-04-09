@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: sdb013.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	sdb013
 # TEST	Tests in-memory subdatabases.
@@ -91,18 +91,24 @@ proc sdb013 { method { nentries 10 } args } {
 	error_check_good sdb_reopen [is_valid_db $sdb] TRUE
 	error_check_good sdb_close [$sdb close] 0
 
-	puts "\tSubdb$tnum.d: Remove in-mem subdb."
+	# Exercise the -m (dump in-memory) option on db_dump.
+	puts "\tSubdb$tnum.d: Exercise in-memory db_dump."
+	set stat \
+	    [catch {eval {exec $util_path/db_dump} -h $testdir -m $subdb} res]
+	error_check_good dump_successful $stat 0
+
+	puts "\tSubdb$tnum.e: Remove in-mem subdb."
 	error_check_good \
 	    sdb_remove [berkdb dbremove -env $env $testfile $subdb] 0
 
-	puts "\tSubdb$tnum.e: Check we cannot open the in-mem subdb."
+	puts "\tSubdb$tnum.f: Check we cannot open the in-mem subdb."
 	set ret [catch {eval {berkdb_open_noerr} -env $env $args \
 	    -auto_commit {$omethod $testfile $subdb}} db]
 	error_check_bad dbopen $ret 0
 
 	foreach end { commit abort } {
 		# Create an in-memory database.
-		puts "\tSubdb$tnum.f: Create in-mem subdb, add data, close."
+		puts "\tSubdb$tnum.g: Create in-mem subdb, add data, close."
 		set sdb [eval {berkdb_open_noerr -create -mode 0644} \
 		    $args -env $env -auto_commit {$omethod $testfile $subdb}]
 		error_check_good dbopen [is_valid_db $sdb] TRUE
@@ -112,13 +118,13 @@ proc sdb013 { method { nentries 10 } args } {
 		error_check_good sdb_close [$sdb close] 0
 
 		# Transactionally remove the database.
-		puts "\tSubdb$tnum.g: Transactionally remove in-mem database."
+		puts "\tSubdb$tnum.h: Transactionally remove in-mem database."
 		set txn [$env txn]
 		error_check_good db_remove \
 		    [berkdb dbremove -env $env -txn $txn $testfile $subdb] 0
 
 		# Write a cacheful of data.
-		puts "\tSubdb$tnum.h: Create another db, overflow the cache."
+		puts "\tSubdb$tnum.i: Create another db, overflow the cache."
 		set db [eval {berkdb_open_noerr -create -mode 0644} $args \
 		    -env $env -auto_commit $omethod $dummyfile]
 		error_check_good dummy_open [is_valid_db $db] TRUE
@@ -131,13 +137,13 @@ proc sdb013 { method { nentries 10 } args } {
 		# gone (if committed) or still there (if aborted).
 		error_check_good txn_$end [$txn $end] 0
 		if { $end == "abort" } {
-			puts "\tSubdb$tnum.i: Check that database still exists."
+			puts "\tSubdb$tnum.j: Check that database still exists."
 			set sdb [eval {berkdb_open_noerr} $args \
 			    -env $env -auto_commit {$omethod $testfile $subdb}]
 			error_check_good sdb_reopen [is_valid_db $sdb] TRUE
 			error_check_good sdb_close [$sdb close] 0
 		} else {
-			puts "\tSubdb$tnum.i: Check that database is gone."
+			puts "\tSubdb$tnum.j: Check that database is gone."
 			set ret [catch {eval {berkdb_open_noerr} -env $env \
 			    $args -auto_commit {$omethod $testfile $subdb}} res]
 			error_check_bad dbopen $ret 0

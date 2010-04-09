@@ -3,15 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-        
-        Using Cursors with Secondary Databases
-    </title>
+    <title>Using Cursors with Secondary Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
+    <link rel="prev" href="secondaryDelete.html" title="Deleting Secondary Database Records" />
     <link rel="next" href="joins.html" title="Database Joins" />
   </head>
   <body>
@@ -20,7 +17,7 @@
         <tr>
           <th colspan="3" align="center">
         
-        Using Cursors with Secondary Databases
+        <span>Using Cursors with Secondary Databases</span>
     </th>
         </tr>
         <tr>
@@ -41,7 +38,6 @@
     </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Just like cursors on a primary database, you can use 
@@ -59,7 +55,7 @@
         or last record in the database, to get the next duplicate record, 
             
         and so forth. For a complete description on cursors and their capabilities, see
-        <a href="Cursors.html">Using Cursors</a>.
+        <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a>.
     </p>
       <p>
         However, when you use 
@@ -76,14 +72,14 @@
           </li>
           <li>
             <p>
-            You cannot use <tt class="literal">DB_GET_BOTH</tt> and related flags with
-                <tt class="methodname">DB-&gt;get()</tt>
+            You cannot use <code class="literal">DB_GET_BOTH</code> and related flags with
+                <code class="methodname">DB-&gt;get()</code>
                 
             and a secondary database. Instead, you must use 
-                <span><tt class="methodname">DB-&gt;pget()</tt>.</span>
+                <span><code class="methodname">DB-&gt;pget()</code>.</span>
                 
             Also, in that case the primary and secondary key given on the call to 
-                <tt class="methodname">DB-&gt;pget()</tt>
+                <code class="methodname">DB-&gt;pget()</code>
                 
             must match the secondary key and associated primary record key in
             order for that primary record to be returned as a result of the
@@ -96,7 +92,7 @@
         For example, suppose you are using the databases, classes, and key
         
         <span>extractors</span>
-        described in <a href="keyCreator.html">Implementing Key 
+        described in <a class="xref" href="keyCreator.html" title="Implementing Key Extractors">Implementing Key 
         
         <span>Extractors</span>
         </a>. 

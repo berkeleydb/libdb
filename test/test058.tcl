@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test058.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test058
 # TEST	Verify that deleting and reading duplicates results in correct ordering.
@@ -22,6 +22,14 @@ proc test058 { method args } {
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
+
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test058 skipping for btree with compression."
+		return
+	}
 
 	if { [is_record_based $method] == 1 || [is_rbtree $method] == 1 } {
 		puts "Test058: skipping for method $method"
@@ -32,7 +40,7 @@ proc test058 { method args } {
 	# environment
 	env_cleanup $testdir
 	set eflags "-create -txn $encargs -home $testdir"
-	set env [eval {berkdb_env} $eflags]
+	set env [eval {berkdb_env} $eflags $pageargs]
 	error_check_good env [is_valid_env $env] TRUE
 
 	# db open

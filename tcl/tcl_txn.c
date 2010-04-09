@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_txn.c,v 12.25 2008/03/13 17:48:30 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -416,16 +416,16 @@ tcl_TxnStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST("Time of last checkpoint", sp->st_time_ckp);
 	MAKE_STAT_LIST("Last txn ID allocated", sp->st_last_txnid);
 	MAKE_STAT_LIST("Maximum txns", sp->st_maxtxns);
-	MAKE_STAT_LIST("Number aborted txns", sp->st_naborts);
-	MAKE_STAT_LIST("Number txns begun", sp->st_nbegins);
-	MAKE_STAT_LIST("Number committed txns", sp->st_ncommits);
+	MAKE_WSTAT_LIST("Number aborted txns", sp->st_naborts);
+	MAKE_WSTAT_LIST("Number txns begun", sp->st_nbegins);
+	MAKE_WSTAT_LIST("Number committed txns", sp->st_ncommits);
 	MAKE_STAT_LIST("Number active txns", sp->st_nactive);
 	MAKE_STAT_LIST("Number of snapshot txns", sp->st_nsnapshot);
 	MAKE_STAT_LIST("Number restored txns", sp->st_nrestores);
 	MAKE_STAT_LIST("Maximum active txns", sp->st_maxnactive);
 	MAKE_STAT_LIST("Maximum snapshot txns", sp->st_maxnsnapshot);
-	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
-	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_WSTAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_WSTAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
 	for (i = 0, p = sp->st_txnarray; i < sp->st_nactive; i++, p++)
 		LIST_FOREACH(ip, &__db_infohead, entries) {
 			if (ip->i_type != I_TXN)
@@ -522,7 +522,7 @@ txn_Cmd(clientData, interp, objc, objv)
 	Tcl_Obj *res;
 	int cmdindex, result, ret;
 #ifdef CONFIG_TEST
-	u_int8_t *gid, garray[DB_XIDDATASIZE];
+	u_int8_t *gid, garray[DB_GID_SIZE];
 	int length;
 	const char *name;
 #endif
@@ -728,8 +728,8 @@ for (i = 0; i < count; i++) {						\
 	_SetInfoData(ip, p->txn);					\
 	(void)Tcl_CreateObjCommand(interp, newname,			\
 	    (Tcl_ObjCmdProc *)txn_Cmd, (ClientData)p->txn, NULL);	\
-	result = _SetListElem(interp, res, newname, strlen(newname),	\
-	    p->gid, DB_XIDDATASIZE);					\
+	result = _SetListElem(interp, res, newname,			\
+	    (u_int32_t)strlen(newname), p->gid, DB_GID_SIZE);		\
 	if (result != TCL_OK)						\
 		goto error;						\
 }
@@ -737,7 +737,7 @@ for (i = 0; i < count; i++) {						\
 	DBTCL_INFO *ip;
 	DB_PREPLIST prep[DBTCL_PREP], *p;
 	Tcl_Obj *res;
-	long count, i;
+	u_int32_t count, i;
 	int result, ret;
 	char newname[MSG_SIZE];
 

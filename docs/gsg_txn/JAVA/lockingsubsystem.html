@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>The Locking Subsystem</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
-    <link rel="previous" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
+    <link rel="prev" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
     <link rel="next" href="isolation.html" title="Isolation" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="lockingsubsystem"></a>The Locking Subsystem</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#configuringlock">Configuring the Locking Subsystem</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#configdeadlkdetect">Configuring Deadlock Detection</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#deadlockresolve">Resolving Deadlocks</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             In order to allow concurrent operations, DB provides the locking
@@ -46,7 +64,7 @@
             protect DB resources. In particular, issues on configuration are
             examined here. For information on using the locking subsystem to
             manage non-DB resources, see the
-            <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>.
+            <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
         </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -55,14 +73,13 @@
               <h3 class="title"><a id="configuringlock"></a>Configuring the Locking Subsystem</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 You initialize the locking subsystem by specifying
                     
                     <span>
-                        <tt class="literal">true</tt> to the 
-                            <tt class="methodname">EnvironmentConfig.setInitializeLocking()</tt>
+                        <code class="literal">true</code> to the 
+                            <code class="methodname">EnvironmentConfig.setInitializeLocking()</code>
                         method.
                     </span>
             </p>
@@ -75,9 +92,9 @@
             </p>
         <p>
                 Finally, each bullet below identifies the 
-                <tt class="filename">DB_CONFIG</tt> file parameter that can be used
+                <code class="filename">DB_CONFIG</code> file parameter that can be used
                 to specify the specific locking limit. If used, these
-                <tt class="filename">DB_CONFIG</tt> file parameters override any
+                <code class="filename">DB_CONFIG</code> file parameters override any
                 value that you might specify using the environment handle. 
             </p>
         <p>
@@ -98,14 +115,14 @@
                         To configure this value, use the 
                         
                         <span>
-                            <tt class="methodname">EnvironmentConfig.setMaxLockers()</tt>
+                            <code class="methodname">EnvironmentConfig.setMaxLockers()</code>
                          method.
                         </span>
                     </p>
               <p>
                         As an alternative to this method, you can configure this
-                        value using the <tt class="filename">DB_CONFIG</tt> file's
-                        <tt class="literal">set_lk_max_lockers</tt> parameter.
+                        value using the <code class="filename">DB_CONFIG</code> file's
+                        <code class="literal">set_lk_max_lockers</code> parameter.
                     </p>
             </li>
             <li>
@@ -117,14 +134,14 @@
                         To configure this value, use the 
                         
                         <span>
-                            <tt class="methodname">EnvironmentConfig.setMaxLocks()</tt>
+                            <code class="methodname">EnvironmentConfig.setMaxLocks()</code>
                          method.
                         </span>
                     </p>
               <p>
                         As an alternative to this method, you can configure this
-                        value using the <tt class="filename">DB_CONFIG</tt> file's
-                        <tt class="literal">set_lk_max_locks</tt> parameter.
+                        value using the <code class="filename">DB_CONFIG</code> file's
+                        <code class="literal">set_lk_max_locks</code> parameter.
                     </p>
             </li>
             <li>
@@ -136,21 +153,21 @@
                         To configure this value, use the 
                         
                         <span>
-                            <tt class="methodname">EnvironmentConfig.setMaxLockObjects()</tt>
+                            <code class="methodname">EnvironmentConfig.setMaxLockObjects()</code>
                          method.
                         </span>
                     </p>
               <p>
                         As an alternative to this method, you can configure this
-                        value using the <tt class="filename">DB_CONFIG</tt> file's
-                        <tt class="literal">set_lk_max_objects</tt> parameter.
+                        value using the <code class="filename">DB_CONFIG</code> file's
+                        <code class="literal">set_lk_max_objects</code> parameter.
                     </p>
             </li>
           </ul>
         </div>
         <p>
                 For a definition of lockers, locks, and locked objects, see
-                <a href="blocking_deadlocks.html#lockresources">Lock Resources</a>.
+                <a class="xref" href="blocking_deadlocks.html#lockresources" title="Lock Resources">Lock Resources</a>.
             </p>
         <p>
                 For example, to configure the maximum number of locks that your
@@ -189,7 +206,6 @@ try {
               <h3 class="title"><a id="configdeadlkdetect"></a>Configuring Deadlock Detection</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 In order for DB to know that a deadlock has occurred,
@@ -208,7 +224,7 @@ try {
                         To do this, you use
                             
                             
-                            <span><tt class="methodname">EnvironmentConfig.setLockDetectMode()</tt>.</span>
+                            <span><code class="methodname">EnvironmentConfig.setLockDetectMode()</code>.</span>
                             This method causes DB to walk its internal lock table 
                             looking for a deadlock whenever a lock request
                             is blocked. This method also identifies how DB decides which lock
@@ -254,9 +270,9 @@ try {
                         either the
                             
                             
-                            <tt class="methodname">Environment.detectDeadlocks()</tt>
+                            <code class="methodname">Environment.detectDeadlocks()</code>
                            method, or use the
-                           <span><b class="command">db_deadlock</b></span> command line
+                           <span class="command"><strong>db_deadlock</strong></span> command line
                            utility. This method (or command) causes DB to walk the
                            lock table looking for deadlocks. 
                     </p>
@@ -264,7 +280,7 @@ try {
                         Note that like
                             
                             
-                            <span><tt class="methodname">EnvironmentConfig.setLockDetectMode()</tt>,</span>
+                            <span><code class="methodname">EnvironmentConfig.setLockDetectMode()</code>,</span>
                         you also use this method (or command line utility)
                         to identify which lock requests are rejected in the
                         event that a deadlock is detected.
@@ -288,7 +304,7 @@ try {
                         specified amount of time. To do this, use the
                             
                             
-                            <span><tt class="methodname">EnvironmentConfig.setLockTimeout()</tt></span>
+                            <span><code class="methodname">EnvironmentConfig.setLockTimeout()</code></span>
                         method. 
                             Note that lock timeouts are only checked when a
                             lock request is blocked or when deadlock
@@ -347,15 +363,15 @@ try {
         <p>
         Finally, the following command line call causes
         deadlock detection to be run against the
-        environment contained in <tt class="literal">/export/dbenv</tt>. The 
+        environment contained in <code class="literal">/export/dbenv</code>. The 
         transaction with the youngest lock is chosen to break the
         deadlock:
     </p>
         <pre class="programlisting">&gt; /usr/local/db_install/bin/db_deadlock -h /export/dbenv -a y</pre>
         <p>
         For more information, see the
-        <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/utility/db_deadlock.html" target="_top">
-            <tt class="literal">db_deadlock</tt> reference documentation.
+        <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/utility/db_deadlock.html" target="_top">
+            <code class="literal">db_deadlock</code> reference documentation.
         </a>
     </p>
       </div>
@@ -366,7 +382,6 @@ try {
               <h3 class="title"><a id="deadlockresolve"></a>Resolving Deadlocks</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 When DB determines that a deadlock has occurred, it will
@@ -374,7 +389,7 @@ try {
                     
                     
                     <span>
-                        throws <tt class="literal">DeadlockException</tt> in that
+                        throws <code class="literal">DeadlockException</code> in that
                         thread.
                     </span>
                     

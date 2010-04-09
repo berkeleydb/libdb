@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_rename.c,v 12.13 2008/02/18 19:34:21 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

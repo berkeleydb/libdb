@@ -344,6 +344,24 @@ bt_compare.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compress.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compress.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compress.c_objects
+bt_compress.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../btree/bt_compress.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../btree/bt_conv.c_dependDone
 TRUE
 <END>
@@ -755,6 +773,24 @@ db_byteorder.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../common/db_byteorder.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_compint.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_compint.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_compint.c_objects
+db_compint.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/db_compint.c_tool
 C/C++ compiler
 <END>
 
@@ -1532,6 +1568,24 @@ db_setlsn.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_sort_multiple.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_sort_multiple.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_sort_multiple.c_objects
+db_sort_multiple.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_sort_multiple.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_stati.c_dependDone
 TRUE
 <END>
@@ -1637,6 +1691,24 @@ db_vrfyutil.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_vrfyutil.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/partition.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/partition.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/partition.c_objects
+partition.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/partition.c_tool
 C/C++ compiler
 <END>
 
@@ -4142,63 +4214,10 @@ txn_util.o
 C/C++ compiler
 <END>
 
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_objects
-xa.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_objects
-xa_db.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_db.c_tool
-C/C++ compiler
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_dependDone
-TRUE
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_dependencies
-$(PRJ_DIR)/db_config.h \
-	$(PRJ_DIR)/db_int.h \
-	$(PRJ_DIR)/db.h
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_objects
-xa_map.o
-<END>
-
-<BEGIN> FILE_$(PRJ_DIR)/../xa/xa_map.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> PROJECT_FILES
 $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../btree/bt_compare.c \
+	$(PRJ_DIR)/../btree/bt_compress.c \
 	$(PRJ_DIR)/../btree/bt_conv.c \
 	$(PRJ_DIR)/../btree/bt_curadj.c \
 	$(PRJ_DIR)/../btree/bt_cursor.c \
@@ -4222,6 +4241,7 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../clib/strdup.c \
 	$(PRJ_DIR)/../clib/strsep.c \
 	$(PRJ_DIR)/../common/db_byteorder.c \
+	$(PRJ_DIR)/../common/db_compint.c \
 	$(PRJ_DIR)/../common/db_err.c \
 	$(PRJ_DIR)/../common/db_getlong.c \
 	$(PRJ_DIR)/../common/db_idspace.c \
@@ -4265,12 +4285,14 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../db/db_ret.c \
 	$(PRJ_DIR)/../db/db_setid.c \
 	$(PRJ_DIR)/../db/db_setlsn.c \
+	$(PRJ_DIR)/../db/db_sort_multiple.c \
 	$(PRJ_DIR)/../db/db_stati.c \
 	$(PRJ_DIR)/../db/db_truncate.c \
 	$(PRJ_DIR)/../db/db_upg.c \
 	$(PRJ_DIR)/../db/db_upg_opd.c \
 	$(PRJ_DIR)/../db/db_vrfy.c \
 	$(PRJ_DIR)/../db/db_vrfyutil.c \
+	$(PRJ_DIR)/../db/partition.c \
 	$(PRJ_DIR)/../dbreg/dbreg.c \
 	$(PRJ_DIR)/../dbreg/dbreg_auto.c \
 	$(PRJ_DIR)/../dbreg/dbreg_rec.c \
@@ -4409,10 +4431,7 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../txn/txn_recover.c \
 	$(PRJ_DIR)/../txn/txn_region.c \
 	$(PRJ_DIR)/../txn/txn_stat.c \
-	$(PRJ_DIR)/../txn/txn_util.c \
-	$(PRJ_DIR)/../xa/xa.c \
-	$(PRJ_DIR)/../xa/xa_db.c \
-	$(PRJ_DIR)/../xa/xa_map.c
+	$(PRJ_DIR)/../txn/txn_util.c
 <END>
 
 <BEGIN> userComments

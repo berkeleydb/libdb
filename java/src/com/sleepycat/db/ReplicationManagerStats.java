@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -16,46 +16,33 @@ public class ReplicationManagerStats {
     // no public constructor
     /* package */ ReplicationManagerStats() {}
 
-    private int st_perm_failed;
-    /**
-    The number of times a PERM message originating at this site did
-    not receive sufficient acknowledgement from clients, according to the
-    configured acknowledgement policy and acknowledgement timeout..
-    */
-    public int getPermFailed() {
+    private long st_perm_failed;
+    /** TODO */
+    public long getPermFailed() {
         return st_perm_failed;
     }
 
-    private int st_msgs_queued;
-    /**
-    The number of messages queued due to a network delay..
-    */
-    public int getMsgsQueued() {
+    private long st_msgs_queued;
+    /** TODO */
+    public long getMsgsQueued() {
         return st_msgs_queued;
     }
 
-    private int st_msgs_dropped;
-    /**
-    The number of messages discarded due to queue length overflows..
-    */
-    public int getMsgsDropped() {
+    private long st_msgs_dropped;
+    /** TODO */
+    public long getMsgsDropped() {
         return st_msgs_dropped;
     }
 
-    private int st_connection_drop;
-    /**
-    The number of existing connections that have been dropped since the
-    statistics were last reset..
-    */
-    public int getConnectionDrop() {
+    private long st_connection_drop;
+    /** TODO */
+    public long getConnectionDrop() {
         return st_connection_drop;
     }
 
-    private int st_connect_fail;
-    /**
-    The number of times new connection attempts have failed..
-    */
-    public int getConnectFail() {
+    private long st_connect_fail;
+    /** TODO */
+    public long getConnectFail() {
         return st_connect_fail;
     }
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: LockMode.java,v 12.9 2008/04/14 15:31:27 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;

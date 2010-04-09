@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: RepConfigInfo.h,v 1.6 2008/01/08 20:58:27 bostic Exp $
+ * $Id$
  */
 #include <db_cxx.h>
 
@@ -31,4 +31,6 @@ public:
 	bool verbose;
 	// used to store a set of optional other hosts.
 	REP_HOST_INFO *other_hosts;
+	int ack_policy;
+	bool bulk;
 };

@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -17,66 +17,50 @@ public class CacheFileStats {
     /* package */ CacheFileStats() {}
 
     private String file_name;
-    /**
-    The name of the file.
-    */
+    /** TODO */
     public String getFileName() {
         return file_name;
     }
 
     private int st_pagesize;
-    /**
-    Page size in bytes.
-    */
+    /** TODO */
     public int getPageSize() {
         return st_pagesize;
     }
 
     private int st_map;
-    /**
-    Requested pages mapped into the process' address space.
-    */
+    /** TODO */
     public int getMap() {
         return st_map;
     }
 
-    private int st_cache_hit;
-    /**
-    Requested pages found in the cache.
-    */
-    public int getCacheHit() {
+    private long st_cache_hit;
+    /** TODO */
+    public long getCacheHit() {
         return st_cache_hit;
     }
 
-    private int st_cache_miss;
-    /**
-    Requested pages not found in the cache.
-    */
-    public int getCacheMiss() {
+    private long st_cache_miss;
+    /** TODO */
+    public long getCacheMiss() {
         return st_cache_miss;
     }
 
-    private int st_page_create;
-    /**
-    Pages created in the cache.
-    */
-    public int getPageCreate() {
+    private long st_page_create;
+    /** TODO */
+    public long getPageCreate() {
         return st_page_create;
     }
 
-    private int st_page_in;
-    /**
-    Pages read into the cache.
-    */
-    public int getPageIn() {
+    private long st_page_in;
+    /** TODO */
+    public long getPageIn() {
         return st_page_in;
     }
 
-    private int st_page_out;
-    /**
-    Pages written from the cache to the backing file.
-    */
-    public int getPageOut() {
+    private long st_page_out;
+    /** TODO */
+    public long getPageOut() {
         return st_page_out;
     }
 

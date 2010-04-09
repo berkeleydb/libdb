@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Joins</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="secondaryCursor.html" title="&#10;        &#10;        Using Cursors with Secondary Databases&#10;    " />
+    <link rel="prev" href="secondaryCursor.html" title="Using Cursors with Secondary Databases" />
     <link rel="next" href="coreindexusage.html" title="Secondary Database Example" />
   </head>
   <body>
@@ -32,7 +32,15 @@
             <h2 class="title" style="clear: both"><a id="joins"></a>Database Joins</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="joins.html#joinUsage">Using Join Cursors</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         If you have two or more secondary databases associated with a primary
@@ -106,7 +114,6 @@
               <h3 class="title"><a id="joinUsage"></a>Using Join Cursors</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             To use a join cursor:
@@ -129,10 +136,10 @@
                     Position each such cursor to the secondary key
                     value in which you are interested. For example, to build on
                     the previous description, the cursor for the color
-                    database is positioned to the <tt class="literal">red</tt> records
+                    database is positioned to the <code class="literal">red</code> records
                     while the cursor for the model database is positioned to the
-                    <tt class="literal">minivan</tt> records, and the cursor for the
-                    make database is positioned to <tt class="literal">Toyota</tt>.
+                    <code class="literal">minivan</code> records, and the cursor for the
+                    make database is positioned to <code class="literal">Toyota</code>.
                 </p>
             </li>
             <li>
@@ -150,7 +157,7 @@
                     Obtain a join cursor. You do this using the 
                          
                          
-                        <tt class="methodname">Db::join()</tt> 
+                        <code class="methodname">Db::join()</code> 
                     method.  You must pass this method the array of secondary cursors that you
                     opened and positioned in the previous steps.
                 </p>
@@ -161,7 +168,7 @@
                         
                     until
                     
-                    <span>the return code is not <tt class="literal">0</tt>.</span>
+                    <span>the return code is not <code class="literal">0</code>.</span>
                 </p>
             </li>
             <li>
@@ -269,7 +276,7 @@ if (ret == DB_NOTFOUND) {
         <tr>
           <td width="40%" align="left" valign="top">
         
-        Using Cursors with Secondary Databases
+        <span>Using Cursors with Secondary Databases</span>
      </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>

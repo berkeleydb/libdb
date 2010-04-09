@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ConverterReader.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
+import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.evolve.Converter;
 import com.sleepycat.persist.raw.RawObject;
 
@@ -28,6 +29,7 @@ public class ConverterReader implements Reader {
     }
 
     public void initializeReader(Catalog catalog,
+                                 EntityModel model,
                                  int initVersion,
                                  Format oldFormat) {
         this.oldFormat = oldFormat;
@@ -47,7 +49,12 @@ public class ConverterReader implements Reader {
         Catalog catalog = input.getCatalog();
 
         /* Read the old format RawObject and convert it. */
-        o = oldFormat.readObject(o, input, true);
+        boolean currentRawMode = input.setRawAccess(true);
+        try {
+            o = oldFormat.readObject(o, input, true);
+        } finally {
+            input.setRawAccess(currentRawMode);
+        }
         o = converter.getConversion().convert(o);
 
         /* Convert the current format RawObject to a live Object. */

@@ -1,5 +1,9 @@
 /*
- * $Id: b_put.c,v 1.15 2008/01/31 17:01:22 bostic Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 
@@ -16,8 +20,8 @@ b_put(int argc, char *argv[])
 	DBTYPE type;
 	DBT key, data;
 	db_recno_t recno;
-	u_int32_t cachesize;
-	int ch, dsize, i, count, secondaries;
+	u_int32_t cachesize, dsize;
+	int ch, i, count, secondaries;
 	char *ts, buf[64];
 
 	second = NULL;
@@ -36,7 +40,7 @@ b_put(int argc, char *argv[])
 			count = atoi(optarg);
 			break;
 		case 'd':
-			dsize = atoi(optarg);
+			dsize = (u_int32_t)atoi(optarg);
 			break;
 		case 's':
 			secondaries = atoi(optarg);
@@ -102,7 +106,7 @@ b_put(int argc, char *argv[])
 	 */
 	DB_BENCH_ASSERT(db_create(&dbp, dbenv, 0) == 0);
 	if (type == DB_QUEUE)
-		DB_BENCH_ASSERT(dbp->set_re_len(dbp, (u_int32_t)dsize) == 0);
+		DB_BENCH_ASSERT(dbp->set_re_len(dbp, dsize) == 0);
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 	DB_BENCH_ASSERT(
 	    dbp->open(dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
@@ -117,7 +121,7 @@ b_put(int argc, char *argv[])
 		    calloc(sizeof(DB *), (size_t)secondaries)) != NULL);
 		for (i = 0; i < secondaries; ++i) {
 			DB_BENCH_ASSERT(db_create(&second[i], dbenv, 0) == 0);
-			snprintf(buf, sizeof(buf), "%d.db", i);
+			(void)snprintf(buf, sizeof(buf), "%d.db", i);
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 			DB_BENCH_ASSERT(second[i]->open(second[i], NULL,
 			    buf, NULL, DB_BTREE, DB_CREATE, 0600) == 0);
@@ -161,13 +165,17 @@ b_put(int argc, char *argv[])
 		break;
 	}
 
+	data.size = dsize;
 	DB_BENCH_ASSERT(
-	    (data.data = malloc(data.size = (size_t)dsize)) != NULL);
+	    (data.data = malloc((size_t)dsize)) != NULL);
 
 	/* Store the key/data pair count times. */
 	TIMER_START;
-	for (i = 0; i < count; ++i)
+	for (i = 0; i < count; ++i) {
+		/* Change data value so the secondaries are updated. */
+		(void)snprintf(data.data, data.size, "%10lu", (u_long)i);
 		DB_BENCH_ASSERT(dbp->put(dbp, NULL, &key, &data, 0) == 0);
+	}
 	TIMER_STOP;
 
 	if (type == DB_BTREE || type == DB_HASH)
@@ -200,11 +208,11 @@ b_put_secondary(dbp, pkey, pdata, skey)
 	const DBT *pkey, *pdata;
 	DBT *skey;
 {
-	skey->data = pkey->data;
-	skey->size = pkey->size;
+	skey->data = pdata->data;
+	skey->size = pdata->size;
 
 	COMPQUIET(dbp, NULL);
-	COMPQUIET(pdata, NULL);
+	COMPQUIET(pkey, NULL);
 	return (0);
 }
 

@@ -1,5 +1,5 @@
 /*
- * $Id: mt19937db.c,v 12.9 2008/03/12 19:23:38 mbrey Exp $
+ * $Id$
  */
 #include "db_config.h"
 

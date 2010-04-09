@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: test076.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test076
 # TEST	Test creation of many small databases in a single environment. [#1528].
@@ -14,6 +14,8 @@ proc test076 { method { ndbs 1000 } { tnum "076" } args } {
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	if { [is_record_based $method] == 1 } {
 		set key ""
@@ -28,7 +30,8 @@ proc test076 { method { ndbs 1000 } { tnum "076" } args } {
 	if { $eindex == -1 } {
 		set deleteenv 1
 		env_cleanup $testdir
-		set env [eval {berkdb_env -create -home} $testdir $encargs]
+		set env [eval \
+		    {berkdb_env -create -home} $testdir $pageargs $encargs]
 		error_check_good env [is_valid_env $env] TRUE
 		set args "$args -env $env"
 	} else {

@@ -237,18 +237,18 @@ __txn_child_print(env, dbtp, lsnp, notused2, notused3)
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __txn_xa_regop_42_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__txn_xa_regop_print(env, dbtp, lsnp, notused2, notused3)
+__txn_xa_regop_42_print(env, dbtp, lsnp, notused2, notused3)
 	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
 	void *notused3;
 {
-	__txn_xa_regop_args *argp;
+	__txn_xa_regop_42_args *argp;
 	u_int32_t i;
 	int ch;
 	int ret;
@@ -256,10 +256,10 @@ __txn_xa_regop_print(env, dbtp, lsnp, notused2, notused3)
 	notused2 = DB_TXN_PRINT;
 	notused3 = NULL;
 
-	if ((ret = __txn_xa_regop_read(env, dbtp->data, &argp)) != 0)
+	if ((ret = __txn_xa_regop_42_read(env, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-    "[%lu][%lu]__txn_xa_regop%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+    "[%lu][%lu]__txn_xa_regop_42%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file, (u_long)lsnp->offset,
 	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
@@ -275,6 +275,51 @@ __txn_xa_regop_print(env, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tformatID: %ld\n", (long)argp->formatID);
 	(void)printf("\tgtrid: %lu\n", (u_long)argp->gtrid);
 	(void)printf("\tbqual: %lu\n", (u_long)argp->bqual);
+	(void)printf("\tbegin_lsn: [%lu][%lu]\n",
+	    (u_long)argp->begin_lsn.file, (u_long)argp->begin_lsn.offset);
+	(void)printf("\tlocks: \n");
+	__lock_list_print(env, &argp->locks);
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __txn_prepare_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__txn_prepare_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__txn_prepare_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret = __txn_prepare_read(env, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__txn_prepare%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\topcode: %lu\n", (u_long)argp->opcode);
+	(void)printf("\tgid: ");
+	for (i = 0; i < argp->gid.size; i++) {
+		ch = ((u_int8_t *)argp->gid.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
 	(void)printf("\tbegin_lsn: [%lu][%lu]\n",
 	    (u_long)argp->begin_lsn.file, (u_long)argp->begin_lsn.offset);
 	(void)printf("\tlocks: \n");
@@ -338,7 +383,7 @@ __txn_init_print(env, dtabp)
 	    __txn_child_print, DB___txn_child)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __txn_xa_regop_print, DB___txn_xa_regop)) != 0)
+	    __txn_prepare_print, DB___txn_prepare)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_recycle_print, DB___txn_recycle)) != 0)

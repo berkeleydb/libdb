@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test014.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test014
 # TEST	Exercise partial puts on short data
@@ -216,8 +216,8 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 
 	puts "\tTest014.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile $env \
-	    $t1 test014.check dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testfile $env \
+	    $t1 test014.check dump_file_direction "-first" "-next" $args
 
 	if { [string compare $omethod "-recno"] != 0 } {
 		filesort $t2 $t3
@@ -230,8 +230,8 @@ proc test014_body { method flagp chars increase {nentries 10000} args } {
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest014.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $t1 \
-	    test014.check dump_file_direction "-last" "-prev"
+	eval open_and_dump_file $testfile $env $t1 \
+	    test014.check dump_file_direction "-last" "-prev" $args
 
 	if { [string compare $omethod "-recno"] != 0 } {
 		filesort $t2 $t3

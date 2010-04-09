@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Bulk Transfers</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="addfeatures.html" title="Chapter 5. Additional Features" />
-    <link rel="previous" href="c2ctransfer.html" title="Client to Client Transfer" />
+    <link rel="prev" href="c2ctransfer.html" title="Client to Client Transfer" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,6 @@
             <h2 class="title" style="clear: both"><a id="bulk"></a>Bulk Transfers</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     By default, messages are sent from the master to replicas as they are generated.
@@ -56,7 +55,7 @@
                     replica.
             </p>
       <p>
-                    If the servicing environment is a master environment, then bulk a bulk transfer
+                    If the servicing environment is a master environment, then bulk transfer
                     occurs when:
             </p>
       <div class="orderedlist">
@@ -108,12 +107,12 @@
 
                     
                     <span>
-                            <tt class="literal">ReplicationConfig.BULK</tt> and
-                            <tt class="literal">true</tt> to
-                        <tt class="methodname">Environment.setReplicationConfig()</tt>.
+                            <code class="literal">ReplicationConfig.BULK</code> and
+                            <code class="literal">true</code> to
+                        <code class="methodname">Environment.setReplicationConfig()</code>.
                         To turn off this feature, specify 
-                        <tt class="literal">false</tt> for the 
-                        <tt class="literal">ReplicationConfig.BULK</tt> field.
+                        <code class="literal">false</code> for the 
+                        <code class="literal">ReplicationConfig.BULK</code> field.
                     </span>
             </p>
     </div>

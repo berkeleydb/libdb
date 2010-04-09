@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 4. Concurrency</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
+    <link rel="prev" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
     <link rel="next" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="txnconcurrency"></a>Chapter 4. Concurrency</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -209,7 +208,7 @@
                 access to a shared resource, it is said to be
                 <span class="emphasis"><em>locking</em></span> that resource. Note that
                 DB supports both exclusive and non-exclusive locks. See
-                <a href="blocking_deadlocks.html#locks">Locks</a> for more information.
+                <a class="xref" href="blocking_deadlocks.html#locks" title="Locks">Locks</a> for more information.
             </p>
           </li>
           <li>
@@ -227,7 +226,7 @@
             </p>
             <p>
                 For a description of free-threaded DB objects, see
-                <a href="txnconcurrency.html#concurrenthandles">Which DB Handles are Free-Threaded</a>.
+                <a class="xref" href="txnconcurrency.html#concurrenthandles" title="Which DB Handles are Free-Threaded">Which DB Handles are Free-Threaded</a>.
             </p>
           </li>
           <li>
@@ -238,7 +237,7 @@
                 When a thread cannot obtain a lock because some other
                 thread already holds a lock on that object, the lock
                 attempt is said to be <span class="emphasis"><em>blocked</em></span>. See
-                <a href="blocking_deadlocks.html#blocks">Blocks</a> for more information.
+                <a class="xref" href="blocking_deadlocks.html#blocks" title="Blocks">Blocks</a> for more information.
             </p>
           </li>
           <li>
@@ -247,7 +246,7 @@
             </p>
             <p>
                 Occurs when two or more threads of control attempt to access conflicting resource in such a way as none
-                of the threads can any longer may further progress.
+                of the threads can any longer make further progress.
             </p>
             <p>
                 For example, if Thread A is blocked waiting for a resource held by Thread
@@ -257,7 +256,7 @@
                 are said to be <span class="emphasis"><em>deadlocked.</em></span>
             </p>
             <p>
-                For more information, see <a href="blocking_deadlocks.html#deadlocks">Deadlocks</a>.
+                For more information, see <a class="xref" href="blocking_deadlocks.html#deadlocks" title="Deadlocks">Deadlocks</a>.
             </p>
           </li>
         </ul>
@@ -269,7 +268,6 @@
               <h2 class="title" style="clear: both"><a id="concurrenthandles"></a>Which DB Handles are Free-Threaded</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             The following describes to what extent and under what conditions
@@ -279,15 +277,16 @@
           <ul type="disc">
             <li>
               <p>
-                   <tt class="classname">DB_ENV</tt> 
+                   <code class="classname">DB_ENV</code> 
                     
                     
+                   
                 </p>
               <p>
                     Free-threaded so long as
                         <span>
-                            the <tt class="literal">DB_THREAD</tt> flag is provided to
-                            the environment <tt class="methodname">open()</tt>
+                            the <code class="literal">DB_THREAD</code> flag is provided to
+                            the environment <code class="methodname">open()</code>
                             method.
                         </span>
                         
@@ -295,15 +294,16 @@
             </li>
             <li>
               <p>
-                   <tt class="classname">DB</tt> 
+                   <code class="classname">DB</code> 
                     
                     
+                   
                 </p>
               <p>
                     Free-threaded so long as
                         <span>
-                            the <tt class="literal">DB_THREAD</tt> flag is provided to
-                            the database <tt class="methodname">open()</tt>
+                            the <code class="literal">DB_THREAD</code> flag is provided to
+                            the database <code class="methodname">open()</code>
                             method, or if the database is opened using a
                             free-threaded environment handle.
                         </span>
@@ -312,9 +312,10 @@
             </li>
             <li>
               <p>
-                   <tt class="classname">DBC</tt> 
+                   <code class="classname">DBC</code> 
                     
                     
+                   
                 </p>
               <p>
                     Cursors are not free-threaded. However, they
@@ -324,7 +325,7 @@
             </li>
             <li>
               <p>
-                   <tt class="classname">DB_TXN</tt> 
+                   <code class="classname">DB_TXN</code> 
                     
                     
                     
@@ -342,9 +343,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="maxtxns.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="blocking_deadlocks.html">Next</a></td>
         </tr>
         <tr>

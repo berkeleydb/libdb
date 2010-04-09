@@ -12,7 +12,7 @@ BEGIN {
 use lib 't';
 use BerkeleyDB; 
 use Test::More;
-use util(1);
+use util;
 
 plan tests => 7;
 

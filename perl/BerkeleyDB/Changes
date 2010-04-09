@@ -1,5 +1,51 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.39  6th June 2009 
+
+        * Added support for BDB 4.8
+          - associate_foreign 
+          - set_bt_compress (no callbacks as yet).
+
+        * Also added interface to 
+          - ENV->stat_print
+          - ENV->txn_stat_print
+
+        * Oldest Perl supported is now 5.005
+
+        * Fixed issue db_stat when it returned a null pointer.
+          (#46312 rt.cpan.org)
+
+        * Fixed issue with DNM Filters & UTF8 support.
+          Patch supplied by Torsten Foertsch.
+
+0.38  21st February 2009 
+
+        * Fixed typo in BerkleyDB.pod that broke t/pod.t
+
+0.37  18th February 2009 
+
+        * Included CDS section to the pod.
+
+        * Various documentation patches from RT#42243
+
+0.36  30th September 2008 
+
+        * Added support for $ENV->log_get_config and $ENV->log_set_config.
+          Patch supplied by Yuval Kogman (#39651 rt.cpan.org)
+
+0.35  22nd September 2008 
+
+        * Added a combination of independent patches from Claes Jakobsson
+          and Yuval Kogman (#38896 rt.cpan.org) to allow multi-key return
+          from a secondard database.
+
+        * Added support for sequences. Initial patch from  Claes Jakobsson.
+
+        * Get associate to use a transaction if one is specified.
+          #5855 from rt.cpan.org
+
+        * Finish transition of test harness to use Test::More
+
 0.34  27th March 2008 
 
         * Updates to support building with Berkeley DB version 4.7

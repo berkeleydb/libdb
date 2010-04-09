@@ -1,4 +1,4 @@
-<!-- $Id: package.html,v 1.1 2008/02/07 17:12:27 mark Exp $ -->
+<!-- $Id$ -->
 <html>
 <body>
 Utilities for managing class evolution of persistent objects.
@@ -80,6 +80,17 @@ compatible change since existing null values could not be represented.</p>
 <p>Integer primitive types (byte, short, char, int, long) and their primitive
 wrapper types may be compatibly changed to the BigInteger type.</p>
 
+<p>Enum values may be added compatibly, but may not be deleted or renamed.  As
+long as new values are declared after existing values, the default sort order
+for enum key fields will match the declaration order, i.e, the default sort
+order will match the enum ordinal order. If a new value is inserted (declared
+before an existing value), it will be sorted after all existing values but
+before newly added values.  However, these ordering rules are only guaranteed
+for enums containing up to 631 values and only if existing values are not
+reordered.  If more than 631 values are declared or the declarations of
+existing values are reordered, then the default sort order will be arbitrary
+and will not match the declaration (ordinal) order.</p>
+
 <p>In addition, adding fields to a class is a compatible change.  When a
 persistent instance of a class is read that does not contain the new field, the
 new field is initialized by the default constructor.</p>
@@ -159,6 +170,10 @@ com.sleepycat.persist.evolve.Converter} constructor is used in each case.
 Field-specific conversions are used instead of class conversions when both are
 applicable.</p>
 
+<p>Note that a class conversion may be not specified for an enum class.  A
+field conversion, or a class conversion for the class declaring the field, may
+be used.</p>
+
 <p>Note that each mutation is applied to a specific class version number.  The
 class version must be explicitly specified in a mutation for two reasons:</p>
 <ol>
@@ -237,8 +252,8 @@ removed from a field in an entity class.</p>
 <p>The {@link com.sleepycat.persist.model.PrimaryKey#sequence} property may be
 added, removed, or changed to a different name.</p>
 
-<p>The {@link com.sleepycat.persist.model.Persistent#proxyFor} property may be
-NOT be added, removed, or changed to a different class.</p>
+<p>The {@link com.sleepycat.persist.model.Persistent#proxyFor} property may NOT
+be added, removed, or changed to a different class.</p>
 
 <h2>Warnings on Testing and Backups</h2>
 

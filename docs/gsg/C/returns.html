@@ -5,11 +5,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Error Returns</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB " />
-    <link rel="previous" href="environments.html" title="Environments" />
-    <link rel="next" href="gettingit.html" title="Getting and Using DB " />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB" />
+    <link rel="prev" href="environments.html" title="Environments" />
+    <link rel="next" href="gettingit.html" title="Getting and Using DB" />
   </head>
   <body>
     <div class="navheader">
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="returns"></a>Error Returns</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Before continuing, it is useful to spend a few moments on error returns
@@ -49,30 +48,30 @@
         If a system error occurred (for example, DB ran out of disk
         space, or permission to access a file was denied, or an illegal argument
         was specified to one of the interfaces), DB returns an
-        <tt class="literal">errno</tt>
-        value. All of the possible values of <tt class="literal">errno</tt> are greater than 0.
+        <code class="literal">errno</code>
+        value. All of the possible values of <code class="literal">errno</code> are greater than 0.
     </p>
       <p>
         If the operation did not fail due to a system error, but was not
         successful either, DB returns a special error value. For
         example, if you tried to retrieve data from the database and the
         record for which you are searching does not exist, DB would return
-        <tt class="literal">DB_NOTFOUND</tt>, a special error value that means the requested
+        <code class="literal">DB_NOTFOUND</code>, a special error value that means the requested
         key does not appear in the database. All of the possible special error
         values are less than 0.
     </p>
       <p>
         DB also offers programmatic support for displaying error return
-        values. First, the <tt class="function">db_strerror</tt> function returns 
+        values. First, the <code class="function">db_strerror</code> function returns 
         a pointer to the error
         message corresponding to any DB error return, similar to the
-        ANSI C <tt class="function">strerror</tt> function, but is able to handle 
+        ANSI C <code class="function">strerror</code> function, but is able to handle 
         both system error returns and DB-specific return values.
     </p>
       <p>
        Second, there are two error functions, 
-        <tt class="methodname">DB-&gt;err</tt> and <tt class="methodname">DB-&gt;errx</tt>. 
-       These functions work like the ANSI C <tt class="function">printf</tt> function, 
+        <code class="methodname">DB-&gt;err</code> and <code class="methodname">DB-&gt;errx</code>. 
+       These functions work like the ANSI C <code class="function">printf</code> function, 
        taking a printf-style format string and argument list, and optionally 
        appending the standard error string to a message constructed from 
        the format string and other arguments.

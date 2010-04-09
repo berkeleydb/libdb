@@ -3,7 +3,7 @@
 use strict ;
 
 use lib 't';
-use util (1);
+use util ;
 
 use Test::More ; 
 

@@ -156,6 +156,7 @@ with the C<Flags> parameter, described below.
              [ -CacheSize    => $number, ]
              [ -Config       => { name => value, name => value }, ]
              [ -ErrFile      => filename, ]
+             [ -MsgFile      => filename, ]
              [ -ErrPrefix    => "string", ]
              [ -Flags        => number, ]
              [ -SetFlags     => bitmask, ]
@@ -436,15 +437,30 @@ initialized with it.
 
 This option requires Berkeley DB 4.4 or better.
 
+=item $env->stat_print
+
+Prints statistical information. 
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
+
+This option requires Berkeley DB 4.3 or better.
+
 =item $env->lock_stat_print
 
 Prints locking subsystem statistics.
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
 
 This option requires Berkeley DB 4.3 or better.
 
 =item $env->mutex_stat_print
 
 Prints mutex subsystem statistics.
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
 
 This option requires Berkeley DB 4.4 or better.
 
@@ -958,6 +974,11 @@ L<"Changing the sort order"> for an example.
     	-DupCompare => \&compare,
 	...
 
+=item set_bt_compress
+
+Enabled compression of the btree data. The callback interface is not
+supported at present. Need Berkeley DB 4.8 or better.
+
 =back
 
 =head2 Methods
@@ -1370,6 +1391,13 @@ TODO
 
 =back
 
+The variant C<db_pget> allows you to query a secondary database:
+
+	$status = $sdb->db_pget($skey, $pkey, $value);
+
+using the key C<$skey> in the secondary db to lookup C<$pkey> and C<$value>
+from the primary db.
+
 
 =head2 $status = $db->db_put($key, $value [, $flags])
 
@@ -1402,6 +1430,15 @@ If duplicate keys are enabled in the database, B<db_del> will delete
 B<all> key/value pairs with key C<$key>.
 
 The B<$flags> parameter is optional and is currently unused.
+
+=head2 $status = $env->stat_print([$flags])
+
+Prints statistical information. 
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
+
+This option requires Berkeley DB 4.3 or better.
 
 =head2 $status = $db->db_sync()
 
@@ -1536,8 +1573,49 @@ hash reference if the C<compact> operation was successful.
 
 =back
 
-You need to be running Berkeley DB 4.4 or better if you wan to make use of
+You need to be running Berkeley DB 4.4 or better if you want to make use of
 C<compact>.
+
+=head2  $status = $db->associate($secondary, \&key_callback)
+
+Associate C<$db> with the secondary DB C<$secondary>
+
+New key/value pairs inserted to the database will be passed to the callback
+which must set its third argument to the secondary key to allow lookup. If
+an array reference is set multiple keys secondary keys will be associated
+with the primary database entry.
+
+Data may be retrieved fro the secondary database using C<db_pget> to also
+obtain the primary key.
+
+Secondary databased are maintained automatically.
+
+=head2  $status = $db->associate_foreign($secondary, callback, $flags)
+
+Associate a foreign key database C<$db> with the secondary DB
+C<$secondary>.
+
+The second parameter must be a reference to a sub or C<undef>. 
+
+The C<$flags> parameter must be either C<DB_FOREIGN_CASCADE>, 
+C<DB_FOREIGN_ABORT> or C<DB_FOREIGN_NULLIFY>. 
+
+When the flags parameter is C<DB_FOREIGN_NULLIFY> the second parameter is a
+reference to a sub of the form
+
+    sub foreign_cb
+    {
+        my $key = \$_[0];
+        my $value = \$_[1];
+        my $foreignkey = \$_[2];
+        my $changed = \$_[3] ;
+
+        # for ... set $$value and set $$changed to 1
+
+        return 0;
+    }
+
+    $foreign_db->associate_foreign($secondary, \&foreign_cb, DB_FOREIGN_NULLIFY);
 
 =head1 CURSORS
 
@@ -1735,7 +1813,7 @@ Returns the status of the last cursor method as a dual type.
 
 =head2  $status = $cursor->c_pget() ;
 
-TODO
+See C<db_pget>
 
 =head2  $status = $cursor->c_close()
 
@@ -1757,13 +1835,403 @@ TODO
 
 =head1 TRANSACTIONS
 
-TODO.
+Transactions are created using the C<txn_begin> method on L<BerkeleyDB::Env>:
 
-=head1 CDS Mode
+	my $txn = $env->txn_begin;
 
-The Berkeley Db Concurrent Data Store is a lightweight locking mechanism
-that is useful in scenarios where transactions are overkill. See the
-accompanying document .. for details of using this module in CDS mode.
+If this is a nested transaction, supply the parent transaction as an
+argument:
+
+	my $child_txn = $env->txn_begin($parent_txn);
+
+Then in order to work with the transaction, you must set it as the current
+transaction on the database handles you want to work with:
+
+	$db->Txn($txn);
+
+Or for multiple handles:
+
+	$txn->Txn(@handles);
+
+The current transaction is given by BerkeleyDB each time to the various BDB
+operations. In the C api it is required explicitly as an argument to every
+operation.
+
+To commit a transaction call the C<commit> method on it:
+
+	$txn->commit;
+
+and to roll back call abort:
+
+	$txn->abort
+
+After committing or aborting a child transaction you need to set the active
+transaction again using C<Txn>.
+
+
+=head1 Berkeley DB Concurrent Data Store (CDS)
+
+The Berkeley DB I<Concurrent Data Store> (CDS) is a lightweight locking
+mechanism that is useful in scenarios where transactions are overkill. 
+
+=head2 What is CDS?
+
+The Berkeley DB CDS interface is a simple lightweight locking mechanism
+that allows safe concurrent access to Berkeley DB databases. Your
+application can have multiple reader and write processes, but Berkeley DB
+will arrange it so that only one process can have a write lock against the
+database at a time, i.e. multiple processes can read from a database
+concurrently, but all write processes will be serialised.
+
+=head2 Should I use it?
+
+Whilst this simple locking model is perfectly adequate for some
+applications, it will be too restrictive for others. Before deciding on
+using CDS mode, you need to be sure that it is suitable for the expected
+behaviour of your application.
+
+The key features of this model are 
+
+=over 5
+
+=item *
+
+All writes operations are serialised.
+
+=item *
+
+A write operation will block until all reads have finished.
+
+=back
+
+There are a few of the attributes of your application that you need to be
+aware of before choosing to use CDS.
+
+Firstly, if you application needs either recoverability or transaction
+support, then CDS will not be suitable.
+
+Next what is the ratio of read operation to write operations will your
+application have?
+
+If it is carrying out mostly read operations, and very few writes, then CDS
+may be appropriate.
+
+What is the expected throughput of reads/writes in your application?
+
+If you application does 90% writes and 10% reads, but on average you only
+have a transaction every 5 seconds, then the fact that all writes are
+serialised will not matter, because there will hardly ever be multiple
+writes processes blocking.
+
+In summary CDS mode may be appropriate for your application if it performs
+mostly reads and very few writes or there is a low throughput.  Also, if
+you do not need to be able to roll back a series of database operations if
+an error occurs, then CDS is ok.
+
+If any of these is not the case you will need to use Berkeley DB
+transactions. That is outside the scope of this document.
+
+=head2 Locking Used
+
+Berkeley DB implements CDS mode using two kinds of lock behind the scenes -
+namely read locks and write locks. A read lock allows multiple processes to
+access the database for reading at the same time. A write lock will only
+get access to the database when there are no read or write locks active.
+The write lock will block until the process holding the lock releases it.
+
+Multiple processes with read locks can all access the database at the same
+time as long as no process has a write lock. A process with a write lock
+can only access the database if there are no other active read or write
+locks.
+
+The majority of the time the Berkeley DB CDS mode will handle all locking
+without your application having to do anything. There are a couple of
+exceptions you need to be aware of though - these will be discussed in
+L<Safely Updating Records> and L<Implicit Cursors> below.
+
+A Berkeley DB Cursor (created with C<< $db->db_cursor >>) will by hold a
+lock on the database until it is either explicitly closed or destroyed.
+This means the lock has the potential to be long lived. 
+
+By default Berkeley DB cursors create a read lock, but it is possible to
+create a cursor that holds a write lock, thus
+
+    $cursor = $db->db_cursor(DB_WRITECURSOR);
+
+
+Whilst either a read or write cursor is active, it will block any other
+processes that wants to write to the database. 
+
+To avoid blocking problems, only keep cursors open as long as they are
+needed. The same is true when you use the C<cursor> method or the
+C<cds_lock> method.
+
+For full information on CDS see the "Berkeley DB Concurrent Data Store
+applications" section in the Berkeley DB Reference Guide.
+
+
+=head2 Opening a database for CDS
+
+Here is the typical signature that is used when opening a database in CDS
+mode.
+
+    use BerkeleyDB ;
+
+    my $env = new BerkeleyDB::Env
+                  -Home   => "./home" ,
+                  -Flags  => DB_CREATE| DB_INIT_CDB | DB_INIT_MPOOL
+        or die "cannot open environment: $BerkeleyDB::Error\n";
+
+    my $db  = new BerkeleyDB::Hash
+                -Filename       => 'test1.db',
+                -Flags          => DB_CREATE,
+                -Env            => $env
+        or die "cannot open database: $BerkeleyDB::Error\n";
+
+or this, if you use the tied interface
+
+    tie %hash, "BerkeleyDB::Hash",
+                -Filename       => 'test2.db',
+                -Flags          => DB_CREATE,
+                -Env            => $env
+        or die "cannot open database: $BerkeleyDB::Error\n";
+
+The first thing to note is that you B<MUST> always use a Berkeley DB
+environment if you want to use locking with Berkeley DB.
+
+Remember, that apart from the actual database files you explicitly create
+yourself, Berkeley DB will create a few behind the scenes to handle locking
+- they usually have names like "__db.001". It is therefore a good idea to
+use the C<-Home> option, unless you are happy for all these files to be
+written in the current directory.
+
+Next, remember to include the C<DB_CREATE> flag when opening the
+environment for the first time. A common mistake is to forget to add this
+option and then wonder why the application doesn't work.
+
+Finally, it is vital that all processes that are going to access the
+database files use the same Berkeley DB environment.
+
+
+=head2 Safely Updating a Record
+
+One of the main gotchas when using CDS is if you want to update a record in
+a database, i.e. you want to retrieve a record from a database, modify it
+in some way and put it back in the database.
+
+For example, say you are writing a web application and you want to keep a
+record of the number of times your site is accessed in a Berkeley DB
+database. So your code will have a line of code like this (assume, of
+course, that C<%hash> has been tied to a Berkeley DB database):
+
+    $hash{Counter} ++ ;
+
+That may look innocent enough, but there is a race condition lurking in
+there. If I rewrite the line of code using the low-level Berkeley DB API,
+which is what will actually be executed, the race condition may be more
+apparent:
+
+    $db->db_get("Counter", $value);
+    ++ $value ;
+    $db->db_put("Counter", $value);
+
+Consider what happens behind the scenes when you execute the commands
+above.  Firstly, the existing value for the key "Counter" is fetched from
+the database using C<db_get>. A read lock will be used for this part of the
+update.  The value is then incremented, and the new value is written back
+to the database using C<db_put>. This time a write lock will be used. 
+
+Here's the problem - there is nothing to stop two (or more) processes
+executing the read part at the same time. Remember multiple processes can
+hold a read lock on the database at the same time. So both will fetch the
+same value, let's say 7, from the database. Both increment the value to 8
+and attempt to write it to the database. Berkeley DB will ensure that only
+one of the processes gets a write lock, while the other will be blocked. So
+the process that happened to get the write lock will store the value 8 to
+the database and release the write lock. Now the other process will be
+unblocked, and it too will write the value 8 to the database. The result,
+in this example, is we have missed a hit in the counter.
+
+To deal with this kind of scenario, you need to make the update atomic. A
+convenience method, called C<cds_lock>, is supplied with the BerkeleyDB
+module for this purpose. Using C<cds_lock>, the counter update code can now
+be rewritten thus:
+
+    my $lk = $dbh->cds_lock() ; 
+    $hash{Counter} ++ ;
+    $lk->cds_unlock;
+
+or this, where scoping is used to limit the lifetime of the lock object
+
+    {
+        my $lk = $dbh->cds_lock() ;
+        $hash{Counter} ++ ;
+    }
+
+Similarly, C<cds_lock> can be used with the native Berkeley DB API 
+
+    my $lk = $dbh->cds_lock() ;
+    $db->db_get("Counter", $value);
+    ++ $value ;
+    $db->db_put("Counter", $value);
+    $lk->unlock;
+
+
+The C<cds_lock> method will ensure that the current process has exclusive
+access to the database until the lock is either explicitly released, via
+the C<< $lk->cds_unlock() >> or by the lock object being destroyed.
+
+If you are interested, all that C<cds_lock> does is open a "write" cursor.
+This has the useful side-effect of holding a write-lock on the database
+until the cursor is deleted. This is how you create a write-cursor
+
+    $cursor = $db->db_cursor(DB_WRITECURSOR);
+
+If you have instantiated multiple C<cds_lock> objects for one database
+within a single process, that process will hold a write-lock on the
+database until I<ALL> C<cds_lock> objects have been destroyed.
+
+As with all write-cursors, you should try to limit the scope of the
+C<cds_lock> to as short a time as possible. Remember the complete database
+will be locked to other process whilst the write lock is in place.
+
+=head2 Cannot write with a read cursor while a write cursor is active
+
+This issue is easier to demonstrate with an example, so consider the code
+below. The intention of the code is to increment the values of all the
+elements in a database by one.
+
+    # Assume $db is a database opened in a CDS environment.
+
+    # Create a write-lock
+    my $lock = $db->db_cursor(DB_WRITECURSOR);
+    # or 
+    # my $lock = $db->cds_lock();
+
+    
+    my $cursor = $db->db_cursor();
+
+    # Now loop through the database, and increment
+    # each value using c_put.
+    while ($cursor->c_get($key, $value, DB_NEXT) == 0) 
+    {
+         $cursor->c_put($key, $value+1, DB_CURRENT) == 0
+             or die "$BerkeleyDB::Error\n";
+    }
+
+
+When this code is run, it will fail on the C<c_put> line with this error
+
+    Write attempted on read-only cursor
+
+The read cursor has automatically disallowed a write operation to prevent a
+deadlock.
+
+
+So the rule is -- you B<CANNOT> carry out a write operation using a
+read-only cursor (i.e. you cannot use C<c_put> or C<c_del>) whilst another
+write-cursor is already active. 
+
+The workaround for this issue is to just use C<db_put> instead of C<c_put>,
+like this
+
+    # Assume $db is a database opened in a CDS environment.
+
+    # Create a write-lock
+    my $lock = $db->db_cursor(DB_WRITECURSOR);
+    # or 
+    # my $lock = $db->cds_lock();
+
+    
+    my $cursor = $db->db_cursor();
+
+    # Now loop through the database, and increment
+    # each value using c_put.
+    while ($cursor->c_get($key, $value, DB_NEXT) == 0) 
+    {
+         $db->db_put($key, $value+1) == 0
+             or die "$BerkeleyDB::Error\n";
+    }
+
+
+
+=head2 Implicit Cursors
+
+All Berkeley DB cursors will hold either a read lock or a write lock on the
+database for the existence of the cursor. In order to prevent blocking of
+other processes you need to make sure that they are not long lived.
+
+There are a number of instances where the Perl interface to Berkeley DB
+will create a cursor behind the scenes without you being aware of it. Most
+of these are very short-lived and will not affect the running of your
+script, but there are a few notable exceptions.
+
+Consider this snippet of code
+
+    while (my ($k, $v) = each %hash)
+    {
+        # do something
+    }
+
+
+To implement the "each" functionality, a read cursor will be created behind
+the scenes to allow you to iterate through the tied hash, C<%hash>. While
+that cursor is still active, a read lock will obviously be held against the
+database. If your application has any other writing processes, these will
+be blocked until the read cursor is closed. That won't happen until the
+loop terminates.
+
+To avoid blocking problems, only keep cursors open as long as they are
+needed. The same is true when you use the C<cursor> method or the
+C<cds_lock> method.
+
+
+The locking behaviour of the C<values> or C<keys> functions, shown below,
+is subtly different.
+
+    foreach my $k (keys %hash)
+    {
+        # do something
+    }
+
+    foreach my $v (values %hash)
+    {
+        # do something
+    }
+
+
+Just as in the C<each> function, a read cursor will be created to iterate
+over the database in both of these cases. Where C<keys> and C<values>
+differ is the place where the cursor carries out the iteration through the
+database. Whilst C<each> carried out a single iteration every time it was
+invoked, the C<keys> and C<values> functions will iterate through the
+entire database in one go -- the complete database will be read into memory
+before the first iteration of the loop.
+
+Apart from the fact that a read lock will be held for the amount of time
+required to iterate through the database, the use of C<keys> and C<values>
+is B<not> recommended because it will result in the complete database being
+read into memory.
+
+
+=head2 Avoiding Deadlock with multiple databases
+
+If your CDS application uses multiple database files, and you need to write
+to more than one of them, you need to be careful you don't create a
+deadlock.
+
+For example, say you have two databases, D1 and D2, and two processes, P1
+and P2. Assume you want to write a record to each database. If P1 writes
+the records to the databases in the order D1, D2 while process P2 writes
+the records in the order D2, D1, there is the potential for a deadlock to
+occur.
+
+This scenario can be avoided by either always acquiring the write locks in
+exactly the same order in your application code, or by using the
+C<DB_CDB_ALLDB> flag when opening the environment. This flag will make a
+write-lock apply to all the databases in the environment.
+
+Add example here
 
 =head1 DBM Filters
 

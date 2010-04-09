@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: hash.c,v 12.46 2008/01/08 20:58:33 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -49,10 +49,11 @@
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 
 static int  __ham_bulk __P((DBC *, DBT *, u_int32_t));
 static int  __hamc_close __P((DBC *, db_pgno_t, int *));
-static int  __hamc_del __P((DBC *));
+static int  __hamc_del __P((DBC *, u_int32_t));
 static int  __hamc_destroy __P((DBC *));
 static int  __hamc_get __P((DBC *, DBT *, DBT *, u_int32_t, db_pgno_t *));
 static int  __hamc_put __P((DBC *, DBT *, DBT *, u_int32_t, db_pgno_t *));
@@ -61,7 +62,6 @@ static int  __ham_dup_return __P((DBC *, DBT *, u_int32_t));
 static int  __ham_expand_table __P((DBC *));
 static int  __ham_lookup __P((DBC *,
 		const DBT *, u_int32_t, db_lockmode_t, db_pgno_t *));
-static int  __ham_overwrite __P((DBC *, DBT *, u_int32_t));
 
 /*
  * __ham_quick_delete --
@@ -98,8 +98,7 @@ __ham_quick_delete(dbc)
 	DB_ASSERT(dbc->env, IS_INITIALIZED(dbc));
 	DB_ASSERT(dbc->env, dbc->internal->opd == NULL);
 	DB_ASSERT(dbc->env, !F_ISSET(dbc->dbp, DB_AM_SECONDARY));
-	DB_ASSERT(dbc->env,
-	    LIST_FIRST(&dbc->dbp->s_secondaries) == NULL);
+	DB_ASSERT(dbc->env, !DB_IS_PRIMARY(dbc->dbp));
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
@@ -140,6 +139,7 @@ __hamc_init(dbc)
 
 	dbc->internal = (DBC_INTERNAL *) new_curs;
 	dbc->close = dbc->c_close = __dbc_close_pp;
+	dbc->cmp = __dbc_cmp_pp;
 	dbc->count = dbc->c_count = __dbc_count_pp;
 	dbc->del = dbc->c_del = __dbc_del_pp;
 	dbc->dup = dbc->c_dup = __dbc_dup_pp;
@@ -305,9 +305,45 @@ err:	if ((t_ret = __memp_fput(mpf,
 	return (ret);
 }
 
+/*
+ * __hamc_cmp --
+ *	Compare two hash cursors for equality.
+ *
+ * This function is only called with two cursors that point to the same item.
+ * It distinguishes two cases:
+ * * Cursors pointing to different items in the same on-page duplicate set.
+ * * Cursors pointing to the same item, with different DELETED flags.
+ *
+ * PUBLIC: int __hamc_cmp __P((DBC *, DBC *, int *));
+ */
+int
+__hamc_cmp(dbc, other_dbc, result)
+	DBC *dbc, *other_dbc;
+	int *result;
+{
+	ENV *env;
+	HASH_CURSOR *hcp, *ohcp;
+
+	env = dbc->env;
+	hcp = (HASH_CURSOR *)dbc->internal;
+	ohcp = (HASH_CURSOR *)other_dbc->internal;
+
+	DB_ASSERT (env, hcp->pgno == ohcp->pgno);
+	DB_ASSERT (env, hcp->indx == ohcp->indx);
+
+	/* Only compare the duplicate offsets if this is a duplicate item. */
+	if ((F_ISSET(hcp, H_ISDUP) && hcp->dup_off != ohcp->dup_off) ||
+	    F_ISSET(hcp, H_DELETED) != F_ISSET(ohcp, H_DELETED))
+		*result = 1;
+	else
+		*result = 0;
+	return (0);
+}
+
 static int
-__hamc_del(dbc)
+__hamc_del(dbc, flags)
 	DBC *dbc;
+	u_int32_t flags;
 {
 	DB *dbp;
 	DBT repldbt;
@@ -315,6 +351,7 @@ __hamc_del(dbc)
 	HASH_CURSOR *hcp;
 	int ret, t_ret;
 
+	COMPQUIET(flags, 0);
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
@@ -332,9 +369,7 @@ __hamc_del(dbc)
 	if (HPAGE_TYPE(dbp, hcp->page, H_DATAINDEX(hcp->indx)) == H_OFFDUP)
 		goto out;
 
-	if ((ret = __memp_dirty(mpf,
-	    &hcp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
-		goto out;
+	DB_ASSERT(dbp->env, IS_DIRTY(hcp->page));
 
 	if (F_ISSET(hcp, H_ISDUP)) { /* On-page duplicate. */
 		if (hcp->dup_off == 0 &&
@@ -352,6 +387,10 @@ __hamc_del(dbc)
 			if ((ret = __ham_replpair(dbc, &repldbt, 0)) == 0) {
 				hcp->dup_tlen -= DUP_SIZE(hcp->dup_len);
 				F_SET(hcp, H_DELETED);
+				/*
+				 * Clear any cached streaming information.
+				 */
+				hcp->stream_start_pgno = PGNO_INVALID;
 				ret = __hamc_update(dbc, DUP_SIZE(hcp->dup_len),
 				    DB_HAM_CURADJ_DEL, 1);
 			}
@@ -997,8 +1036,8 @@ __hamc_put(dbc, key, data, flags, pgnop)
 	mpf = dbp->mpf;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
-	if (F_ISSET(hcp, H_DELETED) &&
-	    flags != DB_KEYFIRST && flags != DB_KEYLAST)
+	if (F_ISSET(hcp, H_DELETED) && flags != DB_KEYFIRST &&
+	    flags != DB_KEYLAST && flags != DB_OVERWRITE_DUP)
 		return (DB_NOTFOUND);
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
@@ -1009,6 +1048,7 @@ __hamc_put(dbc, key, data, flags, pgnop)
 	case DB_KEYFIRST:
 	case DB_NODUPDATA:
 	case DB_NOOVERWRITE:
+	case DB_OVERWRITE_DUP:
 		nbytes = (ISBIG(hcp, key->size) ? HOFFPAGE_PSIZE :
 		    HKEYDATA_PSIZE(key->size)) +
 		    (ISBIG(hcp, data->size) ? HOFFPAGE_PSIZE :
@@ -1069,7 +1109,7 @@ __hamc_put(dbc, key, data, flags, pgnop)
 	}
 
 	/*
-	 * Invalidate any insert index found. So they are not reused
+	 * Invalidate any insert index found so they are not reused
 	 * in future inserts.
 	 */
 	hcp->seek_found_page = PGNO_INVALID;
@@ -1080,9 +1120,9 @@ __hamc_put(dbc, key, data, flags, pgnop)
 		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
 			goto done;
 		if (flags == DB_CURRENT ||
-		    ((flags == DB_KEYFIRST ||
-		    flags == DB_KEYLAST || flags == DB_NODUPDATA) &&
-		    !(F_ISSET(dbp, DB_AM_DUP) || F_ISSET(key, DB_DBT_DUPOK))))
+		    (!(F_ISSET(dbp, DB_AM_DUP) || F_ISSET(key, DB_DBT_DUPOK)) &&
+		    (flags == DB_KEYFIRST || flags == DB_KEYLAST ||
+		    flags == DB_NODUPDATA || flags == DB_OVERWRITE_DUP)))
 			ret = __ham_overwrite(dbc, data, flags);
 		else
 			ret = __ham_add_dup(dbc, data, flags, pgnop);
@@ -1251,9 +1291,6 @@ __ham_expand_table(dbc)
 		hcp->hdr->high_mask = new_bucket | hcp->hdr->low_mask;
 	}
 
-	/* Relocate records to the new bucket */
-	ret = __ham_split_page(dbc, old_bucket, new_bucket);
-
 err:	if (got_meta)
 		if ((t_ret = __memp_fput(mpf,
 		    dbc->thread_info, mmeta, dbc->priority)) != 0 && ret == 0)
@@ -1264,6 +1301,10 @@ err:	if (got_meta)
 		if ((t_ret = __memp_fput(mpf,
 		    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
+
+	/* Relocate records to the new bucket -- after releasing metapage. */
+	if (ret == 0)
+		ret = __ham_split_page(dbc, old_bucket, new_bucket);
 
 	return (ret);
 }
@@ -1398,10 +1439,10 @@ __ham_dup_return(dbc, val, flags)
 				    HOFFPAGE_TLEN(hk), sizeof(u_int32_t));
 				memcpy(&pgno,
 				    HOFFPAGE_PGNO(hk), sizeof(db_pgno_t));
-				if ((ret = __db_moff(dbp, dbc->thread_info,
-				    dbc->txn, val,
-				    pgno, tlen, dbp->dup_compare, &cmp)) != 0)
+				if ((ret = __db_moff(dbc, val, pgno, tlen,
+				    dbp->dup_compare, &cmp)) != 0)
 					return (ret);
+				cmp = -cmp;
 			} else {
 				/*
 				 * We do not zero tmp_val since the comparison
@@ -1414,6 +1455,10 @@ __ham_dup_return(dbc, val, flags)
 				    __bam_defcmp(dbp, &tmp_val, val) :
 				    dbp->dup_compare(dbp, &tmp_val, val);
 			}
+			
+			if (cmp > 0 && flags == DB_GET_BOTH_RANGE && 
+			    F_ISSET(dbp, DB_AM_DUPSORT))
+				cmp = 0;
 		}
 
 		if (cmp != 0)
@@ -1473,9 +1518,12 @@ __ham_dup_return(dbc, val, flags)
 	 * Finally, if we had a duplicate, pp, ndx, and myval should be
 	 * set appropriately.
 	 */
-	if ((ret = __db_ret(dbp, dbc->thread_info, dbc->txn,
-	    pp, ndx, myval, &dbc->rdata->data, &dbc->rdata->ulen)) != 0)
+	if ((ret = __db_ret(dbc, pp, ndx, myval,
+	    &dbc->rdata->data, &dbc->rdata->ulen)) != 0) {
+		if (ret == DB_BUFFER_SMALL)
+			val->size = myval->size;
 		return (ret);
+	}
 
 	/*
 	 * In case we sent a temporary off to db_ret, set the real
@@ -1489,7 +1537,12 @@ __ham_dup_return(dbc, val, flags)
 	return (0);
 }
 
-static int
+/*
+ * Overwrite a record.
+ *
+ * PUBLIC: int  __ham_overwrite __P((DBC *, DBT *, u_int32_t));
+ */
+int
 __ham_overwrite(dbc, nval, flags)
 	DBC *dbc;
 	DBT *nval;
@@ -1938,6 +1991,12 @@ __hamc_update(dbc, len, operation, is_dup)
 			    MVCC_SKIP_CURADJ(cp, lcp->pgno))
 				continue;
 
+			/*
+			 * We're about to move things out from under this
+			 * cursor.  Clear any cached streaming information.
+			 */
+			lcp->stream_start_pgno = PGNO_INVALID;
+
 			if (my_txn != NULL && cp->txn != my_txn)
 				found = 1;
 
@@ -2060,7 +2119,7 @@ __ham_get_clist(dbp, pgno, indx, listp)
 	DBC ***listp;
 {
 	DB *ldbp;
-	DBC *cp;
+	DBC *dbc;
 	ENV *env;
 	u_int nalloc, nused;
 	int ret;
@@ -2079,16 +2138,16 @@ __ham_get_clist(dbp, pgno, indx, listp)
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
 		MUTEX_LOCK(env, dbp->mutex);
-		TAILQ_FOREACH(cp, &ldbp->active_queue, links)
+		TAILQ_FOREACH(dbc, &ldbp->active_queue, links)
 			/*
-			 * We match if cp->pgno matches the specified
-			 * pgno, and if either the cp->indx matches
+			 * We match if dbc->pgno matches the specified
+			 * pgno, and if either the dbc->indx matches
 			 * or we weren't given an index.
 			 */
-			if (cp->internal->pgno == pgno &&
+			if (dbc->internal->pgno == pgno &&
 			    (indx == NDX_INVALID ||
-			    cp->internal->indx == indx) &&
-			    !MVCC_SKIP_CURADJ(cp, pgno)) {
+			    dbc->internal->indx == indx) &&
+			    !MVCC_SKIP_CURADJ(dbc, pgno)) {
 				if (nused >= nalloc) {
 					nalloc += 10;
 					if ((ret = __os_realloc(dbp->env,
@@ -2096,7 +2155,7 @@ __ham_get_clist(dbp, pgno, indx, listp)
 					    listp)) != 0)
 						goto err;
 				}
-				(*listp)[nused++] = cp;
+				(*listp)[nused++] = dbc;
 			}
 
 		MUTEX_UNLOCK(dbp->env, dbp->mutex);

@@ -1,13 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SecondaryKeyMetadata.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
-
 
 /**
  * The metadata for a secondary key field.  A secondary key may be specified
@@ -100,7 +99,7 @@ public class SecondaryKeyMetadata extends FieldMetadata {
             SecondaryKeyMetadata o = (SecondaryKeyMetadata) other;
             return super.equals(o) &&
                    relationship == o.relationship &&
-                   deleteAction == o.deleteAction &&
+                   ClassMetadata.nullOrEqual(deleteAction, o.deleteAction) &&
                    ClassMetadata.nullOrEqual(keyName, o.keyName) &&
                    ClassMetadata.nullOrEqual(elementClassName,
                                              o.elementClassName) &&
@@ -114,7 +113,7 @@ public class SecondaryKeyMetadata extends FieldMetadata {
     public int hashCode() {
         return super.hashCode() +
                relationship.hashCode() +
-               deleteAction.hashCode() +
+               ClassMetadata.hashCode(deleteAction) +
                ClassMetadata.hashCode(keyName) +
                ClassMetadata.hashCode(elementClassName) +
                ClassMetadata.hashCode(relatedEntity);

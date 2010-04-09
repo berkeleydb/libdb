@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ */
+
 #include <sys/types.h>
 
 #include <ctype.h>
@@ -293,7 +299,7 @@ flag_cmp_api_cnt(const void *a, const void *b)
 		return (-1);
 	if (af->api_cnt < bf->api_cnt)
 		return (1);
-	return (0);
+	return (strcmp(af->name, bf->name));
 }
 
 int

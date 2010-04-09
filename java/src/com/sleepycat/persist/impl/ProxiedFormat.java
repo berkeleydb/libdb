@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ProxiedFormat.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -13,6 +13,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.model.PersistentProxy;
 import com.sleepycat.persist.raw.RawObject;
 
@@ -67,7 +68,7 @@ public class ProxiedFormat extends Format {
     }
 
     @Override
-    void initialize(Catalog catalog, int initVersion) {
+    void initialize(Catalog catalog, EntityModel model, int initVersion) {
         /* Set the proxy format for a new (never initialized) format. */
         if (proxyFormat == null) {
             assert proxyClassName != null;

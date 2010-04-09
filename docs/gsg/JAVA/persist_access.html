@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 5. Saving and Retrieving Objects</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
-    <link rel="previous" href="dplindexcreate.html" title="Creating Indexes" />
+    <link rel="prev" href="dplindexcreate.html" title="Creating Indexes" />
     <link rel="next" href="simpleda.html" title="SimpleDA.class" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="persist_access"></a>Chapter 5. Saving and Retrieving Objects</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -101,15 +100,15 @@
         </dl>
       </div>
       <p>
-          To store an object in an <tt class="classname">EntityStore</tt> you
+          To store an object in an <code class="classname">EntityStore</code> you
           must annotate the class appropriately and then store it using
-          <tt class="methodname">PrimaryIndex.put()</tt>.
+          <code class="methodname">PrimaryIndex.put()</code>.
   </p>
       <p>
-          To retrieve and object from an <tt class="classname">EntityStore</tt>
-          you use the <tt class="methodname">get()</tt> method from either the
-          <tt class="classname">PrimaryIndex</tt> or
-          <tt class="classname">SecondaryIndex</tt>, whichever is most
+          To retrieve and object from an <code class="classname">EntityStore</code>
+          you use the <code class="methodname">get()</code> method from either the
+          <code class="classname">PrimaryIndex</code> or
+          <code class="classname">SecondaryIndex</code>, whichever is most
           appropriate for your application.
   </p>
       <p>
@@ -138,7 +137,7 @@
                           organize our data.
                   </p>
             <p>
-                          See <a href="simpleda.html">SimpleDA.class</a>
+                          See <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a>
                           for this implementation.
                   </p>
           </li>
@@ -148,7 +147,7 @@
                           to our entity store.
                   </p>
             <p>
-                          See <a href="simpleput.html">Placing Objects in an Entity Store</a>
+                          See <a class="xref" href="simpleput.html" title="Placing Objects in an Entity Store">Placing Objects in an Entity Store</a>
                           for this implementation.
                   </p>
           </li>
@@ -158,7 +157,7 @@
                           our entity store.
                   </p>
             <p>
-                          See <a href="simpleget.html">Retrieving Objects from an Entity Store</a>
+                          See <a class="xref" href="simpleget.html" title="Retrieving Objects from an Entity Store">Retrieving Objects from an Entity Store</a>
                           for this implementation.
                   </p>
           </li>
@@ -171,7 +170,6 @@
               <h2 class="title" style="clear: both"><a id="simpleentity"></a>A Simple Entity Class</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                   For clarity's sake, this entity class is a simple a class as we can write.
@@ -201,19 +199,19 @@ public class SimpleEntityClass {
     @SecondaryKey(relate=MANY_TO_ONE)
     private String sKey;
 
-    public void setpKey(String data) {
+    public void setPKey(String data) {
         pKey = data;
     }
 
-    public void setsKey(String data) {
+    public void setSKey(String data) {
         sKey = data;
     }
 
-    public String getpKey() {
+    public String getPKey() {
         return pKey;
     }
 
-    public String getsKey() {
+    public String getSKey() {
         return sKey;
     }
 } </pre>

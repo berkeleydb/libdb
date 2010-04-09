@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredMap.java,v 12.11 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -13,10 +13,12 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.db.Database;
+import com.sleepycat.db.OperationStatus;
 import com.sleepycat.util.keyrange.KeyRangeException;
 
 /**
@@ -33,11 +35,12 @@ import com.sleepycat.util.keyrange.KeyRangeException;
  *
  * @author Mark Hayes
  */
-public class StoredMap extends StoredContainer implements Map {
+public class StoredMap<K,V> extends StoredContainer
+    implements ConcurrentMap<K,V> {
 
-    private StoredKeySet keySet;
-    private StoredEntrySet entrySet;
-    private StoredValueSet valueSet;
+    private StoredKeySet<K> keySet;
+    private StoredEntrySet<K,V> entrySet;
+    private StoredValueSet<V> valueSet;
 
     /**
      * Creates a map view of a {@link Database}.
@@ -59,8 +62,10 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredMap(Database database, EntryBinding keyBinding,
-                     EntryBinding valueBinding, boolean writeAllowed) {
+    public StoredMap(Database database,
+                     EntryBinding<K> keyBinding,
+                     EntryBinding<V> valueBinding,
+                     boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
                            writeAllowed, null));
@@ -88,8 +93,9 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredMap(Database database, EntryBinding keyBinding,
-                     EntryBinding valueBinding,
+    public StoredMap(Database database,
+                     EntryBinding<K> keyBinding,
+                     EntryBinding<V> valueBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
@@ -117,8 +123,10 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredMap(Database database, EntryBinding keyBinding,
-                     EntityBinding valueEntityBinding, boolean writeAllowed) {
+    public StoredMap(Database database,
+                     EntryBinding<K> keyBinding,
+                     EntityBinding<V> valueEntityBinding,
+                     boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
                            writeAllowed, null));
@@ -146,8 +154,9 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredMap(Database database, EntryBinding keyBinding,
-                     EntityBinding valueEntityBinding,
+    public StoredMap(Database database,
+                     EntryBinding<K> keyBinding,
+                     EntityBinding<V> valueEntityBinding,
                      PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -180,25 +189,25 @@ public class StoredMap extends StoredContainer implements Map {
 
         /* entrySet */
         if (areKeyRangesAllowed()) {
-            entrySet = new StoredSortedEntrySet(view);
+            entrySet = new StoredSortedEntrySet<K,V>(view);
         } else {
-            entrySet = new StoredEntrySet(view);
+            entrySet = new StoredEntrySet<K,V>(view);
         }
 
         /* keySet */
         DataView newView = view.keySetView();
         if (areKeyRangesAllowed()) {
-            keySet = new StoredSortedKeySet(newView);
+            keySet = new StoredSortedKeySet<K>(newView);
         } else {
-            keySet = new StoredKeySet(newView);
+            keySet = new StoredKeySet<K>(newView);
         }
 
         /* valueSet */
         newView = view.valueSetView();
         if (areKeyRangesAllowed() && newView.canDeriveKeyFromValue()) {
-            valueSet = new StoredSortedValueSet(newView);
+            valueSet = new StoredSortedValueSet<V>(newView);
         } else {
-            valueSet = new StoredValueSet(newView);
+            valueSet = new StoredValueSet<V>(newView);
         }
     }
 
@@ -213,9 +222,9 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object get(Object key) {
+    public V get(Object key) {
 
-        return super.get(key);
+        return (V) getValue(key);
     }
 
     /**
@@ -243,9 +252,9 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object put(Object key, Object value) {
+    public V put(K key, V value) {
 
-        return super.put(key, value);
+        return (V) putKeyValue(key, value);
     }
 
     /**
@@ -271,14 +280,14 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object append(Object value) {
+    public K append(V value) {
 
         boolean doAutoCommit = beginAutoCommit();
         try {
             Object[] key = new Object[1];
             view.append(value, key, null);
             commitAutoCommit(doAutoCommit);
-            return key[0];
+            return (K) key[0];
         } catch (Exception e) {
             throw handleException(e, doAutoCommit);
         }
@@ -295,11 +304,151 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object remove(Object key) {
+    public V remove(Object key) {
 
         Object[] oldVal = new Object[1];
         removeKey(key, oldVal);
-        return oldVal[0];
+        return (V) oldVal[0];
+    }
+
+    /**
+     * If the specified key is not already associated with a value, associate
+     * it with the given value.  This method conforms to the {@link
+     * ConcurrentMap#putIfAbsent} interface.
+     *
+     * @throws RuntimeExceptionWrapper if a {@link
+     * com.sleepycat.db.DatabaseException} is thrown.
+     */
+    public V putIfAbsent(K key, V value) {
+        DataCursor cursor = null;
+        boolean doAutoCommit = beginAutoCommit();
+        try {
+            cursor = new DataCursor(view, true);
+            V oldValue;
+            while (true) {
+                OperationStatus status =
+                    cursor.putNoOverwrite(key, value, false /*useCurrentKey*/);
+                if (status == OperationStatus.SUCCESS) {
+                    /* We inserted the key.  Return null.  */
+                    oldValue = null;
+                    break;
+                } else {
+                    status = cursor.getSearchKey(key, null /*value*/,
+                                                 false /*lockForWrite*/);
+                    if (status == OperationStatus.SUCCESS) {
+                        /* The key is present. Return the current value. */
+                        oldValue = (V) cursor.getCurrentValue();
+                        break;
+                    } else {
+
+                        /*
+                         * If Serializable isolation is not configured, another
+                         * thread can delete the record after our attempt to
+                         * insert it failed above.  Loop back and try again.
+                         */
+                        continue;
+                    }
+                }
+            }
+            closeCursor(cursor);
+            commitAutoCommit(doAutoCommit);
+            return oldValue;
+        } catch (Exception e) {
+            closeCursor(cursor);
+            throw handleException(e, doAutoCommit);
+        }
+    }
+
+    /**
+     * Remove entry for key only if currently mapped to given value.  This
+     * method conforms to the {@link ConcurrentMap#remove(Object,Object)}
+     * interface.
+     *
+     * @throws RuntimeExceptionWrapper if a {@link
+     * com.sleepycat.db.DatabaseException} is thrown.
+     */
+    public boolean remove(Object key, Object value) {
+        DataCursor cursor = null;
+        boolean doAutoCommit = beginAutoCommit();
+        try {
+            cursor = new DataCursor(view, true, key);
+            OperationStatus status = cursor.getFirst(true /*lockForWrite*/);
+            boolean removed;
+            if (status == OperationStatus.SUCCESS &&
+                cursor.getCurrentValue().equals(value)) {
+                cursor.delete();
+                removed = true;
+            } else {
+                removed = false;
+            }
+            closeCursor(cursor);
+            commitAutoCommit(doAutoCommit);
+            return removed;
+        } catch (Exception e) {
+            closeCursor(cursor);
+            throw handleException(e, doAutoCommit);
+        }
+    }
+
+    /**
+     * Replace entry for key only if currently mapped to some value.  This
+     * method conforms to the {@link ConcurrentMap#replace(Object,Object)}
+     * interface.
+     *
+     * @throws RuntimeExceptionWrapper if a {@link
+     * com.sleepycat.db.DatabaseException} is thrown.
+     */
+    public V replace(K key, V value) {
+        DataCursor cursor = null;
+        boolean doAutoCommit = beginAutoCommit();
+        try {
+            cursor = new DataCursor(view, true, key);
+            OperationStatus status = cursor.getFirst(true /*lockForWrite*/);
+            V oldValue;
+            if (status == OperationStatus.SUCCESS) {
+                oldValue = (V) cursor.getCurrentValue();
+                cursor.putCurrent(value);
+            } else {
+                oldValue = null;
+            }
+            closeCursor(cursor);
+            commitAutoCommit(doAutoCommit);
+            return oldValue;
+        } catch (Exception e) {
+            closeCursor(cursor);
+            throw handleException(e, doAutoCommit);
+        }
+    }
+
+    /**
+     * Replace entry for key only if currently mapped to given value.  This
+     * method conforms to the {@link
+     * ConcurrentMap#replace(Object,Object,Object)} interface.
+     *
+     * @throws RuntimeExceptionWrapper if a {@link
+     * com.sleepycat.db.DatabaseException} is thrown.
+     */
+    public boolean replace(K key, V oldValue, V newValue) {
+        DataCursor cursor = null;
+        boolean doAutoCommit = beginAutoCommit();
+        try {
+            cursor = new DataCursor(view, true, key);
+            OperationStatus status = cursor.getFirst(true /*lockForWrite*/);
+            boolean replaced;
+            if (status == OperationStatus.SUCCESS &&
+                cursor.getCurrentValue().equals(oldValue)) {
+                cursor.putCurrent(newValue);
+                replaced = true;
+            } else {
+                replaced = false;
+            }
+            closeCursor(cursor);
+            commitAutoCommit(doAutoCommit);
+            return replaced;
+        } catch (Exception e) {
+            closeCursor(cursor);
+            throw handleException(e, doAutoCommit);
+        }
     }
 
     /**
@@ -341,7 +490,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public void putAll(Map map) {
+    public void putAll(Map<? extends K, ? extends V> map) {
 
         boolean doAutoCommit = beginAutoCommit();
         Iterator i = null;
@@ -350,7 +499,7 @@ public class StoredMap extends StoredContainer implements Map {
             i = storedOrExternalIterator(coll);
             while (i.hasNext()) {
                 Map.Entry entry = (Map.Entry) i.next();
-                put(entry.getKey(), entry.getValue());
+                putKeyValue(entry.getKey(), entry.getValue());
             }
             StoredIterator.close(i);
             commitAutoCommit(doAutoCommit);
@@ -378,7 +527,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
-    public Set keySet() {
+    public Set<K> keySet() {
 
         return keySet;
     }
@@ -401,7 +550,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
-    public Set entrySet() {
+    public Set<Map.Entry<K,V>> entrySet() {
 
         return entrySet;
     }
@@ -426,7 +575,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @see #areKeyRangesAllowed
      * @see #isWriteAllowed
      */
-    public Collection values() {
+    public Collection<V> values() {
 
         return valueSet;
     }
@@ -449,7 +598,7 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Collection duplicates(Object key) {
+    public Collection<V> duplicates(K key) {
 
         try {
             DataView newView = view.valueSetView(key);
@@ -481,8 +630,8 @@ public class StoredMap extends StoredContainer implements Map {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Map duplicatesMap(Object secondaryKey,
-                             EntryBinding primaryKeyBinding) {
+    public <PK> Map<PK,V> duplicatesMap(K secondaryKey,
+                                        EntryBinding primaryKeyBinding) {
         try {
             DataView newView =
                 view.duplicatesView(secondaryKey, primaryKeyBinding);
@@ -542,4 +691,3 @@ public class StoredMap extends StoredContainer implements Map {
         return entrySet().toString();
     }
 }
-

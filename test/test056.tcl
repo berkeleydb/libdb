@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test056.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test056
 # TEST	Cursor maintenance during deletes.
@@ -20,6 +20,12 @@ proc test056 { method args } {
 		puts "Test056: skipping for method $method"
 		return
 	}
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test056 skipping for btree with compression."
+		return
+	}
+
 	puts "Test056: $method delete of key in presence of cursor"
 
 	# Create the database and open the dictionary

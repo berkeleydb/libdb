@@ -1,5 +1,5 @@
 /*
- * $Id: rijndael-alg-fst.h,v 12.1 2006/09/08 20:32:03 bostic Exp $
+ * $Id$
  */
 /**
  * rijndael-alg-fst.h

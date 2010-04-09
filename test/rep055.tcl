@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep055.tcl,v 1.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep055
 # TEST	Test of internal initialization and log archiving.
@@ -18,6 +18,8 @@ proc rep055 { method { niter 200 } { tnum "055" } args } {
 
 	source ./include.tcl
 	global mixed_mode_logging
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -43,13 +45,29 @@ proc rep055 { method { niter 200 } { tnum "055" } args } {
 		return
 	}
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.
 	set opts { clean noclean }
 	foreach r $test_recopts {
 		foreach c $opts {
 			puts "Rep$tnum ($method $r $c $args):\
-			    Test of internal initialization."
+			    Test of internal initialization $msg $msg2."
 			rep055_sub $method $niter $tnum $r $c $args
 
 		}
@@ -60,12 +78,19 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	global testdir
 	global passwd
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -87,6 +112,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
+	    $repmemargs \
 	    -log_buffer $log_buf -log_max $log_max -errpfx MASTER \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -95,6 +121,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
+	    $repmemargs \
 	    -log_buffer $log_buf -log_max $log_max -errpfx CLIENT \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -112,7 +139,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Close client."
@@ -128,7 +155,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	while { $stop == 0 } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 		replclear 2
 
 		puts "\tRep$tnum.d: Run db_archive on master."
@@ -149,7 +176,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	puts "\tRep$tnum.e: Move master logs forward again."
 	while { $stop == 0 } {
 		# Run rep_test in the master (don't update client).
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 		replclear 2
 
 		set res [eval exec $util_path/db_archive -l -h $masterdir]
@@ -184,7 +211,7 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 		# logs and that will trigger it.
 		#
 		set entries 10
-		eval rep_test $method $masterenv NULL $entries $niter 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $entries $niter 0 0 $largs
 		#
 		# Process messages three times to get us into internal init
 		# but not enough to get us all the way through it.
@@ -205,8 +232,9 @@ proc rep055_sub { method niter tnum recargs opts largs } {
 	# Now finish processing all the messages.
 	#
 	process_msgs $envlist 0 NONE err
+
 	puts "\tRep$tnum.h: Verify logs and databases"
-        rep_verify $masterdir $masterenv $clientdir $clientenv 1
+        rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
 
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0

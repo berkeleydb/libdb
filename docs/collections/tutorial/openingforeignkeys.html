@@ -3,16 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		
-		More Secondary Key Indices
-	</title>
+    <title>More Secondary Key Indices</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="UsingSecondaries.html" title="Chapter 3. &#10;&#9;&#9;Using Secondary Indices&#10;&#9;" />
-    <link rel="previous" href="UsingSecondaries.html" title="Chapter 3. &#10;&#9;&#9;Using Secondary Indices&#10;&#9;" />
-    <link rel="next" href="indexedcollections.html" title="&#10;&#9;&#9;Creating Indexed Collections&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="UsingSecondaries.html" title="Chapter 3.  Using Secondary Indices" />
+    <link rel="prev" href="UsingSecondaries.html" title="Chapter 3.  Using Secondary Indices" />
+    <link rel="next" href="indexedcollections.html" title="Creating Indexed Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -20,7 +17,7 @@
         <tr>
           <th colspan="3" align="center">
 		
-		More Secondary Key Indices
+		<span>More Secondary Key Indices</span>
 	</th>
         </tr>
         <tr>
@@ -43,7 +40,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     This section builds on the prior section describing secondary key indices.
@@ -51,25 +47,25 @@
     by PartNumber and by SupplierNumber.
 </p>
       <p>
-    The <tt class="classname">SampleDatabase</tt> class is extended to open the
+    The <code class="classname">SampleDatabase</code> class is extended to open the
 	Shipment-by-Part and Shipment-by-Supplier secondary key
 	indices.
 </p>
       <a id="index_java_sampledatabase1"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.serial.SerialSerialKeyCreator;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.serial.SerialSerialKeyCreator;
 import com.sleepycat.db.SecondaryConfig;
-import com.sleepycat.db.SecondaryDatabase;</tt></b>
+import com.sleepycat.db.SecondaryDatabase;</code></strong>
 ...
 public class SampleDatabase
 {
     ...
-<b class="userinput"><tt>    private static final String SHIPMENT_PART_INDEX = "shipment_part_index";
+<strong class="userinput"><code>    private static final String SHIPMENT_PART_INDEX = "shipment_part_index";
     private static final String SHIPMENT_SUPPLIER_INDEX = 
         "shipment_supplier_index";
     ...
     private SecondaryDatabase shipmentByPartDb;
     private SecondaryDatabase shipmentBySupplierDb;
-    ...</tt></b>
+    ...</code></strong>
     public SampleDatabase(String homeDirectory)
         throws DatabaseException, FileNotFoundException
     {
@@ -80,7 +76,7 @@ public class SampleDatabase
         secConfig.setType(DatabaseType.BTREE);
         secConfig.setSortedDuplicates(true);
         ...
-<b class="userinput"><tt>        secConfig.setKeyCreator(
+<strong class="userinput"><code>        secConfig.setKeyCreator(
             new ShipmentByPartKeyCreator(javaCatalog,
                                          ShipmentKey.class,
                                          ShipmentData.class,
@@ -100,7 +96,7 @@ public class SampleDatabase
                                                      SHIPMENT_SUPPLIER_INDEX,
                                                      null,
                                                      shipmentDb,
-                                                     secConfig);</tt></b>
+                                                     secConfig);</code></strong>
     ...
     }
 } </pre>
@@ -109,15 +105,15 @@ public class SampleDatabase
     the previous section for opening a secondary index.
 </p>
       <p>
-    The application-defined <tt class="classname">ShipmentByPartKeyCreator</tt>
-    and <tt class="classname">ShipmentBySupplierKeyCreator</tt> classes are shown below. They
+    The application-defined <code class="classname">ShipmentByPartKeyCreator</code>
+    and <code class="classname">ShipmentBySupplierKeyCreator</code> classes are shown below. They
 	were used above to configure the secondary database objects.
 </p>
       <a id="index_shipmentbypartkeycreator"></a>
       <pre class="programlisting">public class SampleDatabase
 {
 ...
-<b class="userinput"><tt>    private static class ShipmentByPartKeyCreator
+<strong class="userinput"><code>    private static class ShipmentByPartKeyCreator
         extends SerialSerialKeyCreator
     {
         private ShipmentByPartKeyCreator(StoredClassCatalog catalog,
@@ -153,7 +149,7 @@ public class SampleDatabase
             ShipmentKey shipmentKey = (ShipmentKey) primaryKeyInput;
             return new SupplierKey(shipmentKey.getSupplierNumber());
         }
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
@@ -173,7 +169,7 @@ public class SampleDatabase
       <pre class="programlisting">public class SampleDatabase
 {
     ...
-<b class="userinput"><tt>    public final SecondaryDatabase getShipmentByPartDatabase()
+<strong class="userinput"><code>    public final SecondaryDatabase getShipmentByPartDatabase()
     {
         return shipmentByPartDb;
     }
@@ -181,7 +177,7 @@ public class SampleDatabase
     public final SecondaryDatabase getShipmentBySupplierDatabase()
     {
         return shipmentBySupplierDb;
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
@@ -195,8 +191,8 @@ public class SampleDatabase
         throws DatabaseException {
 
         supplierByCityDb.close();
-<b class="userinput"><tt>        shipmentByPartDb.close();
-        shipmentBySupplierDb.close();</tt></b>
+<strong class="userinput"><code>        shipmentByPartDb.close();
+        shipmentBySupplierDb.close();</code></strong>
         partDb.close();
         supplierDb.close();
         shipmentDb.close();

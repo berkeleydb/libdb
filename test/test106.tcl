@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: test106.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test106
 # TEST
@@ -18,6 +18,8 @@ proc test106 { method {nitems 100} {niter 200} {tnum "106"} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	if { [is_btree $method] != 1 } {
 		puts "\tTest$tnum: Skipping for method $method."
@@ -38,7 +40,8 @@ proc test106 { method {nitems 100} {niter 200} {tnum "106"} args } {
 	#
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex == -1 } {
-		set env [berkdb_env -create -home $testdir -txn]
+		set env \
+		    [eval {berkdb_env -create -home $testdir -txn} $pageargs]
 	} else {
 		incr eindex
 		set env [lindex $args $eindex]

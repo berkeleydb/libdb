@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredSortedMap.java,v 12.10 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -30,7 +30,9 @@ import com.sleepycat.db.OperationStatus;
  *
  * @author Mark Hayes
  */
-public class StoredSortedMap extends StoredMap implements SortedMap {
+public class StoredSortedMap<K,V>
+    extends StoredMap<K,V>
+    implements SortedMap<K,V> {
 
     /**
      * Creates a sorted map view of a {@link Database}.
@@ -52,8 +54,10 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntryBinding valueBinding, boolean writeAllowed) {
+    public StoredSortedMap(Database database,
+                           EntryBinding<K> keyBinding,
+                           EntryBinding<V> valueBinding,
+                           boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
                            writeAllowed, null));
@@ -80,8 +84,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntryBinding valueBinding,
+    public StoredSortedMap(Database database,
+                           EntryBinding<K> keyBinding,
+                           EntryBinding<V> valueBinding,
                            PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, valueBinding, null,
@@ -108,8 +113,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntityBinding valueEntityBinding,
+    public StoredSortedMap(Database database,
+                           EntryBinding<K> keyBinding,
+                           EntityBinding<V> valueEntityBinding,
                            boolean writeAllowed) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -137,8 +143,9 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public StoredSortedMap(Database database, EntryBinding keyBinding,
-                           EntityBinding valueEntityBinding,
+    public StoredSortedMap(Database database,
+                           EntryBinding<K> keyBinding,
+                           EntityBinding<V> valueEntityBinding,
                            PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, keyBinding, null, valueEntityBinding,
@@ -159,7 +166,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      *
      * @return null.
      */
-    public Comparator comparator() {
+    public Comparator<? super K> comparator() {
 
         return null;
     }
@@ -173,7 +180,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object firstKey() {
+    public K firstKey() {
 
         return getFirstOrLastKey(true);
     }
@@ -187,12 +194,12 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object lastKey() {
+    public K lastKey() {
 
         return getFirstOrLastKey(false);
     }
 
-    private Object getFirstOrLastKey(boolean doGetFirst) {
+    private K getFirstOrLastKey(boolean doGetFirst) {
 
         DataCursor cursor = null;
         try {
@@ -203,8 +210,8 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
             } else {
                 status = cursor.getLast(false);
             }
-            return (status == OperationStatus.SUCCESS) ?
-                    cursor.getCurrentKey() : null;
+            return (K) ((status == OperationStatus.SUCCESS) ?
+                        cursor.getCurrentKey() : null);
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         } finally {
@@ -227,7 +234,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap headMap(Object toKey) {
+    public SortedMap<K,V> headMap(K toKey) {
 
         return subMap(null, false, toKey, false);
     }
@@ -249,7 +256,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap headMap(Object toKey, boolean toInclusive) {
+    public SortedMap<K,V> headMap(K toKey, boolean toInclusive) {
 
         return subMap(null, false, toKey, toInclusive);
     }
@@ -269,7 +276,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap tailMap(Object fromKey) {
+    public SortedMap<K,V> tailMap(K fromKey) {
 
         return subMap(fromKey, true, null, false);
     }
@@ -291,7 +298,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap tailMap(Object fromKey, boolean fromInclusive) {
+    public SortedMap<K,V> tailMap(K fromKey, boolean fromInclusive) {
 
         return subMap(fromKey, fromInclusive, null, false);
     }
@@ -313,7 +320,7 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap subMap(Object fromKey, Object toKey) {
+    public SortedMap<K,V> subMap(K fromKey, K toKey) {
 
         return subMap(fromKey, true, toKey, false);
     }
@@ -340,9 +347,10 @@ public class StoredSortedMap extends StoredMap implements SortedMap {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedMap subMap(Object fromKey, boolean fromInclusive,
-                            Object toKey, boolean toInclusive) {
-
+    public SortedMap<K,V> subMap(K fromKey,
+                                 boolean fromInclusive,
+                                 K toKey,
+                                 boolean toInclusive) {
         try {
             return new StoredSortedMap(
                view.subView(fromKey, fromInclusive, toKey, toInclusive, null));

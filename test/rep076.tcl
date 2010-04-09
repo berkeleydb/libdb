@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007,2008 Oracle.  All rights reserved.
+# Copyright (c) 2007-2009 Oracle.  All rights reserved.
 #
-# $Id: rep076.tcl,v 12.5 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep076
 # TEST	Replication elections - what happens if elected client
@@ -23,6 +23,9 @@ proc rep076 { method args } {
 	source ./include.tcl
 
 	global mixed_mode_logging
+	global databases_in_memory
+	global repfiles_in_memory
+
 	set tnum "076"
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -39,13 +42,29 @@ proc rep076 { method args } {
 		return
 	}
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set nclients 3
 	set logsets [create_logsets [expr $nclients + 1]]
 	set winsets { { 1 1 } { 1 2 } }
 	foreach l $logsets {
 		foreach w $winsets {
 			puts "Rep$tnum ($method): Replication elections -\
-			    elected client ignores election."
+			    elected client ignores election $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			for { set i 0 } { $i < $nclients } { incr i } {
 				puts "Rep$tnum: Client $i logs are\
@@ -59,12 +78,19 @@ proc rep076 { method args } {
 proc rep076_sub { method nclients tnum logset winset largs } {
 	source ./include.tcl
 	global machids
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -90,7 +116,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env -create -log_max 1000000 $verbargs \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -101,7 +127,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -event rep_event \
+		    -event rep_event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -116,7 +142,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	# Close master.
@@ -132,6 +158,12 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	set nsites $nclients
 	set nvotes $nclients
 	setpriority pri $nclients $winner1
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+
 	foreach pair $envlist {
 		set i [expr [lindex $pair 1] - 2]
 		replclear [expr $i + 2]
@@ -151,14 +183,14 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	# not be made master.
 	puts "\tRep$tnum: First winner ignores its election."
 	run_election env_cmd envlist err_cmd pri crash $qdir $m\
-	    $elector $nsites $nvotes $nclients $winner1 0 test.db 1
+	    $elector $nsites $nvotes $nclients $winner1 0 $dbname 1
 
 	# Run second election where winner accepts its election and
 	# is made master.
 	puts "\tRep$tnum: Second winner accepts its election."
 	setpriority pri $nclients $winner2
 	run_election env_cmd envlist err_cmd pri crash $qdir $m\
-	    $elector $nsites $nvotes $nclients $winner2 0 test.db
+	    $elector $nsites $nvotes $nclients $winner2 0 $dbname
 
 	# Clean up.
 	foreach pair $envlist {

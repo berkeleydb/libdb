@@ -1,4 +1,4 @@
-# $Id: win_exports.in,v 12.38 2008/03/06 00:02:46 alexg Exp $
+# $Id$
 
 # Standard interfaces.
 	db_create
@@ -9,7 +9,6 @@
 	db_sequence_create
 	db_strerror
 	db_version
-	db_xa_switch
 	log_compare
 
 # These are needed to link the tcl library.
@@ -87,6 +86,7 @@
 	__bam_root_read
 	__bam_rsplit_read
 	__bam_split_read
+	__bam_split_42_read
 	__config_split
 	__crdel_inmem_create_read
 	__crdel_inmem_remove_read
@@ -97,7 +97,12 @@
 	__db_addrem_read
 	__db_big_read
 	__db_cksum_read
+	__db_compress_count_int
+	__db_compress_int
 	__db_debug_read
+	__db_decompress_count_int
+	__db_decompress_int
+	__db_decompress_int32
 	__db_dispatch
 	__db_dl
 	__db_dumptree
@@ -118,7 +123,8 @@
 	__db_pg_freedata_42_read
 	__db_pg_freedata_read
 	__db_pg_init_read
-	__db_pg_sort_read
+	__db_pg_sort_44_read
+	__db_pg_trunc_read
 	__db_pgin
 	__db_pgout
 	__db_pr_callback
@@ -132,11 +138,16 @@
 	__db_util_siginit
 	__db_util_sigresend
 	__db_verify_internal
+	__dbt_usercopy
+	__dbt_userfree
 	__dbreg_register_read
+	__fop_create_42_read
 	__fop_create_read
 	__fop_file_remove_read
 	__fop_remove_read
+	__fop_rename_42_read
 	__fop_rename_read
+	__fop_write_42_read
 	__fop_write_read
 	__ham_chgpg_read
 	__ham_copypage_read
@@ -190,7 +201,8 @@
 	__txn_child_read
 	__txn_ckp_42_read
 	__txn_ckp_read
+	__txn_prepare_read
 	__txn_recycle_read
 	__txn_regop_42_read
 	__txn_regop_read
-	__txn_xa_regop_read
+	__txn_xa_regop_42_read

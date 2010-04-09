@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Administrative Methods</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="DBOpenFlags.html" title="Database Open Flags" />
+    <link rel="prev" href="DBOpenFlags.html" title="Database Open Flags" />
     <link rel="next" href="dbErrorReporting.html" title="Error Reporting Functions" />
   </head>
   <body>
@@ -32,11 +32,10 @@
             <h2 class="title" style="clear: both"><a id="CoreDBAdmin"></a>Administrative Methods</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 		The following 
-		<tt class="classname">DB</tt> 
+		<code class="classname">DB</code> 
 		 
 
 
@@ -46,7 +45,7 @@
         <ul type="disc">
           <li>
             <p>
-                <tt class="methodname">DB-&gt;get_open_flags()</tt>
+                <code class="methodname">DB-&gt;get_open_flags()</code>
                 
             </p>
             <p>
@@ -65,12 +64,12 @@ dbp-&gt;get_open_flags(dbp, &amp;open_flags); </pre>
           </li>
           <li>
             <p>
-                <tt class="methodname">DB-&gt;remove()</tt>
+                <code class="methodname">DB-&gt;remove()</code>
                 
             </p>
             <p>
                 Removes the specified database. If no value is given for the 
-				<i class="parameter"><tt>database</tt></i> parameter, then the entire file
+				<em class="parameter"><code>database</code></em> parameter, then the entire file
 				referenced by this method is removed.
             </p>
             <p>
@@ -93,12 +92,12 @@ dbp-&gt;remove(dbp,                   /* Database pointer */
           </li>
           <li>
             <p>
-                <tt class="methodname">DB-&gt;rename()</tt>
+                <code class="methodname">DB-&gt;rename()</code>
                 
             </p>
             <p>
                 Renames the specified database. If no value is given for the 
-				<i class="parameter"><tt>database</tt></i> parameter, then the entire file
+				<em class="parameter"><code>database</code></em> parameter, then the entire file
 				referenced by this method is renamed.
             </p>
             <p>

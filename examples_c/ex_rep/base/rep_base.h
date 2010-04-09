@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_base.h,v 12.17 2008/02/27 22:04:15 alanb Exp $
+ * $Id$
  */
 
 #ifndef _EX_REPQUOTE_H_
@@ -12,11 +12,6 @@
 #include "../common/rep_common.h"
 
 #define	SELF_EID	1
-
-typedef struct {
-	char *host;		/* Host name. */
-	u_int32_t port;		/* Port on which to connect to this site. */
-} repsite_t;
 
 /* Globals */
 typedef struct {
@@ -63,26 +58,12 @@ typedef struct {
 /* Portability macros for basic threading and networking */
 #ifdef _WIN32
 
-#include <winsock2.h>
-#include <windows.h>
-
-extern int getopt(int, char * const *, const char *);
-
-typedef HANDLE thread_t;
-#define	thread_create(thrp, attr, func, arg)				   \
-    (((*(thrp) = CreateThread(NULL, 0,					   \
-	(LPTHREAD_START_ROUTINE)(func), (arg), 0, NULL)) == NULL) ? -1 : 0)
-#define	thread_join(thr, statusp)					   \
-    ((WaitForSingleObject((thr), INFINITE) == WAIT_OBJECT_0) &&		   \
-    GetExitCodeThread((thr), (LPDWORD)(statusp)) ? 0 : -1)
-
 typedef HANDLE mutex_t;
 #define	mutex_init(m, attr)						   \
     (((*(m) = CreateMutex(NULL, FALSE, NULL)) != NULL) ? 0 : -1)
 #define	mutex_lock(m)							   \
     ((WaitForSingleObject(*(m), INFINITE) == WAIT_OBJECT_0) ? 0 : -1)
 #define	mutex_unlock(m)		(ReleaseMutex(*(m)) ? 0 : -1)
-#define	sleep(s)		Sleep(1000 * (s))
 
 typedef int socklen_t;
 typedef SOCKET socket_t;
@@ -101,11 +82,6 @@ typedef SOCKET socket_t;
 #include <signal.h>
 #include <unistd.h>
 
-typedef pthread_t thread_t;
-#define	thread_create(thrp, attr, func, arg)				   \
-    pthread_create((thrp), (attr), (func), (arg))
-#define	thread_join(thr, statusp) pthread_join((thr), (statusp))
-
 typedef pthread_mutex_t mutex_t;
 #define	mutex_init(m, attr)	pthread_mutex_init((m), (attr))
 #define	mutex_lock(m)		pthread_mutex_lock(m)
@@ -120,8 +96,8 @@ typedef int socket_t;
 
 #endif
 
-void *connect_all __P((void *args));
-void *connect_thread __P((void *args));
+void *connect_all __P((void *));
+void *connect_thread __P((void *));
 int   doclient __P((DB_ENV *, const char *, machtab_t *));
 int   domaster __P((DB_ENV *, const char *));
 socket_t   get_accepted_socket __P((const char *, int));

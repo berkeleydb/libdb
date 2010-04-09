@@ -1,4 +1,4 @@
-<!-- $Id: dbcorewix.in,v 1.10 2006/09/14 15:50:50 mjc Exp $
+<!-- $Id$
  -
  - Dbcorewix.in is the DB core WiX input file, and is used by
  - s_winmsi to create dbcore.wxs (an input to WiX).

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_dump.c,v 12.16 2008/01/08 20:58:13 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 int	 db_init __P((DB_ENV *, char *, int, u_int32_t, int *));
@@ -37,9 +37,9 @@ main(argc, argv)
 	DB *dbp;
 	u_int32_t cache;
 	int ch;
-	int exitval, keyflag, lflag, nflag, pflag, private;
+	int exitval, keyflag, lflag, mflag, nflag, pflag, sflag, private;
 	int ret, Rflag, rflag, resize;
-	char *dopt, *home, *passwd, *subname;
+	char *dbname, *dopt, *filename, *home, *passwd;
 
 	if ((progname = __db_rpath(argv[0])) == NULL)
 		progname = argv[0];
@@ -51,12 +51,12 @@ main(argc, argv)
 
 	dbenv = NULL;
 	dbp = NULL;
-	exitval = lflag = nflag = pflag = rflag = Rflag = 0;
+	exitval = lflag = mflag = nflag = pflag = rflag = Rflag = sflag = 0;
 	keyflag = 0;
 	cache = MEGABYTE;
 	private = 0;
-	dopt = home = passwd = subname = NULL;
-	while ((ch = getopt(argc, argv, "d:f:h:klNpP:rRs:V")) != EOF)
+	dbname = dopt = filename = home = passwd = NULL;
+	while ((ch = getopt(argc, argv, "d:f:h:klm:NpP:rRs:V")) != EOF)
 		switch (ch) {
 		case 'd':
 			dopt = optarg;
@@ -77,6 +77,10 @@ main(argc, argv)
 		case 'l':
 			lflag = 1;
 			break;
+		case 'm':
+			mflag = 1;
+			dbname = optarg;
+			break;
 		case 'N':
 			nflag = 1;
 			break;
@@ -93,7 +97,8 @@ main(argc, argv)
 			pflag = 1;
 			break;
 		case 's':
-			subname = optarg;
+			sflag = 1;
+			dbname = optarg;
 			break;
 		case 'R':
 			Rflag = 1;
@@ -112,7 +117,15 @@ main(argc, argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1)
+	/*
+	 * A file name must be specified, unless we're looking for an in-memory
+	 * db,  in which case it must not.
+	 */
+	if (argc == 0 && mflag)
+		filename = NULL;
+	else if (argc == 1 && !mflag)
+		filename = argv[0];
+	else
 		return (usage());
 
 	if (dopt != NULL && pflag) {
@@ -121,9 +134,15 @@ main(argc, argv)
 		    progname);
 		return (EXIT_FAILURE);
 	}
-	if (lflag && subname != NULL) {
+	if (lflag && sflag) {
 		fprintf(stderr,
 		    "%s: the -l and -s options may not both be specified\n",
+		    progname);
+		return (EXIT_FAILURE);
+	}
+	if ((lflag || sflag) && mflag) {
+		fprintf(stderr,
+		    "%s: the -m option may not be specified with -l or -s\n",
 		    progname);
 		return (EXIT_FAILURE);
 	}
@@ -135,9 +154,9 @@ main(argc, argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (subname != NULL && rflag) {
+	if ((mflag || sflag) && rflag) {
 		fprintf(stderr, "%s: %s",
-		    "the -s and -r or R options may not both be specified\n",
+		    "the -r or R options may not be specified with -m or -s\n",
 		    progname);
 		return (EXIT_FAILURE);
 	}
@@ -183,13 +202,22 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		goto err;
 	}
 
+#if 0
+	Set application-specific btree compression functions here. For example:
+	if ((ret = dbp->set_bt_compress(
+	    dbp, local_compress_func, local_decompress_func)) != 0) {
+		dbp->err(dbp, ret, "DB->set_bt_compress");
+		goto err;
+	}
+#endif
+
 	/*
 	 * If we're salvaging, don't do an open;  it might not be safe.
 	 * Dispatch now into the salvager.
 	 */
 	if (rflag) {
 		/* The verify method is a destructor. */
-		ret = dbp->verify(dbp, argv[0], NULL, stdout,
+		ret = dbp->verify(dbp, filename, NULL, stdout,
 		    DB_SALVAGE |
 		    (Rflag ? DB_AGGRESSIVE : 0) |
 		    (pflag ? DB_PRINTABLE : 0));
@@ -200,8 +228,9 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	}
 
 	if ((ret = dbp->open(dbp, NULL,
-	    argv[0], subname, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-		dbp->err(dbp, ret, "open: %s", argv[0]);
+	    filename, dbname, DB_UNKNOWN, DB_RDWRMASTER|DB_RDONLY, 0)) != 0) {
+		dbp->err(dbp, ret, "open: %s",
+		    filename == NULL ? dbname : filename);
 		goto err;
 	}
 	if (private != 0) {
@@ -219,7 +248,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 
 	if (dopt != NULL) {
 		if ((ret = __db_dumptree(dbp, NULL, dopt, NULL)) != 0) {
-			dbp->err(dbp, ret, "__db_dumptree: %s", argv[0]);
+			dbp->err(dbp, ret, "__db_dumptree: %s", filename);
 			goto err;
 		}
 	} else if (lflag) {
@@ -228,12 +257,13 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 				goto err;
 		} else {
 			dbp->errx(dbp,
-			    "%s: does not contain multiple databases", argv[0]);
+			    "%s: does not contain multiple databases",
+			    filename);
 			goto err;
 		}
 	} else {
-		if (subname == NULL && dbp->get_multiple(dbp)) {
-			if (dump_sub(dbenv, dbp, argv[0], pflag, keyflag))
+		if (dbname == NULL && dbp->get_multiple(dbp)) {
+			if (dump_sub(dbenv, dbp, filename, pflag, keyflag))
 				goto err;
 		} else
 			if (dbp->dump(dbp, NULL,
@@ -367,6 +397,18 @@ dump_sub(dbenv, parent_dbp, parent_name, pflag, keyflag)
 			free(subdb);
 			return (1);
 		}
+
+#if 0
+		Set application-specific btree compression functions here.
+		For example:
+
+		if ((ret = dbp->set_bt_compress(
+		    dbp, local_compress_func, local_decompress_func)) != 0) {
+			dbp->err(dbp, ret, "DB->set_bt_compress");
+			goto err;
+		}
+#endif
+
 		if ((ret = dbp->open(dbp, NULL,
 		    parent_name, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0)
 			dbp->err(dbp, ret,
@@ -445,6 +487,8 @@ usage()
 	(void)fprintf(stderr, "usage: %s [-klNprRV]\n\t%s\n",
 	    progname,
     "[-d ahr] [-f output] [-h home] [-P password] [-s database] db_file");
+	(void)fprintf(stderr, "usage: %s [-kNpV] %s\n",
+	    progname, "[-d ahr] [-f output] [-h home] -m database");
 	return (EXIT_FAILURE);
 }
 

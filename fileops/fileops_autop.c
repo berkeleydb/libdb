@@ -11,6 +11,48 @@
 #include "dbinc/fop.h"
 
 /*
+ * PUBLIC: int __fop_create_42_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__fop_create_42_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__fop_create_42_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret = __fop_create_42_read(env, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__fop_create_42%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\tname: ");
+	for (i = 0; i < argp->name.size; i++) {
+		ch = ((u_int8_t *)argp->name.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
+	(void)printf("\tmode: %o\n", argp->mode);
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
  * PUBLIC: int __fop_create_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
@@ -42,6 +84,12 @@ __fop_create_print(env, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tname: ");
 	for (i = 0; i < argp->name.size; i++) {
 		ch = ((u_int8_t *)argp->name.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tdirname: ");
+	for (i = 0; i < argp->dirname.size; i++) {
+		ch = ((u_int8_t *)argp->dirname.data)[i];
 		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
 	}
 	(void)printf("\n");
@@ -100,6 +148,57 @@ __fop_remove_print(env, dbtp, lsnp, notused2, notused3)
 }
 
 /*
+ * PUBLIC: int __fop_write_42_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__fop_write_42_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__fop_write_42_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret = __fop_write_42_read(env, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__fop_write_42%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\tname: ");
+	for (i = 0; i < argp->name.size; i++) {
+		ch = ((u_int8_t *)argp->name.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
+	(void)printf("\tpgsize: %lu\n", (u_long)argp->pgsize);
+	(void)printf("\tpageno: %lu\n", (u_long)argp->pageno);
+	(void)printf("\toffset: %lu\n", (u_long)argp->offset);
+	(void)printf("\tpage: ");
+	for (i = 0; i < argp->page.size; i++) {
+		ch = ((u_int8_t *)argp->page.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tflag: %lu\n", (u_long)argp->flag);
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
  * PUBLIC: int __fop_write_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
@@ -134,6 +233,12 @@ __fop_write_print(env, dbtp, lsnp, notused2, notused3)
 		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
 	}
 	(void)printf("\n");
+	(void)printf("\tdirname: ");
+	for (i = 0; i < argp->dirname.size; i++) {
+		ch = ((u_int8_t *)argp->dirname.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
 	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\tpgsize: %lu\n", (u_long)argp->pgsize);
 	(void)printf("\tpageno: %lu\n", (u_long)argp->pageno);
@@ -145,6 +250,59 @@ __fop_write_print(env, dbtp, lsnp, notused2, notused3)
 	}
 	(void)printf("\n");
 	(void)printf("\tflag: %lu\n", (u_long)argp->flag);
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __fop_rename_42_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__fop_rename_42_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__fop_rename_42_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret = __fop_rename_42_read(env, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__fop_rename_42%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\toldname: ");
+	for (i = 0; i < argp->oldname.size; i++) {
+		ch = ((u_int8_t *)argp->oldname.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tnewname: ");
+	for (i = 0; i < argp->newname.size; i++) {
+		ch = ((u_int8_t *)argp->newname.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tfileid: ");
+	for (i = 0; i < argp->fileid.size; i++) {
+		ch = ((u_int8_t *)argp->fileid.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tappname: %lu\n", (u_long)argp->appname);
 	(void)printf("\n");
 	__os_free(env, argp);
 	return (0);
@@ -188,6 +346,12 @@ __fop_rename_print(env, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tnewname: ");
 	for (i = 0; i < argp->newname.size; i++) {
 		ch = ((u_int8_t *)argp->newname.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tdirname: ");
+	for (i = 0; i < argp->dirname.size; i++) {
+		ch = ((u_int8_t *)argp->dirname.data)[i];
 		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
 	}
 	(void)printf("\n");

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: ReplicationTransport.java,v 12.9 2008/05/06 03:46:31 sarette Exp $
+ * $Id$
  */
 package com.sleepycat.db;
 

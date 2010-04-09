@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Using Tuples with Key Creators
-	</title>
+    <title>Using Tuples with Key Creators</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Tuple.html" title="Chapter 5. &#10;&#9;&#9;Using Tuples&#10;&#9;" />
-    <link rel="previous" href="Tuple.html" title="Chapter 5. &#10;&#9;&#9;Using Tuples&#10;&#9;" />
-    <link rel="next" href="tuplekeybindings.html" title="&#10;&#9;&#9;Creating Tuple Key Bindings&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Tuple.html" title="Chapter 5.  Using Tuples" />
+    <link rel="prev" href="Tuple.html" title="Chapter 5.  Using Tuples" />
+    <link rel="next" href="tuplekeybindings.html" title="Creating Tuple Key Bindings" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     Key creators were used in prior examples to extract index keys
@@ -55,10 +52,10 @@
           <li>
             <p>
             The 
-            <a href="../../java/com/sleepycat/bind/serial/TupleSerialKeyCreator.html" target="_top">TupleSerialKeyCreator</a>
+            <a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialKeyCreator.html" target="_top">TupleSerialKeyCreator</a>
             
             base class is used instead of the 
-            <a href="../../java/com/sleepycat/bind/serial/SerialSerialKeyCreator.html" target="_top">SerialSerialKeyCreator</a>
+            <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialSerialKeyCreator.html" target="_top">SerialSerialKeyCreator</a>
             
             base class.
         </p>
@@ -66,13 +63,13 @@
           <li>
             <p>
             For all key input and output parameters, the 
-            <a href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
+            <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
             
             and 
-            <a href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
+            <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
             
             classes are used instead of 
-            <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/Object.html" target="_top">Object</a>
+            <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/Object.html" target="_top">Object</a>
             
             (representing a deserialized object).
         </p>
@@ -81,47 +78,47 @@
             <p>
             Instead of returning a key output object, these methods call
             tuple write methods such as 
-            <a href="../../java/com/sleepycat/bind/tuple/TupleOutput.html#writeString(java.lang.String)" target="_top">TupleOutput.writeString</a>.
+            <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleOutput.html#writeString(java.lang.String)" target="_top">TupleOutput.writeString</a>.
         </p>
           </li>
         </ul>
       </div>
       <p>
     In addition to writing key tuples, the
-	<tt class="classname">ShipmentByPartKeyCreator</tt> and
-	<tt class="classname">ShipmentBySupplierKeyCreator</tt> classes also read the key tuple
+	<code class="classname">ShipmentByPartKeyCreator</code> and
+	<code class="classname">ShipmentBySupplierKeyCreator</code> classes also read the key tuple
 	of the primary key. This is because they extract the index key from
 	fields in the Shipment's primary key. Instead of calling getter
-	methods on the <tt class="classname">ShipmentKey</tt> object, as in prior examples,
+	methods on the <code class="classname">ShipmentKey</code> object, as in prior examples,
 	these methods call 
-    <a href="../../java/com/sleepycat/bind/tuple/TupleInput.html#readString()" target="_top">TupleInput.readString</a>.
-	The <tt class="classname">ShipmentKey</tt> consists of two string fields that are read
+    <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleInput.html#readString()" target="_top">TupleInput.readString</a>.
+	The <code class="classname">ShipmentKey</code> consists of two string fields that are read
 	in sequence.
 </p>
       <p>
     The modified key creators are shown below:
-	<tt class="classname">SupplierByCityKeyCreator</tt>, 
-    <tt class="classname">ShipmentByPartKeyCreator</tt>
-	and <tt class="classname">ShipmentBySupplierKeyCreator</tt>.
+	<code class="classname">SupplierByCityKeyCreator</code>, 
+    <code class="classname">ShipmentByPartKeyCreator</code>
+	and <code class="classname">ShipmentBySupplierKeyCreator</code>.
 </p>
       <a id="tuple_SupplierByCityKeyCreator"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.serial.TupleSerialKeyCreator;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.serial.TupleSerialKeyCreator;
 import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.bind.tuple.TupleOutput;
-...</tt></b>
+...</code></strong>
 public class SampleDatabase
 {
     ...
     private static class SupplierByCityKeyCreator
-<b class="userinput"><tt>        extends TupleSerialKeyCreator</tt></b>
+<strong class="userinput"><code>        extends TupleSerialKeyCreator</code></strong>
     {
         private SupplierByCityKeyCreator(StoredClassCatalog catalog,
-                                         <b class="userinput"><tt>Class valueClass</tt></b>)
+                                         <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);
         }
 
-<b class="userinput"><tt>        public boolean createSecondaryKey(TupleInput primaryKeyInput,
+<strong class="userinput"><code>        public boolean createSecondaryKey(TupleInput primaryKeyInput,
                                           Object valueInput,
                                           TupleOutput indexKeyOutput)
         {
@@ -133,19 +130,19 @@ public class SampleDatabase
             } else {
                 return false;
             }
-        }</tt></b>
+        }</code></strong>
     }
 
     private static class ShipmentByPartKeyCreator
-        <b class="userinput"><tt>extends TupleSerialKeyCreator</tt></b>
+        <strong class="userinput"><code>extends TupleSerialKeyCreator</code></strong>
     {
         private ShipmentByPartKeyCreator(StoredClassCatalog catalog,
-                                         <b class="userinput"><tt>Class valueClass</tt></b>)
+                                         <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);
         }
 
-        <b class="userinput"><tt>public boolean createSecondaryKey(TupleInput primaryKeyInput,
+        <strong class="userinput"><code>public boolean createSecondaryKey(TupleInput primaryKeyInput,
                                           Object valueInput,
                                           TupleOutput indexKeyOutput)
         {
@@ -153,19 +150,19 @@ public class SampleDatabase
             // don't bother reading the supplierNumber
             indexKeyOutput.writeString(partNumber);
             return true;
-        }</tt></b>
+        }</code></strong>
     }
 
     private static class ShipmentBySupplierKeyCreator
-        <b class="userinput"><tt>extends TupleSerialKeyCreator</tt></b>
+        <strong class="userinput"><code>extends TupleSerialKeyCreator</code></strong>
     {
         private ShipmentBySupplierKeyCreator(StoredClassCatalog catalog,
-                                             <b class="userinput"><tt>Class valueClass</tt></b>)
+                                             <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);
         }
 
-        <b class="userinput"><tt>public boolean createSecondaryKey(TupleInput primaryKeyInput,
+        <strong class="userinput"><code>public boolean createSecondaryKey(TupleInput primaryKeyInput,
                                           Object valueInput,
                                           TupleOutput indexKeyOutput)
         {
@@ -173,7 +170,7 @@ public class SampleDatabase
             String supplierNumber = primaryKeyInput.readString();
             indexKeyOutput.writeString(supplierNumber);
             return true;
-        }</tt></b>
+        }</code></strong>
     }
     ...
 }

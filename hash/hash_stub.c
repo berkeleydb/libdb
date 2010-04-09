@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: hash_stub.c,v 12.19 2008/01/30 12:18:22 mjc Exp $
+ * $Id$
  */
 
 #ifndef HAVE_HASH
@@ -127,6 +127,16 @@ __ham_46_hashmeta(dbp, real_name, flags, fhp, h, dirtyp)
 }
 
 int
+__hamc_cmp(dbc, other_dbc, result)
+	DBC *dbc, *other_dbc;
+	int *result;
+{
+	COMPQUIET(other_dbc, NULL);
+	COMPQUIET(result, NULL);
+	return (__db_no_hash_am(dbc->env));
+}
+
+int
 __hamc_count(dbc, recnop)
 	DBC *dbc;
 	db_recno_t *recnop;
@@ -222,7 +232,7 @@ __ham_metagroup_42_recover(env, dbtp, lsnp, op, info)
 {
 	COMPQUIET(dbtp, NULL);
 	COMPQUIET(lsnp, NULL);
-	COMPQUIET(op, 0);
+	COMPQUIET(op, (db_recops)0);
 	COMPQUIET(info, NULL);
 	return (__db_no_hash_am(env));
 }
@@ -246,7 +256,7 @@ __ham_groupalloc_42_recover(env, dbtp, lsnp, op, info)
 {
 	COMPQUIET(dbtp, NULL);
 	COMPQUIET(lsnp, NULL);
-	COMPQUIET(op, 0);
+	COMPQUIET(op, (db_recops)0);
 	COMPQUIET(info, NULL);
 	return (__db_no_hash_am(env));
 }
@@ -411,8 +421,8 @@ __ham_vrfy(dbp, vdp, h, pgno, flags)
 }
 
 int
-__ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
-	DB *dbp;
+__ham_vrfy_hashing(dbc, nentries, m, thisbucket, pgno, flags, hfunc)
+	DBC *dbc;
 	u_int32_t nentries;
 	HMETA *m;
 	u_int32_t thisbucket;
@@ -426,7 +436,7 @@ __ham_vrfy_hashing(dbp, nentries, m, thisbucket, pgno, flags, hfunc)
 	COMPQUIET(pgno, 0);
 	COMPQUIET(flags, 0);
 	COMPQUIET(hfunc, NULL);
-	return (__db_no_hash_am(dbp->env));
+	return (__db_no_hash_am(dbc->dbp->env));
 }
 
 int

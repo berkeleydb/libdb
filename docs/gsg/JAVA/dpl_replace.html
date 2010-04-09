@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Replacing Entity Objects</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="dpl_delete.html" title="Deleting Entity Objects" />
+    <link rel="prev" href="dpl_delete.html" title="Deleting Entity Objects" />
     <link rel="next" href="dpl_example.html" title="Chapter 6. A DPL Example" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="dpl_replace"></a>Replacing Entity Objects</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                    To modify a stored entity object, retrieve it, update
@@ -40,14 +39,14 @@
            </p>
       <pre class="programlisting">
 SimpleEntityClass sec = sda.pIdx.get("keyone");
-sec.setsKey("skeyoneupdated");
+sec.setSKey("skeyoneupdated");
 sda.pIdx.put(sec);
 </pre>
       <p>
                 Note that because we updated a field on the object that is
                 a secondary key, this object will now be accessible by the
-                secondary key of <tt class="literal">skeyoneupdated</tt> instead
-                of the previous value, which was <tt class="literal">skeyone</tt>
+                secondary key of <code class="literal">skeyoneupdated</code> instead
+                of the previous value, which was <code class="literal">skeyone</code>
         </p>
       <p>
                 Be aware that if you modify the object's primary key, the behavior is
@@ -59,27 +58,27 @@ sda.pIdx.put(sec);
 // primary index of "keyfive" and the other with primary index of 
 //'keyfivenew'.
 SimpleEntityClass sec = sda.pIdx.get("keyfive");
-sec.setpKey("keyfivenew");
+sec.setPKey("keyfivenew");
 sda.pIdx.put(sec); </pre>
       <p>
                 Finally, if you are iterating over a collection of objects
-                using an <tt class="classname">EntityCursor</tt>, you can
+                using an <code class="classname">EntityCursor</code>, you can
                 update each object in turn using
-                <tt class="methodname">EntityCursor.update()</tt>. Note,
+                <code class="methodname">EntityCursor.update()</code>. Note,
                 however, that you must be iterating using a
-                <tt class="classname">PrimaryIndex</tt>; this operation is not
+                <code class="classname">PrimaryIndex</code>; this operation is not
                 allowed if you are using a
-                <tt class="classname">SecondaryIndex</tt>.
+                <code class="classname">SecondaryIndex</code>.
         </p>
       <p>
                 For example, the following iterates over every
-                <tt class="classname">SimpleEntityClass</tt> object in the entity
+                <code class="classname">SimpleEntityClass</code> object in the entity
                 store, and it changes them all so that they have a
-                secondary index of <tt class="literal">updatedskey</tt>:
+                secondary index of <code class="literal">updatedskey</code>:
         </p>
       <pre class="programlisting">EntityCursor&lt;SimpleEntityClass&gt; sec_pcursor = sda.pIdx.entities();
 for (SimpleEntityClass sec : sec_pcursor) {
-    sec.setsKey("updatedskey");
+    sec.setSKey("updatedskey");
     sec_pcursor.update(item);
 }
 sec_pcursor.close(); </pre>

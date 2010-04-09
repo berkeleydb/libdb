@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Replication Benefits</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="introduction.html" title="Chapter 1. Introduction" />
-    <link rel="previous" href="introduction.html" title="Chapter 1. Introduction" />
+    <link rel="prev" href="introduction.html" title="Chapter 1. Introduction" />
     <link rel="next" href="apioverview.html" title="The Replication APIs" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="repadvantage"></a>Replication Benefits</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 
@@ -46,24 +45,20 @@
             replication in your DB application are:
         </p>
       <div class="itemizedlist">
-        <div class="itemizedlist">
-          <ul type="circle">
-            <li>
-              <p>
-                                   Improved application reliability.
-                           </p>
-              <p>
-                                   By spreading your data across multiple
-                                   machines, you can ensure that your
-                                   application's data continues to be
-                                   available even in the event of a
-                                   hardware failure on any given machine in
-                                   the replication group.
-                           </p>
-            </li>
-          </ul>
-        </div>
         <ul type="disc">
+          <li>
+            <p>
+                    Improve application reliability.
+                </p>
+            <p>
+                    By spreading your data across multiple
+                    machines, you can ensure that your
+                    application's data continues to be
+                    available even in the event of a
+                    hardware failure on any given machine in
+                    the replication group.
+                </p>
+          </li>
           <li>
             <p>
                     Improve read performance.
@@ -78,10 +73,10 @@
                     improving application data read responsiveness.
                 </p>
             <p>
-                        Additionally, depending on how you partition your
-                        data across your replicas, any given replica may
-                        only need to cache part of your data, decreasing
-                        cache misses and reducing I/O on the client.
+                    Additionally, depending on the portion of your data
+                    that you read on a given replica, that replica may need
+                    to cache part of your data, decreasing cache misses and
+                    reducing I/O on the replica.
                 </p>
           </li>
           <li>
@@ -116,7 +111,7 @@
             <p>
                     Note that it is possible to cause DB's replication
                     implementation to wait to hear from one or
-                    more replica's as to whether they have successfully
+                    more replicas as to whether they have successfully
                     saved the write before continuing. However, in this
                     case you might be trading performance for a even
                     higher durability guarantee (see below).
@@ -155,7 +150,7 @@
                     your replication group.
                 </p>
             <p>
-                        For more information, see <a href="fwrkpermmessage.html">Permanent Message Handling</a>.
+                        For more information, see <a class="xref" href="fwrkpermmessage.html" title="Permanent Message Handling">Permanent Message Handling</a>.
                 </p>
           </li>
         </ul>

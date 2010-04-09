@@ -4,6 +4,7 @@ db_env_create
 
 DbEnv.dbremove
 	DB_AUTO_COMMIT			# Implied transaction
+	DB_TXN_NOT_DURABLE		# Don't log the remove
 
 DbEnv.dbrename
 	DB_AUTO_COMMIT			# Implied transaction
@@ -13,6 +14,7 @@ DbEnv.fileid_reset
 
 DbEnv.open
 	DB_CREATE			# Create as necessary
+	DB_FAILCHK			# Run failchk on open
 	DB_INIT_CDB			# Concurrent Access Methods
 	DB_INIT_LOCK			# Initialize locking
 	DB_INIT_LOG			# Initialize logging
@@ -39,6 +41,7 @@ DbEnv.lock_stat_print
 	DB_STAT_LOCK_LOCKERS		# Print lockers
 	DB_STAT_LOCK_OBJECTS		# Print lock objects
 	DB_STAT_LOCK_PARAMS		# Print lock parameters
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.lock_vec
 	DB_LOCK_NOWAIT			# Don't wait for an unavailable lock
@@ -74,6 +77,7 @@ DbEnv.log_stat
 DbEnv.log_stat_print
 	DB_STAT_ALL			# Everything
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.lsn_reset
 	DB_ENCRYPT			# File contains encrypted databases
@@ -86,6 +90,7 @@ DbEnv.memp_stat_print
 	DB_STAT_CLEAR			# Clear stats after return
 	DB_STAT_MEMP_HASH		# Print mpool hash buckets
 	DB_STAT_MEMP_NOERROR		# UNDOC: continue on error
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.mutex_alloc
 	DB_MUTEX_ALLOCATED		# UNDOC: Mutex currently allocated
@@ -93,6 +98,7 @@ DbEnv.mutex_alloc
 	DB_MUTEX_LOGICAL_LOCK		# UNDOC: Mutex backs a database lock
 	DB_MUTEX_PROCESS_ONLY		# Mutex private to a process
 	DB_MUTEX_SELF_BLOCK		# Must be able to block self
+	DB_MUTEX_SHARED			# Shared (read/write) mutex
 
 DbEnv.mutex_stat
 	DB_STAT_CLEAR			# Clear stats after return
@@ -100,6 +106,7 @@ DbEnv.mutex_stat
 DbEnv.mutex_stat_print
 	DB_STAT_ALL			# Everything
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.remove
 	DB_FORCE
@@ -110,6 +117,7 @@ DbEnv.rep_set_config
 	DB_REPMGR_CONF_2SITE_STRICT	# Don't cheat on election votes
 	DB_REP_CONF_BULK		# Bulk transfer
 	DB_REP_CONF_DELAYCLIENT		# Delay client synchronization
+	DB_REP_CONF_INMEM		# In-memory replication
 	DB_REP_CONF_LEASE		# Master leases
 	DB_REP_CONF_NOAUTOINIT		# No automatic client init
 	DB_REP_CONF_NOWAIT		# Don't wait, return error
@@ -130,6 +138,7 @@ DbEnv.rep_stat
 DbEnv.rep_stat_print
 	DB_STAT_ALL			# Everything
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.repmgr_add_remote_site
 	DB_REPMGR_PEER			# C2C synchronization
@@ -145,6 +154,7 @@ DbEnv.repmgr_stat
 DbEnv.repmgr_stat_print
 	DB_STAT_ALL			# Everything
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.set_encrypt
 	DB_ENCRYPT_AES			# AES, assumes SHA1 checksum
@@ -182,6 +192,7 @@ DbEnv.set_timeout
 	DB_SET_LOCK_TIMEOUT		# Set lock timeout
 	DB_SET_TXN_NOW			# UNDOC: Timeout lock now
 	DB_SET_TXN_TIMEOUT		# Set transaction timeout
+	DB_SET_REG_TIMEOUT		# Set dbregister timeout
 
 DbEnv.set_verbose
 	DB_VERB_DEADLOCK		# Deadlock detection information
@@ -197,6 +208,7 @@ DbEnv.set_verbose
 	DB_VERB_REP_MISC		# Miscellaneous replication output
 	DB_VERB_REP_MSGS		# Replication message output
 	DB_VERB_REP_SYNC		# Replication client sync output
+	DB_VERB_REP_TEST		# Replication temporary test output
 	DB_VERB_WAITSFOR		# Dump waits-for table
 
 DbEnv.stat_print
@@ -227,6 +239,7 @@ DbEnv.txn_stat
 DbEnv.txn_stat_print
 	DB_STAT_ALL			# Everything
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbLogc.get
 	__MASK=0xff			# Berkeley DB operation codes.
@@ -242,6 +255,7 @@ DbMpoolFile.get
 	DB_MPOOL_FREE			# UNDOC: Free page if present
 	DB_MPOOL_LAST			# Return the last page
 	DB_MPOOL_NEW			# Create a new page
+	DB_MPOOL_TRY			# Try to read a page, but don't block
 
 DbMpoolFile.open
 	DB_CREATE			# Create as necessary
@@ -252,6 +266,7 @@ DbMpoolFile.open
 	DB_NOMMAP			# Don't mmap underlying file
 	DB_ODDFILESIZE			# Truncate file to N * pgsize
 	DB_RDONLY			# Read-only (O_RDONLY)
+	DB_TXN_NOT_DURABLE		# UNDOC: Mark file not durable on open
 
 DbMpoolFile.set_flags
 	DB_MPOOL_NOFILE			# Never open a backing file
@@ -282,6 +297,7 @@ DbSequence.stat
 
 DbSequence.stat_print
 	DB_STAT_CLEAR			# Clear stats after return
+	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbTxn.commit
 	DB_TXN_NOSYNC			# Do not sync log on commit
@@ -293,7 +309,6 @@ DbTxn.set_timeout
 
 db_create
 	DB_CXX_NO_EXCEPTIONS		# C++: return error values
-	DB_XA_CREATE			# Open in an XA environment
 
 Db.associate
 	DB_AUTO_COMMIT			# UNDOC: compatibility only
@@ -313,13 +328,18 @@ Db.compact
 	DB_FREE_SPACE			# Free space
 
 Db.cursor
-	__MASK=0xff			# Berkeley DB operation codes.
+	DB_CURSOR_BULK			# Optimize for bulk updates
+	DB_CURSOR_TRANSIENT		# UNDOC: Single-use cursor
 	DB_READ_COMMITTED		# Degree 2 isolation
 	DB_READ_UNCOMMITTED		# Degree 1 isolation
+	DB_WRITECURSOR			# Cursor can update (CDB)
+	DB_WRITELOCK			# Cursor should get write locks
 	DB_TXN_SNAPSHOT			# Snapshot isolation
 
 Db.del
 	DB_AUTO_COMMIT			# UNDOC: compatibility only
+	DB_MULTIPLE			# Delete multiple data values
+	DB_MULTIPLE_KEY			# Delete multiple key/data pairs
 
 Db.exists
 	DB_READ_COMMITTED		# Degree 2 isolation
@@ -371,11 +391,12 @@ Db.open
 	# two-call "construct the object, then open it" paradigm used by DB),
 	# and they can't collide for that reason.
 	DB_CXX_NO_EXCEPTIONS		# C++: return error values
-	DB_XA_CREATE			# Open in an XA environment
 
 Db.put
 	__MASK=0xff			# Berkeley DB operation codes.
 	DB_AUTO_COMMIT			# UNDOC: compatibility only
+	DB_MULTIPLE			# Put multiple (from key and data DBTs)
+	DB_MULTIPLE_KEY			# Put multiple (from key DBT)
 
 Db.set_encrypt
 	DB_ENCRYPT_AES			# AES, assumes SHA1 checksum
@@ -387,7 +408,7 @@ Db.set_feedback
 Db.set_flags
 	DB_CHKSUM			# Checksums
 	DB_DUP				# Btree, Hash: duplicate keys
-	DB_DUPSORT			# Btree, Hash: duplicate keys
+	DB_DUPSORT			# Btree, Hash: sorted duplicated
 	DB_ENCRYPT			# AES, assumes SHA1 checksum
 	DB_INORDER			# Queue: strict ordering on consume
 	DB_RECNUM			# Btree: record numbers
@@ -416,6 +437,7 @@ Db.verify
 	DB_PR_RECOVERYTEST		# UNDOC: Recover test (-dr)
 	DB_SALVAGE			# Salvage what looks like data
 	DB_UNREF			# UNDOC: Report unreferenced pages
+	DB_VERIFY_PARTITION		# Verifying a partition
 
 	# Flags understood by the btree structure checks (__bam_vrfy_subtree).
 	# These share the same space as the global flags to Db.verify.
@@ -432,15 +454,18 @@ Db.verify
 	# share name space with the __bam_vrfy_subtree flags, but must share
 	# with Db.verify.
 	DB_SA_SKIPFIRSTKEY		# UNDOC: I have no idea what this does.
+	DB_SA_UNKNOWNKEY		# UNDOC: The salvage key is unknown
 
 DbCursor.dup
 	__MASK=0xff			# Berkeley DB operation codes.
+	DB_SHALLOW_DUP			# UNDOC: Don't duplicate compression info
 
 DbCursor.get
 	__MASK=0xff			# Berkeley DB operation codes.
 	DB_IGNORE_LEASE			# Ignore leases
 	DB_MULTIPLE			# Return multiple data values
 	DB_MULTIPLE_KEY			# Return multiple key/data pairs
+	DB_READ_COMMITTED		# Degree 2 isolation
 	DB_READ_UNCOMMITTED		# Degree 1 isolation
 	DB_RMW				# Acquire write lock immediately
 

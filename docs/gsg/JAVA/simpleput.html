@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Placing Objects in an Entity Store</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="simpleda.html" title="SimpleDA.class" />
+    <link rel="prev" href="simpleda.html" title="SimpleDA.class" />
     <link rel="next" href="simpleget.html" title="Retrieving Objects from an Entity Store" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="simpleput"></a>Placing Objects in an Entity Store</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     In order to place an object in a DPL entity store,
@@ -53,17 +52,17 @@
           <li>
             <p>
                                     Put the object to the store using the
-                                    <tt class="methodname">put()</tt> method
+                                    <code class="methodname">put()</code> method
                                     for the object's primary index.
                             </p>
           </li>
         </ol>
       </div>
       <p>
-                    The following example uses the <tt class="classname">SimpleDA</tt>
-                    class that we show in <a href="simpleda.html">SimpleDA.class</a> to put a
-                    <tt class="classname">SimpleEntityClass</tt> object (see
-                    <a href="persist_access.html#simpleentity">A Simple Entity Class</a>) to the
+                    The following example uses the <code class="classname">SimpleDA</code>
+                    class that we show in <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a> to put a
+                    <code class="classname">SimpleEntityClass</code> object (see
+                    <a class="xref" href="persist_access.html#simpleentity" title="A Simple Entity Class">A Simple Entity Class</a>) to the
                     entity store.
             </p>
       <p>
@@ -126,17 +125,17 @@ public class SimpleStorePut {
     } </pre>
       <p>
             Now we need to create a method to actually write objects to our
-            store. This method creates a <tt class="classname">SimpleDA</tt>
-            object (see <a href="simpleda.html">SimpleDA.class</a> that we
+            store. This method creates a <code class="classname">SimpleDA</code>
+            object (see <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a> that we
             will use to access our indexes. Then we instantiate a serious
-            of <tt class="classname">SimpleEntityClass</tt> (see <a href="persist_access.html#simpleentity">A Simple Entity Class</a>) 
+            of <code class="classname">SimpleEntityClass</code> (see <a class="xref" href="persist_access.html#simpleentity" title="A Simple Entity Class">A Simple Entity Class</a>) 
             instances that we
             will place in our store. Finally, we use our primary index
-            (obtained from the <tt class="classname">SimpleDA</tt> class
+            (obtained from the <code class="classname">SimpleDA</code> class
             instance) to actually place these objects in our store.
     </p>
       <p>
-            In <a href="simpleget.html">Retrieving Objects from an Entity Store</a>
+            In <a class="xref" href="simpleget.html" title="Retrieving Objects from an Entity Store">Retrieving Objects from an Entity Store</a>
             we show a class that is used to retrieve these objects.
     </p>
       <pre class="programlisting">    // Populate the entity store
@@ -156,20 +155,20 @@ public class SimpleStorePut {
         SimpleEntityClass sec4 = new SimpleEntityClass();
         SimpleEntityClass sec5 = new SimpleEntityClass();
 
-        sec1.setpKey("keyone");
-        sec1.setsKey("skeyone");
+        sec1.setPKey("keyone");
+        sec1.setSKey("skeyone");
 
-        sec2.setpKey("keytwo");
-        sec2.setsKey("skeyone");
+        sec2.setPKey("keytwo");
+        sec2.setSKey("skeyone");
 
-        sec3.setpKey("keythree");
-        sec3.setsKey("skeytwo");
+        sec3.setPKey("keythree");
+        sec3.setSKey("skeytwo");
 
-        sec4.setpKey("keyfour");
-        sec4.setsKey("skeythree");
+        sec4.setPKey("keyfour");
+        sec4.setSKey("skeythree");
 
-        sec5.setpKey("keyfive");
-        sec5.setsKey("skeyfour");
+        sec5.setPKey("keyfive");
+        sec5.setSKey("skeyfour");
 
         sda.pIdx.put(sec1);
         sda.pIdx.put(sec2);
@@ -181,8 +180,8 @@ public class SimpleStorePut {
     } </pre>
       <p>
             Finally, to complete our class, we need a
-            <tt class="methodname">main()</tt> method, which simply calls our
-            <tt class="methodname">run()</tt> method.
+            <code class="methodname">main()</code> method, which simply calls our
+            <code class="methodname">run()</code> method.
     </p>
       <pre class="programlisting">    // main
     public static void main(String args[]) {

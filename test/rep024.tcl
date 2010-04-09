@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep024.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  	rep024
 # TEST	Replication page allocation / verify test
@@ -14,6 +14,9 @@
 proc rep024 { method { niter 1000 } { tnum "024" } args } {
 
 	source ./include.tcl
+	global databases_in_memory 
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -30,6 +33,17 @@ proc rep024 { method { niter 1000 } { tnum "024" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# This test is not appropriate for in-memory databases.
+	if { $databases_in_memory } {
+		puts "Skipping rep$tnum for named in-memory databases."
+		return
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run all tests with and without recovery.
 	set envargs ""
 	foreach r $test_recopts {
@@ -41,7 +55,7 @@ proc rep024 { method { niter 1000 } { tnum "024" } args } {
 				continue
 			}
 			puts "Rep$tnum ($method $r): \
-			    Replication page allocation/verify test."
+			    Replication page allocation/verify test $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep024_sub $method $niter $tnum $envargs $l $r $args
@@ -53,12 +67,18 @@ proc rep024 { method { niter 1000 } { tnum "024" } args } {
 
 proc rep024_sub { method niter tnum envargs logset recargs largs } {
 	source ./include.tcl
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -81,7 +101,7 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(1) "berkdb_env_noerr -create \
+	set env_cmd(1) "berkdb_env_noerr -create $repmemargs \
 	    -log_max 1000000 $envargs $recargs -home $masterdir \
 	    -errpfx MASTER $verbargs -txn $m_logargs \
 	    -rep_transport \[list 1 replsend\]"
@@ -89,7 +109,7 @@ proc rep024_sub { method niter tnum envargs logset recargs largs } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(2) "berkdb_env_noerr -create \
+	set env_cmd(2) "berkdb_env_noerr -create $repmemargs \
 	    -log_max 1000000 $envargs $recargs -home $clientdir \
 	    -errpfx CLIENT $verbargs -txn $c_logargs \
 	    -rep_transport \[list 2 replsend\]"

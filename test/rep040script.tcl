@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep040script.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Rep040 script - transaction concurrency with rep_start
 #
@@ -20,17 +20,21 @@ source ./include.tcl
 source $test_path/test.tcl
 source $test_path/testutils.tcl
 source $test_path/reputils.tcl
+global databases_in_memory
 
 set usage "repscript masterdir"
 
 # Verify usage
-if { $argc != 1 } {
+if { $argc != 2 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
 # Initialize arguments
 set masterdir [ lindex $argv 0 ]
+set databases_in_memory [ lindex $argv 1 ]
+
+puts "databases_in_memory is $databases_in_memory"
 
 # Join the queue env.  We assume the rep test convention of
 # placing the messages in $testdir/MSGQUEUEDIR.

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 4. Replica versus Master Processes</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="previous" href="heartbeats.html" title="Managing Heartbeats" />
+    <link rel="prev" href="heartbeats.html" title="Managing Heartbeats" />
     <link rel="next" href="processingloop.html" title="Processing Loop" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="fwrkmasterreplica"></a>Chapter 4. Replica versus Master Processes</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -73,7 +72,7 @@
                   replicas cannot. As a result, not only will you open
                   databases differently depended on whether the environment is
                   running as a master, but the environment will frequently
-                  behave quit a bit differently depending on whether it
+                  behave quite a bit differently depending on whether it
                   thinks it is operating as the read/write interface for
                   your database.
           </p>
@@ -102,13 +101,19 @@
               <h2 class="title" style="clear: both"><a id="determinestate"></a>Determining State</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                           In order to determine whether your code is
                           running as a master or a replica, you implement a
                           callback whose function it is to respond to
                           events that happen within the DB library. 
+                          Note that these events are raised whenever the state is established. 
+                          For example, when the current environment becomes a client —
+                          including at application startup — the
+                          <code class="literal">DB_EVENT_REP_CLIENT</code> event is raised. Also, when an
+                          election is held and a replica is elected to be a master, the
+                          <code class="literal">DB_EVENT_REP_MASTER</code> event is raised on the newly elected master and the
+                          <code class="literal">DB_EVENT_REP_NEWMASTER</code> is raised on the other replicas.
                   </p>
         <p>
                           Note that this callback is usable for events beyond
@@ -126,7 +131,7 @@
           <ul type="disc">
             <li>
               <p>
-                                          <tt class="literal">DB_EVENT_REP_MASTER</tt>
+                                          <code class="literal">DB_EVENT_REP_MASTER</code>
                                           
                                   </p>
               <p>
@@ -135,7 +140,7 @@
             </li>
             <li>
               <p>
-                                          <tt class="literal">DB_EVENT_REP_CLIENT</tt>
+                                          <code class="literal">DB_EVENT_REP_CLIENT</code>
                                           
                                   </p>
               <p>
@@ -144,7 +149,7 @@
             </li>
             <li>
               <p>
-                                          <tt class="literal">DB_EVENT_REP_STARTUPDONE</tt>
+                                          <code class="literal">DB_EVENT_REP_STARTUPDONE</code>
                                           
                                   </p>
               <p>
@@ -156,18 +161,15 @@
             </li>
             <li>
               <p>
-                                          <tt class="literal">DB_EVENT_REP_NEWMASTER</tt>
+                                          <code class="literal">DB_EVENT_REP_NEWMASTER</code>
                                           
                                   </p>
               <p>
-                                          An election was held and a new
-                                          environment was made a master. However,
-                                          the current environment <span class="emphasis"><em>is
-                                          not</em></span> the master. This
-                                  event exists so that you can
-                                  cause your code to take some
-                                  unique action in the event that the
-                                  replication groups switches masters.
+                                          An election was held and a new environment was made a
+                                          master.  However, the current environment <span class="emphasis"><em>is
+                                              not</em></span> the master. This event exists so that
+                                          you can cause your code to take some unique action in the
+                                          event that the replication groups switches masters.
                                   </p>
             </li>
           </ul>
@@ -175,9 +177,9 @@
         <p>
                           Note that these events are raised whenever the
                           state is established. That is, when the current
-                          environment becomes a client, and that includes
+                          environment becomes a replica, and that includes
                           at application startup, the event is raised.
-                          Also, when an election is held and a client is elected to be a
+                          Also, when an election is held and a replica is elected to be a
                           master, then the event occurs.
                   </p>
         <p>
@@ -233,8 +235,8 @@ dbenv-&gt;set_event_notify(dbenv, event_callback); </pre>
         implementation can be fairly trivial. 
 </p>
         <pre class="programlisting">/*
- * A callback used to determine whether the local environment is a replica
- * or a master. This is called by the replication framework
+ * A callback used to determine whether the local environment is a 
+ * replica or a master. This is called by the Replication Manager
  * when the local environment changes state.
  */
 void *
@@ -264,10 +266,10 @@ event_callback(DB_ENV *dbenv, u_int32_t which, void *info)
 } </pre>
         <p>
         Notice how we access the
-        <tt class="literal">APP_DATA</tt> information using the environment
-        handle's <tt class="literal">app_private</tt> data member. We also ignore
-        the <tt class="literal">DB_EVENT_REP_NEWMASTER</tt> and
-        <tt class="literal">DB_EVENT_REP_STARTUPDONE</tt> cases since these are not
+        <code class="literal">APP_DATA</code> information using the environment
+        handle's <code class="literal">app_private</code> data member. We also ignore
+        the <code class="literal">DB_EVENT_REP_NEWMASTER</code> and
+        <code class="literal">DB_EVENT_REP_STARTUPDONE</code> cases since these are not
         relevant for simple replicated applications.
 </p>
         <p>
@@ -283,9 +285,7 @@ event_callback(DB_ENV *dbenv, u_int32_t which, void *info)
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="heartbeats.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="processingloop.html">Next</a></td>
         </tr>
         <tr>

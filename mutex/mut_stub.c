@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_stub.c,v 12.6 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #ifndef HAVE_MUTEX_SUPPORT
@@ -195,7 +195,7 @@ void
 __mutex_set_wait_info(env, mutex, waitp, nowaitp)
 	ENV *env;
 	db_mutex_t mutex;
-	u_int32_t *waitp, *nowaitp;
+	uintmax_t *waitp, *nowaitp;
 {
 	COMPQUIET(env, NULL);
 	COMPQUIET(mutex, MUTEX_INVALID);

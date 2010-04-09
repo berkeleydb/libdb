@@ -33,7 +33,7 @@
 BREW_HOME      =$(BREWDIR)
 ARM_HOME       =$(ARMHOME)
 TARGET         =D:\DB7588~1.BRE\BUILD_~1\bdb_brew
-OBJS           =bdbread.o AEEModGen.o AEEAppGen.o bt_compact.o bt_compare.o bt_conv.o bt_curadj.o bt_cursor.o bt_delete.o bt_method.o bt_open.o bt_put.o bt_rec.o bt_reclaim.o bt_recno.o bt_rsearch.o bt_search.o bt_split.o bt_stat.o btree_auto.o atol.o isalpha.o isdigit.o isprint.o isspace.o printf.o qsort.o rand.o strcasecmp.o strerror.o strncat.o strsep.o strtol.o time.o crypto_stub.o db_byteorder.o db_err.o db_getlong.o db_idspace.o db_log2.o db_shash.o dbt.o mkpath.o zerofill.o crdel_auto.o crdel_rec.o db.o db_am.o db_auto.o db_cam.o db_cds.o db_conv.o db_dispatch.o db_dup.o db_iface.o db_join.o db_meta.o db_method.o db_open.o db_overflow.o db_pr.o db_rec.o db_reclaim.o db_remove.o db_rename.o db_ret.o db_setid.o db_setlsn.o db_stati.o db_truncate.o db_upg.o db_vrfy_stub.o dbreg.o dbreg_auto.o dbreg_rec.o dbreg_stat.o dbreg_util.o env_alloc.o env_config.o env_failchk.o env_file.o env_method.o env_name.o env_open.o env_recover.o env_region.o env_register.o env_sig.o env_stat.o fileops_auto.o fop_basic.o fop_rec.o fop_util.o hash_func.o hash_stub.o hmac.o sha1.o lock_stub.o log.o log_archive.o log_compare.o log_debug.o log_get.o log_method.o log_put.o log_stat.o mp_alloc.o mp_bh.o mp_fget.o mp_fmethod.o mp_fopen.o mp_fput.o mp_fset.o mp_method.o mp_mvcc.o mp_region.o mp_register.o mp_resize.o mp_stat.o mp_sync.o mp_trickle.o mut_stub.o os_alloc.o os_cpu.o os_fid.o os_flock.o os_getenv.o os_map.o os_root.o os_rpath.o os_stack.o os_tmpdir.o os_uid.o ctime.o fclose.o fgetc.o fgets.o fopen.o fwrite.o getcwd.o globals.o localtime.o os_abort.o os_abs.o os_clock.o os_config.o os_dir.o os_errno.o os_handle.o os_mkdir.o os_open.o os_pid.o os_rename.o os_rw.o os_seek.o os_stat.o os_truncate.o os_unlink.o os_yield.o qam_stub.o rep_stub.o repmgr_stub.o txn.o txn_auto.o txn_chkpt.o txn_failchk.o txn_method.o txn_rec.o txn_recover.o txn_region.o txn_stat.o txn_util.o xa_stub.o
+OBJS           =bdbread.o AEEModGen.o AEEAppGen.o bt_compact.o bt_compare.o bt_compress.o bt_conv.o bt_curadj.o bt_cursor.o bt_delete.o bt_method.o bt_open.o bt_put.o bt_rec.o bt_reclaim.o bt_recno.o bt_rsearch.o bt_search.o bt_split.o bt_stat.o btree_auto.o atol.o isalpha.o isdigit.o isprint.o isspace.o printf.o qsort.o rand.o strcasecmp.o strerror.o strncat.o strsep.o strtol.o time.o crypto_stub.o db_byteorder.o db_compint.o db_err.o db_getlong.o db_idspace.o db_log2.o db_shash.o dbt.o mkpath.o zerofill.o crdel_auto.o crdel_rec.o db.o db_am.o db_auto.o db_cam.o db_cds.o db_conv.o db_dispatch.o db_dup.o db_iface.o db_join.o db_meta.o db_method.o db_open.o db_overflow.o db_pr.o db_rec.o db_reclaim.o db_remove.o db_rename.o db_ret.o db_setid.o db_setlsn.o db_sort_multiple.o db_stati.o db_truncate.o db_upg.o db_vrfy_stub.o dbreg.o dbreg_auto.o dbreg_rec.o dbreg_stat.o dbreg_util.o env_alloc.o env_config.o env_failchk.o env_file.o env_method.o env_name.o env_open.o env_recover.o env_region.o env_register.o env_sig.o env_stat.o fileops_auto.o fop_basic.o fop_rec.o fop_util.o hash_func.o hash_stub.o hmac.o sha1.o lock_stub.o log.o log_archive.o log_compare.o log_debug.o log_get.o log_method.o log_put.o log_stat.o mp_alloc.o mp_bh.o mp_fget.o mp_fmethod.o mp_fopen.o mp_fput.o mp_fset.o mp_method.o mp_mvcc.o mp_region.o mp_register.o mp_resize.o mp_stat.o mp_sync.o mp_trickle.o mut_stub.o os_alloc.o os_cpu.o os_fid.o os_flock.o os_getenv.o os_map.o os_root.o os_rpath.o os_stack.o os_tmpdir.o os_uid.o ctime.o fclose.o fgetc.o fgets.o fopen.o fwrite.o getcwd.o globals.o localtime.o os_abort.o os_abs.o os_clock.o os_config.o os_dir.o os_errno.o os_handle.o os_mkdir.o os_open.o os_pid.o os_rename.o os_rw.o os_seek.o os_stat.o os_truncate.o os_unlink.o os_yield.o qam_stub.o rep_stub.o repmgr_stub.o txn.o txn_auto.o txn_chkpt.o txn_failchk.o txn_method.o txn_rec.o txn_recover.o txn_region.o txn_stat.o txn_util.o
 APP_INCLUDES   =  -I ..\build_brew  -I ..
 
 #-------------------------------------------------------------------------------
@@ -418,6 +418,7 @@ AEEModGen.o : ..\bdbread\AEEModGen.c
 AEEAppGen.o : ..\bdbread\AEEAppGen.c
 bt_compact.o:	..\btree\bt_compact.c
 bt_compare.o:	..\btree\bt_compare.c
+bt_compress.o:	..\btree\bt_compress.c
 bt_conv.o:	..\btree\bt_conv.c
 bt_curadj.o:	..\btree\bt_curadj.c
 bt_cursor.o:	..\btree\bt_cursor.c
@@ -449,6 +450,7 @@ strtol.o:	..\clib\strtol.c
 time.o:	..\clib\time.c
 crypto_stub.o:	..\common\crypto_stub.c
 db_byteorder.o:	..\common\db_byteorder.c
+db_compint.o:	..\common\db_compint.c
 db_err.o:	..\common\db_err.c
 db_getlong.o:	..\common\db_getlong.c
 db_idspace.o:	..\common\db_idspace.c
@@ -481,6 +483,7 @@ db_rename.o:	..\db\db_rename.c
 db_ret.o:	..\db\db_ret.c
 db_setid.o:	..\db\db_setid.c
 db_setlsn.o:	..\db\db_setlsn.c
+db_sort_multiple.o:	..\db\db_sort_multiple.c
 db_stati.o:	..\db\db_stati.c
 db_truncate.o:	..\db\db_truncate.c
 db_upg.o:	..\db\db_upg.c
@@ -585,4 +588,3 @@ txn_recover.o:	..\txn\txn_recover.c
 txn_region.o:	..\txn\txn_region.c
 txn_stat.o:	..\txn\txn_stat.c
 txn_util.o:	..\txn\txn_util.c
-xa_stub.o:	..\xa\xa_stub.c

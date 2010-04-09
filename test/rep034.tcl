@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep034.tcl,v 12.26 2008/01/18 18:51:46 sue Exp $
+# $Id$
 #
 # TEST	rep034
 # TEST	Test of STARTUPDONE notification.
@@ -18,6 +18,9 @@
 proc rep034 { method { niter 2 } { tnum "034" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -28,11 +31,27 @@ proc rep034 { method { niter 2 } { tnum "034" } args } {
 		return "ALL"
 	}
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 	foreach l $logsets {
-		puts "Rep$tnum ($method $args):\
-		    Test of startup synchronization detection."
+		puts "Rep$tnum ($method $args): Test of\
+		    startup synchronization detection $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 		puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
@@ -47,6 +66,8 @@ proc rep034 { method { niter 2 } { tnum "034" } args } {
 proc rep034_sub { method niter tnum logset largs } {
 	global anywhere
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global startup_done
 	global rep_verbose
 	global verbose_type
@@ -55,6 +76,11 @@ proc rep034_sub { method niter tnum logset largs } {
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -90,11 +116,11 @@ proc rep034_sub { method niter tnum logset largs } {
 	# 
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
-	    -event rep_event $verbargs -errpfx MASTER \
+	    -event rep_event $verbargs -errpfx MASTER $repmemargs \
 	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd]
 	puts "\tRep$tnum.a: Create master; add some data."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
 	# Bring up a new client, and see that it can get STARTUPDONE with no new
 	# live transactions at the master.
@@ -102,7 +128,7 @@ proc rep034_sub { method niter tnum logset largs } {
 	puts "\tRep$tnum.b: Bring up client; check STARTUPDONE."
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $c_logargs \
-	    -event rep_event $verbargs -errpfx CLIENT \
+	    -event rep_event $verbargs -errpfx CLIENT $repmemargs \
 	    -home $clientdir -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd]
 	set envlist "{$masterenv 1} {$clientenv 2}"
@@ -125,14 +151,14 @@ proc rep034_sub { method niter tnum logset largs } {
 	# that STARTUPDONE is not triggered at NEWMASTER LSN.
 	# 
 	puts "\tRep$tnum.c: Another client; no STARTUPDONE at NEWMASTER LSN."
-	set newmaster_lsn [stat_field $masterenv rep_stat "Next LSN expected"]
+	set newmaster_lsn [next_expected_lsn $masterenv]
 	repladd 3
 	#
 	# !!! Please note that we're giving client2 a special customized version
 	# of the replication transport call-back function.
 	#
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs $c2_logargs \
-	    -event rep_event $verbargs -errpfx CLIENT2 \
+	    -event rep_event $verbargs -errpfx CLIENT2 $repmemargs \
 	    -home $clientdir2 -rep_client -rep_transport \[list 3 rep034_send\]"
 	set client2env [eval $cl2_envcmd]
 
@@ -140,8 +166,7 @@ proc rep034_sub { method niter tnum logset largs } {
 	set verified false
 	for {set i 0} {$i < 10} {incr i} {
 		proc_msgs_once $envlist
-		set client2lsn \
-		    [stat_field $client2env rep_stat "Next LSN expected"]
+		set client2lsn [next_expected_lsn $client2env]
 
 		# Get to the point where we've gone past where the master's LSN
 		# was at NEWMASTER time, and make sure we haven't yet gotten
@@ -154,7 +179,7 @@ proc rep034_sub { method niter tnum logset largs } {
 			}
 			break;
 		}
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	}
 	error_check_good no_newmaster_trigger $verified true
 
@@ -168,10 +193,11 @@ proc rep034_sub { method niter tnum logset largs } {
 	set anywhere 1
 
 	# Here we rely on recovery at client 1.  If that client is running with
-	# in-memory logs, forgo the remainder of the test.
+	# in-memory logs or in-memory databases, forgo the remainder of the test.
 	#
-	if {$c_logtype eq "in-mem"} {
-		puts "\tRep$tnum.d: Skip rest of test for in-memory logging."
+	if {$c_logtype eq "in-mem" || $databases_in_memory } {
+		puts "\tRep$tnum.d: Skip the rest of the test for\
+		     in-memory logging or databases."
 		$masterenv close
 		$clientenv close
 		$client2env close
@@ -277,7 +303,22 @@ proc rep034_sub { method niter tnum logset largs } {
 	$clientenv rep_request 400 400
 	set envlist "{$masterenv 1} {$clientenv 2} {$client2env 3}"
 
+	# Here we're expecting that the master isn't generating any new log
+	# records, which is normally the case since we're not generating any new
+	# transactions there.  This is important, because otherwise the client
+	# could notice its log gap and request the missing records, resulting in
+	# STARTUPDONE before we're ready for it.  When debug_rop is on, just
+	# scanning the data-dir during UPDATE_REQ processing (which, remember,
+	# now happens just to check for potential NIMDB re-materialization)
+	# generates log records, as we open each file we find to see if it's a
+	# database.  So, filter out LOG messages (simulating them being "lost")
+	# temporarily.
+	# 
+	if {[is_substr [berkdb getconfig] "debug_rop"]} {
+		$masterenv rep_transport {1 rep034_send_nolog}
+	}
 	while {[rep034_proc_msgs_once $masterenv $clientenv $client2env] > 0} {}
+	$masterenv rep_transport {1 replsend}
 
 	error_check_good not_from_undone_c2c_client \
 	    [stat_field $clientenv rep_stat "Startup complete"] 0
@@ -286,10 +327,19 @@ proc rep034_sub { method niter tnum logset largs } {
 	    [stat_field $client2env rep_stat "Client service requests"] 0
 
 	# Verify that we nevertheless *do* get STARTUPDONE after the master
-	# starts generating new txns again.
+	# starts generating new txns again.  Generate two sets of transactions,
+	# with an unmistakable pause between, to ensure that we trigger the
+	# client's rerequest timer, which we need in order to pick up the
+	# missing transactions.  The 400 usec is a nice short time; but on
+	# Windows sometimes it's possible to blast through a single process_msgs
+	# cycle so quickly that its low-resolution timer reflects no elapsed
+	# time at all!
 	# 
 	puts "\tRep$tnum.f: Check STARTUPDONE via fall-back to live txns."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	process_msgs $envlist
+	tclsleep 1
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good fallback_live_txns \
 	    [stat_field $clientenv rep_stat "Startup complete"] 1
@@ -327,4 +377,17 @@ proc rep034_send { control rec fromid toid flags lsn } {
 		set rep034_got_allreq true
 	}
 	return [replsend $control $rec $fromid $toid $flags $lsn]
+}
+
+# Another slightly different wrapper for replsend.  This one simulates losing
+# any broadcast LOG messages from the master.
+# 
+proc rep034_send_nolog { control rec fromid toid flags lsn } {
+	if {[berkdb msgtype $control] eq "log" &&
+	    $fromid == 1 && $toid == -1} {
+		set result 0
+	} else {
+		set result [replsend $control $rec $fromid $toid $flags $lsn]
+	}
+	return $result
 }

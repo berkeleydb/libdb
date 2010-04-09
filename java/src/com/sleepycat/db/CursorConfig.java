@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: CursorConfig.java,v 12.9 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -25,14 +25,14 @@ public class CursorConfig implements Cloneable {
     public static final CursorConfig DEFAULT = new CursorConfig();
 
     /**
-        A convenience instance to configure read operations performed by the
-    cursor to return modified but not yet committed data.
+    A convenience instance to specify the database cursor will be used to make
+    bulk changes to the underlying database.
     */
-    public static final CursorConfig READ_UNCOMMITTED = new CursorConfig();
-    static { READ_UNCOMMITTED.setReadUncommitted(true); }
+    public static final CursorConfig BULK_CURSOR = new CursorConfig();
+    static { BULK_CURSOR.setBulkCursor(true); }
 
     /**
-        A convenience instance to configure a cursor for read committed isolation.
+    A convenience instance to configure a cursor for read committed isolation.
     <p>
     This ensures the stability of the current data item read by the
     cursor but permits data read by this cursor to be modified or
@@ -40,6 +40,21 @@ public class CursorConfig implements Cloneable {
     */
     public static final CursorConfig READ_COMMITTED = new CursorConfig();
     static { READ_COMMITTED.setReadCommitted(true); }
+
+    /**
+    A convenience instance to configure read operations performed by the
+    cursor to return modified but not yet committed data.
+    */
+    public static final CursorConfig READ_UNCOMMITTED = new CursorConfig();
+    static { READ_UNCOMMITTED.setReadUncommitted(true); }
+
+    /**
+    A convenience instance to configure read operations performed by the
+    cursor to return values as they were when the cursor was opened, if
+    {@link DatabaseConfig#setMultiversion} is configured.
+    */
+    public static final CursorConfig SNAPSHOT = new CursorConfig();
+    static { SNAPSHOT.setSnapshot(true); }
 
     /**
     A convenience instance to specify the Concurrent Data Store environment
@@ -59,20 +74,22 @@ public class CursorConfig implements Cloneable {
     database isolation terminology.
     */
     public static final CursorConfig DIRTY_READ = READ_UNCOMMITTED;
+
     /**
-        A convenience instance to configure a cursor for read committed isolation.
+    A convenience instance to configure a cursor for read committed isolation.
     <p>
     This ensures the stability of the current data item read by the
     cursor but permits data read by this cursor to be modified or
     deleted prior to the commit of the transaction.
-        <p>
-    @deprecated This has been replaced by {@link #READ_COMMITTED} to conform to ANSI
-    database isolation terminology.
+    <p>
+    @deprecated This has been replaced by {@link #READ_COMMITTED} to conform to ANSI database isolation terminology.
     */
     public static final CursorConfig DEGREE_2 = READ_COMMITTED;
 
-    private boolean readUncommitted = false;
+    private boolean bulkCursor = false;
     private boolean readCommitted = false;
+    private boolean readUncommitted = false;
+    private boolean snapshot = false;
     private boolean writeCursor = false;
 
     /**
@@ -85,6 +102,30 @@ public class CursorConfig implements Cloneable {
     /* package */
     static CursorConfig checkNull(CursorConfig config) {
         return (config == null) ? DEFAULT : config;
+    }
+
+    /**
+    Specify that the cursor will be used to do bulk operations on the
+    underlying database.
+    <p>
+    @param bulkCursor
+    If true, specify the cursor will be used to do bulk operations on the 
+    underlying database.
+    */
+    public void setBulkCursor(final boolean bulkCursor) {
+        this.bulkCursor = bulkCursor;
+    }
+
+    /**
+    Return if the cursor will be used to do bulk operations on the underlying
+    database.
+    <p>
+    @return
+    If the cursor will be used to do bulk operations on the
+    underlying database.
+    */
+    public boolean getBulkCursor() {
+        return bulkCursor;
     }
 
     /**
@@ -166,33 +207,58 @@ public class CursorConfig implements Cloneable {
     }
 
     /**
-        Configure read operations performed by the cursor to return modified
+    Configure read operations performed by the cursor to return modified
     but not yet committed data.
     <p>
     @param dirtyRead
     If true, configure read operations performed by the cursor to return
     modified but not yet committed data.
-        <p>
-    @deprecated This has been replaced by {@link #setReadUncommitted} to conform to ANSI
-    database isolation terminology.
+    <p>
+    @deprecated This has been replaced by {@link #setReadUncommitted} to
+    conform to ANSI database isolation terminology.
     */
     public void setDirtyRead(final boolean dirtyRead) {
         setReadUncommitted(dirtyRead);
     }
 
     /**
-        Return if read operations performed by the cursor are configured to
-    return modified but not yet committed data.
+    Return if read operations performed by the cursor are configured to return
+    modified but not yet committed data.
     <p>
     @return
     If read operations performed by the cursor are configured to return
     modified but not yet committed data.
         <p>
-    @deprecated This has been replaced by {@link #getReadUncommitted} to conform to ANSI
-    database isolation terminology.
+    @deprecated This has been replaced by {@link #getReadUncommitted} to
+    conform to ANSI database isolation terminology.
     */
     public boolean getDirtyRead() {
         return getReadUncommitted();
+    }
+
+    /**
+    Configure read operations performed by the cursor to return data as it was
+    when the cursor opened without locking, if {@link
+    DatabaseConfig#setMultiversion} was configured.
+    <p>
+    @param snapshot
+    If true, configure read operations performed by the cursor to return
+    data as it was when the cursor was opened, without locking.
+    */
+    public void setSnapshot(final boolean snapshot) {
+        this.snapshot = snapshot;
+    }
+
+    /**
+    Return if read operations performed by the cursor are configured to return
+    data as it was when the cursor was opened, without locking.
+    <p>
+    @return
+    If read operations performed by the cursor are configured to return
+    data as it was when the cursor was opened.
+    */
+    public boolean getSnapshot() {
+        return snapshot;
     }
 
     /**
@@ -224,8 +290,10 @@ public class CursorConfig implements Cloneable {
         throws DatabaseException {
 
         int flags = 0;
-        flags |= readUncommitted ? DbConstants.DB_READ_UNCOMMITTED : 0;
+        flags |= bulkCursor ? DbConstants.DB_CURSOR_BULK : 0;
         flags |= readCommitted ? DbConstants.DB_READ_COMMITTED : 0;
+        flags |= readUncommitted ? DbConstants.DB_READ_UNCOMMITTED : 0;
+        flags |= snapshot ? DbConstants.DB_TXN_SNAPSHOT : 0;
         flags |= writeCursor ? DbConstants.DB_WRITECURSOR : 0;
         return db.cursor(txn, flags);
     }

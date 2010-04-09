@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: qam_stub.c,v 12.14 2008/01/30 12:18:23 mjc Exp $
+ * $Id$
  */
 
 #ifndef	HAVE_QUEUE

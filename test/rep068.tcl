@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2008 Oracle.  All rights reserved.
+# Copyright (c) 2006-2009 Oracle.  All rights reserved.
 #
-# $Id: rep068.tcl,v 1.13 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep068
 # TEST	Verify replication of dbreg operations does not hang clients.
@@ -20,6 +20,7 @@
 proc rep068 { method { tnum "068" } args } {
 
 	source ./include.tcl
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
@@ -49,8 +50,12 @@ proc rep068 { method { tnum "068" } args } {
 	}
 
 	set args [convert_args $method $args]
-
 	set logsets [create_logsets 2]
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
 
 	# Run the body of the test with/without recovery and txn nosync.
 	foreach s {"nosync" ""} {
@@ -72,8 +77,8 @@ proc rep068 { method { tnum "068" } args } {
 					    nosync."
 					continue
 				}
-				puts "Rep$tnum ($method $r $s):\
-				    Test of dbreg lock conflicts at client"
+				puts "Rep$tnum ($method $r $s): Test of\
+				    dbreg lock conflicts at client $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep068_sub $method $tnum $l $r $s $args
@@ -84,12 +89,18 @@ proc rep068 { method { tnum "068" } args } {
 
 proc rep068_sub { method tnum logset recargs nosync largs } {
 	global testdir
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set KEY "any old key"
@@ -122,14 +133,14 @@ proc rep068_sub { method tnum logset recargs nosync largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_logargs \
-	    $verbargs -errpfx MASTER \
+	    $verbargs -errpfx MASTER $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs $nosync_args -rep_master]
 
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_logargs \
-	    $verbargs -errpfx CLIENT \
+	    $verbargs -errpfx CLIENT $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs $nosync_args -rep_client]
 

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test016.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test016
 # TEST	Partial put test
@@ -175,8 +175,8 @@ proc test016 { method {nentries 10000} args } {
 
 	# Now, reopen the file and run the last test again.
 	puts "\tTest016.d: close, open, and dump file"
-	open_and_dump_file $testfile $env $t1 test016.check \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testfile $env $t1 test016.check \
+	    dump_file_direction "-first" "-next" $args
 
 	if { [ is_record_based $method ] == 0 } {
 		filesort $t1 $t3
@@ -186,8 +186,8 @@ proc test016 { method {nentries 10000} args } {
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest016.e: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $t1 test016.check \
-	    dump_file_direction "-last" "-prev"
+	eval open_and_dump_file $testfile $env $t1 test016.check \
+	    dump_file_direction "-last" "-prev" $args
 
 	if { [ is_record_based $method ] == 0 } {
 		filesort $t1 $t3

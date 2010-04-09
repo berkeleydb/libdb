@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Database.java,v 12.11 2008/04/02 13:43:38 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -554,6 +554,48 @@ deadlock.
     }
 
     /**
+    Remove key/data pairs from the database.
+    <p>
+    The key/data pair associated with the specified key is discarded
+    from the database.  In the presence of duplicate key values, all
+    records associated with the designated key will be discarded.
+    <p>
+    The key/data pair is also deleted from any associated secondary
+    databases.
+    <p>
+    @param txn
+For a transactional database, an explicit transaction may be specified, or null
+may be specified to use auto-commit.  For a non-transactional database, null
+must be specified.
+    <p>
+    @param keys the set of keys {@link com.sleepycat.db.DatabaseEntry DatabaseEntry} operated on.
+    <p>
+    @return
+    The method will return {@link com.sleepycat.db.OperationStatus#NOTFOUND OperationStatus.NOTFOUND} if the
+    specified key is not found in the database;
+        The method will return {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY} if the
+    database is a Queue or Recno database and the specified key exists,
+    but was never explicitly created by the application or was later
+    deleted;
+    otherwise the method will return {@link com.sleepycat.db.OperationStatus#SUCCESS OperationStatus.SUCCESS}.
+    <p>
+    <p>
+@throws DeadlockException if the operation was selected to resolve a
+deadlock.
+<p>
+@throws DatabaseException if a failure occurs.
+    */
+    public OperationStatus deleteMultiple(final Transaction txn,
+                                  final MultipleEntry keys)
+        throws DatabaseException {
+
+        return OperationStatus.fromInt(
+            db.del((txn == null) ? null : txn.txn, keys,
+                DbConstants.DB_MULTIPLE | 
+		((txn == null) ? autoCommitFlag : 0)));
+    }
+
+    /**
     Checks if the specified key appears in the database.
 <p>
 @param txn
@@ -795,6 +837,89 @@ deadlock.
         return OperationStatus.fromInt(
             db.put((txn == null) ? null : txn.txn,
                 key, data,
+                ((txn == null) ? autoCommitFlag : 0)));
+    }
+
+    /**
+    <p>
+Store a set of key/data pairs into the database.
+<p>
+The key and data parameters must contain corresponding key/data pairs. That is
+the first entry in the multiple key is inserted with the first entry from the
+data parameter. Similarly for all remaining keys in the set.
+<p>
+This method may not be called on databases configured with unsorted duplicates.
+<p>
+@param txn
+For a transactional database, an explicit transaction may be specified, or null
+may be specified to use auto-commit.  For a non-transactional database, null
+must be specified.
+<p>
+@param key the set of keys {@link com.sleepycat.db.MultipleEntry MultipleEntry} operated on.
+<p>
+@param data the set of data {@link com.sleepycat.db.MultipleEntry MultipleEntry} stored.
+<p>
+@param overwrite if this flag is true and any of the keys already exist in the database, they will be replaced. Otherwise a KEYEXIST error will be returned.
+<p>
+@return
+If any of the key/data pairs already appear in the database, this method will
+return {@link com.sleepycat.db.OperationStatus#KEYEXIST OperationStatus.KEYEXIST}.
+<p>
+<p>
+@throws DeadlockException if the operation was selected to resolve a
+deadlock.
+<p>
+@throws DatabaseException if a failure occurs.
+    */
+    public OperationStatus putMultiple(final Transaction txn,
+                                       final MultipleEntry key,
+                                       final MultipleEntry data,
+				       final boolean overwrite)
+        throws DatabaseException {
+
+        return OperationStatus.fromInt(
+            db.put((txn == null) ? null : txn.txn,
+                key, data,
+                DbConstants.DB_MULTIPLE |
+		(overwrite ? DbConstants.DB_OVERWRITE : 0) |
+                ((txn == null) ? autoCommitFlag : 0)));
+    }
+
+    /**
+    <p>
+Store a set of key/data pairs into the database.
+<p>
+This method may not be called on databases configured with unsorted duplicates.
+<p>
+@param txn
+For a transactional database, an explicit transaction may be specified, or null
+may be specified to use auto-commit.  For a non-transactional database, null
+must be specified.
+<p>
+@param key the key and data sets {@link com.sleepycat.db.MultipleEntry MultipleEntry} operated on.
+<p>
+@param overwrite if this flag is true and any of the keys already exist in the database, they will be replaced. Otherwise a KEYEXIST error will be returned.
+<p>
+@return
+If any of the key/data pairs already appear in the database, this method will
+return {@link com.sleepycat.db.OperationStatus#KEYEXIST OperationStatus.KEYEXIST}.
+<p>
+<p>
+@throws DeadlockException if the operation was selected to resolve a
+deadlock.
+<p>
+@throws DatabaseException if a failure occurs.
+    */
+    public OperationStatus putMultipleKey(final Transaction txn,
+                                          final MultipleEntry key,
+					  final boolean overwrite)
+        throws DatabaseException {
+
+        return OperationStatus.fromInt(
+            db.put((txn == null) ? null : txn.txn,
+                key, null, 
+                DbConstants.DB_MULTIPLE_KEY |
+		(overwrite ? DbConstants.DB_OVERWRITE : 0) |
                 ((txn == null) ? autoCommitFlag : 0)));
     }
 
@@ -1094,6 +1219,65 @@ The new name of the database or file.
         final Db db = DatabaseConfig.checkNull(config).createDatabase(null);
         db.rename(fileName, oldDatabaseName, newDatabaseName, 0);
     }
+
+    /**
+    Sorts a DatabaseEntry with multiple matching key/data pairs.
+    <p>
+    If specified, the application specific btree comparison and duplicate 
+    comparison functions will be used.
+    <p>
+    @param entries
+    A MultipleKeyDataEntry that contains matching pairs of key/data items,
+    the sorted entries will be returned in the original entries object.
+    */
+    public static void sortMultipleKeyData(MultipleKeyDataEntry entries)
+        throws DatabaseException {
+        Database.sortMultiple(entries, null);
+    }
+
+    /**
+    Sorts a DatabaseEntry with multiple key or data pairs.
+    <p>
+    If specified, the application specific btree comparison function will be
+    used.
+    <p>
+    @param entries
+    A MultipleDataEntry that contains multiple key or data items,
+    the sorted entries will be returned in the original entries object.
+    */
+    public static void sortMultipleKeyOrData(MultipleDataEntry entries)
+        throws DatabaseException {
+        Database.sortMultiple(entries, null);
+    }
+
+    /**
+    Sorts two DatabaseEntry objects with multiple key and data pairs.
+    <p>
+    If specified, the application specific btree comparison and duplicate 
+    comparison functions will be used.
+    <p>
+    The key and data parameters must contain "pairs" of items. That is the n-th
+    entry in keys corresponds to the n-th entry in datas.
+    @param keys
+    A MultipleDataEntry that contains multiple key items, the sorted entries
+    will be returned in the original entries object.
+    @param datas
+    A MultipleDataEntry that contains multiple data items, the sorted entries
+    will be returned in the original entries object.
+    */
+    public static void sortMultipleKeyAndData(
+        MultipleDataEntry keys, MultipleDataEntry datas)
+        throws DatabaseException {
+        Database.sortMultiple(keys, datas);
+    }
+
+    private static void sortMultiple(MultipleEntry keys, MultipleEntry datas)
+        throws DatabaseException {
+        final Db db = DatabaseConfig.DEFAULT.createDatabase(null);
+        db.sort_multiple(keys, datas);
+        db.close(0);
+    }
+    	
 
     /**
     Flush any cached information to disk.

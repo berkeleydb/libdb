@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SimpleFormat.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.sleepycat.db.DatabaseEntry;
+import com.sleepycat.persist.model.EntityModel;
 
 /**
  * Format for simple types, including primitives.  Additional methods are
@@ -27,7 +28,7 @@ public abstract class SimpleFormat extends Format {
 
     private static final long serialVersionUID = 4595245575868697702L;
 
-    private boolean primitive;
+    private final boolean primitive;
     private SimpleFormat wrapperFormat;
 
     SimpleFormat(Class type, boolean primitive) {
@@ -60,7 +61,7 @@ public abstract class SimpleFormat extends Format {
     }
 
     @Override
-    void initialize(Catalog catalog, int initVersion) {
+    void initialize(Catalog catalog, EntityModel model, int initVersion) {
     }
 
     @Override
@@ -89,12 +90,18 @@ public abstract class SimpleFormat extends Format {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * @throws IllegalAccessException from subclasses.
+     */
     void readPrimitiveField(Object o, EntityInput input, Field field)
         throws IllegalAccessException {
 
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * @throws IllegalAccessException from subclasses.
+     */
     void writePrimitiveField(Object o, EntityOutput output, Field field)
         throws IllegalAccessException {
 

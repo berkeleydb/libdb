@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Accessor.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -177,6 +177,26 @@ interface Accessor {
                           int startField,
                           int endField,
                           int superLevel);
+
+    /**
+     * Writes all composite key field values to the given EntityOutput, writing
+     * in declared field number order.
+     *
+     * @param o the composite key object whose fields are to be written.
+     *
+     * @param output the output data to write to.
+     */
+    void writeCompositeKeyFields(Object o, EntityOutput output);
+
+    /**
+     * Reads all composite key field values from the given EntityInput,
+     * reading in declared field number order.
+     *
+     * @param o the composite key object whose fields are to be read.
+     *
+     * @param input the input data to read from.
+     */
+    void readCompositeKeyFields(Object o, EntityInput input);
 
     /**
      * Returns the value of a given field, representing primitives as primitive

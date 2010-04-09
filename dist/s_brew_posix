@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_brew_posix,v 12.2 2006/11/09 14:11:49 bostic Exp $
+#	$Id$
 #
 # Build the BREW files on a POSIX system.
 

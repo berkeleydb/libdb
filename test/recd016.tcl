@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd016.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd016
 # TEST	Test recovery after checksum error.
@@ -17,7 +17,7 @@ proc recd016 { method args} {
 		puts "Recd016: skipping for specific pagesizes"
 		return
 	}
-	if { [is_queueext $method] == 1 } {
+	if { [is_queueext $method] == 1 || [is_partitioned $args]} {
 		puts "Recd016: skipping for method $method"
 		return
 	}

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: db_setlsn.c,v 12.22 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -12,6 +12,8 @@
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
+#include "dbinc/qam.h"
 
 static int __env_lsn_reset __P((ENV *, DB_THREAD_INFO *, const char *, int));
 
@@ -63,9 +65,6 @@ __env_lsn_reset(env, ip, name, encrypted)
 	int encrypted;
 {
 	DB *dbp;
-	DB_MPOOLFILE *mpf;
-	PAGE *pagep;
-	db_pgno_t pgno;
 	int t_ret, ret;
 
 	/* Create the DB object. */
@@ -89,8 +88,38 @@ __env_lsn_reset(env, ip, name, encrypted)
 		goto err;
 	}
 
+	ret = __db_lsn_reset(dbp->mpf, ip);
+#ifdef HAVE_PARTITION
+	if (ret == 0 && DB_IS_PARTITIONED(dbp))
+		ret = __part_lsn_reset(dbp, ip);
+	else
+#endif
+	if (ret == 0 && dbp->type == DB_QUEUE)
+#ifdef HAVE_QUEUE
+		ret = __qam_lsn_reset(dbp, ip);
+#else
+		ret = __db_no_queue_am(env);
+#endif
+
+err:	if ((t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
+}
+
+/*
+ * __db_lsn_reset -- reset the lsn for a db mpool handle.
+ * PUBLIC: int __db_lsn_reset __P((DB_MPOOLFILE *, DB_THREAD_INFO *));
+ */
+int
+__db_lsn_reset(mpf, ip)
+	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
+{
+	PAGE *pagep;
+	db_pgno_t pgno;
+	int ret;
+
 	/* Reset the LSN on every page of the database file. */
-	mpf = dbp->mpf;
 	for (pgno = 0;
 	    (ret = __memp_fget(mpf,
 	    &pgno, ip, NULL, DB_MPOOL_DIRTY, &pagep)) == 0;
@@ -98,13 +127,11 @@ __env_lsn_reset(env, ip, name, encrypted)
 		LSN_NOT_LOGGED(pagep->lsn);
 		if ((ret = __memp_fput(mpf,
 		    ip, pagep, DB_PRIORITY_UNCHANGED)) != 0)
-			goto err;
+			break;
 	}
 
 	if (ret == DB_PAGE_NOTFOUND)
 		ret = 0;
 
-err:	if ((t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
-		ret = t_ret;
 	return (ret);
 }

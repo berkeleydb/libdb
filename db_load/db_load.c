@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_load.c,v 12.26 2008/01/11 20:49:57 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 typedef struct {			/* XXX: Globals. */
@@ -76,8 +76,8 @@ main(argc, argv)
 	else
 		++progname;
 
-	if ((ret = version_check()) != 0)
-		return (ret);
+	if ((exitval = version_check()) != 0)
+		goto done;
 
 	ldg.progname = progname;
 	ldg.lineno = 0;
@@ -97,7 +97,8 @@ main(argc, argv)
 	if ((clp = clist =
 	    (char **)calloc((size_t)argc + 1, sizeof(char *))) == NULL) {
 		fprintf(stderr, "%s: %s\n", ldg.progname, strerror(ENOMEM));
-		return (EXIT_FAILURE);
+		exitval = 1;
+		goto done;
 	}
 
 	/*
@@ -110,29 +111,36 @@ main(argc, argv)
 	while ((ch = getopt(argc, argv, "c:f:h:nP:r:Tt:V")) != EOF)
 		switch (ch) {
 		case 'c':
-			if (mode != NOTSET && mode != STANDARD_LOAD)
-				return (usage());
+			if (mode != NOTSET && mode != STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			mode = STANDARD_LOAD;
 
 			*clp++ = optarg;
 			break;
 		case 'f':
-			if (mode != NOTSET && mode != STANDARD_LOAD)
-				return (usage());
+			if (mode != NOTSET && mode != STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			mode = STANDARD_LOAD;
 
 			if (freopen(optarg, "r", stdin) == NULL) {
 				fprintf(stderr, "%s: %s: reopen: %s\n",
 				    ldg.progname, optarg, strerror(errno));
-				return (EXIT_FAILURE);
+				exitval = usage();
+				goto done;
 			}
 			break;
 		case 'h':
 			ldg.home = optarg;
 			break;
 		case 'n':
-			if (mode != NOTSET && mode != STANDARD_LOAD)
-				return (usage());
+			if (mode != NOTSET && mode != STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			mode = STANDARD_LOAD;
 
 			ldf |= LDF_NOOVERWRITE;
@@ -143,30 +151,39 @@ main(argc, argv)
 			if (ldg.passwd == NULL) {
 				fprintf(stderr, "%s: strdup: %s\n",
 				    ldg.progname, strerror(errno));
-				return (EXIT_FAILURE);
+				exitval = usage();
+				goto done;
 			}
 			ldf |= LDF_PASSWORD;
 			break;
 		case 'r':
-			if (mode == STANDARD_LOAD)
-				return (usage());
+			if (mode == STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			if (strcmp(optarg, "lsn") == 0)
 				mode = LSN_RESET;
 			else if (strcmp(optarg, "fileid") == 0)
 				mode = FILEID_RESET;
-			else
-				return (usage());
+			else {
+				exitval = usage();
+				goto done;
+			}
 			break;
 		case 'T':
-			if (mode != NOTSET && mode != STANDARD_LOAD)
-				return (usage());
+			if (mode != NOTSET && mode != STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			mode = STANDARD_LOAD;
 
 			ldf |= LDF_NOHEADER;
 			break;
 		case 't':
-			if (mode != NOTSET && mode != STANDARD_LOAD)
-				return (usage());
+			if (mode != NOTSET && mode != STANDARD_LOAD) {
+				exitval = usage();
+				goto done;
+			}
 			mode = STANDARD_LOAD;
 
 			if (strcmp(optarg, "btree") == 0) {
@@ -185,19 +202,23 @@ main(argc, argv)
 				dbtype = DB_QUEUE;
 				break;
 			}
-			return (usage());
+			exitval = usage();
+			goto done;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
 			return (EXIT_SUCCESS);
 		case '?':
 		default:
-			return (usage());
+			exitval = usage();
+			goto done;
 		}
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1)
-		return (usage());
+	if (argc != 1) {
+		exitval = usage();
+		goto done;
+	}
 
 	/* Handle possible interruptions. */
 	__db_util_siginit();
@@ -250,6 +271,7 @@ shutdown:	exitval = 1;
 	 * 0 is implementation-defined by the ANSI C standard.  I don't see
 	 * any good solutions that don't involve API changes.
 	 */
+done:
 	return (exitval == 0 ? (existed == 0 ? 0 : 1) : 2);
 }
 
@@ -267,6 +289,7 @@ load(dbenv, name, argtype, clist, flags, ldg, existedp)
 	int *existedp;
 {
 	DB *dbp;
+	DBC *dbc;
 	DBT key, rkey, data, *readp, *writep;
 	DBTYPE dbtype;
 	DB_TXN *ctxn, *txn;
@@ -278,6 +301,7 @@ load(dbenv, name, argtype, clist, flags, ldg, existedp)
 	put_flags = LF_ISSET(LDF_NOOVERWRITE) ? DB_NOOVERWRITE : 0;
 	G(endodata) = 0;
 
+	dbc = NULL;
 	subdb = NULL;
 	ctxn = txn = NULL;
 	memset(&key, 0, sizeof(DBT));
@@ -380,11 +404,16 @@ retry_db:
 	}
 
 #if 0
-	Set application-specific btree comparison or hash functions here.
-	For example:
+	Set application-specific btree comparison, compression, or hash
+	functions here. For example:
 
 	if ((ret = dbp->set_bt_compare(dbp, local_comparison_func)) != 0) {
 		dbp->err(dbp, ret, "DB->set_bt_compare");
+		goto err;
+	}
+	if ((ret = dbp->set_bt_compress(dbp, local_compress_func,
+	    local_decompress_func)) != 0) {
+		dbp->err(dbp, ret, "DB->set_bt_compress");
 		goto err;
 	}
 	if ((ret = dbp->set_h_hash(dbp, local_hash_func)) != 0) {
@@ -441,6 +470,10 @@ key_data:	if ((readp->data = malloc(readp->ulen = 1024)) == NULL) {
 	    (ret = dbenv->txn_begin(dbenv, NULL, &txn, 0)) != 0)
 		goto err;
 
+	if (put_flags == 0 && (ret = dbp->cursor(dbp,
+	    txn, &dbc, DB_CURSOR_BULK)) != 0)
+		goto err;
+
 	/* Get each key/data pair and add them to the database. */
 	for (recno = 1; !__db_util_interrupted(); ++recno) {
 		if (!keyflag) {
@@ -478,10 +511,13 @@ odd_count:				dbenv->errx(dbenv,
 		}
 		if (G(endodata))
 			break;
-retry:		if (txn != NULL)
+retry:
+		if (put_flags != 0 && txn != NULL)
 			if ((ret = dbenv->txn_begin(dbenv, txn, &ctxn, 0)) != 0)
 				goto err;
-		switch (ret = dbp->put(dbp, ctxn, writep, &data, put_flags)) {
+		switch (ret = ((put_flags == 0) ?
+		    dbc->put(dbc, writep, &data, DB_KEYLAST) :
+		    dbp->put(dbp, ctxn, writep, &data, put_flags))) {
 		case 0:
 			if (ctxn != NULL) {
 				if ((ret =
@@ -524,6 +560,10 @@ retry:		if (txn != NULL)
 		}
 	}
 done:	rval = 0;
+	if (dbc != NULL && (ret = dbc->close(dbc)) != 0) {
+		dbc = NULL;
+		goto err;
+	}
 	if (txn != NULL && (ret = txn->commit(txn, 0)) != 0) {
 		txn = NULL;
 		goto err;
@@ -531,6 +571,8 @@ done:	rval = 0;
 
 	if (0) {
 err:		rval = 1;
+		if (dbc != NULL)
+			(void)dbc->close(dbc);
 		if (txn != NULL)
 			(void)txn->abort(txn);
 	}
@@ -689,7 +731,22 @@ err:	dbenv->err(dbenv, ret, "DB_ENV->open");
 	NUMBER(name, value, "re_len", set_re_len, u_int32_t);		\
 	STRING(name, value, "re_pad", set_re_pad);			\
 	  FLAG(name, value, "recnum", DB_RECNUM);			\
-	  FLAG(name, value, "renumber", DB_RENUMBER)
+	  FLAG(name, value, "renumber", DB_RENUMBER);			\
+	if (strcmp(name, "compressed") == 0) {				\
+		switch (*value) {					\
+		case '1':						\
+			if ((ret = dbp->set_bt_compress(dbp, NULL,	\
+				NULL)) != 0)				\
+				goto nameerr;				\
+			break;						\
+		case '0':						\
+			break;						\
+		default:						\
+			badnum(dbenv);					\
+			goto err;					\
+		}							\
+		continue;						\
+	}
 
 /*
  * configure --
@@ -762,10 +819,12 @@ rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
 	char **subdbp;
 	int *checkprintp, *keysp;
 {
+	DBT *keys, *kp;
 	size_t buflen, linelen, start;
 	long val;
 	int ch, first, hdr, ret;
 	char *buf, *name, *p, *value;
+	u_int32_t i, nparts;
 
 	*dbtypep = DB_UNKNOWN;
 	*checkprintp = 0;
@@ -920,6 +979,39 @@ rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
 				badnum(dbenv);
 				goto err;
 			}
+			continue;
+		}
+		if (strcmp(name, "nparts") == 0) {
+			if ((ret = __db_getlong(dbenv,
+			    NULL, value, 0, LONG_MAX, &val)) != 0) {
+				badnum(dbenv);
+				goto err;
+			}
+			nparts = (u_int32_t) val;
+			if ((keys =
+			    malloc((nparts - 1) * sizeof(DBT))) == NULL) {
+				dbenv->err(dbenv, ENOMEM, NULL);
+				goto err;
+			}
+			kp = keys;
+			for (i = 1; i < nparts; kp++, i++) {
+				if ((kp->data =
+				     malloc(kp->ulen = 1024)) == NULL) {
+					dbenv->err(dbenv, ENOMEM, NULL);
+					goto err;
+				}
+				if (*checkprintp) {
+					if (dbt_rprint(dbenv, kp))
+						goto err;
+				} else {
+					if (dbt_rdump(dbenv, kp))
+						goto err;
+				}
+			}
+			if ((ret = dbp->set_partition(
+			     dbp, nparts, keys, NULL)) != 0)
+				goto err;
+
 			continue;
 		}
 

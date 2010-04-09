@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_deadlock.c,v 12.33 2008/03/10 13:31:33 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -309,10 +309,6 @@ use_next:		keeper = i;
 
 dokill:		if (killid == BAD_KILLID) {
 			if (keeper == BAD_KILLID)
-				/*
-				 * It's conceivable that under XA, the
-				 * locker could have gone away.
-				 */
 				continue;
 			else {
 				/*
@@ -331,13 +327,18 @@ dokill:		if (killid == BAD_KILLID) {
 
 		/*
 		 * It's possible that the lock was already aborted; this isn't
-		 * necessarily a problem, so do not treat it as an error.
+		 * necessarily a problem, so do not treat it as an error. If
+		 * the txn was aborting and deadlocked trying to upgrade
+		 * a was_write lock, the detector should be run again or
+		 * the deadlock might persist.
 		 */
 		if (status != 0) {
 			if (status != DB_ALREADY_ABORTED)
 				__db_errx(env,
 				    "warning: unable to abort locker %lx",
 				    (u_long)idmap[killid].id);
+			else 
+				region->need_dd = 1;
 		} else if (FLD_ISSET(env->dbenv->verbose, DB_VERB_DEADLOCK))
 			__db_msg(env,
 			    "Aborting locker %lx", (u_long)idmap[killid].id);
@@ -431,9 +432,11 @@ skip:		LOCK_DD(env, region);
 							++*rejectp;
 						continue;
 					}
-					if (!timespecisset(&min_timeout) ||
+					if (timespecisset(
+					    &lockerp->lk_expire) &&
+					    (!timespecisset(&min_timeout) ||
 					    timespeccmp(&min_timeout,
-					    &lockerp->lk_expire, >))
+					    &lockerp->lk_expire, >)))
 						min_timeout =
 						    lockerp->lk_expire;
 				}
@@ -452,7 +455,7 @@ skip:		LOCK_DD(env, region);
 	 * to make sure the structures are large enough.
 	 */
 	LOCK_LOCKERS(env, region);
-	count = region->stat.st_nlockers;
+	count = region->nlockers;
 	if (count == 0) {
 		UNLOCK_LOCKERS(env, region);
 		*nlockers = 0;
@@ -604,9 +607,10 @@ again:		memset(bitmap, 0, count * sizeof(u_int32_t) * nentries);
 						++*rejectp;
 					continue;
 				}
-				if (!timespecisset(&min_timeout) ||
+				if (timespecisset(&lockerp->lk_expire) &&
+				    (!timespecisset(&min_timeout) ||
 				    timespeccmp(
-				    &min_timeout, &lockerp->lk_expire, >))
+				    &min_timeout, &lockerp->lk_expire, >)))
 					min_timeout = lockerp->lk_expire;
 			}
 
@@ -867,6 +871,7 @@ __dd_abort(env, info, statusp)
 	}
 	if (R_OFFSET(&lt->reginfo, lockp) != info->last_lock ||
 	    lockp->holder != R_OFFSET(&lt->reginfo, lockerp) ||
+	    F_ISSET(lockerp, DB_LOCKER_INABORT) ||
 	    lockp->obj != info->last_obj || lockp->status != DB_LSTAT_WAITING) {
 		*statusp = DB_ALREADY_ABORTED;
 		goto done;

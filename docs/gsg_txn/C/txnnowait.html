@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>No Wait on Blocks</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
-    <link rel="previous" href="readmodifywrite.html" title="Read/Modify/Write" />
+    <link rel="prev" href="readmodifywrite.html" title="Read/Modify/Write" />
     <link rel="next" href="reversesplit.html" title="Reverse BTree Splits" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="txnnowait"></a>No Wait on Blocks</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             Normally when a DB transaction is blocked on a lock request, it
@@ -45,9 +44,9 @@
             You do this on a transaction by transaction basis by specifying
 
             <span>
-                <tt class="literal">DB_TXN_NOWAIT</tt>
+                <code class="literal">DB_TXN_NOWAIT</code>
                 to the
-                <tt class="methodname">DB_ENV-&gt;txn_begin()</tt>
+                <code class="methodname">DB_ENV-&gt;txn_begin()</code>
                 
                 
                 method.

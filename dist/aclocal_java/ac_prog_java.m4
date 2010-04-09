@@ -62,7 +62,7 @@ dnl
 dnl    AC_OUTPUT(Makefile)
 dnl
 dnl @author Stephane Bortzmeyer <bortzmeyer@pasteur.fr>
-dnl @version $Id: ac_prog_java.m4,v 12.1 2006/08/24 14:45:36 bostic Exp $
+dnl @version $Id$
 dnl
 dnl Note: Modified to prefer java over kaffe. [#8059]
 dnl

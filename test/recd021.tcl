@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: recd021.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd021
 # TEST	Test of failed opens in recovery.

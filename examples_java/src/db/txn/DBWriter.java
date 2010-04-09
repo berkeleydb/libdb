@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 package db.txn;
 
 import com.sleepycat.bind.EntryBinding;

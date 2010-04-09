@@ -31,6 +31,7 @@
 #ifdef CONFIG_TEST
 #define	__db_testcopy __db_testcopy@DB_VERSION_UNIQUE_NAME@
 #endif
+#define	__db_testdocopy __db_testdocopy@DB_VERSION_UNIQUE_NAME@
 #define	__db_cursor_int __db_cursor_int@DB_VERSION_UNIQUE_NAME@
 #define	__db_put __db_put@DB_VERSION_UNIQUE_NAME@
 #define	__db_del __db_del@DB_VERSION_UNIQUE_NAME@
@@ -62,8 +63,9 @@
 #define	__db_pg_freedata_log __db_pg_freedata_log@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_init_read __db_pg_init_read@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_init_log __db_pg_init_log@DB_VERSION_UNIQUE_NAME@
-#define	__db_pg_sort_read __db_pg_sort_read@DB_VERSION_UNIQUE_NAME@
-#define	__db_pg_sort_log __db_pg_sort_log@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_sort_44_read __db_pg_sort_44_read@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_trunc_read __db_pg_trunc_read@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_trunc_log __db_pg_trunc_log@DB_VERSION_UNIQUE_NAME@
 #define	__db_init_recover __db_init_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_addrem_print __db_addrem_print@DB_VERSION_UNIQUE_NAME@
 #define	__db_big_print __db_big_print@DB_VERSION_UNIQUE_NAME@
@@ -79,24 +81,34 @@
 #define	__db_pg_freedata_42_print __db_pg_freedata_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_freedata_print __db_pg_freedata_print@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_init_print __db_pg_init_print@DB_VERSION_UNIQUE_NAME@
-#define	__db_pg_sort_print __db_pg_sort_print@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_sort_44_print __db_pg_sort_44_print@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_trunc_print __db_pg_trunc_print@DB_VERSION_UNIQUE_NAME@
 #define	__db_init_print __db_init_print@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_close __dbc_close@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_destroy __dbc_destroy@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_cmp __dbc_cmp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_count __dbc_count@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_del __dbc_del@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_idel __dbc_idel@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_COMPRESSION
+#define	__dbc_bulk_del __dbc_bulk_del@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__dbc_dup __dbc_dup@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_idup __dbc_idup@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_newopd __dbc_newopd@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_get __dbc_get@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_iget __dbc_iget@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_put __dbc_put@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_iput __dbc_iput@DB_VERSION_UNIQUE_NAME@
 #define	__db_duperr __db_duperr@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_cleanup __dbc_cleanup@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_secondary_get_pp __dbc_secondary_get_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_pget __dbc_pget@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_del_primary __dbc_del_primary@DB_VERSION_UNIQUE_NAME@
 #define	__db_s_first __db_s_first@DB_VERSION_UNIQUE_NAME@
 #define	__db_s_next __db_s_next@DB_VERSION_UNIQUE_NAME@
 #define	__db_s_done __db_s_done@DB_VERSION_UNIQUE_NAME@
+#define	__db_buildpartial __db_buildpartial@DB_VERSION_UNIQUE_NAME@
 #define	__db_partsize __db_partsize@DB_VERSION_UNIQUE_NAME@
 #ifdef DIAGNOSTIC
 #define	__db_check_skeyset __db_check_skeyset@DB_VERSION_UNIQUE_NAME@
@@ -124,7 +136,9 @@
 #define	__db_txnlist_lsnget __db_txnlist_lsnget@DB_VERSION_UNIQUE_NAME@
 #define	__db_txnlist_lsninit __db_txnlist_lsninit@DB_VERSION_UNIQUE_NAME@
 #define	__db_txnlist_print __db_txnlist_print@DB_VERSION_UNIQUE_NAME@
+#define	__db_ditem_nolog __db_ditem_nolog@DB_VERSION_UNIQUE_NAME@
 #define	__db_ditem __db_ditem@DB_VERSION_UNIQUE_NAME@
+#define	__db_pitem_nolog __db_pitem_nolog@DB_VERSION_UNIQUE_NAME@
 #define	__db_pitem __db_pitem@DB_VERSION_UNIQUE_NAME@
 #define	__db_associate_pp __db_associate_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_close_pp __db_close_pp@DB_VERSION_UNIQUE_NAME@
@@ -145,10 +159,12 @@
 #define	__db_associate_foreign_pp __db_associate_foreign_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_sync_pp __db_sync_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_close_pp __dbc_close_pp@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_cmp_pp __dbc_cmp_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_count_pp __dbc_count_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_del_pp __dbc_del_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_dup_pp __dbc_dup_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_get_pp __dbc_get_pp@DB_VERSION_UNIQUE_NAME@
+#define	__dbc_get_arg __dbc_get_arg@DB_VERSION_UNIQUE_NAME@
 #define	__db_secondary_close_pp __db_secondary_close_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_pget_pp __dbc_pget_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_put_pp __dbc_put_pp@DB_VERSION_UNIQUE_NAME@
@@ -162,6 +178,7 @@
 #ifdef HAVE_FTRUNCATE
 #define	__db_freelist_pos __db_freelist_pos@DB_VERSION_UNIQUE_NAME@
 #endif
+#define	__db_freelist_sort __db_freelist_sort@DB_VERSION_UNIQUE_NAME@
 #ifdef HAVE_FTRUNCATE
 #define	__db_pg_truncate __db_pg_truncate@DB_VERSION_UNIQUE_NAME@
 #endif
@@ -220,7 +237,8 @@
 #define	__db_pg_freedata_recover __db_pg_freedata_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_cksum_recover __db_cksum_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_init_recover __db_pg_init_recover@DB_VERSION_UNIQUE_NAME@
-#define	__db_pg_sort_recover __db_pg_sort_recover@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_trunc_recover __db_pg_trunc_recover@DB_VERSION_UNIQUE_NAME@
+#define	__db_pg_sort_44_recover __db_pg_sort_44_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_alloc_42_recover __db_pg_alloc_42_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_free_42_recover __db_pg_free_42_recover@DB_VERSION_UNIQUE_NAME@
 #define	__db_pg_freedata_42_recover __db_pg_freedata_42_recover@DB_VERSION_UNIQUE_NAME@
@@ -239,7 +257,11 @@
 #define	__db_ret __db_ret@DB_VERSION_UNIQUE_NAME@
 #define	__db_retcopy __db_retcopy@DB_VERSION_UNIQUE_NAME@
 #define	__env_fileid_reset_pp __env_fileid_reset_pp@DB_VERSION_UNIQUE_NAME@
+#define	__env_fileid_reset __env_fileid_reset@DB_VERSION_UNIQUE_NAME@
 #define	__env_lsn_reset_pp __env_lsn_reset_pp@DB_VERSION_UNIQUE_NAME@
+#define	__db_lsn_reset __db_lsn_reset@DB_VERSION_UNIQUE_NAME@
+#define	__db_compare_both __db_compare_both@DB_VERSION_UNIQUE_NAME@
+#define	__db_sort_multiple __db_sort_multiple@DB_VERSION_UNIQUE_NAME@
 #define	__db_stat_pp __db_stat_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_stat_print_pp __db_stat_print_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_stat_print __db_stat_print@DB_VERSION_UNIQUE_NAME@
@@ -251,11 +273,13 @@
 #define	__db_31_offdup __db_31_offdup@DB_VERSION_UNIQUE_NAME@
 #define	__db_verify_pp __db_verify_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_verify_internal __db_verify_internal@DB_VERSION_UNIQUE_NAME@
+#define	__db_verify __db_verify@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_common __db_vrfy_common@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_datapage __db_vrfy_datapage@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_meta __db_vrfy_meta@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_struct_feedback __db_vrfy_struct_feedback@DB_VERSION_UNIQUE_NAME@
-#define	__db_salvage __db_salvage@DB_VERSION_UNIQUE_NAME@
+#define	__db_salvage_pg __db_salvage_pg@DB_VERSION_UNIQUE_NAME@
+#define	__db_salvage_leaf __db_salvage_leaf@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_inpitem __db_vrfy_inpitem@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_duptype __db_vrfy_duptype@DB_VERSION_UNIQUE_NAME@
 #define	__db_salvage_duptree __db_salvage_duptree@DB_VERSION_UNIQUE_NAME@
@@ -279,10 +303,51 @@
 #define	__db_salvage_markdone __db_salvage_markdone@DB_VERSION_UNIQUE_NAME@
 #define	__db_salvage_markneeded __db_salvage_markneeded@DB_VERSION_UNIQUE_NAME@
 #define	__db_vrfy_prdbt __db_vrfy_prdbt@DB_VERSION_UNIQUE_NAME@
+#define	__partition_init __partition_init@DB_VERSION_UNIQUE_NAME@
+#define	__partition_set __partition_set@DB_VERSION_UNIQUE_NAME@
+#define	__partition_set_dirs __partition_set_dirs@DB_VERSION_UNIQUE_NAME@
+#define	__partition_open __partition_open@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_callback __partition_get_callback@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_keys __partition_get_keys@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_dirs __partition_get_dirs@DB_VERSION_UNIQUE_NAME@
+#define	__partc_init __partc_init@DB_VERSION_UNIQUE_NAME@
+#define	__partc_get __partc_get@DB_VERSION_UNIQUE_NAME@
+#define	__partition_close __partition_close@DB_VERSION_UNIQUE_NAME@
+#define	__partition_sync __partition_sync@DB_VERSION_UNIQUE_NAME@
+#define	__partition_stat __partition_stat@DB_VERSION_UNIQUE_NAME@
+#define	__part_truncate __part_truncate@DB_VERSION_UNIQUE_NAME@
+#define	__part_compact __part_compact@DB_VERSION_UNIQUE_NAME@
+#define	__part_lsn_reset __part_lsn_reset@DB_VERSION_UNIQUE_NAME@
+#define	__part_fileid_reset __part_fileid_reset@DB_VERSION_UNIQUE_NAME@
+#define	__part_key_range __part_key_range@DB_VERSION_UNIQUE_NAME@
+#define	__part_remove __part_remove@DB_VERSION_UNIQUE_NAME@
+#define	__part_rename __part_rename@DB_VERSION_UNIQUE_NAME@
+#define	__part_verify __part_verify@DB_VERSION_UNIQUE_NAME@
+#define	__part_testdocopy __part_testdocopy@DB_VERSION_UNIQUE_NAME@
+#define	__db_no_partition __db_no_partition@DB_VERSION_UNIQUE_NAME@
+#define	__partition_set __partition_set@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_callback __partition_get_callback@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_dirs __partition_get_dirs@DB_VERSION_UNIQUE_NAME@
+#define	__partition_get_keys __partition_get_keys@DB_VERSION_UNIQUE_NAME@
+#define	__partition_init __partition_init@DB_VERSION_UNIQUE_NAME@
+#define	__part_fileid_reset __part_fileid_reset@DB_VERSION_UNIQUE_NAME@
+#define	__partition_set_dirs __partition_set_dirs@DB_VERSION_UNIQUE_NAME@
 #define	__bam_compact __bam_compact@DB_VERSION_UNIQUE_NAME@
 #define	__bam_cmp __bam_cmp@DB_VERSION_UNIQUE_NAME@
 #define	__bam_defcmp __bam_defcmp@DB_VERSION_UNIQUE_NAME@
 #define	__bam_defpfx __bam_defpfx@DB_VERSION_UNIQUE_NAME@
+#define	__bam_compress_dupcmp __bam_compress_dupcmp@DB_VERSION_UNIQUE_NAME@
+#define	__bam_defcompress __bam_defcompress@DB_VERSION_UNIQUE_NAME@
+#define	__bam_defdecompress __bam_defdecompress@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_get __bamc_compress_get@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_put __bamc_compress_put@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_del __bamc_compress_del@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_bulk_del __bamc_compress_bulk_del@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_count __bamc_compress_count@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_cmp __bamc_compress_cmp@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_compress_dup __bamc_compress_dup@DB_VERSION_UNIQUE_NAME@
+#define	__bam_compress_salvage __bam_compress_salvage@DB_VERSION_UNIQUE_NAME@
+#define	__bam_compress_count __bam_compress_count@DB_VERSION_UNIQUE_NAME@
 #define	__bam_pgin __bam_pgin@DB_VERSION_UNIQUE_NAME@
 #define	__bam_pgout __bam_pgout@DB_VERSION_UNIQUE_NAME@
 #define	__bam_mswap __bam_mswap@DB_VERSION_UNIQUE_NAME@
@@ -296,6 +361,7 @@
 #define	__bam_ca_undosplit __bam_ca_undosplit@DB_VERSION_UNIQUE_NAME@
 #define	__bamc_init __bamc_init@DB_VERSION_UNIQUE_NAME@
 #define	__bamc_refresh __bamc_refresh@DB_VERSION_UNIQUE_NAME@
+#define	__bamc_cmp __bamc_cmp@DB_VERSION_UNIQUE_NAME@
 #define	__bamc_count __bamc_count@DB_VERSION_UNIQUE_NAME@
 #define	__bamc_dup __bamc_dup@DB_VERSION_UNIQUE_NAME@
 #define	__bam_bulk_overflow __bam_bulk_overflow@DB_VERSION_UNIQUE_NAME@
@@ -312,7 +378,9 @@
 #define	__bam_map_flags __bam_map_flags@DB_VERSION_UNIQUE_NAME@
 #define	__bam_set_flags __bam_set_flags@DB_VERSION_UNIQUE_NAME@
 #define	__bam_set_bt_compare __bam_set_bt_compare@DB_VERSION_UNIQUE_NAME@
+#define	__bam_set_bt_compress __bam_set_bt_compress@DB_VERSION_UNIQUE_NAME@
 #define	__bam_get_bt_minkey __bam_get_bt_minkey@DB_VERSION_UNIQUE_NAME@
+#define	__bam_copy_config __bam_copy_config@DB_VERSION_UNIQUE_NAME@
 #define	__ram_map_flags __ram_map_flags@DB_VERSION_UNIQUE_NAME@
 #define	__ram_set_flags __ram_set_flags@DB_VERSION_UNIQUE_NAME@
 #define	__ram_get_re_len __ram_get_re_len@DB_VERSION_UNIQUE_NAME@
@@ -324,7 +392,9 @@
 #define	__bam_new_subdb __bam_new_subdb@DB_VERSION_UNIQUE_NAME@
 #define	__bam_iitem __bam_iitem@DB_VERSION_UNIQUE_NAME@
 #define	__bam_ritem __bam_ritem@DB_VERSION_UNIQUE_NAME@
+#define	__bam_irep __bam_irep@DB_VERSION_UNIQUE_NAME@
 #define	__bam_split_recover __bam_split_recover@DB_VERSION_UNIQUE_NAME@
+#define	__bam_split_42_recover __bam_split_42_recover@DB_VERSION_UNIQUE_NAME@
 #define	__bam_rsplit_recover __bam_rsplit_recover@DB_VERSION_UNIQUE_NAME@
 #define	__bam_adj_recover __bam_adj_recover@DB_VERSION_UNIQUE_NAME@
 #define	__bam_cadjust_recover __bam_cadjust_recover@DB_VERSION_UNIQUE_NAME@
@@ -357,6 +427,8 @@
 #define	__bam_stkrel __bam_stkrel@DB_VERSION_UNIQUE_NAME@
 #define	__bam_stkgrow __bam_stkgrow@DB_VERSION_UNIQUE_NAME@
 #define	__bam_split __bam_split@DB_VERSION_UNIQUE_NAME@
+#define	__bam_broot __bam_broot@DB_VERSION_UNIQUE_NAME@
+#define	__ram_root __ram_root@DB_VERSION_UNIQUE_NAME@
 #define	__bam_pinsert __bam_pinsert@DB_VERSION_UNIQUE_NAME@
 #define	__bam_copy __bam_copy@DB_VERSION_UNIQUE_NAME@
 #define	__bam_stat __bam_stat@DB_VERSION_UNIQUE_NAME@
@@ -379,6 +451,7 @@
 #define	__bam_meta2pgset __bam_meta2pgset@DB_VERSION_UNIQUE_NAME@
 #define	__bam_split_read __bam_split_read@DB_VERSION_UNIQUE_NAME@
 #define	__bam_split_log __bam_split_log@DB_VERSION_UNIQUE_NAME@
+#define	__bam_split_42_read __bam_split_42_read@DB_VERSION_UNIQUE_NAME@
 #define	__bam_rsplit_read __bam_rsplit_read@DB_VERSION_UNIQUE_NAME@
 #define	__bam_rsplit_log __bam_rsplit_log@DB_VERSION_UNIQUE_NAME@
 #define	__bam_adj_read __bam_adj_read@DB_VERSION_UNIQUE_NAME@
@@ -405,6 +478,7 @@
 #define	__bam_pgno_log __bam_pgno_log@DB_VERSION_UNIQUE_NAME@
 #define	__bam_init_recover __bam_init_recover@DB_VERSION_UNIQUE_NAME@
 #define	__bam_split_print __bam_split_print@DB_VERSION_UNIQUE_NAME@
+#define	__bam_split_42_print __bam_split_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__bam_rsplit_print __bam_rsplit_print@DB_VERSION_UNIQUE_NAME@
 #define	__bam_adj_print __bam_adj_print@DB_VERSION_UNIQUE_NAME@
 #define	__bam_cadjust_print __bam_cadjust_print@DB_VERSION_UNIQUE_NAME@
@@ -519,6 +593,11 @@
 #define	__crypto_region_init __crypto_region_init@DB_VERSION_UNIQUE_NAME@
 #define	__db_isbigendian __db_isbigendian@DB_VERSION_UNIQUE_NAME@
 #define	__db_byteorder __db_byteorder@DB_VERSION_UNIQUE_NAME@
+#define	__db_compress_count_int __db_compress_count_int@DB_VERSION_UNIQUE_NAME@
+#define	__db_compress_int __db_compress_int@DB_VERSION_UNIQUE_NAME@
+#define	__db_decompress_count_int __db_decompress_count_int@DB_VERSION_UNIQUE_NAME@
+#define	__db_decompress_int __db_decompress_int@DB_VERSION_UNIQUE_NAME@
+#define	__db_decompress_int32 __db_decompress_int32@DB_VERSION_UNIQUE_NAME@
 #define	__db_fchk __db_fchk@DB_VERSION_UNIQUE_NAME@
 #define	__db_fcchk __db_fcchk@DB_VERSION_UNIQUE_NAME@
 #define	__db_ferr __db_ferr@DB_VERSION_UNIQUE_NAME@
@@ -638,6 +717,7 @@
 #define	__env_read_db_config __env_read_db_config@DB_VERSION_UNIQUE_NAME@
 #define	__config_split __config_split@DB_VERSION_UNIQUE_NAME@
 #define	__env_failchk_pp __env_failchk_pp@DB_VERSION_UNIQUE_NAME@
+#define	__env_failchk_int __env_failchk_int@DB_VERSION_UNIQUE_NAME@
 #define	__env_thread_init __env_thread_init@DB_VERSION_UNIQUE_NAME@
 #define	__env_thread_destroy __env_thread_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_state __env_set_state@DB_VERSION_UNIQUE_NAME@
@@ -646,6 +726,7 @@
 #define	__db_file_multi_write __db_file_multi_write@DB_VERSION_UNIQUE_NAME@
 #define	__db_file_write __db_file_write@DB_VERSION_UNIQUE_NAME@
 #define	__db_env_destroy __db_env_destroy@DB_VERSION_UNIQUE_NAME@
+#define	__env_get_alloc __env_get_alloc@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_alloc __env_set_alloc@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_encrypt_flags __env_get_encrypt_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_encrypt __env_set_encrypt@DB_VERSION_UNIQUE_NAME@
@@ -653,6 +734,8 @@
 #define	__env_fetch_flags __env_fetch_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_flags __env_set_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_data_dir __env_set_data_dir@DB_VERSION_UNIQUE_NAME@
+#define	__env_add_data_dir __env_add_data_dir@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_create_dir __env_set_create_dir@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_intermediate_dir_mode __env_set_intermediate_dir_mode@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_errcall __env_get_errcall@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_errcall __env_set_errcall@DB_VERSION_UNIQUE_NAME@
@@ -660,6 +743,8 @@
 #define	__env_set_errfile __env_set_errfile@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_errpfx __env_get_errpfx@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_errpfx __env_set_errpfx@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_thread_count __env_set_thread_count@DB_VERSION_UNIQUE_NAME@
+#define	__env_get_msgcall __env_get_msgcall@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_msgcall __env_set_msgcall@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_msgfile __env_get_msgfile@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_msgfile __env_set_msgfile@DB_VERSION_UNIQUE_NAME@
@@ -670,14 +755,18 @@
 #define	__db_mi_env __db_mi_env@DB_VERSION_UNIQUE_NAME@
 #define	__db_mi_open __db_mi_open@DB_VERSION_UNIQUE_NAME@
 #define	__env_not_config __env_not_config@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_timeout __env_set_timeout@DB_VERSION_UNIQUE_NAME@
 #define	__db_appname __db_appname@DB_VERSION_UNIQUE_NAME@
+#define	__db_tmp_open __db_tmp_open@DB_VERSION_UNIQUE_NAME@
 #define	__env_open_pp __env_open_pp@DB_VERSION_UNIQUE_NAME@
 #define	__env_open __env_open@DB_VERSION_UNIQUE_NAME@
 #define	__env_remove __env_remove@DB_VERSION_UNIQUE_NAME@
 #define	__env_config __env_config@DB_VERSION_UNIQUE_NAME@
 #define	__env_close_pp __env_close_pp@DB_VERSION_UNIQUE_NAME@
 #define	__env_close __env_close@DB_VERSION_UNIQUE_NAME@
+#define	__env_refresh __env_refresh@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_open_flags __env_get_open_flags@DB_VERSION_UNIQUE_NAME@
+#define	__env_attach_regions __env_attach_regions@DB_VERSION_UNIQUE_NAME@
 #define	__db_apprec __db_apprec@DB_VERSION_UNIQUE_NAME@
 #define	__log_backup __log_backup@DB_VERSION_UNIQUE_NAME@
 #define	__env_openfiles __env_openfiles@DB_VERSION_UNIQUE_NAME@
@@ -734,12 +823,15 @@
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_handle_event __repmgr_handle_event@DB_VERSION_UNIQUE_NAME@
 #endif
+#define	__fop_create_42_read __fop_create_42_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_create_read __fop_create_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_create_log __fop_create_log@DB_VERSION_UNIQUE_NAME@
 #define	__fop_remove_read __fop_remove_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_remove_log __fop_remove_log@DB_VERSION_UNIQUE_NAME@
+#define	__fop_write_42_read __fop_write_42_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_write_read __fop_write_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_write_log __fop_write_log@DB_VERSION_UNIQUE_NAME@
+#define	__fop_rename_42_read __fop_rename_42_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_read __fop_rename_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_log __fop_rename_log@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_noundo_log __fop_rename_noundo_log@DB_VERSION_UNIQUE_NAME@
@@ -747,9 +839,12 @@
 #define	__fop_file_remove_read __fop_file_remove_read@DB_VERSION_UNIQUE_NAME@
 #define	__fop_file_remove_log __fop_file_remove_log@DB_VERSION_UNIQUE_NAME@
 #define	__fop_init_recover __fop_init_recover@DB_VERSION_UNIQUE_NAME@
+#define	__fop_create_42_print __fop_create_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_create_print __fop_create_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_remove_print __fop_remove_print@DB_VERSION_UNIQUE_NAME@
+#define	__fop_write_42_print __fop_write_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_write_print __fop_write_print@DB_VERSION_UNIQUE_NAME@
+#define	__fop_rename_42_print __fop_rename_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_print __fop_rename_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_file_remove_print __fop_file_remove_print@DB_VERSION_UNIQUE_NAME@
 #define	__fop_init_print __fop_init_print@DB_VERSION_UNIQUE_NAME@
@@ -758,10 +853,14 @@
 #define	__fop_write __fop_write@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename __fop_rename@DB_VERSION_UNIQUE_NAME@
 #define	__fop_create_recover __fop_create_recover@DB_VERSION_UNIQUE_NAME@
+#define	__fop_create_42_recover __fop_create_42_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_remove_recover __fop_remove_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_write_recover __fop_write_recover@DB_VERSION_UNIQUE_NAME@
+#define	__fop_write_42_recover __fop_write_42_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_recover __fop_rename_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_rename_noundo_recover __fop_rename_noundo_recover@DB_VERSION_UNIQUE_NAME@
+#define	__fop_rename_42_recover __fop_rename_42_recover@DB_VERSION_UNIQUE_NAME@
+#define	__fop_rename_noundo_46_recover __fop_rename_noundo_46_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_file_remove_recover __fop_file_remove_recover@DB_VERSION_UNIQUE_NAME@
 #define	__fop_lock_handle __fop_lock_handle@DB_VERSION_UNIQUE_NAME@
 #define	__fop_file_setup __fop_file_setup@DB_VERSION_UNIQUE_NAME@
@@ -773,8 +872,10 @@
 #define	__ham_quick_delete __ham_quick_delete@DB_VERSION_UNIQUE_NAME@
 #define	__hamc_init __hamc_init@DB_VERSION_UNIQUE_NAME@
 #define	__hamc_count __hamc_count@DB_VERSION_UNIQUE_NAME@
+#define	__hamc_cmp __hamc_cmp@DB_VERSION_UNIQUE_NAME@
 #define	__hamc_dup __hamc_dup@DB_VERSION_UNIQUE_NAME@
 #define	__ham_call_hash __ham_call_hash@DB_VERSION_UNIQUE_NAME@
+#define	__ham_overwrite __ham_overwrite@DB_VERSION_UNIQUE_NAME@
 #define	__ham_init_dbt __ham_init_dbt@DB_VERSION_UNIQUE_NAME@
 #define	__hamc_update __hamc_update@DB_VERSION_UNIQUE_NAME@
 #define	__ham_get_clist __ham_get_clist@DB_VERSION_UNIQUE_NAME@
@@ -826,11 +927,13 @@
 #define	__ham_get_meta __ham_get_meta@DB_VERSION_UNIQUE_NAME@
 #define	__ham_release_meta __ham_release_meta@DB_VERSION_UNIQUE_NAME@
 #define	__ham_dirty_meta __ham_dirty_meta@DB_VERSION_UNIQUE_NAME@
+#define	__ham_return_meta __ham_return_meta@DB_VERSION_UNIQUE_NAME@
 #define	__ham_db_create __ham_db_create@DB_VERSION_UNIQUE_NAME@
 #define	__ham_db_close __ham_db_close@DB_VERSION_UNIQUE_NAME@
 #define	__ham_get_h_ffactor __ham_get_h_ffactor@DB_VERSION_UNIQUE_NAME@
 #define	__ham_set_h_compare __ham_set_h_compare@DB_VERSION_UNIQUE_NAME@
 #define	__ham_get_h_nelem __ham_get_h_nelem@DB_VERSION_UNIQUE_NAME@
+#define	__ham_copy_config __ham_copy_config@DB_VERSION_UNIQUE_NAME@
 #define	__ham_open __ham_open@DB_VERSION_UNIQUE_NAME@
 #define	__ham_metachk __ham_metachk@DB_VERSION_UNIQUE_NAME@
 #define	__ham_new_file __ham_new_file@DB_VERSION_UNIQUE_NAME@
@@ -1047,6 +1150,7 @@
 #define	__memp_fput __memp_fput@DB_VERSION_UNIQUE_NAME@
 #define	__memp_unpin_buffers __memp_unpin_buffers@DB_VERSION_UNIQUE_NAME@
 #define	__memp_dirty __memp_dirty@DB_VERSION_UNIQUE_NAME@
+#define	__memp_shared __memp_shared@DB_VERSION_UNIQUE_NAME@
 #define	__memp_env_create __memp_env_create@DB_VERSION_UNIQUE_NAME@
 #define	__memp_env_destroy __memp_env_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__memp_get_cachesize __memp_get_cachesize@DB_VERSION_UNIQUE_NAME@
@@ -1059,6 +1163,10 @@
 #define	__memp_set_mp_max_write __memp_set_mp_max_write@DB_VERSION_UNIQUE_NAME@
 #define	__memp_get_mp_mmapsize __memp_get_mp_mmapsize@DB_VERSION_UNIQUE_NAME@
 #define	__memp_set_mp_mmapsize __memp_set_mp_mmapsize@DB_VERSION_UNIQUE_NAME@
+#define	__memp_get_mp_pagesize __memp_get_mp_pagesize@DB_VERSION_UNIQUE_NAME@
+#define	__memp_set_mp_pagesize __memp_set_mp_pagesize@DB_VERSION_UNIQUE_NAME@
+#define	__memp_get_mp_tablesize __memp_get_mp_tablesize@DB_VERSION_UNIQUE_NAME@
+#define	__memp_set_mp_tablesize __memp_set_mp_tablesize@DB_VERSION_UNIQUE_NAME@
 #define	__memp_nameop __memp_nameop@DB_VERSION_UNIQUE_NAME@
 #define	__memp_ftruncate __memp_ftruncate@DB_VERSION_UNIQUE_NAME@
 #define	__memp_alloc_freelist __memp_alloc_freelist@DB_VERSION_UNIQUE_NAME@
@@ -1066,7 +1174,6 @@
 #define	__memp_get_freelist __memp_get_freelist@DB_VERSION_UNIQUE_NAME@
 #define	__memp_extend_freelist __memp_extend_freelist@DB_VERSION_UNIQUE_NAME@
 #define	__memp_set_last_pgno __memp_set_last_pgno@DB_VERSION_UNIQUE_NAME@
-#define	__memp_bh_priority __memp_bh_priority@DB_VERSION_UNIQUE_NAME@
 #define	__memp_bh_settxn __memp_bh_settxn@DB_VERSION_UNIQUE_NAME@
 #define	__memp_skip_curadj __memp_skip_curadj@DB_VERSION_UNIQUE_NAME@
 #define	__memp_bh_freeze __memp_bh_freeze@DB_VERSION_UNIQUE_NAME@
@@ -1102,6 +1209,7 @@
 #define	__mut_failchk __mut_failchk@DB_VERSION_UNIQUE_NAME@
 #define	__db_fcntl_mutex_init __db_fcntl_mutex_init@DB_VERSION_UNIQUE_NAME@
 #define	__db_fcntl_mutex_lock __db_fcntl_mutex_lock@DB_VERSION_UNIQUE_NAME@
+#define	__db_fcntl_mutex_trylock __db_fcntl_mutex_trylock@DB_VERSION_UNIQUE_NAME@
 #define	__db_fcntl_mutex_unlock __db_fcntl_mutex_unlock@DB_VERSION_UNIQUE_NAME@
 #define	__db_fcntl_mutex_destroy __db_fcntl_mutex_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__mutex_alloc_pp __mutex_alloc_pp@DB_VERSION_UNIQUE_NAME@
@@ -1116,8 +1224,17 @@
 #define	__mutex_set_max __mutex_set_max@DB_VERSION_UNIQUE_NAME@
 #define	__mutex_get_tas_spins __mutex_get_tas_spins@DB_VERSION_UNIQUE_NAME@
 #define	__mutex_set_tas_spins __mutex_set_tas_spins@DB_VERSION_UNIQUE_NAME@
+#if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__atomic_inc __atomic_inc@DB_VERSION_UNIQUE_NAME@
+#endif
+#if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__atomic_dec __atomic_dec@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_pthread_mutex_init __db_pthread_mutex_init@DB_VERSION_UNIQUE_NAME@
 #define	__db_pthread_mutex_lock __db_pthread_mutex_lock@DB_VERSION_UNIQUE_NAME@
+#if defined(HAVE_SHARED_LATCHES)
+#define	__db_pthread_mutex_readlock __db_pthread_mutex_readlock@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_pthread_mutex_unlock __db_pthread_mutex_unlock@DB_VERSION_UNIQUE_NAME@
 #define	__db_pthread_mutex_destroy __db_pthread_mutex_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__mutex_open __mutex_open@DB_VERSION_UNIQUE_NAME@
@@ -1132,10 +1249,24 @@
 #define	__mutex_clear __mutex_clear@DB_VERSION_UNIQUE_NAME@
 #define	__db_tas_mutex_init __db_tas_mutex_init@DB_VERSION_UNIQUE_NAME@
 #define	__db_tas_mutex_lock __db_tas_mutex_lock@DB_VERSION_UNIQUE_NAME@
+#define	__db_tas_mutex_trylock __db_tas_mutex_trylock@DB_VERSION_UNIQUE_NAME@
+#if defined(HAVE_SHARED_LATCHES)
+#define	__db_tas_mutex_readlock __db_tas_mutex_readlock@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_SHARED_LATCHES)
+#define	__db_tas_mutex_tryreadlock __db_tas_mutex_tryreadlock@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_tas_mutex_unlock __db_tas_mutex_unlock@DB_VERSION_UNIQUE_NAME@
 #define	__db_tas_mutex_destroy __db_tas_mutex_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__db_win32_mutex_init __db_win32_mutex_init@DB_VERSION_UNIQUE_NAME@
 #define	__db_win32_mutex_lock __db_win32_mutex_lock@DB_VERSION_UNIQUE_NAME@
+#define	__db_win32_mutex_trylock __db_win32_mutex_trylock@DB_VERSION_UNIQUE_NAME@
+#if defined(HAVE_SHARED_LATCHES)
+#define	__db_win32_mutex_readlock __db_win32_mutex_readlock@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_SHARED_LATCHES)
+#define	__db_win32_mutex_tryreadlock __db_win32_mutex_tryreadlock@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_win32_mutex_unlock __db_win32_mutex_unlock@DB_VERSION_UNIQUE_NAME@
 #define	__db_win32_mutex_destroy __db_win32_mutex_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__os_abort __os_abort@DB_VERSION_UNIQUE_NAME@
@@ -1260,6 +1391,7 @@
 #define	__qam_extent_names __qam_extent_names@DB_VERSION_UNIQUE_NAME@
 #define	__qam_exid __qam_exid@DB_VERSION_UNIQUE_NAME@
 #define	__qam_nameop __qam_nameop@DB_VERSION_UNIQUE_NAME@
+#define	__qam_lsn_reset __qam_lsn_reset@DB_VERSION_UNIQUE_NAME@
 #define	__qam_db_create __qam_db_create@DB_VERSION_UNIQUE_NAME@
 #define	__qam_db_close __qam_db_close@DB_VERSION_UNIQUE_NAME@
 #define	__qam_get_extentsize __qam_get_extentsize@DB_VERSION_UNIQUE_NAME@
@@ -1284,6 +1416,7 @@
 #define	__qam_31_qammeta __qam_31_qammeta@DB_VERSION_UNIQUE_NAME@
 #define	__qam_32_qammeta __qam_32_qammeta@DB_VERSION_UNIQUE_NAME@
 #define	__qam_vrfy_meta __qam_vrfy_meta@DB_VERSION_UNIQUE_NAME@
+#define	__qam_meta2pgset __qam_meta2pgset@DB_VERSION_UNIQUE_NAME@
 #define	__qam_vrfy_data __qam_vrfy_data@DB_VERSION_UNIQUE_NAME@
 #define	__qam_vrfy_structure __qam_vrfy_structure@DB_VERSION_UNIQUE_NAME@
 #define	__qam_vrfy_walkqueue __qam_vrfy_walkqueue@DB_VERSION_UNIQUE_NAME@
@@ -1317,7 +1450,8 @@
 #define	__rep_finfo_alloc __rep_finfo_alloc@DB_VERSION_UNIQUE_NAME@
 #define	__rep_remove_init_file __rep_remove_init_file@DB_VERSION_UNIQUE_NAME@
 #define	__rep_reset_init __rep_reset_init@DB_VERSION_UNIQUE_NAME@
-#define	__rep_elect __rep_elect@DB_VERSION_UNIQUE_NAME@
+#define	__rep_elect_pp __rep_elect_pp@DB_VERSION_UNIQUE_NAME@
+#define	__rep_elect_int __rep_elect_int@DB_VERSION_UNIQUE_NAME@
 #define	__rep_vote1 __rep_vote1@DB_VERSION_UNIQUE_NAME@
 #define	__rep_vote2 __rep_vote2@DB_VERSION_UNIQUE_NAME@
 #define	__rep_update_grant __rep_update_grant@DB_VERSION_UNIQUE_NAME@
@@ -1338,7 +1472,8 @@
 #define	__rep_env_destroy __rep_env_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__rep_get_config __rep_get_config@DB_VERSION_UNIQUE_NAME@
 #define	__rep_set_config __rep_set_config@DB_VERSION_UNIQUE_NAME@
-#define	__rep_start __rep_start@DB_VERSION_UNIQUE_NAME@
+#define	__rep_start_pp __rep_start_pp@DB_VERSION_UNIQUE_NAME@
+#define	__rep_start_int __rep_start_int@DB_VERSION_UNIQUE_NAME@
 #define	__rep_client_dbinit __rep_client_dbinit@DB_VERSION_UNIQUE_NAME@
 #define	__rep_get_limit __rep_get_limit@DB_VERSION_UNIQUE_NAME@
 #define	__rep_set_limit __rep_set_limit@DB_VERSION_UNIQUE_NAME@
@@ -1350,12 +1485,14 @@
 #define	__rep_get_timeout __rep_get_timeout@DB_VERSION_UNIQUE_NAME@
 #define	__rep_get_request __rep_get_request@DB_VERSION_UNIQUE_NAME@
 #define	__rep_set_request __rep_set_request@DB_VERSION_UNIQUE_NAME@
-#define	__rep_set_transport __rep_set_transport@DB_VERSION_UNIQUE_NAME@
+#define	__rep_set_transport_pp __rep_set_transport_pp@DB_VERSION_UNIQUE_NAME@
+#define	__rep_set_transport_int __rep_set_transport_int@DB_VERSION_UNIQUE_NAME@
 #define	__rep_get_clockskew __rep_get_clockskew@DB_VERSION_UNIQUE_NAME@
 #define	__rep_set_clockskew __rep_set_clockskew@DB_VERSION_UNIQUE_NAME@
 #define	__rep_flush __rep_flush@DB_VERSION_UNIQUE_NAME@
 #define	__rep_sync __rep_sync@DB_VERSION_UNIQUE_NAME@
-#define	__rep_process_message __rep_process_message@DB_VERSION_UNIQUE_NAME@
+#define	__rep_process_message_pp __rep_process_message_pp@DB_VERSION_UNIQUE_NAME@
+#define	__rep_process_message_int __rep_process_message_int@DB_VERSION_UNIQUE_NAME@
 #define	__rep_apply __rep_apply@DB_VERSION_UNIQUE_NAME@
 #define	__rep_process_txn __rep_process_txn@DB_VERSION_UNIQUE_NAME@
 #define	__rep_resend_req __rep_resend_req@DB_VERSION_UNIQUE_NAME@
@@ -1379,7 +1516,6 @@
 #define	__rep_noarchive __rep_noarchive@DB_VERSION_UNIQUE_NAME@
 #define	__rep_send_vote __rep_send_vote@DB_VERSION_UNIQUE_NAME@
 #define	__rep_elect_done __rep_elect_done@DB_VERSION_UNIQUE_NAME@
-#define	__rep_grow_sites __rep_grow_sites@DB_VERSION_UNIQUE_NAME@
 #define	__env_rep_enter __env_rep_enter@DB_VERSION_UNIQUE_NAME@
 #define	__env_db_rep_exit __env_db_rep_exit@DB_VERSION_UNIQUE_NAME@
 #define	__db_rep_enter __db_rep_enter@DB_VERSION_UNIQUE_NAME@
@@ -1397,10 +1533,13 @@
 #define	__rep_verify __rep_verify@DB_VERSION_UNIQUE_NAME@
 #define	__rep_verify_fail __rep_verify_fail@DB_VERSION_UNIQUE_NAME@
 #define	__rep_verify_req __rep_verify_req@DB_VERSION_UNIQUE_NAME@
+#define	__rep_dorecovery __rep_dorecovery@DB_VERSION_UNIQUE_NAME@
 #define	__rep_verify_match __rep_verify_match@DB_VERSION_UNIQUE_NAME@
 #define	__rep_log_backup __rep_log_backup@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_handshake_marshal __repmgr_handshake_marshal@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_handshake_unmarshal __repmgr_handshake_unmarshal@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_v2handshake_marshal __repmgr_v2handshake_marshal@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_v2handshake_unmarshal __repmgr_v2handshake_unmarshal@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_ack_marshal __repmgr_ack_marshal@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_ack_unmarshal __repmgr_ack_unmarshal@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_version_proposal_marshal __repmgr_version_proposal_marshal@DB_VERSION_UNIQUE_NAME@
@@ -1410,6 +1549,8 @@
 #define	__repmgr_init_election __repmgr_init_election@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_become_master __repmgr_become_master@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_start __repmgr_start@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_autostart __repmgr_autostart@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_start_selector __repmgr_start_selector@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_close __repmgr_close@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_get_ack_policy __repmgr_get_ack_policy@DB_VERSION_UNIQUE_NAME@
@@ -1420,18 +1561,19 @@
 #define	__repmgr_add_remote_site __repmgr_add_remote_site@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_msg_thread __repmgr_msg_thread@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_handle_event __repmgr_handle_event@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_stash_generation __repmgr_stash_generation@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_send __repmgr_send@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_sync_siteaddr __repmgr_sync_siteaddr@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_send_broadcast __repmgr_send_broadcast@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_send_one __repmgr_send_one@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_is_permanent __repmgr_is_permanent@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_bust_connection __repmgr_bust_connection@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_disable_connection __repmgr_disable_connection@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_cleanup_connection __repmgr_cleanup_connection@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_find_site __repmgr_find_site@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_pack_netaddr __repmgr_pack_netaddr@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_getaddr __repmgr_getaddr@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_add_site __repmgr_add_site@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_net_create __repmgr_net_create@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_add_site_int __repmgr_add_site_int@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_listen __repmgr_listen@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_net_close __repmgr_net_close@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_net_destroy __repmgr_net_destroy@DB_VERSION_UNIQUE_NAME@
@@ -1444,9 +1586,11 @@
 #define	__repmgr_await_drain __repmgr_await_drain@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_alloc_cond __repmgr_alloc_cond@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_free_cond __repmgr_free_cond@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_init_sync __repmgr_init_sync@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_close_sync __repmgr_close_sync@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_net_init __repmgr_net_init@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_env_create_pf __repmgr_env_create_pf@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_create_mutex_pf __repmgr_create_mutex_pf@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_destroy_mutex_pf __repmgr_destroy_mutex_pf@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_init __repmgr_init@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_deinit __repmgr_deinit@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_lock_mutex __repmgr_lock_mutex@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_unlock_mutex __repmgr_unlock_mutex@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_signal __repmgr_signal@DB_VERSION_UNIQUE_NAME@
@@ -1454,7 +1598,6 @@
 #define	__repmgr_writev __repmgr_writev@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_readv __repmgr_readv@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_select_loop __repmgr_select_loop@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_queue_create __repmgr_queue_create@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_queue_destroy __repmgr_queue_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_queue_get __repmgr_queue_get@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_queue_put __repmgr_queue_put@DB_VERSION_UNIQUE_NAME@
@@ -1516,7 +1659,15 @@
 #define	__repmgr_format_eid_loc __repmgr_format_eid_loc@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_format_site_loc __repmgr_format_site_loc@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_repstart __repmgr_repstart@DB_VERSION_UNIQUE_NAME@
-#define	__repmgr_wsa_init __repmgr_wsa_init@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_each_connection __repmgr_each_connection@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_open __repmgr_open@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_join __repmgr_join@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_env_refresh __repmgr_env_refresh@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_share_netaddrs __repmgr_share_netaddrs@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_copy_in_added_sites __repmgr_copy_in_added_sites@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_init_new_sites __repmgr_init_new_sites@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_check_host_name __repmgr_check_host_name@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_failchk __repmgr_failchk@DB_VERSION_UNIQUE_NAME@
 #define	__dbcl_env_set_rpc_server __dbcl_env_set_rpc_server@DB_VERSION_UNIQUE_NAME@
 #define	__dbcl_env_close_wrap __dbcl_env_close_wrap@DB_VERSION_UNIQUE_NAME@
 #define	__dbcl_env_open_wrap __dbcl_env_open_wrap@DB_VERSION_UNIQUE_NAME@
@@ -1789,6 +1940,13 @@
 #define	tcl_MpTrickle tcl_MpTrickle@DB_VERSION_UNIQUE_NAME@
 #define	tcl_Mp tcl_Mp@DB_VERSION_UNIQUE_NAME@
 #define	tcl_MpStat tcl_MpStat@DB_VERSION_UNIQUE_NAME@
+#define	tcl_Mutex tcl_Mutex@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutFree tcl_MutFree@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutGet tcl_MutGet@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutLock tcl_MutLock@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutSet tcl_MutSet@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutStat tcl_MutStat@DB_VERSION_UNIQUE_NAME@
+#define	tcl_MutUnlock tcl_MutUnlock@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepConfig tcl_RepConfig@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepGetTwo tcl_RepGetTwo@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepGetConfig tcl_RepGetConfig@DB_VERSION_UNIQUE_NAME@
@@ -1797,6 +1955,7 @@
 #define	tcl_RepFlush tcl_RepFlush@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepSync tcl_RepSync@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepLease tcl_RepLease@DB_VERSION_UNIQUE_NAME@
+#define	tcl_RepInmemFiles tcl_RepInmemFiles@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepLimit tcl_RepLimit@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepRequest tcl_RepRequest@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepNoarchiveTimeout tcl_RepNoarchiveTimeout@DB_VERSION_UNIQUE_NAME@
@@ -1805,6 +1964,7 @@
 #define	tcl_RepProcessMessage tcl_RepProcessMessage@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepStat tcl_RepStat@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepMgr tcl_RepMgr@DB_VERSION_UNIQUE_NAME@
+#define	tcl_RepMgrSiteList tcl_RepMgrSiteList@DB_VERSION_UNIQUE_NAME@
 #define	tcl_RepMgrStat tcl_RepMgrStat@DB_VERSION_UNIQUE_NAME@
 #define	seq_Cmd seq_Cmd@DB_VERSION_UNIQUE_NAME@
 #define	_TxnInfoDelete _TxnInfoDelete@DB_VERSION_UNIQUE_NAME@
@@ -1817,7 +1977,6 @@
 #define	bdb_RandCommand bdb_RandCommand@DB_VERSION_UNIQUE_NAME@
 #define	__txn_begin_pp __txn_begin_pp@DB_VERSION_UNIQUE_NAME@
 #define	__txn_begin __txn_begin@DB_VERSION_UNIQUE_NAME@
-#define	__txn_xa_begin __txn_xa_begin@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recycle_id __txn_recycle_id@DB_VERSION_UNIQUE_NAME@
 #define	__txn_compensate_begin __txn_compensate_begin@DB_VERSION_UNIQUE_NAME@
 #define	__txn_continue __txn_continue@DB_VERSION_UNIQUE_NAME@
@@ -1841,8 +2000,9 @@
 #define	__txn_ckp_log __txn_ckp_log@DB_VERSION_UNIQUE_NAME@
 #define	__txn_child_read __txn_child_read@DB_VERSION_UNIQUE_NAME@
 #define	__txn_child_log __txn_child_log@DB_VERSION_UNIQUE_NAME@
-#define	__txn_xa_regop_read __txn_xa_regop_read@DB_VERSION_UNIQUE_NAME@
-#define	__txn_xa_regop_log __txn_xa_regop_log@DB_VERSION_UNIQUE_NAME@
+#define	__txn_xa_regop_42_read __txn_xa_regop_42_read@DB_VERSION_UNIQUE_NAME@
+#define	__txn_prepare_read __txn_prepare_read@DB_VERSION_UNIQUE_NAME@
+#define	__txn_prepare_log __txn_prepare_log@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recycle_read __txn_recycle_read@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recycle_log __txn_recycle_log@DB_VERSION_UNIQUE_NAME@
 #define	__txn_init_recover __txn_init_recover@DB_VERSION_UNIQUE_NAME@
@@ -1851,7 +2011,8 @@
 #define	__txn_ckp_42_print __txn_ckp_42_print@DB_VERSION_UNIQUE_NAME@
 #define	__txn_ckp_print __txn_ckp_print@DB_VERSION_UNIQUE_NAME@
 #define	__txn_child_print __txn_child_print@DB_VERSION_UNIQUE_NAME@
-#define	__txn_xa_regop_print __txn_xa_regop_print@DB_VERSION_UNIQUE_NAME@
+#define	__txn_xa_regop_42_print __txn_xa_regop_42_print@DB_VERSION_UNIQUE_NAME@
+#define	__txn_prepare_print __txn_prepare_print@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recycle_print __txn_recycle_print@DB_VERSION_UNIQUE_NAME@
 #define	__txn_init_print __txn_init_print@DB_VERSION_UNIQUE_NAME@
 #define	__txn_checkpoint_pp __txn_checkpoint_pp@DB_VERSION_UNIQUE_NAME@
@@ -1867,7 +2028,7 @@
 #define	__txn_get_tx_timestamp __txn_get_tx_timestamp@DB_VERSION_UNIQUE_NAME@
 #define	__txn_set_tx_timestamp __txn_set_tx_timestamp@DB_VERSION_UNIQUE_NAME@
 #define	__txn_regop_recover __txn_regop_recover@DB_VERSION_UNIQUE_NAME@
-#define	__txn_xa_regop_recover __txn_xa_regop_recover@DB_VERSION_UNIQUE_NAME@
+#define	__txn_prepare_recover __txn_prepare_recover@DB_VERSION_UNIQUE_NAME@
 #define	__txn_ckp_recover __txn_ckp_recover@DB_VERSION_UNIQUE_NAME@
 #define	__txn_child_recover __txn_child_recover@DB_VERSION_UNIQUE_NAME@
 #define	__txn_restore_txn __txn_restore_txn@DB_VERSION_UNIQUE_NAME@
@@ -1877,7 +2038,6 @@
 #define	__txn_map_gid __txn_map_gid@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recover_pp __txn_recover_pp@DB_VERSION_UNIQUE_NAME@
 #define	__txn_recover __txn_recover@DB_VERSION_UNIQUE_NAME@
-#define	__txn_get_prepared __txn_get_prepared@DB_VERSION_UNIQUE_NAME@
 #define	__txn_openfiles __txn_openfiles@DB_VERSION_UNIQUE_NAME@
 #define	__txn_open __txn_open@DB_VERSION_UNIQUE_NAME@
 #define	__txn_findlastckp __txn_findlastckp@DB_VERSION_UNIQUE_NAME@
@@ -1898,15 +2058,7 @@
 #define	__txn_doevents __txn_doevents@DB_VERSION_UNIQUE_NAME@
 #define	__txn_record_fname __txn_record_fname@DB_VERSION_UNIQUE_NAME@
 #define	__txn_dref_fname __txn_dref_fname@DB_VERSION_UNIQUE_NAME@
-#define	__xa_get_txn __xa_get_txn@DB_VERSION_UNIQUE_NAME@
-#define	__db_xa_create __db_xa_create@DB_VERSION_UNIQUE_NAME@
-#define	__db_rmid_to_env __db_rmid_to_env@DB_VERSION_UNIQUE_NAME@
-#define	__db_xid_to_txn __db_xid_to_txn@DB_VERSION_UNIQUE_NAME@
-#define	__db_map_rmid __db_map_rmid@DB_VERSION_UNIQUE_NAME@
-#define	__db_unmap_rmid __db_unmap_rmid@DB_VERSION_UNIQUE_NAME@
-#define	__db_map_xid __db_map_xid@DB_VERSION_UNIQUE_NAME@
-#define	__db_unmap_xid __db_unmap_xid@DB_VERSION_UNIQUE_NAME@
 #define	__db_global_values __db_global_values@DB_VERSION_UNIQUE_NAME@
-#define	__db_jump __db_jump@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_guesstimated_max __repmgr_guesstimated_max@DB_VERSION_UNIQUE_NAME@
 
 #endif /* !_DB_INT_DEF_IN_ */

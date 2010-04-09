@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn.c,v 12.89 2008/04/19 15:47:42 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -76,6 +76,8 @@ static int  __txn_end __P((DB_TXN *, int));
 static int  __txn_isvalid __P((const DB_TXN *, txnop_t));
 static int  __txn_undo __P((DB_TXN *));
 static void __txn_set_txn_lsnp __P((DB_TXN *, DB_LSN **, DB_LSN **));
+
+static char *TxnAlloc = "Unable to allocate a transaction handle";
 
 /*
  * __txn_begin_pp --
@@ -141,9 +143,8 @@ err:	ENV_LEAVE(env, ip);
  * __txn_begin --
  *	ENV->txn_begin.
  *
- * This is a wrapper to the actual begin process.  Normal transaction begin
- * allocates a DB_TXN structure for the caller, while XA transaction begin
- * does not.  Other than that, both call into common __txn_begin_int code.
+ * This is a wrapper to the actual begin process.  We allocate a DB_TXN
+ * structure for the caller and then call into __txn_begin_int code.
  *
  * Internally, we use TXN_DETAIL structures, but the DB_TXN structure
  * provides access to the transaction ID and the offset in the transaction
@@ -166,8 +167,10 @@ __txn_begin(env, ip, parent, txnpp, flags)
 	int ret;
 
 	*txnpp = NULL;
-	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0) {
+		__db_errx(env, TxnAlloc);
 		return (ret);
+	}
 
 	dbenv = env->dbenv;
 	txn->mgrp = env->tx_handle;
@@ -250,34 +253,6 @@ err:
 }
 
 /*
- * __txn_xa_begin --
- *	XA version of txn_begin.
- *
- * PUBLIC: int __txn_xa_begin __P((ENV *, DB_TXN *));
- */
-int
-__txn_xa_begin(env, txn)
-	ENV *env;
-	DB_TXN *txn;
-{
-	/*
-	 * We need to initialize the transaction structure, but must be careful
-	 * not to smash the links.  We manually initialize the structure.
-	 */
-	txn->mgrp = env->tx_handle;
-	TAILQ_INIT(&txn->kids);
-	TAILQ_INIT(&txn->events);
-	STAILQ_INIT(&txn->logs);
-	txn->parent = NULL;
-	txn->txnid = TXN_INVALID;
-	txn->cursors = 0;
-	memset(&txn->lock_timeout, 0, sizeof(db_timeout_t));
-	memset(&txn->expire, 0, sizeof(db_timeout_t));
-
-	return (__txn_begin_int(txn));
-}
-
-/*
  * __txn_recycle_id --
  *	Find a range of useable transaction ids.
  *
@@ -298,8 +273,10 @@ __txn_recycle_id(env)
 	region = mgr->reginfo.primary;
 
 	if ((ret = __os_malloc(env,
-	    sizeof(u_int32_t) * region->maxtxns, &ids)) != 0)
+	    sizeof(u_int32_t) * region->maxtxns, &ids)) != 0) {
+		__db_errx(env, "Unable to allocate transaction recycle buffer");
 		return (ret);
+	}
 	nids = 0;
 	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
 		ids[nids++] = td->txnid;
@@ -337,8 +314,10 @@ __txn_compensate_begin(env, txnpp)
 	DB_TXN *txn;
 	int ret;
 
-	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(DB_TXN), &txn)) != 0) {
+		__db_errx(env, TxnAlloc);
 		return (ret);
+	}
 
 	txn->mgrp = env->tx_handle;
 	TAILQ_INIT(&txn->kids);
@@ -431,7 +410,6 @@ __txn_begin_int(txn)
 	td->mvcc_mtx = MUTEX_INVALID;
 	td->status = TXN_RUNNING;
 	td->flags = 0;
-	td->xa_status = 0;
 	td->nlog_dbs = 0;
 	td->nlog_slots = TXN_NSLOTS;
 	td->log_dbs = R_OFFSET(&mgr->reginfo, td->slots);
@@ -506,8 +484,8 @@ __txn_continue(env, txn, td)
 	/*
 	 * If this is a restored transaction, we need to propagate that fact
 	 * to the process-local structure.  However, if it's not a restored
-	 * transaction, then we're running in XA and we need to make sure
-	 * that we have a locker associated with this transaction.
+	 * transaction, we need to make sure that we have a locker associated
+	 * with this transaction.
 	 */
 	if (F_ISSET(td, TXN_DTL_RESTORED))
 		F_SET(txn, TXN_RESTORED);
@@ -583,20 +561,14 @@ __txn_commit(txn, flags)
 	/*
 	 * Check for master leases at the beginning.  If we are a
 	 * master and cannot have valid leases now, we error and
-	 * abort this txn.  Leases are granted on PERM records,
-	 * and since this is the beginning of txn_commit, there
-	 * might not be *any* in the log yet.  If that is the case,
-	 * then __rep_lease_check (from __rep_lease_refresh and
-	 * lower, log_c_get) will return DB_NOTFOUND.  If we get
-	 * that here, allow the operation to continue because leases
-	 * will be checked after the commit completes again anyway.
+	 * abort this txn.  There should always be a perm record
+	 * in the log because the master writes a checkpoint when it
+	 * becomes master if there isn't already a perm record in the log.
 	 */
 	if (txn->parent == NULL && IS_REP_MASTER(env) &&
 	    IS_USING_LEASES(env) && (ret = __rep_lease_check(env, 1)) != 0) {
-		if (ret == DB_NOTFOUND) {
-			ret = 0;
-		} else
-			goto err;
+		DB_ASSERT(env, ret != DB_NOTFOUND);
+		goto err;
 	}
 
 	infop = env->reginfo;
@@ -741,9 +713,8 @@ __txn_commit(txn, flags)
 	 * during the commit.  The only thing to do is panic.
 	 */
 	if (txn->parent == NULL && IS_REP_MASTER(env) && IS_USING_LEASES(env) &&
-	    (ret = __rep_lease_check(env, 1)) != 0) {
+	    (ret = __rep_lease_check(env, 1)) != 0)
 		return (__env_panic(env, ret));
-	}
 
 	/* This is OK because __txn_end can only fail with a panic. */
 	return (__txn_end(txn, 1));
@@ -972,7 +943,7 @@ __txn_prepare(txn, gid)
 	DB_TXN *txn;
 	u_int8_t *gid;
 {
-	DBT list_dbt, xid;
+	DBT list_dbt, gid_dbt;
 	DB_LOCKREQ request;
 	DB_THREAD_INFO *ip;
 	DB_TXN *kid;
@@ -996,14 +967,8 @@ __txn_prepare(txn, gid)
 		if ((ret = __txn_commit(kid, DB_TXN_NOSYNC)) != 0)
 			goto err;
 
-	/*
-	 * In XA, the global transaction ID in the txn_detail structure is
-	 * already set; in a non-XA environment, we must set it here.  XA
-	 * requires that the transaction be either ENDED or SUSPENDED when
-	 * prepare is called, so we know that if the xa_status isn't in one
-	 * of those states, then we are calling prepare directly and we need
-	 * to fill in the td->xid.
-	 */
+	/* We must set the global transaction ID here.  */
+	memcpy(td->gid, gid, DB_GID_SIZE);
 	if ((ret = __txn_doevents(env, txn, TXN_PREPARE, 1)) != 0)
 		goto err;
 	memset(&request, 0, sizeof(request));
@@ -1019,19 +984,13 @@ __txn_prepare(txn, gid)
 
 	}
 	if (DBENV_LOGGING(env)) {
-		memset(&xid, 0, sizeof(xid));
-		if (td->xa_status != TXN_XA_ENDED &&
-		    td->xa_status != TXN_XA_SUSPENDED)
-			/* Regular prepare; fill in the gid. */
-			memcpy(td->xid, gid, sizeof(td->xid));
-
-		xid.size = sizeof(td->xid);
-		xid.data = td->xid;
-
+		memset(&gid_dbt, 0, sizeof(gid));
+		gid_dbt.data = gid;
+		gid_dbt.size = DB_GID_SIZE;
 		lflags = DB_LOG_COMMIT | DB_FLUSH;
-		if ((ret = __txn_xa_regop_log(env, txn, &td->last_lsn,
-		    lflags, TXN_PREPARE, &xid, td->format, td->gtrid, td->bqual,
-		    &td->begin_lsn, request.obj)) != 0)
+		if ((ret = __txn_prepare_log(env,
+		    txn, &td->last_lsn, lflags, TXN_PREPARE,
+		    &gid_dbt, &td->begin_lsn, request.obj)) != 0)
 			__db_err(
 			    env, ret, "DB_TXN->prepare: log_write failed");
 
@@ -1334,13 +1293,16 @@ __txn_end(txn, is_commit)
 		return (__env_panic(env, ret));
 
 	if (td->mvcc_ref != 0 && IS_MAX_LSN(td->visible_lsn)) {
-		DB_ASSERT(env, !is_commit);
-
 		/*
-		 * In the abort path, we need to make sure that the versions
-		 * become visible to future transactions.  We need to set
-		 * visible_lsn before setting td->status to ensure safe reads
-		 * of visible_lsn in __memp_fget.
+		 * Some pages were dirtied but nothing was logged.  This can
+		 * happen easily if we are aborting, but there are also cases
+		 * in the compact code where pages are dirtied unconditionally
+		 * and then we find out that there is no work to do.
+		 *
+		 * We need to make sure that the versions become visible to
+		 * future transactions.  We need to set visible_lsn before
+		 * setting td->status to ensure safe reads of visible_lsn in
+		 * __memp_fget.
 		 */
 		if ((ret = __log_current_lsn(env, &td->visible_lsn,
 		    NULL, NULL)) != 0)
@@ -1356,10 +1318,14 @@ __txn_end(txn, is_commit)
 	}
 
 	if (td->name != INVALID_ROFF) {
-		__env_alloc_free(
-		    &mgr->reginfo, R_ADDR(&mgr->reginfo, td->name));
+		__env_alloc_free(&mgr->reginfo,
+		    R_ADDR(&mgr->reginfo, td->name));
 		td->name = INVALID_ROFF;
 	}
+	if (td->nlog_slots != TXN_NSLOTS)
+		__env_alloc_free(&mgr->reginfo,
+		    R_ADDR(&mgr->reginfo, td->log_dbs));
+
 	if (txn->parent != NULL) {
 		ptd = txn->parent->td;
 		SH_TAILQ_REMOVE(&ptd->kids, td, klinks, __txn_detail);
@@ -1368,6 +1334,13 @@ __txn_end(txn, is_commit)
 		if (td->mvcc_ref != 0) {
 			SH_TAILQ_INSERT_HEAD(&region->mvcc_txn,
 			    td, links, __txn_detail);
+
+			/*
+			 * The transaction has been added to the list of
+			 * committed snapshot transactions with active pages.
+			 * It needs to be freed when the last page is evicted.
+			 */
+			F_SET(td, TXN_DTL_SNAPSHOT);
 #ifdef HAVE_STATISTICS
 			if (++region->stat.st_nsnapshot >
 			    region->stat.st_maxnsnapshot)
@@ -1382,12 +1355,8 @@ __txn_end(txn, is_commit)
 				return (__env_panic(env, ret));
 	}
 
-	if (td != NULL) {
-		if (td->nlog_slots != TXN_NSLOTS)
-			__env_alloc_free(&mgr->reginfo,
-			    R_ADDR(&mgr->reginfo, td->log_dbs));
+	if (td != NULL)
 		__env_alloc_free(&mgr->reginfo, td);
-	}
 
 #ifdef HAVE_STATISTICS
 	if (is_commit)
@@ -1619,9 +1588,9 @@ __txn_force_abort(env, buffer)
 
 	/*
 	 * This routine depends on the layout of HDR and the __txn_regop
-	 * __txn_xa_regop records in txn.src.  We are passed the beginning
-	 * of the commit record in the log buffer and overwrite the
-	 * commit with an abort and recalculate the checksum.
+	 * record in txn.src.  We are passed the beginning of the commit
+	 * record in the log buffer and overwrite the commit with an abort
+	 * and recalculate the checksum.
 	 */
 	hdrsize = CRYPTO_ON(env) ? HDR_CRYPTO_SZ : HDR_NORMAL_SZ;
 

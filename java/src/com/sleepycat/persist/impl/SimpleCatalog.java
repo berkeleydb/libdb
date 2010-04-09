@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SimpleCatalog.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -191,7 +191,7 @@ public class SimpleCatalog implements Catalog {
      */
     private void setFormat(int id, SimpleFormat format) {
         format.setId(id);
-        format.initializeIfNeeded(this);
+        format.initializeIfNeeded(this, null /*model*/);
         formatList.set(id, format);
         formatMap.put(format.getClassName(), format);
     }
@@ -225,7 +225,7 @@ public class SimpleCatalog implements Catalog {
         }
     }
 
-    public Format getFormat(Class cls) {
+    public Format getFormat(Class cls, boolean checkEntitySubclassIndexes) {
         Format format = formatMap.get(cls.getName());
         if (format == null) {
             throw new IllegalArgumentException

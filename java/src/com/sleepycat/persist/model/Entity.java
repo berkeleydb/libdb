@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Entity.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -15,6 +15,7 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.PrimaryIndex;
 import com.sleepycat.persist.SecondaryIndex;
 import com.sleepycat.persist.evolve.IncompatibleClassException;
@@ -74,6 +75,17 @@ import com.sleepycat.persist.evolve.Mutations;
  *      {@literal @SecondaryKey(relate=MANY_TO_ONE)}
  *      int finickyness;
  *  }</pre>
+ *
+ * <p><em>WARNING:</em> Entity subclasses that define secondary keys must be
+ * registered prior to storing an instance of the class.  This can be done in
+ * two ways:</p>
+ * <ol>
+ * <li>The {@link EntityModel#registerClass registerClass} method may be called
+ * to register the subclass before opening the entity store.</li>
+ * <li>The {@link EntityStore#getSubclassIndex getSubclassIndex} method may be
+ * called to implicitly register the subclass after opening the entity
+ * store.</li>
+ * </ol>
  *
  * <p><strong>Persistent Fields and Types</strong></p>
  *

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_hotbackup.c,v 1.59 2008/01/31 18:40:42 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -15,13 +15,13 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 enum which_open { OPEN_ORIGINAL, OPEN_HOT_BACKUP };
 
 int db_hotbackup_backup_dir_clean __P((DB_ENV *, char *, char *, int *, int, int));
-int db_hotbackup_data_copy __P((DB_ENV *, char *, char *, char *, int));
+int db_hotbackup_data_copy __P((DB_ENV *, char *, char *, char *, int, int));
 int db_hotbackup_env_init __P((DB_ENV **,
      char *, char **, char ***, char *, enum which_open));
 int db_hotbackup_main __P((int, char *[]));
@@ -620,7 +620,7 @@ db_hotbackup_read_data_dir(dbenv, home, backup_dir, dir, verbose, db_config)
 			continue;
 
 		/* Copy the file. */
-		if (db_hotbackup_data_copy(dbenv, names[cnt], dir, bd, verbose) != 0)
+		if (db_hotbackup_data_copy(dbenv, names[cnt], dir, bd, 0, verbose) != 0)
 			return (1);
 	}
 
@@ -731,7 +731,7 @@ again:	aflag = DB_ARCH_LOG;
 		}
 
 		/* Copy the file. */
-		if (db_hotbackup_data_copy(dbenv, *names, logd, backupd, verbose) != 0)
+		if (db_hotbackup_data_copy(dbenv, *names, logd, backupd, 1, verbose) != 0)
 			return (1);
 
 		if (update) {
@@ -768,10 +768,10 @@ done:	if (update) {
  *	Copy a file into the backup directory.
  */
 int
-db_hotbackup_data_copy(dbenv, file, from_dir, to_dir, verbose)
+db_hotbackup_data_copy(dbenv, file, from_dir, to_dir, log, verbose)
 	DB_ENV *dbenv;
 	char *file, *from_dir, *to_dir;
-	int verbose;
+	int log, verbose;
 {
 	DB_FH *rfhp, *wfhp;
 	ENV *env;
@@ -811,6 +811,13 @@ db_hotbackup_data_copy(dbenv, file, from_dir, to_dir, verbose)
 		goto err;
 	}
 	if ((ret = __os_open(env, buf, 0, DB_OSO_RDONLY, 0, &rfhp)) != 0) {
+		if (ret == ENOENT && !log) {
+			ret = 0;
+			if (verbose)
+				printf("%s: %s%c%s not present\n", progname,
+				    from_dir, PATH_SEPARATOR[0], file);
+			goto done;
+		}
 		dbenv->err(dbenv, ret, "%s", buf);
 		goto err;
 	}
@@ -837,7 +844,7 @@ db_hotbackup_data_copy(dbenv, file, from_dir, to_dir, verbose)
 	if (0) {
 err:		ret = 1;
 	}
-	if (buf != NULL)
+done:	if (buf != NULL)
 		free(buf);
 
 	if (rfhp != NULL && __os_closehandle(env, rfhp) != 0)

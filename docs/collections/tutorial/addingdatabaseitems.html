@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Adding Database Items
-	</title>
+    <title>Adding Database Items</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="usingtransactions.html" title="&#10;&#9;&#9;Using Transactions&#10;&#9;" />
-    <link rel="next" href="retrievingdatabaseitems.html" title="&#10;&#9;&#9;Retrieving Database Items&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="usingtransactions.html" title="Using Transactions" />
+    <link rel="next" href="retrievingdatabaseitems.html" title="Retrieving Database Items" />
   </head>
   <body>
     <div class="navheader">
@@ -40,22 +38,21 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     Adding (as well as updating, removing, and deleting) information
 	in the database is accomplished via the standard Java collections
 	API. In the example, the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>
     
 	method is used to add objects. All standard Java methods for
     modifying a collection may be used with the DB Java Collections API.
 </p>
       <p>
-    The <tt class="methodname">PopulateDatabase.doWork()</tt> method calls private methods
+    The <code class="methodname">PopulateDatabase.doWork()</code> method calls private methods
 	for adding objects to each of the three database stores. It is
 	called via the 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
     
 	class and was outlined in the previous section.
 </p>
@@ -73,14 +70,14 @@ public class Sample
         public void doWork()
             throws Exception
         {
-<b class="userinput"><tt>            addSuppliers();
+<strong class="userinput"><code>            addSuppliers();
             addParts();
-            addShipments();</tt></b>
+            addShipments();</code></strong>
         }
     }
     ...
 
-<b class="userinput"><tt>    private void addSuppliers()
+<strong class="userinput"><code>    private void addSuppliers()
     {
     }
 
@@ -90,20 +87,20 @@ public class Sample
 
     private void addShipments()
     {
-    }</tt></b>
+    }</code></strong>
 } </pre>
       <p>
-    The <tt class="methodname">addSuppliers()</tt>, <tt class="methodname">addParts()</tt> and <tt class="methodname">addShipments()</tt>
+    The <code class="methodname">addSuppliers()</code>, <code class="methodname">addParts()</code> and <code class="methodname">addShipments()</code>
 	methods add objects to the Suppliers, Parts and Shipments stores.
 	The 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
     
-	for each store is obtained from the <tt class="classname">SampleViews</tt> object.
+	for each store is obtained from the <code class="classname">SampleViews</code> object.
 </p>
       <a id="cb_addsuppliers"></a>
       <pre class="programlisting">    private void addSuppliers()
     {
-<b class="userinput"><tt>        Map suppliers = views.getSupplierMap();
+<strong class="userinput"><code>        Map suppliers = views.getSupplierMap();
         if (suppliers.isEmpty())
         {
             System.out.println("Adding Suppliers");
@@ -117,12 +114,12 @@ public class Sample
                           new SupplierData("Clark", 20, "London"));
             suppliers.put(new SupplierKey("S5"),
                           new SupplierData("Adams", 30, "Athens"));
-        }</tt></b>
+        }</code></strong>
     }
 
     private void addParts()
     {
-<b class="userinput"><tt>        Map parts = views.getPartMap();
+<strong class="userinput"><code>        Map parts = views.getPartMap();
         if (parts.isEmpty())
         {
             System.out.println("Adding Parts");
@@ -150,12 +147,12 @@ public class Sample
                       new PartData("Cog", "Red",
                                     new Weight(19.0, Weight.GRAMS),
                                     "London"));
-        }</tt></b>
+        }</code></strong>
     }
 
     private void addShipments()
     {
-<b class="userinput"><tt>        Map shipments = views.getShipmentMap();
+<strong class="userinput"><code>        Map shipments = views.getShipmentMap();
         if (shipments.isEmpty())
         {
             System.out.println("Adding Shipments");
@@ -183,12 +180,12 @@ public class Sample
                           new ShipmentData(300));
             shipments.put(new ShipmentKey("P5", "S4"),
                           new ShipmentData(400));
-        }</tt></b>
+        }</code></strong>
     } 
 }</pre>
       <p>
     The key and value classes used above were defined in the
-    <a href="BasicProgram.html#keyandvalueclasses">
+    <a class="xref" href="BasicProgram.html#keyandvalueclasses" title="Defining Serialized Key and Value Classes">
 		Defining Serialized Key and Value Classes
 	</a>.
 </p>
@@ -197,7 +194,7 @@ public class Sample
 	empty. This is a simple way of allowing the example program to be
 	run repeatedly. In real-life applications another technique —
 	checking the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#containsKey" target="_top">Map.containsKey</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#containsKey" target="_top">Map.containsKey</a>
     
 	method, for example — might be used.
 </p>

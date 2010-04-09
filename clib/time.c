@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2006-2009 Oracle.  All rights reserved.
  *
- * $Id: time.c,v 12.7 2008/04/17 01:25:33 alexg Exp $
+ * $Id$
  */
 
 #include "db_config.h"

@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Removing the Redundant Value Classes
-	</title>
+    <title>Removing the Redundant Value Classes</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="SerializableEntity.html" title="Chapter 6. &#10;&#9;&#9;Using Serializable Entities&#10;&#9;" />
-    <link rel="previous" href="transientfieldsinbinding.html" title="&#10;&#9;&#9;Using Transient Fields in an Entity Binding&#10;&#9;" />
-    <link rel="next" href="Summary.html" title="Chapter 7. &#10;&#9;&#9;Summary&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="SerializableEntity.html" title="Chapter 6.  Using Serializable Entities" />
+    <link rel="prev" href="transientfieldsinbinding.html" title="Using Transient Fields in an Entity Binding" />
+    <link rel="next" href="Summary.html" title="Chapter 7.  Summary" />
   </head>
   <body>
     <div class="navheader">
@@ -40,12 +38,11 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-    The <tt class="classname">PartData</tt>, <tt class="classname">SupplierData</tt> and <tt class="classname">ShipmentData</tt>
-	classes have been removed in this example, and the <tt class="classname">Part</tt>,
-	<tt class="classname">Supplier</tt> and <tt class="classname">Shipment</tt> entity classes are used in
+    The <code class="classname">PartData</code>, <code class="classname">SupplierData</code> and <code class="classname">ShipmentData</code>
+	classes have been removed in this example, and the <code class="classname">Part</code>,
+	<code class="classname">Supplier</code> and <code class="classname">Shipment</code> entity classes are used in
 	their place.
 </p>
       <p>
@@ -60,13 +57,13 @@
     {
         ...
         secConfig.setKeyCreator(new SupplierByCityKeyCreator(javaCatalog,
-                                                             <b class="userinput"><tt>Supplier</tt></b>.class));
+                                                             <strong class="userinput"><code>Supplier</code></strong>.class));
         ...
         secConfig.setKeyCreator(new ShipmentByPartKeyCreator(javaCatalog,
-                                                             <b class="userinput"><tt>Shipment</tt></b>.class));
+                                                             <strong class="userinput"><code>Shipment</code></strong>.class));
         ...
         secConfig.setKeyCreator(new ShipmentBySupplierKeyCreator(javaCatalog,
-                                                             <b class="userinput"><tt>Shipment</tt></b>.class));
+                                                             <strong class="userinput"><code>Shipment</code></strong>.class));
         ...
     }
 } </pre>
@@ -91,7 +88,7 @@
                                           Object valueInput,
                                           TupleOutput indexKeyOutput)
         {
-            <b class="userinput"><tt>Supplier</tt></b> supplier = (<b class="userinput"><tt>Supplier</tt></b>) valueInput;
+            <strong class="userinput"><code>Supplier</code></strong> supplier = (<strong class="userinput"><code>Supplier</code></strong>) valueInput;
             String city = supplier.getCity();
             if (city != null) {
                 indexKeyOutput.writeString(supplier.getCity());

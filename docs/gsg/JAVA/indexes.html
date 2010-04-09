@@ -5,11 +5,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 10. Secondary Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="baseapi.html" title="Part II. Programming with the Base API" />
-    <link rel="previous" href="cursorJavaUsage.html" title="Cursor Example" />
-    <link rel="next" href="keyCreator.html" title="Implementing Key &#10;        Creators&#10;        &#10;        " />
+    <link rel="prev" href="cursorJavaUsage.html" title="Cursor Example" />
+    <link rel="next" href="keyCreator.html" title="Implementing Key Creators" />
   </head>
   <body>
     <div class="navheader">
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="indexes"></a>Chapter 10. Secondary Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -47,7 +46,7 @@
           <dt>
             <span class="sect1">
               <a href="keyCreator.html">Implementing Key 
-        Creators
+        <span>Creators</span>
         
         </a>
             </span>
@@ -79,7 +78,7 @@
           <dt>
             <span class="sect1">
               <a href="secondaryCursor.html">
-        Using Secondary Cursors
+        <span>Using Secondary Cursors</span>
         
     </a>
             </span>
@@ -129,7 +128,7 @@
     the key that you use for your record will not always contain the
     information required to provide you with rapid access to the data that you
     want to retrieve. For example, suppose your 
-        <tt class="classname">Database</tt>
+        <code class="classname">Database</code>
         
     contains records related to users. The key might be a string that is some
     unique identifier for the person, such as a user ID. Each record's data,
@@ -144,7 +143,7 @@
     each in turn for a given person's name, you create indexes based on names
     and then just search that index for the name that you want.  You can do this
     using secondary databases. In DB, the 
-        <tt class="classname">Database</tt>
+        <code class="classname">Database</code>
          
     that contains your data is called a
     <span class="emphasis"><em>primary database</em></span>. A database that provides an
@@ -153,12 +152,12 @@
     (or secondary) index, and the data corresponds to a primary record's key.
   </p>
       <p>
-    You create a secondary database by using a <tt class="classname">SecondaryConfig</tt>
+    You create a secondary database by using a <code class="classname">SecondaryConfig</code>
     class object to identify an implementation of a
-    <tt class="classname">SecondaryKeyCreator</tt>
+    <code class="classname">SecondaryKeyCreator</code>
     class object that is used to create keys based on data found in the primary
-    database. You then pass this <tt class="classname">SecondaryConfig</tt>
-    object to the <tt class="classname">SecondaryDatabase</tt> constructor.
+    database. You then pass this <code class="classname">SecondaryConfig</code>
+    object to the <code class="classname">SecondaryDatabase</code> constructor.
   </p>
       <p>
   Once opened, DB manages secondary databases for you. Adding or deleting
@@ -175,14 +174,14 @@
     
     
     To change the data referenced by a 
-        <tt class="classname">SecondaryDatabase</tt>
+        <code class="classname">SecondaryDatabase</code>
         
     record, modify the primary database instead. The exception to this rule is
     that delete operations are allowed on the
-        <span><tt class="classname">SecondaryDatabase</tt> object.</span> 
+        <span><code class="classname">SecondaryDatabase</code> object.</span> 
          
     
-    See <a href="secondaryDelete.html">Deleting Secondary Database Records</a> for more
+    See <a class="xref" href="secondaryDelete.html" title="Deleting Secondary Database Records">Deleting Secondary Database Records</a> for more
     information.
   </p>
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
@@ -191,13 +190,13 @@
 
         Secondary database records are updated/created by DB 
         only if the 
-            <span><tt class="methodname">SecondaryKeyCreator.createSecondaryKey()</tt> method</span>
+            <span><code class="methodname">SecondaryKeyCreator.createSecondaryKey()</code> method</span>
             
         returns 
-            <span><tt class="literal">true</tt>.</span> 
+            <span><code class="literal">true</code>.</span> 
              
         If 
-            <tt class="literal">false</tt> 
+            <code class="literal">false</code> 
             
         is returned, then DB will not add the key to the secondary database, and 
         in the event of a record update it will remove any existing key. 
@@ -206,7 +205,7 @@
 
      </p>
         <p>
-        See <a href="keyCreator.html">Implementing Key 
+        See <a class="xref" href="keyCreator.html" title="Implementing Key Creators">Implementing Key 
         <span>Creators</span>
         
         </a> for more
@@ -230,18 +229,17 @@
               <h2 class="title" style="clear: both"><a id="DbAssociate"></a>Opening and Closing Secondary Databases</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             You manage secondary database opens and closes using the
             
             <span>
-                <tt class="classname">SecondaryDatabase</tt> constructor.
+                <code class="classname">SecondaryDatabase</code> constructor.
             </span>
             Just as is the case with primary databases, you must provide
              
             <span>
-                the <tt class="classname">SecondaryDatabase()</tt> constructor
+                the <code class="classname">SecondaryDatabase()</code> constructor
             </span>
             with the database's
             name and, optionally, other properties such as whether duplicate
@@ -253,18 +251,18 @@
             <li>
               <p>A handle to the primary database that this secondary database is
         indexing. Note that this means that secondary databases are maintained
-        only for the specified <tt class="classname">Database</tt> handle. If you
-        open the same <tt class="classname">Database</tt> multiple times for write
+        only for the specified <code class="classname">Database</code> handle. If you
+        open the same <code class="classname">Database</code> multiple times for write
         (such as might occur when opening a database for read-only and read-write in the same application),
-        then you should open the <tt class="classname">SecondaryDatabase</tt> for
-        each such <tt class="classname">Database</tt> handle.</p>
+        then you should open the <code class="classname">SecondaryDatabase</code> for
+        each such <code class="classname">Database</code> handle.</p>
             </li>
             <li>
-              <p>A <tt class="classname">SecondaryConfig</tt> object that provides
+              <p>A <code class="classname">SecondaryConfig</code> object that provides
         properties specific to a secondary database. The most important of
         these is used to identify the key creator for the database. The key
         creator is responsible for generating keys for the secondary database.
-        See <a href="secondaryProps.html">Secondary Database Properties</a>  for details.</p>
+        See <a class="xref" href="secondaryProps.html" title="Secondary Database Properties">Secondary Database Properties</a>  for details.</p>
             </li>
           </ul>
         </div>
@@ -285,15 +283,15 @@
               <p>Instantiate your key creator.</p>
             </li>
             <li>
-              <p>Instantiate your <tt class="classname">SecondaryConfig</tt> object.</p>
+              <p>Instantiate your <code class="classname">SecondaryConfig</code> object.</p>
             </li>
             <li>
-              <p>Set your key creator object on your <tt class="classname">SecondaryConfig</tt>
+              <p>Set your key creator object on your <code class="classname">SecondaryConfig</code>
         object.</p>
             </li>
             <li>
               <p>Open your secondary database, specifying your primary database
-        and your <tt class="classname">SecondaryConfig</tt> at that time.</p>
+        and your <code class="classname">SecondaryConfig</code> at that time.</p>
             </li>
           </ol>
         </div>
@@ -385,7 +383,7 @@ try {
             <a accesskey="h" href="index.html">Home</a>
           </td>
           <td width="40%" align="right" valign="top"> Implementing Key 
-        Creators
+        <span>Creators</span>
         
         </td>
         </tr>

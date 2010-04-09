@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Blocking Operations</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="addfeatures.html" title="Chapter 5. Additional Features" />
-    <link rel="previous" href="addfeatures.html" title="Chapter 5. Additional Features" />
+    <link rel="prev" href="addfeatures.html" title="Chapter 5. Additional Features" />
     <link rel="next" href="noautoinit.html" title="Stop Auto-Initialization" />
   </head>
   <body>
@@ -32,35 +32,36 @@
             <h2 class="title" style="clear: both"><a id="manageblock"></a>Managing Blocking Operations</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-                    When a replica is in the process of synchronizing with its master, all DB
-                    operations are blocked until such a time as the synchronization is completed.
-                    For replicas with a heavy read load, these blocked operations may represent an
-                    unacceptable loss in throughput.
+                    When a replica is in the process of synchronizing with
+                    its master, DB operations are blocked at some
+                    points during this process until the synchronization is
+                    completed.  For replicas with a heavy read load, these
+                    blocked operations may represent an unacceptable loss
+                    in throughput.
             </p>
       <p>
                     You can configure DB so that it will not block when synchronization is in
                     process. Instead, the DB operation will fail,
 
                     <span>
-                            immediately returning a <tt class="literal">DB_REP_LOCKOUT</tt> error.
+                            immediately returning a <code class="literal">DB_REP_LOCKOUT</code> error.
                     </span>
 
                     
-                    When this happens, it is up to your application to your application to determine
+                    When this happens, it is up to your application to determine
                     what action to take (that is, logging the event, making an appropriate user
                     response, retrying the operation, and so forth).
             </p>
       <p>
                 To turn off blocking on synchronization, specify 
                     <span>
-                        <tt class="literal">DB_REP_CONF_NOWAIT</tt> to
+                        <code class="literal">DB_REP_CONF_NOWAIT</code> to
                             
-                            <tt class="methodname">DbEnv::rep_set_config()</tt>
-                        and then specify <tt class="literal">1</tt> to the <tt class="literal">onoff</tt>
-                        parameter. (Specify <tt class="literal">0</tt> to turn the feature off.)
+                            <code class="methodname">DbEnv::rep_set_config()</code>
+                        and then specify <code class="literal">1</code> to the <code class="literal">onoff</code>
+                        parameter. (Specify <code class="literal">0</code> to turn the feature off.)
                     </span>
                     
         </p>

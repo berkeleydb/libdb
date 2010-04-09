@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>DPL Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="txnexample_java.html" title="Base API Transaction Example" />
+    <link rel="prev" href="txnexample_java.html" title="Base API Transaction Example" />
     <link rel="next" href="inmem_txnexample_java.html" title="Base API In-Memory Transaction Example" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="txnexample_dpl"></a>DPL Transaction Example</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_dpl.html#txnguideexample_dpl">TxnGuide.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_dpl.html#payloaddataentity">PayloadDataEntity.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_dpl.html#storewriter">StoreWriter.java</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         The following Java code provides a fully functional example of a
@@ -71,33 +89,33 @@
         <ul type="disc">
           <li>
             <p>
-                <tt class="literal">TxnGuide.java</tt>
+                <code class="literal">TxnGuide.java</code>
             </p>
             <p>
                 This is the main class for the application. It performs
                 environment and store management, spawns threads, and
-                creates the data that is placed in the database.  See <a href="txnexample_dpl.html#txnguideexample_dpl">TxnGuide.java</a> for implementation details.
+                creates the data that is placed in the database.  See <a class="xref" href="txnexample_dpl.html#txnguideexample_dpl" title="TxnGuide.java">TxnGuide.java</a> for implementation details.
             </p>
           </li>
           <li>
             <p>
-                <tt class="literal">StoreWriter.java</tt>
+                <code class="literal">StoreWriter.java</code>
             </p>
             <p>
-                This class extends <tt class="literal">java.lang.Thread</tt>, and
+                This class extends <code class="literal">java.lang.Thread</code>, and
                 as such it is our thread implementation.  It is responsible
                 for actually reading and writing store. It also
-                performs all of our transaction management.  See <a href="txnexample_dpl.html#storewriter">StoreWriter.java</a> for
+                performs all of our transaction management.  See <a class="xref" href="txnexample_dpl.html#storewriter" title="StoreWriter.java">StoreWriter.java</a> for
                 implementation details.
             </p>
           </li>
           <li>
             <p>
-                <tt class="literal">PayloadDataEntity.java</tt>
+                <code class="literal">PayloadDataEntity.java</code>
             </p>
             <p>
                 This is an entity class used to encapsulate several data
-                fields.  See <a href="txnexample_dpl.html#payloaddataentity">PayloadDataEntity.java</a> for
+                fields.  See <a class="xref" href="txnexample_dpl.html#payloaddataentity" title="PayloadDataEntity.java">PayloadDataEntity.java</a> for
                 implementation details.
             </p>
           </li>
@@ -110,7 +128,6 @@
               <h3 class="title"><a id="txnguideexample_dpl"></a>TxnGuide.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             The main class in our example application is used to open and
@@ -152,7 +169,7 @@ public class TxnGuideDPL { </pre>
                 private static Environment myEnv = null;
     private static final int NUMTHREADS = 5; </pre>
         <p>
-    Next, we implement our <tt class="function">usage()</tt> method. This
+    Next, we implement our <code class="function">usage()</code> method. This
     application optionally accepts a single command line argument which is
     used to identify the environment home directory.
 </p>
@@ -161,7 +178,7 @@ public class TxnGuideDPL { </pre>
         System.exit(-1);
     } </pre>
         <p>
-    Now we implement our <tt class="function">main()</tt> method. This method
+    Now we implement our <code class="function">main()</code> method. This method
     simply calls the methods to parse the command line arguments and open
     the environment and store. It also creates and then joins the store writer
     threads.
@@ -193,7 +210,7 @@ public class TxnGuideDPL { </pre>
         System.out.println("All done.");
     } </pre>
         <p>
-    Next we implement <tt class="function">openEnv()</tt>. This method is used
+    Next we implement <code class="function">openEnv()</code>. This method is used
     to open the environment and then an entity store in that environment. Along
     the way, we make sure that every handle is free-threaded, and that the
     transactional subsystem is correctly initialized. Because this is a
@@ -213,7 +230,7 @@ public class TxnGuideDPL { </pre>
     Finally, notice that we open the database such that it supports
     uncommitted reads. We do this so that some cursor activity later in
     this example can read uncommitted data.  If we did not do this, then
-    our <tt class="methodname">countObjects()</tt> method described later in
+    our <code class="methodname">countObjects()</code> method described later in
     this example would cause our thread to self-deadlock. This is because
     the cursor could not be opened to support uncommitted reads (that flag
     on the cursor open would, in fact, be silently ignored).
@@ -324,18 +341,18 @@ public class TxnGuideDPL { </pre>
               <h3 class="title"><a id="payloaddataentity"></a>PayloadDataEntity.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
     Before we show the implementation of the store writer thread, we
     need to show the class that we will be placing into the store. This
     class is fairly minimal. It simply allows you to store and retrieve an
-    <tt class="literal">int</tt>, a <tt class="literal">String</tt>, and a
-    <tt class="literal">double</tt>.  The <tt class="literal">int</tt> is our primary key.
+    <code class="literal">int</code>, a <code class="literal">String</code>, and a
+    <code class="literal">double</code>.  The <code class="literal">int</code> is our primary key.
 </p>
         <pre class="programlisting">package persist.txn;
 import com.sleepycat.persist.model.Entity;
 import com.sleepycat.persist.model.PrimaryKey;
+import com.sleepycat.persist.model.SecondaryKey;
 import static com.sleepycat.persist.model.Relationship.*;
 
 @Entity
@@ -343,6 +360,7 @@ public class PayloadDataEntity {
     @PrimaryKey
     private int oID;
 
+    @SecondaryKey(relate=MANY_TO_ONE)
     private String threadName;
 
     private double doubleData;
@@ -365,10 +383,9 @@ public class PayloadDataEntity {
               <h3 class="title"><a id="storewriter"></a>StoreWriter.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-            <tt class="literal">StoreWriter.java</tt> provides the implementation
+            <code class="literal">StoreWriter.java</code> provides the implementation
             for our entity store writer thread. It is responsible for: 
         </p>
         <div class="itemizedlist">
@@ -398,7 +415,7 @@ public class PayloadDataEntity {
         <p>
                 In order to show off some of the ACID properties provided
                 by DB's transactional support,
-                <tt class="literal">StoreWriter.java</tt> does some things in a less
+                <code class="literal">StoreWriter.java</code> does some things in a less
                 efficient way than you would probably decide to use in a
                 true production application. First, it groups 10 database
                 writes together in a single transaction when you could just
@@ -437,12 +454,12 @@ public class StoreWriter extends Thread
     for the environment and the entity store.  The random number generator 
     that we instantiate is used
     to generate unique data for storage in the database.  Finally, the
-    <tt class="literal">MAX_RETRY</tt> variable is used to define how many times
+    <code class="literal">MAX_RETRY</code> variable is used to define how many times
     we will retry a transaction in the face of a deadlock. 
 </p>
         <pre class="programlisting">    private EntityStore myStore = null;
     private Environment myEnv = null;
-    private PrimaryIndex&lt;Integer,PayloadDataEntity&gt; pdKey;
+    private PrimaryIndex&lt;Integer,PayloadDataEntity&gt; pdIndex;
     private Random generator = new Random();
     private boolean passTxn = false;
 
@@ -460,20 +477,20 @@ public class StoreWriter extends Thread
 
         // Open the data accessor. This is used to store persistent
         // objects.
-        pdKey = myStore.getPrimaryIndex(Integer.class,
+        pdIndex = myStore.getPrimaryIndex(Integer.class,
                     PayloadDataEntity.class);
     } </pre>
         <p>
-    Now we implement our thread's <tt class="methodname">run()</tt> method.
-    This is the method that is run when <tt class="classname">StoreWriter</tt>
-    threads are started in the main program (see <a href="txnexample_dpl.html#txnguideexample_dpl">TxnGuide.java</a>).
+    Now we implement our thread's <code class="methodname">run()</code> method.
+    This is the method that is run when <code class="classname">StoreWriter</code>
+    threads are started in the main program (see <a class="xref" href="txnexample_dpl.html#txnguideexample_dpl" title="TxnGuide.java">TxnGuide.java</a>).
 </p>
         <pre class="programlisting">    // Thread method that writes a series of records
     // to the database using transaction protection.
     // Deadlock handling is demonstrated here.
     public void run () { </pre>
         <p>
-    The first thing we do is get a <tt class="literal">null</tt> transaction
+    The first thing we do is get a <code class="literal">null</code> transaction
     handle before going into our main loop. We also begin the top transaction loop here that causes our application to
     perform 50 transactions.
 </p>
@@ -482,9 +499,9 @@ public class StoreWriter extends Thread
         // Perform 50 transactions
         for (int i=0; i&lt;50; i++) { </pre>
         <p>
-    Next we declare a <tt class="literal">retry</tt> variable. This is used to
+    Next we declare a <code class="literal">retry</code> variable. This is used to
     determine whether a deadlock should result in our retrying the
-    operation. We also declare a  <tt class="literal">retry_count</tt> variable
+    operation. We also declare a  <code class="literal">retry_count</code> variable
     that is used to make sure we do not retry a transaction forever in the
     unlikely event that the thread is unable to ever get a necessary lock.
     (The only thing that might cause this is if some other thread dies
@@ -497,7 +514,7 @@ public class StoreWriter extends Thread
            // while loop is used for deadlock retries
            while (retry) { </pre>
         <p>
-    Now we go into the <tt class="literal">try</tt> block that we use for
+    Now we go into the <code class="literal">try</code> block that we use for
     deadlock detection. We also begin our transaction here.
 </p>
         <pre class="programlisting">                // try block used for deadlock detection and
@@ -545,21 +562,21 @@ public class StoreWriter extends Thread
                         pd.setDoubleData(generator.nextDouble());
 
                         // Do the put
-                        pdKey.put(txn, pd);
+                        pdIndex.put(txn, pd);
                     } </pre>
         <p>
         Having completed the inner database write loop, we could simply
         commit the transaction and continue on to the next block of 10
         writes. However, we want to first illustrate a few points about
         transactional processing so instead we call our
-        <tt class="function">countObjects()</tt> method before calling the transaction
-        commit. <tt class="function">countObjects()</tt> uses a cursor to read every
+        <code class="function">countObjects()</code> method before calling the transaction
+        commit. <code class="function">countObjects()</code> uses a cursor to read every
         object in the entity store and return a count of the number of objects
         that it found. 
     </p>
         <p>
         Because 
-        <tt class="function">countObjects()</tt> 
+        <code class="function">countObjects()</code> 
         reads every object in the store, if used incorrectly the thread
         will self-deadlock.  The writer thread has just written 500 objects
         to the database, but because the transaction used for that write
@@ -582,13 +599,13 @@ public class StoreWriter extends Thread
             <li>
               <p>
                 We can move the call to
-                <tt class="function">countObjects()</tt> to a point after the
+                <code class="function">countObjects()</code> to a point after the
                 thread's transaction has committed. 
             </p>
             </li>
             <li>
               <p>
-                We can allow <tt class="function">countObjects()</tt> to
+                We can allow <code class="function">countObjects()</code> to
                 operate under the same transaction as all of the writes
                 were performed.
             </p>
@@ -678,8 +695,8 @@ public class StoreWriter extends Thread
         }
     } </pre>
         <p>
-    The final piece of our <tt class="classname">StoreWriter</tt> class is the
-    <tt class="methodname">countObjects()</tt> implementation. Notice how in
+    The final piece of our <code class="classname">StoreWriter</code> class is the
+    <code class="methodname">countObjects()</code> implementation. Notice how in
     this example we open the cursor such that it performs uncommitted
     reads:
 </p>
@@ -692,7 +709,7 @@ public class StoreWriter extends Thread
         // This is ignored if the store is not opened with uncommitted read
         // support.
         cc.setReadUncommitted(true);
-        EntityCursor&lt;PayloadDataEntity&gt; cursor = pdKey.entities(txn, cc);
+        EntityCursor&lt;PayloadDataEntity&gt; cursor = pdIndex.entities(txn, cc);
 
         try {
             for (PayloadDataEntity pdi : cursor) {

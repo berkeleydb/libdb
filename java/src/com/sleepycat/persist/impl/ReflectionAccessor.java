@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ReflectionAccessor.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -45,6 +45,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
+    /**
+     * Creates an accessor for a complex type.
+     */
     ReflectionAccessor(Catalog catalog,
                        Class type,
                        Accessor superAccessor,
@@ -53,29 +56,40 @@ class ReflectionAccessor implements Accessor {
                        List<FieldInfo> nonKeyFields) {
         this(type, superAccessor);
         if (priKeyField != null) {
-            priKey = getField(catalog, priKeyField, true, false);
+            priKey = getField(catalog, priKeyField,
+                              true /*isRequiredKeyField*/,
+                              false /*isCompositeKey*/);
         } else {
             priKey = null;
         }
         if (secKeyFields.size() > 0) {
-            secKeys = getFields(catalog, secKeyFields, false, false);
+            secKeys = getFields(catalog, secKeyFields,
+                                false /*isRequiredKeyField*/,
+                                false /*isCompositeKey*/);
         } else {
             secKeys = EMPTY_KEYS;
         }
         if (nonKeyFields.size() > 0) {
-            nonKeys = getFields(catalog, nonKeyFields, false, false);
+            nonKeys = getFields(catalog, nonKeyFields,
+                                false /*isRequiredKeyField*/,
+                                false /*isCompositeKey*/);
         } else {
             nonKeys = EMPTY_KEYS;
         }
     }
 
+    /**
+     * Creates an accessor for a composite key type.
+     */
     ReflectionAccessor(Catalog catalog,
                        Class type,
                        List<FieldInfo> fieldInfos) {
         this(type, null);
         priKey = null;
         secKeys = EMPTY_KEYS;
-        nonKeys = getFields(catalog, fieldInfos, true, true);
+        nonKeys = getFields(catalog, fieldInfos,
+                            true /*isRequiredKeyField*/,
+                            true /*isCompositeKey*/);
     }
 
     private FieldAccess[] getFields(Catalog catalog,
@@ -111,12 +125,8 @@ class ReflectionAccessor implements Accessor {
             return new PrimitiveAccess
                 (field, SimpleCatalog.getSimpleFormat(fieldCls));
         } else if (isRequiredKeyField) {
-            Format format = catalog.getFormat(fieldCls);
-            if (isCompositeKey && !SimpleCatalog.isSimpleType(fieldCls)) {
-                throw new IllegalArgumentException
-                    ("Composite key class has non-simple type field: " +
-                     type.getName() + '.' + field.getName());
-            }
+            Format format = catalog.getFormat(fieldInfo.getClassName());
+            assert format != null;
             return new KeyObjectAccess(field, format);
         } else {
             return new ObjectAccess(field);
@@ -273,6 +283,26 @@ class ReflectionAccessor implements Accessor {
                      i += 1) {
                     nonKeys[i].read(o, input);
                 }
+            }
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+        try {
+            for (int i = 0; i < nonKeys.length; i += 1) {
+                nonKeys[i].write(o, output);
+            }
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public void readCompositeKeyFields(Object o, EntityInput input) {
+        try {
+            for (int i = 0; i < nonKeys.length; i += 1) {
+                nonKeys[i].read(o, input);
             }
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);

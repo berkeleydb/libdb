@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.inc,v 12.1 2008/05/07 12:46:43 bschmeck Exp $
+# $Id$
 #
 # Check for inclusion of db_config.h after "const" or other includes.
 

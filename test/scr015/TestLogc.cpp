@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TestLogc.cpp,v 12.6 2008/01/08 20:58:54 bostic Exp $
+ * $Id$
  */
 
 /*
@@ -31,28 +31,34 @@ int main(int argc, char *argv[])
 {
 	try {
 		DbEnv *env = new DbEnv(0);
-		env->open(".", DB_CREATE | DB_INIT_LOG | DB_INIT_MPOOL, 0);
+		DbTxn *dbtxn;
+		env->open(".", DB_CREATE | DB_INIT_LOG | 
+			  DB_INIT_TXN | DB_INIT_MPOOL, 0);
 
 		// Do some database activity to get something into the log.
 		Db *db1 = new Db(env, 0);
-		db1->open(NULL, "first.db", NULL, DB_BTREE, DB_CREATE, 0);
+		env->txn_begin(NULL, &dbtxn, DB_TXN_NOWAIT);
+		db1->open(dbtxn, "first.db", NULL, DB_BTREE, DB_CREATE, 0);
 		Dbt *key = new Dbt((char *)"a", 1);
 		Dbt *data = new Dbt((char *)"b", 1);
-		db1->put(NULL, key, data, 0);
+		db1->put(dbtxn, key, data, 0);
 		key->set_data((char *)"c");
 		data->set_data((char *)"d");
-		db1->put(NULL, key, data, 0);
+		db1->put(dbtxn, key, data, 0);
+		dbtxn->commit(0);
+
+		env->txn_begin(NULL, &dbtxn, DB_TXN_NOWAIT);
+		key->set_data((char *)"e");
+		data->set_data((char *)"f");
+		db1->put(dbtxn, key, data, 0);
+		key->set_data((char *)"g");
+		data->set_data((char *)"h");
+		db1->put(dbtxn, key, data, 0);
+		dbtxn->commit(0);
 		db1->close(0);
 
-		Db *db2 = new Db(env, 0);
-		db2->open(NULL, "second.db", NULL, DB_BTREE, DB_CREATE, 0);
-		key->set_data((char *)"w");
-		data->set_data((char *)"x");
-		db2->put(NULL, key, data, 0);
-		key->set_data((char *)"y");
-		data->set_data((char *)"z");
-		db2->put(NULL, key, data, 0);
-		db2->close(0);
+		 // flush the log
+                env->log_flush(NULL);
 
 		// Now get a log cursor and walk through.
 		DbLogc *logc;
@@ -72,8 +78,8 @@ int main(int argc, char *argv[])
 			// changes, we'll just make sure at the end we saw
 			// 'enough'.
 			//
-			//     cout << "logc.get: " << count;
-			//     show_dbt(cout, dbt);
+			//     	cout << "logc.get: " << count;
+			//      show_dbt(cout, dbt);
 			//	cout << "\n";
 			//
 			count++;
@@ -85,10 +91,10 @@ int main(int argc, char *argv[])
 		}
 		logc->close(0);
 
-		// There has to be at *least* four log records,
-		// since we did four separate database operations.
+		// There has to be at *least* 12 log records,
+		// 2 for each put, plus for commits.
 		//
-		if (count < 4)
+		if (count < 12)
 			cerr << "*** FAIL: not enough log records\n";
 
 		cout << "TestLogc done.\n";

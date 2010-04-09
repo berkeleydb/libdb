@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Using Sorted Collections
-	</title>
+    <title>Using Sorted Collections</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Tuple.html" title="Chapter 5. &#10;&#9;&#9;Using Tuples&#10;&#9;" />
-    <link rel="previous" href="tuple-serialentitybindings.html" title="&#10;Creating Tuple-Serial Entity Bindings&#10;" />
-    <link rel="next" href="SerializableEntity.html" title="Chapter 6. &#10;&#9;&#9;Using Serializable Entities&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Tuple.html" title="Chapter 5.  Using Tuples" />
+    <link rel="prev" href="tuple-serialentitybindings.html" title="Creating Tuple-Serial Entity Bindings" />
+    <link rel="next" href="SerializableEntity.html" title="Chapter 6.  Using Serializable Entities" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     In general, no changes to the prior example are necessary to use
@@ -49,22 +46,22 @@
 </p>
       <p>
     In addition to using the tuple format, the
-        <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">DatabaseType.BTREE</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">DatabaseType.BTREE</a>
         
     access method must be used when creating the database.
-        <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">DatabaseType.BTREE</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">DatabaseType.BTREE</a>
         
     is used for the databases in all examples. The
-        <a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">DatabaseType.HASH</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">DatabaseType.HASH</a>
         
     access method does not support sorted keys.
 </p>
       <p>
     Although not shown in the example, all methods of the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/SortedMap.html" target="_top">SortedMap</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/SortedMap.html" target="_top">SortedMap</a>
     
 	and 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/SortedSet.html" target="_top">SortedSet</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/SortedSet.html" target="_top">SortedSet</a>
     
 	interfaces may be used with sorted collections. For example,
 	submaps and subsets may be created.

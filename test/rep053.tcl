@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep053.tcl,v 12.22 2008/04/03 17:27:51 carol Exp $
+# $Id$
 #
 # TEST	rep053
 # TEST	Replication and basic client-to-client synchronization.
@@ -13,6 +13,8 @@
 #
 proc rep053 { method { niter 200 } { tnum "053" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -27,6 +29,22 @@ proc rep053 { method { niter 200 } { tnum "053" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
@@ -40,8 +58,8 @@ proc rep053 { method { niter 200 } { tnum "053" } args } {
 					    with in-memory logs."
 					continue
 				}
-				puts "Rep$tnum ($method $r $t):\
-				    Replication and client-to-client sync up."
+				puts "Rep$tnum ($method $r $t): Replication\
+				    and client-to-client sync up $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				puts "Rep$tnum: Client2 logs are [lindex $l 2]"
@@ -55,12 +73,19 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	global anywhere
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -90,14 +115,14 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -errpfx MASTER $verbargs \
+	    $m_logargs -errpfx MASTER $verbargs $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -errpfx CLIENT $verbargs \
+	    $c_logargs -errpfx CLIENT $verbargs $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 
@@ -115,7 +140,7 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	# when it starts.
 	#
 	set dc1_envcmd "berkdb_env_noerr -create $c2_txnargs \
-	    $c2_logargs -errpfx DELAYCL $verbargs \
+	    $c2_logargs -errpfx DELAYCL $verbargs $repmemargs \
 	    -home $delaycldir1 -rep_transport \[list 3 replsend\]"
 
 	# Bring the client online by processing the startup messages.
@@ -124,7 +149,7 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 
 	puts "\tRep$tnum.a: Run rep_test in master env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -176,19 +201,20 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 		error_check_bad client_throttling $num_throttles 0
 	}
 
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv 0 1 1
+
 	# Process messages again in case we are running with debug_rop.
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $delaycldir1 $newclient
+	rep_verify $masterdir $masterenv $delaycldir1 $newclient 0 1 1
 
 	puts "\tRep$tnum.d: Run rep_test more in master env and verify."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv 0 1 1
 	process_msgs $envlist
-	rep_verify $masterdir $masterenv $delaycldir1 $newclient
+	rep_verify $masterdir $masterenv $delaycldir1 $newclient 0 1 1
 
 	puts "\tRep$tnum.e: Closing"
 	error_check_good master_close [$masterenv close] 0

@@ -1,5 +1,9 @@
 /*
- * $Id: b_curwalk.c,v 1.12 2008/02/05 20:43:41 bostic Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 

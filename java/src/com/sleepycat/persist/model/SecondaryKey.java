@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SecondaryKey.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -59,6 +59,10 @@ import com.sleepycat.persist.StoreConfig;
  * used) of a secondary key field must follow the same rules as for a {@link
  * <a href="PrimaryKey.html#keyTypes">primary key type</a>}.  The {@link <a
  * href="PrimaryKey.html#sortOrder">key sort order</a>} is also the same.</p>
+ *
+ * <p>For a secondary key field with a collection type, a type parameter must
+ * be used to specify the element type.  For example {@code Collection<String>}
+ * is allowed but {@code Collection} is not.</p>
  *
  * @author Mark Hayes
  */

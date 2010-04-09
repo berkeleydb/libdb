@@ -877,6 +877,40 @@ use constant IGNORE => 'ignore' ;
 	MP_DUMMY                   => IGNORE,
 
 
+	#########
+	# 4.8.9
+	#########
+
+	DBC_BULK                   => IGNORE,
+	DBC_DOWNREV                => IGNORE,
+	DBC_FROM_DB_GET            => IGNORE,
+	DBC_PARTITIONED            => IGNORE,
+	DBC_WAS_READ_COMMITTED     => IGNORE,
+	DB_AM_COMPRESS             => IGNORE,
+	DB_CURSOR_BULK             => DEFINE,
+	DB_CURSOR_TRANSIENT        => DEFINE,
+	DB_DBT_BULK                => IGNORE,
+	DB_DBT_STREAMING           => IGNORE,
+	DB_ENV_FAILCHK             => DEFINE,
+	DB_EVENT_REG_ALIVE         => DEFINE,
+	DB_EVENT_REG_PANIC         => DEFINE,
+	DB_FAILCHK                 => DEFINE,
+	DB_GET_BOTH_LTE            => DEFINE,
+	DB_GID_SIZE                => DEFINE,
+	DB_LOGCHKSUM               => DEFINE,
+	DB_LOGVERSION_LATCHING     => DEFINE,
+	DB_MPOOL_TRY               => DEFINE,
+	DB_MUTEX_SHARED            => DEFINE,
+	DB_OVERWRITE_DUP           => DEFINE,
+	DB_REP_CONF_INMEM          => DEFINE,
+	DB_REP_PAGELOCKED          => DEFINE,
+	DB_SA_UNKNOWNKEY           => DEFINE,
+	DB_SET_LTE                 => DEFINE,
+	DB_SET_REG_TIMEOUT         => DEFINE,
+	DB_SHALLOW_DUP             => DEFINE,
+	DB_VERB_REP_TEST           => DEFINE,
+	DB_VERIFY_PARTITION        => DEFINE,
+
 	) ;
 
 sub enum_Macro

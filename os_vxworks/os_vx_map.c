@@ -1,12 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
  * This code is derived from software contributed to Sleepycat Software by
  * Frederick G.M. Roeber of Netscape Communications Corp.
  *
- * $Id: os_vx_map.c,v 12.14 2008/01/30 16:42:21 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

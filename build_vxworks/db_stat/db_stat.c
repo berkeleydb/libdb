@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
- * $Id: db_stat.c,v 12.23 2008/01/08 20:58:16 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 typedef enum { T_NOTSET, T_DB,
@@ -299,10 +299,19 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		dbenv->set_errfile(dbenv, NULL);
 		ret = dbp->open(dbp, NULL, db, subdb, DB_UNKNOWN, 0, 0);
 		dbenv->set_errfile(dbenv, stderr);
-		if (ret != 0 && (ret = dbp->open(
-		    dbp, NULL, db, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-			dbenv->err(dbenv, ret, "DB->open: %s", db);
-			goto err;
+		if (ret != 0) {
+			/* Handles cannot be reused after a failed DB->open. */
+			(void)dbp->close(dbp, 0);
+			if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
+				dbenv->err(dbenv, ret, "db_create");
+				goto err;
+			}
+
+		       	if ((ret = dbp->open(dbp,
+			    NULL, db, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
+				dbenv->err(dbenv, ret, "DB->open: %s", db);
+				goto err;
+			}
 		}
 
 		/* Check if cache is too small for this DB's pagesize. */

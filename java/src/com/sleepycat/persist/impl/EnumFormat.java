@@ -1,14 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EnumFormat.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.raw.RawObject;
 
 /**
@@ -43,6 +45,21 @@ public class EnumFormat extends Format {
         }
     }
 
+    /**
+     * For use in a deserialized CompositeKeyFormat.
+     */
+    EnumFormat(Class type, String[] enumData) {
+        super(type);
+        names = enumData;
+    }
+
+    /**
+     * Returns data needed for serialization of a CompositeKeyFormat.
+     */
+    String[] getFormatData() {
+        return names;
+    }
+
     @Override
     public boolean isEnum() {
         return true;
@@ -59,13 +76,23 @@ public class EnumFormat extends Format {
     }
 
     @Override
-    void initialize(Catalog catalog, int initVersion) {
+    void initialize(Catalog catalog, EntityModel model, int initVersion) {
         if (values == null) {
-            Class cls = getType();
-            if (cls != null) {
-                values = new Object[names.length];
-                for (int i = 0; i < names.length; i += 1) {
+            initValues();
+        }
+    }
+
+    private void initValues() {
+        Class cls = getType();
+        if (cls != null) {
+            values = new Object[names.length];
+            for (int i = 0; i < names.length; i += 1) {
+                try {
                     values[i] = Enum.valueOf(cls, names[i]);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException
+                        ("Deletion and renaming of enum values is not " +
+                         "supported: " + names[i], e);
                 }
             }
         }
@@ -136,6 +163,14 @@ public class EnumFormat extends Format {
     }
 
     @Override
+    void copySecKey(RecordInput input, RecordOutput output) {
+        int len = input.getPackedIntByteLength();
+        output.writeFast
+            (input.getBufferBytes(), input.getBufferOffset(), len);
+        input.skipFast(len);
+    }
+
+    @Override
     boolean evolve(Format newFormatParam, Evolver evolver) {
         if (!(newFormatParam instanceof EnumFormat)) {
             evolver.addEvolveError
@@ -150,30 +185,63 @@ public class EnumFormat extends Format {
             */
             return false;
         }
-        EnumFormat newFormat = (EnumFormat) newFormatParam;
+
+        final EnumFormat newFormat = (EnumFormat) newFormatParam;
+
+        /* Return quickly if the enum was not changed at all. */
         if (Arrays.equals(names, newFormat.names)) {
             evolver.useOldFormat(this, newFormat);
             return true;
-        } else {
-            Set<String> oldNames = new HashSet<String>(Arrays.asList(names));
-            List<String> newNames = Arrays.asList(newFormat.names);
-            if (newNames.containsAll(oldNames)) {
-                evolver.useEvolvedFormat(this, newFormat, newFormat);
-                return true;
-            } else {
-                oldNames.removeAll(newNames);
-                evolver.addEvolveError
-                    (this, newFormat,
-                     "Incompatible enum type changed detected",
-                     "Enum values may not be removed: " + oldNames);
-                /* For future:
-                evolver.addMissingMutation
-                    (this, newFormatParam,
-                     "Converter is required when a value is removed from an " +
-                     "enum: " + oldNames);
-                */
-                return false;
-            }
         }
+
+        final List<String> newNamesList = Arrays.asList(newFormat.names);
+        final Set<String> newNamesSet = new HashSet<String>(newNamesList);
+        final List<String> oldNamesList = Arrays.asList(names);
+
+        /* Deletion (or renaming, which appears as deletion) is not allowed. */
+        if (!newNamesSet.containsAll(oldNamesList)) {
+            final Set<String> oldNamesSet = new HashSet<String>(oldNamesList);
+            oldNamesSet.removeAll(newNamesSet);
+            evolver.addEvolveError
+                (this, newFormat,
+                 "Incompatible enum type changed detected",
+                 "Enum values may not be removed: " + oldNamesSet);
+        }
+
+        /* Use a List for additional names to preserve ordinal order. */
+        final List<String> additionalNamesList =
+            new ArrayList<String>(newNamesList);
+        additionalNamesList.removeAll(oldNamesList);
+        final int nAdditionalNames = additionalNamesList.size();
+
+        /*
+         * If there are no aditional names, the new and old formats are
+         * equivalent.  This is the case where only the declaration order was
+         * changed.
+         */
+        if (nAdditionalNames == 0) {
+            evolver.useOldFormat(this, newFormat);
+            return true;
+        }
+
+        /*
+         * Evolve the new format.  It should use the old names array, but with
+         * any additional names appended.  [#17140]
+         */
+        final int nOldNames = names.length;
+        newFormat.names = new String[nOldNames + nAdditionalNames];
+        System.arraycopy(names, 0, newFormat.names, 0, nOldNames);
+        for (int i = 0; i < nAdditionalNames; i += 1) {
+            newFormat.names[nOldNames + i] = additionalNamesList.get(i);
+        }
+        newFormat.initValues();
+
+        /*
+         * Because we never change the array index (stored integer value) for
+         * an enum value, the new format can read the values written by the old
+         * format (newFormat is used as the Reader in the 2nd param below).
+         */
+        evolver.useEvolvedFormat(this, newFormat, newFormat);
+        return true;
     }
 }

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="next" href="inmem_txnexample_c.html" title="In-Memory Transaction Example" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="txnexample_c"></a>Transaction Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         The following code provides a fully functional example of a
@@ -63,7 +62,7 @@
         when the environment is opened.
     </p>
       <p>
-        We start with our normal <tt class="literal">include</tt> directives:
+        We start with our normal <code class="literal">include</code> directives:
     </p>
       <pre class="programlisting">// File TxnGuide.cpp
 
@@ -112,7 +111,7 @@ usage()
       <p>
     With that, we have finished up our program's housekeeping, and we can
     now move on to the main part of our program. As usual, we begin with
-    <tt class="function">main()</tt>. First we declare all our variables, and
+    <code class="function">main()</code>. First we declare all our variables, and
     then we initialize our DB handles.
 </p>
       <pre class="programlisting">int
@@ -134,7 +133,7 @@ main(int argc, char *argv[])
     const char *fileName = "mydb.db";  </pre>
       <p>
     Now we need to parse our command line. In this case, all we want is to
-    know where our environment directory is. If the <tt class="literal">-h</tt>
+    know where our environment directory is. If the <code class="literal">-h</code>
     option is not provided when this example is run, the current working
     directory is used instead.
 </p>
@@ -161,7 +160,7 @@ main(int argc, char *argv[])
         <ul type="disc">
           <li>
             <p>
-            We specify <tt class="literal">DB_RECOVER</tt>, which means that normal
+            We specify <code class="literal">DB_RECOVER</code>, which means that normal
             recovery is run every time we start the application. This is
             highly desirable and recommended for most
             applications.
@@ -169,7 +168,7 @@ main(int argc, char *argv[])
           </li>
           <li>
             <p>
-            We also specify <tt class="literal">DB_THREAD</tt>, which means our
+            We also specify <code class="literal">DB_THREAD</code>, which means our
             environment handle will be free-threaded. This is very
             important because we will be sharing the environment handle
             across threads.
@@ -213,12 +212,12 @@ main(int argc, char *argv[])
       <p>
     Now we call the function that will open our database for us. This is
     not very interesting, except that you will notice that we are
-    specifying <tt class="literal">DB_DUPSORT</tt>. This is required purely by
+    specifying <code class="literal">DB_DUPSORT</code>. This is required purely by
     the data that we are writing to the database, and it is only necessary 
     if you run the application more than once without first deleting the environment. 
 </p>
       <p>
-The implementation of <tt class="function">open_db()</tt> is described
+The implementation of <code class="function">open_db()</code> is described
     later in this section.
 </p>
       <pre class="programlisting">        // Open the database
@@ -253,9 +252,9 @@ The implementation of <tt class="function">open_db()</tt> is described
         return (EXIT_FAILURE);
     }  </pre>
       <p>
-        Finally, to wrap up <tt class="function">main()</tt>, we close out our
+        Finally, to wrap up <code class="function">main()</code>, we close out our
         database and environment handle, as is normal for any DB
-        application. Notice that this is where our <tt class="literal">err</tt>
+        application. Notice that this is where our <code class="literal">err</code>
         label is placed in our application. If any database operation prior
         to this point in the program returns an error status, the program
         simply jumps to this point and closes our handles if necessary
@@ -282,7 +281,7 @@ The implementation of <tt class="function">open_db()</tt> is described
     return (EXIT_SUCCESS);
 }  </pre>
       <p>
-    Now that we have completed <tt class="function">main()</tt>, we need to
+    Now that we have completed <code class="function">main()</code>, we need to
     implement the function that our writer threads will actually run. This
     is where the bulk of our transactional code resides.
 </p>
@@ -307,7 +306,7 @@ writerThread(void *args)
     DbEnv *envp = dbp-&gt;get_env();  </pre>
       <p>
     Now we want a thread number for reporting purposes. It is possible to
-    use the <tt class="literal">pthread_t</tt> value directly for this purpose, 
+    use the <code class="literal">pthread_t</code> value directly for this purpose, 
     but how that is done unfortunately differs depending 
     on the pthread implementation you are using. So instead we use a
     mutex-protected global variable to obtain a simple integer for
@@ -401,12 +400,12 @@ writerThread(void *args)
         writes. However, we want to first illustrate a few points about
         transactional processing so instead we call our
          
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
 
         function before calling the transaction
         commit. 
          
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
         uses a cursor to read every
         record in the database and return a count of the number of records
         that it found. 
@@ -473,11 +472,11 @@ writerThread(void *args)
 }  </pre>
       <p>
         <span>
-        We want to back up for a moment and take a look at the call to <tt class="function">countRecords()</tt>.
+        We want to back up for a moment and take a look at the call to <code class="function">countRecords()</code>.
         </span>
         If you look at the 
          
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
         function prototype at the beginning of this example, you will see that the
         function's second parameter takes a transaction handle. However,
         our usage of the function here does not pass a transaction handle
@@ -487,7 +486,7 @@ writerThread(void *args)
 
         Because 
          
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
         reads every record in the database, if used incorrectly the thread
         will self-deadlock.  The writer thread has just written 500 records
         to the database, but because the transaction used for that write
@@ -511,7 +510,7 @@ writerThread(void *args)
             <p>
                 We can move the call to
                  
-                <tt class="function">countRecords()</tt> 
+                <code class="function">countRecords()</code> 
                 to a point after the thread's transaction has committed. 
             </p>
           </li>
@@ -519,7 +518,7 @@ writerThread(void *args)
             <p>
                 We can allow 
                      
-                    <tt class="function">countRecords()</tt> 
+                    <code class="function">countRecords()</code> 
                 to operate under the same transaction as all of the writes
                 were performed (this is what the transaction parameter for
                 the function is for).
@@ -540,14 +539,14 @@ writerThread(void *args)
         so that it knows to perform uncommitted reads.
     </p>
       <p>
-        Note that in <a href="inmem_txnexample_c.html">In-Memory Transaction Example</a>, 
+        Note that in <a class="xref" href="inmem_txnexample_c.html" title="In-Memory Transaction Example">In-Memory Transaction Example</a>, 
         we simply perform the cursor operation using the same transaction 
         as is used for the thread's writes. 
     </p>
       <p>
         The following is the 
             
-            <tt class="function">countRecords()</tt>
+            <code class="function">countRecords()</code>
         implementation. There is not anything particularly interesting
         about this function other than specifying uncommitted reads when 
         we open the cursor handle, but we include the function here anyway 
@@ -597,12 +596,12 @@ countRecords(Db *dbp, DbTxn *txn)
       <p>
         Finally, we provide the implementation of our
          
-        <tt class="function">openDb()</tt> 
+        <code class="function">openDb()</code> 
         function. This function should hold
         no surprises for you. Note, however, that we do specify uncommitted reads
         when we open the database. If we did not do this, then our
          
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
         function would cause our
         thread to self-deadlock because the cursor could not be opened to
         support uncommitted reads (that flag on the cursor open would, in fact, 

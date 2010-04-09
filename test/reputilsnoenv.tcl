@@ -1,3 +1,6 @@
+# See the file LICENSE for redistribution information.
+#
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
 # The procs in this file are used for replication messaging
 # ONLY when the default mechanism of setting up a queue of

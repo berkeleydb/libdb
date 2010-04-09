@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleInputBinding.java,v 12.6 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -23,7 +23,7 @@ import com.sleepycat.db.DatabaseEntry;
  *
  * @author Mark Hayes
  */
-public class TupleInputBinding implements EntryBinding {
+public class TupleInputBinding implements EntryBinding<TupleInput> {
 
     /**
      * Creates a tuple input binding.
@@ -32,14 +32,14 @@ public class TupleInputBinding implements EntryBinding {
     }
 
     // javadoc is inherited
-    public Object entryToObject(DatabaseEntry entry) {
+    public TupleInput entryToObject(DatabaseEntry entry) {
 
         return TupleBinding.entryToInput(entry);
     }
 
     // javadoc is inherited
-    public void objectToEntry(Object object, DatabaseEntry entry) {
+    public void objectToEntry(TupleInput object, DatabaseEntry entry) {
 
-        TupleBinding.inputToEntry((TupleInput) object, entry);
+        TupleBinding.inputToEntry(object, entry);
     }
 }

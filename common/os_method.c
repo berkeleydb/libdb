@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: os_method.c,v 12.11 2008/03/12 19:10:37 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 4. Concurrency</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
+    <link rel="prev" href="maxtxns.html" title="Configuring the Transaction Subsystem" />
     <link rel="next" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="txnconcurrency"></a>Chapter 4. Concurrency</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -198,7 +197,7 @@
                 access to a shared resource, it is said to be
                 <span class="emphasis"><em>locking</em></span> that resource. Note that
                 DB supports both exclusive and non-exclusive locks. See
-                <a href="blocking_deadlocks.html#locks">Locks</a> for more information.
+                <a class="xref" href="blocking_deadlocks.html#locks" title="Locks">Locks</a> for more information.
             </p>
           </li>
           <li>
@@ -216,7 +215,7 @@
             </p>
             <p>
                 For a description of free-threaded DB objects, see
-                <a href="txnconcurrency.html#concurrenthandles">Which DB Handles are Free-Threaded</a>.
+                <a class="xref" href="txnconcurrency.html#concurrenthandles" title="Which DB Handles are Free-Threaded">Which DB Handles are Free-Threaded</a>.
             </p>
           </li>
           <li>
@@ -227,7 +226,7 @@
                 When a thread cannot obtain a lock because some other
                 thread already holds a lock on that object, the lock
                 attempt is said to be <span class="emphasis"><em>blocked</em></span>. See
-                <a href="blocking_deadlocks.html#blocks">Blocks</a> for more information.
+                <a class="xref" href="blocking_deadlocks.html#blocks" title="Blocks">Blocks</a> for more information.
             </p>
           </li>
           <li>
@@ -236,7 +235,7 @@
             </p>
             <p>
                 Occurs when two or more threads of control attempt to access conflicting resource in such a way as none
-                of the threads can any longer may further progress.
+                of the threads can any longer make further progress.
             </p>
             <p>
                 For example, if Thread A is blocked waiting for a resource held by Thread
@@ -246,7 +245,7 @@
                 are said to be <span class="emphasis"><em>deadlocked.</em></span>
             </p>
             <p>
-                For more information, see <a href="blocking_deadlocks.html#deadlocks">Deadlocks</a>.
+                For more information, see <a class="xref" href="blocking_deadlocks.html#deadlocks" title="Deadlocks">Deadlocks</a>.
             </p>
           </li>
         </ul>
@@ -258,7 +257,6 @@
               <h2 class="title" style="clear: both"><a id="concurrenthandles"></a>Which DB Handles are Free-Threaded</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             The following describes to what extent and under what conditions
@@ -270,14 +268,18 @@
               <p>
                     
                     
-                   <tt class="classname">Environment</tt> 
+                   <code class="classname">Environment</code> 
+                   <span>
+                           and the DPL
+                           <code class="classname">EntityStore</code>
+                   </span>
                 </p>
               <p>
                     Free-threaded so long as
                         
                         <span>
-                            <tt class="methodname">EnvironmentConfig.setThreaded()</tt>
-                            is set to <tt class="literal">true</tt>.
+                            <code class="methodname">EnvironmentConfig.setThreaded()</code>
+                            is set to <code class="literal">true</code>.
                         </span>
                 </p>
             </li>
@@ -285,30 +287,43 @@
               <p>
                     
                     
-                   <tt class="classname">Database</tt> 
+                   <code class="classname">Database</code> 
+                   <span>
+                           and the DPL
+                           <code class="classname">PrimaryIndex</code>
+                   </span>
                 </p>
               <p>
                     Free-threaded so long as
                         
                         <span>
-                            the database is opened in a free-threaded environment.
+                                the database 
+                                <span>
+                                        or DPL <code class="classname">PrimaryIndex</code>
+                                </span>
+                                is opened in a free-threaded environment.
                         </span>
                 </p>
             </li>
             <li>
               <p>
-                   <tt class="classname">SecondaryDatabase</tt> 
+                   <code class="classname">SecondaryDatabase</code> 
+                   and DPL <code class="classname">SecondaryIndex</code>
                 </p>
               <p>
-                    Same conditions apply as for <tt class="classname">Database</tt>
-                    handles.
+                    Same conditions apply as for <code class="classname">Database</code>
+                    and <code class="classname">PrimaryIndex</code> handles.
                 </p>
             </li>
             <li>
               <p>
                     
                     
-                   <tt class="classname">Cursor</tt> 
+                   <code class="classname">Cursor</code> 
+                   <span>
+                           and the DPL
+                           <code class="classname">EntityCursor</code>
+                   </span>
                 </p>
               <p>
                     Cursors are not free-threaded. However, they
@@ -318,10 +333,10 @@
             </li>
             <li>
               <p>
-                   <tt class="classname">SecondaryCursor</tt> 
+                   <code class="classname">SecondaryCursor</code> 
                 </p>
               <p>
-                    Same conditions apply as for <tt class="classname">Cursor</tt>
+                    Same conditions apply as for <code class="classname">Cursor</code>
                     handles.
                 </p>
             </li>
@@ -329,7 +344,7 @@
               <p>
                     
                     
-                   <tt class="classname">Transaction</tt> 
+                   <code class="classname">Transaction</code> 
                     
                 </p>
               <p>
@@ -341,10 +356,12 @@
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
-                All classes found in the DPL (<tt class="literal">com.sleepycat.persist.*</tt>) are free-threaded.
+                All other classes found in the DPL
+                (<code class="literal">com.sleepycat.persist.*</code>) and not
+                mentioned above are free-threaded.
             </p>
           <p>
-                All classes found in the bind APIs (<tt class="literal">com.sleepycat.bind.*</tt>) are free-threaded.
+                All classes found in the bind APIs (<code class="literal">com.sleepycat.bind.*</code>) are free-threaded.
             </p>
         </div>
       </div>
@@ -354,9 +371,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="maxtxns.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="blocking_deadlocks.html">Next</a></td>
         </tr>
         <tr>

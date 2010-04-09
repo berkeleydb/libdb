@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_stat.c,v 12.30 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -11,7 +11,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/mutex_int.h"
 
 #ifdef HAVE_STATISTICS
 static int __mutex_print_all __P((ENV *, u_int32_t));
@@ -161,7 +160,7 @@ __mutex_print_summary(env)
 	memset(counts, 0, sizeof(counts));
 
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
-		mutexp = MUTEXP_SET(i);
+		mutexp = MUTEXP_SET(mtxmgr, i);
 
 		if (!F_ISSET(mutexp, DB_MUTEX_ALLOCATED))
 			counts[0]++;
@@ -264,7 +263,7 @@ __mutex_print_all(env, flags)
 	__db_msg(env, "%s", DB_GLOBAL(db_line));
 	__db_msg(env, "mutex\twait/nowait, pct wait, holder, flags");
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
-		mutexp = MUTEXP_SET(i);
+		mutexp = MUTEXP_SET(mtxmgr, i);
 
 		if (!F_ISSET(mutexp, DB_MUTEX_ALLOCATED))
 			continue;
@@ -330,9 +329,11 @@ __mutex_print_debug_stats(env, mbp, mutex, flags)
 	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
-	DB_MUTEXREGION *mtxregion;
 	u_long value;
 	char buf[DB_THREADID_STRLEN];
+#if defined(HAVE_SHARED_LATCHES) && defined(HAVE_MUTEX_HYBRID)
+	int sharecount;
+#endif
 
 	if (mutex == MUTEX_INVALID) {
 		__db_msgadd(env, mbp, "[!Set]");
@@ -341,8 +342,7 @@ __mutex_print_debug_stats(env, mbp, mutex, flags)
 
 	dbenv = env->dbenv;
 	mtxmgr = env->mutex_handle;
-	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	__db_msgadd(env, mbp, "[");
 	if ((value = mutexp->mutex_set_wait) < 10000000)
@@ -354,16 +354,53 @@ __mutex_print_debug_stats(env, mbp, mutex, flags)
 	else
 		__db_msgadd(env, mbp, "/%luM", value / 1000000);
 
-	__db_msgadd(env, mbp, " %d%%",
+	__db_msgadd(env, mbp, " %d%% ",
 	    DB_PCT(mutexp->mutex_set_wait,
 	    mutexp->mutex_set_wait + mutexp->mutex_set_nowait));
 
+#if defined(HAVE_SHARED_LATCHES)
+	if (F_ISSET(mutexp, DB_MUTEX_SHARED)) {
+		__db_msgadd(env, mbp, " rd ");
+		if ((value = mutexp->mutex_set_rd_wait) < 10000000)
+			__db_msgadd(env, mbp, "%lu", value);
+		else
+			__db_msgadd(env, mbp, "%luM", value / 1000000);
+		if ((value = mutexp->mutex_set_rd_nowait) < 10000000)
+			__db_msgadd(env, mbp, "/%lu", value);
+		else
+			__db_msgadd(env, mbp, "/%luM", value / 1000000);
+		__db_msgadd(env, mbp, " %d%% ",
+		    DB_PCT(mutexp->mutex_set_rd_wait,
+		    mutexp->mutex_set_rd_wait + mutexp->mutex_set_rd_nowait));
+	}
+#endif
+
 	if (F_ISSET(mutexp, DB_MUTEX_LOCKED))
-		__db_msgadd(env, mbp, " %s]",
+		__db_msgadd(env, mbp, "%s]",
 		    dbenv->thread_id_string(dbenv,
 		    mutexp->pid, mutexp->tid, buf));
+	/* Only hybrid shared latches expose the share count. */
+#if defined(HAVE_SHARED_LATCHES) && defined(HAVE_MUTEX_HYBRID)
+	else if (F_ISSET(mutexp, DB_MUTEX_SHARED) &&
+	    (sharecount = atomic_read(&mutexp->sharecount)) != 0) {
+		if (sharecount == 1)
+			__db_msgadd(env, mbp, "1 reader");
+		else
+			__db_msgadd(env, mbp, "%d readers", sharecount);
+		/* Show the thread which last acquired the latch. */
+		__db_msgadd(env, mbp, "%s]",
+		    dbenv->thread_id_string(dbenv,
+		    mutexp->pid, mutexp->tid, buf));
+	}
+#endif
 	else
-		__db_msgadd(env, mbp, " !Own]");
+		__db_msgadd(env, mbp, "!Own]");
+
+#ifdef HAVE_MUTEX_HYBRID
+	if (mutexp->hybrid_wait != 0 || mutexp->hybrid_wakeup != 0)
+		__db_msgadd(env, mbp, " <wakeups %d/%d>",
+		    mutexp->hybrid_wait, mutexp->hybrid_wakeup);
+#endif
 
 	if (LF_ISSET(DB_STAT_CLEAR))
 		__mutex_clear(env, mutex);
@@ -375,6 +412,7 @@ __mutex_print_id(alloc_id)
 {
 	switch (alloc_id) {
 	case MTX_APPLICATION:		return ("application allocated");
+	case MTX_ATOMIC_EMULATION:	return ("atomic emulation");
 	case MTX_DB_HANDLE:		return ("db handle");
 	case MTX_ENV_DBLIST:		return ("env dblist");
 	case MTX_ENV_HANDLE:		return ("env handle");
@@ -386,14 +424,15 @@ __mutex_print_id(alloc_id)
 	case MTX_LOG_HANDLE:		return ("log handle");
 	case MTX_LOG_REGION:		return ("log region");
 	case MTX_MPOOLFILE_HANDLE:	return ("mpoolfile handle");
+	case MTX_MPOOL_BH:		return ("mpool buffer");
 	case MTX_MPOOL_FH:		return ("mpool filehandle");
 	case MTX_MPOOL_FILE_BUCKET:	return ("mpool file bucket");
 	case MTX_MPOOL_HANDLE:		return ("mpool handle");
 	case MTX_MPOOL_HASH_BUCKET:	return ("mpool hash bucket");
-	case MTX_MPOOL_IO:		return ("mpool buffer I/O");
 	case MTX_MPOOL_REGION:		return ("mpool region");
 	case MTX_MUTEX_REGION:		return ("mutex region");
 	case MTX_MUTEX_TEST:		return ("mutex test");
+	case MTX_REPMGR:		return ("replication manager");
 	case MTX_REP_CHKPT:		return ("replication checkpoint");
 	case MTX_REP_DATABASE:		return ("replication database");
 	case MTX_REP_EVENT:		return ("replication event");
@@ -415,21 +454,19 @@ __mutex_print_id(alloc_id)
  *	Return mutex statistics.
  *
  * PUBLIC: void __mutex_set_wait_info
- * PUBLIC:	__P((ENV *, db_mutex_t, u_int32_t *, u_int32_t *));
+ * PUBLIC:	__P((ENV *, db_mutex_t, uintmax_t *, uintmax_t *));
  */
 void
 __mutex_set_wait_info(env, mutex, waitp, nowaitp)
 	ENV *env;
 	db_mutex_t mutex;
-	u_int32_t *waitp, *nowaitp;
+	uintmax_t *waitp, *nowaitp;
 {
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
-	DB_MUTEXREGION *mtxregion;
 
 	mtxmgr = env->mutex_handle;
-	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	*waitp = mutexp->mutex_set_wait;
 	*nowaitp = mutexp->mutex_set_nowait;
@@ -448,13 +485,14 @@ __mutex_clear(env, mutex)
 {
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
-	DB_MUTEXREGION *mtxregion;
 
 	mtxmgr = env->mutex_handle;
-	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	mutexp->mutex_set_wait = mutexp->mutex_set_nowait = 0;
+#ifdef HAVE_MUTEX_HYBRID
+	mutexp->hybrid_wait = mutexp->hybrid_wakeup = 0;
+#endif
 }
 
 #else /* !HAVE_STATISTICS */

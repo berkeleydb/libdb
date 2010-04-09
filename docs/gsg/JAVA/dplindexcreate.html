@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Creating Indexes</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_index.html" title="Chapter 4. Working with Indices" />
-    <link rel="previous" href="persist_index.html" title="Chapter 4. Working with Indices" />
+    <link rel="prev" href="persist_index.html" title="Chapter 4. Working with Indices" />
     <link rel="next" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="dplindexcreate"></a>Creating Indexes</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="dplindexcreate.html#dplprimaryidxdecl">Declaring a Primary Indexes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="dplindexcreate.html#dplsecondaryidxdecl">Declaring Secondary Indexes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="dplindexcreate.html#foreignkey">Foreign Key Constraints</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
                   To create an index using the DPL, you use Java
@@ -56,11 +74,10 @@
               <h3 class="title"><a id="dplprimaryidxdecl"></a>Declaring a Primary Indexes</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                           You declare a primary key for an entity class by
-                          using the <tt class="literal">@PrimaryKey</tt>
+                          using the <code class="literal">@PrimaryKey</code>
                           annotation. This annotation must appear
                           immediately before the data member which
                           represents the class's primary key. For example:
@@ -88,9 +105,9 @@ public class Vendor {
 
     ... </pre>
         <p>
-                            For this class, the <tt class="literal">vendor</tt> value is set for an individual
-                            <tt class="classname">Vendor</tt> class object by
-                            the <tt class="methodname">setVendorName()</tt>
+                            For this class, the <code class="literal">vendor</code> value is set for an individual
+                            <code class="classname">Vendor</code> class object by
+                            the <code class="methodname">setVendorName()</code>
                             method. If our example code fails to set this
                             value before storing the object, the data
                             member used to store the primary key is set to a
@@ -106,15 +123,10 @@ public class Vendor {
                     </p>
         <p>
                         You declare a sequence is to be used by specifying
-                        the <tt class="literal">sequence</tt> keyword to the
-                        <tt class="literal">@PrimaryKey</tt> annotation.
+                        the <code class="literal">sequence</code> keyword to the
+                        <code class="literal">@PrimaryKey</code> annotation. You must
+                        also provide a name for the sequence. For example:
                         For example:
-                    </p>
-        <pre class="programlisting">@PrimaryKey(sequence="")
-long myPrimaryKey; </pre>
-        <p>
-                        If you provide the <tt class="literal">sequence</tt> keyword with a name,
-                        then the sequence is obtained from that named sequence.  For example:
                     </p>
         <pre class="programlisting">@PrimaryKey(sequence="Sequence_Namespace")
 long myPrimaryKey; </pre>
@@ -126,11 +138,10 @@ long myPrimaryKey; </pre>
               <h3 class="title"><a id="dplsecondaryidxdecl"></a>Declaring Secondary Indexes</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         To declare a secondary index, we use the
-                        <tt class="literal">@SecondaryKey</tt> annotation. Note
+                        <code class="literal">@SecondaryKey</code> annotation. Note
                         that when we do this, we must declare what sort of
                         an index it is; that is, what is its relationship to
                         other data in the data store.
@@ -143,7 +154,7 @@ long myPrimaryKey; </pre>
           <ul type="disc">
             <li>
               <p>
-                                        <tt class="literal">ONE_TO_ONE</tt>
+                                        <code class="literal">ONE_TO_ONE</code>
                                     </p>
               <p>
                                         This relationship indicates that
@@ -165,7 +176,7 @@ long myPrimaryKey; </pre>
             </li>
             <li>
               <p>
-                                        <tt class="literal">MANY_TO_ONE</tt>
+                                        <code class="literal">MANY_TO_ONE</code>
                                     </p>
               <p>
                                         Indicates that the secondary key
@@ -191,7 +202,7 @@ long myPrimaryKey; </pre>
             </li>
             <li>
               <p>
-                                        <tt class="literal">ONE_TO_MANY</tt>
+                                        <code class="literal">ONE_TO_MANY</code>
                                     </p>
               <p>
                                         Indicates that the secondary key
@@ -214,7 +225,7 @@ long myPrimaryKey; </pre>
             </li>
             <li>
               <p>
-                                        <tt class="literal">MANY_TO_MANY</tt>
+                                        <code class="literal">MANY_TO_MANY</code>
                                     </p>
               <p>
                                         There can be multiple keys for
@@ -239,12 +250,12 @@ long myPrimaryKey; </pre>
           </ul>
         </div>
         <p>
-                        Note that for <tt class="literal">ONE_TO_ONE</tt> and
-                        <tt class="literal">MANY_TO_ONE</tt> relationships, you
+                        Note that for <code class="literal">ONE_TO_ONE</code> and
+                        <code class="literal">MANY_TO_ONE</code> relationships, you
                         need a simple data member (not an array or
                         collection) to hold the key. For
-                        <tt class="literal">ONE_TO_MANY</tt> and
-                        <tt class="literal">MANY_TO_MANY</tt> relationships, you
+                        <code class="literal">ONE_TO_MANY</code> and
+                        <code class="literal">MANY_TO_MANY</code> relationships, you
                         need an array or collection to hold the keys:
                     </p>
         <pre class="programlisting">@SecondaryKey(relate=ONE_TO_ONE)
@@ -260,7 +271,6 @@ private Set&lt;String&gt; emailAddresses = new HashSet&lt;String&gt;(); </pre>
               <h3 class="title"><a id="foreignkey"></a>Foreign Key Constraints</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             Sometimes a secondary index is related in some
@@ -324,7 +334,7 @@ private Set&lt;String&gt; emailAddresses = new HashSet&lt;String&gt;(); </pre>
           <ul type="disc">
             <li>
               <p>
-                                                 <tt class="literal">ABORT</tt>
+                                                 <code class="literal">ABORT</code>
                                          </p>
               <p>
                                                 The delete operation is not
@@ -336,22 +346,22 @@ private Set&lt;String&gt; emailAddresses = new HashSet&lt;String&gt;(); </pre>
             </li>
             <li>
               <p>
-                                                 <tt class="literal">CASCADE</tt>
+                                                 <code class="literal">CASCADE</code>
                                          </p>
               <p>
                                             All entities related to this
                                             one are deleted as well. For
                                             example, if you deleted a
-                                            <tt class="classname">Division</tt>
+                                            <code class="classname">Division</code>
                                             object, then all
-                                            <tt class="classname">Employee</tt>
+                                            <code class="classname">Employee</code>
                                             objects that belonged to the
                                             division are also deleted.
                                          </p>
             </li>
             <li>
               <p>
-                                                 <tt class="literal">NULLIFY</tt>
+                                                 <code class="literal">NULLIFY</code>
                                          </p>
               <p>
                                             All entities related to the
@@ -369,13 +379,13 @@ private Set&lt;String&gt; emailAddresses = new HashSet&lt;String&gt;(); </pre>
         </div>
         <p>
                             You declare a foreign key constraint by using
-                            the <tt class="literal">relatedEntity</tt> keyword. You
+                            the <code class="literal">relatedEntity</code> keyword. You
                             declare the foreign key constraint deletion policy using the
-                            <tt class="literal">onRelatedEntityDelete</tt> keyword. For
+                            <code class="literal">onRelatedEntityDelete</code> keyword. For
                             example, the following declares a foreign key
-                            constraint to <tt class="classname">Division</tt>
+                            constraint to <code class="classname">Division</code>
                             class objects, and it causes related objects to
-                            be deleted if the <tt class="classname">Division</tt>
+                            be deleted if the <code class="classname">Division</code>
                             class is deleted:
                          </p>
         <pre class="programlisting">@SecondaryKey(relate=ONE_TO_ONE, relatedEntity=Division.class, 

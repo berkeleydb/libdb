@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: test119.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test119
 # TEST	Test behavior when Berkeley DB returns DB_BUFFER_SMALL on a cursor.
@@ -186,7 +186,9 @@ proc test119 { method {tnum "119"} args} {
 
 			# Hash is not sorted, so just make sure we can get
 			# the item with a large buffer and check it later.
-			if { [is_hash $method] == 1 } {
+			# Likewise for partition callback.
+			if { [is_hash $method] == 1  || \
+			    [is_partition_callback $args] == 1} {
 				set data_buf $bigbuf
 				set key_buf $bigbuf
 			}
@@ -213,7 +215,8 @@ proc test119 { method {tnum "119"} args} {
 
 			# If not hash, check that item number is correct.
 			# If hash, save the number for later verification.
-			if { [is_hash $method] == 0 } {
+			if { [is_hash $method] == 0 \
+				&& [is_partition_callback $args] == 0 } {
 				error_check_good key_number $keynumber $count
 				error_check_good data_number $datanumber $count
 			} else {
@@ -222,7 +225,8 @@ proc test119 { method {tnum "119"} args} {
 		} else {
 			# For hash, save the item numbers of all items
 			# retrieved, not just those returning DB_BUFFER_SMALL.
-			if { [is_hash $method] == 1 } {
+			if { [is_hash $method] == 1  || \
+			    [is_partition_callback $args] == 1} {
 				set key [lindex [lindex $res 0] 0]
 				set keyindex [string first . $key]
 				set keynumber \
@@ -239,7 +243,8 @@ proc test119 { method {tnum "119"} args} {
 	}
 
 	# Now check the list of items retrieved from hash.
-	if { [is_hash $method] == 1 } {
+	if { [is_hash $method] == 1  || \
+	    [is_partition_callback $args] == 1} {
 		set sortedhashitems [lsort $hashitems]
 		for { set i $start } \
 		    { $i < [expr $nentries + $start] } { incr i } {

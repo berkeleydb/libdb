@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test088.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test088
 # TEST	Test of cursor stability across btree splits with very
@@ -84,6 +84,9 @@ proc test088 { method args } {
 	puts "\tTest$tstn.c: Set cursors on each of $nkeys pairs."
 	# if mkeys is above 1000, need to adjust below for lexical order
 	set mkeys 30000
+	if { [is_compressed $args] } {
+		set mkeys 300
+	}
 	if { $txnenv == 1 } {
 		set t [$env txn]
 		error_check_good txn [is_valid_txn $t $env] TRUE

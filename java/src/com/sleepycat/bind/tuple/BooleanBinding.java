@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: BooleanBinding.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -25,24 +25,24 @@ import com.sleepycat.db.DatabaseEntry;
  * TupleBinding#getPrimitiveBinding} method.</li>
  * </ol>
  */
-public class BooleanBinding extends TupleBinding {
+public class BooleanBinding extends TupleBinding<Boolean> {
 
     private static final int BOOLEAN_SIZE = 1;
 
     // javadoc is inherited
-    public Object entryToObject(TupleInput input) {
+    public Boolean entryToObject(TupleInput input) {
 
-	return input.readBoolean() ? Boolean.TRUE : Boolean.FALSE;
+	return input.readBoolean();
     }
 
     // javadoc is inherited
-    public void objectToEntry(Object object, TupleOutput output) {
+    public void objectToEntry(Boolean object, TupleOutput output) {
 
-        output.writeBoolean(((Boolean) object).booleanValue());
+        output.writeBoolean(object);
     }
 
     // javadoc is inherited
-    protected TupleOutput getTupleOutput(Object object) {
+    protected TupleOutput getTupleOutput(Boolean object) {
 
         return sizedOutput();
     }

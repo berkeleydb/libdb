@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test068.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test068
 # TEST	Test of DB_BEFORE and DB_AFTER with partial puts.
@@ -72,8 +72,10 @@ proc test068 { method args } {
 	}
 
 	foreach dupopt $dupoptlist {
-		if { $is_je_test && $dupopt == "-dup" } {
-			continue
+		if { $is_je_test || [is_compressed $args] == 1 } {
+			if { $dupopt == "-dup" } {
+				continue
+			}
 		}
 
 		# Testdir might be reset in the loop by some proc sourcing

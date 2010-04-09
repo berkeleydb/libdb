@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Retrieving Database Items
-	</title>
+    <title>Retrieving Database Items</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="addingdatabaseitems.html" title="&#10;&#9;&#9;Adding Database Items&#10;&#9;" />
-    <link rel="next" href="handlingexceptions.html" title="&#10;&#9;&#9;Handling Exceptions&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="addingdatabaseitems.html" title="Adding Database Items" />
+    <link rel="next" href="handlingexceptions.html" title="Handling Exceptions" />
   </head>
   <body>
     <div class="navheader">
@@ -40,25 +38,24 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     Retrieving information from the database is accomplished via the
 	standard Java collections API. In the example, the 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#iterator" target="_top">Set.iterator</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html#iterator" target="_top">Set.iterator</a>
 	
     method is used to iterate all 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
 	
 	objects for each store. All standard Java methods for retrieving
 	objects from a collection may be used with the DB Java Collections API.
 </p>
       <p>
-    The <tt class="methodname">PrintDatabase.doWork()</tt> method calls
-    <tt class="methodname">printEntries()</tt>
+    The <code class="methodname">PrintDatabase.doWork()</code> method calls
+    <code class="methodname">printEntries()</code>
 	to print the map entries for each database store. It is called via
 	the 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
     
 	class and was outlined in the previous section.
 </p>
@@ -75,38 +72,38 @@ public class Sample
         public void doWork()
             throws Exception
         {
-<b class="userinput"><tt>            printEntries("Parts",
+<strong class="userinput"><code>            printEntries("Parts",
                           views.getPartEntrySet().iterator());
             printEntries("Suppliers",
                           views.getSupplierEntrySet().iterator());
             printEntries("Shipments",
-                          views.getShipmentEntrySet().iterator());</tt></b>
+                          views.getShipmentEntrySet().iterator());</code></strong>
         }
     }
     ...
 
-<b class="userinput"><tt>    private void printEntries(String label, Iterator iterator)
+<strong class="userinput"><code>    private void printEntries(String label, Iterator iterator)
     {
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
     The 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Set.html" target="_top">Set</a>
     
 	of 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.Entry.html" target="_top">Map.Entry</a>
     
-	objects for each store is obtained from the <tt class="classname">SampleViews</tt>
+	objects for each store is obtained from the <code class="classname">SampleViews</code>
 	object. This set can also be obtained by calling the 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>
 	
 	method of a stored map.
 </p>
       <p>
-    The <tt class="methodname">printEntries()</tt> prints the map entries for any stored
+    The <code class="methodname">printEntries()</code> prints the map entries for any stored
 	map. The 
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/Object.html#toString" target="_top">Object.toString</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/Object.html#toString" target="_top">Object.toString</a>
 	
 	method of each key and value is called to
 	obtain a printable representation of each object.
@@ -114,19 +111,19 @@ public class Sample
       <a id="cb_printentries"></a>
       <pre class="programlisting">    private void printEntries(String label, Iterator iterator)
     {
-<b class="userinput"><tt>        System.out.println("\n--- " + label + " ---");
+<strong class="userinput"><code>        System.out.println("\n--- " + label + " ---");
         while (iterator.hasNext())
         {
             Map.Entry entry = (Map.Entry) iterator.next();
             System.out.println(entry.getKey().toString());
             System.out.println(entry.getValue().toString());
-        }</tt></b>
+        }</code></strong>
     } </pre>
       <p>
     This is one of a small number of behavioral differences between
 	standard Java collections and stored collections. For a complete
 	list see 
-    <a href="UsingStoredCollections.html">
+    <a class="xref" href="UsingStoredCollections.html" title="Using Stored Collections">
         Using Stored Collections
     </a>.
 </p>

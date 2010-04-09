@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test020.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test020
 # TEST	In-Memory database tests.
@@ -14,6 +14,11 @@ proc test020 { method {nentries 10000} args } {
 	if { [is_queueext $method] == 1 || \
 	    [is_rbtree $method] == 1 } {
 		puts "Test020 skipping for method $method"
+		return
+	}
+
+	if { [is_partitioned $args] == 1 } {
+		puts "Test020 skipping for partitioned $method"
 		return
 	}
 	# Create the database and open the dictionary

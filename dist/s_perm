@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_perm,v 12.3 2008/02/04 17:48:48 bostic Exp $
+#	$Id$
 
 d=..
 echo 'Updating Berkeley DB source tree permissions...'

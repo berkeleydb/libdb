@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: SerialSerialBinding.java,v 12.6 2008/01/08 20:58:35 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial;
@@ -25,12 +25,14 @@ import com.sleepycat.db.DatabaseEntry;
  * <li> {@link #objectToData(Object)} </li>
  * </ul>
  *
+ * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
+ *
  * @author Mark Hayes
  */
-public abstract class SerialSerialBinding implements EntityBinding {
+public abstract class SerialSerialBinding<K,D,E> implements EntityBinding<E> {
 
-    private SerialBinding keyBinding;
-    private SerialBinding dataBinding;
+    private SerialBinding<K> keyBinding;
+    private SerialBinding<D> dataBinding;
 
     /**
      * Creates a serial-serial entity binding.
@@ -43,11 +45,11 @@ public abstract class SerialSerialBinding implements EntityBinding {
      * @param dataClass is the data base class.
      */
     public SerialSerialBinding(ClassCatalog classCatalog,
-                               Class keyClass,
-                               Class dataClass) {
+                               Class<K> keyClass,
+                               Class<D> dataClass) {
 
-        this(new SerialBinding(classCatalog, keyClass),
-             new SerialBinding(classCatalog, dataClass));
+        this(new SerialBinding<K>(classCatalog, keyClass),
+             new SerialBinding<D>(classCatalog, dataClass));
     }
 
     /**
@@ -57,32 +59,32 @@ public abstract class SerialSerialBinding implements EntityBinding {
      *
      * @param dataBinding is the data binding.
      */
-    public SerialSerialBinding(SerialBinding keyBinding,
-                               SerialBinding dataBinding) {
+    public SerialSerialBinding(SerialBinding<K> keyBinding,
+                               SerialBinding<D> dataBinding) {
 
         this.keyBinding = keyBinding;
         this.dataBinding = dataBinding;
     }
 
     // javadoc is inherited
-    public Object entryToObject(DatabaseEntry key, DatabaseEntry data) {
+    public E entryToObject(DatabaseEntry key, DatabaseEntry data) {
 
         return entryToObject(keyBinding.entryToObject(key),
                              dataBinding.entryToObject(data));
     }
 
     // javadoc is inherited
-    public void objectToKey(Object object, DatabaseEntry key) {
+    public void objectToKey(E object, DatabaseEntry key) {
 
-        object = objectToKey(object);
-        keyBinding.objectToEntry(object, key);
+        K keyObject = objectToKey(object);
+        keyBinding.objectToEntry(keyObject, key);
     }
 
     // javadoc is inherited
-    public void objectToData(Object object, DatabaseEntry data) {
+    public void objectToData(E object, DatabaseEntry data) {
 
-        object = objectToData(object);
-        dataBinding.objectToEntry(object, data);
+        D dataObject = objectToData(object);
+        dataBinding.objectToEntry(dataObject, data);
     }
 
     /**
@@ -94,7 +96,7 @@ public abstract class SerialSerialBinding implements EntityBinding {
      *
      * @return the entity object constructed from the key and data.
      */
-    public abstract Object entryToObject(Object keyInput, Object dataInput);
+    public abstract E entryToObject(K keyInput, D dataInput);
 
     /**
      * Extracts a key object from an entity object.
@@ -103,7 +105,7 @@ public abstract class SerialSerialBinding implements EntityBinding {
      *
      * @return the deserialized key object.
      */
-    public abstract Object objectToKey(Object object);
+    public abstract K objectToKey(E object);
 
     /**
      * Extracts a data object from an entity object.
@@ -112,5 +114,5 @@ public abstract class SerialSerialBinding implements EntityBinding {
      *
      * @return the deserialized data object.
      */
-    public abstract Object objectToData(Object object);
+    public abstract D objectToData(E object);
 }

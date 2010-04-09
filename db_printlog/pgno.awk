@@ -1,4 +1,4 @@
-# $Id: pgno.awk,v 12.0 2004/11/17 03:43:25 bostic Exp $
+# $Id$
 #
 # Take a comma-separated list of page numbers and spit out all the
 # log records that affect those page numbers.

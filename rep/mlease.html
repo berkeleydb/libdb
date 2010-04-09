@@ -66,7 +66,7 @@ expiration on the master.<br>
   </li>
   <li>Users who change the system clock during master leases void the
 guarantee and may get undefined behavior.&nbsp; We assume time always
-runs forward. <b>[document this.]</b><br>
+runs forward. <br>
   </li>
   <li>Clients are forbidden from participating in elections while they
 have an outstanding lease granted to another site.</li>
@@ -143,8 +143,7 @@ client is the same as saying Ignore Leases.</li>
   <li>What about adding and removing sites while leases are
 active?&nbsp; This is SR 14778.&nbsp; A consistent <i>nsites</i> value
 is required by master
-leases.&nbsp; <b>The resolution of 14778
-is a prerequisite - currently owned by Alan</b>.&nbsp; It isn't
+leases.&nbsp; &nbsp; It isn't
 clear to me what a master is
 supposed to do if the value of nsites gets smaller while leases are
 active.&nbsp; Perhaps it leaves its larger table intact and simply
@@ -176,9 +175,7 @@ before they turn on leases (obviously, this timeout need not be set of
 leases will not be used).&nbsp; That timeout is the amount of time
 the lease is valid on the master and how long it is granted
 on the client.&nbsp; This timeout must be the same
-value on all sites (like log file size).&nbsp; <b>[Document this
-requirement.&nbsp; We cannot
-enforce it across the group easily.]</b> The timeout used when
+value on all sites (like log file size).&nbsp; The timeout used when
 refreshing leases is the <b>DB_REP_ACK_TIMEOUT</b>
 for RepMgr application.&nbsp; For Base API applications, lease
 refreshes will use the same mechanism as <b>PERM</b> messages and they
@@ -273,8 +270,7 @@ In __rep_start, at the end:<br>
 In <i>__rep_env_refresh</i>, if we
 are the last reference closing the env (we already check for that):<br>
 <pre>F_CLR(rep, REP_F_START_CALLED);</pre>
-<b>[Please review the logic here
-carefully.]</b> In order to avoid run-time floating point operations
+In order to avoid run-time floating point operations
 on <i>db_timespec</i> structures,
 when a site is declared as a client or master in <i>rep_start</i> we
 will pre-compute the
@@ -320,10 +316,7 @@ but do no special flag checking.<br>
 The flag will be called <b>DB_IGNORE_LEASE</b>
 and it will be a flag that can be OR'd into the DB access method and
 cursor operation values.&nbsp; It will be similar to the <b>DB_READ_UNCOMMITTED</b>
-flag. <b>[Keith, I will need your help here for
-finding a bit in the DB flags that isn't in use for my new flag.&nbsp;
-That
-looks like a very full and confusing area...]<br>
+flag.
 <br>
 </b>The methods that will
 adhere to leases are:<br>
@@ -332,8 +325,6 @@ adhere to leases are:<br>
   <li><i>Db-&gt;pget</i></li>
   <li><i>Dbc-&gt;get</i></li>
   <li><i>Dbc-&gt;pget</i></li>
-  <li><i>Db-&gt;stat </i><b>[maybe?]</b></li>
-  <li><i>Dbc-&gt;count</i><b>[maybe?]</b></li>
 </ul>
 The code that will check leases for a client reading would look
 something
@@ -444,10 +435,8 @@ client attempts to do so, an error, <b>EINVAL</b>,
 will be returned.&nbsp; The only way this should happen is if the
 application simply declares a site master, instead of using
 elections.&nbsp; Elections will already wait for leases to expire
-before proceeding. (See below.) <b>[I
-believe an error is sufficient and we do not need, for version 1 at
-least, any other complex waiting mechanism.&nbsp; Applications that
-don't use elections and declare masters are quite rare.]</b><br>
+before proceeding. (See below.) 
+<br>
 <br>
 Second, once we are proceeding with becoming a master, the site must
 allocate the table it will use to maintain lease information.&nbsp;
@@ -616,13 +605,7 @@ than injecting the timestamp into the log record DBT and doing a data
 copy.&nbsp; Actually, I will likely combine #1 and the flag from #2
 above.&nbsp; I will have the <b>REPCTL_LEASE</b>
 flag that indicates a lease grant reply is expected and have the
-timestamp in the control structure.&nbsp; <b>[Is that necessary - it
-feels cleaner, but
-also we could just have a non-zero timestamp = send a
-reply without have it directed by a flag from the master.&nbsp; That
-means we would not need the flag, but builds in an assumption into the
-code instead of having the client simply send a grant when the flag
-says to do so.&nbsp; See Upgrades/Mixed versions below too.]</b>
+timestamp in the control structure.&nbsp;
 Also I will probably add in a spare field or two for future use in the <b>REP_CONTROL</b>
 structure.<br>
 <h4>Gap processing</h4>
@@ -665,7 +648,6 @@ reason to do this is that the later timestamp of a normal log record
 would be used as the timestamp sent in the reply and the master would
 get a more up to date timestamp value and a longer lease.&nbsp; <br>
 <br>
-<span style="font-weight: bold;">[Concern about gap processing here.]</span>&nbsp;
 If we change the <span style="font-weight: bold;">REP_CONTROL</span>
 structure to include the timestamp, we potentially break or at least
 need to revisit the gap processing algorithm.&nbsp; That code assumes
@@ -970,9 +952,7 @@ rep_start(MASTER): Role changes are discussed above.&nbsp; Make sure
 duplicate rep_start calls are no-ops for leases.<br>
 rep_start(CLIENT): Role changes are discussed above.&nbsp; Make sure
 duplicate calls are no-ops for leases.<br>
-rep_stat: OK. <b>[Do we have any stats
-we want to add?&nbsp; Currently none are planned, but may come up
-during implementation and testing as useful to have.&nbsp; Suggestions?]</b><br>
+rep_stat: OK.<br>
 rep_sync: Should not be able to happen.&nbsp; Client cannot accept new
 master with outstanding lease grant.&nbsp; Add DB_ASSERT here.<br>
 <br>
@@ -985,8 +965,7 @@ DB_ASSERT.<br>
 REP_DUPMASTER: Should never happen, this is what leases are supposed to
 prevent.&nbsp; See above.<br>
 REP_LOG: OK.&nbsp; Clients check to send ACK.<br>
-REP_LOG_MORE: OK <b>[maybe remove and
-use flag]</b> Clients check to send ACK.<br>
+REP_LOG_MORE: OK.&nbsp; Clients check to send ACK.<br>
 REP_LOG_REQ: OK.<br>
 REP_MASTER_REQ: OK.<br>
 REP_NEWCLIENT: OK.<br>
@@ -1148,8 +1127,7 @@ indicate it is permanent? Yes, I believe this is sufficient.&nbsp; If
 the application says it is permanent and it really isn't, then the
 application is at fault.&nbsp; Believing the application when it
 indicates with the PERM response that it is permanent avoids the
-authoritative problem <span style="font-weight: bold;">[document this
-application requirement]</span>.&nbsp; <br>
+authoritative problem.&nbsp; <br>
 <h2>Upgrade/Mixed Versions</h2>
 Clearly leases cannot be used with mixed version sites since masters
 running older releases will not have any knowledge of lease

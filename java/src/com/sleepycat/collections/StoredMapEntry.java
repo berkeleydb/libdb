@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredMapEntry.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -36,7 +36,7 @@ final class StoredMapEntry extends MapEntryParameter {
             if (coll.view.dupsAllowed) {
                 throw new IllegalStateException("May not insert duplicates");
             }
-            oldValue = coll.put(getKey(), newValue);
+            oldValue = coll.putKeyValue(getKey(), newValue);
         }
         setValueInternal(newValue);
         return oldValue;

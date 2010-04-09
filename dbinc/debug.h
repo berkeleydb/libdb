@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
- * $Id: debug.h,v 12.19 2008/01/29 01:41:10 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_DEBUG_H_
@@ -125,7 +125,7 @@ typedef enum {
 	    (dbenv)->db_errfile != NULL ||				\
 	    ((dbenv)->db_errcall == NULL &&				\
 	    ((app_call) || F_ISSET((dbenv)->env, ENV_NO_OUTPUT_SET))))	\
-		 __db_errfile(env, error, error_set, fmt, __ap); 	\
+		 __db_errfile(env, error, error_set, fmt, __ap);	\
 	va_end(__ap);							\
 }
 #endif

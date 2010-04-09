@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: recd012.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd012
 # TEST	Test of log file ID management. [#2288]
@@ -39,8 +39,8 @@ proc recd012 { method {start 0} \
 		# a function of $niter
 		# set ndbs [expr ($i % 5) + 4]
 
-		recd012_body \
-		    $method $ndbs $i $noutiter $niniter $pagesize $tnum $args
+		 recd012_body \
+		    $method $ndbs $i $noutiter $niniter $pagesize $tnum  $args
 	}
 }
 
@@ -94,8 +94,9 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	set oflags "-auto_commit -env $dbenv \
 	    -create -mode 0644 -pagesize $psz $largs $omethod"
 	for { set i 0 } { $i < $ndbs } { incr i } {
-		# 50-50 chance of being a subdb, unless we're a queue.
-		if { [berkdb random_int 0 1] || [is_queue $method] } {
+	# 50-50 chance of being a subdb, unless we're a queue or partitioned.
+		if { [berkdb random_int 0 1] || \
+		    [is_queue $method] || [is_partitioned $largs] } {
 			# not a subdb
 			set dbname recd$tnum-$i.db
 		} else {
@@ -103,7 +104,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 			set dbname "recd$tnum-subdb.db s$i"
 		}
 		puts $f $dbname
-		set db [eval berkdb_open $oflags $dbname]
+		set db [eval {berkdb_open} $oflags $dbname]
 		error_check_good db($i) [is_valid_db $db] TRUE
 		error_check_good db($i)_close [$db close] 0
 	}
@@ -179,7 +180,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	set f [open $testdir/dblist r]
 	set i 0
 	while { [gets $f dbinfo] > 0 } {
-		set db [eval berkdb_open -env $dbenv $dbinfo]
+		set db [eval berkdb_open -env $dbenv $largs $dbinfo]
 		error_check_good dbopen($dbinfo) [is_valid_db $db] TRUE
 
 		set dbc [$db cursor]

@@ -1,5 +1,15 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 // File TxnGuide.cpp
 
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <db_cxx.h>
 
@@ -15,9 +25,10 @@ typedef HANDLE thread_t;
 #define thread_create(thrp, attr, func, arg)                               \
     (((*(thrp) = CreateThread(NULL, 0,                                     \
         (LPTHREAD_START_ROUTINE)(func), (arg), 0, NULL)) == NULL) ? -1 : 0)
-#define thread_join(thr, statusp)                                          \
+#define	thread_join(thr, statusp)                                          \
     ((WaitForSingleObject((thr), INFINITE) == WAIT_OBJECT_0) &&            \
-    GetExitCodeThread((thr), (LPDWORD)(statusp)) ? 0 : -1)
+    ((statusp == NULL) ? 0 : 						   \
+    (GetExitCodeThread((thr), (LPDWORD)(statusp)) ? 0 : -1)))
 
 typedef HANDLE mutex_t;
 #define mutex_init(m, attr)                                                \
@@ -86,7 +97,7 @@ main(int argc, char *argv[])
 #ifdef _WIN32
     dbHomeDir = ".\\";
 #else
-    dbHomeDir = "./";
+    dbHomeDir = (char *)"./";
 #endif
     while ((ch = getopt(argc, argv, "h:")) != EOF)
         switch (ch) {
@@ -183,7 +194,7 @@ writerThread(void *args)
 {
     int j, thread_num;
     int max_retries = 20;   // Max retry on a deadlock
-    char *key_strings[] = {"key 1", "key 2", "key 3", "key 4",
+    const char *key_strings[] = {"key 1", "key 2", "key 3", "key 4",
                            "key 5", "key 6", "key 7", "key 8",
                            "key 9", "key 10"};
 
@@ -228,7 +239,7 @@ writerThread(void *args)
                 // Perform the database write for this transaction.
                 for (j = 0; j < 10; j++) {
                     Dbt key, value;
-                    key.set_data(key_strings[j]);
+                    key.set_data((void *)key_strings[j]);
                     key.set_size((u_int32_t)strlen(key_strings[j]) + 1);
 
                     int payload = rand() + i;

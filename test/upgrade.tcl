@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: upgrade.tcl,v 12.14 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 
 source ./include.tcl
 
@@ -330,7 +330,12 @@ proc _log_test { temp_dir release method file } {
 	# Log versions of 8 or greater are readable by Berkeley DB 4.5
 	# or greater, but the output of printlog does not match unless
 	# the versions are identical.
-	set logoldver 8
+	# 
+	# As of Berkeley DB 4.8, we'll only try to read back to log
+	# version 11, which came out with 4.4.  Backwards compatibility 
+	# now only extends back to 4.4 because of page changes. 
+	# 
+	set logoldver 11
 	if { $current_logvers > $saved_logvers &&\
 	    $saved_logvers < $logoldver } {
 		error_check_good historic_log_version \

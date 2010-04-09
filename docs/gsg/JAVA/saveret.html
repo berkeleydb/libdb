@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Saving a Retrieving Data</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_first.html" title="Chapter 3. Direct Persistence Layer First Steps" />
-    <link rel="previous" href="persistobject.html" title="Persistent Objects" />
+    <link rel="prev" href="persistobject.html" title="Persistent Objects" />
     <link rel="next" href="persist_index.html" title="Chapter 4. Working with Indices" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="saveret"></a>Saving a Retrieving Data</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                   All data stored using the DPL has one primary index and
@@ -57,14 +56,14 @@
             <p>
                                   Retrieve the store's primary index for a
                                   given class using the
-                                  <tt class="methodname">EntityStore.getPrimaryIndex()</tt>
+                                  <code class="methodname">EntityStore.getPrimaryIndex()</code>
                                   method.
                           </p>
           </li>
           <li>
             <p>
                                   Put class objects to the store using the
-                                  <tt class="methodname">PrimaryIndex.put()</tt>
+                                  <code class="methodname">PrimaryIndex.put()</code>
                                   method.
                           </p>
           </li>
@@ -79,12 +78,12 @@
       <p>
                   You obtain a primary index in the same was as when you
                   put the object to the store: using
-                  <tt class="methodname">EntityStore.getPrimaryIndex()</tt>.
+                  <code class="methodname">EntityStore.getPrimaryIndex()</code>.
                   You can get a secondary index for the store using the
-                  <tt class="methodname">EntityStore.getSecondaryIndex()</tt>
+                  <code class="methodname">EntityStore.getSecondaryIndex()</code>
                   method. Note that
-                  <tt class="methodname">getSecondaryIndex()</tt> requires you
-                  to provide a <tt class="classname">PrimaryIndex</tt> class
+                  <code class="methodname">getSecondaryIndex()</code> requires you
+                  to provide a <code class="classname">PrimaryIndex</code> class
                   instance when you call it, so a class's primary index is
                   always required when retrieving objects from an entity
                   store.
@@ -93,7 +92,7 @@
                   Usually all of the activity surrounding saving and
                   retrieving data is organized within a class or classes
                   specialized to that purpose. We describe the construction
-                  of these data accessor classes in <a href="simpleda.html">SimpleDA.class</a>. But before you perform
+                  of these data accessor classes in <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a>. But before you perform
                   any entity store activity, you need to understand
                   indexes. We therefore describe them in the next chapter.
           </p>

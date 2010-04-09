@@ -1,14 +1,16 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: si002.tcl,v 12.15 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	si002
 # TEST	Basic cursor-based secondary index put/delete test
 # TEST
 # TEST  Cursor put data in primary db and check that pget
 # TEST  on secondary index finds the right entries.
+# TEST	Open and use a second cursor to exercise the cursor
+# TEST	comparison API on secondaries.  
 # TEST  Overwrite while walking primary, check pget again.
 # TEST      Overwrite while walking secondary (use c_pget), check
 # TEST  pget again.
@@ -141,13 +143,34 @@ proc si002 { methods {nentries 200} {tnum "002"} args } {
 	check_secondaries $pdb $sdbs $nentries keys data "Si$tnum.b"
 
 	puts "\tSi$tnum.c: Secondary c_pget/primary put overwrite loop"
+	
 	# We walk the first secondary, then put-overwrite each primary key/data
 	# pair we find.  This doubles as a DBC->c_pget test.
+	# We also test the cursor comparison API on secondaries. 
+	#
 	set sdb [lindex $sdbs 0]
 	set sdbc [$sdb cursor]
+	set sdbc2 [$sdb cursor]
 	error_check_good sdb_cursor [is_valid_cursor $sdbc $sdb] TRUE
-	for { set dbt [$sdbc pget -first] } { [llength $dbt] > 0 } \
-	    { set dbt [$sdbc pget -next] } {
+	for { set dbt [$sdbc pget -first]; set dbt2 [$sdbc2 pget -first] }\
+	    { [llength $dbt] > 0 } \
+	    { set dbt [$sdbc pget -next]; set dbt2 [$sdbc2 pget -next] } {
+
+		# Test the cursor comparison API for secondaries
+		# before we overwrite.  First they should match; 
+		# push one cursor forward, they should not match; 
+		# push it back again before the next get. 
+		#
+		error_check_good cursor_cmp [$sdbc cmp $sdbc2] 0
+		set ret [$sdbc2 get -next]
+		
+		# If the second cursor tried to walk past the last item, 
+		# this can't work, so we skip it. 
+		if { [llength $ret] > 0 } {
+			error_check_bad cursor_cmp_bad [$sdbc cmp $sdbc2] 0
+			set ret [$sdbc2 get -prev]
+		}
+
 		set pkey [lindex [lindex $dbt 0] 1]
 		set pdatum [lindex [lindex $dbt 0] 2]
 
@@ -164,8 +187,10 @@ proc si002 { methods {nentries 200} {tnum "002"} args } {
 		set ret [eval {$pdb put} {$pkey [chop_data $pmethod $newd]}]
 		error_check_good pdb_put($pkey) $ret 0
 		set data($ns($pkey)) [pad_data $pmethod $newd]
+
 	}
 	error_check_good sdbc_close [$sdbc close] 0
+	error_check_good sdbc2_close [$sdbc2 close] 0
 	check_secondaries $pdb $sdbs $nentries keys data "Si$tnum.c"
 
 	# Delete the second half of the entries through the primary.

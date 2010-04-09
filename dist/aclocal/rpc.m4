@@ -1,4 +1,4 @@
-# $Id: rpc.m4,v 12.1 2006/05/08 20:52:36 bostic Exp $
+# $Id$
 
 # Try and configure RPC support.
 AC_DEFUN(AM_RPC_CONFIGURE, [

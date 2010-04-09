@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_id.c,v 12.31 2008/03/13 14:41:19 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -75,24 +75,24 @@ __lock_id(env, idp, lkp)
 	 * Our current valid range can span the maximum valid value, so check
 	 * for it and wrap manually.
 	 */
-	if (region->stat.st_id == DB_LOCK_MAXID &&
-	    region->stat.st_cur_maxid != DB_LOCK_MAXID)
-		region->stat.st_id = DB_LOCK_INVALIDID;
-	if (region->stat.st_id == region->stat.st_cur_maxid) {
+	if (region->lock_id == DB_LOCK_MAXID &&
+	    region->cur_maxid != DB_LOCK_MAXID)
+		region->lock_id = DB_LOCK_INVALIDID;
+	if (region->lock_id == region->cur_maxid) {
 		if ((ret = __os_malloc(env,
-		    sizeof(u_int32_t) * region->stat.st_nlockers, &ids)) != 0)
+		    sizeof(u_int32_t) * region->nlockers, &ids)) != 0)
 			goto err;
 		nids = 0;
 		SH_TAILQ_FOREACH(lk, &region->lockers, ulinks, __db_locker)
 			ids[nids++] = lk->id;
-		region->stat.st_id = DB_LOCK_INVALIDID;
-		region->stat.st_cur_maxid = DB_LOCK_MAXID;
+		region->lock_id = DB_LOCK_INVALIDID;
+		region->cur_maxid = DB_LOCK_MAXID;
 		if (nids != 0)
 			__db_idspace(ids, nids,
-			    &region->stat.st_id, &region->stat.st_cur_maxid);
+			    &region->lock_id, &region->cur_maxid);
 		__os_free(env, ids);
 	}
-	id = ++region->stat.st_id;
+	id = ++region->lock_id;
 
 	/* Allocate a locker for this id. */
 	ret = __lock_getlocker_int(lt, id, 1, &lk);
@@ -232,8 +232,8 @@ __lock_id_set(env, cur_id, max_id)
 
 	lt = env->lk_handle;
 	region = lt->reginfo.primary;
-	region->stat.st_id = cur_id;
-	region->stat.st_cur_maxid = max_id;
+	region->lock_id = cur_id;
+	region->cur_maxid = max_id;
 
 	return (0);
 }
@@ -304,10 +304,10 @@ __lock_getlocker_int(lt, locker, create, retp)
 			return (__lock_nomem(env, "locker entries"));
 		SH_TAILQ_REMOVE(
 		    &region->free_lockers, sh_locker, links, __db_locker);
-		++region->stat.st_nlockers;
+		++region->nlockers;
 #ifdef HAVE_STATISTICS
-		if (region->stat.st_nlockers > region->stat.st_maxnlockers)
-			region->stat.st_maxnlockers = region->stat.st_nlockers;
+		if (region->nlockers > region->stat.st_maxnlockers)
+			region->stat.st_maxnlockers = region->nlockers;
 #endif
 		sh_locker->id = locker;
 		env->dbenv->thread_id(
@@ -455,6 +455,6 @@ __lock_freelocker(lt, region, sh_locker)
 	SH_TAILQ_INSERT_HEAD(
 	    &region->free_lockers, sh_locker, links, __db_locker);
 	SH_TAILQ_REMOVE(&region->lockers, sh_locker, ulinks, __db_locker);
-	region->stat.st_nlockers--;
+	region->nlockers--;
 	return (0);
 }

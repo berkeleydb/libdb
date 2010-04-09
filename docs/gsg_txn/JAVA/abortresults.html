@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Aborting a Transaction</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
-    <link rel="previous" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
+    <link rel="prev" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
     <link rel="next" href="autocommit.html" title="Auto Commit" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="abortresults"></a>Aborting a Transaction</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                 When you abort a transaction, all database 
@@ -47,22 +46,7 @@
             modifications.
         </p>
       <p>
-            Note that aborting a transaction may result in disk 
-            <span>
-                I/O if your logs are backed by the filesystem.
-            </span>
-            
-            It is possible that during the course of your transaction,
-            logging data and/or database 
-                <span>pages</span>
-                
-            were written to backing files on disk. For this reason, DB
-            notes that the abort occurred in its log files so that at a
-            minimum the database can be brought into a consistent state at 
-            recovery time.
-        </p>
-      <p>
-                Also, once you have aborted a transaction, the transaction
+                Once you have aborted a transaction, the transaction
                 handle that you used for the transaction is no longer valid. To
                 perform database activities under the control of a new
                 transaction, you must obtain a fresh transactional handle.
@@ -71,7 +55,7 @@
             To abort a transaction, call
             
             
-            <span><tt class="methodname">Transaction.abort()</tt>.</span>
+            <span><code class="methodname">Transaction.abort()</code>.</span>
             
             
         </p>

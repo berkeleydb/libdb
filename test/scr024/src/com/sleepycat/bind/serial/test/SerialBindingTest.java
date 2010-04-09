@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SerialBindingTest.java,v 12.9 2008/02/07 17:12:29 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial.test;
@@ -33,9 +33,7 @@ public class SerialBindingTest extends TestCase {
     private DatabaseEntry buffer;
     private DatabaseEntry keyBuffer;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -46,9 +44,7 @@ public class SerialBindingTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(SerialBindingTest.class);
         return suite;
     }
@@ -58,6 +54,7 @@ public class SerialBindingTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp() {
 
         SharedTestUtils.printTestName("SerialBindingTest." + getName());
@@ -66,6 +63,7 @@ public class SerialBindingTest extends TestCase {
         keyBuffer = new DatabaseEntry();
     }
 
+    @Override
     public void tearDown() {
 
         /* Ensure that GC can cleanup. */
@@ -74,6 +72,7 @@ public class SerialBindingTest extends TestCase {
         keyBuffer = null;
     }
 
+    @Override
     public void runTest()
         throws Throwable {
 
@@ -190,6 +189,7 @@ public class SerialBindingTest extends TestCase {
             super(classCatalog, baseClass);
         }
 
+        @Override
         public FastOutputStream getSerialOutput(Object object) {
             FastOutputStream fos = super.getSerialOutput(object);
             bufSize = fos.getBufferBytes().length;
@@ -231,6 +231,7 @@ public class SerialBindingTest extends TestCase {
             this.out = out;
         }
 
+        @Override
         public FastOutputStream getSerialOutput(Object object) {
             out.reset();
             used = true;
@@ -246,11 +247,13 @@ public class SerialBindingTest extends TestCase {
             super(keyBinding, valueBinding);
         }
 
+        @Override
         public Object entryToObject(Object keyInput, Object valueInput) {
 
             return "" + keyInput + '#' + valueInput;
         }
 
+        @Override
         public Object objectToKey(Object object) {
 
             String s = (String) object;
@@ -262,6 +265,7 @@ public class SerialBindingTest extends TestCase {
             }
         }
 
+        @Override
         public Object objectToData(Object object) {
 
             String s = (String) object;
@@ -279,9 +283,7 @@ public class SerialBindingTest extends TestCase {
      * a crude test because to create a truly working class loader is a large
      * undertaking.
      */
-    public void testClassloaderOverride()
-        throws Exception {
-
+    public void testClassloaderOverride() {
         DatabaseEntry entry = new DatabaseEntry();
 
         SerialBinding binding = new CustomLoaderBinding
@@ -298,7 +300,7 @@ public class SerialBindingTest extends TestCase {
 
     private static class CustomLoaderBinding extends SerialBinding {
 
-        private ClassLoader loader;
+        private final ClassLoader loader;
 
         CustomLoaderBinding(ClassCatalog classCatalog,
                             Class baseClass,
@@ -308,6 +310,7 @@ public class SerialBindingTest extends TestCase {
             this.loader = loader;
         }
 
+        @Override
         public ClassLoader getClassLoader() {
             return loader;
         }
@@ -315,13 +318,13 @@ public class SerialBindingTest extends TestCase {
 
     private static class FailureClassLoader extends ClassLoader {
 
-        public Class loadClass(String name)
-            throws ClassNotFoundException {
-
+        @Override
+        public Class loadClass(String name) {
             throw new RuntimeException("expect failure: " + name);
         }
     }
 
+    @SuppressWarnings("serial")
     private static class MyClass implements Serializable {
     }
 }

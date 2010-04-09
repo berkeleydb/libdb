@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2008 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2009 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -10,14 +10,14 @@ package BerkeleyDB;
 # The documentation for this module is at the bottom of this file,
 # after the line __END__.
 
-BEGIN { require 5.004_04 }
+BEGIN { require 5.005 }
 
 use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.34';
+$VERSION = '0.39';
 
 require Exporter;
 #require DynaLoader;
@@ -74,6 +74,8 @@ BEGIN {
 	DB_CREATE
 	DB_CURLSN
 	DB_CURRENT
+	DB_CURSOR_BULK
+	DB_CURSOR_TRANSIENT
 	DB_CXX_NO_EXCEPTIONS
 	DB_DEGREE_2
 	DB_DELETED
@@ -103,6 +105,7 @@ BEGIN {
 	DB_ENV_DIRECT_LOG
 	DB_ENV_DSYNC_DB
 	DB_ENV_DSYNC_LOG
+	DB_ENV_FAILCHK
 	DB_ENV_FATAL
 	DB_ENV_LOCKDOWN
 	DB_ENV_LOCKING
@@ -141,6 +144,8 @@ BEGIN {
 	DB_EVENT_NOT_HANDLED
 	DB_EVENT_NO_SUCH_EVENT
 	DB_EVENT_PANIC
+	DB_EVENT_REG_ALIVE
+	DB_EVENT_REG_PANIC
 	DB_EVENT_REP_CLIENT
 	DB_EVENT_REP_ELECTED
 	DB_EVENT_REP_MASTER
@@ -150,6 +155,7 @@ BEGIN {
 	DB_EVENT_WRITE_FAILED
 	DB_EXCL
 	DB_EXTENT
+	DB_FAILCHK
 	DB_FAST_STAT
 	DB_FCNTL_LOCKING
 	DB_FILEOPEN
@@ -167,8 +173,10 @@ BEGIN {
 	DB_GETREC
 	DB_GET_BOTH
 	DB_GET_BOTHC
+	DB_GET_BOTH_LTE
 	DB_GET_BOTH_RANGE
 	DB_GET_RECNO
+	DB_GID_SIZE
 	DB_HANDLE_LOCK
 	DB_HASH
 	DB_HASHMAGIC
@@ -232,11 +240,13 @@ BEGIN {
 	DB_LOCK_UPGRADE
 	DB_LOCK_UPGRADE_WRITE
 	DB_LOCK_YOUNGEST
+	DB_LOGCHKSUM
 	DB_LOGC_BUF_SIZE
 	DB_LOGFILEID_INVALID
 	DB_LOGMAGIC
 	DB_LOGOLDVER
 	DB_LOGVERSION
+	DB_LOGVERSION_LATCHING
 	DB_LOG_AUTOREMOVE
 	DB_LOG_AUTO_REMOVE
 	DB_LOG_BUFFER_FULL
@@ -270,6 +280,7 @@ BEGIN {
 	DB_MPOOL_NOFILE
 	DB_MPOOL_NOLOCK
 	DB_MPOOL_PRIVATE
+	DB_MPOOL_TRY
 	DB_MPOOL_UNLINK
 	DB_MULTIPLE
 	DB_MULTIPLE_KEY
@@ -281,6 +292,7 @@ BEGIN {
 	DB_MUTEX_LOGICAL_LOCK
 	DB_MUTEX_PROCESS_ONLY
 	DB_MUTEX_SELF_BLOCK
+	DB_MUTEX_SHARED
 	DB_MUTEX_THREAD
 	DB_NEEDSPLIT
 	DB_NEXT
@@ -310,6 +322,7 @@ BEGIN {
 	DB_OPFLAGS_MASK
 	DB_ORDERCHKONLY
 	DB_OVERWRITE
+	DB_OVERWRITE_DUP
 	DB_PAD
 	DB_PAGEYIELD
 	DB_PAGE_LOCK
@@ -372,6 +385,7 @@ BEGIN {
 	DB_REP_CLIENT
 	DB_REP_CONF_BULK
 	DB_REP_CONF_DELAYCLIENT
+	DB_REP_CONF_INMEM
 	DB_REP_CONF_LEASE
 	DB_REP_CONF_NOAUTOINIT
 	DB_REP_CONF_NOWAIT
@@ -404,6 +418,7 @@ BEGIN {
 	DB_REP_NOTPERM
 	DB_REP_OUTDATED
 	DB_REP_PAGEDONE
+	DB_REP_PAGELOCKED
 	DB_REP_PERMANENT
 	DB_REP_REREQUEST
 	DB_REP_STARTUPDONE
@@ -416,6 +431,7 @@ BEGIN {
 	DB_RUNRECOVERY
 	DB_SALVAGE
 	DB_SA_SKIPFIRSTKEY
+	DB_SA_UNKNOWNKEY
 	DB_SECONDARY_BAD
 	DB_SEQUENCE_OLDVER
 	DB_SEQUENCE_VERSION
@@ -427,10 +443,13 @@ BEGIN {
 	DB_SEQ_WRAPPED
 	DB_SET
 	DB_SET_LOCK_TIMEOUT
+	DB_SET_LTE
 	DB_SET_RANGE
 	DB_SET_RECNO
+	DB_SET_REG_TIMEOUT
 	DB_SET_TXN_NOW
 	DB_SET_TXN_TIMEOUT
+	DB_SHALLOW_DUP
 	DB_SNAPSHOT
 	DB_SPARE_FLAG
 	DB_STAT_ALL
@@ -527,10 +546,12 @@ BEGIN {
 	DB_VERB_REP_MISC
 	DB_VERB_REP_MSGS
 	DB_VERB_REP_SYNC
+	DB_VERB_REP_TEST
 	DB_VERB_WAITSFOR
 	DB_VERIFY
 	DB_VERIFY_BAD
 	DB_VERIFY_FATAL
+	DB_VERIFY_PARTITION
 	DB_VERSION_MAJOR
 	DB_VERSION_MINOR
 	DB_VERSION_MISMATCH
@@ -780,6 +801,7 @@ sub new
 					Server		=> undef,
 					Mode		=> 0666,
 					ErrFile  	=> undef,
+					MsgFile  	=> undef,
 					ErrPrefix 	=> undef,
 					Flags     	=> 0,
 					SetFlags     	=> 0,
@@ -801,6 +823,15 @@ sub new
 	}
     }
 
+    if (defined $got->{MsgFile}) {
+        my $msgfile  = $got->{MsgFile} ;				
+	if (!isaFilehandle($msgfile)) {
+	    my $handle = new IO::File ">$msgfile"
+		or croak "Cannot open file $msgfile: $!\n" ;
+	    $got->{MsgFile} = $handle ;
+	}
+    }
+
     my %config ;
     if (defined $got->{Config}) {
     	croak("Config parameter must be a hash reference")
@@ -815,6 +846,7 @@ sub new
                 croak $BerkeleyDB::Error ;
 	    }
 	    push @BerkeleyDB::a, "$k\t$v" ;
+	    $got->{$k} = $v;
 	}
 
         $got->{"Config"} = pack("p*", @BerkeleyDB::a, undef) 
@@ -823,24 +855,24 @@ sub new
 
     BerkeleyDB::parseEncrypt($got);
 
-    my ($addr) = _db_appinit($pkg, $got, $errfile) ;
+    my ($addr) = _db_appinit($pkg, $got, $errfile);
     my $obj ;
     $obj = bless [$addr] , $pkg if $addr ;
-    if ($obj && $BerkeleyDB::db_version >= 3.1 && keys %config) {
-	my ($k, $v);
-	while (($k, $v) = each %config) {
-	    if ($k eq 'DB_DATA_DIR')
-	      { $obj->set_data_dir($v) }
-	    elsif ($k eq 'DB_LOG_DIR')
-	      { $obj->set_lg_dir($v) }
-	    elsif ($k eq 'DB_TEMP_DIR' || $k eq 'DB_TMP_DIR')
-	      { $obj->set_tmp_dir($v) }
-	    else {
-	      $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
-              croak $BerkeleyDB::Error 
-            }
-	}
-    }
+#    if ($obj && $BerkeleyDB::db_version >= 3.1 && keys %config) {
+#	my ($k, $v);
+#	while (($k, $v) = each %config) {
+#	    if ($k eq 'DB_DATA_DIR')
+#	      { $obj->set_data_dir($v) }
+#	    elsif ($k eq 'DB_LOG_DIR')
+#	      { $obj->set_lg_dir($v) }
+#	    elsif ($k eq 'DB_TEMP_DIR' || $k eq 'DB_TMP_DIR')
+#	      { $obj->set_tmp_dir($v) }
+#	    else {
+#	      $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
+#              croak $BerkeleyDB::Error 
+#            }
+#	}
+#    }
     return $obj ;
 }
 
@@ -966,16 +998,34 @@ sub new
 			Compare		=> undef,
 			DupCompare	=> undef,
 			Prefix 		=> undef,
+			set_bt_compress	=> undef,
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+        if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+        if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("-Tie needs a reference to a hash")
-	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+        if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+#    if (defined $got->{set_bt_compress} )
+#    {
+#
+#        croak("-set_bt_compress needs a reference to a 2-element array")
+#            if $got->{set_bt_compress} !~ /ARRAY/ ||
+#
+#        croak("-set_bt_compress needs a reference to a 2-element array")
+#            if $got->{set_bt_compress} !~ /ARRAY/ ||
+#               @{ $got->{set_bt_compress} } != 2;
+#
+#        $got->{"_btcompress1"} =  $got->{set_bt_compress}[0] 
+#            if defined $got->{set_bt_compress}[0];
+#
+#        $got->{"_btcompress2"} =  $got->{set_bt_compress}[1] 
+#            if defined $got->{set_bt_compress}[1];
+#    }
 
     BerkeleyDB::parseEncrypt($got);
 

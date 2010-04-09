@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.14 2006/10/27 00:56:44 bostic Exp $
+# $Id$
 
 # Berkeley DB installation.
 DB_INCLUDE=../../build_unix

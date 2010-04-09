@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_dup.c,v 12.14 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -14,36 +14,24 @@
 #include "dbinc/db_am.h"
 
 /*
- * __db_ditem --
- *	Remove an item from a page.
+ * __db_ditem_nolog --
+ *	Remove an item from a page without affecting its recoverability.
  *
- * PUBLIC:  int __db_ditem __P((DBC *, PAGE *, u_int32_t, u_int32_t));
+ * PUBLIC:  int __db_ditem_nolog __P((DBC *, PAGE *, u_int32_t, u_int32_t));
  */
 int
-__db_ditem(dbc, pagep, indx, nbytes)
+__db_ditem_nolog(dbc, pagep, indx, nbytes)
 	DBC *dbc;
 	PAGE *pagep;
 	u_int32_t indx, nbytes;
 {
 	DB *dbp;
-	DBT ldbt;
 	db_indx_t cnt, *inp, offset;
-	int ret;
 	u_int8_t *from;
 
 	dbp = dbc->dbp;
 	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
 	DB_ASSERT(dbp->env, indx < NUM_ENT(pagep));
-
-	if (DBC_LOGGING(dbc)) {
-		ldbt.data = P_ENTRY(dbp, pagep, indx);
-		ldbt.size = nbytes;
-		if ((ret = __db_addrem_log(dbp, dbc->txn,
-		    &LSN(pagep), 0, DB_REM_DUP, PGNO(pagep),
-		    (u_int32_t)indx, nbytes, &ldbt, NULL, &LSN(pagep))) != 0)
-			return (ret);
-	} else
-		LSN_NOT_LOGGED(LSN(pagep));
 
 	/*
 	 * If there's only a single item on the page, we don't have to
@@ -81,14 +69,45 @@ __db_ditem(dbc, pagep, indx, nbytes)
 }
 
 /*
- * __db_pitem --
- *	Put an item on a page.
+ * __db_ditem --
+ *	Remove an item from a page, logging it if enabled.
  *
- * PUBLIC: int __db_pitem
+ * PUBLIC:  int __db_ditem __P((DBC *, PAGE *, u_int32_t, u_int32_t));
+ */
+int
+__db_ditem(dbc, pagep, indx, nbytes)
+	DBC *dbc;
+	PAGE *pagep;
+	u_int32_t indx, nbytes;
+{
+	DB *dbp;
+	DBT ldbt;
+	int ret;
+
+	dbp = dbc->dbp;
+
+	if (DBC_LOGGING(dbc)) {
+		ldbt.data = P_ENTRY(dbp, pagep, indx);
+		ldbt.size = nbytes;
+		if ((ret = __db_addrem_log(dbp, dbc->txn,
+		    &LSN(pagep), 0, DB_REM_DUP, PGNO(pagep),
+		    (u_int32_t)indx, nbytes, &ldbt, NULL, &LSN(pagep))) != 0)
+			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(pagep));
+
+	return (__db_ditem_nolog(dbc, pagep, indx, nbytes));
+}
+
+/*
+ * __db_pitem_nolog --
+ *	Put an item on a page without logging.
+ *
+ * PUBLIC: int __db_pitem_nolog
  * PUBLIC:     __P((DBC *, PAGE *, u_int32_t, u_int32_t, DBT *, DBT *));
  */
 int
-__db_pitem(dbc, pagep, indx, nbytes, hdr, data)
+__db_pitem_nolog(dbc, pagep, indx, nbytes, hdr, data)
 	DBC *dbc;
 	PAGE *pagep;
 	u_int32_t indx;
@@ -99,40 +118,16 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	DB *dbp;
 	DBT thdr;
 	db_indx_t *inp;
-	int ret;
 	u_int8_t *p;
 
 	dbp = dbc->dbp;
+
 	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
 
 	if (nbytes > P_FREESPACE(dbp, pagep)) {
 		DB_ASSERT(dbp->env, nbytes <= P_FREESPACE(dbp, pagep));
 		return (EINVAL);
 	}
-	/*
-	 * Put a single item onto a page.  The logic figuring out where to
-	 * insert and whether it fits is handled in the caller.  All we do
-	 * here is manage the page shuffling.  We cheat a little bit in that
-	 * we don't want to copy the dbt on a normal put twice.  If hdr is
-	 * NULL, we create a BKEYDATA structure on the page, otherwise, just
-	 * copy the caller's information onto the page.
-	 *
-	 * This routine is also used to put entries onto the page where the
-	 * entry is pre-built, e.g., during recovery.  In this case, the hdr
-	 * will point to the entry, and the data argument will be NULL.
-	 *
-	 * !!!
-	 * There's a tremendous potential for off-by-one errors here, since
-	 * the passed in header sizes must be adjusted for the structure's
-	 * placeholder for the trailing variable-length data field.
-	 */
-	if (DBC_LOGGING(dbc)) {
-		if ((ret = __db_addrem_log(dbp, dbc->txn,
-		    &LSN(pagep), 0, DB_ADD_DUP, PGNO(pagep),
-		    (u_int32_t)indx, nbytes, hdr, data, &LSN(pagep))) != 0)
-			return (ret);
-	} else
-		LSN_NOT_LOGGED(LSN(pagep));
 
 	if (hdr == NULL) {
 		B_TSET(bk.type, B_KEYDATA);
@@ -158,4 +153,51 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 		memcpy(p + hdr->size, data->data, data->size);
 
 	return (0);
+}
+
+/*
+ * __db_pitem --
+ *	Put an item on a page.
+ *
+ * PUBLIC: int __db_pitem
+ * PUBLIC:     __P((DBC *, PAGE *, u_int32_t, u_int32_t, DBT *, DBT *));
+ */
+int
+__db_pitem(dbc, pagep, indx, nbytes, hdr, data)
+	DBC *dbc;
+	PAGE *pagep;
+	u_int32_t indx;
+	u_int32_t nbytes;
+	DBT *hdr, *data;
+{
+	DB *dbp;
+	int ret;
+
+	dbp = dbc->dbp;
+	/*
+	 * Put a single item onto a page.  The logic figuring out where to
+	 * insert and whether it fits is handled in the caller.  All we do
+	 * here is manage the page shuffling.  We cheat a little bit in that
+	 * we don't want to copy the dbt on a normal put twice.  If hdr is
+	 * NULL, we create a BKEYDATA structure on the page, otherwise, just
+	 * copy the caller's information onto the page.
+	 *
+	 * This routine is also used to put entries onto the page where the
+	 * entry is pre-built, e.g., during recovery.  In this case, the hdr
+	 * will point to the entry, and the data argument will be NULL.
+	 *
+	 * !!!
+	 * There's a tremendous potential for off-by-one errors here, since
+	 * the passed in header sizes must be adjusted for the structure's
+	 * placeholder for the trailing variable-length data field.
+	 */
+	if (DBC_LOGGING(dbc)) {
+		if ((ret = __db_addrem_log(dbp, dbc->txn,
+		    &LSN(pagep), 0, DB_ADD_DUP, PGNO(pagep),
+		    (u_int32_t)indx, nbytes, hdr, data, &LSN(pagep))) != 0)
+			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(pagep));
+
+	return (__db_pitem_nolog(dbc, pagep, indx, nbytes, hdr, data));
 }

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep038.tcl,v 12.23 2008/04/16 13:52:52 sue Exp $
+# $Id$
 #
 # TEST	rep038
 # TEST	Test of internal initialization and ongoing master updates.
@@ -16,6 +16,9 @@
 proc rep038 { method { niter 200 } { tnum "038" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -37,28 +40,38 @@ proc rep038 { method { niter 200 } { tnum "038" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with various options, such as in-memory databases,
 	# forcing an archive during the middle of init, and normal.
 	# Skip recovery with in-memory logging - it doesn't make sense.
-	set testopts { in-memdb normal archive }
+	set testopts { normal archive }
 	foreach r $test_recopts {
 		foreach t $testopts {
 			foreach l $logsets {
 				set logindex [lsearch -exact $l "in-memory"]
-				if { $t == "in-memdb" && \
-				    [is_queueext $method]} {
-					puts "Skipping rep$tnum for queueext\
-					    with in-memory databases."
-					continue
-				}
 				if { $r == "-recover" && $logindex != -1 } {
 					puts "Skipping rep$tnum for -recover\
 					    with in-memory logs."
 					continue
 				}
-				puts "Rep$tnum ($method $t $r $args):\
-				    Test of internal init with new records."
+				puts "Rep$tnum ($method $t $r $args): Test of\
+				    internal init with new records $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep038_sub $method $niter $tnum $l $r $t $args
@@ -70,12 +83,19 @@ proc rep038 { method { niter 200 } { tnum "038" } args } {
 proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -106,7 +126,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $repmemargs \
 	    $m_logargs -log_max $log_max -errpfx MASTER $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -115,7 +135,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	# Run rep_test in the master only.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	if { $testopt == "in-memdb" } {
+	if { $databases_in_memory } {
 		set testfile { "" "test.db" }
 	} else {
 		set testfile "test.db"
@@ -130,7 +150,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	while { $stop == 0 } {
 		# Run rep_test in the master beyond the first log file.
 		eval rep_test\
-		    $method $masterenv $mdb $niter $start $start
+		    $method $masterenv $mdb $niter $start $start 0 $largs
 		incr start $niter
 
 		puts "\tRep$tnum.a.1: Run db_archive on master."
@@ -150,7 +170,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 
 	puts "\tRep$tnum.b: Open client."
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $repmemargs \
 	    $c_logargs -log_max $log_max -errpfx CLIENT $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -172,7 +192,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 		set nproced 0
 		set start [expr $start + $entries]
 		eval rep_test \
-		    $method $masterenv $mdb $entries $start $start
+		    $method $masterenv $mdb $entries $start $start 0 $largs
 		incr start $entries
 		incr nproced [proc_msgs_once $envlist NONE err]
 		error_check_bad nproced $nproced 0
@@ -224,7 +244,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	process_msgs $envlist
 
 	puts "\tRep$tnum.c: Verify logs and databases"
-	if { $testopt == "in-memdb" } {
+	if { $databases_in_memory } {
 		rep038_verify_inmem $masterenv $clientenv $mdb $cdb
 	} else {
 		rep_verify $masterdir $masterenv $clientdir $clientenv 1
@@ -232,10 +252,10 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 
 	# Add records to the master and update client.
 	puts "\tRep$tnum.d: Add more records and check again."
-	eval rep_test $method $masterenv $mdb $entries $start $start
+	eval rep_test $method $masterenv $mdb $entries $start $start 0 $largs
 	incr start $entries
 	process_msgs $envlist 0 NONE err
-	if { $testopt == "in-memdb" } {
+	if { $databases_in_memory } {
 		rep038_verify_inmem $masterenv $clientenv $mdb $cdb
 	} else {
 		rep_verify $masterdir $masterenv $clientdir $clientenv 1
@@ -263,8 +283,8 @@ proc rep038_verify_inmem { masterenv clientenv mdb cdb } {
 	# number of records will write a log record on the master if
 	# the build is configured for debug_rop.  Work around that issue.
 	#
-	set mlsn [stat_field $masterenv rep_stat "Next LSN expected"]
-	set clsn [stat_field $clientenv rep_stat "Next LSN expected"]
+	set mlsn [next_expected_lsn $masterenv]
+	set clsn [next_expected_lsn $clientenv]
 	error_check_good lsn $mlsn $clsn
 
 	set mrecs [stat_field $mdb stat "Number of records"]

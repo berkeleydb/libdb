@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ *
+ */
 
 /*
  * A test case that brings up the replication

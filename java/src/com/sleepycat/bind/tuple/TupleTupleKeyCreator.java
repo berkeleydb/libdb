@@ -1,15 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleTupleKeyCreator.java,v 12.10 2008/02/07 17:12:25 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
 
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.ForeignKeyNullifier;
 import com.sleepycat.db.SecondaryDatabase;
 import com.sleepycat.db.SecondaryKeyCreator;
@@ -37,7 +36,7 @@ import com.sleepycat.db.SecondaryKeyCreator;
  *
  * @author Mark Hayes
  */
-public abstract class TupleTupleKeyCreator extends TupleBase
+public abstract class TupleTupleKeyCreator<E> extends TupleBase<E>
     implements SecondaryKeyCreator, ForeignKeyNullifier {
 
     /**
@@ -50,9 +49,7 @@ public abstract class TupleTupleKeyCreator extends TupleBase
     public boolean createSecondaryKey(SecondaryDatabase db,
                                       DatabaseEntry primaryKeyEntry,
                                       DatabaseEntry dataEntry,
-                                      DatabaseEntry indexKeyEntry)
-        throws DatabaseException {
-
+                                      DatabaseEntry indexKeyEntry) {
         TupleOutput output = getTupleOutput(null);
         TupleInput primaryKeyInput = entryToInput(primaryKeyEntry);
         TupleInput dataInput = entryToInput(dataEntry);
@@ -66,9 +63,7 @@ public abstract class TupleTupleKeyCreator extends TupleBase
 
     // javadoc is inherited
     public boolean nullifyForeignKey(SecondaryDatabase db,
-                                     DatabaseEntry dataEntry)
-        throws DatabaseException {
-
+                                     DatabaseEntry dataEntry) {
         TupleOutput output = getTupleOutput(null);
         if (nullifyForeignKey(entryToInput(dataEntry), output)) {
             outputToEntry(output, dataEntry);

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: foputils.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 proc do_op {omethod op names txn env {largs ""}} {
 	switch -exact $op {

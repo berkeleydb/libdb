@@ -1,4 +1,4 @@
-# $Id: programs.m4,v 12.3 2007/04/18 14:28:19 bostic Exp $
+# $Id$
 
 # Check for programs used in building/installation.
 AC_DEFUN(AM_PROGRAMS_SET, [
@@ -23,6 +23,9 @@ test "$MKDIR" = "none" && AC_MSG_ERROR([No mkdir utility found.])
 
 AC_CHECK_TOOL(RM, rm, none)
 test "$RM" = "none" && AC_MSG_ERROR([No rm utility found.])
+
+# We always want to force removes, and libtool assumes the same.
+RM="$RM -f"
 
 if test "$db_cv_rpc" = "yes"; then
 	AC_CHECK_TOOL(RPCGEN, rpcgen, none)

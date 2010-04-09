@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Preface</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="prev" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="next" href="moreinfo.html" title="For More Information" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="preface"></a>Preface</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -67,15 +66,14 @@
               <h2 class="title" style="clear: both"><a id="conventions"></a>Conventions Used in this Book</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         The following typographical conventions are used within in this manual:
     </p>
         <p>
-        Class names are represented in <tt class="classname">monospaced font</tt>, as are <tt class="methodname">method
-        names</tt>. For example: "The <tt class="methodname">Environment.openDatabase()</tt> method
-		returns a <tt class="classname">Database</tt> class object."
+        Class names are represented in <code class="classname">monospaced font</code>, as are <code class="methodname">method
+        names</code>. For example: "The <code class="methodname">Environment.openDatabase()</code> method
+		returns a <code class="classname">Database</code> class object."
     </p>
         <p>
         Variable or non-literal text is presented in <span class="emphasis"><em>italics</em></span>. For example: "Go to your
@@ -94,7 +92,7 @@ import java.io.File;
 Environment myDbEnvironment;</pre>
         <p>
         In situations in this book, programming examples are updated from one chapter to the next in this book. When
-        this occurs, the new code is presented in <b class="userinput"><tt>monospaced bold</tt></b> font. For example:
+        this occurs, the new code is presented in <strong class="userinput"><code>monospaced bold</code></strong> font. For example:
     </p>
         <pre class="programlisting">import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
@@ -103,10 +101,10 @@ import java.io.File;
 ...
 
 // Open the environment. Allow it to be created if it does not already exist.
-<b class="userinput"><tt>Environment myDbEnv;
+<strong class="userinput"><code>Environment myDbEnv;
 EnvironmentConfig envConfig = new EnvironmentConfig();
 envConfig.setAllowCreate(true);
-myDbEnv = new Environment(new File("/export/dbEnv"), envConfig);</tt></b> </pre>
+myDbEnv = new Environment(new File("/export/dbEnv"), envConfig);</code></strong> </pre>
       </div>
     </div>
     <div class="navfooter">
@@ -114,9 +112,7 @@ myDbEnv = new Environment(new File("/export/dbEnv"), envConfig);</tt></b> </pre>
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="moreinfo.html">Next</a></td>
         </tr>
         <tr>

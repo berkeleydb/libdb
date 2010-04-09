@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: BlockIterator.java,v 12.7 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -24,9 +24,9 @@ import com.sleepycat.util.keyrange.KeyRange;
  *
  * @author Mark Hayes
  */
-class BlockIterator implements BaseIterator {
+class BlockIterator<E> implements BaseIterator<E> {
 
-    private StoredCollection coll;
+    private StoredCollection<E> coll;
     private boolean writeAllowed;
 
     /**
@@ -67,12 +67,14 @@ class BlockIterator implements BaseIterator {
      * that set() or remove() cannot be called.  For example, after add() this
      * field is set to null, even though the dataIndex is still valid.
      */
-    private Object dataObject;
+    private E dataObject;
 
     /**
      * Creates an iterator.
      */
-    BlockIterator(StoredCollection coll, boolean writeAllowed, int blockSize) {
+    BlockIterator(StoredCollection<E> coll,
+                  boolean writeAllowed,
+                  int blockSize) {
 
         this.coll = coll;
         this.writeAllowed = writeAllowed;
@@ -89,7 +91,7 @@ class BlockIterator implements BaseIterator {
     /**
      * Copy constructor.
      */
-    private BlockIterator(BlockIterator o) {
+    private BlockIterator(BlockIterator<E> o) {
 
         coll = o.coll;
         writeAllowed = o.writeAllowed;
@@ -468,7 +470,7 @@ class BlockIterator implements BaseIterator {
         }
     }
 
-    public Object next() {
+    public E next() {
 
         if (hasNext()) {
             dataIndex = nextIndex;
@@ -480,7 +482,7 @@ class BlockIterator implements BaseIterator {
         }
     }
 
-    public Object previous() {
+    public E previous() {
 
         if (hasPrevious()) {
             nextIndex -= 1;
@@ -516,7 +518,7 @@ class BlockIterator implements BaseIterator {
                              : (-1);
     }
 
-    public void set(Object value) {
+    public void set(E value) {
 
         if (dataObject == null) {
             throw new IllegalStateException();
@@ -609,7 +611,7 @@ class BlockIterator implements BaseIterator {
         }
     }
 
-    public void add(Object value) {
+    public void add(E value) {
 
         /*
          * The checkIterAddAllowed method ensures that one of the following two
@@ -740,6 +742,7 @@ class BlockIterator implements BaseIterator {
             coll.closeCursor(cursor);
             coll.commitAutoCommit(doAutoCommit);
         } catch (Exception e) {
+            /* Catch RuntimeExceptions too. */
             coll.closeCursor(cursor);
             throw coll.handleException(e, doAutoCommit);
         }
@@ -749,9 +752,9 @@ class BlockIterator implements BaseIterator {
 
     // --- begin BaseIterator methods ---
 
-    public final ListIterator dup() {
+    public final ListIterator<E> dup() {
 
-        return new BlockIterator(this);
+        return new BlockIterator<E>(this);
     }
 
     public final boolean isCurrentData(Object currentData) {
@@ -765,7 +768,7 @@ class BlockIterator implements BaseIterator {
         try {
             cursor = new DataCursor(coll.view, writeAllowed);
             OperationStatus status =
-                cursor.getSearchKey(new Integer(index), null, false);
+                cursor.getSearchKey(Integer.valueOf(index), null, false);
             if (status == OperationStatus.SUCCESS) {
                 clearSlots();
                 setSlot(0, cursor);

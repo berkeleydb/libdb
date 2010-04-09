@@ -1,11 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EvolveClasses.java.original,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.persist.test;
+
+import static com.sleepycat.persist.model.Relationship.MANY_TO_ONE;
 
 import java.math.BigInteger;
 
@@ -2050,6 +2052,34 @@ class EvolveClasses {
         }
     }
 
+    @Entity
+    static class ConvertFieldContent_Entity
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        String f1;
+        String f2;
+
+        private void init() {
+            key = 99;
+            f1 = "01234";
+            f2 = "56789";
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertFieldContent_Entity>
+                index = store.getPrimaryIndex
+                    (Integer.class, ConvertFieldContent_Entity.class);
+            init();
+            index.put(this);
+        }
+    }
+
     @Persistent
     static class ConvertExample1_Address {
         String street;
@@ -2141,6 +2171,44 @@ class EvolveClasses {
             PrimaryIndex<Integer,ConvertExample3_Person>
                 index = store.getPrimaryIndex
                     (Integer.class, ConvertExample3_Person.class);
+            init();
+            index.put(this);
+        }
+    }
+
+    @Persistent
+    static class ConvertExample3Reverse_Address {
+        String street;
+        String city;
+        String state;
+        int zipCode;
+    }
+
+    @Entity
+    static class ConvertExample3Reverse_Person
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        ConvertExample3Reverse_Address address;
+
+        private void init() {
+            key = 99;
+            address = new ConvertExample3Reverse_Address();
+            address.street = "street";
+            address.city = "city";
+            address.state = "state";
+            address.zipCode = 12345;
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertExample3Reverse_Person>
+                index = store.getPrimaryIndex
+                    (Integer.class, ConvertExample3Reverse_Person.class);
             init();
             index.put(this);
         }
@@ -2481,6 +2549,62 @@ class EvolveClasses {
         }
     }
 
+    enum InsertEnumConstant_Enum {
+        A, B;
+    }
+
+    @Persistent
+    static class InsertEnumConstant_KeyClass
+        implements Comparable<InsertEnumConstant_KeyClass > {
+
+        @KeyField(1)
+        InsertEnumConstant_Enum key;
+
+        private InsertEnumConstant_KeyClass() {}
+
+        InsertEnumConstant_KeyClass(InsertEnumConstant_Enum key) {
+            this.key = key;
+        }
+
+        public int compareTo(InsertEnumConstant_KeyClass o) {
+            /* Use the natural order, in spite of insertions. */
+            return key.compareTo(o.key);
+        }
+    }
+
+    @Entity
+    static class InsertEnumConstant_Entity
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        InsertEnumConstant_KeyClass secKey;
+
+        InsertEnumConstant_Enum e1;
+        InsertEnumConstant_Enum e2;
+
+        private void init() {
+            key = 99;
+            secKey =
+                new InsertEnumConstant_KeyClass(InsertEnumConstant_Enum.A);
+            e1 = InsertEnumConstant_Enum.A;
+            e2 = InsertEnumConstant_Enum.B;
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,InsertEnumConstant_Entity>
+                index = store.getPrimaryIndex
+                    (Integer.class, InsertEnumConstant_Entity.class);
+            init();
+            index.put(this);
+        }
+    }
+
     enum DeleteEnumConstant_Enum {
         A, B, C;
     }
@@ -2514,6 +2638,38 @@ class EvolveClasses {
             index.put(this);
         }
     }
+
+    /* Disabled until support for enum deletion is added.
+    @Entity
+    static class DeleteEnumConstant_WithConverter
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        DeleteEnumConstant_Enum e1;
+        DeleteEnumConstant_Enum e2;
+        DeleteEnumConstant_Enum e3;
+
+        private void init() {
+            key = 99;
+            e1 = DeleteEnumConstant_Enum.A;
+            e2 = DeleteEnumConstant_Enum.B;
+            e3 = DeleteEnumConstant_Enum.C;
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,DeleteEnumConstant_WithConverter>
+                index = store.getPrimaryIndex
+                    (Integer.class, DeleteEnumConstant_WithConverter.class);
+            init();
+            index.put(this);
+        }
+    }
+    */
 
     @Entity
     static class DisallowChangeKeyRelate
@@ -2559,6 +2715,9 @@ class EvolveClasses {
         @SecondaryKey(relate=ONE_TO_ONE)
         int dropAnnotation;
 
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int toBeRenamedField;
+
         int ff;
 
         private void init() {
@@ -2566,6 +2725,7 @@ class EvolveClasses {
             addAnnotation = 88;
             dropField = 77;
             dropAnnotation = 66;
+            toBeRenamedField = 44;
             aa = 33;
             ff = 22;
         }
@@ -2580,6 +2740,61 @@ class EvolveClasses {
             init();
             index.put(this);
         }
+    }
+
+    /** [#16253] */
+    @Persistent
+    static class AllowChangeKeyMetadataInSubclass
+        extends AllowChangeKeyMetadataEntity {
+
+        int aa;
+
+        int addAnnotation;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int dropField;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int dropAnnotation;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int toBeRenamedField;
+
+        int ff;
+
+        private void init() {
+            key = 99;
+            addAnnotation = 88;
+            dropField = 77;
+            dropAnnotation = 66;
+            toBeRenamedField = 44;
+            aa = 33;
+            ff = 22;
+        }
+
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(AllowChangeKeyMetadataInSubclass.class);
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,AllowChangeKeyMetadataEntity>
+                index = store.getPrimaryIndex
+                    (Integer.class, AllowChangeKeyMetadataEntity.class);
+            init();
+            index.put(this);
+        }
+    }
+
+    @Entity
+    static class AllowChangeKeyMetadataEntity
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
     }
 
     /** [#15524] */

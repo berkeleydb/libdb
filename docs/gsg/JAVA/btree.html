@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>BTree Configuration</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dbconfig.html" title="Chapter 11. Database Configuration" />
-    <link rel="previous" href="cachesize.html" title="Selecting the Cache Size" />
+    <link rel="prev" href="cachesize.html" title="Selecting the Cache Size" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,20 @@
             <h2 class="title" style="clear: both"><a id="btree"></a>BTree Configuration</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="btree.html#duplicateRecords">Allowing Duplicate Records</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="btree.html#comparators">Setting Comparison Functions</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         In going through the previous chapters in this book, you may notice that
@@ -63,7 +76,6 @@
               <h3 class="title"><a id="duplicateRecords"></a>Allowing Duplicate Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             BTree databases can contain duplicate records. One record is
@@ -76,7 +88,7 @@
             You can override this default using the
                 
                 
-                <tt class="methodname">DatabaseConfig.setBtreeComparator()</tt>
+                <code class="methodname">DatabaseConfig.setBtreeComparator()</code>
             method. See the next section for details.
         </p>
         <p>
@@ -108,7 +120,6 @@
                 <h4 class="title"><a id="sorteddups"></a>Sorted Duplicates</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 Duplicate records can be stored in sorted or unsorted order. 
@@ -116,8 +127,8 @@
                 records by 
                 
                 <span> 
-                    setting <tt class="methodname">DatabaseConfig.setSortedDuplicates()</tt>
-                    to <tt class="literal">true</tt>. Note that this property must be
+                    setting <code class="methodname">DatabaseConfig.setSortedDuplicates()</code>
+                    to <code class="literal">true</code>. Note that this property must be
                     set prior to database creation time and it cannot be changed
                     afterwards.
                 </span>
@@ -126,9 +137,9 @@
                 If sorted duplicates are supported, then the 
                 
                 <span>
-                    <tt class="classname">java.util.Comparator</tt> implementation
+                    <code class="classname">java.util.Comparator</code> implementation
                     identified to
-                    <tt class="methodname">DatabaseConfig.setDuplicateComparator()</tt>
+                    <code class="methodname">DatabaseConfig.setDuplicateComparator()</code>
                 </span>
                 is used to determine the location of the duplicate record in its
                 duplicate set. If no such function is provided, then the default
@@ -142,7 +153,6 @@
                 <h4 class="title"><a id="nosorteddups"></a>Unsorted Duplicates</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 For performance reasons, BTrees should always contain sorted
@@ -172,7 +182,7 @@
                     If your application simply adds a duplicate record using 
                         
                         
-                        <span><tt class="methodname">Database.put()</tt>,</span>
+                        <span><code class="methodname">Database.put()</code>,</span>
                     then the record is inserted at the end of its sorted duplicate set.
                 </p>
               </li>
@@ -188,7 +198,7 @@
                     <li>
                       <p>
                             
-                            <tt class="methodname">Cursor.putAfter()</tt>
+                            <code class="methodname">Cursor.putAfter()</code>
                         </p>
                       <p>
                         The data
@@ -211,12 +221,12 @@
                     <li>
                       <p>
                             
-                            <tt class="methodname">Cursor.putBefore()</tt>
+                            <code class="methodname">Cursor.putBefore()</code>
                         </p>
                       <p>
                             Behaves the same as 
                                 
-                                <tt class="methodname">Cursor.putAfter()</tt>
+                                <code class="methodname">Cursor.putAfter()</code>
                             except that the new record is inserted immediately before 
                             the cursor's current location in the database.
                         </p>
@@ -224,7 +234,7 @@
                     <li>
                       <p>
                             
-                            <tt class="methodname">Cursor.putKeyFirst()</tt>
+                            <code class="methodname">Cursor.putKeyFirst()</code>
                         </p>
                       <p>
                             If the key 
@@ -238,12 +248,12 @@
                     <li>
                       <p>
                             
-                            <tt class="methodname">Cursor.putKeyLast()</tt>
+                            <code class="methodname">Cursor.putKeyLast()</code>
                         </p>
                       <p>
                             Behaves identically to
                                 
-                                <tt class="methodname">Cursor.putKeyFirst()</tt>
+                                <code class="methodname">Cursor.putKeyFirst()</code>
                             except that the new duplicate record is inserted as the last
                             record in the duplicates list.
                         </p>
@@ -261,14 +271,13 @@
                 <h4 class="title"><a id="specifyingDups"></a>Configuring a Database to Support Duplicates</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Duplicates support can only be configured
             at database creation time. You do this by specifying the appropriate
             
             <span>
-                <tt class="classname">DatabaseConfig</tt> method
+                <code class="classname">DatabaseConfig</code> method
             </span>
             before the database is opened for the first time.
         </p>
@@ -283,7 +292,7 @@
               <li>
                 <p>
                     
-                    <tt class="methodname">DatabaseConfig.setUnsortedDuplicates()</tt>
+                    <code class="methodname">DatabaseConfig.setUnsortedDuplicates()</code>
                 </p>
                 <p>
                     The database supports non-sorted duplicate records.
@@ -292,7 +301,7 @@
               <li>
                 <p>
                     
-                    <tt class="methodname">DatabaseConfig.setSortedDuplicates()</tt>
+                    <code class="methodname">DatabaseConfig.setSortedDuplicates()</code>
                 </p>
                 <p>
                     The database supports sorted duplicate records.
@@ -345,7 +354,6 @@ try {
               <h3 class="title"><a id="comparators"></a>Setting Comparison Functions</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             By default, DB uses a lexicographical comparison function where
@@ -381,7 +389,7 @@ try {
                     do not sort well when viewed as byte strings. There are
                     several solutions to this problem, one being to provide a
                     custom comparison function. See
-                    <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/am_misc/faq.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/am_misc/faq.html</a> 
+                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/am_misc/faq.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/am_misc/faq.html</a> 
                     for more information.
                 </p>
             </li>
@@ -405,7 +413,6 @@ try {
             </h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 You set a BTree's key
@@ -416,11 +423,11 @@ try {
                 using
                     
                     
-                    <span><tt class="methodname">DatabaseConfig.setBtreeComparator()</tt>.</span>
+                    <span><code class="methodname">DatabaseConfig.setBtreeComparator()</code>.</span>
                 You can also set a BTree's duplicate data comparison function using
                     
                     
-                    <span><tt class="methodname">DatabaseConfig.setDuplicateComparator()</tt>.</span>
+                    <span><code class="methodname">DatabaseConfig.setDuplicateComparator()</code>.</span>
                 
             </p>
           <p>
@@ -439,15 +446,15 @@ try {
          </p>
           <p>
       You override the default comparison function by providing a Java
-      <tt class="classname">Comparator</tt> class to the database.
-      The Java <tt class="classname">Comparator</tt> interface requires you to implement the
-      <tt class="methodname">Comparator.compare()</tt> method 
-      (see <a href="http://java.sun.com/j2se/1.4.2/docs/api/java/util/Comparator.html" target="_top">http://java.sun.com/j2se/1.4.2/docs/api/java/util/Comparator.html</a> for details). 
+      <code class="classname">Comparator</code> class to the database.
+      The Java <code class="classname">Comparator</code> interface requires you to implement the
+      <code class="methodname">Comparator.compare()</code> method 
+      (see <a class="ulink" href="http://java.sun.com/j2se/1.4.2/docs/api/java/util/Comparator.html" target="_top">http://java.sun.com/j2se/1.4.2/docs/api/java/util/Comparator.html</a> for details). 
       </p>
           <p>
-        DB hands your <tt class="methodname">Comparator.compare()</tt> method
-        the <tt class="literal">byte</tt> arrays that you stored in the database. If
-        you know how your data is organized in the <tt class="literal">byte</tt>
+        DB hands your <code class="methodname">Comparator.compare()</code> method
+        the <code class="literal">byte</code> arrays that you stored in the database. If
+        you know how your data is organized in the <code class="literal">byte</code>
         array, then you can write a comparison routine that directly examines
         the contents of the arrays.  Otherwise, you have to reconstruct your
         original objects, and then perform the comparison.
@@ -455,7 +462,7 @@ try {
           <p>
             For example, suppose you want to perform unicode lexical comparisons
             instead of UTF-8 byte-by-byte comparisons. Then you could provide a
-            comparator that uses <tt class="methodname">String.compareTo()</tt>,
+            comparator that uses <code class="methodname">String.compareTo()</code>,
             which performs a Unicode comparison of two strings (note that for
             single-byte roman characters, Unicode comparison and UTF-8
             byte-by-byte comparisons are identical – this is something you

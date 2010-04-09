@@ -1,4 +1,4 @@
-# $Id: dbname.awk,v 12.1 2005/03/23 04:56:51 ubell Exp $
+# $Id$
 #
 # Take a comma-separated list of database names and spit out all the
 # log records that affect those databases.

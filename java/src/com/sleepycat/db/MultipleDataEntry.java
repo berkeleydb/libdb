@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: MultipleDataEntry.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -102,4 +102,55 @@ public class MultipleDataEntry extends MultipleEntry {
 
         return (true);
     }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param data
+    an array containing the record to be added.
+    @param offset
+    the position in the <b>data</b> array where the record starts.
+    @param len
+    the length of the record, in bytes, to be copied from the <b>data</b> array.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final byte[] data, int offset, int len) 
+        throws DatabaseException {
+        return append_internal(data, offset, len);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param data
+    the record to be appended, using the offset and size specified in the
+    {@link com.sleepycat.db.DatabaseEntry DatabaseEntry}.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final DatabaseEntry data)
+        throws DatabaseException {
+        return append_internal(data.data, data.offset, data.size);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param data
+    an array containing the record to be added.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final byte[] data)
+        throws DatabaseException {
+        return append_internal(data, 0, data.length);
+    }
 }
+

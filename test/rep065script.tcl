@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2008 Oracle.  All rights reserved.
+# Copyright (c) 2006-2009 Oracle.  All rights reserved.
 #
-# $Id: rep065script.tcl,v 12.19 2008/04/14 14:29:39 sue Exp $
+# $Id$
 #
 # rep065script - procs to use at each replication site in the
 # replication upgrade test.
@@ -93,11 +93,17 @@ proc rep065scr_repget { repenv oplist mydir markerfile } {
 proc rep065scr_starttest { role oplist envid msgdir mydir allids markerfile } {
 	global qtestdir
 	global util_path
+	global repfiles_in_memory
 
 	puts "repladd_noenv $allids"
 	set qtestdir $msgdir
 	foreach id $allids {
 		repladd_noenv $id
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set markerdb [berkdb_open -create -btree $markerfile]
@@ -108,28 +114,28 @@ proc rep065scr_starttest { role oplist envid msgdir mydir allids markerfile } {
 	set logmax [expr $logbuf * 4]
 	if { $role == "MASTER" } {
 		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf \
+		    -log_max $logmax -log_buffer $logbuf $repmemargs \
 		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 		    -errpfx MASTER -txn -rep_master \
 		    -rep_transport \[list $envid replsend_noenv\]"
-#		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-#		    -log_max $logmax -log_buffer $logbuf \
-#		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-#		    -errpfx MASTER -txn -rep_master \
-#		    -verbose {rep on} -errfile /dev/stderr \
-#		    -rep_transport \[list $envid replsend_noenv\]"
+		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
+		    -log_max $logmax -log_buffer $logbuf $repmemargs \
+		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
+		    -errpfx MASTER -txn -rep_master \
+		    -verbose {rep on} -errfile /dev/stderr \
+		    -rep_transport \[list $envid replsend_noenv\]"
 	} elseif { $role == "CLIENT" } {
 		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf \
+		    -log_max $logmax -log_buffer $logbuf $repmemargs \
 		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 		    -errpfx CLIENT -txn -rep_client \
 		    -rep_transport \[list $envid replsend_noenv\]"
-#		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-#		    -log_max $logmax -log_buffer $logbuf \
-#		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-#		    -errpfx CLIENT -txn -rep_client \
-#		    -verbose {rep on} -errfile /dev/stderr \
-#		    -rep_transport \[list $envid replsend_noenv\]"
+		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
+		    -log_max $logmax -log_buffer $logbuf $repmemargs \
+		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
+		    -errpfx CLIENT -txn -rep_client \
+		    -verbose {rep on} -errfile /dev/stderr \
+		    -rep_transport \[list $envid replsend_noenv\]"
 	} else {
 		puts "FAIL: unrecognized replication role $role"
 		return
@@ -192,6 +198,12 @@ proc rep065scr_starttest { role oplist envid msgdir mydir allids markerfile } {
 
 proc rep065scr_msgs { role envid msgdir mydir allids markerfile } {
 	global qtestdir
+	global repfiles_in_memory
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
 	#
 	# The main test process will write the marker file when it
@@ -220,20 +232,20 @@ proc rep065scr_msgs { role envid msgdir mydir allids markerfile } {
 	puts "set up env cmd"
 	if { $role == "MASTER" } {
 		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx MASTER -txn -rep_master \
+		    -errpfx MASTER -txn -rep_master $repmemargs \
 		    -rep_transport \[list $envid replsend_noenv\]"
-#		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-#		    -errpfx MASTER -txn -rep_master \
-#		    -verbose {rep on} -errfile /dev/stderr \
-#		    -rep_transport \[list $envid replsend_noenv\]"
+		set rep_env_cmd "berkdb_env_noerr -home $mydir \
+		    -errpfx MASTER -txn -rep_master $repmemargs \
+		    -verbose {rep on} -errfile /dev/stderr \
+		    -rep_transport \[list $envid replsend_noenv\]"
 	} elseif { $role == "CLIENT" } {
 		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx CLIENT -txn -rep_client \
+		    -errpfx CLIENT -txn -rep_client $repmemargs \
 		    -rep_transport \[list $envid replsend_noenv\]"
-#		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-#		    -errpfx CLIENT -txn -rep_client \
-#		    -verbose {rep on} -errfile /dev/stderr \
-#		    -rep_transport \[list $envid replsend_noenv\]"
+		set rep_env_cmd "berkdb_env_noerr -home $mydir \
+		    -errpfx CLIENT -txn -rep_client $repmemargs \
+		    -verbose {rep on} -errfile /dev/stderr \
+		    -rep_transport \[list $envid replsend_noenv\]"
 	} else {
 		puts "FAIL: unrecognized replication role $role"
 		return

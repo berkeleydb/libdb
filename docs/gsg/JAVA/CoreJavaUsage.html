@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="previous" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
+    <link rel="prev" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
     <link rel="next" href="DBEntry.html" title="Chapter 8. Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="CoreJavaUsage"></a>Database Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Throughout this book we will build a couple of applications that load
@@ -51,7 +50,7 @@
     </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/db/GettingStarted</pre>
       <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.  
     </p>
       <div class="example">
@@ -59,18 +58,19 @@
         <p class="title">
           <b>Example 7.1 MyDbs Class</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             To manage our database open and close activities, we encapsulate them
-            in the <tt class="classname">MyDbs</tt> class. There are several good reasons
+            in the <code class="classname">MyDbs</code> class. There are several good reasons
             to do this, the most important being that we can ensure our databases are
-            closed by putting that activity in the <tt class="classname">MyDbs</tt>
+            closed by putting that activity in the <code class="classname">MyDbs</code>
             class destructor.
         </p>
-        <p>
+          <p>
             To begin, we import some needed classes:
         </p>
-        <a id="java_db12"></a>
-        <pre class="programlisting">// File: MyDbs.java
+          <a id="java_db12"></a>
+          <pre class="programlisting">// File: MyDbs.java
 package db.GettingStarted;
 
 import com.sleepycat.db.Database;
@@ -79,11 +79,11 @@ import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.DatabaseType;
 
 import java.io.FileNotFoundException; </pre>
-        <p>
+          <p>
     And then we write our class declaration and provided some necessary private data members:
 </p>
-        <a id="java_db13"></a>
-        <pre class="programlisting">public class MyDbs {
+          <a id="java_db13"></a>
+          <pre class="programlisting">public class MyDbs {
 
     // The databases that our application uses
     private Database vendorDb = null;
@@ -94,12 +94,12 @@ import java.io.FileNotFoundException; </pre>
 
     // Our constructor does nothing
     public MyDbs() {} </pre>
-        <p>
-    Next we need a <tt class="methodname">setup()</tt> method. This is where
+          <p>
+    Next we need a <code class="methodname">setup()</code> method. This is where
     we configure and open our databases.
 </p>
-        <a id="java_db14"></a>
-        <pre class="programlisting">    // The setup() method opens all our databases
+          <a id="java_db14"></a>
+          <pre class="programlisting">    // The setup() method opens all our databases
     // for us.
     public void setup(String databasesHome)
         throws DatabaseException {
@@ -128,11 +128,11 @@ import java.io.FileNotFoundException; </pre>
             System.exit(-1);
         }
     } </pre>
-        <p>
-    Finally, we provide some getter methods, and our <tt class="methodname">close()</tt> method.
+          <p>
+    Finally, we provide some getter methods, and our <code class="methodname">close()</code> method.
 </p>
-        <a id="java_db15"></a>
-        <pre class="programlisting">   // getter methods
+          <a id="java_db15"></a>
+          <pre class="programlisting">   // getter methods
     public Database getVendorDB() {
         return vendorDb;
     }
@@ -158,7 +158,9 @@ import java.io.FileNotFoundException; </pre>
         }
     }
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
     </div>
     <div class="navfooter">
       <hr />

@@ -1,5 +1,5 @@
 #!/bin/bash -
-#	$Id: s_winmsi,v 1.10 2008/03/25 12:22:31 mjc Exp $
+#	$Id$
 #
 # Note: The s_winmsi script in Berkeley DB core closely parallels the
 # s_winmsi script in Berkeley DB/XML.  If you change one,
@@ -71,6 +71,7 @@ PRODUCT_SHARED_WINMSIDIR=`pwd`/winmsi
 PRODUCT_IMAGEDIR=$PRODUCT_SHARED_WINMSIDIR/images
 PRODUCT_ZIP_FILEFMT="db-X.Y.Z.zip"
 PRODUCT_MSI_FILEFMT="db-X.Y.Z.msi"
+PRODUCT_MSVC_VERSION=71
 
 PRODUCT_MAJOR=`echo "$PRODUCT_VERSION" | \
     sed -e 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\1/'`
@@ -89,6 +90,12 @@ SetupOptions \
 if [ "$OPT_USEBUILD" != '' ]; then
     PRODUCT_BLDDIR="${OPT_USEBUILD}"
     PRODUCT_SUB_BLDDIR="${OPT_USEBUILD}"
+fi
+
+# Choose the MS runtime libraries to use.
+if [ -e "/cygdrive/c/Program Files/Microsoft Visual Studio 8/Common7/Tools/vsvars32.bat" ]; then
+    MSVC_ROOT_DIR="/cygdrive/c/Program Files/Microsoft Visual Studio 8/"
+    PRODUCT_MSVC_VERSION=80
 fi
 
 Progress "s_winmsi starting, errors to $ERRORLOG"
@@ -118,7 +125,8 @@ if [ "$OPT_USEBUILD" = '' ]; then
         ${PRODUCT_SUB_BLDDIR}/installed_include \
         ${PRODUCT_SUB_BLDDIR}/dbinc/* \
         ${PRODUCT_SUB_BLDDIR}/dbinc_auto/* \
-        ${PRODUCT_SUB_BLDDIR}/build_windows/*.h
+        ${PRODUCT_SUB_BLDDIR}/build_windows/*.h \
+        ${PRODUCT_SUB_BLDDIR}/stl/*.h
     CreateDbPerl
 fi
 

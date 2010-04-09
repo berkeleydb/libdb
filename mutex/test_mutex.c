@@ -1,14 +1,16 @@
-/*
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ *
  * Standalone mutex tester for Berkeley DB mutexes.
  *
- * $Id: test_mutex.c,v 12.24 2007/12/05 14:48:08 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-
-#include <sys/wait.h>
 
 #ifdef DB_WIN32
 #define	MUTEX_THREAD_TEST	1
@@ -27,6 +29,8 @@ typedef HANDLE os_thread_t;
 #define	os_thread_self() GetCurrentThreadId()
 
 #else /* !DB_WIN32 */
+
+#include <sys/wait.h>
 
 typedef pid_t os_pid_t;
 
@@ -409,7 +413,7 @@ run_lthread(arg)
 	u_int lock, nl;
 	int err, i;
 
-	id = (uintptr_t)arg;
+	id = (u_long)arg;
 #if defined(MUTEX_THREAD_TEST)
 	tid = (u_long)os_thread_self();
 #else
@@ -519,7 +523,7 @@ run_lthread(arg)
 			return ((void *)1);
 		}
 
-		if (--nl % 100 == 0)
+		if (--nl % 1000 == 0)
 			printf("%03lu: %d\n", id, nl);
 	}
 
@@ -578,9 +582,10 @@ run_wthread(arg)
 	TM *gp, *tp;
 	u_long id, tid;
 	u_int check_id;
-	int err;
+	int err, quitcheck;
 
-	id = (uintptr_t)arg;
+	id = (u_long)arg;
+	quitcheck = 0;
 #if defined(MUTEX_THREAD_TEST)
 	tid = (u_long)os_thread_self();
 #else
@@ -594,8 +599,11 @@ run_wthread(arg)
 	/* Loop, waking up sleepers and periodically sleeping ourselves. */
 	for (check_id = 0;; ++check_id) {
 		/* Check to see if the locking threads have finished. */
+		if (++quitcheck >= 100) {
+			quitcheck = 0;
 		if (__os_exists(env, MT_FILE_QUIT, NULL) == 0)
 			break;
+		}
 
 		/* Check for ID wraparound. */
 		if (check_id == nthreads * nprocs)
@@ -811,7 +819,7 @@ tm_mutex_stats()
 {
 #ifdef HAVE_STATISTICS
 	TM *mp;
-	u_int32_t set_wait, set_nowait;
+	uintmax_t set_wait, set_nowait;
 	u_int i;
 
 	printf("Per-lock mutex statistics.\n");
@@ -867,7 +875,8 @@ data_on(gm_addrp, tm_addrp, lm_addrp, fhpp, init)
 				exit(EXIT_FAILURE);
 			}
 
-			if ((err = __os_seek(env, fhp, 0, 0, len)) != 0 ||
+			if ((err = 
+			    __os_seek(env, fhp, 0, 0, (u_int32_t)len)) != 0 ||
 			    (err =
 			    __os_write(env, fhp, &err, 1, &nwrite)) != 0 ||
 			    nwrite != 1) {

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Election Times</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
-    <link rel="previous" href="fwrkpermmessage.html" title="Permanent Message Handling" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
+    <link rel="prev" href="fwrkpermmessage.html" title="Permanent Message Handling" />
     <link rel="next" href="fmwrkconnectretry.html" title="Managing Connection Retries" />
   </head>
   <body>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="fwrkpermmessage.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 3. The DB Replication Framework</th>
+          <th width="60%" align="center">Chapter 3. The DB Replication Manager</th>
           <td width="20%" align="right"> <a accesskey="n" href="fmwrkconnectretry.html">Next</a></td>
         </tr>
       </table>
@@ -32,7 +32,20 @@
             <h2 class="title" style="clear: both"><a id="electiontimes"></a>Managing Election Times</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="electiontimes.html#electiontimeout">Managing Election Timeouts</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="electiontimes.html#electretrytime">Managing Election Retry Times</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
                     Where it comes to elections, there are two timeout
@@ -46,10 +59,9 @@
               <h3 class="title"><a id="electiontimeout"></a>Managing Election Timeouts</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-                        When a environment calls for an election, it will wait
+                        When an environment calls for an election, it will wait
                         some amount of time for the other replicas in the
                         replication group to respond. The amount of time
                         that the environment will wait before declaring the
@@ -62,10 +74,9 @@
                     </p>
         <p>
                             If only a subset of replicas respond, then the success
-                            or failure of the election is determined by (1)
-                            how many replicas have responded and (2) the
-                            election policy that is in place at the time.
-                            For example, usually it only takes a simple
+                            or failure of the election is determined by
+                            how many replicas have participated in the
+                            election. It only takes a simple
                             majority of replicas to elect a master. If
                             there are enough votes for a given environment to
                             meet that standard, then the master has been
@@ -73,12 +84,8 @@
                             success.
                     </p>
         <p>
-                            However, upon application startup you can
-                            require that all known replicas must participate in the
-                            election. Or, it is possible that not enough
-                            votes are cast to select a master even with a
-                            simple majority. If either of these conditions
-                            occur when the election timeout value is
+                            However, if not enough replicas have participated in
+                            the election when the election timeout value is 
                             reached, the election is considered a failure
                             and a master is not elected. At this point,
                             your replication group is operating without a
@@ -87,15 +94,15 @@
                             read-only mode.
                     </p>
         <p>
-                            Note, however, that the replication framework will attempt a
+                            Note, however, that the Replication Manager will attempt a
                             new election after a given amount of time has
                             passed. See the next section for details.
                     </p>
         <p>
                         You set the election timeout value using
-                        <tt class="methodname">Environment.setReplicationTimeout()</tt>.
+                        <code class="methodname">Environment.setReplicationTimeout()</code>.
                         You pass this method the 
-                        <tt class="methodname">ReplicationTimeoutType.ELECTION_TIMEOUT</tt>
+                        <code class="methodname">ReplicationTimeoutType.ELECTION_TIMEOUT</code>
                         constant and a timeout value in microseconds.
                     </p>
       </div>
@@ -106,7 +113,6 @@
               <h3 class="title"><a id="electretrytime"></a>Managing Election Retry Times</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             In the event that a election fails (see the
@@ -116,10 +122,19 @@
                     </p>
         <p>
                         You set the election timeout value using
-                        <tt class="methodname">Environment.setReplicationTimeout()</tt>.
+                        <code class="methodname">Environment.setReplicationTimeout()</code>.
                         You pass this method the 
-                        <tt class="methodname">ReplicationTimeoutType.ELECTION_RETRY</tt>
+                        <code class="methodname">ReplicationTimeoutType.ELECTION_RETRY</code>
                         constant and a retry value in microseconds.
+                    </p>
+        <p>
+                        Note that this 
+                        <span>constant</span> is only
+                        valid when you are using the Replication Manager. If you are
+                        using the Base APIs, then this
+                        
+                        <span>constant</span> is
+                        ignored.
                     </p>
       </div>
     </div>

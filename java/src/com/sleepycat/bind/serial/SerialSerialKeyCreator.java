@@ -1,15 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: SerialSerialKeyCreator.java,v 12.8 2008/02/07 17:12:25 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial;
 
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.ForeignKeyNullifier;
 import com.sleepycat.db.SecondaryDatabase;
 import com.sleepycat.db.SecondaryKeyCreator;
@@ -31,14 +30,16 @@ import com.sleepycat.db.SecondaryKeyCreator;
  * <li> {@link #nullifyForeignKey(Object)} </li>
  * </ul>
  *
+ * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
+ *
  * @author Mark Hayes
  */
-public abstract class SerialSerialKeyCreator
+public abstract class SerialSerialKeyCreator<PK,D,SK>
     implements SecondaryKeyCreator, ForeignKeyNullifier {
 
-    protected SerialBinding primaryKeyBinding;
-    protected SerialBinding dataBinding;
-    protected SerialBinding indexKeyBinding;
+    protected SerialBinding<PK> primaryKeyBinding;
+    protected SerialBinding<D> dataBinding;
+    protected SerialBinding<SK> indexKeyBinding;
 
     /**
      * Creates a serial-serial key creator.
@@ -53,13 +54,13 @@ public abstract class SerialSerialKeyCreator
      * @param indexKeyClass is the index key base class.
      */
     public SerialSerialKeyCreator(ClassCatalog classCatalog,
-                                  Class primaryKeyClass,
-                                  Class dataClass,
-                                  Class indexKeyClass) {
+                                  Class<PK> primaryKeyClass,
+                                  Class<D> dataClass,
+                                  Class<SK> indexKeyClass) {
 
-        this(new SerialBinding(classCatalog, primaryKeyClass),
-             new SerialBinding(classCatalog, dataClass),
-             new SerialBinding(classCatalog, indexKeyClass));
+        this(new SerialBinding<PK>(classCatalog, primaryKeyClass),
+             new SerialBinding<D>(classCatalog, dataClass),
+             new SerialBinding<SK>(classCatalog, indexKeyClass));
     }
 
     /**
@@ -71,9 +72,9 @@ public abstract class SerialSerialKeyCreator
      *
      * @param indexKeyBinding is the index key binding.
      */
-    public SerialSerialKeyCreator(SerialBinding primaryKeyBinding,
-                                  SerialBinding dataBinding,
-                                  SerialBinding indexKeyBinding) {
+    public SerialSerialKeyCreator(SerialBinding<PK> primaryKeyBinding,
+                                  SerialBinding<D> dataBinding,
+                                  SerialBinding<SK> indexKeyBinding) {
 
         this.primaryKeyBinding = primaryKeyBinding;
         this.dataBinding = dataBinding;
@@ -84,13 +85,11 @@ public abstract class SerialSerialKeyCreator
     public boolean createSecondaryKey(SecondaryDatabase db,
                                       DatabaseEntry primaryKeyEntry,
                                       DatabaseEntry dataEntry,
-                                      DatabaseEntry indexKeyEntry)
-        throws DatabaseException {
-
-        Object primaryKeyInput =
+                                      DatabaseEntry indexKeyEntry) {
+        PK primaryKeyInput =
             primaryKeyBinding.entryToObject(primaryKeyEntry);
-        Object dataInput = dataBinding.entryToObject(dataEntry);
-        Object indexKey = createSecondaryKey(primaryKeyInput, dataInput);
+        D dataInput = dataBinding.entryToObject(dataEntry);
+        SK indexKey = createSecondaryKey(primaryKeyInput, dataInput);
         if (indexKey != null) {
             indexKeyBinding.objectToEntry(indexKey, indexKeyEntry);
             return true;
@@ -101,10 +100,8 @@ public abstract class SerialSerialKeyCreator
 
     // javadoc is inherited
     public boolean nullifyForeignKey(SecondaryDatabase db,
-                                     DatabaseEntry dataEntry)
-        throws DatabaseException {
-
-        Object data = dataBinding.entryToObject(dataEntry);
+                                     DatabaseEntry dataEntry) {
+        D data = dataBinding.entryToObject(dataEntry);
         data = nullifyForeignKey(data);
         if (data != null) {
             dataBinding.objectToEntry(data, dataEntry);
@@ -115,7 +112,7 @@ public abstract class SerialSerialKeyCreator
     }
 
     /**
-     * Creates the index key object from primary key and entry objects.
+     * Creates the index key object from primary key and data objects.
      *
      * @param primaryKey is the deserialized source primary key entry, or
      * null if no primary key entry is used to construct the index key.
@@ -126,7 +123,7 @@ public abstract class SerialSerialKeyCreator
      * @return the destination index key object, or null to indicate that
      * the key is not present.
      */
-    public abstract Object createSecondaryKey(Object primaryKey, Object data);
+    public abstract SK createSecondaryKey(PK primaryKey, D data);
 
     /**
      * Clears the index key in a data object.
@@ -143,7 +140,7 @@ public abstract class SerialSerialKeyCreator
      * be the same object passed as the data parameter or a newly created
      * object.
      */
-    public Object nullifyForeignKey(Object data) {
+    public D nullifyForeignKey(D data) {
 
         return null;
     }

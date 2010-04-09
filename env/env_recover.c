@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_recover.c,v 12.60 2008/03/12 20:52:53 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -20,7 +20,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 static int	__db_log_corrupt __P((ENV *, DB_LSN *));
@@ -491,7 +491,7 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 
 done:
 	/* Take a checkpoint here to force any dirty data pages to disk. */
-	if (!IS_REP_CLIENT(env) && (ret = __txn_checkpoint(env, 0, 0,
+	if ((ret = __txn_checkpoint(env, 0, 0,
 	    DB_CKP_INTERNAL | DB_FORCE)) != 0) {
 		/*
 		 * If there was no space for the checkpoint we can
@@ -917,11 +917,34 @@ __env_init_rec(env, version)
 	 * functions.  Then we overwrite only specific entries based on
 	 * each previous version we support.
 	 */
-	if ((ret = __env_init_rec_47(env)) != 0)
-		return (ret);
-	ret = 0;
+	if ((ret = __bam_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __crdel_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __db_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __dbreg_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __fop_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __ham_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __qam_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+	if ((ret = __txn_init_recover(env, &env->recover_dtab)) != 0)
+		goto err;
+
 	switch (version) {
+	case DB_LOGVERSION:
+		ret = 0;
+		break;
+	case DB_LOGVERSION_48:
+		if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+		    __db_pg_sort_44_recover, DB___db_pg_sort_44)) != 0)
+			goto err;
+		break;
 	case DB_LOGVERSION_47:
+		ret = __env_init_rec_47(env);
 		break;
 	/*
 	 * There are no log record/recovery differences between 4.4 and 4.5.
@@ -945,7 +968,7 @@ __env_init_rec(env, version)
 		ret = EINVAL;
 		break;
 	}
-	return (ret);
+err:	return (ret);
 }
 
 static int
@@ -954,6 +977,9 @@ __env_init_rec_42(env)
 {
 	int ret;
 
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __bam_split_42_recover, DB___bam_split_42)) != 0)
+		goto err;
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __db_relink_42_recover, DB___db_relink_42)) != 0)
 		goto err;
@@ -978,6 +1004,15 @@ __env_init_rec_42(env)
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __txn_regop_42_recover, DB___txn_regop_42)) != 0)
 		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_create_42_recover, DB___fop_create_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_write_42_recover, DB___fop_write_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
+		goto err;
 err:
 	return (ret);
 }
@@ -989,6 +1024,9 @@ __env_init_rec_43(env)
 	int ret;
 
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __bam_split_42_recover, DB___bam_split_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __bam_relink_43_recover, DB___bam_relink_43)) != 0)
 		goto err;
 	/*
@@ -996,6 +1034,15 @@ __env_init_rec_43(env)
 	 */
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __txn_regop_42_recover, DB___txn_regop_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_create_42_recover, DB___fop_create_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_write_42_recover, DB___fop_write_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
 err:
 	return (ret);
@@ -1008,7 +1055,19 @@ __env_init_rec_46(env)
 	int ret;
 
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __bam_split_42_recover, DB___bam_split_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __bam_merge_44_recover, DB___bam_merge_44)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_create_42_recover, DB___fop_create_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_write_42_recover, DB___fop_write_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
 
 err:	return (ret);
@@ -1020,22 +1079,25 @@ __env_init_rec_47(env)
 {
 	int ret;
 
-	if ((ret = __bam_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __bam_split_42_recover, DB___bam_split_42)) != 0)
 		goto err;
-	if ((ret = __crdel_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __db_pg_sort_44_recover, DB___db_pg_sort_44)) != 0)
 		goto err;
-	if ((ret = __db_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_create_42_recover, DB___fop_create_42)) != 0)
 		goto err;
-	if ((ret = __dbreg_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_write_42_recover, DB___fop_write_42)) != 0)
 		goto err;
-	if ((ret = __fop_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
-	if ((ret = __ham_init_recover(env, &env->recover_dtab)) != 0)
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __fop_rename_noundo_46_recover, DB___fop_rename_noundo_46)) != 0)
 		goto err;
-	if ((ret = __qam_init_recover(env, &env->recover_dtab)) != 0)
-		goto err;
-	if ((ret = __txn_init_recover(env, &env->recover_dtab)) != 0)
-		goto err;
+
 err:
 	return (ret);
 }

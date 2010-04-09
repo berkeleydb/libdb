@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: PersistKeyCreator.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -13,7 +13,6 @@ import java.util.Set;
 
 import com.sleepycat.bind.tuple.TupleBase;
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.ForeignMultiKeyNullifier;
 import com.sleepycat.db.SecondaryDatabase;
 import com.sleepycat.db.SecondaryKeyCreator;
@@ -37,11 +36,11 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
         return cls.isArray() || Collection.class.isAssignableFrom(cls);
     }
 
-    private Catalog catalog;
-    private int priKeyFormatId;
-    private String keyName;
-    private Format keyFormat;
-    private boolean toMany;
+    private final Catalog catalog;
+    private final int priKeyFormatId;
+    private final String keyName;
+    private final Format keyFormat;
+    private final boolean toMany;
 
     /**
      * Creates a key creator/nullifier for a given entity class and key name.
@@ -49,13 +48,15 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     public PersistKeyCreator(Catalog catalog,
                              EntityMetadata entityMeta,
                              String keyClassName,
-                             SecondaryKeyMetadata secKeyMeta) {
+                             SecondaryKeyMetadata secKeyMeta,
+                             boolean rawAccess) {
         this.catalog = catalog;
-        Format priKeyFormat =
-            catalog.getFormat(entityMeta.getPrimaryKey().getClassName());
+        Format priKeyFormat = PersistEntityBinding.getOrCreateFormat
+            (catalog, entityMeta.getPrimaryKey().getClassName(), rawAccess);
         priKeyFormatId = priKeyFormat.getId();
         keyName = secKeyMeta.getKeyName();
-        keyFormat = catalog.getFormat(keyClassName);
+        keyFormat = PersistEntityBinding.getOrCreateFormat
+            (catalog, keyClassName, rawAccess);
         if (keyFormat == null) {
             throw new IllegalArgumentException
                 ("Not a key class: " + keyClassName);
@@ -73,9 +74,7 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     public boolean createSecondaryKey(SecondaryDatabase secondary,
 				      DatabaseEntry key,
 				      DatabaseEntry data,
-				      DatabaseEntry result)
-	throws DatabaseException {
-
+				      DatabaseEntry result) {
         if (toMany) {
             throw new IllegalStateException();
         }
@@ -95,9 +94,7 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     public void createSecondaryKeys(SecondaryDatabase secondary,
 				    DatabaseEntry key,
 				    DatabaseEntry data,
-				    Set results)
-	throws DatabaseException {
-
+				    Set results) {
         if (!toMany) {
             throw new IllegalStateException();
         }
@@ -111,9 +108,7 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     public boolean nullifyForeignKey(SecondaryDatabase secondary,
                                      DatabaseEntry key,
                                      DatabaseEntry data,
-                                     DatabaseEntry secKey)
-	throws DatabaseException {
-
+                                     DatabaseEntry secKey) {
         /* Deserialize the entity and get its current class format. */
         RawObject entity = (RawObject) PersistEntityBinding.readEntity
             (catalog, key, data, true /*rawAccess*/);

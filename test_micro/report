@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: report,v 1.7 2008/02/07 18:11:34 bostic Exp $
+# $Id$
 
 # Use our pathname to locate the absolute path for our awk scripts.
 t=`dirname $0`
@@ -77,7 +77,11 @@ table()
 		echo "<td>"
 		echo "<table>"
 		echo "<tr>"
-		t=`echo "400 * ($avg/($max + $max/10))" | bc -l`
+		if [ "$max" = "0.00" ];then
+			t=0
+		else
+			t=`echo "400 * ($avg/($max + $max/10))" | bc -l`
+		fi
 		t=`printf %.0f $t`
 		echo "<td bgcolor='#003366' width=$t>&nbsp;</td>"
 		t=`echo "400 - $t" | bc`

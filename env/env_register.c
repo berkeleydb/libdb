@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: env_register.c,v 1.42 2008/05/07 12:27:33 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -27,7 +27,7 @@
 #define	REGISTRY_EXCL_UNLOCK(env)					\
 	REGISTRY_UNLOCK(env, 1)
 
-static  int __envreg_add __P((ENV *, int *));
+static  int __envreg_add __P((ENV *, int *, u_int32_t));
 
 /*
  * Support for portable, multi-process database environment locking, based on
@@ -113,12 +113,13 @@ static  int __envreg_add __P((ENV *, int *));
  * __envreg_register --
  *	Register a ENV handle.
  *
- * PUBLIC: int __envreg_register __P((ENV *, int *));
+ * PUBLIC: int __envreg_register __P((ENV *, int *, u_int32_t));
  */
 int
-__envreg_register(env, need_recoveryp)
+__envreg_register(env, need_recoveryp, flags)
 	ENV *env;
 	int *need_recoveryp;
+	u_int32_t flags;
 {
 	DB_ENV *dbenv;
 	pid_t pid;
@@ -136,8 +137,8 @@ __envreg_register(env, need_recoveryp)
 		__db_msg(env, "%lu: register environment", (u_long)pid);
 
 	/* Build the path name and open the registry file. */
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, REGISTER_FILE, 0, NULL, &pp)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, REGISTER_FILE, NULL, &pp)) != 0)
 		goto err;
 	if ((ret = __os_open(env, pp, 0,
 	    DB_OSO_CREATE, DB_MODE_660, &dbenv->registry)) != 0)
@@ -169,7 +170,7 @@ __envreg_register(env, need_recoveryp)
 	}
 
 	/* Register this process. */
-	if ((ret = __envreg_add(env, need_recoveryp)) != 0)
+	if ((ret = __envreg_add(env, need_recoveryp, flags) != 0))
 		goto err;
 
 	/*
@@ -203,22 +204,28 @@ err:		*need_recoveryp = 0;
  *	Add the process' pid to the register.
  */
 static int
-__envreg_add(env, need_recoveryp)
+__envreg_add(env, need_recoveryp, flags)
 	ENV *env;
 	int *need_recoveryp;
+	u_int32_t flags;
 {
 	DB_ENV *dbenv;
+	DB_THREAD_INFO *ip;
+	REGENV * renv;
+	REGINFO *infop;
 	pid_t pid;
-	off_t end, pos;
+	off_t end, pos, dead;
 	size_t nr, nw;
 	u_int lcnt;
-	u_int32_t bytes, mbytes;
-	int need_recovery, ret;
+	u_int32_t bytes, mbytes, orig_flags;
+	int need_recovery, ret, t_ret;
 	char *p, buf[PID_LEN + 10], pid_buf[PID_LEN + 10];
 
 	dbenv = env->dbenv;
 	need_recovery = 0;
+	COMPQUIET(dead, 0);
 	COMPQUIET(p, NULL);
+	ip = NULL;
 
 	/* Get a copy of our process ID. */
 	dbenv->thread_id(dbenv, &pid, NULL);
@@ -304,6 +311,7 @@ kill_all:	/*
 				__db_msg(env, "%02u: %s: FAILED", lcnt, p);
 
 			need_recovery = 1;
+			dead = pos;
 #if DB_ENVREG_KILL_ALL
 			goto kill_all;
 #else
@@ -325,7 +333,65 @@ kill_all:	/*
 		if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
 			__db_msg(env, "%lu: recovery required", (u_long)pid);
 
-		/* Figure out how big the file is. */
+		if (LF_ISSET(DB_FAILCHK)) {
+			if (FLD_ISSET(dbenv->verbose, DB_VERB_REGISTER))
+				__db_msg(env,
+				    "%lu: performing failchk", (u_long)pid);
+			/* The environment will already exist, so we do not
+			 * want DB_CREATE set, nor do we want any recovery at
+			 * this point.  No need to put values back as flags is
+			 * passed in by value.  Save original dbenv flags in
+			 * case we need to recover/remove existing environment.
+			 * Set DB_ENV_FAILCHK before attach to help ensure we
+			 * dont block on a mutex held by the dead process.
+			 */
+			LF_CLR(DB_CREATE | DB_RECOVER | DB_RECOVER_FATAL);
+			orig_flags = dbenv->flags;
+			F_SET(dbenv, DB_ENV_FAILCHK);
+			/* Attach to environment and subsystems. */
+			if ((ret = __env_attach_regions(
+			    dbenv, flags, orig_flags, 0)) != 0)
+				goto sig_proc;
+			if ((t_ret =
+			    __env_set_state(env, &ip, THREAD_FAILCHK)) != 0 &&
+			    ret == 0)
+				ret = t_ret;
+			if ((t_ret =
+			    __env_failchk_int(dbenv)) != 0 && ret == 0)
+				ret = t_ret;
+			/* Detach from environment and deregister thread. */
+			if ((t_ret =
+			    __env_refresh(dbenv, orig_flags, 0)) != 0 &&
+			    ret == 0)
+				ret = t_ret;
+			if (ret == 0) {
+				if ((ret = __os_seek(env, dbenv->registry,
+				    0, 0,(u_int32_t)dead)) != 0 ||
+				    (ret = __os_write(env, dbenv->registry,
+				    PID_EMPTY, PID_LEN, &nw)) != 0)
+					return (ret);
+				need_recovery = 0;
+				goto add;
+			}
+
+		}
+		/* If we can't attach, then we cannot set DB_REGISTER panic. */
+sig_proc:	if (__env_attach(env, NULL, 0, 0) == 0) {
+			infop = env->reginfo;
+			renv = infop->primary;
+			/* Indicate DB_REGSITER panic.  Also, set environment
+			 * panic as this is the panic trigger mechanism in
+			 * the code that everything looks for.
+			 */
+			renv->reg_panic = 1;
+			renv->panic = 1;
+			(void)__env_detach(env, 0);
+		}
+
+		/* Wait for processes to see the panic and leave. */
+		__os_yield(env, 0, dbenv->envreg_timeout);
+
+		/* FIGURE out how big the file is. */
 		if ((ret = __os_ioinfo(
 		    env, NULL, dbenv->registry, &mbytes, &bytes, NULL)) != 0)
 			return (ret);
@@ -341,18 +407,35 @@ kill_all:	/*
 		 */
 		if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
 			return (ret);
-		for (lcnt = (u_int)end / PID_LEN +
-		    ((u_int)end % PID_LEN == 0 ? 0 : 1); lcnt > 0; --lcnt)
-			if ((ret = __os_write(env,
+		for (lcnt = 0; lcnt < ((u_int)end / PID_LEN +
+		    ((u_int)end % PID_LEN == 0 ? 0 : 1)); ++lcnt) {
+
+			if ((ret = __os_read(
+			    env, dbenv->registry, buf, PID_LEN, &nr)) != 0)
+				return (ret);
+
+			pos = (off_t)lcnt * PID_LEN;
+			/* do not notify on dead process */
+			if (pos != dead) {
+				pid = (pid_t)strtoul(buf, NULL, 10);
+				DB_EVENT(env, DB_EVENT_REG_ALIVE, &pid);
+			}
+
+			if ((ret = __os_seek(env,
+			    dbenv->registry, 0, 0, (u_int32_t)pos)) != 0 ||
+			    (ret = __os_write(env,
 			    dbenv->registry, PID_EMPTY, PID_LEN, &nw)) != 0)
 				return (ret);
+		}
+		/* wait one last time to get everyone out */
+		__os_yield(env, 0, dbenv->envreg_timeout);
 	}
 
 	/*
 	 * Seek to the first process slot and add ourselves to the first empty
 	 * slot we can lock.
 	 */
-	if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
+add:	if ((ret = __os_seek(env, dbenv->registry, 0, 0, 0)) != 0)
 		return (ret);
 	for (lcnt = 0;; ++lcnt) {
 		if ((ret = __os_read(

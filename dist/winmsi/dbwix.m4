@@ -1,4 +1,4 @@
-<!-- $Id: dbwix.m4,v 1.9 2008/04/17 01:59:10 alexg Exp $
+<!-- $Id$
  - This file is included by WiX input files to define m4 macros.
  - m4 is tricky.  It has NO notion of XML comments, so
  - take care using these names in comments after they are defined,

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_net.c,v 12.20 2008/02/27 22:04:15 alanb Exp $
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -508,7 +508,8 @@ get_next_message(fd, rec, control)
 	if (rsize > 0) {
 		if (rec->size < rsize)
 			rec->data = realloc(rec->data, rsize);
-		recbuf = rec->data;
+		if ((recbuf = rec->data) == NULL)
+			return (1);
 		nr = readn(fd, recbuf, rsize);
 	} else {
 		if (rec->data != NULL)
@@ -527,6 +528,8 @@ get_next_message(fd, rec, control)
 		controlbuf = control->data;
 		if (control->size < csize)
 			controlbuf = realloc(controlbuf, csize);
+		if (controlbuf == NULL)
+			return (1);
 		nr = readn(fd, controlbuf, csize);
 		if (nr != csize)
 			return (1);

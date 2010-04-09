@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: os_map.c,v 12.25 2008/05/07 12:27:35 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -114,11 +114,11 @@ __os_mapfile(env, path, fhp, len, is_rdonly, addr)
 {
 #ifdef DB_WINCE
 	/*
-	 * Windows CE has special requirements for file mapping to work. 
+	 * Windows CE has special requirements for file mapping to work.
 	 * * The input handle needs to be opened using CreateFileForMapping
-	 * * Concurrent access via a non mapped file is not supported. 
+	 * * Concurrent access via a non mapped file is not supported.
 	 * So we disable support for memory mapping files on Windows CE. It is
-	 * currently only used as an optimization in mpool for small read only 
+	 * currently only used as an optimization in mpool for small read only
 	 * databases.
 	 */
 	return (EFAULT);

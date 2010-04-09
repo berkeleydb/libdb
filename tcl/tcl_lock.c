@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_lock.c,v 12.18 2008/05/07 12:27:36 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -253,9 +253,9 @@ tcl_LockStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST("Maximum number of locks so far", sp->st_maxnlocks);
 	MAKE_STAT_LIST("Maximum number of locks in any hash bucket",
 	    sp->st_maxhlocks);
-	MAKE_STAT_LIST("Maximum number of lock steals for an empty partition",
+	MAKE_WSTAT_LIST("Maximum number of lock steals for an empty partition",
 	    sp->st_locksteals);
-	MAKE_STAT_LIST("Maximum number lock steals in any partition",
+	MAKE_WSTAT_LIST("Maximum number lock steals in any partition",
 	    sp->st_maxlsteals);
 	MAKE_STAT_LIST("Current number of lockers", sp->st_nlockers);
 	MAKE_STAT_LIST("Maximum number of lockers so far", sp->st_maxnlockers);
@@ -263,34 +263,34 @@ tcl_LockStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST("Maximum number of objects so far", sp->st_maxnobjects);
 	MAKE_STAT_LIST("Maximum number of objects in any hash bucket",
 	    sp->st_maxhobjects);
-	MAKE_STAT_LIST("Maximum number of object steals for an empty partition",
+	MAKE_WSTAT_LIST("Maximum number of object steals for an empty partition",
 	    sp->st_objectsteals);
-	MAKE_STAT_LIST("Maximum number object steals in any partition",
+	MAKE_WSTAT_LIST("Maximum number object steals in any partition",
 	    sp->st_maxosteals);
-	MAKE_STAT_LIST("Lock requests", sp->st_nrequests);
-	MAKE_STAT_LIST("Lock releases", sp->st_nreleases);
-	MAKE_STAT_LIST("Lock upgrades", sp->st_nupgrade);
-	MAKE_STAT_LIST("Lock downgrades", sp->st_ndowngrade);
+	MAKE_WSTAT_LIST("Lock requests", sp->st_nrequests);
+	MAKE_WSTAT_LIST("Lock releases", sp->st_nreleases);
+	MAKE_WSTAT_LIST("Lock upgrades", sp->st_nupgrade);
+	MAKE_WSTAT_LIST("Lock downgrades", sp->st_ndowngrade);
 	MAKE_STAT_LIST("Number of conflicted locks for which we waited",
 	    sp->st_lock_wait);
 	MAKE_STAT_LIST("Number of conflicted locks for which we did not wait",
 	    sp->st_lock_nowait);
-	MAKE_STAT_LIST("Deadlocks detected", sp->st_ndeadlocks);
-	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
-	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
-	MAKE_STAT_LIST("Number of object allocation waits", sp->st_objs_wait);
+	MAKE_WSTAT_LIST("Deadlocks detected", sp->st_ndeadlocks);
+	MAKE_WSTAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_WSTAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_WSTAT_LIST("Number of object allocation waits", sp->st_objs_wait);
 	MAKE_STAT_LIST("Number of object allocation nowaits",
 	    sp->st_objs_nowait);
 	MAKE_STAT_LIST("Number of locker allocation waits",
 	    sp->st_lockers_wait);
 	MAKE_STAT_LIST("Number of locker allocation nowaits",
 	    sp->st_lockers_nowait);
-	MAKE_STAT_LIST("Maximum hash bucket length", sp->st_hash_len);
+	MAKE_WSTAT_LIST("Maximum hash bucket length", sp->st_hash_len);
 	MAKE_STAT_LIST("Lock timeout value", sp->st_locktimeout);
-	MAKE_STAT_LIST("Number of lock timeouts", sp->st_nlocktimeouts);
+	MAKE_WSTAT_LIST("Number of lock timeouts", sp->st_nlocktimeouts);
 	MAKE_STAT_LIST("Transaction timeout value", sp->st_txntimeout);
-	MAKE_STAT_LIST("Number of transaction timeouts", sp->st_ntxntimeouts);
-	MAKE_STAT_LIST("Number lock partition mutex waits", sp->st_part_wait);
+	MAKE_WSTAT_LIST("Number of transaction timeouts", sp->st_ntxntimeouts);
+	MAKE_WSTAT_LIST("Number lock partition mutex waits", sp->st_part_wait);
 	MAKE_STAT_LIST("Number lock partition mutex nowaits",
 	    sp->st_part_nowait);
 	MAKE_STAT_LIST("Maximum number waits on any lock partition mutex",

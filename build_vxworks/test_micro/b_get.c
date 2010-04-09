@@ -1,9 +1,21 @@
 /*
- * $Id: b_get.c,v 1.14 2008/01/31 17:01:22 bostic Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 
 static int b_get_usage(void);
+
+u_int32_t part_callback(dbp, dbt)
+	DB *dbp;
+	DBT *dbt;
+{
+	extern u_int32_t __ham_func2(DB *, const void *, u_int32_t);
+	return (__ham_func2(dbp, dbt->data, dbt->size));
+}
 
 int
 b_get(int argc, char *argv[])
@@ -74,6 +86,27 @@ b_get(int argc, char *argv[])
 	/* Set record length for Queue. */
 	if (type == DB_QUEUE)
 		DB_BENCH_ASSERT(dbp->set_re_len(dbp, 10) == 0);
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 7 && DB_VERSION_PATCH == 30
+	if (type == DB_BTREE) {
+		DBT keys[3];
+
+		memset(keys, 0, sizeof(keys));
+		keys[0].data = "a";
+		keys[0].size = 1;
+		keys[1].data = "b";
+		keys[1].size = 1;
+		keys[2].data = "c";
+		keys[2].size = 1;
+
+		DB_BENCH_ASSERT(
+		     dbp->set_partition_keys(dbp, 4, keys, NULL) == 0);
+	}
+
+	if (type == DB_HASH) {
+		DB_BENCH_ASSERT(
+		    dbp->set_partition_callback(dbp, 4, part_callback) == 0);
+	}
+#endif
 
 #if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
 	DB_BENCH_ASSERT(

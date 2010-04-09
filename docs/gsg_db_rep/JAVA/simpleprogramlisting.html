@@ -5,11 +5,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Program Listing</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="txnapp.html" title="Chapter 2. Transactional Application" />
-    <link rel="previous" href="txnapp.html" title="Chapter 2. Transactional Application" />
-    <link rel="next" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
+    <link rel="prev" href="txnapp.html" title="Chapter 2. Transactional Application" />
+    <link rel="next" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
   </head>
   <body>
     <div class="navheader">
@@ -32,7 +32,47 @@
             <h2 class="title" style="clear: both"><a id="simpleprogramlisting"></a>Program Listing</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#repconfiginfo_cxx">
+                            
+                            <span>Class: RepConfig</span>
+                    </a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#simpletxnusage_java">Class: SimpleTxn</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#simpletxnmain_java">Method: SimpleTxn.main()</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#simpletxn_init_java">Method: SimpleTxn.init()</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#doloop_java">Method: SimpleTxn.doloop()</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="simpleprogramlisting.html#printstocks_c">
+                            
+                            
+                            <span>Method: SimpleTxn.printStocks()</span>
+                    </a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
                 Our example program is a fairly simple transactional
@@ -65,7 +105,7 @@
       <p>
                 Finally, remember that transaction processing is not described in
                 this manual. Rather, see the 
-                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide for details on 
+                <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em> guide for details on 
                 that topic.
             </p>
       <div class="sect2" lang="en" xml:lang="en">
@@ -78,7 +118,6 @@
                     </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             Before we begin, we present a 
@@ -94,11 +133,11 @@
         <p>
                             The class that we create is called
                             
-                            <tt class="classname">RepConfig</tt>
+                            <code class="classname">RepConfig</code>
                             and its only purpose at this time is to track
                             the location of our environment home directory.
                     </p>
-        <pre class="programlisting">package db.simpletxn;
+        <pre class="programlisting">package db.repquote_gsg;
 
 public class RepConfig
 {
@@ -129,12 +168,11 @@ public class RepConfig
               <h3 class="title"><a id="simpletxnusage_java"></a>Class: SimpleTxn</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             Our transactional example will 
                             consist of a class,
-                            <tt class="classname">SimpleTxn</tt>, that performs
+                            <code class="classname">SimpleTxn</code>, that performs
                             all our work for us. 
                     </p>
         <p>
@@ -142,7 +180,7 @@ public class RepConfig
                             then a few import statements that the class
                             needs.
                     </p>
-        <pre class="programlisting">package db.simpletxn;
+        <pre class="programlisting">package db.repquote_gsg;
 
 import java.io.FileNotFoundException;
 import java.io.BufferedReader;
@@ -160,7 +198,7 @@ import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
-import db.simpletxn.RepConfig;
+import db.repquote_gsg.RepConfig;
 
 public class SimpleTxn
 {
@@ -177,13 +215,13 @@ public class SimpleTxn
         dbenv = null;
     }  </pre>
         <p>
-        And then we provide our <tt class="methodname">usage()</tt> method. At
+        And then we provide our <code class="methodname">usage()</code> method. At
         this point, this method has very little to report:
 </p>
         <pre class="programlisting">    public static void usage()
     {
         System.err.println("usage: " + repConfig.progname);
-        System.err.println("[-h home]");
+        System.err.println("-h home");
 
         System.err.println("\t -h home directory\n");
 
@@ -197,15 +235,14 @@ public class SimpleTxn
               <h3 class="title"><a id="simpletxnmain_java"></a>Method: SimpleTxn.main()</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             Having implemented our
-                            <tt class="methodname">usage()</tt>
+                            <code class="methodname">usage()</code>
                             method, we can jump directly into our
-                            <tt class="methodname">main()</tt>
+                            <code class="methodname">main()</code>
                             method. This method begins by instantiating a
-                            <tt class="classname">RepConfig</tt> object, and
+                            <code class="classname">RepConfig</code> object, and
                             then collecting the command line arguments so
                             that it can populate the object with the
                             appropriate data (just the environment home
@@ -236,7 +273,7 @@ public class SimpleTxn
             usage();  </pre>
         <p>
             Now we perform the class' work. To begin, we initialize the
-            object. The <tt class="methodname">init()</tt> method actually
+            object. The <code class="methodname">init()</code> method actually
             opens our environment for us (shown in the next section).
     </p>
         <pre class="programlisting">        SimpleTxn runner = null;
@@ -244,9 +281,9 @@ public class SimpleTxn
             runner = new SimpleTxn();
             runner.init(config);  </pre>
         <p>
-            And then we call our <tt class="methodname">doloop()</tt>
+            And then we call our <code class="methodname">doloop()</code>
             method. This method is where we perform all our database
-            activity. See <a href="simpleprogramlisting.html#doloop_java">Method: SimpleTxn.doloop()</a>
+            activity. See <a class="xref" href="simpleprogramlisting.html#doloop_java" title="Method: SimpleTxn.doloop()">Method: SimpleTxn.doloop()</a>
             for it's details.
     </p>
         <pre class="programlisting">                    runner.doloop();  </pre>
@@ -271,10 +308,9 @@ public class SimpleTxn
               <h3 class="title"><a id="simpletxn_init_java"></a>Method: SimpleTxn.init()</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-                        The <tt class="methodname">SimpleTxn.init()</tt>
+                        The <code class="methodname">SimpleTxn.init()</code>
                         method is used to open our environment handle.
                         For readers familiar with writing transactional
                         DB applications, there should be no surprises
@@ -317,7 +353,7 @@ public class SimpleTxn
         return ret;
     }  </pre>
         <p>
-        Finally, we present the <tt class="methodname">SimpleTxn.terminate()</tt>
+        Finally, we present the <code class="methodname">SimpleTxn.terminate()</code>
         method here. All this does is close the environment handle. Again,
         there should be no surprises here, but we provide the
         implementation for the sake of completeness anyway.
@@ -335,7 +371,6 @@ public class SimpleTxn
               <h3 class="title"><a id="doloop_java"></a>Method: SimpleTxn.doloop()</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         We now implement our application's
@@ -347,7 +382,7 @@ public class SimpleTxn
                     </p>
         <p>
                             To display the database, simply enter
-                            <tt class="literal">return</tt> at the prompt.
+                            <code class="literal">return</code> at the prompt.
                     </p>
         <p>
                         To begin, we declare a database pointer:
@@ -364,8 +399,6 @@ public class SimpleTxn
         {
             if (db == null) {
                 DatabaseConfig dbconf = new DatabaseConfig();
-                // Set page size small so page allocation is cheap.
-                dbconf.setPageSize(512);
                 dbconf.setType(DatabaseType.BTREE);
                 dbconf.setAllowCreate(true);
                 dbconf.setTransactional(true);
@@ -384,12 +417,12 @@ public class SimpleTxn
         <p>
             Now we implement our command prompt. This is a simple and not
             very robust implementation of a command prompt.
-            If the user enters the keywords <tt class="literal">exit</tt>
-            or <tt class="literal">quit</tt>, the loop is exited and the
+            If the user enters the keywords <code class="literal">exit</code>
+            or <code class="literal">quit</code>, the loop is exited and the
             application ends. If the user enters nothing and instead simply
-            presses <tt class="literal">return</tt>, the entire contents of the
+            presses <code class="literal">return</code>, the entire contents of the
             database is displayed. We use our
-            <tt class="methodname">printStocks()</tt> method to display the
+            <code class="methodname">printStocks()</code> method to display the
             database. (That implementation is shown next in this chapter.)
         </p>
         <p>
@@ -440,7 +473,7 @@ public class SimpleTxn
                 continue;
             }  </pre>
         <p>
-                Now we assign data to the <tt class="classname">DatabaseEntry</tt> 
+                Now we assign data to the <code class="classname">DatabaseEntry</code> 
                 classes that we will use to write the new information to the database.
             </p>
         <pre class="programlisting">            DatabaseEntry key =
@@ -456,13 +489,13 @@ public class SimpleTxn
             </p>
         <p>
                     Autocommit is described in the 
-                    <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide.
+                    <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em> guide.
                 </p>
         <p>
                 Also, the database is not configured for duplicate records, so
                 the data portion of a record is overwritten if the provided
                 key already exists in the database. However, in this case
-                DB returns <tt class="methodname">OperationStatus.KEYEXIST</tt> — which
+                DB returns <code class="methodname">OperationStatus.KEYEXIST</code> — which
                 we ignore.
             </p>
         <pre class="programlisting">            db.put(null, key, data);  </pre>
@@ -487,11 +520,10 @@ public class SimpleTxn
                     </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         The  
-                         <tt class="methodname">printStocks()</tt> 
+                         <code class="methodname">printStocks()</code> 
                         
                         <span>method</span>
                         simply takes a database handle, opens a cursor, and uses 
@@ -502,7 +534,7 @@ public class SimpleTxn
                     </p>
         <p>
                         If you are unfamiliar with basic cursor operations,
-                        please see the <i class="citetitle">Getting Started with Berkeley DB</i>
+                        please see the <em class="citetitle">Getting Started with Berkeley DB</em>
                         guide.
                     </p>
         <pre class="programlisting">    public void terminate()
@@ -556,7 +588,7 @@ public class SimpleTxn
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Chapter 3. The DB Replication Framework</td>
+          <td width="40%" align="right" valign="top"> Chapter 3. The DB Replication Manager</td>
         </tr>
       </table>
     </div>

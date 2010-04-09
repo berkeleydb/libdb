@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Opening and Closing the Class Catalog
-	</title>
+    <title>Opening and Closing the Class Catalog</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="opendbenvironment.html" title="&#10;&#9;&#9;Opening and Closing the Database Environment&#10;&#9;" />
-    <link rel="next" href="opendatabases.html" title="&#10;&#9;&#9;Opening and Closing Databases&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="opendbenvironment.html" title="Opening and Closing the Database Environment" />
+    <link rel="next" href="opendatabases.html" title="Opening and Closing Databases" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     This section describes how to open and close the Java class
@@ -52,15 +49,15 @@
 	whenever serialized objects will be stored in the database.
 </p>
       <p>
-    The <tt class="classname">SampleDatabase</tt> class is extended to open and close
+    The <code class="classname">SampleDatabase</code> class is extended to open and close
 	the class catalog. The following additional imports and class
 	members are needed.
 </p>
       <a id="cb_java_sampledatabase1"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.serial.StoredClassCatalog;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.serial.StoredClassCatalog;
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
-import com.sleepycat.db.DatabaseType;</tt></b>
+import com.sleepycat.db.DatabaseType;</code></strong>
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
@@ -72,23 +69,23 @@ import java.io.FileNotFoundException;
 public class SampleDatabase
 {
     private Environment env;
-<b class="userinput"><tt>    private static final String CLASS_CATALOG = "java_class_catalog";</tt></b>
+<strong class="userinput"><code>    private static final String CLASS_CATALOG = "java_class_catalog";</code></strong>
     ...
-<b class="userinput"><tt>    private StoredClassCatalog javaCatalog;</tt></b>
+<strong class="userinput"><code>    private StoredClassCatalog javaCatalog;</code></strong>
     ...
 } </pre>
       <p>
     While the class catalog is itself a database, it contains
 	metadata for other databases and is therefore treated specially by
 	the DB Java Collections API. The 
-    <a href="../../java/com/sleepycat/bind/serial/StoredClassCatalog.html" target="_top">StoredClassCatalog</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/StoredClassCatalog.html" target="_top">StoredClassCatalog</a>
     
 	class encapsulates the catalog store and implements this special
 	behavior.
 </p>
       <p>
     The following statements open the class catalog by creating a
-	<tt class="classname">Database</tt> and a <tt class="classname">StoredClassCatalog</tt> object. The catalog
+	<code class="classname">Database</code> and a <code class="classname">StoredClassCatalog</code> object. The catalog
 	database is created if it does not already exist.
 </p>
       <a id="cb_java_sampledatabase2"></a>
@@ -96,7 +93,7 @@ public class SampleDatabase
         throws DatabaseException, FileNotFoundException
     {
         ...
-<b class="userinput"><tt>        DatabaseConfig dbConfig = new DatabaseConfig();
+<strong class="userinput"><code>        DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(true);
         dbConfig.setAllowCreate(true);
         dbConfig.setType(DatabaseType.BTREE);
@@ -104,59 +101,59 @@ public class SampleDatabase
         Database catalogDb = env.openDatabase(null, CLASS_CATALOG, null, 
                                               dbConfig);
 
-        javaCatalog = new StoredClassCatalog(catalogDb);</tt></b>
+        javaCatalog = new StoredClassCatalog(catalogDb);</code></strong>
         ...
     }
     ...
-<b class="userinput"><tt>    public final StoredClassCatalog getClassCatalog() {
+<strong class="userinput"><code>    public final StoredClassCatalog getClassCatalog() {
         return javaCatalog;
-    }</tt></b> </pre>
+    }</code></strong> </pre>
       <p>
     The 
     
-    <a href="../../java/com/sleepycat/db/DatabaseConfig.html" target="_top">DatabaseConfig</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html" target="_top">DatabaseConfig</a>
     
 	class is used to specify configuration parameters when opening a
 	database. The first configuration option specified —
-	<tt class="methodname">setTransactional()</tt> — is set to true to create a transactional
+	<code class="methodname">setTransactional()</code> — is set to true to create a transactional
 	database. While non-transactional databases can also be created,
 	the examples in this tutorial use transactional databases.
 </p>
       <p>
-    <tt class="methodname">setAllowCreate()</tt> is set to true to specify
+    <code class="methodname">setAllowCreate()</code> is set to true to specify
 	that the database will be created if it does not already exist. If
 	this parameter is not specified, an exception will be thrown if the
 	database does not already exist.
 </p>
       <p>
-    <tt class="methodname">setDatabaseType()</tt> identifies the database storage
+    <code class="methodname">setDatabaseType()</code> identifies the database storage
     type or access method. For opening a catalog database, the
-    <tt class="literal">BTREE</tt> type is required. <tt class="literal">BTREE</tt> is the
+    <code class="literal">BTREE</code> type is required. <code class="literal">BTREE</code> is the
     most commonly used database type and in this tutorial is used for all
     databases.
 </p>
       <p>
-    The first parameter of the <tt class="methodname">openDatabase()</tt> method is an
+    The first parameter of the <code class="methodname">openDatabase()</code> method is an
 	optional transaction that is used for creating a new database. If
 	null is passed, auto-commit is used when creating a database.
 </p>
       <p>
-   The second and third parameters of <tt class="methodname">openDatabase()</tt>
+   The second and third parameters of <code class="methodname">openDatabase()</code>
    specify the filename and database (sub-file) name of the database. The
-   database name is optional and is <tt class="literal">null</tt> in this example.
+   database name is optional and is <code class="literal">null</code> in this example.
 </p>
       <p>
-    The last parameter of <tt class="methodname">openDatabase()</tt> specifies the database
+    The last parameter of <code class="methodname">openDatabase()</code> specifies the database
 	configuration object.
 </p>
       <p>
-    Lastly, the <tt class="classname">StoredClassCatalog</tt> object is created to manage the
+    Lastly, the <code class="classname">StoredClassCatalog</code> object is created to manage the
 	information in the class catalog database. The
-	<tt class="classname">StoredClassCatalog</tt> object will be used in the sections
+	<code class="classname">StoredClassCatalog</code> object will be used in the sections
 	following for creating serial bindings.
 </p>
       <p>
-    The <tt class="methodname">getClassCatalog</tt> method returns the catalog object for
+    The <code class="methodname">getClassCatalog</code> method returns the catalog object for
 	use by other classes in the example program.
 </p>
       <p>
@@ -167,14 +164,14 @@ public class SampleDatabase
       <pre class="programlisting">    public void close()
         throws DatabaseException
     {
-<b class="userinput"><tt>        javaCatalog.close();</tt></b>
+<strong class="userinput"><code>        javaCatalog.close();</code></strong>
         env.close();
     } </pre>
       <p>
-    The <tt class="methodname">StoredClassCatalog.close()</tt> method simply closes the
+    The <code class="methodname">StoredClassCatalog.close()</code> method simply closes the
 	underlying class catalog database and in fact the 
     
-    <a href="../../java/com/sleepycat/db/Database.html#close()" target="_top">Database.close()</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/Database.html#close()" target="_top">Database.close()</a>
     
 	method may be called instead, if desired. The catalog database, and
 	all other databases, must be closed before closing the

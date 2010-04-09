@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: hash_reclaim.c,v 12.11 2008/01/08 20:58:34 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

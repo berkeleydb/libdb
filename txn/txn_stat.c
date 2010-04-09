@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: txn_stat.c,v 12.28 2008/01/08 20:59:00 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -21,9 +21,6 @@ static int  __txn_print_stats __P((ENV *, u_int32_t));
 static int  __txn_stat __P((ENV *, DB_TXN_STAT **, u_int32_t));
 static char *__txn_status __P((DB_TXN_ACTIVE *));
 static void __txn_gid __P((ENV *, DB_MSGBUF *, DB_TXN_ACTIVE *));
-
-#define	XID_FIELD_IS_SET(p)						\
-	((p)->xa_status != 0 || (p)->status == TXN_PREPARED)
 
 /*
  * __txn_stat_pp --
@@ -117,10 +114,9 @@ __txn_stat(env, statp, flags)
 		stats->st_txnarray[ndx].read_lsn = td->read_lsn;
 		stats->st_txnarray[ndx].mvcc_ref = td->mvcc_ref;
 		stats->st_txnarray[ndx].status = td->status;
-		stats->st_txnarray[ndx].xa_status = td->xa_status;
-		if (XID_FIELD_IS_SET(td))
-			memcpy(stats->st_txnarray[ndx].xid,
-			    td->xid, sizeof(td->xid));
+		if (td->status == TXN_PREPARED)
+			memcpy(stats->st_txnarray[ndx].gid,
+			    td->gid, sizeof(td->gid));
 		if (td->name != INVALID_ROFF) {
 			(void)strncpy(stats->st_txnarray[ndx].name,
 			    R_ADDR(&mgr->reginfo, td->name),
@@ -292,7 +288,7 @@ __txn_print_stats(env, flags)
 			    "; mvcc refcount: %lu", (u_long)txn->mvcc_ref);
 		if (txn->name[0] != '\0')
 			__db_msgadd(env, &mb, "; \"%s\"", txn->name);
-		if (XID_FIELD_IS_SET(txn))
+		if (txn->status == TXN_PREPARE)
 			__txn_gid(env, &mb, txn);
 		DB_MSGBUF_FLUSH(env, &mb);
 	}
@@ -351,13 +347,6 @@ __txn_print_all(env, flags)
 	__db_prflags(env, NULL, region->flags, fn, NULL, "\tFlags");
 
 	__db_msg(env, "%s", DB_GLOBAL(db_line));
-	__db_msg(env, "XA information:");
-	STAT_LONG("XA RMID", env->xa_rmid);
-	/*
-	 * XXX
-	 * Display list of XA transactions in the ENV handle.
-	 */
-
 	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
@@ -367,33 +356,15 @@ static char *
 __txn_status(txn)
 	DB_TXN_ACTIVE *txn;
 {
-	switch (txn->xa_status) {
-	case 0:
-		switch (txn->status) {
-		case TXN_ABORTED:
-			return ("aborted");
-		case TXN_COMMITTED:
-			return ("committed");
-		case TXN_PREPARED:
-			return ("prepared");
-		case TXN_RUNNING:
-			return ("running");
-		default:
-			break;
-		}
-		break;
-	case TXN_XA_ABORTED:
-		return ("XA aborted");
-	case TXN_XA_DEADLOCKED:
-		return ("XA deadlocked");
-	case TXN_XA_ENDED:
-		return ("XA ended");
-	case TXN_XA_PREPARED:
-		return ("XA prepared");
-	case TXN_XA_STARTED:
-		return ("XA started");
-	case TXN_XA_SUSPENDED:
-		return ("XA suspended");
+	switch (txn->status) {
+	case TXN_ABORTED:
+		return ("aborted");
+	case TXN_COMMITTED:
+		return ("committed");
+	case TXN_PREPARED:
+		return ("prepared");
+	case TXN_RUNNING:
+		return ("running");
 	default:
 		break;
 	}
@@ -410,11 +381,11 @@ __txn_gid(env, mbp, txn)
 	u_int i;
 	int cnt;
 
-	__db_msgadd(env, mbp, "\n\tGID/XID:");
-	for (cnt = 0, xp = (u_int32_t *)txn->xid, i = 0;;) {
+	__db_msgadd(env, mbp, "\n\tGID:");
+	for (cnt = 0, xp = (u_int32_t *)txn->gid, i = 0;;) {
 		memcpy(&v, xp++, sizeof(u_int32_t));
 		__db_msgadd(env, mbp, "%#lx ", (u_long)v);
-		if ((i += sizeof(u_int32_t)) >= DB_XIDDATASIZE)
+		if ((i += sizeof(u_int32_t)) >= DB_GID_SIZE)
 			break;
 		if (++cnt == 4) {
 			DB_MSGBUF_FLUSH(env, mbp);

@@ -1,5 +1,9 @@
 /*
- * $Id: b_recover.c,v 1.12 2008/03/13 20:47:06 mbrey Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 

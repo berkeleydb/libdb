@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_checkpoint.c,v 12.22 2008/01/08 20:58:11 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 int	 main __P((int, char *[]));
@@ -139,9 +139,16 @@ main(argc, argv)
 
 	/*
 	 * If attaching to a pre-existing environment fails, create a
-	 * private one and try again.
+	 * private one and try again.  Turn on DB_THREAD in case a repmgr
+	 * application wants to do checkpointing using this utility: repmgr
+	 * requires DB_THREAD for all env handles.
 	 */
-	if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON, 0)) != 0 &&
+#ifdef HAVE_REPLICATION_THREADS
+#define	ENV_FLAGS (DB_THREAD | DB_USE_ENVIRON)
+#else
+#define	ENV_FLAGS DB_USE_ENVIRON
+#endif
+	if ((ret = dbenv->open(dbenv, home, ENV_FLAGS, 0)) != 0 &&
 	    (!once || ret == DB_VERSION_MISMATCH ||
 	    (ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0)) {

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: ex_sequence.c,v 12.9 2008/04/17 01:35:27 alexg Exp $
+ * $Id$
  */
 
 #include <sys/types.h>

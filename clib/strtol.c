@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: strtol.c,v 12.3 2006/05/28 14:04:59 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

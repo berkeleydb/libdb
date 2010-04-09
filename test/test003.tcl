@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test003.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test003
 # TEST	Small keys/large data
@@ -163,8 +163,8 @@ proc test003 { method args} {
 
 	# Now, reopen the file and run the last test again.
 	puts "\tTest003.c: close, open, and dump file"
-	open_and_dump_file $testfile $env $t1 $checkfunc \
-	    dump_bin_file_direction "-first" "-next"
+	eval open_and_dump_file $testfile $env $t1 $checkfunc \
+	    dump_bin_file_direction "-first" "-next" $args
 
 	if { [is_record_based $method] == 1 } {
 		filesort $t1 $t3 -n
@@ -175,8 +175,8 @@ proc test003 { method args} {
 
 	# Now, reopen the file and run the last test again in reverse direction.
 	puts "\tTest003.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $t1 $checkfunc \
-	    dump_bin_file_direction "-last" "-prev"
+	eval open_and_dump_file $testfile $env $t1 $checkfunc \
+	    dump_bin_file_direction "-last" "-prev" $args
 
 	if { [is_record_based $method] == 1 } {
 		filesort $t1 $t3 -n

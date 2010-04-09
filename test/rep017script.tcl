@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep017script.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Rep017 script - concurrency with checkpoints.
 #

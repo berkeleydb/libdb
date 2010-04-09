@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: log.h,v 12.39 2008/01/30 04:30:37 mjc Exp $
+ * $Id$
  */
 
 #ifndef _DB_LOG_H_
@@ -20,6 +20,7 @@ extern "C" {
  *	The DB file register code keeps track of open files.  It's stored
  *	in the log subsystem's shared region, and so appears in the log.h
  *	header file, but is logically separate.
+ *	The dbp may not be open if we are recovering the abort of a create.
  *******************************************************/
 /*
  * The per-process table that maps log file-id's to DB structures.
@@ -92,9 +93,9 @@ struct __log_persist;	typedef struct __log_persist LOGP;
  * a power-of-two or not, and requesting slightly under a power-of-two allows
  * stupid allocators to avoid wasting space.
  */
-#define	LG_BASE_REGION_SIZE	(65000)		/* 64KB - 536B */
+#define	LG_BASE_REGION_SIZE	(130000)	/* 128KB - 1072B */
 #define	LG_BSIZE_DEFAULT	(32000)		/* 32 KB - 768B */
-#define	LG_CURSOR_BUF_SIZE	(32000)		/* 32KB - 768B */
+#define	LG_CURSOR_BUF_SIZE	(32000)		/* 32 KB - 768B */
 
 /*
  * DB_LOG
@@ -124,12 +125,12 @@ struct __db_log {
 	ENV	 *env;			/* Environment */
 	REGINFO	  reginfo;		/* Region information. */
 
-#define DBLOG_AUTOREMOVE	0x01	/* Autoremove log files. */
-#define DBLOG_DIRECT		0x02	/* Do direct I/O on the log. */
-#define DBLOG_DSYNC		0x04	/* Set OS_DSYNC on the log. */
+#define	DBLOG_AUTOREMOVE	0x01	/* Autoremove log files. */
+#define	DBLOG_DIRECT		0x02	/* Do direct I/O on the log. */
+#define	DBLOG_DSYNC		0x04	/* Set OS_DSYNC on the log. */
 #define	DBLOG_FORCE_OPEN	0x08	/* Force the DB open even if it appears
 					 * to be deleted. */
-#define DBLOG_INMEMORY		0x10	/* Logging is in memory. */
+#define	DBLOG_INMEMORY		0x10	/* Logging is in memory. */
 #define	DBLOG_OPENFILES		0x20	/* Prepared files need to be open. */
 #define	DBLOG_RECOVER		0x40	/* We are in recovery. */
 #define	DBLOG_ZERO		0x80	/* Zero fill the log. */
@@ -276,6 +277,7 @@ struct __log {
 	/* BEGIN fields protected by rep->mtx_clientdb. */
 	DB_LSN	  waiting_lsn;		/* First log record after a gap. */
 	DB_LSN	  verify_lsn;		/* LSN we are waiting to verify. */
+	DB_LSN	  prev_ckp;		/* LSN of ckp preceeding verify_lsn. */
 	DB_LSN	  max_wait_lsn;		/* Maximum LSN requested. */
 	DB_LSN	  max_perm_lsn;		/* Maximum PERMANENT LSN processed. */
 	db_timespec max_lease_ts;	/* Maximum Lease timestamp seen. */
@@ -371,6 +373,13 @@ struct __db_commit {
 
 #define	CHECK_LSN(e, redo, cmp, lsn, prev)				\
 	if (DB_REDO(redo) && (cmp) < 0 &&				\
+	    ((!IS_NOT_LOGGED_LSN(*(lsn)) && !IS_ZERO_LSN(*(lsn))) ||	\
+	    IS_REP_CLIENT(e))) {					\
+		ret = __db_check_lsn(e, lsn, prev);			\
+		goto out;						\
+	}
+#define	CHECK_ABORT(e, redo, cmp, lsn, prev)				\
+	if (redo == DB_TXN_ABORT && (cmp) != 0 &&			\
 	    ((!IS_NOT_LOGGED_LSN(*(lsn)) && !IS_ZERO_LSN(*(lsn))) ||	\
 	    IS_REP_CLIENT(e))) {					\
 		ret = __db_check_lsn(e, lsn, prev);			\

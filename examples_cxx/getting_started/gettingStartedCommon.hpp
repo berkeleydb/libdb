@@ -1,7 +1,18 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 // File: gettingStartedCommon.hpp
 
 #ifndef GETTINGSTARTEDCOMMON_H
 #define GETTINGSTARTEDCOMMON_H
+
+#include <cstdlib>
+#include <cstring>
 
 class InventoryData
 {

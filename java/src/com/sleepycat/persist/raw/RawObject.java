@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: RawObject.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.raw;
@@ -20,8 +20,8 @@ import com.sleepycat.persist.model.EntityModel;
  * Conversion}.  A <code>RawObject</code> is used to represent instances of
  * complex types (persistent classes with fields), arrays, and enum values.  It
  * is not used to represent non-enum simple types, which are represented as
- * simple objects.  This includes primitives, which are represented as simple
- * objects using their wrapper class.
+ * simple objects.  This includes primitives, which are represented as
+ * instances of their wrapper class.
  *
  * <p>{@code RawObject} objects are thread-safe.  Multiple threads may safely
  * call the methods of a shared {@code RawObject} object.</p>
@@ -177,6 +177,15 @@ public class RawObject {
         if (!Arrays.deepEquals(elements, o.elements)) {
             return false;
         }
+        if (enumConstant != null) {
+            if (!enumConstant.equals(o.enumConstant)) {
+                return false;
+            }
+        } else {
+            if (o.enumConstant != null) {
+                return false;
+            }
+        }
         if (values != null) {
             if (!values.equals(o.values)) {
                 return false;
@@ -202,10 +211,14 @@ public class RawObject {
     public int hashCode() {
         return System.identityHashCode(type) +
                Arrays.deepHashCode(elements) +
+               (enumConstant != null ? enumConstant.hashCode() : 0) +
                (values != null ? values.hashCode() : 0) +
                (superObject != null ? superObject.hashCode() : 0);
     }
 
+    /**
+     * Returns an XML representation of the raw object.
+     */
     @Override
     public String toString() {
         StringBuffer buf = new StringBuffer(500);
@@ -217,52 +230,60 @@ public class RawObject {
                                  String indent,
                                  String id,
                                  boolean isSuper) {
-        String indent2 = indent + INDENT;
-        String endTag;
-        buf.append(indent);
-        if (type.isArray()) {
-            buf.append("<Array");
-            endTag = "</Array>";
-        } else if (type.isEnum()) {
+        if (type.isEnum()) {
+            buf.append(indent);
             buf.append("<Enum");
-            endTag = "</Enum>";
-        } else if (isSuper) {
-            buf.append("<Super");
-            endTag = "</Super>";
-        } else {
-            buf.append("<Object");
-            endTag = "</Object>";
-        }
-        if (id != null) {
             formatId(buf, id);
-        }
-        if (type.isArray()) {
-            buf.append(" length=\"");
-            buf.append(elements.length);
-            buf.append('"');
-        }
-        buf.append(" class=\"");
-        buf.append(type.getClassName());
-        buf.append("\">\n");
-
-        if (superObject != null) {
-            superObject.formatRawObject(buf, indent2, null, true);
-        }
-        if (type.isArray()) {
-            for (int i = 0; i < elements.length; i += 1) {
-                formatValue(buf, indent2, String.valueOf(i), elements[i]);
-            }
-        } else if (type.isEnum()) {
+            buf.append(" class=\"");
+            buf.append(type.getClassName());
+            buf.append("\" typeId=\"");
+            buf.append(type.getId());
+            buf.append("\">");
             buf.append(enumConstant);
+            buf.append("</Enum>\n");
         } else {
-            TreeSet<String> keys = new TreeSet<String>(values.keySet());
-            for (String name : keys) {
-                formatValue(buf, indent2, name, values.get(name));
+            String indent2 = indent + INDENT;
+            String endTag;
+            buf.append(indent);
+            if (type.isArray()) {
+                buf.append("<Array");
+                endTag = "</Array>";
+            } else if (isSuper) {
+                buf.append("<Super");
+                endTag = "</Super>";
+            } else {
+                buf.append("<Object");
+                endTag = "</Object>";
             }
+            formatId(buf, id);
+            if (type.isArray()) {
+                buf.append(" length=\"");
+                buf.append(elements.length);
+                buf.append('"');
+            }
+            buf.append(" class=\"");
+            buf.append(type.getClassName());
+            buf.append("\" typeId=\"");
+            buf.append(type.getId());
+            buf.append("\">\n");
+
+            if (superObject != null) {
+                superObject.formatRawObject(buf, indent2, null, true);
+            }
+            if (type.isArray()) {
+                for (int i = 0; i < elements.length; i += 1) {
+                    formatValue(buf, indent2, String.valueOf(i), elements[i]);
+                }
+            } else {
+                TreeSet<String> keys = new TreeSet<String>(values.keySet());
+                for (String name : keys) {
+                    formatValue(buf, indent2, name, values.get(name));
+                }
+            }
+            buf.append(indent);
+            buf.append(endTag);
+            buf.append("\n");
         }
-        buf.append(indent);
-        buf.append(endTag);
-        buf.append("\n");
     }
 
     private static void formatValue(StringBuffer buf,
@@ -289,12 +310,14 @@ public class RawObject {
     }
 
     private static void formatId(StringBuffer buf, String id) {
-        if (Character.isDigit(id.charAt(0))) {
-            buf.append(" index=\"");
-        } else {
-            buf.append(" field=\"");
+        if (id != null) {
+            if (Character.isDigit(id.charAt(0))) {
+                buf.append(" index=\"");
+            } else {
+                buf.append(" field=\"");
+            }
+            buf.append(id);
+            buf.append('"');
         }
-        buf.append(id);
-        buf.append('"');
     }
 }

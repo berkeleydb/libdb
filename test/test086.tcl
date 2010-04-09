@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test086.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test086
 # TEST	Test of cursor stability across btree splits/rsplits with
@@ -15,6 +15,8 @@ proc test086 { method args } {
 	set args [convert_args $method $args]
 	set encargs ""
 	set args [split_encargs $args encargs]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	if { [is_btree $method] != 1 } {
 		puts "Test$tnum skipping for method $method."
@@ -44,7 +46,8 @@ proc test086 { method args } {
 	set t1 $testdir/t1
 	env_cleanup $testdir
 
-	set env [eval {berkdb_env -create -home $testdir -txn} $encargs]
+	set env [eval \
+	     {berkdb_env -create -home $testdir -txn} $pageargs $encargs]
 	error_check_good berkdb_env [is_valid_env $env] TRUE
 
 	puts "\tTest$tnum.a: Create $method database."

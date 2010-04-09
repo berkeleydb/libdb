@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_mgr.c,v 12.22 2008/01/08 20:58:25 bostic Exp $
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -22,11 +22,7 @@ typedef struct {
 	SHARED_DATA shared_data;
 } APP_DATA;
 
-const char *progname = "ex_rep";
-
-#ifdef _WIN32
-extern int getopt(int, char * const *, const char *);
-#endif
+const char *progname = "ex_rep_mgr";
 
 static void event_callback __P((DB_ENV *, u_int32_t, void *));
 
@@ -35,101 +31,92 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	extern char *optarg;
 	DB_ENV *dbenv;
-	const char *home;
-	char ch, *host, *portstr;
-	int ret, totalsites, t_ret, got_listen_address, friend;
-	u_int16_t port;
+	SETUP_DATA setup_info;
+	repsite_t *site_list;
 	APP_DATA my_app_data;
+	thread_t ckp_thr, lga_thr;
+	supthr_args sup_args;
 	u_int32_t start_policy;
-	int priority;
+	int i, ret, t_ret;
 
-	my_app_data.shared_data.is_master = 0; /* assume start out as client */
+	memset(&setup_info, 0, sizeof(SETUP_DATA));
+	setup_info.progname = progname;
+	memset(&my_app_data, 0, sizeof(APP_DATA));
 	dbenv = NULL;
-	ret = got_listen_address = 0;
-	home = "TESTDIR";
+	ret = 0;
+
+	start_policy = DB_REP_ELECTION;
 
 	if ((ret = create_env(progname, &dbenv)) != 0)
 		goto err;
 	dbenv->app_private = &my_app_data;
 	(void)dbenv->set_event_notify(dbenv, event_callback);
 
-	start_policy = DB_REP_ELECTION;	/* default */
-	priority = 100;		/* default */
+	/* Parse command line and perform common replication setup. */
+	if ((ret = common_rep_setup(dbenv, argc, argv, &setup_info)) != 0)
+		goto err;
 
-	while ((ch = getopt(argc, argv, "Cf:h:Mm:n:o:p:v")) != EOF) {
-		friend = 0;
-		switch (ch) {
-		case 'C':
-			start_policy = DB_REP_CLIENT;
-			break;
-		case 'h':
-			home = optarg;
-			break;
-		case 'M':
-			start_policy = DB_REP_MASTER;
-			break;
-		case 'm':
-			host = strtok(optarg, ":");
-			if ((portstr = strtok(NULL, ":")) == NULL) {
-				fprintf(stderr, "Bad host specification.\n");
-				goto err;
-			}
-			port = (unsigned short)atoi(portstr);
-			if ((ret = dbenv->repmgr_set_local_site(dbenv,
-			    host, port, 0)) != 0) {
-				fprintf(stderr,
-				    "Could not set listen address (%d).\n",
-				    ret);
-				goto err;
-			}
-			got_listen_address = 1;
-			break;
-		case 'n':
-			totalsites = atoi(optarg);
-			if ((ret =
-			    dbenv->rep_set_nsites(dbenv, totalsites)) != 0)
-				dbenv->err(dbenv, ret, "set_nsites");
-			break;
-		case 'f':
-			friend = 1; /* FALLTHROUGH */
-		case 'o':
-			host = strtok(optarg, ":");
-			if ((portstr = strtok(NULL, ":")) == NULL) {
-				fprintf(stderr, "Bad host specification.\n");
-				goto err;
-			}
-			port = (unsigned short)atoi(portstr);
-			if ((ret = dbenv->repmgr_add_remote_site(dbenv, host,
-			    port, NULL, friend ? DB_REPMGR_PEER : 0)) != 0) {
-				dbenv->err(dbenv, ret,
-				    "Could not add site %s:%d", host,
-				    (int)port);
-				goto err;
-			}
-			break;
-		case 'p':
-			priority = atoi(optarg);
-			break;
-		case 'v':
-			if ((ret = dbenv->set_verbose(dbenv,
-			    DB_VERB_REPLICATION, 1)) != 0)
-				goto err;
-			break;
-		case '?':
-		default:
-			usage(progname);
+	/* Perform repmgr-specific setup based on command line options. */
+	if (setup_info.role == MASTER)
+		start_policy = DB_REP_MASTER;
+	else if (setup_info.role == CLIENT)
+		start_policy = DB_REP_CLIENT;
+	if ((ret = dbenv->repmgr_set_local_site(dbenv, setup_info.self.host,
+	    setup_info.self.port, 0)) != 0) {
+		fprintf(stderr, "Could not set listen address (%d).\n", ret);
+		goto err;
+	}
+	site_list = setup_info.site_list;
+	for (i = 0; i < setup_info.remotesites; i++) {
+		if ((ret = dbenv->repmgr_add_remote_site(dbenv,
+		    site_list[i].host, site_list[i].port, NULL,
+		    site_list[i].peer ? DB_REPMGR_PEER : 0)) != 0) {
+			dbenv->err(dbenv, ret,
+			    "Could not add site %s:%d", site_list[i].host,
+			    (int)site_list[i].port);
+			goto err;
 		}
 	}
 
-	/* Error check command line. */
-	if ((!got_listen_address) || home == NULL)
-		usage(progname);
+	/*
+	 * Configure heartbeat timeouts so that repmgr monitors the
+	 * health of the TCP connection.  Master sites broadcast a heartbeat
+	 * at the frequency specified by the DB_REP_HEARTBEAT_SEND timeout.
+	 * Client sites wait for message activity the length of the
+	 * DB_REP_HEARTBEAT_MONITOR timeout before concluding that the
+	 * connection to the master is lost.  The DB_REP_HEARTBEAT_MONITOR
+	 * timeout should be longer than the DB_REP_HEARTBEAT_SEND timeout.
+	 */
+	if ((ret = dbenv->rep_set_timeout(dbenv, DB_REP_HEARTBEAT_SEND,
+	    5000000)) != 0)
+		dbenv->err(dbenv, ret,
+		    "Could not set heartbeat send timeout.\n");
+	if ((ret = dbenv->rep_set_timeout(dbenv, DB_REP_HEARTBEAT_MONITOR,
+	    10000000)) != 0)
+		dbenv->err(dbenv, ret,
+		    "Could not set heartbeat monitor timeout.\n");
 
-	dbenv->rep_set_priority(dbenv, priority);
+	/*
+	 * The following repmgr features may also be useful to your
+	 * application.  See Berkeley DB documentation for more details.
+	 *  - Two-site strict majority rule - In a two-site replication
+	 *    group, require both sites to be available to elect a new
+	 *    master.
+	 *  - Timeouts - Customize the amount of time repmgr waits
+	 *    for such things as waiting for acknowledgements or attempting
+	 *    to reconnect to other sites.
+	 *  - Site list - return a list of sites currently known to repmgr.
+	 */
 
-	if ((ret = env_init(dbenv, home)) != 0)
+	if ((ret = env_init(dbenv, setup_info.home)) != 0)
+		goto err;
+
+	/* Start checkpoint and log archive threads. */
+	sup_args.dbenv = dbenv;
+	sup_args.shared = &my_app_data.shared_data;
+	if ((ret = start_support_threads(dbenv, &sup_args, &ckp_thr,
+	    &lga_thr)) != 0)
 		goto err;
 
 	if ((ret = dbenv->repmgr_start(dbenv, 3, start_policy)) != 0)
@@ -139,6 +126,10 @@ main(argc, argv)
 		dbenv->err(dbenv, ret, "Client failed");
 		goto err;
 	}
+
+	/* Finish checkpoint and log archive threads. */
+	if ((ret = finish_support_threads(&ckp_thr, &lga_thr)) != 0)
+		goto err;
 
 	/*
 	 * We have used the DB_TXN_NOSYNC environment flag for improved
@@ -180,19 +171,31 @@ event_callback(dbenv, which, info)
 	switch (which) {
 	case DB_EVENT_REP_CLIENT:
 		shared->is_master = 0;
+		shared->in_client_sync = 1;
 		break;
 
 	case DB_EVENT_REP_MASTER:
 		shared->is_master = 1;
+		shared->in_client_sync = 0;
+		break;
+
+	case DB_EVENT_REP_NEWMASTER:
+		shared->in_client_sync = 1;
 		break;
 
 	case DB_EVENT_REP_PERM_FAILED:
-		printf("insufficient acks\n");
+		/*
+		 * Did not get enough acks to guarantee transaction
+		 * durability based on the configured ack policy.  This
+		 * transaction will be flushed to the master site's
+		 * local disk storage for durability.
+		 */
+		printf(
+    "Insufficient acknowledgements to guarantee transaction durability.\n");
 		break;
 
-	case DB_EVENT_REP_STARTUPDONE: /* FALLTHROUGH */
-	case DB_EVENT_REP_NEWMASTER:
-		/* I don't care about these, for now. */
+	case DB_EVENT_REP_STARTUPDONE:
+		shared->in_client_sync = 0;
 		break;
 
 	default:

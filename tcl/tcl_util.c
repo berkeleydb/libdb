@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_util.c,v 12.9 2008/01/08 20:58:52 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -56,7 +56,11 @@ bdb_RandCommand(interp, objc, objv)
 			Tcl_WrongNumArgs(interp, 2, objv, NULL);
 			return (TCL_ERROR);
 		}
+#ifdef	HAVE_RANDOM
+		ret = random();
+#else
 		ret = rand();
+#endif
 		res = Tcl_NewIntObj(ret);
 		break;
 	case RRAND_INT:
@@ -80,7 +84,11 @@ bdb_RandCommand(interp, objc, objv)
 		}
 
 		_debug_check();
+#ifdef	HAVE_RANDOM
+		ret = lo + random() % ((hi - lo) + 1);
+#else
 		ret = lo + rand() % ((hi - lo) + 1);
+#endif
 		res = Tcl_NewIntObj(ret);
 		break;
 	case RSRAND:
@@ -93,7 +101,11 @@ bdb_RandCommand(interp, objc, objv)
 		}
 		if ((result =
 		    Tcl_GetIntFromObj(interp, objv[2], &lo)) == TCL_OK) {
+#ifdef	HAVE_RANDOM
+			srandom((u_int)lo);
+#else
 			srand((u_int)lo);
+#endif
 			res = Tcl_NewIntObj(0);
 		}
 		break;

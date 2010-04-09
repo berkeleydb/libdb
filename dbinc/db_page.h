@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_page.h,v 12.15 2008/01/10 17:44:45 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_PAGE_H_
@@ -76,11 +76,13 @@ typedef struct _dbmeta33 {
 	u_int8_t  encrypt_alg;	/*    24: Encryption algorithm. */
 	u_int8_t  type;		/*    25: Page type. */
 #define	DBMETA_CHKSUM		0x01
+#define	DBMETA_PART_RANGE	0x02
+#define	DBMETA_PART_CALLBACK	0x04
 	u_int8_t  metaflags;	/* 26: Meta-only flags */
 	u_int8_t  unused1;	/* 27: Unused. */
 	u_int32_t free;		/* 28-31: Free list page number. */
 	db_pgno_t last_pgno;	/* 32-35: Page number of last page in db. */
-	u_int32_t unused3;	/* 36-39: Unused. */
+	u_int32_t nparts;	/* 36-39: Number of partitions. */
 	u_int32_t key_count;	/* 40-43: Cached key count. */
 	u_int32_t record_count;	/* 44-47: Cached record count. */
 	u_int32_t flags;	/* 48-51: Flags: unique to each AM. */
@@ -99,7 +101,8 @@ typedef struct _btmeta33 {
 #define	BTM_RENUMBER	0x010	/*	  Recno: renumber on insert/delete. */
 #define	BTM_SUBDB	0x020	/*	  Subdatabases. */
 #define	BTM_DUPSORT	0x040	/*	  Duplicates are sorted. */
-#define	BTM_MASK	0x07f
+#define	BTM_COMPRESS	0x080	/*	  Compressed. */
+#define	BTM_MASK	0x0ff
 	DBMETA	dbmeta;		/* 00-71: Generic meta-data header. */
 
 	u_int32_t unused1;	/* 72-75: Unused space. */
@@ -658,7 +661,7 @@ typedef struct _rinternal {
 	(RINTERNAL_SIZE + sizeof(db_indx_t))
 
 typedef struct __pglist {
-	db_pgno_t pgno;
+	db_pgno_t pgno, next_pgno;
 	DB_LSN lsn;
 } db_pglist_t;
 

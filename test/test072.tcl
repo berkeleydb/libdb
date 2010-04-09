@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test072.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test072
 # TEST	Test of cursor stability when duplicates are moved off-page.
@@ -64,8 +64,10 @@ proc test072 { method {pagesize 512} {ndups 20} {tnum "072"} args } {
 	set dlist [list "-dup" "-dup -dupsort"]
 	set testid 0
 	foreach dupopt $dlist {
-		if { $is_je_test && $dupopt == "-dup" } {
-			continue
+		if { $is_je_test || [is_compressed $args] } {
+			if { $dupopt == "-dup" } {
+				continue
+			}
 		}
 
 		incr testid

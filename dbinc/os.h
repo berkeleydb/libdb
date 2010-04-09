@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os.h,v 12.31 2008/03/26 04:11:34 david Exp $
+ * $Id$
  */
 
 #ifndef _DB_OS_H_

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: recd014.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd014
 # TEST	This is a recovery test for create/delete of queue extents.  We
@@ -104,8 +104,10 @@ proc ext_recover_create { dir env_cmd method opts dbfile txncmd } {
 	#
 	# The command to execute to create an extent is a put.
 	# We are just creating the first one, so our extnum is 0.
+	# extnum must be in the format that make_ext_file expects,
+	# but we just leave out the file name.
 	#
-	set extnum 0
+	set extnum "/__dbq..0"
 	set data [chop_data $method [replicate $alphabet 512]]
 	puts "\t\tExecuting command"
 	set putrecno [$db put -txn $t -append $data]
@@ -276,7 +278,7 @@ proc ext_recover_consume { dir env_cmd method opts dbfile txncmd} {
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 
-	set extnum 0
+	set extnum "/__dbq..0"
 	set data [chop_data $method [replicate $alphabet 512]]
 
 	set txn [$env txn]

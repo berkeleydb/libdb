@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: qam.h,v 12.16 2008/01/08 20:58:18 bostic Exp $
+ * $Id$
  */
 
 #ifndef	_DB_QAM_H_
@@ -165,10 +165,10 @@ typedef enum {
 	__qam_fprobe(dbc, *pgnoaddr,					\
 	    addrp, QAM_PROBE_GET, DB_PRIORITY_UNCHANGED, flags)
 
-#define	__qam_fput(dbc, pgno, addrp, priority) 			\
+#define	__qam_fput(dbc, pgno, addrp, priority)			\
 	__qam_fprobe(dbc, pgno, addrp, QAM_PROBE_PUT, priority, 0)
 
-#define	__qam_dirty(dbc, pgno, pagep, priority) 		\
+#define	__qam_dirty(dbc, pgno, pagep, priority)		\
 	__qam_fprobe(dbc, pgno, pagep, QAM_PROBE_DIRTY, priority, 0)
 
 #if defined(__cplusplus)

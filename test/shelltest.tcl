@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: shelltest.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	scr###
 # TEST	The scr### directories are shell scripts that test a variety of

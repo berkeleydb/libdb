@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 4. Using Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="DbUsage.html" title="Database Usage Example" />
+    <link rel="prev" href="DbUsage.html" title="Database Usage Example" />
     <link rel="next" href="Positioning.html" title="Getting Records Using the Cursor" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="Cursors"></a>Chapter 4. Using Cursors</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -106,14 +105,13 @@
               <h2 class="title" style="clear: both"><a id="openCursor"></a>Opening and Closing Cursors</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
 		Cursors are managed using the
-			<span><tt class="classname">DBC</tt> structure.</span>
+			<span><code class="classname">DBC</code> structure.</span>
 			
 		To use a cursor, you must open it using the
-			<tt class="methodname">DB-&gt;cursor()</tt>
+			<code class="methodname">DB-&gt;cursor()</code>
 			
 		method.
 	</p>
@@ -133,7 +131,7 @@ my_database-&gt;cursor(my_database, NULL, &amp;cursorp, 0); </pre>
         <p>
         When you are done with the cursor, you should close it. To close a
         cursor, call the 
-            <tt class="methodname">DBC-&gt;close()</tt>
+            <code class="methodname">DBC-&gt;close()</code>
             
         method. Note that closing your database while cursors are still opened
         within the scope of the DB handle, especially if those cursors are 
@@ -162,9 +160,7 @@ if (my_database != NULL)
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="DbUsage.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="Positioning.html">Next</a></td>
         </tr>
         <tr>

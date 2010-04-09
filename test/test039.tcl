@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test039.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test039
 # TEST	DB_GET_BOTH/DB_GET_BOTH_RANGE on deleted items without comparison
@@ -25,8 +25,14 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum "039"} args } {
 	berkdb srand $rand_init
 
 	set args [convert_args $method $args]
+	set checkargs [split_partition_args $args]
 	set omethod [convert_method $method]
 
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
 	if { [is_record_based $method] == 1 || \
 	    [is_rbtree $method] == 1 } {
 		puts "Test$tnum skipping for method $method"
@@ -50,6 +56,7 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum "039"} args } {
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
 			append args " -auto_commit "
+			append checkargs " -auto_commit "
 			#
 			# If we are using txns and running with the
 			# default, set the default down a bit.
@@ -75,7 +82,7 @@ proc test039 { method {nentries 10000} {ndups 5} {tnum "039"} args } {
 	set did [open $dict]
 
 	set check_db [eval \
-	    {berkdb_open -create -mode 0644 -hash} $args {$checkdb}]
+	    {berkdb_open -create -mode 0644 -hash} $checkargs {$checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""

@@ -1,18 +1,19 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TransactionTest.java,v 12.11 2008/02/07 17:12:31 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections.test;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -27,6 +28,7 @@ import com.sleepycat.collections.StoredSortedMap;
 import com.sleepycat.collections.TransactionRunner;
 import com.sleepycat.collections.TransactionWorker;
 import com.sleepycat.compat.DbCompat;
+import com.sleepycat.db.Cursor;
 import com.sleepycat.db.CursorConfig;
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
@@ -34,6 +36,8 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.DeadlockException;
+import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.Transaction;
 import com.sleepycat.db.TransactionConfig;
 import com.sleepycat.util.RuntimeExceptionWrapper;
@@ -53,9 +57,7 @@ public class TransactionTest extends TestCase {
      * Runs a command line collection test.
      * @see #usage
      */
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         if (args.length == 1 &&
             (args[0].equals("-h") || args[0].equals("-help"))) {
             usage();
@@ -79,9 +81,7 @@ public class TransactionTest extends TestCase {
         System.exit(2);
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(TransactionTest.class);
         return suite;
     }
@@ -97,6 +97,7 @@ public class TransactionTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -108,6 +109,7 @@ public class TransactionTest extends TestCase {
                                   testStore.getValueBinding(), true);
     }
 
+    @Override
     public void tearDown() {
 
         try {
@@ -463,7 +465,7 @@ public class TransactionTest extends TestCase {
 
         if (DbCompat.RECNO_METHOD) {
             // create a list just so we can call configuredList()
-            Database listStore = TestStore.RECNO_RENUM.open(env, null);
+            Database listStore = TestStore.RECNO_RENUM.open(env, "foo");
             List list = new StoredList(listStore, TestStore.VALUE_BINDING,
                                        true);
             assertTrue(isReadCommitted
@@ -550,7 +552,7 @@ public class TransactionTest extends TestCase {
 
         if (DbCompat.RECNO_METHOD) {
             // create a list just so we can call configuredList()
-            Database listStore = TestStore.RECNO_RENUM.open(env, null);
+            Database listStore = TestStore.RECNO_RENUM.open(env, "foo");
             List list = new StoredList(listStore, TestStore.VALUE_BINDING,
                                        true);
             assertTrue(isReadUncommitted
@@ -610,12 +612,16 @@ public class TransactionTest extends TestCase {
 
         class MyEnv extends Environment {
 
+            /**
+             * @throws FileNotFoundException from DB core.
+             */
             MyEnv(File home, EnvironmentConfig config)
-                throws IOException, DatabaseException {
+                throws DatabaseException, FileNotFoundException {
 
                 super(home, config);
             }
 
+            @Override
             protected void finalize() {
                 finalizedFlag.append('.');
             }
@@ -694,9 +700,9 @@ public class TransactionTest extends TestCase {
 
     private static class ReadUncommittedThreadOne extends Thread {
 
-        private CurrentTransaction currentTxn;
-        private TransactionTest parent;
-        private StoredSortedMap map;
+        private final CurrentTransaction currentTxn;
+        private final TransactionTest parent;
+        private final StoredSortedMap map;
 
         private ReadUncommittedThreadOne(Environment env,
                                          TransactionTest parent) {
@@ -706,6 +712,7 @@ public class TransactionTest extends TestCase {
             this.map = parent.map;
         }
 
+        @Override
         public synchronized void run() {
 
             try {
@@ -733,10 +740,10 @@ public class TransactionTest extends TestCase {
 
     private static class ReadUncommittedThreadTwo extends Thread {
 
-        private Environment env;
-        private CurrentTransaction currentTxn;
-        private TransactionTest parent;
-        private StoredSortedMap map;
+        private final Environment env;
+        private final CurrentTransaction currentTxn;
+        private final TransactionTest parent;
+        private final StoredSortedMap map;
 
         private ReadUncommittedThreadTwo(Environment env,
                                          TransactionTest parent) {
@@ -747,6 +754,7 @@ public class TransactionTest extends TestCase {
             this.map = parent.map;
         }
 
+        @Override
         public synchronized void run() {
 
             try {
@@ -813,4 +821,18 @@ public class TransactionTest extends TestCase {
             finally { StoredIterator.close(i); }
         }
     }
+
+    /**
+     * Tests transaction retries performed by TransationRunner.
+     *
+     * This test is too sensitive to how lock conflict detection works on JE to
+     * make it work properly on DB core.
+     */
+
+    /**
+     * Tests transaction retries performed by TransationRunner.
+     *
+     * This test is too sensitive to how lock conflict detection works on JE to
+     * make it work properly on DB core.
+     */
 }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: CompositeKeyFormat.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.sleepycat.persist.model.ClassMetadata;
+import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.model.FieldMetadata;
 import com.sleepycat.persist.raw.RawField;
 import com.sleepycat.persist.raw.RawObject;
@@ -76,15 +77,26 @@ public class CompositeKeyFormat extends Format {
         return a;
     }
 
+    /**
+     * Creates a new composite key format.
+     */
     CompositeKeyFormat(Class cls,
                        ClassMetadata metadata,
-                       List<FieldMetadata> fieldNames) {
-        this(cls, metadata, getFieldNameArray(fieldNames));
+                       List<FieldMetadata> fieldMeta) {
+        this(cls, metadata, getFieldNameArray(fieldMeta));
     }
 
-    CompositeKeyFormat(Class cls,
-                       ClassMetadata metadata,
-                       String[] fieldNames) {
+    /**
+     * Reconsistitues a composite key format after a PersistComparator is
+     * deserialized.
+     */
+    CompositeKeyFormat(Class cls, String[] fieldNames) {
+        this(cls, null /*metadata*/, fieldNames);
+    }
+
+    private CompositeKeyFormat(Class cls,
+                               ClassMetadata metadata,
+                               String[] fieldNames) {
         super(cls);
         this.metadata = metadata;
 
@@ -97,7 +109,8 @@ public class CompositeKeyFormat extends Format {
         }
 
         /* Populate fields list in fieldNames order. */
-        List<FieldInfo> instanceFields = FieldInfo.getInstanceFields(cls);
+        List<FieldInfo> instanceFields =
+            FieldInfo.getInstanceFields(cls, metadata);
         fields = new ArrayList<FieldInfo>(instanceFields.size());
         for (String fieldName : fieldNames) {
             FieldInfo field = null;
@@ -109,14 +122,16 @@ public class CompositeKeyFormat extends Format {
             }
             if (field == null) {
                 throw new IllegalArgumentException
-                    ("Composite key field is not an instance field:" +
+                    ("Composite key field is not an instance field: " +
                      getClassName() + '.' + fieldName);
             }
             fields.add(field);
             instanceFields.remove(field);
-            if (!SimpleCatalog.isSimpleType(field.getFieldClass())) {
+            Class fieldCls = field.getFieldClass();
+            if (!SimpleCatalog.isSimpleType(fieldCls) &&
+                !fieldCls.isEnum()) {
                 throw new IllegalArgumentException
-                    ("Composite key field is not a simple type: " +
+                    ("Composite key field is not a simple type or enum: " +
                      getClassName() + '.' + fieldName);
             }
         }
@@ -125,6 +140,10 @@ public class CompositeKeyFormat extends Format {
                 ("All composite key instance fields must be key fields: " +
                  getClassName() + '.' + instanceFields.get(0).getName());
         }
+    }
+    
+    List<FieldInfo> getFieldInfo() {
+        return fields;
     }
 
     @Override
@@ -141,7 +160,7 @@ public class CompositeKeyFormat extends Format {
     }
 
     @Override
-    ClassMetadata getClassMetadata() {
+    public ClassMetadata getClassMetadata() {
         if (metadata == null) {
             throw new IllegalStateException(getClassName());
         }
@@ -178,16 +197,16 @@ public class CompositeKeyFormat extends Format {
     }
 
     @Override
-    void initialize(Catalog catalog, int initVersion) {
+    void initialize(Catalog catalog, EntityModel model, int initVersion) {
         /* Initialize all fields. */
         for (FieldInfo field : fields) {
-            field.initialize(catalog, initVersion);
+            field.initialize(catalog, model, initVersion);
         }
         /* Create the accessor. */
         Class type = getType();
         if (type != null) {
             if (EnhancedAccessor.isEnhanced(type)) {
-                objAccessor = new EnhancedAccessor(type);
+                objAccessor = new EnhancedAccessor(catalog, type, fields);
             } else {
                 objAccessor = new ReflectionAccessor(catalog, type, fields);
             }
@@ -209,14 +228,14 @@ public class CompositeKeyFormat extends Format {
     @Override
     public Object readObject(Object o, EntityInput input, boolean rawAccess) {
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
-        accessor.readNonKeyFields(o, input, 0, Accessor.MAX_FIELD_NUM, -1);
+        accessor.readCompositeKeyFields(o, input);
         return o;
     }
 
     @Override
     void writeObject(Object o, EntityOutput output, boolean rawAccess) {
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
-        accessor.writeNonKeyFields(o, output);
+        accessor.writeCompositeKeyFields(o, output);
     }
 
     @Override

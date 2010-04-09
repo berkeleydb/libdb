@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_region.c,v 12.45 2008/01/31 18:40:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -64,8 +64,7 @@ loop:	renv = NULL;
 		ret = __os_strdup(env, "process-private", &infop->name);
 	else {
 		(void)snprintf(buf, sizeof(buf), "%s", DB_REGION_ENV);
-		ret =
-		    __db_appname(env, DB_APP_NONE, buf, 0, NULL, &infop->name);
+		ret = __db_appname(env, DB_APP_NONE, buf, NULL, &infop->name);
 	}
 	if (ret != 0)
 		goto err;
@@ -431,6 +430,7 @@ creation:
 	renv->flags = 0;
 	renv->op_timestamp = renv->rep_timestamp = 0;
 	renv->mtx_regenv = MUTEX_INVALID;
+	renv->reg_panic = 0;
 
 	/*
 	 * Get the underlying REGION structure for this environment.  Note,
@@ -765,6 +765,7 @@ __env_detach(env, destroy)
 	 * be cleared.
 	 */
 	env->reginfo = NULL;
+	env->thr_hashtab = NULL;
 
 	/* Reset the addr value that we "corrected" above. */
 	infop->addr = infop->primary;
@@ -896,7 +897,8 @@ __env_remove_file(env)
 
 	/* Get the full path of a file in the environment. */
 	(void)snprintf(buf, sizeof(buf), "%s", DB_REGION_ENV);
-	if ((ret = __db_appname(env, DB_APP_NONE, buf, 0, NULL, &path)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, buf, NULL, &path)) != 0)
 		return;
 
 	/* Get the parent directory for the environment. */
@@ -935,6 +937,8 @@ __env_remove_file(env)
 		/* Skip queue extent files. */
 		if (strncmp(names[cnt], "__dbq.", 6) == 0)
 			continue;
+		if (strncmp(names[cnt], "__dbp.", 6) == 0)
+			continue;
 
 		/* Skip registry files. */
 		if (strncmp(names[cnt], "__db.register", 13) == 0)
@@ -955,7 +959,7 @@ __env_remove_file(env)
 
 		/* Remove the file. */
 		if (__db_appname(env,
-		    DB_APP_NONE, names[cnt], 0, NULL, &path) == 0) {
+		    DB_APP_NONE, names[cnt], NULL, &path) == 0) {
 			/*
 			 * Overwrite region files.  Temporary files would have
 			 * been maintained in encrypted format, so there's no
@@ -972,7 +976,7 @@ __env_remove_file(env)
 
 	if (lastrm != -1)
 		if (__db_appname(env,
-		    DB_APP_NONE, names[lastrm], 0, NULL, &path) == 0) {
+		    DB_APP_NONE, names[lastrm], NULL, &path) == 0) {
 			(void)__os_unlink(env, path, 1);
 			__os_free(env, path);
 		}
@@ -1017,7 +1021,7 @@ __env_region_attach(env, infop, size)
 	/* Join/create the underlying region. */
 	(void)snprintf(buf, sizeof(buf), DB_REGION_FMT, infop->id);
 	if ((ret = __db_appname(env,
-	    DB_APP_NONE, buf, 0, NULL, &infop->name)) != 0)
+	    DB_APP_NONE, buf, NULL, &infop->name)) != 0)
 		goto err;
 	if ((ret = __env_sys_attach(env, infop, rp)) != 0)
 		goto err;
@@ -1125,7 +1129,8 @@ __env_sys_attach(env, infop, rp)
 		(i) += OS_VMPAGESIZE - 1;				\
 	(i) -= (i) % OS_VMPAGESIZE;					\
 }
-	OS_VMROUNDOFF(rp->size);
+	if (F_ISSET(infop, REGION_CREATE))
+		OS_VMROUNDOFF(rp->size);
 
 #ifdef DB_REGIONSIZE_MAX
 	/* Some architectures have hard limits on the maximum region size. */
@@ -1171,17 +1176,16 @@ __env_sys_attach(env, infop, rp)
 			return (ret);
 
 	/*
-	 * We may require alignment the underlying system or heap allocation
-	 * library doesn't supply.  Align the address if necessary, saving
-	 * the original values for restoration when the region is discarded.
+	 * We require that the memory is aligned to fix the largest integral
+	 * type.  Otherwise, multiple processes mapping the same shared region
+	 * would have to memcpy every value before reading it.
 	 */
-	infop->addr_orig = infop->addr;
-	infop->addr = ALIGNP_INC(infop->addr_orig, sizeof(size_t));
-
-	rp->size_orig = rp->size;
-	if (infop->addr != infop->addr_orig)
-		rp->size -= (roff_t)
-		    ((u_int8_t *)infop->addr - (u_int8_t *)infop->addr_orig);
+	if (infop->addr != ALIGNP_INC(infop->addr, sizeof(uintmax_t))) {
+		__db_errx(env, "%s", "region memory was not correctly aligned");
+		(void)__env_sys_detach(env, infop,
+		    F_ISSET(infop, REGION_CREATE));
+		return (EINVAL);
+	}
 
 	return (0);
 }
@@ -1196,15 +1200,6 @@ __env_sys_detach(env, infop, destroy)
 	REGINFO *infop;
 	int destroy;
 {
-	REGION *rp;
-
-	rp = infop->rp;
-
-	/* Restore any address/size altered for alignment reasons. */
-	if (infop->addr != infop->addr_orig) {
-		infop->addr = infop->addr_orig;
-		rp->size = rp->size_orig;
-	}
 
 	/* If a region is private, free the memory. */
 	if (F_ISSET(env, ENV_PRIVATE)) {

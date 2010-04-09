@@ -1,5 +1,9 @@
 /*
- * $Id: b_workload.c,v 1.16 2008/04/14 02:21:47 david Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 
 #include "bench.h"
@@ -262,7 +266,7 @@ run_mixed_workload(dbp, config)
 	CONFIG *config;
 {
 	DBT key, data;
-	size_t next_op, i, ioff;
+	size_t next_op, i, ioff, inscount;
 	char kbuf[KBUF_LEN];
 	struct bench_q operation_queue;
 
@@ -283,7 +287,11 @@ run_mixed_workload(dbp, config)
 	 * This should add some stability, and reduce the likelihood
 	 * of deleting all of the entries in the DB.
 	 */
-	for (i = 0; i < 2 * config->pcount; ++i) {
+	inscount = 2 * config->pcount;
+	if (inscount > 100000)
+		inscount = 100000;
+
+	for (i = 0; i < inscount; ++i) {
 		GET_KEY_NEXT(key, config, kbuf, i);
 		BENCH_Q_TAIL_INSERT(operation_queue, kbuf);
 		DB_BENCH_ASSERT(dbp->put(dbp, NULL, &key, &data, 0) == 0);

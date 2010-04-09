@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_register.c,v 12.16 2008/01/08 20:58:42 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -36,9 +36,14 @@ __memp_register_pp(dbenv, ftype, pgin, pgout)
 	ENV_REQUIRES_CONFIG(env,
 	    env->mp_handle, "DB_ENV->memp_register", DB_INIT_MPOOL);
 
+	if (REP_ON(env)) {
+		__db_errx(env, "%s%s", "DB_ENV->memp_register: ",
+		    "method not permitted when replication is configured");
+		return (EINVAL);
+	}
+
 	ENV_ENTER(env, ip);
-	REPLICATION_WRAP(env,
-	    (__memp_register(env, ftype, pgin, pgout)), 0, ret);
+	ret = __memp_register(env, ftype, pgin, pgout);
 	ENV_LEAVE(env, ip);
 	return (ret);
 }

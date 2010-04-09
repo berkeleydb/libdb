@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredEntrySet.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -27,7 +27,9 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public class StoredEntrySet extends StoredCollection implements Set {
+public class StoredEntrySet<K,V>
+    extends StoredCollection<Map.Entry<K,V>>
+    implements Set<Map.Entry<K,V>> {
 
     StoredEntrySet(DataView mapView) {
 
@@ -51,10 +53,9 @@ public class StoredEntrySet extends StoredCollection implements Set {
      *
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is thrown.
      */
-    public boolean add(Object mapEntry) {
+    public boolean add(Map.Entry<K,V> mapEntry) {
 
-        Map.Entry entry = (Map.Entry) mapEntry; // allow ClassCastException
-        return add(entry.getKey(), entry.getValue());
+        return add(mapEntry.getKey(), mapEntry.getValue());
     }
 
     /**
@@ -77,11 +78,11 @@ public class StoredEntrySet extends StoredCollection implements Set {
         if (!(mapEntry instanceof Map.Entry)) {
             return false;
         }
-        Map.Entry entry = (Map.Entry) mapEntry;
         DataCursor cursor = null;
         boolean doAutoCommit = beginAutoCommit();
         try {
             cursor = new DataCursor(view, true);
+            Map.Entry entry = (Map.Entry) mapEntry;
             OperationStatus status =
                 cursor.findBoth(entry.getKey(), entry.getValue(), true);
             if (status == OperationStatus.SUCCESS) {
@@ -113,10 +114,10 @@ public class StoredEntrySet extends StoredCollection implements Set {
         if (!(mapEntry instanceof Map.Entry)) {
             return false;
         }
-        Map.Entry entry = (Map.Entry) mapEntry;
         DataCursor cursor = null;
         try {
             cursor = new DataCursor(view, false);
+            Map.Entry entry = (Map.Entry) mapEntry;
             OperationStatus status =
                 cursor.findBoth(entry.getKey(), entry.getValue(), false);
             return (status == OperationStatus.SUCCESS);
@@ -150,10 +151,10 @@ public class StoredEntrySet extends StoredCollection implements Set {
         }
     }
 
-    Object makeIteratorData(BaseIterator iterator,
-                            DatabaseEntry keyEntry,
-                            DatabaseEntry priKeyEntry,
-                            DatabaseEntry valueEntry) {
+    Map.Entry<K,V> makeIteratorData(BaseIterator iterator,
+                                    DatabaseEntry keyEntry,
+                                    DatabaseEntry priKeyEntry,
+                                    DatabaseEntry valueEntry) {
 
         return new StoredMapEntry(view.makeKey(keyEntry, priKeyEntry),
                                   view.makeValue(priKeyEntry, valueEntry),

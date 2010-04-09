@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep060.tcl,v 12.15 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep060
 # TEST	Test of normally running clients and internal initialization.
@@ -15,6 +15,8 @@
 proc rep060 { method { niter 200 } { tnum "060" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	# Run for btree and queue only.
 	if { $checking_valid_methods } {
@@ -43,6 +45,22 @@ proc rep060 { method { niter 200 } { tnum "060" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
@@ -59,8 +77,9 @@ proc rep060 { method { niter 200 } { tnum "060" } args } {
 					    with in-memory logs."
 					continue
 				}
-				puts "Rep$tnum ($method $r $o $args): Test of\
-				    internal initialization and slow client."
+				puts "Rep$tnum ($method $r $o $args):\
+				    Test of internal initialization and\
+				    slow client $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep060_sub $method $niter $tnum $l $r $o $args
@@ -71,12 +90,19 @@ proc rep060 { method { niter 200 } { tnum "060" } args } {
 
 proc rep060_sub { method niter tnum logset recargs opt largs } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -108,6 +134,7 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $repmemargs \
 	    $m_logargs -log_max $log_max -errpfx MASTER $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -116,6 +143,7 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	puts "\tRep$tnum.a: Open client."
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $repmemargs \
 	    $c_logargs -log_max $log_max -errpfx CLIENT $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -139,7 +167,12 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	# test checks for regards internal init when there are open
 	# database handles around.
 	#
-	set dbname "test.db"
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+	
 	set omethod [convert_method $method]
 	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
 	    -create -mode 0644} $largs $omethod $dbname]
@@ -157,7 +190,7 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	while { $stop == 0 } {
 		# Run test in the master (don't update client).
 		eval rep_test $method \
-		    $masterenv $db $niter $start $start 0 0 $largs
+		    $masterenv $db $niter $start $start 0 $largs
 		incr start $niter
 		replclear 2
 
@@ -176,7 +209,7 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	# normally, to give the client a chance to notice how many messages
 	# it is missing.
 	#
-	eval rep_test $method $masterenv $db $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv $db $niter $start $start 0 $largs
 	incr start $niter
 
 	set stop 0
@@ -245,7 +278,7 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 		set stop 0
 		while { $stop == 0 } {
 			eval rep_test $method $masterenv \
-			    NULL $niter $start $start 0 0 $largs
+			    NULL $niter $start $start 0 $largs
 			incr start $niter
 			set first_master_log [get_logfile $masterenv first]
 			if { $first_master_log > $last_client_log } {
@@ -301,8 +334,9 @@ proc rep060_sub { method niter tnum logset recargs opt largs } {
 	process_msgs $envlist
 
 	# We have now forced an internal initialization.  Verify it is correct.
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
 
+	# Check that logs are in-memory or on-disk as expected.
 	check_log_location $masterenv
 	check_log_location $clientenv
 

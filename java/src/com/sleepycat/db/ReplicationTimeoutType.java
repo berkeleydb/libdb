@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ReplicationTimeoutType.java,v 12.10 2008/04/28 23:32:00 sarette Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -77,7 +77,7 @@ public final class ReplicationTimeoutType {
     participation the first time the replication group finds a master. By
     default this option is turned off and normal election timeouts are used.
     (See the
-    <a href="{@docRoot}/../ref/rep/elect.html">Elections</a>
+    <a href="{@docRoot}/../programmer_reference/rep_elect.html">Elections</a>
     section in the Berkeley DB Reference Guide for more information.)
     */
     public static final ReplicationTimeoutType FULL_ELECTION_TIMEOUT =

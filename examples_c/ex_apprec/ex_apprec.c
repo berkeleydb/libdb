@@ -1,10 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: ex_apprec.c,v 12.9 2008/04/16 13:27:33 margo Exp $
+ * $Id$
  */
+
+#include "db_config.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,7 +18,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "db_config.h"
 #include "db.h"
 #include "db_int.h"
 #include "dbinc/db_swap.h"
@@ -87,7 +88,7 @@ main(argc, argv)
 	memset(&lsn, 0, sizeof(lsn));
 	if ((ret =
 	    ex_apprec_mkdir_log(dbenv,
-	        txn, &lsn, DB_FLUSH, &dirnamedbt)) != 0) {
+		txn, &lsn, DB_FLUSH, &dirnamedbt)) != 0) {
 		dbenv->err(dbenv, ret, "mkdir_log");
 		return (EXIT_FAILURE);
 	}

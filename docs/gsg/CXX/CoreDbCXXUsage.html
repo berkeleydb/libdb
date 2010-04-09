@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
+    <link rel="prev" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
     <link rel="next" href="DBEntry.html" title="Chapter 3. Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="CoreDbCXXUsage"></a>Database Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Throughout this book we will build a couple of applications that load
@@ -51,7 +50,7 @@
     </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_cxx/getting_started</pre>
       <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.  
     </p>
       <div class="example">
@@ -59,18 +58,19 @@
         <p class="title">
           <b>Example 2.1 MyDb Class</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             To manage our database open and close activities, we encapsulate them
-            in the <tt class="classname">MyDb</tt> class. There are several good reasons
+            in the <code class="classname">MyDb</code> class. There are several good reasons
             to do this, the most important being that we can ensure our databases are
-            closed by putting that activity in the <tt class="classname">MyDb</tt>
+            closed by putting that activity in the <code class="classname">MyDb</code>
             class destructor.
         </p>
-        <p>
+          <p>
             To begin, we create our class definition:
         </p>
-        <a id="cxx_db11"></a>
-        <pre class="programlisting">// File: MyDb.hpp
+          <a id="cxx_db11"></a>
+          <pre class="programlisting">// File: MyDb.hpp
 #include &lt;db_cxx.h&gt;
                                                                                                                                     
 class MyDb
@@ -101,11 +101,11 @@ private:
     // method is more appropriate for this example.
     void close();
 }; </pre>
-        <p>
+          <p>
         Next we need the implementation for the constructor:
     </p>
-        <a id="cxx_db12"></a>
-        <pre class="programlisting">// File: MyDb.cpp
+          <a id="cxx_db12"></a>
+          <pre class="programlisting">// File: MyDb.cpp
 #include "MyDb.hpp"
 
 // Class constructor. Requires a path to the location
@@ -137,13 +137,13 @@ MyDb::MyDb(std::string &amp;path, std::string &amp;dbName)
         std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
     }
 }</pre>
-        <p>
+          <p>
     And then we need the implementation for the 
-   <tt class="methodname">close()</tt> method:
+   <code class="methodname">close()</code> method:
    
 </p>
-        <a id="cxx_db12.1"></a>
-        <pre class="programlisting">// Private member used to close a database. Called from the class
+          <a id="cxx_db12.1"></a>
+          <pre class="programlisting">// Private member used to close a database. Called from the class
 // destructor.
 void
 MyDb::close()
@@ -166,7 +166,9 @@ MyDb::close()
         std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
     }
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
     </div>
     <div class="navfooter">
       <hr />

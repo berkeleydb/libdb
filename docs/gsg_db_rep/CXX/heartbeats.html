@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Heartbeats</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
-    <link rel="previous" href="fmwrkconnectretry.html" title="Managing Connection Retries" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
+    <link rel="prev" href="fmwrkconnectretry.html" title="Managing Connection Retries" />
     <link rel="next" href="fwrkmasterreplica.html" title="Chapter 4. Replica versus Master Processes" />
   </head>
   <body>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="fmwrkconnectretry.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 3. The DB Replication Framework</th>
+          <th width="60%" align="center">Chapter 3. The DB Replication Manager</th>
           <td width="20%" align="right"> <a accesskey="n" href="fwrkmasterreplica.html">Next</a></td>
         </tr>
       </table>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="heartbeats"></a>Managing Heartbeats</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     If your replicated application experiences few updates,
@@ -40,44 +39,48 @@
                     master without noticing it. This is because normally a
                     replicated application only knows that a master has
                     gone missing when update activity causes messages to be
-                    passed between the master and clients.
+                    passed between the master and replicas.
             </p>
       <p>
                     To guard against this, you can configure a heartbeat.
                     The heartbeat must be configured for both the master
-                    and each of the clients.
+                    and each of the replicas.
             </p>
       <p>
                     On the master, you configure the application to send a
                     heartbeat on a defined interval when it is otherwise
                     idle. Do this by using the
                     <span>
-                            <tt class="literal">DB_REP_HEARTBEAT_SEND</tt> flag
-                            with the
+                            <code class="literal">DB_REP_HEARTBEAT_SEND</code> value
+                            to the <code class="literal">which</code> parameter of the
                             
-                            <tt class="methodname">DbEnv::rep_set_timeout()</tt>
+                            <code class="methodname">DbEnv::rep_set_timeout()</code>
                             method.
                     </span>
                 
                 You must also provide the method a value representing the frequency of
-                the heartbeat. Note that the heartbeat is sent only if the
+                the heartbeat in microseconds. Note that the heartbeat is sent only if the
                 system is idle.
             </p>
       <p>
-                    On the client, you configure the application to listen
+                    On the replica, you configure the application to listen
                     for a heartbeat. The time that you configure here is
-                    the amount of time the client will wait for some
+                    the amount of time the replica will wait for some
                     message from the master (either the heartbeat or some
                     other message) before concluding that the connection is
                     lost. You do this using the 
                     <span>
-                            <tt class="literal">DB_REP_HEARTBEAT_MONITOR</tt> flag
-                            with the
+                            <code class="literal">DB_REP_HEARTBEAT_MONITOR</code> value
+                            to the <code class="literal">which</code> parameter of the 
                             
-                            <tt class="methodname">DbEnv::rep_set_timeout()</tt>
+                            <code class="methodname">DbEnv::rep_set_timeout()</code>
                             method and a timeout value in microseconds.
                     </span>
                 
+            </p>
+      <p>
+                For best results, configure the heartbeat monitor for a
+                longer time interval than the heartbeat send interval.
             </p>
     </div>
     <div class="navfooter">

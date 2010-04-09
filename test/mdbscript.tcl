@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: mdbscript.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Process script for the multi-process db tester.
 
@@ -35,7 +35,7 @@ set datastr $alphabet$alphabet
 set usage "mdbscript method dir file nentries iter procid procs"
 
 # Verify usage
-if { $argc != 7 } {
+if { $argc < 7 } {
 	puts "FAIL:[timestamp] test042: Usage: $usage"
 	exit
 }
@@ -48,6 +48,7 @@ set nentries [ lindex $argv 3 ]
 set iter [ lindex $argv 4 ]
 set procid [ lindex $argv 5 ]
 set procs [ lindex $argv 6 ]
+set args [ lindex $argv 7 ]
 
 set pflags ""
 set gflags ""
@@ -75,6 +76,8 @@ puts "$nentries data elements"
 puts "$iter iterations"
 puts "$procid process id"
 puts "$procs processes"
+eval set args $args
+puts "args: $args"
 
 set klock NOLOCK
 
@@ -89,7 +92,7 @@ error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 set locker [ $dbenv lock_id ]
 
-set db [berkdb_open -env $dbenv -create -mode 0644 $omethod $file]
+set db [eval {berkdb_open} -env $dbenv $omethod $args {$file}]
 error_check_good dbopen [is_valid_db $db] TRUE
 
 # Init globals (no data)
@@ -354,7 +357,7 @@ for { set i 0 } { $i < $iter } { incr i } {
 		global errorInfo;
 		global exception_handled;
 
-		puts $errorInfo
+#		puts $errorInfo
 
 		set fnl [string first "\n" $errorInfo]
 		set theError [string range $errorInfo 0 [expr $fnl - 1]]

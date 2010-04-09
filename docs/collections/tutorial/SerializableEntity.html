@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 6. 
-		Using Serializable Entities
-	</title>
+    <title>Chapter 6.  Using Serializable Entities</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="sortedcollections.html" title="&#10;&#9;&#9;Using Sorted Collections&#10;&#9;" />
-    <link rel="next" href="transientfieldsinbinding.html" title="&#10;&#9;&#9;Using Transient Fields in an Entity Binding&#10;&#9;" />
+    <link rel="prev" href="sortedcollections.html" title="Using Sorted Collections" />
+    <link rel="next" href="transientfieldsinbinding.html" title="Using Transient Fields in an Entity Binding" />
   </head>
   <body>
     <div class="navheader">
@@ -38,7 +36,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -99,7 +96,7 @@
     The modified entity class can then serve double-duty: It can be
 	serialized and stored as the record value, and it can be used as
 	the entity class as usual along with the Java collections API. The
-	<tt class="classname">PartData</tt>, <tt class="classname">SupplierData</tt> and <tt class="classname">ShipmentData</tt>
+	<code class="classname">PartData</code>, <code class="classname">SupplierData</code> and <code class="classname">ShipmentData</code>
 	classes can then be removed.
 </p>
       <p>
@@ -136,31 +133,30 @@
 	</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         The entity classes in this example are redefined such that they
         can be used both as serializable value classes and as entity
 	    classes. Compared to the prior example there are three changes to
-	    the <tt class="classname">Part</tt>, <tt class="classname">Supplier</tt> and <tt class="classname">Shipment</tt> entity
+	    the <code class="classname">Part</code>, <code class="classname">Supplier</code> and <code class="classname">Shipment</code> entity
 	    classes:
     </p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-            Each class now implements the <tt class="classname">Serializable</tt>
+            Each class now implements the <code class="classname">Serializable</code>
             interface.
         </p>
             </li>
             <li>
               <p>
-            The key fields in each class are declared as <tt class="literal">transient</tt>.
+            The key fields in each class are declared as <code class="literal">transient</code>.
         </p>
             </li>
             <li>
               <p>
-            A package-private <tt class="methodname">setKey()</tt> method is added to each class
+            A package-private <code class="methodname">setKey()</code> method is added to each class
 	        for initializing the transient key fields. This method will be
 	        called from the entity bindings.
         </p>
@@ -168,11 +164,11 @@
           </ul>
         </div>
         <a id="sentity_part"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;</tt></b>
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;</code></strong>
 ...
-public class Part <b class="userinput"><tt>implements Serializable</tt></b>
+public class Part <strong class="userinput"><code>implements Serializable</code></strong>
 {
-    private <b class="userinput"><tt>transient</tt></b> String number;
+    private <strong class="userinput"><code>transient</code></strong> String number;
     private String name;
     private String color;
     private Weight weight;
@@ -188,10 +184,10 @@ public class Part <b class="userinput"><tt>implements Serializable</tt></b>
         this.city = city;
     }
 
-<b class="userinput"><tt>    final void setKey(String number)
+<strong class="userinput"><code>    final void setKey(String number)
     {
         this.number = number;
-    }</tt></b>
+    }</code></strong>
 
     public final String getNumber()
     {
@@ -228,9 +224,9 @@ public class Part <b class="userinput"><tt>implements Serializable</tt></b>
     }
 }
 ...
-public class Supplier <b class="userinput"><tt>implements Serializable</tt></b>
+public class Supplier <strong class="userinput"><code>implements Serializable</code></strong>
 {
-    private <b class="userinput"><tt>transient</tt></b> String number;
+    private <strong class="userinput"><code>transient</code></strong> String number;
     private String name;
     private int status;
     private String city;
@@ -243,10 +239,10 @@ public class Supplier <b class="userinput"><tt>implements Serializable</tt></b>
         this.city = city;
     }
 
-<b class="userinput"><tt>    void setKey(String number)
+<strong class="userinput"><code>    void setKey(String number)
     {
         this.number = number;
-    }</tt></b>
+    }</code></strong>
 
     public final String getNumber()
     {
@@ -277,10 +273,10 @@ public class Supplier <b class="userinput"><tt>implements Serializable</tt></b>
     }
 }
 ...
-public class Shipment <b class="userinput"><tt>implements Serializable</tt></b>
+public class Shipment <strong class="userinput"><code>implements Serializable</code></strong>
 {
-    private <b class="userinput"><tt>transient</tt></b> String partNumber;
-    private <b class="userinput"><tt>transient</tt></b> String supplierNumber;
+    private <strong class="userinput"><code>transient</code></strong> String partNumber;
+    private <strong class="userinput"><code>transient</code></strong> String supplierNumber;
     private int quantity;
 
     public Shipment(String partNumber, String supplierNumber, int quantity)
@@ -290,11 +286,11 @@ public class Shipment <b class="userinput"><tt>implements Serializable</tt></b>
         this.quantity = quantity;
     }
 
-<b class="userinput"><tt>    void setKey(String partNumber, String supplierNumber)
+<strong class="userinput"><code>    void setKey(String partNumber, String supplierNumber)
     {
         this.partNumber = partNumber;
         this.supplierNumber = supplierNumber;
-    } </tt></b>
+    } </code></strong>
 
     public final String getPartNumber()
     {
@@ -326,9 +322,7 @@ public class Shipment <b class="userinput"><tt>implements Serializable</tt></b>
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="sortedcollections.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="transientfieldsinbinding.html">Next</a></td>
         </tr>
         <tr>

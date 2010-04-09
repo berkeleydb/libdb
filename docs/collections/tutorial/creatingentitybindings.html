@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Creating Entity Bindings
-	</title>
+    <title>Creating Entity Bindings</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Entity.html" title="Chapter 4. &#10;        Using Entity Classes&#9;&#10;&#9;" />
-    <link rel="previous" href="Entity.html" title="Chapter 4. &#10;        Using Entity Classes&#9;&#10;&#9;" />
-    <link rel="next" href="collectionswithentities.html" title="&#10;&#9;&#9;Creating Collections with Entity Bindings&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Entity.html" title="Chapter 4.  Using Entity Classes" />
+    <link rel="prev" href="Entity.html" title="Chapter 4.  Using Entity Classes" />
+    <link rel="next" href="collectionswithentities.html" title="Creating Collections with Entity Bindings" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     <span class="emphasis"><em>Entity bindings</em></span> are similar to ordinary bindings in that
@@ -50,15 +47,15 @@
 	mapping, while an entity binding is a two-to-one mapping.
 </p>
       <p>
-    The <tt class="literal">partValueBinding</tt>, <tt class="literal">supplierValueBinding</tt> and
-	<tt class="literal">shipmentValueBinding</tt> bindings are created below as entity
+    The <code class="literal">partValueBinding</code>, <code class="literal">supplierValueBinding</code> and
+	<code class="literal">shipmentValueBinding</code> bindings are created below as entity
 	bindings rather than (in the prior examples) serial bindings.
 </p>
       <a id="entity_sampleviews"></a>
       <pre class="programlisting">import com.sleepycat.bind.EntryBinding;
-<b class="userinput"><tt>import com.sleepycat.bind.EntityBinding;</tt></b>
+<strong class="userinput"><code>import com.sleepycat.bind.EntityBinding;</code></strong>
 import com.sleepycat.bind.serial.SerialBinding;
-<b class="userinput"><tt>import com.sleepycat.bind.serial.SerialSerialBinding;</tt></b>
+<strong class="userinput"><code>import com.sleepycat.bind.serial.SerialSerialBinding;</code></strong>
 ...
 
 public class SampleViews
@@ -69,18 +66,18 @@ public class SampleViews
         ClassCatalog catalog = db.getClassCatalog();
         SerialBinding partKeyBinding =
             new SerialBinding(catalog, PartKey.class);
-<b class="userinput"><tt>        EntityBinding partValueBinding =
-            new PartBinding(catalog, PartKey.class, PartData.class);</tt></b>
+<strong class="userinput"><code>        EntityBinding partValueBinding =
+            new PartBinding(catalog, PartKey.class, PartData.class);</code></strong>
         SerialBinding supplierKeyBinding =
             new SerialBinding(catalog, SupplierKey.class);
-<b class="userinput"><tt>        EntityBinding supplierValueBinding =
+<strong class="userinput"><code>        EntityBinding supplierValueBinding =
             new SupplierBinding(catalog, SupplierKey.class,
-                                SupplierData.class);</tt></b>
+                                SupplierData.class);</code></strong>
         SerialBinding shipmentKeyBinding =
             new SerialBinding(catalog, ShipmentKey.class);
-<b class="userinput"><tt>        EntityBinding shipmentValueBinding =
+<strong class="userinput"><code>        EntityBinding shipmentValueBinding =
             new ShipmentBinding(catalog, ShipmentKey.class,
-                                ShipmentData.class);</tt></b>
+                                ShipmentData.class);</code></strong>
         SerialBinding cityKeyBinding =
             new SerialBinding(catalog, String.class);
         ...
@@ -91,13 +88,13 @@ public class SampleViews
 	construct stored map objects.
 </p>
       <p>
-    The <tt class="classname">PartBinding</tt> class is defined below.
+    The <code class="classname">PartBinding</code> class is defined below.
 </p>
       <a id="entity_partbinding"></a>
       <pre class="programlisting">public class SampleViews
 {
     ...
-<b class="userinput"><tt>    private static class PartBinding extends SerialSerialBinding {
+<strong class="userinput"><code>    private static class PartBinding extends SerialSerialBinding {
         private PartBinding(ClassCatalog classCatalog,
                             Class keyClass,
                             Class dataClass)
@@ -125,35 +122,35 @@ public class SampleViews
             return new PartData(part.getName(), part.getColor(),
                                  part.getWeight(), part.getCity());
         }
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
     In general, an entity binding is any class that implements the
-	<a href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
+	<a class="ulink" href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
 	
 	interface, just as an ordinary binding is any class that implements
 	the 
-    <a href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
     
 	interface. In the prior examples the built-in 
-    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
     
 	class (which implements 
-    <a href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>)
+    <a class="ulink" href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>)
 	was used and no application-defined binding classes were needed.
 </p>
       <p>
     In this example, application-defined binding classes are used
 	that extend the 
-    <a href="../../java/com/sleepycat/bind/serial/SerialSerialBinding.html" target="_top">SerialSerialBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialSerialBinding.html" target="_top">SerialSerialBinding</a>
     
 	abstract base class. This base class implements 
-    <a href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
     
 	and provides the conversions between key/value bytes and key/value
 	objects, just as the 
-    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
     
 	class does. The application-defined entity class implements the
 	abstract methods defined in the base class that map between
@@ -161,25 +158,25 @@ public class SampleViews
 </p>
       <p>
     Three abstract methods are implemented for each entity binding.
-	The <tt class="methodname">entryToObject()</tt> method takes as input the key and data
+	The <code class="methodname">entryToObject()</code> method takes as input the key and data
 	objects, which have been deserialized automatically by the base
-	class. As output, it returns the combined <tt class="classname">Part</tt> entity.
+	class. As output, it returns the combined <code class="classname">Part</code> entity.
 </p>
       <p>
-    The <tt class="methodname">objectToKey()</tt> and <tt class="methodname">objectToData()</tt> methods take an
+    The <code class="methodname">objectToKey()</code> and <code class="methodname">objectToData()</code> methods take an
 	entity object as input. As output they return the part key or data
 	object that is extracted from the entity object. The key or data
 	will then be serialized automatically by the base class.
 </p>
       <p>
-    The <tt class="classname">SupplierBinding</tt> and <tt class="classname">ShipmentBinding</tt> classes
-	are very similar to the <tt class="classname">PartBinding</tt> class.
+    The <code class="classname">SupplierBinding</code> and <code class="classname">ShipmentBinding</code> classes
+	are very similar to the <code class="classname">PartBinding</code> class.
 </p>
       <a id="entity_supplierbinding"></a>
       <pre class="programlisting">public class SampleViews
 {
     ...
-<b class="userinput"><tt>    private static class SupplierBinding extends SerialSerialBinding {
+<strong class="userinput"><code>    private static class SupplierBinding extends SerialSerialBinding {
         private SupplierBinding(ClassCatalog classCatalog,
                                 Class keyClass,
                                 Class dataClass)
@@ -237,7 +234,7 @@ public class SampleViews
             Shipment shipment = (Shipment) object;
             return new ShipmentData(shipment.getQuantity());
         }
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
     </div>

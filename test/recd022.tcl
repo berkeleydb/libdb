@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd022.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd022
 # TEST	Test that pages allocated by an aborted subtransaction
@@ -112,7 +112,12 @@ proc recd022 { method args} {
 	# Verify database and then clean up.  We still need to get
 	# rid of the handles created before recovery.
 	puts "\tRecd022.i: verify and clean up"
-	verify_dir $testdir
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
+	verify_dir $testdir "" 1 0 $nodump
 	set stat [catch {$db close} res]
 	error_check_good db_close [is_substr $res "run recovery"] 1
 	error_check_good env1_close [$env1 close] 0

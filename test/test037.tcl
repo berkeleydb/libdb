@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test037.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test037
 # TEST	Test DB_RMW
@@ -26,17 +26,20 @@ proc test037 { method {nentries 100} args } {
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	# Create the database
 	env_cleanup $testdir
 	set testfile test037.db
 
 	set local_env \
-	    [eval {berkdb_env -create -mode 0644 -txn} $encargs -home $testdir]
+	    [eval {berkdb_env -create -mode 0644 -txn} \
+	         $encargs $pageargs -home $testdir]
 	error_check_good dbenv [is_valid_env $local_env] TRUE
 
-	set db [eval {berkdb_open \
-	     -env $local_env -create -mode 0644 $omethod} $args {$testfile}]
+	set db [eval {berkdb_open -env $local_env  \
+	     -create -mode 0644 $omethod} $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -77,7 +80,8 @@ proc test037 { method {nentries 100} args } {
 	puts "\tTest037.b: Setting up environments"
 
 	# Open local environment
-	set env_cmd [concat berkdb_env -create -txn $encargs -home $testdir]
+	set env_cmd \
+	    [concat berkdb_env -create -txn $encargs $pageargs -home $testdir]
 	set local_env [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $local_env] TRUE
 
@@ -105,10 +109,10 @@ proc test037 { method {nentries 100} args } {
 	set did [open $dict]
 	set rkey 0
 
-	set db [berkdb_open -auto_commit -env $local_env $testfile]
+	set db [eval {berkdb_open -auto_commit -env $local_env } $args {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set rdb [send_cmd $f1 \
-	    "berkdb_open -auto_commit -env $remote_env -mode 0644 $testfile"]
+	    "berkdb_open -auto_commit -env $remote_env $args -mode 0644  $testfile"]
 	error_check_good remote:dbopen [is_valid_db $rdb] TRUE
 
 	puts "\tTest037.d: Testing without RMW"

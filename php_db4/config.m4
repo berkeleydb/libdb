@@ -1,10 +1,10 @@
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
 # http://www.apache.org/licenses/LICENSE-2.0.txt
 #
 
-dnl $Id: config.m4,v 12.11 2008/01/08 20:58:46 bostic Exp $
+dnl $Id$
 dnl config.m4 for extension db4
 
 dnl Comments in this file start with the string 'dnl'.

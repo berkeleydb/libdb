@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: cxx_db.cpp,v 12.22 2008/01/08 20:58:09 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -92,8 +92,12 @@ Db::Db(DbEnv *dbenv, u_int32_t flags)
 ,	construct_flags_(flags)
 ,	append_recno_callback_(0)
 ,	associate_callback_(0)
+,       associate_foreign_callback_(0)
 ,	bt_compare_callback_(0)
+,	bt_compress_callback_(0)
+,	bt_decompress_callback_(0)
 ,	bt_prefix_callback_(0)
+,	db_partition_callback_(0)
 ,	dup_compare_callback_(0)
 ,	feedback_callback_(0)
 ,	h_compare_callback_(0)
@@ -423,6 +427,14 @@ int Db::_cxxname _cxxargspec						\
 	    (_cb) ? _db_##_name##_intercept_c : NULL));			\
 }
 
+#define	DB_GET_CALLBACK(_cxxname, _name, _cxxargspec, _cbp)		\
+int Db::_cxxname _cxxargspec						\
+{									\
+	if (_cbp != NULL)						\
+		*(_cbp) = _name##_callback_;				\
+	return 0;							\
+}
+
 /* associate callback - doesn't quite fit the pattern because of the flags */
 DB_CALLBACK_C_INTERCEPT(associate,
     int, (DB *cthis, const DBT *key, const DBT *data, DBT *retval),
@@ -443,9 +455,28 @@ int Db::associate(DbTxn *txn, Db *secondary, int (*callback)(Db *, const Dbt *,
 	    (callback) ? _db_associate_intercept_c : NULL, flags));
 }
 
+/* associate callback - doesn't quite fit the pattern because of the flags */
+DB_CALLBACK_C_INTERCEPT(associate_foreign, int,
+    (DB *cthis, const DBT *key, DBT *data, const DBT *fkey, int *changed),
+    return, (cxxthis, Dbt::get_const_Dbt(key),
+    Dbt::get_Dbt(data), Dbt::get_const_Dbt(fkey), changed))
+
+int Db::associate_foreign(Db *secondary, int (*callback)(Db *,
+        const Dbt *, Dbt *, const Dbt *, int *), u_int32_t flags)
+{
+	DB *cthis = unwrap(this);
+	
+	secondary->associate_foreign_callback_ = callback;
+	return ((*(cthis->associate_foreign))(cthis, unwrap(secondary),
+	    (callback) ? _db_associate_foreign_intercept_c : NULL, flags));
+}
+
 DB_CALLBACK_C_INTERCEPT(feedback,
     void, (DB *cthis, int opcode, int pct),
     /* no return */ (void), (cxxthis, opcode, pct))
+
+DB_GET_CALLBACK(get_feedback, feedback,
+    (void (**argp)(Db *cxxthis, int opcode, int pct)), argp)
 
 DB_SET_CALLBACK(set_feedback, feedback,
     (void (*arg)(Db *cxxthis, int opcode, int pct)), arg)
@@ -453,6 +484,9 @@ DB_SET_CALLBACK(set_feedback, feedback,
 DB_CALLBACK_C_INTERCEPT(append_recno,
     int, (DB *cthis, DBT *data, db_recno_t recno),
     return, (cxxthis, Dbt::get_Dbt(data), recno))
+
+DB_GET_CALLBACK(get_append_recno, append_recno,
+    (int (**argp)(Db *cxxthis, Dbt *data, db_recno_t recno)), argp)
 
 DB_SET_CALLBACK(set_append_recno, append_recno,
     (int (*arg)(Db *cxxthis, Dbt *data, db_recno_t recno)), arg)
@@ -462,13 +496,61 @@ DB_CALLBACK_C_INTERCEPT(bt_compare,
     return,
     (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2)))
 
+DB_GET_CALLBACK(get_bt_compare, bt_compare,
+    (int (**argp)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), argp)
+
 DB_SET_CALLBACK(set_bt_compare, bt_compare,
     (int (*arg)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), arg)
+
+DB_CALLBACK_C_INTERCEPT(bt_compress,
+    int, (DB *cthis, const DBT *data1, const DBT *data2, const DBT *data3,
+    const DBT *data4, DBT *data5), return,
+    (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2),
+    Dbt::get_const_Dbt(data3), Dbt::get_const_Dbt(data4), Dbt::get_Dbt(data5)))
+
+DB_CALLBACK_C_INTERCEPT(bt_decompress,
+    int, (DB *cthis, const DBT *data1, const DBT *data2, DBT *data3,
+    DBT *data4, DBT *data5), return,
+    (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2),
+    Dbt::get_Dbt(data3), Dbt::get_Dbt(data4), Dbt::get_Dbt(data5)))
+
+// The {g|s}et_bt_compress methods don't fit into the standard macro templates
+// since they take two callback functions.
+int Db::get_bt_compress(
+    int (**bt_compress)
+    (Db *, const Dbt *, const Dbt *, const Dbt *, const Dbt *, Dbt *),
+    int (**bt_decompress)
+    (Db *, const Dbt *, const Dbt *, Dbt *, Dbt *, Dbt *))
+{
+	if (bt_compress != NULL)
+		*(bt_compress) = bt_compress_callback_;
+	if (bt_decompress != NULL)
+		*(bt_decompress) = bt_decompress_callback_;
+	return 0;
+}
+
+int Db::set_bt_compress(
+    int (*bt_compress)
+    (Db *, const Dbt *, const Dbt *, const Dbt *, const Dbt *, Dbt *),
+    int (*bt_decompress)(Db *, const Dbt *, const Dbt *, Dbt *, Dbt *, Dbt *))
+{
+	DB *cthis = unwrap(this);
+
+	bt_compress_callback_ = bt_compress;
+	bt_decompress_callback_ = bt_decompress;
+	return ((*(cthis->set_bt_compress))(cthis, 
+	    (bt_compress ? _db_bt_compress_intercept_c : NULL),
+	    (bt_decompress ? _db_bt_decompress_intercept_c : NULL)));
+
+}
 
 DB_CALLBACK_C_INTERCEPT(bt_prefix,
     size_t, (DB *cthis, const DBT *data1, const DBT *data2),
     return,
     (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2)))
+
+DB_GET_CALLBACK(get_bt_prefix, bt_prefix,
+    (size_t (**argp)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), argp)
 
 DB_SET_CALLBACK(set_bt_prefix, bt_prefix,
     (size_t (*arg)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), arg)
@@ -478,6 +560,9 @@ DB_CALLBACK_C_INTERCEPT(dup_compare,
     return,
     (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2)))
 
+DB_GET_CALLBACK(get_dup_compare, dup_compare,
+    (int (**argp)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), argp)
+
 DB_SET_CALLBACK(set_dup_compare, dup_compare,
     (int (*arg)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), arg)
 
@@ -486,12 +571,18 @@ DB_CALLBACK_C_INTERCEPT(h_compare,
     return,
     (cxxthis, Dbt::get_const_Dbt(data1), Dbt::get_const_Dbt(data2)))
 
+DB_GET_CALLBACK(get_h_compare, h_compare,
+    (int (**argp)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), argp)
+
 DB_SET_CALLBACK(set_h_compare, h_compare,
     (int (*arg)(Db *cxxthis, const Dbt *data1, const Dbt *data2)), arg)
 
 DB_CALLBACK_C_INTERCEPT(h_hash,
     u_int32_t, (DB *cthis, const void *data, u_int32_t len),
     return, (cxxthis, data, len))
+
+DB_GET_CALLBACK(get_h_hash, h_hash,
+    (u_int32_t (**argp)(Db *cxxthis, const void *data, u_int32_t len)), argp)
 
 DB_SET_CALLBACK(set_h_hash, h_hash,
     (u_int32_t (*arg)(Db *cxxthis, const void *data, u_int32_t len)), arg)
@@ -586,6 +677,38 @@ DB_METHOD(get_pagesize, (u_int32_t *db_pagesizep),
     (db, db_pagesizep), DB_RETOK_STD)
 DB_METHOD(set_pagesize, (u_int32_t db_pagesize),
     (db, db_pagesize), DB_RETOK_STD)
+
+DB_CALLBACK_C_INTERCEPT(db_partition,
+    u_int32_t, (DB *cthis, DBT *key),
+    return, (cxxthis, Dbt::get_Dbt(key)))
+
+// set_partition and get_partition_callback do not fit into the macro 
+// templates, since there is an additional argument in the API calls.
+int Db::set_partition(u_int32_t parts, Dbt *keys, 
+    u_int32_t (*arg)(Db *cxxthis, Dbt *key))
+{
+	DB *cthis = unwrap(this);
+
+	db_partition_callback_ = arg;
+	return ((*(cthis->set_partition))(cthis, parts, keys,
+	    arg ? _db_db_partition_intercept_c : NULL));
+}
+
+int Db::get_partition_callback(u_int32_t *parts, 
+    u_int32_t (**argp)(Db *cxxthis, Dbt *key))
+{
+	DB *cthis = unwrap(this);
+	if (argp != NULL)
+		*(argp) = db_partition_callback_;
+	if (parts != NULL)
+		(cthis->get_partition_callback)(cthis, parts, NULL);
+	return 0;
+}
+
+DB_METHOD(set_partition_dirs, (const char **dirp), (db, dirp), DB_RETOK_STD)
+DB_METHOD(get_partition_dirs, (const char ***dirpp), (db, dirpp), DB_RETOK_STD)
+DB_METHOD(get_partition_keys, (u_int32_t *parts, Dbt **keys),
+    (db, parts, (DBT **)keys), DB_RETOK_STD)
 DB_METHOD(get_priority, (DB_CACHE_PRIORITY *priorityp),
     (db, priorityp), DB_RETOK_STD)
 DB_METHOD(set_priority, (DB_CACHE_PRIORITY priority),
@@ -606,18 +729,34 @@ DB_METHOD(get_re_source, (const char **re_source),
     (db, re_source), DB_RETOK_STD)
 DB_METHOD(set_re_source, (const char *re_source),
     (db, re_source), DB_RETOK_STD)
+DB_METHOD(sort_multiple, (Dbt *key, Dbt *data, u_int32_t flags),
+    (db, key, data, flags), DB_RETOK_STD)
 DB_METHOD(get_q_extentsize, (u_int32_t *extentsizep),
     (db, extentsizep), DB_RETOK_STD)
 DB_METHOD(set_q_extentsize, (u_int32_t extentsize),
     (db, extentsize), DB_RETOK_STD)
 
+DB_METHOD_QUIET(get_alloc, (db_malloc_fcn_type *malloc_fcnp,
+    db_realloc_fcn_type *realloc_fcnp, db_free_fcn_type *free_fcnp),
+    (db, malloc_fcnp, realloc_fcnp, free_fcnp))
+
 DB_METHOD_QUIET(set_alloc, (db_malloc_fcn_type malloc_fcn,
     db_realloc_fcn_type realloc_fcn, db_free_fcn_type free_fcn),
     (db, malloc_fcn, realloc_fcn, free_fcn))
 
+void Db::get_errcall(void (**argp)(const DbEnv *, const char *, const char *))
+{
+	dbenv_->get_errcall(argp);
+}
+
 void Db::set_errcall(void (*arg)(const DbEnv *, const char *, const char *))
 {
 	dbenv_->set_errcall(arg);
+}
+
+void Db::get_msgcall(void (**argp)(const DbEnv *, const char *))
+{
+	dbenv_->get_msgcall(argp);
 }
 
 void Db::set_msgcall(void (*arg)(const DbEnv *, const char *))
@@ -639,6 +778,9 @@ DB_METHOD(get_cachesize, (u_int32_t *gbytesp, u_int32_t *bytesp, int *ncachep),
     (db, gbytesp, bytesp, ncachep), DB_RETOK_STD)
 DB_METHOD(set_cachesize, (u_int32_t gbytes, u_int32_t bytes, int ncache),
     (db, gbytes, bytes, ncache), DB_RETOK_STD)
+
+DB_METHOD(get_create_dir, (const char **dirp), (db, dirp), DB_RETOK_STD)
+DB_METHOD(set_create_dir, (const char *dir), (db, dir), DB_RETOK_STD)
 
 int Db::set_paniccall(void (*callback)(DbEnv *, int))
 {

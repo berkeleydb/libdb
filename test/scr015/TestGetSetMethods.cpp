@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TestGetSetMethods.cpp,v 12.8 2008/01/08 20:58:54 bostic Exp $
+ * $Id$
  */
 
 /*

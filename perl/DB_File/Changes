@@ -1,5 +1,22 @@
 
 
+1.820 28 March 2009
+
+   * remove MAN3PODS from Makefile.PL to match core.
+
+1.819 18 February 2009
+
+   * t/db-recno.t fails if run in a path that contains spaces
+     [rt.cpan.org #43288]
+
+1.818 21 January 2009
+
+   * Updated Makefile.PL for Strawberry Perl. 
+     Patch suggested by David Golden.
+
+   * Remove IRIX notes from README. The page referenced doesn't exist
+     anymore.
+
 1.817 27 March 2008
 
    * Updated dbinfo

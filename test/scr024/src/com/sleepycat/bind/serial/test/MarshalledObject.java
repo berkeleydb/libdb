@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: MarshalledObject.java,v 12.7 2008/01/08 20:58:55 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial.test;
@@ -17,6 +17,7 @@ import com.sleepycat.bind.tuple.TupleOutput;
 /**
  * @author Mark Hayes
  */
+@SuppressWarnings("serial")
 public class MarshalledObject
     implements Serializable, MarshalledTupleKeyEntity {
 

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Closing Database Environments</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Env.html" title="Chapter 2. Database Environments" />
-    <link rel="previous" href="Env.html" title="Chapter 2. Database Environments" />
+    <link rel="prev" href="Env.html" title="Chapter 2. Database Environments" />
     <link rel="next" href="EnvProps.html" title="Environment Properties" />
   </head>
   <body>
@@ -32,19 +32,18 @@
             <h2 class="title" style="clear: both"><a id="EnvClose"></a>Closing Database Environments</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     You close your environment by calling the 
-    <tt class="methodname">Environment.close()</tt>
+    <code class="methodname">Environment.close()</code>
     method. This method performs a checkpoint, so it is not necessary to perform a sync or a checkpoint explicitly
     before calling it. For information on checkpoints, see the
-    <i class="citetitle">Berkeley DB Java Edition Getting Started with Transaction Processing</i> guide.
+    <em class="citetitle">Berkeley DB Java Edition Getting Started with Transaction Processing</em> guide.
     For information on syncs, see 
     
     
     <span>
-    the <i class="citetitle">Getting Started with Transaction Processing for Java</i> guide.
+    the <em class="citetitle">Getting Started with Transaction Processing for Java</em> guide.
     </span>
     </p>
       <pre class="programlisting">import com.sleepycat.db.DatabaseException;

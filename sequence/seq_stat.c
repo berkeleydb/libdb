@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: seq_stat.c,v 12.19 2008/04/19 15:20:28 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"

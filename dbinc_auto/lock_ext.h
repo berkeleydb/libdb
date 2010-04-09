@@ -8,7 +8,7 @@ extern "C" {
 
 int __lock_vec_pp __P((DB_ENV *, u_int32_t, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
 int __lock_vec __P((ENV *, DB_LOCKER *, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
-int __lock_get_pp __P((DB_ENV *, u_int32_t, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
+int __lock_get_pp __P((DB_ENV *, u_int32_t, u_int32_t, DBT *, db_lockmode_t, DB_LOCK *));
 int __lock_get __P((ENV *, DB_LOCKER *, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
 int  __lock_get_internal __P((DB_LOCKTAB *, DB_LOCKER *, u_int32_t, const DBT *, db_lockmode_t, db_timeout_t, DB_LOCK *));
 int  __lock_put_pp __P((DB_ENV *, DB_LOCK *));

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>In-Memory Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="txnexample_c.html" title="Transaction Example" />
+    <link rel="prev" href="txnexample_c.html" title="Transaction Example" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,6 @@
             <h2 class="title" style="clear: both"><a id="inmem_txnexample_c"></a>In-Memory Transaction Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         DB is sometimes used for applications that simply need to cache
@@ -54,7 +53,7 @@
             <p>
                 Refrain from specifying a home directory when you open your
                 environment. The exception to this is if you are using the
-                <tt class="literal">DB_CONFIG</tt> configuration file — in
+                <code class="literal">DB_CONFIG</code> configuration file — in
                 that case you must identify the environment's home
                 directory so that the configuration file can be found.
             </p>
@@ -93,17 +92,17 @@
       </div>
       <p>
         As an example, this section takes the transaction example provided
-        in <a href="txnexample_c.html">Transaction Example</a>
+        in <a class="xref" href="txnexample_c.html" title="Transaction Example">Transaction Example</a>
         and it updates that example so that the environment, database, log
         files, and regions are all kept entirely in-memory. 
     </p>
       <p>
         For illustration purposes, we also modify this example so that 
         uncommitted reads are no longer used to enable the 
-            <tt class="function">count_records()</tt>
+            <code class="function">count_records()</code>
             
         function. Instead, we simply provide a transaction handle to
-            <tt class="function">count_records()</tt>
+            <code class="function">count_records()</code>
             
         so as to avoid the self-deadlock. Be aware that using a transaction handle here rather than
         uncommitted reads will work just as well as if we had continued to use uncommitted reads. However,
@@ -115,8 +114,8 @@
         To begin, we simplify the beginning of our example a bit. Because
         we no longer need an environment home directory, we can remove all
         the code that we used to determine path delimiters
-        and include the <tt class="function">getopt</tt> function. We can also
-        remove our <tt class="function">usage()</tt> function because we no
+        and include the <code class="function">getopt</code> function. We can also
+        remove our <code class="function">usage()</code> function because we no
         longer require any command line arguments. 
     </p>
       <pre class="programlisting">/* File: txn_guide_inmemory.c */
@@ -143,15 +142,15 @@ int count_records(DB *, DB_TXN *);
 int open_db(DB **, const char *, const char *, DB_ENV *, u_int32_t);
 int writer_thread(void *);  </pre>
       <p>
-    Next, in our <tt class="function">main()</tt>, we also eliminate some
+    Next, in our <code class="function">main()</code>, we also eliminate some
     variables that this example no longer needs. In particular, we are able to remove
     the 
-        <tt class="literal">db_home_dir</tt> 
+        <code class="literal">db_home_dir</code> 
          
     and 
-        <tt class="literal">file_name</tt>
+        <code class="literal">file_name</code>
         
-    variables. We also remove all our <tt class="function">getopt</tt> code.
+    variables. We also remove all our <code class="function">getopt</code> code.
 </p>
       <pre class="programlisting">int
 main(void)
@@ -168,19 +167,19 @@ main(void)
     const char *prog_name = "txn_guide_inmemory";  </pre>
       <p>
         Next we create our environment as always. However, we add
-        <tt class="literal">DB_PRIVATE</tt> to our environment open flags. This
+        <code class="literal">DB_PRIVATE</code> to our environment open flags. This
         flag causes our environment to back regions using our
         application's heap memory rather than by using the filesystem.
         This is the first important step to keeping our DB data
         entirely in-memory.
     </p>
       <p>
-        We also remove the <tt class="literal">DB_RECOVER</tt> flag from the environment open flags. Because our databases,
+        We also remove the <code class="literal">DB_RECOVER</code> flag from the environment open flags. Because our databases,
         logs, and regions are maintained in-memory, there will never be anything to recover.
     </p>
       <p>
         Note that we show the additional code here in
-        <b class="userinput"><tt>bold.</tt></b>
+        <strong class="userinput"><code>bold.</code></strong>
     </p>
       <pre class="programlisting">    /* Create the environment */
     ret = db_env_create(&amp;envp, 0);
@@ -197,8 +196,8 @@ main(void)
       DB_INIT_TXN   |  /* Initialize the transactional subsystem. This
                         * also turns on logging. */
       DB_INIT_MPOOL |  /* Initialize the memory pool (in-memory cache) */
-      <b class="userinput"><tt>DB_PRIVATE    |  /* Region files are not backed by the filesystem. 
-                        * Instead, they are backed by heap memory.  */</tt></b>
+      <strong class="userinput"><code>DB_PRIVATE    |  /* Region files are not backed by the filesystem. 
+                        * Instead, they are backed by heap memory.  */</code></strong>
       DB_THREAD;       /* Cause the environment to be free-threaded */ </pre>
       <p>
         Now we configure our environment to keep the log files in memory,
@@ -207,8 +206,8 @@ main(void)
         application's workload.
       </p>
       <pre class="programlisting">
-        <b class="userinput">
-          <tt>    /* Specify in-memory logging */
+        <strong class="userinput">
+          <code>    /* Specify in-memory logging */
     ret = envp-&gt;log_set_config(envp, DB_LOG_IN_MEMORY, 1);
     if (ret != 0) {
         fprintf(stderr, "Error setting log subsystem to in-memory: %s\n",
@@ -235,8 +234,8 @@ main(void)
         fprintf(stderr, "Error increasing the cache size: %s\n",
             db_strerror(ret));
         goto err;
-    }</tt>
-        </b>
+    }</code>
+        </strong>
       </pre>
       <p>
     Next, we open the environment and setup our lock detection. This is
@@ -257,7 +256,7 @@ main(void)
     } 
 
     /* Now actually open the environment */
-    ret = envp-&gt;open(envp, <b class="userinput"><tt>NULL</tt></b>, env_flags, 0);
+    ret = envp-&gt;open(envp, <strong class="userinput"><code>NULL</code></strong>, env_flags, 0);
     if (ret != 0) {
         fprintf(stderr, "Error opening environment: %s\n",
             db_strerror(ret));
@@ -265,11 +264,11 @@ main(void)
     } </pre>
       <p>
         When we call 
-            <span><tt class="function">open_db()</tt>,</span> 
+            <span><code class="function">open_db()</code>,</span> 
              
         which is what we use
         to open our database, we no not provide a database filename for the
-        third parameter. When the filename is <tt class="literal">NULL</tt>, the database is not
+        third parameter. When the filename is <code class="literal">NULL</code>, the database is not
         backed by the filesystem.
     </p>
       <pre class="programlisting">    /*
@@ -280,12 +279,12 @@ main(void)
      */
 
     /* Open the database */
-    ret = open_db(&amp;dbp, prog_name, <b class="userinput"><tt>NULL</tt></b>, 
+    ret = open_db(&amp;dbp, prog_name, <strong class="userinput"><code>NULL</code></strong>, 
       envp, DB_DUPSORT);
     if (ret != 0)
         goto err; </pre>
       <p>
-    After that, our <tt class="function">main()</tt> function is unchanged,
+    After that, our <code class="function">main()</code> function is unchanged,
     except that when we 
         <span>close the database,</span>
         
@@ -308,8 +307,8 @@ err:
     if (dbp != NULL) {
         ret_t = dbp-&gt;close(dbp, 0);
         if (ret_t != 0) {
-            <b class="userinput"><tt>fprintf(stderr, "%s database close failed.\n",
-                db_strerror(ret_t));</tt></b>
+            <strong class="userinput"><code>fprintf(stderr, "%s database close failed.\n",
+                db_strerror(ret_t));</code></strong>
             ret = ret_t;
         }
     }
@@ -329,15 +328,15 @@ err:
     return (ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 } </pre>
       <p>
-        That completes <tt class="function">main()</tt>. The bulk of our 
-        <tt class="function">writer_thread()</tt> function implementation is
+        That completes <code class="function">main()</code>. The bulk of our 
+        <code class="function">writer_thread()</code> function implementation is
         unchanged from the initial transaction example, except that we no
-        longer check for <tt class="literal">DB_KEYEXISTS</tt> in our 
-        <tt class="methodname">DB-&gt;put()</tt> return code. Because we are
+        longer check for <code class="literal">DB_KEYEXISTS</code> in our 
+        <code class="methodname">DB-&gt;put()</code> return code. Because we are
         configuring for a completely in-memory database, there is no
         possibility that we can run this code against an existing database.
-        Therefore, there is no way that <tt class="literal">DB_KEYEXISTS</tt>
-        will be returned by <tt class="methodname">DB-&gt;put()</tt>.
+        Therefore, there is no way that <code class="literal">DB_KEYEXISTS</code>
+        will be returned by <code class="methodname">DB-&gt;put()</code>.
     </p>
       <pre class="programlisting">/* 
  * A function that performs a series of writes to a
@@ -442,14 +441,14 @@ retry:
 
         }   /** End for loop **/  </pre>
       <p>
-            The only other change to <tt class="function">writer_thread()</tt>
-            is that we pass <tt class="function">count_records()</tt> a
+            The only other change to <code class="function">writer_thread()</code>
+            is that we pass <code class="function">count_records()</code> a
             transaction handle, rather than configuring our entire
             application for uncommitted reads. Both mechanisms work well-enough
             for preventing a self-deadlock. However, the individual count
             in this example will tend to be lower than the counts seen in
             the previous transaction example, because
-            <tt class="function">count_records()</tt> can no longer see records
+            <code class="function">count_records()</code> can no longer see records
             created but not yet committed by other threads.
         </p>
       <pre class="programlisting">        /* 
@@ -457,7 +456,7 @@ retry:
          * See count_records() for usage information.
          */
         printf("Thread %i. Record count: %i\n", thread_num, 
-            count_records(dbp, <b class="userinput"><tt>txn</tt></b>));
+            count_records(dbp, <strong class="userinput"><code>txn</code></strong>));
 
         /* 
          * If all goes well, we can commit the transaction and
@@ -473,13 +472,13 @@ retry:
 } </pre>
       <p>
     Next we update 
-        <span><tt class="function">count_records()</tt>.</span>
+        <span><code class="function">count_records()</code>.</span>
         
     The only difference
-    here is that we no longer specify <tt class="literal">DB_READ_UNCOMMITTED</tt> when
+    here is that we no longer specify <code class="literal">DB_READ_UNCOMMITTED</code> when
     we open our cursor. Note that even this minor change is not required.
     If we do not configure our database to support uncommitted reads,
-    <tt class="literal">DB_READ_UNCOMMITTED</tt> on the cursor open will be silently
+    <code class="literal">DB_READ_UNCOMMITTED</code> on the cursor open will be silently
     ignored. However, we remove the flag anyway from the cursor open so as to
     avoid confusion.
 </p>
@@ -494,7 +493,7 @@ count_records(DB *dbp, DB_TXN *txn)
     count = 0;
 
     /* Get the cursor */
-    ret = dbp-&gt;cursor(dbp, txn, &amp;cursorp, <b class="userinput"><tt>0</tt></b>);
+    ret = dbp-&gt;cursor(dbp, txn, &amp;cursorp, <strong class="userinput"><code>0</code></strong>);
     if (ret != 0) {
         dbp-&gt;err(dbp, ret, "count_records: cursor open failed.");
         goto cursor_err;
@@ -531,15 +530,15 @@ cursor_err:
 }</pre>
       <p>
         Finally, we update 
-            <span><tt class="function">open_db()</tt>.</span> 
+            <span><code class="function">open_db()</code>.</span> 
              
         This involves
-        removing <tt class="literal">DB_READ_UNCOMMITTED</tt> from the
+        removing <code class="literal">DB_READ_UNCOMMITTED</code> from the
         open flags. 
 
         <span>We are also careful to change our database open error
-        message to no longer use the <tt class="literal">file_name</tt> 
-        variable because that value will always be <tt class="literal">NULL</tt> for this example.</span>
+        message to no longer use the <code class="literal">file_name</code> 
+        variable because that value will always be <code class="literal">NULL</code> for this example.</span>
     </p>
       <pre class="programlisting">/* Open a Berkeley DB database */
 int
@@ -571,9 +570,9 @@ open_db(DB **dbpp, const char *progname, const char *file_name,
     }
 
     /* Now open the database */
-    <b class="userinput"><tt>open_flags = DB_CREATE        | /* Allow database creation */ 
+    <strong class="userinput"><code>open_flags = DB_CREATE        | /* Allow database creation */ 
                  DB_THREAD        |        
-                 DB_AUTO_COMMIT;    /* Allow auto commit */</tt></b>
+                 DB_AUTO_COMMIT;    /* Allow auto commit */</code></strong>
 
     ret = dbp-&gt;open(dbp,        /* Pointer to the database */
                     NULL,       /* Txn pointer */
@@ -583,8 +582,8 @@ open_db(DB **dbpp, const char *progname, const char *file_name,
                     open_flags, /* Open flags */
                     0);         /* File mode. Using defaults */
     if (ret != 0) {
-        <b class="userinput"><tt>dbp-&gt;err(dbp, ret, "Database  open failed");
-        return (EXIT_FAILURE);</tt></b>
+        <strong class="userinput"><code>dbp-&gt;err(dbp, ret, "Database  open failed");
+        return (EXIT_FAILURE);</code></strong>
     }
     return (EXIT_SUCCESS);
 } </pre>

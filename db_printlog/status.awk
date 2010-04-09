@@ -1,4 +1,4 @@
-# $Id: status.awk,v 12.1 2006/02/15 20:35:26 ubell Exp $
+# $Id$
 #
 # Read through db_printlog output and list all the transactions encountered
 # and whether they committed or aborted.

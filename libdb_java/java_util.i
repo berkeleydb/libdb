@@ -247,6 +247,7 @@ static jfieldID mpool_stat_st_page_trickle_fid;
 static jfieldID mpool_stat_st_page_clean_fid;
 static jfieldID mpool_stat_st_page_dirty_fid;
 static jfieldID mpool_stat_st_hash_buckets_fid;
+static jfieldID mpool_stat_st_pagesize_fid;
 static jfieldID mpool_stat_st_hash_searches_fid;
 static jfieldID mpool_stat_st_hash_longest_fid;
 static jfieldID mpool_stat_st_hash_examined_fid;
@@ -265,6 +266,7 @@ static jfieldID mpool_stat_st_alloc_max_buckets_fid;
 static jfieldID mpool_stat_st_alloc_pages_fid;
 static jfieldID mpool_stat_st_alloc_max_pages_fid;
 static jfieldID mpool_stat_st_io_wait_fid;
+static jfieldID mpool_stat_st_sync_interrupted_fid;
 static jfieldID mpool_stat_st_regsize_fid;
 static jfieldID mutex_stat_st_mutex_align_fid;
 static jfieldID mutex_stat_st_mutex_tas_spins_fid;
@@ -381,8 +383,7 @@ static jfieldID txn_active_lsn_fid;
 static jfieldID txn_active_read_lsn_fid;
 static jfieldID txn_active_mvcc_ref_fid;
 static jfieldID txn_active_status_fid;
-static jfieldID txn_active_xa_status_fid;
-static jfieldID txn_active_xid_fid;
+static jfieldID txn_active_gid_fid;
 static jfieldID txn_active_name_fid;
 /* END-STAT-FIELD-DECLS */
 
@@ -416,10 +417,11 @@ static jmethodID rep_perm_failed_event_notify_method;
 static jmethodID rep_startup_done_event_notify_method;
 static jmethodID write_failed_event_notify_method;
 
-static jmethodID append_recno_method, bt_compare_method, bt_prefix_method;
+static jmethodID append_recno_method, bt_compare_method, bt_compress_method;
+static jmethodID bt_decompress_method, bt_prefix_method;
 static jmethodID db_feedback_method, dup_compare_method;
 static jmethodID foreignkey_nullify_method, h_compare_method, h_hash_method;
-static jmethodID seckey_create_method;
+static jmethodID partition_method, seckey_create_method;
 
 static jmethodID outputstream_write_method;
 
@@ -531,10 +533,10 @@ const struct {
 	{ &bt_stat_bt_over_pg_fid, &bt_stat_class, "bt_over_pg", "I" },
 	{ &bt_stat_bt_empty_pg_fid, &bt_stat_class, "bt_empty_pg", "I" },
 	{ &bt_stat_bt_free_fid, &bt_stat_class, "bt_free", "I" },
-	{ &bt_stat_bt_int_pgfree_fid, &bt_stat_class, "bt_int_pgfree", "I" },
-	{ &bt_stat_bt_leaf_pgfree_fid, &bt_stat_class, "bt_leaf_pgfree", "I" },
-	{ &bt_stat_bt_dup_pgfree_fid, &bt_stat_class, "bt_dup_pgfree", "I" },
-	{ &bt_stat_bt_over_pgfree_fid, &bt_stat_class, "bt_over_pgfree", "I" },
+	{ &bt_stat_bt_int_pgfree_fid, &bt_stat_class, "bt_int_pgfree", "J" },
+	{ &bt_stat_bt_leaf_pgfree_fid, &bt_stat_class, "bt_leaf_pgfree", "J" },
+	{ &bt_stat_bt_dup_pgfree_fid, &bt_stat_class, "bt_dup_pgfree", "J" },
+	{ &bt_stat_bt_over_pgfree_fid, &bt_stat_class, "bt_over_pgfree", "J" },
 	{ &compact_compact_fillpercent_fid, &compact_class, "compact_fillpercent", "I" },
 	{ &compact_compact_timeout_fid, &compact_class, "compact_timeout", "I" },
 	{ &compact_compact_pages_fid, &compact_class, "compact_pages", "I" },
@@ -554,13 +556,13 @@ const struct {
 	{ &h_stat_hash_ffactor_fid, &h_stat_class, "hash_ffactor", "I" },
 	{ &h_stat_hash_buckets_fid, &h_stat_class, "hash_buckets", "I" },
 	{ &h_stat_hash_free_fid, &h_stat_class, "hash_free", "I" },
-	{ &h_stat_hash_bfree_fid, &h_stat_class, "hash_bfree", "I" },
+	{ &h_stat_hash_bfree_fid, &h_stat_class, "hash_bfree", "J" },
 	{ &h_stat_hash_bigpages_fid, &h_stat_class, "hash_bigpages", "I" },
-	{ &h_stat_hash_big_bfree_fid, &h_stat_class, "hash_big_bfree", "I" },
+	{ &h_stat_hash_big_bfree_fid, &h_stat_class, "hash_big_bfree", "J" },
 	{ &h_stat_hash_overflows_fid, &h_stat_class, "hash_overflows", "I" },
-	{ &h_stat_hash_ovfl_free_fid, &h_stat_class, "hash_ovfl_free", "I" },
+	{ &h_stat_hash_ovfl_free_fid, &h_stat_class, "hash_ovfl_free", "J" },
 	{ &h_stat_hash_dup_fid, &h_stat_class, "hash_dup", "I" },
-	{ &h_stat_hash_dup_free_fid, &h_stat_class, "hash_dup_free", "I" },
+	{ &h_stat_hash_dup_free_fid, &h_stat_class, "hash_dup_free", "J" },
 	{ &lock_stat_st_id_fid, &lock_stat_class, "st_id", "I" },
 	{ &lock_stat_st_cur_maxid_fid, &lock_stat_class, "st_cur_maxid", "I" },
 	{ &lock_stat_st_maxlocks_fid, &lock_stat_class, "st_maxlocks", "I" },
@@ -572,35 +574,35 @@ const struct {
 	{ &lock_stat_st_nlocks_fid, &lock_stat_class, "st_nlocks", "I" },
 	{ &lock_stat_st_maxnlocks_fid, &lock_stat_class, "st_maxnlocks", "I" },
 	{ &lock_stat_st_maxhlocks_fid, &lock_stat_class, "st_maxhlocks", "I" },
-	{ &lock_stat_st_locksteals_fid, &lock_stat_class, "st_locksteals", "I" },
-	{ &lock_stat_st_maxlsteals_fid, &lock_stat_class, "st_maxlsteals", "I" },
+	{ &lock_stat_st_locksteals_fid, &lock_stat_class, "st_locksteals", "J" },
+	{ &lock_stat_st_maxlsteals_fid, &lock_stat_class, "st_maxlsteals", "J" },
 	{ &lock_stat_st_maxnlockers_fid, &lock_stat_class, "st_maxnlockers", "I" },
 	{ &lock_stat_st_nobjects_fid, &lock_stat_class, "st_nobjects", "I" },
 	{ &lock_stat_st_maxnobjects_fid, &lock_stat_class, "st_maxnobjects", "I" },
 	{ &lock_stat_st_maxhobjects_fid, &lock_stat_class, "st_maxhobjects", "I" },
-	{ &lock_stat_st_objectsteals_fid, &lock_stat_class, "st_objectsteals", "I" },
-	{ &lock_stat_st_maxosteals_fid, &lock_stat_class, "st_maxosteals", "I" },
-	{ &lock_stat_st_nrequests_fid, &lock_stat_class, "st_nrequests", "I" },
-	{ &lock_stat_st_nreleases_fid, &lock_stat_class, "st_nreleases", "I" },
-	{ &lock_stat_st_nupgrade_fid, &lock_stat_class, "st_nupgrade", "I" },
-	{ &lock_stat_st_ndowngrade_fid, &lock_stat_class, "st_ndowngrade", "I" },
-	{ &lock_stat_st_lock_wait_fid, &lock_stat_class, "st_lock_wait", "I" },
-	{ &lock_stat_st_lock_nowait_fid, &lock_stat_class, "st_lock_nowait", "I" },
-	{ &lock_stat_st_ndeadlocks_fid, &lock_stat_class, "st_ndeadlocks", "I" },
+	{ &lock_stat_st_objectsteals_fid, &lock_stat_class, "st_objectsteals", "J" },
+	{ &lock_stat_st_maxosteals_fid, &lock_stat_class, "st_maxosteals", "J" },
+	{ &lock_stat_st_nrequests_fid, &lock_stat_class, "st_nrequests", "J" },
+	{ &lock_stat_st_nreleases_fid, &lock_stat_class, "st_nreleases", "J" },
+	{ &lock_stat_st_nupgrade_fid, &lock_stat_class, "st_nupgrade", "J" },
+	{ &lock_stat_st_ndowngrade_fid, &lock_stat_class, "st_ndowngrade", "J" },
+	{ &lock_stat_st_lock_wait_fid, &lock_stat_class, "st_lock_wait", "J" },
+	{ &lock_stat_st_lock_nowait_fid, &lock_stat_class, "st_lock_nowait", "J" },
+	{ &lock_stat_st_ndeadlocks_fid, &lock_stat_class, "st_ndeadlocks", "J" },
 	{ &lock_stat_st_locktimeout_fid, &lock_stat_class, "st_locktimeout", "I" },
-	{ &lock_stat_st_nlocktimeouts_fid, &lock_stat_class, "st_nlocktimeouts", "I" },
+	{ &lock_stat_st_nlocktimeouts_fid, &lock_stat_class, "st_nlocktimeouts", "J" },
 	{ &lock_stat_st_txntimeout_fid, &lock_stat_class, "st_txntimeout", "I" },
-	{ &lock_stat_st_ntxntimeouts_fid, &lock_stat_class, "st_ntxntimeouts", "I" },
-	{ &lock_stat_st_part_wait_fid, &lock_stat_class, "st_part_wait", "I" },
-	{ &lock_stat_st_part_nowait_fid, &lock_stat_class, "st_part_nowait", "I" },
-	{ &lock_stat_st_part_max_wait_fid, &lock_stat_class, "st_part_max_wait", "I" },
-	{ &lock_stat_st_part_max_nowait_fid, &lock_stat_class, "st_part_max_nowait", "I" },
-	{ &lock_stat_st_objs_wait_fid, &lock_stat_class, "st_objs_wait", "I" },
-	{ &lock_stat_st_objs_nowait_fid, &lock_stat_class, "st_objs_nowait", "I" },
-	{ &lock_stat_st_lockers_wait_fid, &lock_stat_class, "st_lockers_wait", "I" },
-	{ &lock_stat_st_lockers_nowait_fid, &lock_stat_class, "st_lockers_nowait", "I" },
-	{ &lock_stat_st_region_wait_fid, &lock_stat_class, "st_region_wait", "I" },
-	{ &lock_stat_st_region_nowait_fid, &lock_stat_class, "st_region_nowait", "I" },
+	{ &lock_stat_st_ntxntimeouts_fid, &lock_stat_class, "st_ntxntimeouts", "J" },
+	{ &lock_stat_st_part_wait_fid, &lock_stat_class, "st_part_wait", "J" },
+	{ &lock_stat_st_part_nowait_fid, &lock_stat_class, "st_part_nowait", "J" },
+	{ &lock_stat_st_part_max_wait_fid, &lock_stat_class, "st_part_max_wait", "J" },
+	{ &lock_stat_st_part_max_nowait_fid, &lock_stat_class, "st_part_max_nowait", "J" },
+	{ &lock_stat_st_objs_wait_fid, &lock_stat_class, "st_objs_wait", "J" },
+	{ &lock_stat_st_objs_nowait_fid, &lock_stat_class, "st_objs_nowait", "J" },
+	{ &lock_stat_st_lockers_wait_fid, &lock_stat_class, "st_lockers_wait", "J" },
+	{ &lock_stat_st_lockers_nowait_fid, &lock_stat_class, "st_lockers_nowait", "J" },
+	{ &lock_stat_st_region_wait_fid, &lock_stat_class, "st_region_wait", "J" },
+	{ &lock_stat_st_region_nowait_fid, &lock_stat_class, "st_region_nowait", "J" },
 	{ &lock_stat_st_hash_len_fid, &lock_stat_class, "st_hash_len", "I" },
 	{ &lock_stat_st_regsize_fid, &lock_stat_class, "st_regsize", "I" },
 	{ &log_stat_st_magic_fid, &log_stat_class, "st_magic", "I" },
@@ -610,15 +612,15 @@ const struct {
 	{ &log_stat_st_lg_size_fid, &log_stat_class, "st_lg_size", "I" },
 	{ &log_stat_st_wc_bytes_fid, &log_stat_class, "st_wc_bytes", "I" },
 	{ &log_stat_st_wc_mbytes_fid, &log_stat_class, "st_wc_mbytes", "I" },
-	{ &log_stat_st_record_fid, &log_stat_class, "st_record", "I" },
+	{ &log_stat_st_record_fid, &log_stat_class, "st_record", "J" },
 	{ &log_stat_st_w_bytes_fid, &log_stat_class, "st_w_bytes", "I" },
 	{ &log_stat_st_w_mbytes_fid, &log_stat_class, "st_w_mbytes", "I" },
-	{ &log_stat_st_wcount_fid, &log_stat_class, "st_wcount", "I" },
-	{ &log_stat_st_wcount_fill_fid, &log_stat_class, "st_wcount_fill", "I" },
-	{ &log_stat_st_rcount_fid, &log_stat_class, "st_rcount", "I" },
-	{ &log_stat_st_scount_fid, &log_stat_class, "st_scount", "I" },
-	{ &log_stat_st_region_wait_fid, &log_stat_class, "st_region_wait", "I" },
-	{ &log_stat_st_region_nowait_fid, &log_stat_class, "st_region_nowait", "I" },
+	{ &log_stat_st_wcount_fid, &log_stat_class, "st_wcount", "J" },
+	{ &log_stat_st_wcount_fill_fid, &log_stat_class, "st_wcount_fill", "J" },
+	{ &log_stat_st_rcount_fid, &log_stat_class, "st_rcount", "J" },
+	{ &log_stat_st_scount_fid, &log_stat_class, "st_scount", "J" },
+	{ &log_stat_st_region_wait_fid, &log_stat_class, "st_region_wait", "J" },
+	{ &log_stat_st_region_nowait_fid, &log_stat_class, "st_region_nowait", "J" },
 	{ &log_stat_st_cur_file_fid, &log_stat_class, "st_cur_file", "I" },
 	{ &log_stat_st_cur_offset_fid, &log_stat_class, "st_cur_offset", "I" },
 	{ &log_stat_st_disk_file_fid, &log_stat_class, "st_disk_file", "I" },
@@ -629,11 +631,11 @@ const struct {
 	{ &mpool_fstat_file_name_fid, &mpool_fstat_class, "file_name", "Ljava/lang/String;" },
 	{ &mpool_fstat_st_pagesize_fid, &mpool_fstat_class, "st_pagesize", "I" },
 	{ &mpool_fstat_st_map_fid, &mpool_fstat_class, "st_map", "I" },
-	{ &mpool_fstat_st_cache_hit_fid, &mpool_fstat_class, "st_cache_hit", "I" },
-	{ &mpool_fstat_st_cache_miss_fid, &mpool_fstat_class, "st_cache_miss", "I" },
-	{ &mpool_fstat_st_page_create_fid, &mpool_fstat_class, "st_page_create", "I" },
-	{ &mpool_fstat_st_page_in_fid, &mpool_fstat_class, "st_page_in", "I" },
-	{ &mpool_fstat_st_page_out_fid, &mpool_fstat_class, "st_page_out", "I" },
+	{ &mpool_fstat_st_cache_hit_fid, &mpool_fstat_class, "st_cache_hit", "J" },
+	{ &mpool_fstat_st_cache_miss_fid, &mpool_fstat_class, "st_cache_miss", "J" },
+	{ &mpool_fstat_st_page_create_fid, &mpool_fstat_class, "st_page_create", "J" },
+	{ &mpool_fstat_st_page_in_fid, &mpool_fstat_class, "st_page_in", "J" },
+	{ &mpool_fstat_st_page_out_fid, &mpool_fstat_class, "st_page_out", "J" },
 	{ &mpool_stat_st_gbytes_fid, &mpool_stat_class, "st_gbytes", "I" },
 	{ &mpool_stat_st_bytes_fid, &mpool_stat_class, "st_bytes", "I" },
 	{ &mpool_stat_st_ncache_fid, &mpool_stat_class, "st_ncache", "I" },
@@ -644,35 +646,37 @@ const struct {
 	{ &mpool_stat_st_maxwrite_sleep_fid, &mpool_stat_class, "st_maxwrite_sleep", "I" },
 	{ &mpool_stat_st_pages_fid, &mpool_stat_class, "st_pages", "I" },
 	{ &mpool_stat_st_map_fid, &mpool_stat_class, "st_map", "I" },
-	{ &mpool_stat_st_cache_hit_fid, &mpool_stat_class, "st_cache_hit", "I" },
-	{ &mpool_stat_st_cache_miss_fid, &mpool_stat_class, "st_cache_miss", "I" },
-	{ &mpool_stat_st_page_create_fid, &mpool_stat_class, "st_page_create", "I" },
-	{ &mpool_stat_st_page_in_fid, &mpool_stat_class, "st_page_in", "I" },
-	{ &mpool_stat_st_page_out_fid, &mpool_stat_class, "st_page_out", "I" },
-	{ &mpool_stat_st_ro_evict_fid, &mpool_stat_class, "st_ro_evict", "I" },
-	{ &mpool_stat_st_rw_evict_fid, &mpool_stat_class, "st_rw_evict", "I" },
-	{ &mpool_stat_st_page_trickle_fid, &mpool_stat_class, "st_page_trickle", "I" },
+	{ &mpool_stat_st_cache_hit_fid, &mpool_stat_class, "st_cache_hit", "J" },
+	{ &mpool_stat_st_cache_miss_fid, &mpool_stat_class, "st_cache_miss", "J" },
+	{ &mpool_stat_st_page_create_fid, &mpool_stat_class, "st_page_create", "J" },
+	{ &mpool_stat_st_page_in_fid, &mpool_stat_class, "st_page_in", "J" },
+	{ &mpool_stat_st_page_out_fid, &mpool_stat_class, "st_page_out", "J" },
+	{ &mpool_stat_st_ro_evict_fid, &mpool_stat_class, "st_ro_evict", "J" },
+	{ &mpool_stat_st_rw_evict_fid, &mpool_stat_class, "st_rw_evict", "J" },
+	{ &mpool_stat_st_page_trickle_fid, &mpool_stat_class, "st_page_trickle", "J" },
 	{ &mpool_stat_st_page_clean_fid, &mpool_stat_class, "st_page_clean", "I" },
 	{ &mpool_stat_st_page_dirty_fid, &mpool_stat_class, "st_page_dirty", "I" },
 	{ &mpool_stat_st_hash_buckets_fid, &mpool_stat_class, "st_hash_buckets", "I" },
+	{ &mpool_stat_st_pagesize_fid, &mpool_stat_class, "st_pagesize", "I" },
 	{ &mpool_stat_st_hash_searches_fid, &mpool_stat_class, "st_hash_searches", "I" },
 	{ &mpool_stat_st_hash_longest_fid, &mpool_stat_class, "st_hash_longest", "I" },
-	{ &mpool_stat_st_hash_examined_fid, &mpool_stat_class, "st_hash_examined", "I" },
-	{ &mpool_stat_st_hash_nowait_fid, &mpool_stat_class, "st_hash_nowait", "I" },
-	{ &mpool_stat_st_hash_wait_fid, &mpool_stat_class, "st_hash_wait", "I" },
-	{ &mpool_stat_st_hash_max_nowait_fid, &mpool_stat_class, "st_hash_max_nowait", "I" },
-	{ &mpool_stat_st_hash_max_wait_fid, &mpool_stat_class, "st_hash_max_wait", "I" },
-	{ &mpool_stat_st_region_nowait_fid, &mpool_stat_class, "st_region_nowait", "I" },
-	{ &mpool_stat_st_region_wait_fid, &mpool_stat_class, "st_region_wait", "I" },
-	{ &mpool_stat_st_mvcc_frozen_fid, &mpool_stat_class, "st_mvcc_frozen", "I" },
-	{ &mpool_stat_st_mvcc_thawed_fid, &mpool_stat_class, "st_mvcc_thawed", "I" },
-	{ &mpool_stat_st_mvcc_freed_fid, &mpool_stat_class, "st_mvcc_freed", "I" },
-	{ &mpool_stat_st_alloc_fid, &mpool_stat_class, "st_alloc", "I" },
-	{ &mpool_stat_st_alloc_buckets_fid, &mpool_stat_class, "st_alloc_buckets", "I" },
-	{ &mpool_stat_st_alloc_max_buckets_fid, &mpool_stat_class, "st_alloc_max_buckets", "I" },
-	{ &mpool_stat_st_alloc_pages_fid, &mpool_stat_class, "st_alloc_pages", "I" },
-	{ &mpool_stat_st_alloc_max_pages_fid, &mpool_stat_class, "st_alloc_max_pages", "I" },
-	{ &mpool_stat_st_io_wait_fid, &mpool_stat_class, "st_io_wait", "I" },
+	{ &mpool_stat_st_hash_examined_fid, &mpool_stat_class, "st_hash_examined", "J" },
+	{ &mpool_stat_st_hash_nowait_fid, &mpool_stat_class, "st_hash_nowait", "J" },
+	{ &mpool_stat_st_hash_wait_fid, &mpool_stat_class, "st_hash_wait", "J" },
+	{ &mpool_stat_st_hash_max_nowait_fid, &mpool_stat_class, "st_hash_max_nowait", "J" },
+	{ &mpool_stat_st_hash_max_wait_fid, &mpool_stat_class, "st_hash_max_wait", "J" },
+	{ &mpool_stat_st_region_nowait_fid, &mpool_stat_class, "st_region_nowait", "J" },
+	{ &mpool_stat_st_region_wait_fid, &mpool_stat_class, "st_region_wait", "J" },
+	{ &mpool_stat_st_mvcc_frozen_fid, &mpool_stat_class, "st_mvcc_frozen", "J" },
+	{ &mpool_stat_st_mvcc_thawed_fid, &mpool_stat_class, "st_mvcc_thawed", "J" },
+	{ &mpool_stat_st_mvcc_freed_fid, &mpool_stat_class, "st_mvcc_freed", "J" },
+	{ &mpool_stat_st_alloc_fid, &mpool_stat_class, "st_alloc", "J" },
+	{ &mpool_stat_st_alloc_buckets_fid, &mpool_stat_class, "st_alloc_buckets", "J" },
+	{ &mpool_stat_st_alloc_max_buckets_fid, &mpool_stat_class, "st_alloc_max_buckets", "J" },
+	{ &mpool_stat_st_alloc_pages_fid, &mpool_stat_class, "st_alloc_pages", "J" },
+	{ &mpool_stat_st_alloc_max_pages_fid, &mpool_stat_class, "st_alloc_max_pages", "J" },
+	{ &mpool_stat_st_io_wait_fid, &mpool_stat_class, "st_io_wait", "J" },
+	{ &mpool_stat_st_sync_interrupted_fid, &mpool_stat_class, "st_sync_interrupted", "J" },
 	{ &mpool_stat_st_regsize_fid, &mpool_stat_class, "st_regsize", "I" },
 	{ &mutex_stat_st_mutex_align_fid, &mutex_stat_class, "st_mutex_align", "I" },
 	{ &mutex_stat_st_mutex_tas_spins_fid, &mutex_stat_class, "st_mutex_tas_spins", "I" },
@@ -680,8 +684,8 @@ const struct {
 	{ &mutex_stat_st_mutex_free_fid, &mutex_stat_class, "st_mutex_free", "I" },
 	{ &mutex_stat_st_mutex_inuse_fid, &mutex_stat_class, "st_mutex_inuse", "I" },
 	{ &mutex_stat_st_mutex_inuse_max_fid, &mutex_stat_class, "st_mutex_inuse_max", "I" },
-	{ &mutex_stat_st_region_wait_fid, &mutex_stat_class, "st_region_wait", "I" },
-	{ &mutex_stat_st_region_nowait_fid, &mutex_stat_class, "st_region_nowait", "I" },
+	{ &mutex_stat_st_region_wait_fid, &mutex_stat_class, "st_region_wait", "J" },
+	{ &mutex_stat_st_region_nowait_fid, &mutex_stat_class, "st_region_nowait", "J" },
 	{ &mutex_stat_st_regsize_fid, &mutex_stat_class, "st_regsize", "I" },
 	{ &qam_stat_qs_magic_fid, &qam_stat_class, "qs_magic", "I" },
 	{ &qam_stat_qs_version_fid, &qam_stat_class, "qs_version", "I" },
@@ -696,7 +700,7 @@ const struct {
 	{ &qam_stat_qs_pgfree_fid, &qam_stat_class, "qs_pgfree", "I" },
 	{ &qam_stat_qs_first_recno_fid, &qam_stat_class, "qs_first_recno", "I" },
 	{ &qam_stat_qs_cur_recno_fid, &qam_stat_class, "qs_cur_recno", "I" },
-	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "I" },
+	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "J" },
 	{ &rep_stat_st_startup_complete_fid, &rep_stat_class, "st_startup_complete", "I" },
 	{ &rep_stat_st_status_fid, &rep_stat_class, "st_status", "I" },
 	{ &rep_stat_st_next_lsn_fid, &rep_stat_class, "st_next_lsn", "L" DB_PKG "LogSequenceNumber;" },
@@ -707,38 +711,38 @@ const struct {
 	{ &rep_stat_st_dupmasters_fid, &rep_stat_class, "st_dupmasters", "I" },
 	{ &rep_stat_st_env_id_fid, &rep_stat_class, "st_env_id", "I" },
 	{ &rep_stat_st_env_priority_fid, &rep_stat_class, "st_env_priority", "I" },
-	{ &rep_stat_st_bulk_fills_fid, &rep_stat_class, "st_bulk_fills", "I" },
-	{ &rep_stat_st_bulk_overflows_fid, &rep_stat_class, "st_bulk_overflows", "I" },
-	{ &rep_stat_st_bulk_records_fid, &rep_stat_class, "st_bulk_records", "I" },
-	{ &rep_stat_st_bulk_transfers_fid, &rep_stat_class, "st_bulk_transfers", "I" },
-	{ &rep_stat_st_client_rerequests_fid, &rep_stat_class, "st_client_rerequests", "I" },
-	{ &rep_stat_st_client_svc_req_fid, &rep_stat_class, "st_client_svc_req", "I" },
-	{ &rep_stat_st_client_svc_miss_fid, &rep_stat_class, "st_client_svc_miss", "I" },
+	{ &rep_stat_st_bulk_fills_fid, &rep_stat_class, "st_bulk_fills", "J" },
+	{ &rep_stat_st_bulk_overflows_fid, &rep_stat_class, "st_bulk_overflows", "J" },
+	{ &rep_stat_st_bulk_records_fid, &rep_stat_class, "st_bulk_records", "J" },
+	{ &rep_stat_st_bulk_transfers_fid, &rep_stat_class, "st_bulk_transfers", "J" },
+	{ &rep_stat_st_client_rerequests_fid, &rep_stat_class, "st_client_rerequests", "J" },
+	{ &rep_stat_st_client_svc_req_fid, &rep_stat_class, "st_client_svc_req", "J" },
+	{ &rep_stat_st_client_svc_miss_fid, &rep_stat_class, "st_client_svc_miss", "J" },
 	{ &rep_stat_st_gen_fid, &rep_stat_class, "st_gen", "I" },
 	{ &rep_stat_st_egen_fid, &rep_stat_class, "st_egen", "I" },
-	{ &rep_stat_st_log_duplicated_fid, &rep_stat_class, "st_log_duplicated", "I" },
-	{ &rep_stat_st_log_queued_max_fid, &rep_stat_class, "st_log_queued_max", "I" },
-	{ &rep_stat_st_log_queued_total_fid, &rep_stat_class, "st_log_queued_total", "I" },
-	{ &rep_stat_st_log_records_fid, &rep_stat_class, "st_log_records", "I" },
-	{ &rep_stat_st_log_requested_fid, &rep_stat_class, "st_log_requested", "I" },
+	{ &rep_stat_st_log_duplicated_fid, &rep_stat_class, "st_log_duplicated", "J" },
+	{ &rep_stat_st_log_queued_max_fid, &rep_stat_class, "st_log_queued_max", "J" },
+	{ &rep_stat_st_log_queued_total_fid, &rep_stat_class, "st_log_queued_total", "J" },
+	{ &rep_stat_st_log_records_fid, &rep_stat_class, "st_log_records", "J" },
+	{ &rep_stat_st_log_requested_fid, &rep_stat_class, "st_log_requested", "J" },
 	{ &rep_stat_st_master_fid, &rep_stat_class, "st_master", "I" },
-	{ &rep_stat_st_master_changes_fid, &rep_stat_class, "st_master_changes", "I" },
-	{ &rep_stat_st_msgs_badgen_fid, &rep_stat_class, "st_msgs_badgen", "I" },
-	{ &rep_stat_st_msgs_processed_fid, &rep_stat_class, "st_msgs_processed", "I" },
-	{ &rep_stat_st_msgs_recover_fid, &rep_stat_class, "st_msgs_recover", "I" },
-	{ &rep_stat_st_msgs_send_failures_fid, &rep_stat_class, "st_msgs_send_failures", "I" },
-	{ &rep_stat_st_msgs_sent_fid, &rep_stat_class, "st_msgs_sent", "I" },
-	{ &rep_stat_st_newsites_fid, &rep_stat_class, "st_newsites", "I" },
+	{ &rep_stat_st_master_changes_fid, &rep_stat_class, "st_master_changes", "J" },
+	{ &rep_stat_st_msgs_badgen_fid, &rep_stat_class, "st_msgs_badgen", "J" },
+	{ &rep_stat_st_msgs_processed_fid, &rep_stat_class, "st_msgs_processed", "J" },
+	{ &rep_stat_st_msgs_recover_fid, &rep_stat_class, "st_msgs_recover", "J" },
+	{ &rep_stat_st_msgs_send_failures_fid, &rep_stat_class, "st_msgs_send_failures", "J" },
+	{ &rep_stat_st_msgs_sent_fid, &rep_stat_class, "st_msgs_sent", "J" },
+	{ &rep_stat_st_newsites_fid, &rep_stat_class, "st_newsites", "J" },
 	{ &rep_stat_st_nsites_fid, &rep_stat_class, "st_nsites", "I" },
-	{ &rep_stat_st_nthrottles_fid, &rep_stat_class, "st_nthrottles", "I" },
-	{ &rep_stat_st_outdated_fid, &rep_stat_class, "st_outdated", "I" },
-	{ &rep_stat_st_pg_duplicated_fid, &rep_stat_class, "st_pg_duplicated", "I" },
-	{ &rep_stat_st_pg_records_fid, &rep_stat_class, "st_pg_records", "I" },
-	{ &rep_stat_st_pg_requested_fid, &rep_stat_class, "st_pg_requested", "I" },
-	{ &rep_stat_st_txns_applied_fid, &rep_stat_class, "st_txns_applied", "I" },
-	{ &rep_stat_st_startsync_delayed_fid, &rep_stat_class, "st_startsync_delayed", "I" },
-	{ &rep_stat_st_elections_fid, &rep_stat_class, "st_elections", "I" },
-	{ &rep_stat_st_elections_won_fid, &rep_stat_class, "st_elections_won", "I" },
+	{ &rep_stat_st_nthrottles_fid, &rep_stat_class, "st_nthrottles", "J" },
+	{ &rep_stat_st_outdated_fid, &rep_stat_class, "st_outdated", "J" },
+	{ &rep_stat_st_pg_duplicated_fid, &rep_stat_class, "st_pg_duplicated", "J" },
+	{ &rep_stat_st_pg_records_fid, &rep_stat_class, "st_pg_records", "J" },
+	{ &rep_stat_st_pg_requested_fid, &rep_stat_class, "st_pg_requested", "J" },
+	{ &rep_stat_st_txns_applied_fid, &rep_stat_class, "st_txns_applied", "J" },
+	{ &rep_stat_st_startsync_delayed_fid, &rep_stat_class, "st_startsync_delayed", "J" },
+	{ &rep_stat_st_elections_fid, &rep_stat_class, "st_elections", "J" },
+	{ &rep_stat_st_elections_won_fid, &rep_stat_class, "st_elections_won", "J" },
 	{ &rep_stat_st_election_cur_winner_fid, &rep_stat_class, "st_election_cur_winner", "I" },
 	{ &rep_stat_st_election_gen_fid, &rep_stat_class, "st_election_gen", "I" },
 	{ &rep_stat_st_election_lsn_fid, &rep_stat_class, "st_election_lsn", "L" DB_PKG "LogSequenceNumber;" },
@@ -752,13 +756,13 @@ const struct {
 	{ &rep_stat_st_election_usec_fid, &rep_stat_class, "st_election_usec", "I" },
 	{ &rep_stat_st_max_lease_sec_fid, &rep_stat_class, "st_max_lease_sec", "I" },
 	{ &rep_stat_st_max_lease_usec_fid, &rep_stat_class, "st_max_lease_usec", "I" },
-	{ &repmgr_stat_st_perm_failed_fid, &repmgr_stat_class, "st_perm_failed", "I" },
-	{ &repmgr_stat_st_msgs_queued_fid, &repmgr_stat_class, "st_msgs_queued", "I" },
-	{ &repmgr_stat_st_msgs_dropped_fid, &repmgr_stat_class, "st_msgs_dropped", "I" },
-	{ &repmgr_stat_st_connection_drop_fid, &repmgr_stat_class, "st_connection_drop", "I" },
-	{ &repmgr_stat_st_connect_fail_fid, &repmgr_stat_class, "st_connect_fail", "I" },
-	{ &seq_stat_st_wait_fid, &seq_stat_class, "st_wait", "I" },
-	{ &seq_stat_st_nowait_fid, &seq_stat_class, "st_nowait", "I" },
+	{ &repmgr_stat_st_perm_failed_fid, &repmgr_stat_class, "st_perm_failed", "J" },
+	{ &repmgr_stat_st_msgs_queued_fid, &repmgr_stat_class, "st_msgs_queued", "J" },
+	{ &repmgr_stat_st_msgs_dropped_fid, &repmgr_stat_class, "st_msgs_dropped", "J" },
+	{ &repmgr_stat_st_connection_drop_fid, &repmgr_stat_class, "st_connection_drop", "J" },
+	{ &repmgr_stat_st_connect_fail_fid, &repmgr_stat_class, "st_connect_fail", "J" },
+	{ &seq_stat_st_wait_fid, &seq_stat_class, "st_wait", "J" },
+	{ &seq_stat_st_nowait_fid, &seq_stat_class, "st_nowait", "J" },
 	{ &seq_stat_st_current_fid, &seq_stat_class, "st_current", "J" },
 	{ &seq_stat_st_value_fid, &seq_stat_class, "st_value", "J" },
 	{ &seq_stat_st_last_value_fid, &seq_stat_class, "st_last_value", "J" },
@@ -771,16 +775,16 @@ const struct {
 	{ &txn_stat_st_time_ckp_fid, &txn_stat_class, "st_time_ckp", "J" },
 	{ &txn_stat_st_last_txnid_fid, &txn_stat_class, "st_last_txnid", "I" },
 	{ &txn_stat_st_maxtxns_fid, &txn_stat_class, "st_maxtxns", "I" },
-	{ &txn_stat_st_naborts_fid, &txn_stat_class, "st_naborts", "I" },
-	{ &txn_stat_st_nbegins_fid, &txn_stat_class, "st_nbegins", "I" },
-	{ &txn_stat_st_ncommits_fid, &txn_stat_class, "st_ncommits", "I" },
+	{ &txn_stat_st_naborts_fid, &txn_stat_class, "st_naborts", "J" },
+	{ &txn_stat_st_nbegins_fid, &txn_stat_class, "st_nbegins", "J" },
+	{ &txn_stat_st_ncommits_fid, &txn_stat_class, "st_ncommits", "J" },
 	{ &txn_stat_st_nactive_fid, &txn_stat_class, "st_nactive", "I" },
 	{ &txn_stat_st_nsnapshot_fid, &txn_stat_class, "st_nsnapshot", "I" },
 	{ &txn_stat_st_maxnactive_fid, &txn_stat_class, "st_maxnactive", "I" },
 	{ &txn_stat_st_maxnsnapshot_fid, &txn_stat_class, "st_maxnsnapshot", "I" },
 	{ &txn_stat_st_txnarray_fid, &txn_stat_class, "st_txnarray", "[L" DB_PKG "TransactionStats$Active;" },
-	{ &txn_stat_st_region_wait_fid, &txn_stat_class, "st_region_wait", "I" },
-	{ &txn_stat_st_region_nowait_fid, &txn_stat_class, "st_region_nowait", "I" },
+	{ &txn_stat_st_region_wait_fid, &txn_stat_class, "st_region_wait", "J" },
+	{ &txn_stat_st_region_nowait_fid, &txn_stat_class, "st_region_nowait", "J" },
 	{ &txn_stat_st_regsize_fid, &txn_stat_class, "st_regsize", "I" },
 	{ &txn_active_txnid_fid, &txn_active_class, "txnid", "I" },
 	{ &txn_active_parentid_fid, &txn_active_class, "parentid", "I" },
@@ -789,8 +793,7 @@ const struct {
 	{ &txn_active_read_lsn_fid, &txn_active_class, "read_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_mvcc_ref_fid, &txn_active_class, "mvcc_ref", "I" },
 	{ &txn_active_status_fid, &txn_active_class, "status", "I" },
-	{ &txn_active_xa_status_fid, &txn_active_class, "xa_status", "I" },
-	{ &txn_active_xid_fid, &txn_active_class, "xid", "[B" },
+	{ &txn_active_gid_fid, &txn_active_class, "gid", "[B" },
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
@@ -903,6 +906,14 @@ const struct {
 	    "(L" DB_PKG "DatabaseEntry;I)V" },
 	{ &bt_compare_method, &db_class, "handle_bt_compare",
 	    "([B[B)I" },
+	{ &bt_compress_method, &db_class, "handle_bt_compress",
+	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG
+	    "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG
+	    "DatabaseEntry;)I" },
+	{ &bt_decompress_method, &db_class, "handle_bt_decompress",
+	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG
+	    "DatabaseEntry;L" DB_PKG "DatabaseEntry;L" DB_PKG
+	    "DatabaseEntry;)I" },
 	{ &bt_prefix_method, &db_class, "handle_bt_prefix",
 	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)I" },
 	{ &db_feedback_method, &db_class, "handle_db_feedback", "(II)V" },
@@ -914,6 +925,8 @@ const struct {
 	{ &h_compare_method, &db_class, "handle_h_compare",
 	    "([B[B)I" },
 	{ &h_hash_method, &db_class, "handle_h_hash", "([BI)I" },
+	{ &partition_method, &db_class, "handle_partition", 
+            "(L" DB_PKG "DatabaseEntry;)I" },
 	{ &seckey_create_method, &db_class, "handle_seckey_create",
 	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "DatabaseEntry;)[L"
 	    DB_PKG "DatabaseEntry;" },
@@ -991,7 +1004,7 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_initialize(
 	}
 }
 
-static JNIEnv *__dbj_get_jnienv(void)
+static JNIEnv *__dbj_get_jnienv(int *needDetach)
 {
 	/*
 	 * Note: Different versions of the JNI disagree on the signature for
@@ -1005,14 +1018,24 @@ static JNIEnv *__dbj_get_jnienv(void)
 	JNIEnv *jenv = 0;
 #endif
 
+	*needDetach = 0;
+	if ((*javavm)->GetEnv(javavm, &jenv, JNI_VERSION_1_2) == JNI_OK)
+		return ((JNIEnv *)jenv);
+
 	/*
 	 * This should always succeed, as we are called via some Java activity.
 	 * I think therefore I am (a thread).
 	 */
-	if ((*javavm)->AttachCurrentThreadAsDaemon(javavm, &jenv, 0) != 0)
+	if ((*javavm)->AttachCurrentThread(javavm, &jenv, 0) != 0)
 		return (0);
 
+        *needDetach = 1;
 	return ((JNIEnv *)jenv);
+}
+
+static void __dbj_detach()
+{
+	(void)(*javavm)->DetachCurrentThread(javavm);
 }
 
 static jobject __dbj_wrap_DB_LSN(JNIEnv *jenv, DB_LSN *lsn)

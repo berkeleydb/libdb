@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_stat.c,v 12.64 2008/03/12 20:52:53 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -245,6 +245,7 @@ __env_print_dbenv_all(env, flags)
 		{ DB_VERB_REP_MISC,		"DB_VERB_REP_MISC" },
 		{ DB_VERB_REP_MSGS,		"DB_VERB_REP_MSGS" },
 		{ DB_VERB_REP_SYNC,		"DB_VERB_REP_SYNC" },
+		{ DB_VERB_REP_TEST,		"DB_VERB_REP_TEST" },
 		{ DB_VERB_REPMGR_CONNFAIL,	"DB_VERB_REPMGR_CONNFAIL" },
 		{ DB_VERB_REPMGR_MISC,		"DB_VERB_REPMGR_MISC" },
 		{ DB_VERB_WAITSFOR,		"DB_VERB_WAITSFOR" },
@@ -437,8 +438,6 @@ __env_print_env_all(env, flags)
 	__mutex_print_debug_single(
 	    env, "ENV list of DB handles mutex", env->mtx_dblist, flags);
 	STAT_LONG("DB reference count", env->db_ref);
-
-	STAT_ULONG("XA RM ID", env->xa_rmid);
 
 	__mutex_print_debug_single(env, "MT mutex", env->mtx_mt, flags);
 
@@ -805,7 +804,6 @@ __db_print_reginfo(env, infop, s, flags)
 	STAT_STRING("Region type", __reg_type(infop->type));
 	STAT_ULONG("Region ID", infop->id);
 	STAT_STRING("Region name", infop->name);
-	STAT_POINTER("Original region address", infop->addr_orig);
 	STAT_POINTER("Region address", infop->addr);
 	STAT_POINTER("Region primary address", infop->primary);
 	STAT_ULONG("Region maximum allocation", infop->max_alloc);

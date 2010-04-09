@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: MpoolExample.cpp,v 12.8 2008/01/08 20:58:26 bostic Exp $
+ * $Id$
  */
 
 #include <sys/types.h>

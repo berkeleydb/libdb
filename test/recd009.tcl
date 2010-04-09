@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: recd009.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd009
 # TEST	Verify record numbering across split/reverse splits and recovery.
@@ -83,9 +83,9 @@ proc recd009 { method {select 0} args} {
 			set abortpg 1
 			set commitpg 0
 		}
-		op_recover abort $testdir $env_cmd $testfile $cmd $msg
+		op_recover abort $testdir $env_cmd $testfile $cmd $msg $args
 		recd009_recnocheck $testdir $testfile $opts $abortkeys $abortpg
-		op_recover commit $testdir $env_cmd $testfile $cmd $msg
+		op_recover commit $testdir $env_cmd $testfile $cmd $msg $args
 		recd009_recnocheck $testdir $testfile $opts \
 		    $commitkeys $commitpg
 	}

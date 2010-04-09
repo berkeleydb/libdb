@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: sequence.c,v 12.54 2008/05/05 20:25:09 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -575,7 +575,7 @@ __seq_update(seq, ip, txn, delta, flags)
 	 * locking on, acquire a locker id for the handle lock acquisition.
 	 */
 	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
-		if ((ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
+		if ((ret = __txn_begin(env, ip, NULL, &txn, flags)) != 0)
 			return (ret);
 		txn_local = 1;
 	} else
@@ -727,7 +727,6 @@ __seq_get(seq, txn, delta, retp, flags)
 		goto err;
 	}
 
-
 	if (rp->seq_min + delta > rp->seq_max) {
 		__db_errx(env, "Sequence overflow");
 		ret = EINVAL;
@@ -853,6 +852,15 @@ __seq_remove(seq, txn, flags)
 	txn_local = 0;
 
 	SEQ_ILLEGAL_BEFORE_OPEN(seq, "DB_SEQUENCE->remove");
+
+	/*
+	 * Flags can only be 0, unless the database has DB_AUTO_COMMIT enabled.
+	 * Then DB_TXN_NOSYNC is allowed.
+	 */
+	if (flags != 0 &&
+	    (flags != DB_TXN_NOSYNC || !IS_DB_AUTO_COMMIT(dbp, txn)))
+		return (__db_ferr(env, "DB_SEQUENCE->remove illegal flag", 0));
+
 	ENV_ENTER(env, ip);
 
 	/* Check for replication block. */
@@ -862,10 +870,6 @@ __seq_remove(seq, txn, flags)
 		handle_check = 0;
 		goto err;
 	}
-	if (flags != 0) {
-		ret = __db_ferr(env, "DB_SEQUENCE->remove", 0);
-		goto err;
-	}
 
 	/*
 	 * Create a local transaction as necessary, check for consistent
@@ -873,7 +877,7 @@ __seq_remove(seq, txn, flags)
 	 * locking on, acquire a locker id for the handle lock acquisition.
 	 */
 	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
-		if ((ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
+		if ((ret = __txn_begin(env, ip, NULL, &txn, flags)) != 0)
 			return (ret);
 		txn_local = 1;
 	}

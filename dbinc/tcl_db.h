@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_db.h,v 12.13 2008/02/01 18:27:16 sue Exp $
+ * $Id$
  */
 
 #ifndef _DB_TCL_DB_H_
@@ -16,7 +16,7 @@ extern "C" {
 #define	MSG_SIZE 100		/* Message size */
 
 enum INFOTYPE {
-    I_ENV, I_DB, I_DBC, I_TXN, I_MP, I_PG, I_LOCK, I_LOGC, I_NDBM, I_SEQ};
+    I_DB, I_DBC, I_ENV, I_LOCK, I_LOGC, I_MP, I_NDBM, I_PG, I_SEQ, I_TXN};
 
 #define	MAX_ID		8	/* Maximum number of sub-id's we need */
 #define	DBTCL_PREP	64	/* Size of txn_recover preplist */
@@ -27,6 +27,11 @@ enum INFOTYPE {
 #define	DBTCL_GETCLOCK		0
 #define	DBTCL_GETLIMIT		1
 #define	DBTCL_GETREQ		2
+
+#define	DBTCL_MUT_ALIGN	0
+#define	DBTCL_MUT_INCR	1
+#define	DBTCL_MUT_MAX	2
+#define	DBTCL_MUT_TAS	3
 
 /*
  * Why use a home grown package over the Tcl_Hash functions?
@@ -90,6 +95,8 @@ typedef struct dbtcl_info {
 	Tcl_Obj *i_dupcompare;
 	Tcl_Obj *i_event;
 	Tcl_Obj *i_hashproc;
+	Tcl_Obj *i_isalive;
+	Tcl_Obj *i_part_callback;
 	Tcl_Obj *i_rep_send;
 	Tcl_Obj *i_second_call;
 
@@ -101,14 +108,14 @@ typedef struct dbtcl_info {
 } DBTCL_INFO;
 
 #define	i_anyp un.anyp
-#define	i_pagep un.anyp
-#define	i_envp un.envp
 #define	i_dbp un.dbp
 #define	i_dbcp un.dbcp
-#define	i_txnp un.txnp
-#define	i_mp un.mp
+#define	i_envp un.envp
 #define	i_lock un.lock
 #define	i_logc un.logc
+#define	i_mp un.mp
+#define	i_pagep un.anyp
+#define	i_txnp un.txnp
 
 #define	i_data und.anydata
 #define	i_pgno und.pgno
@@ -201,8 +208,26 @@ extern DBTCL_GLOBAL __dbtcl_global;
  * returned by DB.
  */
 #define	MAKE_STAT_STRLIST(s,s1) do {					\
-	result = _SetListElem(interp, res, (s), strlen(s),		\
-	    (s1), strlen(s1));						\
+	result = _SetListElem(interp, res, (s), (u_int32_t)strlen(s),	\
+	    (s1), (u_int32_t)strlen(s1));				\
+	if (result != TCL_OK)						\
+		goto error;						\
+} while (0)
+
+/*
+ * MAKE_SITE_LIST appends a {eid host port status} tuple to a result list
+ * that MUST be called 'res' that is a Tcl_Obj * in the local function.
+ * This macro also assumes a label "error" to go to in the event of a Tcl
+ * error.
+ */
+#define	MAKE_SITE_LIST(e, h, p, s) do {					\
+	myobjc = 4;							\
+	myobjv[0] = Tcl_NewIntObj(e);					\
+	myobjv[1] = Tcl_NewStringObj((h), (int)strlen(h));		\
+	myobjv[2] = Tcl_NewIntObj((int)p);				\
+	myobjv[3] = Tcl_NewStringObj((s), (int)strlen(s));		\
+	thislist = Tcl_NewListObj(myobjc, myobjv);			\
+	result = Tcl_ListObjAppendElement(interp, res, thislist);	\
 	if (result != TCL_OK)						\
 		goto error;						\
 } while (0)

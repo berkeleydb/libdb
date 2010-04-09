@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep008.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep008
 # TEST	Replication, back up and synchronizing
@@ -16,6 +16,9 @@
 proc rep008 { method { niter 10 } { tnum "008" } args } {
 
 	source ./include.tcl
+	global mixed_mode_logging
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -33,10 +36,14 @@ proc rep008 { method { niter 10 } { tnum "008" } args } {
 
 	# This test depends on copying logs, so can't be run with
 	# in-memory logging.
-	global mixed_mode_logging
 	if { $mixed_mode_logging > 0 } {
 		puts "Rep$tnum: Skipping for mixed-mode logging."
 		return
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
 	}
 
 	set args [convert_args $method $args]
@@ -44,7 +51,7 @@ proc rep008 { method { niter 10 } { tnum "008" } args } {
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		puts "Rep$tnum ($method $r):\
-		    Replication backup and synchronizing."
+		    Replication backup and synchronizing $msg2."
 		rep008_sub $method $niter $tnum $r $args
 	}
 }
@@ -52,12 +59,18 @@ proc rep008 { method { niter 10 } { tnum "008" } args } {
 proc rep008_sub { method niter tnum recargs largs } {
 	global testdir
 	global util_path
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -73,14 +86,14 @@ proc rep008_sub { method niter tnum recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -home $masterdir -errpfx MASTER \
+	    -home $masterdir -errpfx MASTER $repmemargs \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -home $clientdir -errpfx CLIENT \
+	    -home $clientdir -errpfx CLIENT $repmemargs \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 

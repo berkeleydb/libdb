@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.build,v 12.10 2007/05/21 13:14:20 bostic Exp $
+# $Id$
 #
 # Build a program that calls the run-time API configuration functions.
 
@@ -105,7 +105,6 @@ s="\
 --enable-diagnostic \
 --enable-dump185 \
 --enable-posixmutexes \
---enable-rpc \
 --enable-smallbuild \
 --enable-umrw \
 --with-mutex=UNIX/fcntl \

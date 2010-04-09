@@ -1,5 +1,9 @@
 /*
- * $Id: b_txn.c,v 1.11 2007/12/21 13:58:30 bostic Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 #include "bench.h"
 

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test051.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test051
 # TEST	Fixed-length record Recno test.
@@ -22,6 +22,10 @@ proc test051 { method { args "" } } {
 	puts "Test051 ($method): Test of the fixed length records."
 	if { [is_fixed_length $method] != 1 } {
 		puts "Test051: skipping for method $method"
+		return
+	}
+	if { [is_partitioned $args] } {
+		puts "Test051 skipping for partitioned $omethod"
 		return
 	}
 

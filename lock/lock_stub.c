@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_stub.c,v 12.10 2008/01/08 20:58:41 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -127,7 +127,7 @@ int
 __lock_get_pp(dbenv, locker, flags, obj, lock_mode, lock)
 	DB_ENV *dbenv;
 	u_int32_t locker, flags;
-	const DBT *obj;
+	DBT *obj;
 	db_lockmode_t lock_mode;
 	DB_LOCK *lock;
 {

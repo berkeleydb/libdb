@@ -1,5 +1,5 @@
 /*
- * $Id: sha1.c,v 12.5 2008/03/12 22:44:14 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"

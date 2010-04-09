@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep028.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  	rep028
 # TEST	Replication and non-rep env handles. (Also see rep006.)
@@ -16,6 +16,9 @@
 proc rep028 { method { niter 100 } { tnum "028" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -40,6 +43,22 @@ proc rep028 { method { niter 100 } { tnum "028" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	set clopts { "create" "open" }
 	foreach r $test_recopts {
@@ -51,8 +70,8 @@ proc rep028 { method { niter 100 } { tnum "028" } args } {
 				continue
 			}
 			foreach c $clopts {
-				puts "Rep$tnum ($method $r $c):\
-				    Replication and non-rep env handles"
+				puts "Rep$tnum ($method $r $c): Replication\
+				    and non-rep env handles $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep028_sub $method $niter $tnum $l $r $c $args
@@ -64,12 +83,19 @@ proc rep028 { method { niter 100 } { tnum "028" } args } {
 proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	source ./include.tcl
 	global is_hp_test
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set omethod [convert_method $method]
@@ -97,7 +123,7 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	puts "\tRep$tnum.a: Open replicated envs and non-replicated client env."
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create \
-	    -log_max 1000000 -home $masterdir $verbargs \
+	    -log_max 1000000 -home $masterdir $verbargs $repmemargs \
 	    $m_txnargs $m_logargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -105,7 +131,7 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	# Open a client
 	repladd 2
 	set env_cmd(C) "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -home $clientdir $verbargs \
+	    $c_logargs -home $clientdir $verbargs $repmemargs \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C) $recargs]
 
@@ -115,8 +141,13 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 	set nonrepenv [eval {berkdb_env_noerr -home $clientdir}]
 	error_check_good nonrepenv [is_valid_env $nonrepenv] TRUE
 
-	set dbname "test$tnum.db"
-	#
+	# Set up databases in-memory or on-disk.
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+
 	# If we're testing create, verify that if a non-rep client
 	# creates a database before the master does, then when that
 	# client goes to use it, it gets DB_DEAD_HANDLE.
@@ -165,7 +196,7 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 		set db [eval berkdb_open_noerr \
 		    -create $omethod -env $masterenv -auto_commit $dbname]
 		error_check_good db_open [is_valid_db $db] TRUE
-		eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv $db $niter 0 0 0 $largs
 		process_msgs $envlist
 
 		#
@@ -183,24 +214,30 @@ proc rep028_sub { method niter tnum logset recargs clargs largs } {
 		# some more on the client to notice the end of log
 		# is now in an unexpected place.
 		#
-		eval rep_test $method $masterenv $db $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv $db $niter 0 0 0 $largs
 		process_msgs $envlist
 		error_check_good close [$nonrepdb close] 0
 
-		#
-		# Verify master and client logs are identical
-		#
-		set stat [catch {eval exec $util_path/db_printlog \
-		    -h $masterdir > $masterdir/prlog} result]
-		error_check_good stat_mprlog $stat 0
-		set stat [catch {eval exec $util_path/db_printlog \
-		    -h $clientdir > $clientdir/prlog} result]
-		error_check_good stat_cprlog $stat 0
-		error_check_good log_cmp \
-		    [filecmp $masterdir/prlog $clientdir/prlog] 0
+		# By passing in "NULL" for the database name, we compare
+		# only the master and client logs, not the databases.
+		rep_verify $masterdir $masterenv $clientdir $clientenv 0 0 1 NULL
+
+#		set stat [catch {eval exec $util_path/db_printlog \
+#		    -h $masterdir > $masterdir/prlog} result]
+#		error_check_good stat_mprlog $stat 0
+#		set stat [catch {eval exec $util_path/db_printlog \
+#		    -h $clientdir > $clientdir/prlog} result]
+#		error_check_good stat_cprlog $stat 0
+#		error_check_good log_cmp \
+#		    [filecmp $masterdir/prlog $clientdir/prlog] 0
 
 		# Clean up.
 		error_check_good db_close [$db close] 0
+
+		# Check that databases are in-memory or on-disk as expected.
+		check_db_location $nonrepenv
+		check_db_location $masterenv
+		check_db_location $clientenv
 	}
 
 	error_check_good nonrepenv_close [$nonrepenv close] 0

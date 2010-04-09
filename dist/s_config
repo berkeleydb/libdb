@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_config,v 12.2 2007/04/18 14:47:26 bostic Exp $
+#	$Id$
 #
 # Build the autoconfiguration files.
 

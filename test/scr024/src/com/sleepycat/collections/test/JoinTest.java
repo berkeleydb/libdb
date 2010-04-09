@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: JoinTest.java,v 12.9 2008/02/07 17:12:31 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections.test;
@@ -41,9 +41,7 @@ public class JoinTest extends TestCase
     private static final String MATCH_KEY  = "k4"; // matches both keys = "yes"
     private static final String[] VALUES = {"yes", "yes"};
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -54,9 +52,7 @@ public class JoinTest extends TestCase
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         return new JoinTest();
     }
 
@@ -76,6 +72,7 @@ public class JoinTest extends TestCase
         super("JoinTest");
     }
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -85,6 +82,7 @@ public class JoinTest extends TestCase
         createDatabase();
     }
 
+    @Override
     public void tearDown() {
 
         try {
@@ -120,15 +118,14 @@ public class JoinTest extends TestCase
         }
     }
 
+    @Override
     public void runTest()
         throws Exception {
 
         runner.run(this);
     }
 
-    public void doWork()
-        throws Exception {
-
+    public void doWork() {
         createViews();
         writeAndRead();
     }
@@ -173,9 +170,7 @@ public class JoinTest extends TestCase
             (env, null, file, null, primary, secConfig);
     }
 
-    private void createViews()
-        throws Exception {
-
+    private void createViews() {
         storeMap = factory.newMap(store, String.class,
                                          MarshalledObject.class, true);
         indexMap1 = factory.newMap(index1, String.class,
@@ -184,9 +179,7 @@ public class JoinTest extends TestCase
                                            MarshalledObject.class, true);
     }
 
-    private void writeAndRead()
-        throws Exception {
-
+    private void writeAndRead() {
         // write records: Data, PrimaryKey, IndexKey1, IndexKey2
         assertNull(storeMap.put(null,
             new MarshalledObject("d1", "k1", "no",  "yes")));
@@ -230,4 +223,3 @@ public class JoinTest extends TestCase
         } finally { i.close(); }
     }
 }
-

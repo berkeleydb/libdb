@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_open.c,v 12.25 2008/01/30 12:18:21 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -51,6 +51,7 @@
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 #include "dbinc/fop.h"
 
 static void __bam_init_meta __P((DB *, BTMETA *, db_pgno_t, DB_LSN *));
@@ -240,6 +241,31 @@ __bam_metachk(dbp, name, btm)
 			return (EINVAL);
 		}
 
+#ifdef HAVE_COMPRESSION
+	if (F_ISSET(&btm->dbmeta, BTM_COMPRESS)) {
+		F_SET(dbp, DB_AM_COMPRESS);
+		if ((BTREE *)dbp->bt_internal != NULL &&
+		    !DB_IS_COMPRESSED(dbp) &&
+		    (ret = __bam_set_bt_compress(dbp, NULL, NULL)) != 0)
+			return (ret);
+	} else {
+		if ((BTREE *)dbp->bt_internal != NULL &&
+		    DB_IS_COMPRESSED(dbp)) {
+			__db_errx(env,
+	"%s: compresssion specified to open method but not set in database",
+			    name);
+			return (EINVAL);
+		}
+	}
+#else
+	if (F_ISSET(&btm->dbmeta, BTM_COMPRESS)) {
+		__db_errx(env,
+			"%s: compression support has not been compiled in",
+			name);
+		return (EINVAL);
+	}
+#endif
+
 	/* Set the page size. */
 	dbp->pgsize = btm->dbmeta.pagesize;
 
@@ -314,8 +340,11 @@ __bam_read_root(dbp, ip, txn, base_pgno, flags)
 
 		t->bt_meta = base_pgno;
 		t->bt_root = meta->root;
-		if (PGNO(meta) == PGNO_BASE_MD && !F_ISSET(dbp, DB_AM_RECOVER))
+#ifndef HAVE_FTRUNCATE
+		if (PGNO(meta) == PGNO_BASE_MD &&
+		    !F_ISSET(dbp, DB_AM_RECOVER) && !IS_VERSION(dbp, meta))
 			__memp_set_last_pgno(mpf, meta->dbmeta.last_pgno);
+#endif
 	} else {
 		DB_ASSERT(dbp->env,
 		    IS_RECOVERING(dbp->env) || F_ISSET(dbp, DB_AM_RECOVER));
@@ -358,6 +387,9 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 	DB_LSN *lsnp;
 {
 	BTREE *t;
+#ifdef HAVE_PARTITION
+	DB_PARTITION *part;
+#endif
 	ENV *env;
 
 	env = dbp->env;
@@ -391,6 +423,10 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 		F_SET(&meta->dbmeta, BTM_SUBDB);
 	if (dbp->dup_compare != NULL)
 		F_SET(&meta->dbmeta, BTM_DUPSORT);
+#ifdef HAVE_COMPRESSION
+	if (DB_IS_COMPRESSED(dbp))
+		F_SET(&meta->dbmeta, BTM_COMPRESS);
+#endif
 	if (dbp->type == DB_RECNO)
 		F_SET(&meta->dbmeta, BTM_RECNO);
 	memcpy(meta->dbmeta.uid, dbp->fileid, DB_FILE_ID_LEN);
@@ -398,6 +434,16 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 	meta->minkey = t->bt_minkey;
 	meta->re_len = t->re_len;
 	meta->re_pad = (u_int32_t)t->re_pad;
+
+#ifdef HAVE_PARTITION
+	if ((part = dbp->p_internal) != NULL) {
+		meta->dbmeta.nparts = part->nparts;
+		if (F_ISSET(part, PART_CALLBACK))
+			FLD_SET(meta->dbmeta.metaflags, DBMETA_PART_CALLBACK);
+		if (F_ISSET(part, PART_RANGE))
+			FLD_SET(meta->dbmeta.metaflags, DBMETA_PART_RANGE);
+	}
+#endif
 }
 
 /*
@@ -491,7 +537,8 @@ __bam_new_file(dbp, ip, txn, fhp, name)
 		if ((ret = __db_pgout(
 		    dbp->dbenv, PGNO_BASE_MD, meta, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
+		if ((ret = __fop_write(env, txn, name, dbp->dirname,
+		    DB_APP_DATA, fhp,
 		    dbp->pgsize, 0, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
@@ -508,8 +555,9 @@ __bam_new_file(dbp, ip, txn, fhp, name)
 		if ((ret =
 		    __db_pgout(dbp->dbenv, root->pgno, root, &pdbt)) != 0)
 			goto err;
-		if ((ret = __fop_write(env, txn, name, DB_APP_DATA, fhp,
-		    dbp->pgsize, 1, 0, buf, dbp->pgsize, 1, F_ISSET(
+		if ((ret =
+		    __fop_write(env, txn, name, dbp->dirname, DB_APP_DATA,
+		    fhp, dbp->pgsize, 1, 0, buf, dbp->pgsize, 1, F_ISSET(
 		    dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0)) != 0)
 			goto err;
 		root = NULL;
@@ -578,7 +626,7 @@ __bam_new_subdb(mdbp, dbp, ip, txn)
 
 	/* Create and initialize a root page. */
 	if ((ret = __db_new(dbc,
-	    dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE, &root)) != 0)
+	    dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE, NULL, &root)) != 0)
 		goto err;
 	root->level = LEAFLEVEL;
 

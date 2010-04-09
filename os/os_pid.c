@@ -1,19 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: os_pid.c,v 12.27 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-
-#ifdef HAVE_MUTEX_SUPPORT
-#include "dbinc/mutex_int.h"		/* Required to load appropriate
-					   header files for thread functions. */
-#endif
 
 /*
  * __os_id --
@@ -50,8 +45,7 @@ __os_id(dbenv, pidp, tidp)
 		*tidp = GetCurrentThreadId();
 #elif defined(HAVE_MUTEX_UI_THREADS)
 		*tidp = thr_self();
-#elif defined(HAVE_MUTEX_SOLARIS_LWP) || \
-	defined(HAVE_MUTEX_PTHREADS) || defined(HAVE_PTHREAD_API)
+#elif defined(HAVE_PTHREAD_SELF)
 		*tidp = pthread_self();
 #else
 		/*

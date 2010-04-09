@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Environment.java,v 12.26 2008/04/02 13:43:38 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -77,7 +77,7 @@ public class Environment {
     the path of the database home.
     For more information on <code>envHome</code> and filename
     resolution in general, see
-    <a href="{@docRoot}/../ref/env/naming.html" target="_top">File Naming</a>.
+    <a href="{@docRoot}/../programmer_reference/env_naming.html" target="_top">File Naming</a>.
     <p>
     @param config The database environment attributes.  If null, default attributes are used.
     <p>
@@ -884,13 +884,13 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     }
 
     /**
-    Set the network timeout applied to the specified timeout type.
+    Sets the timeout applied to the specified timeout type.
     This method may be called at any time during the life of the application.
     @param type
-    The type of timeout to retrieve.
+    The type of timeout to set.
     <p>
     @param replicationTimeout
-    The time in milliseconds of the desired timeout.
+    The time in microseconds of the desired timeout.
     **/
     public void setReplicationTimeout(
         final ReplicationTimeoutType type, final int replicationTimeout)
@@ -900,12 +900,12 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     }
 
     /**
-    Get the network timeout applied to the specified timeout type.
+    Gets the timeout applied to the specified timeout type.
     @param type
     The type of timeout to retrieve.
     <p>
     @return
-    The network timeout applied to the specified timout type.
+    The timeout applied to the specified timout type, in microseconds.
     <p>
     <p>
 @throws DatabaseException if a failure occurs.
@@ -1099,7 +1099,7 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     Transaction#commit} method will discard the allocated locker ID.
     <p>
     See
-    <a href="{@docRoot}/../ref/cam/intro.html" target="_top">Berkeley DB Concurrent Data Store applications</a>
+    <a href="{@docRoot}/../programmer_reference/cam.html#cam_intro" target="_top">Berkeley DB Concurrent Data Store applications</a>
     for more information about when this is required.
     <p>
     @return
@@ -1226,7 +1226,7 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     <p>
     This method allows applications to include information in
     the database environment log files, for later review using the
-    <a href="{@docRoot}/../utility/db_printlog.html" target="_top">db_printlog</a>
+    <a href="{@docRoot}/../api_reference/C/db_printlog.html" target="_top">db_printlog</a>
      utility.  This method is intended for debugging and performance tuning.
      <p>
     @param txn
@@ -1397,6 +1397,27 @@ The release major number.
     */
     public static int getVersionMajor() {
         return DbEnv.get_version_major();
+    }
+
+    /**
+Ensure that all modified pages in the cache are flushed to their backing files.
+<p>
+Pages in the cache that cannot be immediately written back to disk (for example
+pages that are currently in use by another thread of control) are waited for
+and written to disk as soon as it is possible to do so.
+<p>
+@param logSequenceNumber
+The purpose of the logSequenceNumber parameter is to enable a transaction
+manager to ensure, as part of a checkpoint, that all pages modified by a
+certain time have been written to disk.
+<p>
+All modified pages with a log sequence number less than the logSequenceNumber
+parameter are written to disk. If logSequenceNumber is null, all modified
+pages in the cache are written to disk.
+    */
+    public void syncCache(LogSequenceNumber logSequenceNumber) 
+        throws DatabaseException {
+        dbenv.memp_sync(logSequenceNumber);
     }
 
     /**

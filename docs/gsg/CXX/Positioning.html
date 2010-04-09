@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Getting Records Using the Cursor</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Cursors.html" title="Chapter 4. Using Cursors" />
-    <link rel="previous" href="Cursors.html" title="Chapter 4. Using Cursors" />
+    <link rel="prev" href="Cursors.html" title="Chapter 4. Using Cursors" />
     <link rel="next" href="PutEntryWCursor.html" title="Putting Records Using Cursors" />
   </head>
   <body>
@@ -32,17 +32,30 @@
             <h2 class="title" style="clear: both"><a id="Positioning"></a>Getting Records Using the Cursor</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="Positioning.html#cursorsearch">Searching for Records</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="Positioning.html#getdups">Working with Duplicate Records</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         To iterate over database records, from the first record to
         the last, simply open the cursor and then use the
             
             
-            <tt class="methodname">Dbc::get()</tt>
+            <code class="methodname">Dbc::get()</code>
         method.  
         <span>Note that you need to supply the
-        <tt class="literal">DB_NEXT</tt> flag to this method.</span>
+        <code class="literal">DB_NEXT</code> flag to this method.</span>
         For example:
      </p>
       <a id="cxx_cursor3"></a>
@@ -85,7 +98,7 @@ if (cursorp != NULL)
 my_database.close(0);</pre>
       <p>
         To iterate over the database from the last record to the first, use 
-        <tt class="literal">DB_PREV</tt> instead of <tt class="literal">DB_NEXT</tt>:
+        <code class="literal">DB_PREV</code> instead of <code class="literal">DB_NEXT</code>:
     </p>
       <a id="cxx_cursor4"></a>
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
@@ -131,7 +144,6 @@ my_database.close(0);</pre>
               <h3 class="title"><a id="cursorsearch"></a>Searching for Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         You can use cursors to search for database records. You can search based
@@ -145,7 +157,7 @@ my_database.close(0);</pre>
         Also, if the search fails, then cursor's state is left unchanged
         and 
              
-            <tt class="literal">DB_NOTFOUND</tt> 
+            <code class="literal">DB_NOTFOUND</code> 
         is returned. 
         
         
@@ -153,17 +165,17 @@ my_database.close(0);</pre>
         <p>
         To use a cursor to search for a record, use
             
-            <span>Dbt::get()<tt class="methodname"></tt>.</span>
+            <span>Dbt::get()<code class="methodname"></code>.</span>
         When you use this method, you can provide the following flags:
     </p>
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
             Notice in the following list that the cursor flags use the 
-            keyword <tt class="literal">SET</tt> when the cursor examines just the key
+            keyword <code class="literal">SET</code> when the cursor examines just the key
             portion of the records (in this case, the cursor is set to the
             record whose key matches the value provided to the cursor).
-            Moreover, when the cursor uses the keyword <tt class="literal">GET</tt>,
+            Moreover, when the cursor uses the keyword <code class="literal">GET</code>,
             then the cursor is positioned to both the key
             <span class="emphasis"><em>and</em></span> the data values provided to the cursor.
         </p>
@@ -171,7 +183,7 @@ my_database.close(0);</pre>
             Regardless of the keyword you use to get a record with a cursor, the
             cursor's key and data 
                 
-                <span><tt class="classname">Dbt</tt>s</span>
+                <span><code class="classname">Dbt</code>s</span>
             are filled with the data retrieved from the record to which the
             cursor is positioned.
         </p>
@@ -181,7 +193,7 @@ my_database.close(0);</pre>
             <li>
               <p>
             
-            <tt class="literal">DB_SET</tt>
+            <code class="literal">DB_SET</code>
            </p>
               <p>
             Moves the cursor to the first record in the database with
@@ -191,11 +203,11 @@ my_database.close(0);</pre>
             <li>
               <p>
             
-            <tt class="literal">DB_SET_RANGE</tt>
+            <code class="literal">DB_SET_RANGE</code>
           </p>
               <p>
             <span>Identical to 
-                <tt class="literal">DB_SET</tt>
+                <code class="literal">DB_SET</code>
                 
             unless you are using the BTree access. In this case, the cursor
             moves</span>
@@ -224,18 +236,18 @@ my_database.close(0);</pre>
 Alaska
 Arizona</pre>
               <p>
-            Then providing a search key of <tt class="literal">Alaska</tt> moves the
+            Then providing a search key of <code class="literal">Alaska</code> moves the
             cursor to the second key noted above. Providing a key of
-            <tt class="literal">Al</tt> moves the cursor to the first key (<tt class="literal">Alabama</tt>), providing
-            a search key of <tt class="literal">Alas</tt> moves the cursor to the second key
-            (<tt class="literal">Alaska</tt>), and providing a key of <tt class="literal">Ar</tt> moves the
-            cursor to the last key (<tt class="literal">Arizona</tt>).
+            <code class="literal">Al</code> moves the cursor to the first key (<code class="literal">Alabama</code>), providing
+            a search key of <code class="literal">Alas</code> moves the cursor to the second key
+            (<code class="literal">Alaska</code>), and providing a key of <code class="literal">Ar</code> moves the
+            cursor to the last key (<code class="literal">Arizona</code>).
           </p>
             </li>
             <li>
               <p>
             
-            <tt class="literal">DB_GET_BOTH</tt>
+            <code class="literal">DB_GET_BOTH</code>
            </p>
               <p>
             Moves the cursor to the first record in the database that uses
@@ -245,7 +257,7 @@ Arizona</pre>
             <li>
               <p>
             
-            <tt class="literal">DB_GET_BOTH_RANGE</tt>
+            <code class="literal">DB_GET_BOTH_RANGE</code>
           </p>
               <p>
             Moves the cursor to the first record in the database whose key matches the specified
@@ -364,7 +376,6 @@ my_database.close(0); </pre>
               <h3 class="title"><a id="getdups"></a>Working with Duplicate Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         A record is a duplicate of another record if the two records share the
@@ -373,7 +384,7 @@ my_database.close(0); </pre>
         <p>
         Duplicate records are supported only for the BTree or Hash access methods.
         For information on configuring your database to use duplicate records,
-        see <a href="btree.html#duplicateRecords">Allowing Duplicate Records</a>.
+        see <a class="xref" href="btree.html#duplicateRecords" title="Allowing Duplicate Records">Allowing Duplicate Records</a>.
       </p>
         <p>
 		If your database supports duplicate records, then it can potentially
@@ -390,7 +401,7 @@ my_database.close(0); </pre>
         The following 
             
             
-            <span><tt class="methodname">Dbc::get()</tt> flags</span>
+            <span><code class="methodname">Dbc::get()</code> flags</span>
         are interesting when working with databases that support duplicate records:
 	  </p>
         <div class="itemizedlist">
@@ -399,24 +410,24 @@ my_database.close(0); </pre>
               <p>
             
             <span>
-                <tt class="literal">DB_NEXT</tt>,
-                <tt class="literal">DB_PREV</tt>
+                <code class="literal">DB_NEXT</code>,
+                <code class="literal">DB_PREV</code>
             </span>
           </p>
               <p>
             Shows the next/previous record in the database, regardless of
             whether it is a duplicate of the current record. For an example of
-            using these methods, see <a href="Positioning.html">Getting Records Using the Cursor</a>.
+            using these methods, see <a class="xref" href="Positioning.html" title="Getting Records Using the Cursor">Getting Records Using the Cursor</a>.
           </p>
             </li>
             <li>
               <p>
             
-            <tt class="literal">DB_GET_BOTH_RANGE</tt>
+            <code class="literal">DB_GET_BOTH_RANGE</code>
           </p>
               <p>
             Useful for seeking the cursor to a specific record, regardless of
-            whether it is a duplicate record. See <a href="Positioning.html#cursorsearch">Searching for Records</a> for more
+            whether it is a duplicate record. See <a class="xref" href="Positioning.html#cursorsearch" title="Searching for Records">Searching for Records</a> for more
             information.
           </p>
             </li>
@@ -424,8 +435,8 @@ my_database.close(0); </pre>
               <p>
             
             <span>
-                <tt class="literal">DB_NEXT_NODUP</tt>,
-                <tt class="literal">DB_PREV_NODUP</tt>
+                <code class="literal">DB_NEXT_NODUP</code>,
+                <code class="literal">DB_PREV_NODUP</code>
             </span>
           </p>
               <p>
@@ -435,8 +446,8 @@ my_database.close(0); </pre>
                  
                 <span>
                      
-                    <tt class="methodname">Dbc::get()</tt> 
-                    with <tt class="literal">DB_PREV_NODUP</tt>,
+                    <code class="methodname">Dbc::get()</code> 
+                    with <code class="literal">DB_PREV_NODUP</code>,
                 </span> 
             then the cursor is positioned to the last record for the previous
             key in the database.  For example, if you have the following records
@@ -449,21 +460,21 @@ Alaska/Fairbanks
 Arizona/Avondale
 Arizona/Florence</pre>
               <p>
-          and your cursor is positioned to <tt class="literal">Alaska/Fairbanks</tt>,
+          and your cursor is positioned to <code class="literal">Alaska/Fairbanks</code>,
           and you then call 
                  
                 <span>
                          
-                    <tt class="methodname">Dbc::get()</tt> 
-                    with <tt class="literal">DB_PREV_NODUP</tt>,
+                    <code class="methodname">Dbc::get()</code> 
+                    with <code class="literal">DB_PREV_NODUP</code>,
                 </span> 
           then the cursor is positioned to Alabama/Florence. Similarly, if
           you call 
                  
                 <span>
                      
-                    <tt class="methodname">Dbc::get()</tt> 
-                    with <tt class="literal">DB_NEXT_NODUP</tt>,
+                    <code class="methodname">Dbc::get()</code> 
+                    with <code class="literal">DB_NEXT_NODUP</code>,
                 </span> 
             
           then the cursor is positioned to the first record corresponding to 
@@ -472,14 +483,14 @@ Arizona/Florence</pre>
               <p>
             If there is no next/previous key in the database, then
                  
-                <tt class="literal">DB_NOTFOUND</tt> 
+                <code class="literal">DB_NOTFOUND</code> 
             is returned, and the cursor is left unchanged.
           </p>
             </li>
             <li>
               <p>
             
-                <tt class="literal">DB_NEXT_DUP</tt>
+                <code class="literal">DB_NEXT_DUP</code>
           </p>
               <p>
 
@@ -492,13 +503,13 @@ Arizona/Florence</pre>
                  
                 <span>
                      
-                    <tt class="methodname">Dbc::get()</tt> 
-                   with <tt class="literal">DB_NEXT_DUP</tt>,
+                    <code class="methodname">Dbc::get()</code> 
+                   with <code class="literal">DB_NEXT_DUP</code>,
                 </span> 
 
             then 
                  
-                <tt class="literal">DB_NOTFOUND</tt> 
+                <code class="literal">DB_NOTFOUND</code> 
             is returned and the cursor is left unchanged. 
             
           </p>

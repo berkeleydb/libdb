@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: db_setid.c,v 12.32 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,9 +13,6 @@
 #include "dbinc/db_swap.h"
 #include "dbinc/db_am.h"
 #include "dbinc/mp.h"
-
-static int __env_fileid_reset __P((ENV *,
-	    DB_THREAD_INFO *, const char *, int));
 
 /*
  * __env_fileid_reset_pp --
@@ -56,8 +53,10 @@ __env_fileid_reset_pp(dbenv, name, flags)
 /*
  * __env_fileid_reset --
  *	Reset the file IDs for every database in the file.
+ * PUBLIC: int __env_fileid_reset
+ * PUBLIC:	 __P((ENV *, DB_THREAD_INFO *, const char *, int));
  */
-static int
+int
 __env_fileid_reset(env, ip, name, encrypted)
 	ENV *env;
 	DB_THREAD_INFO *ip;
@@ -66,6 +65,7 @@ __env_fileid_reset(env, ip, name, encrypted)
 {
 	DB *dbp;
 	DBC *dbcp;
+	DBMETA *meta;
 	DBT key, data;
 	DB_FH *fhp;
 	DB_MPOOLFILE *mpf;
@@ -83,8 +83,8 @@ __env_fileid_reset(env, ip, name, encrypted)
 	real_name = NULL;
 
 	/* Get the real backing file name. */
-	if ((ret =
-	    __db_appname(env, DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_DATA, name, NULL, &real_name)) != 0)
 		return (ret);
 
 	/* Get a new file ID. */
@@ -107,7 +107,8 @@ __env_fileid_reset(env, ip, name, encrypted)
 	if (n != sizeof(mbuf)) {
 		ret = EINVAL;
 		__db_errx(env,
-		    "%s: unexpected file type or format", real_name);
+		    "__env_fileid_reset: %s: unexpected file type or format",
+		    real_name);
 		goto err;
 	}
 
@@ -124,7 +125,14 @@ __env_fileid_reset(env, ip, name, encrypted)
 	if ((ret = __db_meta_setup(env,
 	    dbp, real_name, (DBMETA *)mbuf, 0, DB_CHK_META)) != 0)
 		goto err;
-	memcpy(((DBMETA *)mbuf)->uid, fileid, DB_FILE_ID_LEN);
+
+	meta = (DBMETA *)mbuf;
+	if (FLD_ISSET(meta->metaflags,
+	    DBMETA_PART_RANGE | DBMETA_PART_CALLBACK) && (ret =
+	    __part_fileid_reset(env, ip, name, meta->nparts, encrypted)) != 0)
+		goto err;
+
+	memcpy(meta->uid, fileid, DB_FILE_ID_LEN);
 	cookie.db_pagesize = sizeof(mbuf);
 	cookie.flags = dbp->flags;
 	cookie.type = dbp->type;
@@ -148,6 +156,15 @@ __env_fileid_reset(env, ip, name, encrypted)
 	 */
 
 	/*
+	 * If the database file doesn't support subdatabases, we only have
+	 * to update a single metadata page.  Otherwise, we have to open a
+	 * cursor and step through the master database, and update all of
+	 * the subdatabases' metadata pages.
+	 */
+	if (meta->type != P_BTREEMETA || !F_ISSET(meta, BTM_SUBDB))
+		goto err;
+
+	/*
 	 * Open the DB file.
 	 *
 	 * !!!
@@ -156,15 +173,6 @@ __env_fileid_reset(env, ip, name, encrypted)
 	 */
 	if ((ret = __db_open(dbp, ip, NULL,
 	    name, NULL, DB_UNKNOWN, DB_RDWRMASTER, 0, PGNO_BASE_MD)) != 0)
-		goto err;
-
-	/*
-	 * If the database file doesn't support subdatabases, we only have
-	 * to update a single metadata page.  Otherwise, we have to open a
-	 * cursor and step through the master database, and update all of
-	 * the subdatabases' metadata pages.
-	 */
-	if (!F_ISSET(dbp, DB_AM_SUBDB))
 		goto err;
 
 	mpf = dbp->mpf;

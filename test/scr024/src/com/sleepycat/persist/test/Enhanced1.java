@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Enhanced1.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
@@ -140,6 +140,14 @@ class Enhanced1 implements Enhanced {
                 f12 = input.readInt();
             }
         }
+    }
+
+    public void bdbWriteCompositeKeyFields(EntityOutput output,
+                                           Format[] formats) {
+    }
+
+    public void bdbReadCompositeKeyFields(EntityInput input,
+                                          Format[] formats) {
     }
 
     public boolean bdbNullifyKeyField(Object o,

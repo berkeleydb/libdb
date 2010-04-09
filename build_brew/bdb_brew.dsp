@@ -120,6 +120,9 @@ SOURCE=..\btree\bt_compact.c
 SOURCE=..\btree\bt_compare.c
 # End Source File
 # Begin Source File
+SOURCE=..\btree\bt_compress.c
+# End Source File
+# Begin Source File
 SOURCE=..\btree\bt_conv.c
 # End Source File
 # Begin Source File
@@ -211,6 +214,9 @@ SOURCE=..\common\crypto_stub.c
 # End Source File
 # Begin Source File
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+SOURCE=..\common\db_compint.c
 # End Source File
 # Begin Source File
 SOURCE=..\common\db_err.c
@@ -307,6 +313,9 @@ SOURCE=..\db\db_setid.c
 # End Source File
 # Begin Source File
 SOURCE=..\db\db_setlsn.c
+# End Source File
+# Begin Source File
+SOURCE=..\db\db_sort_multiple.c
 # End Source File
 # Begin Source File
 SOURCE=..\db\db_stati.c
@@ -619,9 +628,6 @@ SOURCE=..\txn\txn_stat.c
 # End Source File
 # Begin Source File
 SOURCE=..\txn\txn_util.c
-# End Source File
-# Begin Source File
-SOURCE=..\xa\xa_stub.c
 # End Source File
 # End Group
 # End Target

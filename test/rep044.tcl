@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: rep044.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep044
 # TEST
@@ -17,6 +17,9 @@
 proc rep044 { method { tnum "044" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -37,10 +40,26 @@ proc rep044 { method { tnum "044" } args } {
 		return
 	}
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
 		set logindex [lsearch -exact $l "in-memory"]
 		puts "Rep$tnum ($method): Replication with rollbacks\
-		    and open file ids."
+		    and open file ids $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 		rep044_sub $method $tnum $l $args
@@ -50,13 +69,19 @@ proc rep044 { method { tnum "044" } args } {
 proc rep044_sub { method tnum logset largs } {
 	source ./include.tcl
 	set orig_tdir $testdir
-
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set masterdir $testdir/ENV0
@@ -126,14 +151,14 @@ proc rep044_sub { method tnum logset largs } {
 		# Open a master.
 		repladd 1
 		set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
-		    $m_logargs -lock_detect default \
+		    $m_logargs -lock_detect default $repmemargs \
 		    -errpfx ENV.M0 $verbargs \
 		    -home $masterdir -rep_transport \[list 1 replsend\]"
 		set menv0 [eval $envcmd(M0) -rep_master]
 
 		# Open second handle on master env.
 		set envcmd(M1) "berkdb_env_noerr $m_txnargs \
-		    $m_logargs -lock_detect default \
+		    $m_logargs -lock_detect default $repmemargs \
 		    -errpfx ENV.M1 $verbargs \
 		    -home $masterdir -rep_transport \[list 1 replsend\]"
 		set menv1 [eval $envcmd(M1)]
@@ -142,7 +167,7 @@ proc rep044_sub { method tnum logset largs } {
 		# Open a client
 		repladd 2
 		set envcmd(C) "berkdb_env_noerr -create $c_txnargs \
-		    $c_logargs -errpfx ENV.C $verbargs \
+		    $c_logargs -errpfx ENV.C $verbargs $repmemargs \
 		    -lock_detect default \
 		    -home $clientdir -rep_transport \[list 2 replsend\]"
 		set cenv [eval $envcmd(C) -rep_client]
@@ -153,14 +178,22 @@ proc rep044_sub { method tnum logset largs } {
 
 		puts "\tRep$tnum.a: Run rep_test in 1st master env."
 		set start 0
-		eval rep_test $method $menv0 NULL $niter $start $start 0 0 $largs
+		eval rep_test $method $menv0 NULL $niter $start $start 0 $largs
 		incr start $niter
 		process_msgs $envlist
 
 		puts "\tRep$tnum.b: Open db in 2nd master env."
 		# Open the db here; we want it to remain open after rep_test.
+		
+		# Set up database as in-memory or on-disk.
+		if { $databases_in_memory } {
+			set dbname { "" "test.db" }
+		} else { 
+			set dbname "test.db"
+		} 
+
 		set db1 [eval {berkdb_open_noerr -env $menv1 -auto_commit \
-		     -mode 0644} $largs $omethod test.db]
+		     -mode 0644} $largs $omethod $dbname]
 		error_check_good dbopen [is_valid_db $db1] TRUE
 
 		if { $processopens == 1 } {
@@ -187,7 +220,7 @@ proc rep044_sub { method tnum logset largs } {
 				error_check_good close_handle [$db1 close] 0
 				set db1 [eval {berkdb_open_noerr \
 				    -env $menv1 -auto_commit -mode 0644}\
-				    $largs $omethod test.db]
+				    $largs $omethod $dbname]
 			} else {
 				error_check_good txn_commit [$t commit] 0
 			}
@@ -212,6 +245,11 @@ proc rep044_sub { method tnum logset largs } {
 			set start [do_switch $method $niter $start $menv0 $cenv $largs]
 		}
 
+		# Check that databases are in-memory or on-disk as expected.
+		check_db_location $menv0
+		check_db_location $menv1
+		check_db_location $cenv
+	
 		puts "\tRep$tnum.e: Clean up."
 		error_check_good menv0_close [$menv0 close] 0
 		error_check_good menv1_close [$menv1 close] 0
@@ -232,7 +270,7 @@ proc do_switch { method niter start masterenv clientenv largs } {
 	process_msgs $envlist
 
 	# Run rep_test in the new master.
-	eval rep_test $method $clientenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $clientenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -241,7 +279,7 @@ proc do_switch { method niter start masterenv clientenv largs } {
 	error_check_good master_upgrade [$masterenv rep_start -master] 0
 
 	# Run rep_test in the restored master.
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 

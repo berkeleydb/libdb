@@ -224,6 +224,21 @@ b_inmem.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../../test_micro/source/b_latch.c_dependDone
+FALSE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../../test_micro/source/b_latch.c_dependencies
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../../test_micro/source/b_latch.c_objects
+b_latch.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../../test_micro/source/b_latch.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../../test_micro/source/b_load.c_dependDone
 FALSE
 <END>
@@ -381,6 +396,7 @@ $(PRJ_DIR)/../../test_micro/source/b_curwalk.c \
 $(PRJ_DIR)/../../test_micro/source/b_del.c \
 $(PRJ_DIR)/../../test_micro/source/b_get.c \
 $(PRJ_DIR)/../../test_micro/source/b_inmem.c \
+$(PRJ_DIR)/../../test_micro/source/b_latch.c \
 $(PRJ_DIR)/../../test_micro/source/b_load.c \
 $(PRJ_DIR)/../../test_micro/source/b_open.c \
 $(PRJ_DIR)/../../test_micro/source/b_put.c \

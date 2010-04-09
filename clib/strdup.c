@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: strdup.c,v 12.1 2006/05/05 14:53:08 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

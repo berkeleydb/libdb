@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_rec.c,v 12.39 2008/02/18 06:14:08 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -38,6 +38,338 @@ __bam_split_recover(env, dbtp, lsnp, op, info)
 	DB_THREAD_INFO *ip;
 	DB *file_dbp;
 	DBC *dbc;
+	DB_LSN *plsnp;
+	DB_MPOOLFILE *mpf;
+	PAGE *_lp, *lp, *np, *pp, *_rp, *rp, *sp;
+	db_pgno_t pgno, parent_pgno;
+	u_int32_t ptype, size;
+	int cmp, l_update, p_update, r_update, ret, rootsplit, t_ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	REC_PRINT(__bam_split_print);
+
+	_lp = lp = np = pp = _rp = rp = NULL;
+	sp = NULL;
+
+	REC_INTRO(__bam_split_read, ip, 0);
+
+	if ((ret = __db_cursor_int(file_dbp, ip, NULL,
+	    (argp->opflags & SPL_RECNO) ?  DB_RECNO : DB_BTREE,
+	    PGNO_INVALID, 0, NULL, &dbc)) != 0)
+		goto out;
+	if (argp->opflags & SPL_NRECS)
+		F_SET((BTREE_CURSOR *)dbc->internal, C_RECNUM);
+	F_SET(dbc, DBC_RECOVER);
+
+	/*
+	 * There are two kinds of splits that we have to recover from.  The
+	 * first is a root-page split, where the root page is split from a
+	 * leaf page into an internal page and two new leaf pages are created.
+	 * The second is where a page is split into two pages, and a new key
+	 * is inserted into the parent page.
+	 *
+	 * DBTs are not aligned in log records, so we need to copy the page
+	 * so that we can access fields within it throughout this routine.
+	 * Although we could hardcode the unaligned copies in this routine,
+	 * we will be calling into regular btree functions with this page,
+	 * so it's got to be aligned.  Copying it into allocated memory is
+	 * the only way to guarantee this.
+	 */
+	if ((ret = __os_malloc(env, argp->pg.size, &sp)) != 0)
+		goto out;
+	memcpy(sp, argp->pg.data, argp->pg.size);
+
+	pgno = PGNO(sp);
+	parent_pgno = argp->ppgno;
+	rootsplit = parent_pgno == pgno;
+
+	/* Get the pages going down the tree. */
+	REC_FGET(mpf, ip, parent_pgno, &pp, left);
+left:	REC_FGET(mpf, ip, argp->left, &lp, right);
+right:	REC_FGET(mpf, ip, argp->right, &rp, redo);
+
+redo:	if (DB_REDO(op)) {
+		l_update = r_update = p_update = 0;
+		/*
+		 * Decide if we need to resplit the page.
+		 *
+		 * If this is a root split, then the root has to exist unless
+		 * we have truncated it due to a future deallocation.
+		 */
+		if (pp != NULL) {
+			if (rootsplit)
+				plsnp = &LSN(argp->pg.data);
+			else
+				plsnp = &argp->plsn;
+			cmp = LOG_COMPARE(&LSN(pp), plsnp);
+			CHECK_LSN(env, op, cmp, &LSN(pp), plsnp);
+			if (cmp == 0)
+				p_update = 1;
+		}
+
+		if (lp != NULL) {
+			cmp = LOG_COMPARE(&LSN(lp), &argp->llsn);
+			CHECK_LSN(env, op, cmp, &LSN(lp), &argp->llsn);
+			if (cmp == 0)
+				l_update = 1;
+		}
+
+		if (rp != NULL) {
+			cmp = LOG_COMPARE(&LSN(rp), &argp->rlsn);
+			CHECK_LSN(env, op, cmp, &LSN(rp), &argp->rlsn);
+			if (cmp == 0)
+				r_update = 1;
+		}
+
+		if (!p_update && !l_update && !r_update)
+			goto check_next;
+
+		/* Allocate and initialize new left/right child pages. */
+		if ((ret = __os_malloc(env, file_dbp->pgsize, &_lp)) != 0 ||
+		    (ret = __os_malloc(env, file_dbp->pgsize, &_rp)) != 0)
+			goto out;
+		if (rootsplit) {
+			P_INIT(_lp, file_dbp->pgsize, argp->left,
+			    PGNO_INVALID,
+			    ISINTERNAL(sp) ? PGNO_INVALID : argp->right,
+			    LEVEL(sp), TYPE(sp));
+			P_INIT(_rp, file_dbp->pgsize, argp->right,
+			    ISINTERNAL(sp) ?  PGNO_INVALID : argp->left,
+			    PGNO_INVALID, LEVEL(sp), TYPE(sp));
+		} else {
+			P_INIT(_lp, file_dbp->pgsize, PGNO(sp),
+			    ISINTERNAL(sp) ? PGNO_INVALID : PREV_PGNO(sp),
+			    ISINTERNAL(sp) ? PGNO_INVALID : argp->right,
+			    LEVEL(sp), TYPE(sp));
+			P_INIT(_rp, file_dbp->pgsize, argp->right,
+			    ISINTERNAL(sp) ? PGNO_INVALID : sp->pgno,
+			    ISINTERNAL(sp) ? PGNO_INVALID : NEXT_PGNO(sp),
+			    LEVEL(sp), TYPE(sp));
+		}
+
+		/* Split the page. */
+		if ((ret = __bam_copy(file_dbp, sp, _lp, 0, argp->indx)) != 0 ||
+		    (ret = __bam_copy(file_dbp, sp, _rp, argp->indx,
+		    NUM_ENT(sp))) != 0)
+			goto out;
+
+		if (l_update) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &lp);
+			memcpy(lp, _lp, file_dbp->pgsize);
+			lp->lsn = *lsnp;
+		}
+
+		if (r_update) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &rp);
+			memcpy(rp, _rp, file_dbp->pgsize);
+			rp->lsn = *lsnp;
+		}
+
+		/*
+		 * Drop the latches on the lower level pages before
+		 * getting an exclusive latch on the higher level page.
+		 */
+		if (lp != NULL && (ret = __memp_fput(mpf,
+		    ip, lp, file_dbp->priority)) && ret == 0)
+			goto out;
+		lp = NULL;
+		if (rp != NULL && (ret = __memp_fput(mpf,
+		    ip, rp, file_dbp->priority)) && ret == 0)
+			goto out;
+		rp = NULL;
+		/*
+		 * If the parent page is wrong, update it.
+		 * Initialize the page.  If it is a root page update
+		 * the record counts if needed and put the first record in.
+		 * Then insert the record for the right hand child page.
+		 */
+		if (p_update) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pp);
+			if (argp->opflags & SPL_RECNO)
+				ptype = P_IRECNO;
+			else
+				ptype = P_IBTREE;
+
+			if (rootsplit) {
+				P_INIT(pp, file_dbp->pgsize, pgno, PGNO_INVALID,
+				    PGNO_INVALID, _lp->level + 1, ptype);
+				if (argp->opflags & SPL_NRECS) {
+					RE_NREC_SET(pp,
+					    __bam_total(file_dbp, _lp) +
+					    __bam_total(file_dbp, _rp));
+				}
+				if ((ret = __db_pitem_nolog(dbc, pp,
+				    argp->pindx, argp->pentry.size,
+				    &argp->pentry, NULL)) != 0)
+					goto out;
+
+			}
+			if ((ret = __db_pitem_nolog(dbc, pp, argp->pindx + 1,
+			    argp->rentry.size, &argp->rentry, NULL)) != 0)
+				goto out;
+			pp->lsn = *lsnp;
+		}
+
+check_next:	/*
+		 * Finally, redo the next-page link if necessary.  This is of
+		 * interest only if it wasn't a root split -- inserting a new
+		 * page in the tree requires that any following page have its
+		 * previous-page pointer updated to our new page.  The next
+		 * page must exist because we're redoing the operation.
+		 */
+		if (!rootsplit && argp->npgno != PGNO_INVALID) {
+			REC_FGET(mpf, ip, argp->npgno, &np, done);
+			cmp = LOG_COMPARE(&LSN(np), &argp->nlsn);
+			CHECK_LSN(env, op, cmp, &LSN(np), &argp->nlsn);
+			if (cmp == 0) {
+				REC_DIRTY(mpf, ip, file_dbp->priority, &np);
+				PREV_PGNO(np) = argp->right;
+				np->lsn = *lsnp;
+			}
+		}
+	} else {
+		/*
+		 * If it's a root split and the left child ever existed, update
+		 * its LSN.   Otherwise its the split page. If
+		 * right child ever existed, root split or not, update its LSN.
+		 * The undo of the page allocation(s) will restore them to the
+		 * free list.
+		 */
+		if (rootsplit && lp != NULL &&
+		    LOG_COMPARE(lsnp, &LSN(lp)) == 0) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &lp);
+			lp->lsn = argp->llsn;
+		}
+		if (rp != NULL &&
+		    LOG_COMPARE(lsnp, &LSN(rp)) == 0) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &rp);
+			rp->lsn = argp->rlsn;
+		}
+		/*
+		 * Drop the lower level pages before getting an exclusive
+		 * latch on  the parent.
+		 */
+		if (rp != NULL && (ret = __memp_fput(mpf,
+		    ip, rp, file_dbp->priority)))
+			goto out;
+		rp = NULL;
+
+		/*
+		 * Check the state of the split page.  If its a rootsplit
+		 * then thats the rootpage otherwise its the left page.
+		 */
+		if (rootsplit) {
+			DB_ASSERT(env, pgno == argp->ppgno);
+			if (lp != NULL && (ret = __memp_fput(mpf, ip,
+			     lp, file_dbp->priority)) != 0)
+				goto out;
+			lp = pp;
+			pp = NULL;
+		}
+		if (lp != NULL) {
+			cmp = LOG_COMPARE(lsnp, &LSN(lp));
+			CHECK_ABORT(env, op, cmp, &LSN(lp), lsnp);
+			if (cmp == 0) {
+				REC_DIRTY(mpf, ip, file_dbp->priority, &lp);
+				memcpy(lp, argp->pg.data, argp->pg.size);
+				if ((ret = __memp_fput(mpf,
+				    ip, lp, file_dbp->priority)))
+					goto out;
+				lp = NULL;
+			}
+		}
+
+		/*
+		 * Next we can update the parent removing the new index.
+		 */
+		if (pp != NULL) {
+			DB_ASSERT(env, !rootsplit);
+			cmp = LOG_COMPARE(lsnp, &LSN(pp));
+			CHECK_ABORT(env, op, cmp, &LSN(pp), lsnp);
+			if (cmp == 0) {
+				REC_DIRTY(mpf, ip, file_dbp->priority, &pp);
+				if (argp->opflags & SPL_RECNO)
+					size = RINTERNAL_SIZE;
+				else
+					size  = BINTERNAL_SIZE(
+					    GET_BINTERNAL(file_dbp,
+					    pp, argp->pindx + 1)->len);
+
+				if ((ret = __db_ditem(dbc, pp,
+				    argp->pindx + 1, size)) != 0)
+					goto out;
+				pp->lsn = argp->plsn;
+			}
+		}
+
+		/*
+		 * Finally, undo the next-page link if necessary.  This is of
+		 * interest only if it wasn't a root split -- inserting a new
+		 * page in the tree requires that any following page have its
+		 * previous-page pointer updated to our new page.  Since it's
+		 * possible that the next-page never existed, we ignore it as
+		 * if there's nothing to undo.
+		 */
+		if (!rootsplit && argp->npgno != PGNO_INVALID) {
+			if ((ret = __memp_fget(mpf, &argp->npgno,
+			    ip, NULL, DB_MPOOL_EDIT, &np)) != 0) {
+				np = NULL;
+				goto done;
+			}
+			if (LOG_COMPARE(lsnp, &LSN(np)) == 0) {
+				REC_DIRTY(mpf, ip, file_dbp->priority, &np);
+				PREV_PGNO(np) = argp->left;
+				np->lsn = argp->nlsn;
+			}
+		}
+	}
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	/* Free any pages that are left. */
+	if (lp != NULL && (t_ret = __memp_fput(mpf,
+	    ip, lp, file_dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (np != NULL && (t_ret = __memp_fput(mpf,
+	    ip, np, file_dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (rp != NULL && (t_ret = __memp_fput(mpf,
+	     ip, rp, file_dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (pp != NULL && (t_ret = __memp_fput(mpf,
+	    ip, pp, file_dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+
+	/* Free any allocated space. */
+	if (_lp != NULL)
+		__os_free(env, _lp);
+	if (_rp != NULL)
+		__os_free(env, _rp);
+	if (sp != NULL)
+		__os_free(env, sp);
+
+	REC_CLOSE;
+}
+/*
+ * __bam_split_recover --
+ *	Recovery function for split.
+ *
+ * PUBLIC: int __bam_split_42_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__bam_split_42_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__bam_split_42_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
 	DB_MPOOLFILE *mpf;
 	PAGE *_lp, *lp, *np, *pp, *_rp, *rp, *sp;
 	db_pgno_t pgno, root_pgno;
@@ -50,7 +382,7 @@ __bam_split_recover(env, dbtp, lsnp, op, info)
 	_lp = lp = np = pp = _rp = rp = NULL;
 	sp = NULL;
 
-	REC_INTRO(__bam_split_read, ip, 0);
+	REC_INTRO(__bam_split_42_read, ip, 0);
 
 	/*
 	 * There are two kinds of splits that we have to recover from.  The
@@ -364,6 +696,7 @@ __bam_rsplit_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->rootlsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->rootlsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/*
 		 * Copy the new data to the root page.  If it is not now a
@@ -410,6 +743,7 @@ do_page:
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &copy_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &copy_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
@@ -626,6 +960,7 @@ __bam_cdel_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
@@ -675,13 +1010,15 @@ __bam_repl_recover(env, dbtp, lsnp, op, info)
 	__bam_repl_args *argp;
 	DB_THREAD_INFO *ip;
 	BKEYDATA *bk;
+	BINTERNAL *bi;
 	DB *file_dbp;
 	DBC *dbc;
 	DBT dbt;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_n, cmp_p, ret;
-	u_int8_t *p;
+	u_int32_t len;
+	u_int8_t *dp, *p;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
@@ -696,11 +1033,11 @@ __bam_repl_recover(env, dbtp, lsnp, op, info)
 		} else
 			goto done;
 	}
-	bk = GET_BKEYDATA(file_dbp, pagep, argp->indx);
 
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/*
 		 * Need to redo update described.
@@ -708,18 +1045,31 @@ __bam_repl_recover(env, dbtp, lsnp, op, info)
 		 * Re-build the replacement item.
 		 */
 		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (TYPE(pagep) == P_IBTREE) {
+			/* Point at the internal struct past the type. */
+			bi = GET_BINTERNAL(file_dbp, pagep, argp->indx);
+			dp = &bi->unused;
+			len = bi->len +
+			     SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
+		} else  {
+			bk = GET_BKEYDATA(file_dbp, pagep, argp->indx);
+			dp = bk->data;
+			len = bk->len;
+		}
 		memset(&dbt, 0, sizeof(dbt));
 		dbt.size = argp->prefix + argp->suffix + argp->repl.size;
 		if ((ret = __os_malloc(env, dbt.size, &dbt.data)) != 0)
 			goto out;
 		p = dbt.data;
-		memcpy(p, bk->data, argp->prefix);
+		memcpy(p, dp, argp->prefix);
 		p += argp->prefix;
 		memcpy(p, argp->repl.data, argp->repl.size);
 		p += argp->repl.size;
-		memcpy(p, bk->data + (bk->len - argp->suffix), argp->suffix);
+		memcpy(p, dp + (len - argp->suffix), argp->suffix);
 
-		ret = __bam_ritem(dbc, pagep, argp->indx, &dbt);
+		/* isdeleted has become the type flag for non-leaf replace */
+		ret = __bam_ritem(dbc,
+		     pagep, argp->indx, &dbt, argp->isdeleted);
 		__os_free(env, dbt.data);
 		if (ret != 0)
 			goto out;
@@ -732,24 +1082,36 @@ __bam_repl_recover(env, dbtp, lsnp, op, info)
 		 * Re-build the original item.
 		 */
 		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (TYPE(pagep) == P_IBTREE) {
+			/* Point at the internal struct past the type. */
+			bi = GET_BINTERNAL(file_dbp, pagep, argp->indx);
+			dp = &bi->unused;
+			len = bi->len +
+			     SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
+		} else  {
+			bk = GET_BKEYDATA(file_dbp, pagep, argp->indx);
+			dp = bk->data;
+			len = bk->len;
+		}
 		memset(&dbt, 0, sizeof(dbt));
 		dbt.size = argp->prefix + argp->suffix + argp->orig.size;
 		if ((ret = __os_malloc(env, dbt.size, &dbt.data)) != 0)
 			goto out;
 		p = dbt.data;
-		memcpy(p, bk->data, argp->prefix);
+		memcpy(p, dp, argp->prefix);
 		p += argp->prefix;
 		memcpy(p, argp->orig.data, argp->orig.size);
 		p += argp->orig.size;
-		memcpy(p, bk->data + (bk->len - argp->suffix), argp->suffix);
+		memcpy(p, dp + (len - argp->suffix), argp->suffix);
 
-		ret = __bam_ritem(dbc, pagep, argp->indx, &dbt);
+		ret = __bam_ritem(dbc,
+		     pagep, argp->indx, &dbt, argp->isdeleted);
 		__os_free(env, dbt.data);
 		if (ret != 0)
 			goto out;
 
 		/* Reset the deleted flag, if necessary. */
-		if (argp->isdeleted)
+		if (argp->isdeleted && LEVEL(pagep) == LEAFLEVEL)
 			B_DSET(GET_BKEYDATA(file_dbp, pagep, argp->indx)->type);
 
 		LSN(pagep) = argp->lsn;
@@ -806,6 +1168,7 @@ __bam_root_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(meta));
 	cmp_p = LOG_COMPARE(&LSN(meta), &argp->meta_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(meta), &argp->meta_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(meta), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &meta);
@@ -1011,6 +1374,8 @@ __bam_relink_recover(env, dbtp, lsnp, op, info)
 	 * the current page is the result of a split and is being recovered
 	 * elsewhere, so all we need do is recover the next page.
 	 */
+	if (argp->next == PGNO_INVALID)
+		goto prev;
 	if ((ret = __memp_fget(mpf, &argp->next, ip, NULL, 0, &pagep)) != 0) {
 		if (ret != DB_PAGE_NOTFOUND) {
 			ret = __db_pgerr(file_dbp, argp->next, ret);
@@ -1022,6 +1387,7 @@ __bam_relink_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn_next);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn_next);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Redo the remove or replace. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
@@ -1043,7 +1409,9 @@ __bam_relink_recover(env, dbtp, lsnp, op, info)
 		goto out;
 	pagep = NULL;
 
-prev:	if ((ret = __memp_fget(mpf, &argp->prev, ip, NULL, 0, &pagep)) != 0) {
+prev:	if (argp->prev == PGNO_INVALID)
+		goto done;
+	if ((ret = __memp_fget(mpf, &argp->prev, ip, NULL, 0, &pagep)) != 0) {
 		if (ret != DB_PAGE_NOTFOUND) {
 			ret = __db_pgerr(file_dbp, argp->prev, ret);
 			goto out;
@@ -1051,8 +1419,10 @@ prev:	if ((ret = __memp_fget(mpf, &argp->prev, ip, NULL, 0, &pagep)) != 0) {
 			goto done;
 	}
 
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn_prev);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn_prev);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Redo the relink. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
@@ -1062,7 +1432,7 @@ prev:	if ((ret = __memp_fget(mpf, &argp->prev, ip, NULL, 0, &pagep)) != 0) {
 			pagep->next_pgno = argp->new_pgno;
 
 		pagep->lsn = *lsnp;
-	} else if (LOG_COMPARE(lsnp, &LSN(pagep)) == 0 && DB_UNDO(op)) {
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
 		/* Undo the relink. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		pagep->next_pgno = argp->pgno;
@@ -1302,6 +1672,7 @@ __bam_merge_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(file_dbp->env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(file_dbp->env, op, cmp_n, &LSN(pagep), lsnp);
 
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/*
@@ -1470,6 +1841,7 @@ __bam_pgno_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
 	CHECK_LSN(file_dbp->env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(file_dbp->env, op, cmp_n, &LSN(pagep), lsnp);
 
 	if ((cmp_p == 0 && DB_REDO(op)) || (cmp_n == 0 && !DB_REDO(op))) {
 		switch (TYPE(pagep)) {

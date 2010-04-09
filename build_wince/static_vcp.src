@@ -34,14 +34,14 @@ CFG=@project_name@ - Win32 (WCE emulator) Debug
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "@lib_rel_dest@_EMU"
+# PROP BASE Output_Dir "Release_EMU"
 # PROP BASE Intermediate_Dir "Release_EMU/@project_name@"
 # PROP BASE CPU_ID "{32E52003-403E-442D-BE48-DE10F8C6131D}"
 # PROP BASE Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "@lib_rel_dest@_EMU"
+# PROP Output_Dir "Release_EMU"
 # PROP Intermediate_Dir "Release_EMU/@project_name@"
 # PROP CPU_ID "{32E52003-403E-442D-BE48-DE10F8C6131D}"
 # PROP Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
@@ -51,8 +51,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "NDEBUG" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192 @extra_cppflags@ /GF /O2 /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"@lib_rel_dest@_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
-# ADD LIB32 /nologo /out:"@lib_rel_dest@_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
+# ADD LIB32 /nologo /out:"Release_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -61,14 +61,14 @@ BSC32=bscmake.exe
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "@lib_debug_dest@_EMU"
+# PROP BASE Output_Dir "Debug_EMU"
 # PROP BASE Intermediate_Dir "Debug_EMU/@project_name@"
 # PROP BASE CPU_ID "{32E52003-403E-442D-BE48-DE10F8C6131D}"
 # PROP BASE Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "@lib_debug_dest@_EMU"
+# PROP Output_Dir "Debug_EMU"
 # PROP Intermediate_Dir "Debug_EMU/@project_name@"
 # PROP CPU_ID "{32E52003-403E-442D-BE48-DE10F8C6131D}"
 # PROP Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
@@ -78,8 +78,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192 @extra_cppflags@ /GF /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"@lib_debug_dest@_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
-# ADD LIB32 /nologo /out:"@lib_debug_dest@_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
+# ADD LIB32 /nologo /out:"Debug_EMU/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -88,14 +88,14 @@ BSC32=bscmake.exe
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "@lib_rel_dest@_ARMV4"
+# PROP BASE Output_Dir "Release_ARMV4"
 # PROP BASE Intermediate_Dir "Release_ARMV4/@project_name@"
 # PROP BASE CPU_ID "{ECBEA43D-CD7B-4852-AD55-D4227B5D624B}"
 # PROP BASE Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "@lib_rel_dest@_ARMV4"
+# PROP Output_Dir "Release_ARMV4"
 # PROP Intermediate_Dir "Release_ARMV4/@project_name@"
 # PROP CPU_ID "{ECBEA43D-CD7B-4852-AD55-D4227B5D624B}"
 # PROP Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
@@ -105,8 +105,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "NDEBUG" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /O2 /M$(CECrtMT) @extra_cppflags@ /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"@lib_rel_dest@_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
-# ADD LIB32 /nologo /out:"@lib_rel_dest@_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
+# ADD LIB32 /nologo /out:"Release_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -115,14 +115,14 @@ BSC32=bscmake.exe
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "@lib_debug_dest@_ARMV4"
+# PROP BASE Output_Dir "Debug_ARMV4"
 # PROP BASE Intermediate_Dir "Debug_ARMV4/@project_name@"
 # PROP BASE CPU_ID "{ECBEA43D-CD7B-4852-AD55-D4227B5D624B}"
 # PROP BASE Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "@lib_debug_dest@_ARMV4"
+# PROP Output_Dir "Debug_ARMV4"
 # PROP Intermediate_Dir "Debug_ARMV4/@project_name@"
 # PROP CPU_ID "{ECBEA43D-CD7B-4852-AD55-D4227B5D624B}"
 # PROP Platform_ID "{8A9A2F80-6887-11D3-842E-005004848CBA}"
@@ -132,8 +132,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /M$(CECrtMTDebug) @extra_cppflags@ /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"@lib_debug_dest@_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
-# ADD LIB32 /nologo /out:"@lib_debug_dest@_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
+# ADD LIB32 /nologo /out:"Debug_ARMV4/libdb@lib_suffix@@DB_VERSION_MAJOR@@DB_VERSION_MINOR@sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo

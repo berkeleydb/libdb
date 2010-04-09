@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep001.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep001
 # TEST	Replication rename and forced-upgrade test.
@@ -16,6 +16,8 @@
 proc rep001 { method { niter 1000 } { tnum "001" } args } {
 	global passwd
 	global has_crypto
+	global databases_in_memory
+	global repfiles_in_memory
 
 	source ./include.tcl
 	if { $is_windows9x_test == 1 } {
@@ -27,16 +29,19 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 		return "ALL"
 	}
 
-	# Rep056 runs rep001 with in-memory named databases.
-	set inmem 0
-	set msg "using regular named databases"
-	if { $tnum == "056" } {
-		set inmem 1
-		set msg "using in-memory named databases"
+	# It's possible to run this test with in-memory databases.
+	set msg "with named databases"
+	if { $databases_in_memory } {
+		set msg "with in-memory named databases"
 		if { [is_queueext $method] == 1 } {
 			puts "Skipping rep$tnum for method $method"
 			return
 		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
 	}
 
 	# Run tests with and without recovery.  If we're doing testing
@@ -55,14 +60,13 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 			set envargs ""
 			set args $saved_args
 			puts -nonewline "Rep$tnum: Replication sanity test "
-			puts "($method $recopt), $msg."
+			puts "($method $recopt) $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
-			rep001_sub $method \
-			    $niter $tnum $envargs $l $recopt $inmem $args
+			rep001_sub $method $niter $tnum $envargs $l $recopt $args
 
 			# Skip encrypted tests if not supported.
-			if { $has_crypto == 0 || $inmem } {
+			if { $has_crypto == 0 || $databases_in_memory } {
 				continue
 			}
 
@@ -75,21 +79,28 @@ proc rep001 { method { niter 1000 } { tnum "001" } args } {
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep001_sub $method \
-			    $niter $tnum $envargs $l $recopt $inmem $args
+			    $niter $tnum $envargs $l $recopt $args
 		}
 	}
 }
 
-proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
+proc rep001_sub { method niter tnum envargs logset recargs largs } {
 	source ./include.tcl
 	global testdir
 	global encrypt
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -118,7 +129,7 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create \
+	set env_cmd(M) "berkdb_env_noerr -create $repmemargs \
 	    -log_max 1000000 $envargs $m_logargs $recargs $verbargs \
 	    -home $masterdir -errpfx MASTER $m_txnargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
@@ -126,7 +137,7 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env_noerr -create \
+	set env_cmd(C) "berkdb_env_noerr -create $repmemargs \
 	    -log_max 1000000 $envargs $c_logargs $recargs $verbargs \
 	    -home $clientdir -errpfx CLIENT $c_txnargs -rep_client \
 	    -rep_transport \[list 2 replsend\]"
@@ -145,17 +156,18 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a:\
 	    Running rep_test in replicated env ($envargs $recargs)."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $inmem $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Verifying client database contents."
-	if { $inmem } {
+	if { $databases_in_memory } {
 		set dbname { "" "test.db" }
 	} else {
 		set dbname "test.db"
 	}
 
-	rep_verify $masterdir $masterenv $clientdir $clientenv $verify_subset 1 1 $dbname
+	rep_verify $masterdir $masterenv \
+	    $clientdir $clientenv $verify_subset 1 1
 
 	# Remove the file (and update client).
 	puts "\tRep$tnum.c: Remove the file on the master and close master."
@@ -170,7 +182,7 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 
 	# Run rep_test in the new master
 	puts "\tRep$tnum.e: Running rep_test in new master."
-	eval rep_test $method $newmasterenv NULL $niter 0 0 0 $inmem $largs
+	eval rep_test $method $newmasterenv NULL $niter 0 0 0 $largs
 	set envlist "{$newmasterenv 2}"
 	process_msgs $envlist
 
@@ -178,7 +190,7 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 	# Throttle master so it can't send everything at once
 	$newmasterenv rep_limit 0 [expr 64 * 1024]
 	set newclientenv [eval {berkdb_env_noerr -create -recover} \
-	    $envargs -txn nosync -errpfx NEWCLIENT \
+	    $envargs $m_logargs $m_txnargs -errpfx NEWCLIENT $verbargs $repmemargs \
 	    {-home $masterdir -rep_client -rep_transport [list 1 replsend]}]
 	set envlist "{$newclientenv 1} {$newmasterenv 2}"
 	process_msgs $envlist
@@ -195,14 +207,14 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 	# Run a modified rep_test in the new master (and update client).
 	puts "\tRep$tnum.g: Running rep_test in new master."
 	eval rep_test $method \
-	    $newmasterenv NULL $niter $niter $niter 0 $inmem $largs
+	    $newmasterenv NULL $niter $niter $niter 0 $largs
 	process_msgs $envlist
 
 	# Verify the database in the client dir.
 	puts "\tRep$tnum.h: Verifying new client database contents."
 
-	rep_verify \
-	    $masterdir $newmasterenv $clientdir $newclientenv $verify_subset 1 1 $dbname
+	rep_verify $masterdir $newmasterenv \
+	    $clientdir $newclientenv $verify_subset 1 1
 
 	error_check_good newmasterenv_close [$newmasterenv close] 0
 	error_check_good newclientenv_close [$newclientenv close] 0
@@ -211,6 +223,7 @@ proc rep001_sub { method niter tnum envargs logset recargs inmem largs } {
 		set encrypt 1
 	}
 	error_check_good verify \
-	    [verify_dir $clientdir "\tRep$tnum.k: " 0 0 1] 0
+	    [verify_dir $clientdir "\tRep$tnum.k: " 0 0 1] 0 
+
 	replclose $testdir/MSGQUEUEDIR
 }

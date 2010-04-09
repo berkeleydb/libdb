@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_am.h,v 12.44 2008/05/07 12:27:33 bschmeck Exp $
+ * $Id$
  */
 #ifndef _DB_AM_H_
 #define	_DB_AM_H_
@@ -12,8 +12,14 @@
 extern "C" {
 #endif
 
+/*
+ * Temporary for the patch release, define this bit here so it
+ * does not renumber the other bits for DB->open.
+ */
+#define DB_NOERROR	0x10000000
+
 struct __db_foreign_info; \
-                        typedef struct __db_foreign_info DB_FOREIGN_INFO;
+			typedef struct __db_foreign_info DB_FOREIGN_INFO;
 
 /*
  * Keep track of information for foreign keys.  Used to maintain a linked list
@@ -67,6 +73,7 @@ struct __db_foreign_info {
 #define	DB_REM_BIG	4
 #define	DB_ADD_PAGE_COMPAT	5	/* Compatibility for 4.2 db_relink */
 #define	DB_REM_PAGE_COMPAT	6	/* Compatibility for 4.2 db_relink */
+#define	DB_APPEND_BIG	7
 
 /*
  * Standard initialization and shutdown macros for all recovery functions.
@@ -123,7 +130,7 @@ struct __db_foreign_info {
  */
 #define	REC_FGET(mpf, ip, pgno, pagep, cont)				\
 	if ((ret = __memp_fget(mpf,					\
-	     &(pgno), ip, NULL, 0, pagep)) != 0) { 			\
+	     &(pgno), ip, NULL, 0, pagep)) != 0) {			\
 		if (ret != DB_PAGE_NOTFOUND) {				\
 			ret = __db_pgerr(file_dbp, pgno, ret);		\
 			goto out;					\
@@ -182,6 +189,10 @@ struct __db_foreign_info {
 	(LOCK_ISSET(lock) ? __db_lput(dbc, &(lock)) : 0)
 
 /*
+ * Check whether a database is a primary (that is, has associated secondaries).
+ */
+#define	DB_IS_PRIMARY(dbp) (LIST_FIRST(&dbp->s_secondaries) != NULL)
+/*
  * A database should be required to be readonly if it's been explicitly
  * specified as such or if we're a client in a replicated environment
  * and the user did not specify DB_TXN_NOT_DURABLE.
@@ -189,6 +200,14 @@ struct __db_foreign_info {
 #define	DB_IS_READONLY(dbp)						\
     (F_ISSET(dbp, DB_AM_RDONLY) ||					\
     (IS_REP_CLIENT((dbp)->env) && !F_ISSET((dbp), DB_AM_NOT_DURABLE)))
+
+#ifdef HAVE_COMPRESSION
+/*
+ * Check whether a database is compressed (btree only)
+ */
+#define	DB_IS_COMPRESSED(dbp)						\
+    (((BTREE *)(dbp)->bt_internal)->bt_compress != NULL)
+#endif
 
 /*
  * We copy the key out if there's any chance the key in the database is not
@@ -203,10 +222,10 @@ struct __db_foreign_info {
  * without hash support enabled. Which would result in a null pointer access.
  */
 #ifdef HAVE_HASH
-#define DB_RETURNS_A_KEY_HASH(dbp)					\
+#define	DB_RETURNS_A_KEY_HASH(dbp)					\
 	((HASH *)(dbp)->h_internal)->h_compare != NULL
 #else
-#define DB_RETURNS_A_KEY_HASH(dbp)	0
+#define	DB_RETURNS_A_KEY_HASH(dbp)	0
 #endif
 #define	DB_RETURNS_A_KEY(dbp, flags)					\
 	(((flags) != 0 && (flags) != DB_GET_BOTH &&			\
@@ -250,8 +269,8 @@ struct __db_foreign_info {
  * Macros used to implement a binary search algorithm. Shared between the
  * btree and hash implementations.
  */
-#define	DB_BINARY_SEARCH_FOR(base, limit, page, adjust)			\
-	for (base = 0, limit = NUM_ENT(page) / (db_indx_t)(adjust);	\
+#define	DB_BINARY_SEARCH_FOR(base, limit, nument, adjust)		\
+	for (base = 0, limit = (nument) / (db_indx_t)(adjust);		\
 	    (limit) != 0; (limit) >>= 1)
 
 #define	DB_BINARY_SEARCH_INCR(index, base, limit, adjust)		\

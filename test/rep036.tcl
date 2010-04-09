@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep036.tcl,v 12.15 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep036
 # TEST	Multiple master processes writing to the database.
@@ -11,6 +11,8 @@
 proc rep036 { method { niter 200 } { tnum "036" } args } {
 
 	source ./include.tcl
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -29,10 +31,15 @@ proc rep036 { method { niter 200 } { tnum "036" } args } {
 	set saved_args $args
 	set logsets [create_logsets 3]
 
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
 		set envargs ""
 		set args $saved_args
-		puts "Rep$tnum: Test sync-up recovery ($method)."
+		puts "Rep$tnum: Test sync-up recovery ($method) $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 		puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
@@ -42,12 +49,18 @@ proc rep036 { method { niter 200 } { tnum "036" } args } {
 
 proc rep036_sub { method niter tnum envargs logset args } {
 	source ./include.tcl
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -70,7 +83,7 @@ proc rep036_sub { method niter tnum envargs logset args } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create $verbargs \
+	set env_cmd(M) "berkdb_env_noerr -create $verbargs $repmemargs \
 	    -log_max 1000000 $envargs -home $masterdir $m_logargs \
 	    -errpfx MASTER -errfile /dev/stderr -txn -rep_master \
 	    -rep_transport \[list 1 replsend\]"
@@ -78,7 +91,7 @@ proc rep036_sub { method niter tnum envargs logset args } {
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env_noerr -create $verbargs \
+	set env_cmd(C) "berkdb_env_noerr -create $verbargs $repmemargs \
 	    -log_max 1000000 $envargs -home $clientdir $c_logargs \
 	    -errfile /dev/stderr -errpfx CLIENT -txn -rep_client \
 	    -rep_transport \[list 2 replsend\]"

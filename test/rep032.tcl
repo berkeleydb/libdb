@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep032.tcl,v 12.17 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep032
 # TEST	Test of log gap processing.
@@ -15,6 +15,9 @@
 proc rep032 { method { niter 200 } { tnum "032" } args } {
 
 	source ./include.tcl
+	global databases_in_memory 
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -28,6 +31,22 @@ proc rep032 { method { niter 200 } { tnum "032" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	set opts { "" "bulk" }
 	foreach r $test_recopts {
@@ -40,7 +59,7 @@ proc rep032 { method { niter 200 } { tnum "032" } args } {
 					continue
 				}
 				puts "Rep$tnum ($method $r $b $args):\
-				    Test of log gap processing."
+				    Test of log gap processing $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep032_sub $method $niter $tnum $l $r $b $args
@@ -52,12 +71,19 @@ proc rep032 { method { niter 200 } { tnum "032" } args } {
 proc rep032_sub { method niter tnum logset recargs opts largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -82,7 +108,7 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $repmemargs \
 	    $m_logargs $verbargs -home $masterdir -errpfx MASTER \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -92,7 +118,7 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $repmemargs \
 	    $c_logargs $verbargs -home $clientdir -errpfx CLIENT \
 	     -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -104,7 +130,7 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -116,7 +142,7 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 	# Run rep_test in the master (don't update client).
 	# First run with dropping all client messages via replclear.
 	puts "\tRep$tnum.c: Running rep_test dropping client msgs."
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	replclear 2
 	process_msgs $envlist
@@ -126,7 +152,13 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 	# request missing pieces.
 	#
 	puts "\tRep$tnum.d: Running rep_test again replicated."
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	#
+	# Force a checkpoint to cause a gap to force rerequest.
+	#
+	$masterenv txn_checkpoint -force
+	process_msgs $envlist
+	tclsleep 1
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -150,8 +182,7 @@ proc rep032_sub { method niter tnum logset recargs opts largs } {
 		process_msgs $envlist 0 NONE err
 	}
 
-	# Check that master and client logs and dbs are identical.
-	rep_verify $masterdir $masterenv $clientdir $clientenv
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
 
         set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	if { $opts == "bulk" } {

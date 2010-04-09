@@ -206,7 +206,7 @@ __crdel_metasub_log(dbp, txnp, ret_lsnp, flags, pgno, page, lsn)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -346,8 +346,6 @@ __crdel_inmem_create_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -573,8 +571,6 @@ __crdel_inmem_rename_log(env, txnp, ret_lsnp, flags,
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
 		if (txnp == NULL)
 			return (0);
-		if (txnp == NULL)
-			return (0);
 		is_durable = 0;
 	} else
 		is_durable = 1;
@@ -792,8 +788,6 @@ __crdel_inmem_remove_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;

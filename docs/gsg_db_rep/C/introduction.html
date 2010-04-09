@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 1. Introduction</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="previous" href="preface.html" title="Preface" />
+    <link rel="prev" href="preface.html" title="Preface" />
     <link rel="next" href="repadvantage.html" title="Replication Benefits" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="introduction"></a>Chapter 1. Introduction</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -82,12 +81,12 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="apioverview.html#repframeworkoverview">Replication Framework Overview</a>
+                  <a href="apioverview.html#repframeworkoverview">Replication Manager Overview</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="apioverview.html#repapioverview">Replication API Overview</a>
+                  <a href="apioverview.html#repapioverview">Replication Base API Overview</a>
                 </span>
               </dt>
             </dl>
@@ -158,7 +157,7 @@
       <p>
     You should understand the concepts from the
         <span>
-                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i>
+                <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em>
         </span>
         
 
@@ -171,7 +170,30 @@
               <h2 class="title" style="clear: both"><a id="overview"></a>Overview</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#repenvirons">Replication Environments</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#repdbs">Replication Databases</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#commlayer">Communications Layer</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#masterselect">Selecting a Master</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
             The DB replication APIs allow you to distribute your database
@@ -198,7 +220,7 @@
         <p>
             Note that all replication applications must first be
             transactional applications. The data that the master transmits
-            its replicas are log records that are generated as records are
+            to its replicas are log records that are generated as records are
             updated. Upon transactional commit, the master transmits a
             transaction record which tells the replicas to commit the
             records they previously received from the master. In order for
@@ -208,16 +230,6 @@
             a stand-alone transactional application before introducing the
             replication layer to your code.
         </p>
-        <p>
-            Finally, be aware that all machines participating in the
-            replication group must share identical
-            <span class="emphasis"><em>endianess</em></span>.  Endianess is the byte-order
-            strategy used by the computing platform to store multibyte
-            numbers. Berkeley DB is sensitive to byte order and so your
-            replication infrastructure must be consistent in this area.
-            We expect to remove this requirement in some future
-            release of the product.
-        </p>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
@@ -225,7 +237,6 @@
                 <h3 class="title"><a id="repenvirons"></a>Replication Environments</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 The most important requirement for a replication
@@ -254,9 +265,9 @@
                 network bandwidth, for example.
             </p>
           <p>
-                    (Note, however, that the replication framework does place a limit on the
+                    (Note, however, that the Replication Manager does place a limit on the
                     number of environments you can use. See
-                    <a href="apioverview.html#repframeworkoverview">Replication Framework Overview</a>
+                    <a class="xref" href="apioverview.html#repframeworkoverview" title="Replication Manager Overview">Replication Manager Overview</a>
                     for details.)
             </p>
           <p>
@@ -268,9 +279,9 @@
             </p>
           <p>
                     For detailed information on database environments, see 
-                    the <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i>
+                    the <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em>
                     guide.  For more information on environment IDs, see 
-                    the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>.
+                    the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
             </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
@@ -280,21 +291,20 @@
                 <h3 class="title"><a id="repdbs"></a>Replication Databases</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 DB's databases are managed and used in exactly the same way
                 as if you were writing a non-replicated application, with
                 a couple of caveats. First,  the databases maintained in a replicated environment
-                must reside either in the <tt class="literal">ENV_HOME</tt>
+                must reside either in the <code class="literal">ENV_HOME</code>
                 directory, or in the directory identified by the 
-                    <tt class="methodname">DB_ENV-&gt;set_data_dir()</tt>
+                    <code class="methodname">DB_ENV-&gt;set_data_dir()</code>
                     
                     
                 method. Unlike non-replication applications, you cannot place your 
                 databases in a subdirectory below these locations. You should
                 also not use full path names for your databases or
-                environments as these are likely to break as to replicated
+                environments as these are likely to break when they are replicated
                 to other machines.
             </p>
         </div>
@@ -305,7 +315,6 @@
                 <h3 class="title"><a id="commlayer"></a>Communications Layer</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 In order to transmit database writes to the replication
@@ -327,13 +336,13 @@
             </p>
           <p>
                 Note that you may not have to write your own communications
-                layer. DB provides a replication framework that
+                layer. DB provides a Replication Manager that
                 includes a fully-functional TCP/IP-based communications layer.
-                See <a href="apioverview.html">The Replication APIs</a>
+                See <a class="xref" href="apioverview.html" title="The Replication APIs">The Replication APIs</a>
                 for more information.
             </p>
           <p>
-                    See the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i> 
+                    See the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> 
                     for a description of how to
                 write your own custom replication communications layer.
             </p>
@@ -345,7 +354,6 @@
                 <h3 class="title"><a id="masterselect"></a>Selecting a Master</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     Every replication group is allowed one and only one
@@ -362,12 +370,12 @@
                     records will win the election. Note that it's possible
                     for there to be a tie. When this occurs, priorities are
                     used to select the master. See 
-                    <a href="elections.html">Holding Elections</a>
+                    <a class="xref" href="elections.html" title="Holding Elections">Holding Elections</a>
                     for details.
                 </p>
           <p>
                     For more information on holding and managing elections,
-                    see <a href="elections.html">Holding Elections</a>.
+                    see <a class="xref" href="elections.html" title="Holding Elections">Holding Elections</a>.
                 </p>
         </div>
       </div>
@@ -377,9 +385,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="preface.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="repadvantage.html">Next</a></td>
         </tr>
         <tr>

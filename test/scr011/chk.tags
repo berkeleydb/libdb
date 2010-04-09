@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.tags,v 12.6 2007/07/06 18:44:33 bostic Exp $
+# $Id$
 #
 # Check to make sure we don't need any more symbolic links to tags files.
 
@@ -11,6 +11,12 @@ d=../..
 	echo 'FAIL: cannot find source distribution directory.'
 	exit 1
 }
+
+# We are dropping the tags file for 4.8 - test is invalid
+# for now exit out 
+echo "<<< test is no longer valid >>>"
+exit 0
+
 
 t1=__1
 t2=__2

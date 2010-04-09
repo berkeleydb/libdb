@@ -1,4 +1,4 @@
-# $Id: clock.m4,v 1.2 2007/11/27 01:27:42 bostic Exp $
+# $Id$
 
 # Configure clocks and timers.
 AC_DEFUN(AC_TIMERS, [

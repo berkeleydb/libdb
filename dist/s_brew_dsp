@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_brew_dsp,v 1.4 2008/03/20 03:53:54 mjc Exp $
+#	$Id$
 #
 # Build BREW .dsp files.
 

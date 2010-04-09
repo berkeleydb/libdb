@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
- * $Id: region.h,v 12.21 2008/05/07 12:35:10 bschmeck Exp $
+ * $Id$
  */
 
 #ifndef _DB_REGION_H_
@@ -202,7 +202,7 @@ typedef struct __db_reg_env {
 #define	DB_REGENV_TIMEOUT	30	/* Backup timeout. */
 	time_t	  op_timestamp;		/* Timestamp for operations. */
 	time_t	  rep_timestamp;	/* Timestamp for rep db handles. */
-
+	u_int32_t reg_panic;		/* DB_REGISTER triggered panic */
 	uintmax_t unused;		/* The ALLOC_LAYOUT structure follows
 					 * the REGENV structure in memory and
 					 * contains uintmax_t fields.  Force
@@ -215,8 +215,7 @@ typedef struct __db_region {
 	u_int32_t	id;		/* Region id. */
 	reg_type_t	type;		/* Region type. */
 
-	roff_t	size_orig;		/* Region size in bytes (original). */
-	roff_t	size;			/* Region size in bytes (adjusted). */
+	roff_t	size;			/* Region size in bytes. */
 
 	roff_t	primary;		/* Primary data structure offset. */
 
@@ -236,12 +235,13 @@ struct __db_reginfo_t {		/* __env_region_attach IN parameters. */
 
 	char	   *name;		/* Region file name. */
 
-	void	   *addr_orig;		/* Region address (original). */
-	void	   *addr;		/* Region address (adjusted). */
+	void	   *addr;		/* Region address. */
 	void	   *primary;		/* Primary data structure address. */
 
 	size_t	    max_alloc;		/* Maximum bytes allocated. */
 	size_t	    allocated;		/* Bytes allocated. */
+
+	db_mutex_t  mtx_alloc;		/* number of mutex for allocation. */
 
 #ifdef DB_WIN32
 	HANDLE	wnt_handle;		/* Win/NT HANDLE. */

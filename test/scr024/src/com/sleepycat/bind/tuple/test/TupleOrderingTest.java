@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleOrderingTest.java,v 12.10 2008/02/07 17:12:30 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -23,9 +23,7 @@ public class TupleOrderingTest extends TestCase {
     private TupleOutput out;
     private byte[] prevBuf;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -36,9 +34,7 @@ public class TupleOrderingTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(TupleOrderingTest.class);
         return suite;
     }
@@ -48,6 +44,7 @@ public class TupleOrderingTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp() {
 
         SharedTestUtils.printTestName("TupleOrderingTest." + getName());
@@ -55,6 +52,7 @@ public class TupleOrderingTest extends TestCase {
         prevBuf = null;
     }
 
+    @Override
     public void tearDown() {
 
         /* Ensure that GC can cleanup. */
@@ -146,7 +144,9 @@ public class TupleOrderingTest extends TestCase {
     public void testString() {
 
         final String[] DATA = {
-            "", "a", "ab", "b", "bb", "bba",
+            "", "\u0001", "\u0002",
+            "A", "a", "ab", "b", "bb", "bba",
+            "c", "c\u0001", "d",
             new String(new char[] { 0x7F }),
             new String(new char[] { 0x7F, 0 }),
             new String(new char[] { 0xFF }),
@@ -458,6 +458,19 @@ public class TupleOrderingTest extends TestCase {
         };
         for (int i = 0; i < DATA.length; i += 1) {
             out.writeSortedDouble(DATA[i]);
+            check(i);
+        }
+    }
+
+    public void testPackedIntAndLong() {
+        /* Only packed int/long values from 0 to 630 are ordered correctly */
+        for (int i = 0; i <= 630; i += 1) {
+            out.writePackedInt(i);
+            check(i);
+        }
+        reset();
+        for (int i = 0; i <= 630; i += 1) {
+            out.writePackedLong(i);
             check(i);
         }
     }

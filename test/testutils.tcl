@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: testutils.tcl,v 12.40 2008/04/02 02:45:02 moshen Exp $
+# $Id$
 #
 # Test system utilities
 #
@@ -131,7 +131,7 @@ proc get_file_as_key { db txn flags file} {
 
 # open file and call dump_file to dumpkeys to tempfile
 proc open_and_dump_file {
-    dbname env outfile checkfunc dump_func beg cont } {
+    dbname env outfile checkfunc dump_func beg cont args} {
 	global encrypt
 	global passwd
 	source ./include.tcl
@@ -153,7 +153,7 @@ proc open_and_dump_file {
 			set txn "-txn $t"
 		}
 	}
-	set db [eval {berkdb open} $envarg -rdonly -unknown $encarg $dbname]
+	set db [eval {berkdb open} $envarg -rdonly -unknown $encarg $args $dbname]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	$dump_func $db $txn $outfile $checkfunc $beg $cont
 	if { $txnenv == 1 } {
@@ -340,6 +340,13 @@ proc error_check_good { func result desired {txn 0} } {
 		flush stderr
 		error "FAIL:[timestamp]\
 		    $func: expected $desired, got $result"
+	}
+}
+
+proc error_check_match { note result desired } {
+	if { ![string match $desired $result] } {
+		error "FAIL:[timestamp]\
+		    $note: expected $desired, got $result"
 	}
 }
 
@@ -645,10 +652,12 @@ proc sentinel_init { } {
 	}
 }
 
-proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
+proc watch_procs { pidlist {delay 5} {max 3600} {quiet 0} } {
 	source ./include.tcl
+	global killed_procs
 
 	set elapsed 0
+	set killed_procs {}
 
 	# Don't start watching the processes until a sentinel
 	# file has been created for each one.
@@ -656,10 +665,10 @@ proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
 		while { [file exists $testdir/begin.$pid] == 0 } {
 			tclsleep $delay
 			incr elapsed $delay
-			# If pids haven't been created in one-tenth
+			# If pids haven't been created in one-fifth
 			# of the time allowed for the whole test,
 			# there's a problem.  Report an error and fail.
-			if { $elapsed > [expr {$max / 10}] } {
+			if { $elapsed > [expr {$max / 5}] } {
 				puts "FAIL: begin.pid not created"
 				break
 			}
@@ -724,6 +733,7 @@ proc watch_procs { pidlist {delay 30} {max 3600} {quiet 0} } {
 			foreach i $l {
 				tclkill $i
 			}
+			set killed_procs $l
 		}
 	}
 	if { $quiet == 0 } {
@@ -1064,7 +1074,7 @@ proc dbcheck { key data } {
 }
 
 # Dump out the file and verify it
-proc filecheck { file txn } {
+proc filecheck { file txn args} {
 	global check_array
 	global l_keys
 	global nkeys
@@ -1075,8 +1085,8 @@ proc filecheck { file txn } {
 		unset check_array
 	}
 
-	open_and_dump_file $file NULL $file.dump dbcheck dump_full_file \
-	    "-first" "-next"
+	eval open_and_dump_file $file NULL $file.dump dbcheck dump_full_file \
+	    "-first" "-next" $args
 
 	# Check that everything we checked had all its data
 	foreach i [array names check_array] {
@@ -1423,13 +1433,14 @@ proc op_codeparse { encodedop op } {
 	}
 }
 
-proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
+proc op_recover { encodedop dir env_cmd dbfile cmd msg args} {
 	source ./include.tcl
 
 	set op [op_codeparse $encodedop "op"]
 	set op2 [op_codeparse $encodedop "sub"]
 	puts "\t$msg $encodedop"
 	set gidf ""
+	# puts "op_recover: $op $dir $env_cmd $dbfile $cmd $args"
 	if { $op == "prepare" } {
 		sentinel_init
 
@@ -1443,7 +1454,7 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 		# puts "$tclsh_path $test_path/recdscript.tcl $testdir/recdout \
 		#    $op $dir $env_cmd $dbfile $gidf $cmd"
 		set p [exec $tclsh_path $test_path/wrap.tcl recdscript.tcl \
-		    $testdir/recdout $op $dir $env_cmd $dbfile $gidf $cmd &]
+		    $testdir/recdout $op $dir $env_cmd $dbfile $gidf $cmd $args &]
 		lappend pidlist $p
 		watch_procs $pidlist 5
 		set f1 [open $testdir/recdout r]
@@ -1452,23 +1463,25 @@ proc op_recover { encodedop dir env_cmd dbfile cmd msg } {
 		close $f1
 		fileremove -f $testdir/recdout
 	} else {
-		op_recover_prep $op $dir $env_cmd $dbfile $gidf $cmd
+		eval {op_recover_prep $op $dir $env_cmd $dbfile $gidf $cmd} $args
 	}
-	op_recover_rec $op $op2 $dir $env_cmd $dbfile $gidf
+	eval {op_recover_rec $op $op2 $dir $env_cmd $dbfile $gidf} $args
 }
 
-proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
+proc op_recover_prep { op dir env_cmd dbfile gidf cmd args} {
 	global log_log_record_types
 	global recd_debug
 	global recd_id
 	global recd_op
 	source ./include.tcl
 
-	#puts "op_recover: $op $dir $env $dbfile $cmd"
+	# puts "op_recover_prep: $op $dir $env_cmd $dbfile $cmd $args"
 
 	set init_file $dir/t1
 	set afterop_file $dir/t2
 	set final_file $dir/t3
+
+	set db_cursor ""
 
 	# Keep track of the log types we've seen
 	if { $log_log_record_types == 1} {
@@ -1483,12 +1496,13 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	set env [eval $env_cmd]
 	error_check_good envopen [is_valid_env $env] TRUE
 
-	set db [berkdb open -auto_commit -env $env $dbfile]
+	eval set args $args
+	set db [eval {berkdb open -auto_commit -env $env} $args {$dbfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Dump out file contents for initial case
-	open_and_dump_file $dbfile $env $init_file nop \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $dbfile $env $init_file nop \
+	    dump_file_direction "-first" "-next" $args
 
 	set t [$env txn]
 	error_check_bad txn_begin $t NULL
@@ -1497,19 +1511,42 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	# Now fill in the db, tmgr, and the txnid in the command
 	set exec_cmd $cmd
 
-	set i [lsearch $cmd ENV]
-	if { $i != -1 } {
+	set items [lsearch -all $cmd ENV]
+	foreach i $items {
 		set exec_cmd [lreplace $exec_cmd $i $i $env]
 	}
 
-	set i [lsearch $cmd TXNID]
-	if { $i != -1 } {
+	set items [lsearch -all $cmd TXNID]
+	foreach i $items {
 		set exec_cmd [lreplace $exec_cmd $i $i $t]
 	}
 
-	set i [lsearch $exec_cmd DB]
-	if { $i != -1 } {
+	set items [lsearch -all $cmd DB]
+	foreach i $items {
 		set exec_cmd [lreplace $exec_cmd $i $i $db]
+	}
+
+	set i [lsearch $cmd DBC]
+	if { $i != -1 } {
+		set db_cursor [$db cursor -txn $t]
+		$db_cursor get -first
+	}
+	set adjust 0
+	set items [lsearch -all $cmd DBC]
+	foreach i $items {
+		# make sure the cursor is pointing to something.
+		set exec_cmd [lreplace $exec_cmd \
+		    [expr $i + $adjust] [expr $i + $adjust] $db_cursor]
+		set txn_pos [lsearch $exec_cmd -txn]
+		if { $txn_pos != -1} {
+			# Strip out the txn parameter, we've applied it to the
+			# cursor.
+			set exec_cmd \
+			    [lreplace $exec_cmd $txn_pos [expr $txn_pos + 1]] 
+			# Now the offsets in the items list are out-of-whack,
+			# keep track of how far.
+			set adjust [expr $adjust - 2]    
+		}
 	}
 
 	# To test DB_CONSUME, we need to expect a record return, not "0".
@@ -1529,6 +1566,28 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 		set lenient_exec_cmd_ret 0
 	}
 
+	# For some partial tests we want to execute multiple commands. Pull
+	# pull them out here.
+	set last 0
+	set exec_cmd2 ""
+	set exec_cmds [list]
+	set items [lsearch -all $exec_cmd NEW_CMD]
+	foreach i $items {
+		if { $last == 0 } {
+			set exec_cmd2 [lrange $exec_cmd 0 [expr $i - 1]]
+		} else {
+			lappend exec_cmds [lrange $exec_cmd \
+			    [expr $last + 1] [expr $i - 1]] 
+		}
+		set last $i
+	}
+	if { $last != 0 } {
+		lappend exec_cmds [lrange $exec_cmd [expr $last + 1] end] 
+		set exec_cmd $exec_cmd2
+	}
+	#puts "exec_cmd: $exec_cmd"
+	#puts "exec_cmds: $exec_cmds"
+
 	# Execute command and commit/abort it.
 	set ret [eval $exec_cmd]
 	if { $record_exec_cmd_ret == 1 } {
@@ -1537,6 +1596,15 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 		error_check_good "\"$exec_cmd\"" [expr $ret > 0] 1
 	} else {
 		error_check_good "\"$exec_cmd\"" $ret 0
+	}
+	# If there are additional commands, run them.
+	foreach curr_cmd $exec_cmds {
+		error_check_good "\"$curr_cmd\"" $ret 0
+	}
+
+	# If a cursor was created, close it now.
+	if {$db_cursor != ""} {
+		error_check_good close:$db_cursor [$db_cursor close] 0
 	}
 
 	set record_exec_cmd_ret 0
@@ -1547,8 +1615,8 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.afterop } res
 	copy_extent_file $dir $dbfile afterop
-	open_and_dump_file $dir/$dbfile.afterop NULL \
-		$afterop_file nop dump_file_direction "-first" "-next"
+	eval open_and_dump_file $dir/$dbfile.afterop NULL \
+		$afterop_file nop dump_file_direction "-first" "-next" $args
 
 	#puts "\t\t\tExecuting txn_$op:$t"
 	if { $op == "prepare" } {
@@ -1572,8 +1640,8 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 
 	catch { file copy -force $dir/$dbfile $dir/$dbfile.final } res
 	copy_extent_file $dir $dbfile final
-	open_and_dump_file $dir/$dbfile.final NULL \
-	    $final_file nop dump_file_direction "-first" "-next"
+	eval open_and_dump_file $dir/$dbfile.final NULL \
+	    $final_file nop dump_file_direction "-first" "-next" $args
 
 	# If this is an abort or prepare-abort, it should match the
 	#   original file.
@@ -1624,7 +1692,7 @@ proc op_recover_prep { op dir env_cmd dbfile gidf cmd } {
 	return
 }
 
-proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
+proc op_recover_rec { op op2 dir env_cmd dbfile gidf args} {
 	global log_log_record_types
 	global recd_debug
 	global recd_id
@@ -1666,7 +1734,12 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	set env [eval $env_cmd]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
-	error_check_good db_verify [verify_dir $testdir "\t\t" 0 1] 0
+	if {[is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
+	error_check_good db_verify [verify_dir $testdir "\t\t" 0 1 $nodump] 0
 	puts "verified"
 
 	# If we left a txn as prepared, but not aborted or committed,
@@ -1700,8 +1773,10 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 		}
 	}
 
-	open_and_dump_file $dir/$dbfile NULL $final_file nop \
-	    dump_file_direction "-first" "-next"
+
+	eval set args $args
+	eval open_and_dump_file $dir/$dbfile NULL $final_file nop \
+	    dump_file_direction "-first" "-next" $args
 	if { $op == "commit" || $op2 == "commit" } {
 		filesort $afterop_file $afterop_file.sort
 		filesort $final_file $final_file.sort
@@ -1737,14 +1812,15 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 	}
 	puts -nonewline "complete ... "
 
-	error_check_good db_verify_preop [verify_dir $testdir "\t\t" 0 1] 0
+	error_check_good db_verify_preop \
+	      [verify_dir $testdir "\t\t" 0 1 $nodump] 0
 
 	puts "verified"
 
 	set env [eval $env_cmd]
 
-	open_and_dump_file $dir/$dbfile NULL $final_file nop \
-	    dump_file_direction "-first" "-next"
+	eval open_and_dump_file $dir/$dbfile NULL $final_file nop \
+	    dump_file_direction "-first" "-next" $args
 	if { $op == "commit" || $op2 == "commit" } {
 		filesort $final_file $final_file.sort
 		filesort $afterop_file $afterop_file.sort
@@ -1766,6 +1842,12 @@ proc op_recover_rec { op op2 dir env_cmd dbfile gidf} {
 proc populate { db method txn n dups bigdata } {
 	source ./include.tcl
 
+	# Handle non-transactional cases, too.
+	set t ""
+	if { [llength $txn] > 0 } {
+		set t " -txn $txn "
+	}
+
 	set did [open $dict]
 	set count 0
 	while { [gets $did str] != -1 && $count < $n } {
@@ -1780,7 +1862,7 @@ proc populate { db method txn n dups bigdata } {
 			set str [replicate $str 1000]
 		}
 
-		set ret [$db put -txn $txn $key $str]
+		set ret [eval {$db put} $t {$key [chop_data $method $str]}]
 		error_check_good db_put:$key $ret 0
 		incr count
 	}
@@ -2399,6 +2481,40 @@ proc convert_method { method } {
 	}
 }
 
+proc split_partition_args { largs } {
+
+	# First check for -partition_callback, in which case we
+	# need to remove three args.
+	set index [lsearch $largs "-partition_callback"]
+	if { $index == -1 } {
+		set newl $largs
+	} else {
+		set end [expr $index + 2]
+		set newl [lreplace $largs $index $end]
+	}
+
+	# Then check for -partition, and remove two args.
+	set index [lsearch $newl "-partition"]
+	if { $index > -1 } {
+		set end [expr $index + 1]
+		set newl [lreplace $largs $index $end]
+	}
+
+	return $newl
+}
+
+# Strip "-compress" out of a string of args.
+proc strip_compression_args { largs } {
+
+	set cindex [lsearch $largs "-compress"]
+	if { $cindex == -1 } {
+		set newargs $largs
+	} else {
+		set newargs [lreplace $largs $cindex $cindex]
+	}
+	return $newargs
+}
+
 proc split_encargs { largs encargsp } {
 	global encrypt
 	upvar $encargsp e
@@ -2410,6 +2526,20 @@ proc split_encargs { largs encargsp } {
 		set eend [expr $eindex + 1]
 		set e [lrange $largs $eindex $eend]
 		set newl [lreplace $largs $eindex $eend "-encrypt"]
+	}
+	return $newl
+}
+
+proc split_pageargs { largs pageargsp } {
+	upvar $pageargsp e
+	set eindex [lsearch $largs "-pagesize"]
+	if { $eindex == -1 } {
+		set e ""
+		set newl $largs
+	} else {
+		set eend [expr $eindex + 1]
+		set e [lrange $largs $eindex $eend]
+		set newl [lreplace $largs $eindex $eend ""]
 	}
 	return $newl
 }
@@ -2638,6 +2768,30 @@ proc is_fixed_length { method } {
 	}
 }
 
+proc is_compressed { args } {
+	if { [string first "-compress" $args] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+		
+proc is_partitioned { args } {
+	if { [string first "-partition" $args] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+		
+proc is_partition_callback { args } {
+	if { [string first "-partition_callback" $args] >= 0 } {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 # Sort lines in file $in and write results to file $out.
 # This is a more portable alternative to execing the sort command,
 # which has assorted issues on NT [#1576].
@@ -2749,6 +2903,9 @@ proc filecmp { file_a file_b } {
 	set fda [open $file_a r]
 	set fdb [open $file_b r]
 
+	fconfigure $fda -translation binary
+	fconfigure $fdb -translation binary
+
 	set nra 0
 	set nrb 0
 
@@ -2767,6 +2924,46 @@ proc filecmp { file_a file_b } {
 
 	close $fda
 	close $fdb
+	return 0
+}
+
+# Compare the log files from 2 envs.  Returns 1 if non-identical, 
+# 0 if identical.
+proc logcmp { env1 env2 { compare_shared_portion 0 } } {
+	set lc1 [$env1 log_cursor]
+	set lc2 [$env2 log_cursor]
+
+	# If we're comparing the full set of logs in both envs, 
+	# set the starting point by looking at the first LSN in the
+	# first env's logs. 
+	#
+	# If we are comparing only the shared portion, look at the 
+	# starting LSN of the second env as well, and select the 
+	# LSN that is larger. 
+
+	set start [lindex [$lc1 get -first] 0]
+
+	if { $compare_shared_portion } {
+		set e2_lsn [lindex [$lc2 get -first] 0]
+		if { [$env1 log_compare $start $e2_lsn] < 0 } {
+			set start $e2_lsn
+		}
+	}
+
+	# Read through and compare the logs record by record. 
+	for { set l1 [$lc1 get -set $start] ; set l2 [$lc2 get -set $start] }\
+	    { [llength $l1] > 0 && [llength $l2] > 0 }\
+	    { set l1 [$lc1 get -next] ; set l2 [$lc2 get -next] } {
+		if { [string equal $l1 $l2] != 1 }  {
+			$lc1 close
+			$lc2 close
+#puts "l1 is $l1"
+#puts "l2 is $l2"
+			return 1
+		}
+	}
+	$lc1 close
+	$lc2 close
 	return 0
 }
 
@@ -2823,9 +3020,6 @@ proc verify_dir { {directory $testdir} { pref "" } \
 		# No files matched
 		return 0
 	}
-	set errfilearg "-errfile /dev/stderr "
-	set errpfxarg {-errpfx "FAIL: verify" }
-	set errarg $errfilearg$errpfxarg
 	set ret 0
 
 	# Open an env, so that we have a large enough cache.  Pick
@@ -2841,7 +3035,7 @@ proc verify_dir { {directory $testdir} { pref "" } \
 
 	set env [eval {berkdb_env -create -private} $encarg \
 	    {-cachesize [list 0 $cachesize 0]}]
-	set earg " -env $env $errarg "
+	set earg " -env $env "
 
 	# The 'unref' flag means that we report unreferenced pages
 	# at all times.  This is the default behavior.
@@ -2966,6 +3160,7 @@ proc dumploadtest { db } {
 	}
 
 	# Dump/load the whole file, including all subdbs.
+
 	set rval [catch {eval {exec $util_path/db_dump} $utilflag -k \
 	    $db | $util_path/db_load $utilflag $newdbname} res]
 	error_check_good db_dump/db_load($db:$res) $rval 0
@@ -3130,7 +3325,6 @@ proc isqueuedump { file } {
 			}
 		}
 	}
-	puts "did not find type= line in dumped file"
 	close $fd
 }
 
@@ -3336,10 +3530,7 @@ proc move_file_extent { dir dbfile tag op } {
 		file delete -force $extfile
 	}
 	foreach extfile $tagfiles {
-		set i [string last "." $extfile]
-		incr i
-		set extnum [string range $extfile $i end]
-		set dbq [make_ext_filename $dir $dbfile $extnum]
+		set dbq [make_ext_filename $dir $dbfile $extfile]
 		#
 		# We can either copy or rename
 		#
@@ -3350,24 +3541,35 @@ proc move_file_extent { dir dbfile tag op } {
 proc copy_extent_file { dir dbfile tag { op copy } } {
 	set files [get_extfiles $dir $dbfile ""]
 	foreach extfile $files {
-		set i [string last "." $extfile]
-		incr i
-		set extnum [string range $extfile $i end]
-		file $op -force $extfile $dir/__dbq.$dbfile.$tag.$extnum
+		set dbq [make_ext_filename $dir $dbfile $extfile $tag]
+		file $op -force $extfile $dbq
 	}
 }
 
 proc get_extfiles { dir dbfile tag } {
 	if { $tag == "" } {
-		set filepat $dir/__dbq.$dbfile.\[0-9\]*
+		set filepat $dir/__db?.$dbfile.\[0-9\]*
 	} else {
-		set filepat $dir/__dbq.$dbfile.$tag.\[0-9\]*
+		set filepat $dir/__db?.$dbfile.$tag.\[0-9\]*
 	}
 	return [glob -nocomplain -- $filepat]
 }
 
-proc make_ext_filename { dir dbfile extnum } {
-	return $dir/__dbq.$dbfile.$extnum
+proc make_ext_filename { dir dbfile extfile {tag ""}} {
+	set i [string last "." $extfile]
+	incr i
+	set extnum [string range $extfile $i end]
+	set j [string last "/" $extfile]
+	incr j
+	set i [string first "." [string range $extfile $j end]]
+	incr i $j
+	incr i -1
+	set prefix [string range $extfile $j $i]
+	if {$tag == "" } {
+		return $dir/$prefix.$dbfile.$extnum
+	} else {
+		return $dir/$prefix.$dbfile.$tag.$extnum
+	}
 }
 
 # All pids for Windows 9X are negative values.  When we want to have
@@ -3643,6 +3845,33 @@ proc check_log_location { env } {
 	}
 }
 
+# Given the env and file name, verify that a given database is on-disk
+# or in-memory as expected.  If "db_on_disk" is 1, "databases_in_memory"
+# is 0 and vice versa, so we use error_check_bad. 
+proc check_db_location { env { dbname "test.db" } { datadir "" } } {
+	global databases_in_memory
+
+	if { $datadir != "" } {
+		set env_home $datadir
+	} else {
+		set env_home [get_home $env]
+	}
+	set db_on_disk [file exists $env_home/$dbname]
+
+	error_check_bad db_location $db_on_disk $databases_in_memory
+}
+
+# If we have a private env, check that no region files are found on-disk.
+proc no_region_files_on_disk { dir } {
+	set regionfiles [glob -nocomplain $dir/__db.???]
+	error_check_good regionfiles [llength $regionfiles] 0
+	global env_private
+	if { $env_private } {
+		set regionfiles [glob -nocomplain $dir/__db.???]
+		error_check_good regionfiles [llength $regionfiles] 0
+	}	
+}
+
 proc find_valid_methods { test } {
 	global checking_valid_methods
 	global valid_methods
@@ -3659,4 +3888,21 @@ proc find_valid_methods { test } {
 	} else {
 		return $test_methods
 	}
+}
+
+proc part {data} {
+	if { [string length $data] < 2 } {
+		return 0
+	}
+	binary scan $data s res
+	return $res
+}
+
+proc my_isalive { pid } {
+	source ./include.tcl
+
+	if {[catch {exec $KILL -0 $pid}]} {
+		return 0
+	}
+	return 1
 }

@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 12.81 2008/05/06 03:03:36 david Exp $
+# $Id$
 # Process this file with autoconf to produce a configure script.
 
 PACKAGE=db
@@ -7,6 +7,8 @@ AC_INIT(Berkeley DB, __EDIT_DB_VERSION__,
 	db-__EDIT_DB_VERSION__)
 AC_CONFIG_SRCDIR([../db/db.c])
 AC_CONFIG_HEADERS([db_config.h:config.hin])
+
+AC_CONFIG_MACRO_DIR([aclocal])
 
 # Configure setup.
 AC_CANONICAL_HOST()
@@ -42,6 +44,7 @@ AC_SUBST(DB_PROTO1)
 AC_SUBST(DB_PROTO2)
 AC_SUBST(DEFAULT_LIB)
 AC_SUBST(DEFAULT_LIB_CXX)
+AC_SUBST(DEFAULT_LIB_STL)
 AC_SUBST(INSTALLER)
 AC_SUBST(INSTALL_LIBS)
 AC_SUBST(INSTALL_TARGET)
@@ -154,14 +157,16 @@ LIBSO_LIBS="$LIBS"
 # Don't override anything if it's already set from the environment.
 optimize_debug="-O"
 case "$host_os" in
-aix4.3.*|aix5*)
+aix4.3.*|aix[[56]]*)
 	case "$host_os" in
 	aix4.3.*)
 		CPPFLAGS="$CPPFLAGS -D_LINUX_SOURCE_COMPAT";;
 	esac
-	# Trying to optimize too aggressively on AIX leads to problems, the 
-	# compiler (xlc 8.0) seems to reorder code when it shouldn't.
-	optimize_debug="-O0"
+	# IBM's XLC compilers (at least versions 7/8/9) generate incorrect code
+	# when ordinary optimization is enabled because they make strong
+	# assumptions about the types held at each memory location, and some
+	# Berkeley DB code violates those assumptions.  [#16141]
+	optimize_debug="-O2 -qalias=noansi"
 	CC=${CC-"xlc_r"}
 	CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE"
 	LDFLAGS="$LDFLAGS -Wl,-brtl";;
@@ -287,14 +292,13 @@ if test "$db_cv_cxx" = "yes"; then
 	###### WORKAROUND: SEE SR #7938
 	AC_PROG_CXXCPP
 	###############################
-	AC_CXX_HAVE_STDHEADERS
+	AC_CXX_STDHEADERS
 	MAKEFILE_CXX="${CXX}"
 	MAKEFILE_CXXLINK="${CXX}"
 fi
 
 # Do some gcc specific configuration.
 AC_GCC_CONFIG1
-AC_GCC_CONFIG2
 
 # We need the -Kthread/-pthread flag when compiling on SCO/Caldera's UnixWare
 # and OpenUNIX releases.  We can't make the test until we know which compiler
@@ -318,12 +322,13 @@ CCC=CXX
 AC_PROG_LIBTOOL
 
 SOFLAGS="-rpath \$(libdir)"
-LIBTOOL_PROG="${SHELL} ./libtool"
 
 # Set SOSUFFIX and friends
 SOSUFFIX_CONFIG
 MODSUFFIX_CONFIG
 JMODSUFFIX_CONFIG
+
+LIBTOOL="./libtool"
 
 INSTALLER="\$(LIBTOOL) --mode=install cp -p"
 
@@ -334,31 +339,12 @@ MAKEFILE_CXX="\$(LIBTOOL) --mode=compile ${MAKEFILE_CXX}"
 MAKEFILE_XSOLINK="\$(LIBTOOL) --mode=link ${MAKEFILE_CXXLINK} -avoid-version"
 MAKEFILE_CXXLINK="\$(LIBTOOL) --mode=link ${MAKEFILE_CXXLINK}"
 
-LIBTOOL="\$(SHELL) ./libtool"
 
 case "$host_os" in
 cygwin* | mingw*)
 	MAKEFILE_SOLINK="$MAKEFILE_SOLINK -no-undefined"
 	MAKEFILE_XSOLINK="$MAKEFILE_XSOLINK -no-undefined";;
 esac
-
-# Configure for shared libraries, static libraries, or both.  If both are
-# configured, build the utilities and example programs with shared versions.
-#
-# $o is set to ".o" or ".lo", and is the file suffix used in the Makefile
-# instead of .o
-if test `$LIBTOOL_PROG --config |
-    grep build_libtool_libs | grep no` 2>/dev/null; then
-	enable_shared="no"
-else
-	enable_shared="yes"
-fi
-if test `$LIBTOOL_PROG --config |
-    grep build_old_libs | grep no` 2>/dev/null; then
-	enable_static="no"
-else
-	enable_static="yes"
-fi
 
 case "$host_os" in
     darwin*)
@@ -439,7 +425,7 @@ if test "$db_cv_java" = "yes"; then
 	# integers, we need to add the flag "-fno-strict-aliasing" to the gcc
 	# command line when compiling the JNI code.  This is documented in
 	# [#14953] and at http://www.swig.org/Doc1.3/Java.html
-	if test ${GCC} = "yes"; then
+	if test "${GCC}" = "yes"; then
 		SWIGCFLAGS="-fno-strict-aliasing"
 	fi
 
@@ -465,6 +451,24 @@ else
 	OSDIR=os
 	PATH_SEPARATOR="/"
 	AC_DEFINE(HAVE_SYSTEM_INCLUDE_FILES)
+fi
+
+# Optional STL API.
+if test "$db_cv_stl" = "yes"; then
+	AC_CXX_SUPPORTS_TEMPLATES
+	AC_CXX_WSTRING
+	AX_TLS
+	if test "$enable_shared" = "no"; then
+		DEFAULT_LIB_STL="\$(libstl_version)"
+	fi
+	if test "$enable_shared" = "yes"; then
+		DEFAULT_LIB_STL="\$(libstlso_target)"
+	fi
+	ADDITIONAL_INCS="dbstl_common.h dbstl_set.h dbstl_vector.h dbstl_exception.h dbstl_map.h dbstl_utility.h dbstl_dbc.h dbstl_dbt.h dbstl_base_iterator.h dbstl_container.h dbstl_element_ref.h dbstl_inner_utility.h dbstl_resource_manager.h $ADDITIONAL_INCS"
+	INSTALL_LIBS="$INSTALL_LIBS $DEFAULT_LIB_STL"
+	if test "$enable_static" = "yes"; then
+		INSTALL_LIBS="$INSTALL_LIBS \$(libstl)"
+	fi
 fi
 
 # Checks for include files, structures, C types.
@@ -497,6 +501,10 @@ fi
 # We do this first because it changes $LIBSO_LIBS.
 AM_DEFINE_MUTEXES
 
+# Check for native (system call or instruction set) support for
+# atomic increment, decrement, and compare & exchange.
+AM_DEFINE_ATOMIC
+
 # Test for various functions/libraries -- do tests that change library values
 # first.
 #
@@ -522,7 +530,6 @@ LIBSO_LIBS="$LIBS"
 # bother -- if they exist, we load them, it's only the test programs anyway.
 AC_HAVE_LIBRARY(m, TEST_LIBS="$TEST_LIBS -lm")
 AC_HAVE_LIBRARY(nsl, TEST_LIBS="$TEST_LIBS -lnsl")
-AC_HAVE_LIBRARY(pthread, TEST_LIBS="$TEST_LIBS -lpthread")
 AC_HAVE_LIBRARY(socket, TEST_LIBS="$TEST_LIBS -lsocket")
 
 # Checks for system functions for which we have replacements.
@@ -541,8 +548,8 @@ AC_CHECK_FUNCS(\
 	_fstati64 backtrace backtrace_symbols directio fchmod fclose\
 	fcntl fdatasync fgetc fgets fopen fwrite getgid\
 	getrusage getuid hstrerror mprotect pstat_getdynamic\
-	pthread_yield sched_yield select setgid setuid sigaction\
-	snprintf stat sysconf vsnprintf yield)
+	pthread_self pthread_yield random sched_yield select setgid setuid\
+	sigaction snprintf stat sysconf vsnprintf yield)
 
 AC_TIMERS
 
@@ -712,6 +719,18 @@ fi
 # duplicates require it.
 ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(BTREE_OBJS)"
 
+# Compression can be disabled.
+if test "$db_cv_build_compression" = "yes"; then
+	AC_DEFINE(HAVE_COMPRESSION)
+	AH_TEMPLATE(HAVE_COMPRESSION, [Define to 1 if building compression support.])
+fi
+
+# Partitioning can be disabled.
+if test "$db_cv_build_partition" = "yes"; then
+	AC_DEFINE(HAVE_PARTITION)
+	AH_TEMPLATE(HAVE_PARTITION, [Define to 1 if building partitioned database support.])
+fi
+
 # Hash can be disabled.
 if test "$db_cv_build_hash" = "yes"; then
 	AC_DEFINE(HAVE_HASH)
@@ -743,7 +762,23 @@ if test "$db_cv_build_replication" = "yes"; then
 	    [Define to 1 if building replication support.])
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REP_OBJS)"
 
-	if test "$db_cv_build_replication_mgr" = "yes"; then
+	# If we're building replication and detected POSIX threads, build the
+	# replication manager.
+	AH_TEMPLATE(HAVE_REPLICATION_THREADS,
+	    [Define to 1 if building the Berkeley DB replication framework.])
+
+	if test "$ac_cv_header_pthread_h" = yes; then
+		AC_DEFINE(HAVE_REPLICATION_THREADS)
+
+		# Solaris requires the socket and nsl libraries to build the
+		# replication manager.  Don't add nsl regardless of the OS,
+		# it causes RPC to fail on AIX 4.3.3.
+		case "$host_os" in
+		solaris*)
+			AC_HAVE_LIBRARY(nsl, LIBSO_LIBS="$LIBSO_LIBS -lnsl")
+			AC_HAVE_LIBRARY(socket,
+			    LIBSO_LIBS="$LIBSO_LIBS -lsocket");;
+		esac
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REPMGR_OBJS)"
 	else
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS repmgr_stub${o}"
@@ -856,6 +891,11 @@ if test "$db_cv_compat185" = "yes"; then
 		db_185.h:$srcdir/../dbinc/db_185.in:$srcdir/../dbinc_auto/ext_185_prot.in
 		db185_int.h:$srcdir/../db185/db185_int.in:$srcdir/../dbinc_auto/ext_185_prot.in"
 	fi
+fi
+
+if test "$db_cv_stl" = "yes"; then
+	CREATE_LIST="$CREATE_LIST
+	dbstl_common.h:$srcdir/../stl/dbstl_common.in"
 fi
 
 AC_CONFIG_FILES($CREATE_LIST)

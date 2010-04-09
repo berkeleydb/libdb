@@ -1,14 +1,16 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Reader.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
 import java.io.Serializable;
+
+import com.sleepycat.persist.model.EntityModel;
 
 /**
  * Interface to the "read object" methods of the Format class.  For the
@@ -21,7 +23,10 @@ import java.io.Serializable;
  */
 interface Reader extends Serializable {
 
-    void initializeReader(Catalog catalog, int initVersion, Format oldFormat);
+    void initializeReader(Catalog catalog,
+                          EntityModel model,
+                          int initVersion,
+                          Format oldFormat);
 
     Object newInstance(EntityInput input, boolean rawAccess);
 

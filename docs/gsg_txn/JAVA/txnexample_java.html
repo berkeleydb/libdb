@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Base API Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="wrapup.html" title="Chapter 6. Summary and Examples" />
     <link rel="next" href="txnexample_dpl.html" title="DPL Transaction Example" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="txnexample_java"></a>Base API Transaction Example</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_java.html#txnguideexample">TxnGuide.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_java.html#payloaddata">PayloadData.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_java.html#dbwriter">DBWriter.java</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         The following Java code provides a fully functional example of a
@@ -65,35 +83,35 @@
         <ul type="disc">
           <li>
             <p>
-                <tt class="literal">TxnGuide.java</tt>
+                <code class="literal">TxnGuide.java</code>
             </p>
             <p>
                 This is the main class for the application. It performs
                 environment and database management, spawns threads, and
-                creates the data that is placed in the database.  See <a href="txnexample_java.html#txnguideexample">TxnGuide.java</a> for implementation details.
+                creates the data that is placed in the database.  See <a class="xref" href="txnexample_java.html#txnguideexample" title="TxnGuide.java">TxnGuide.java</a> for implementation details.
             </p>
           </li>
           <li>
             <p>
-                <tt class="literal">DBWriter.java</tt>
+                <code class="literal">DBWriter.java</code>
             </p>
             <p>
-                This class extends <tt class="literal">java.lang.Thread</tt>, and
+                This class extends <code class="literal">java.lang.Thread</code>, and
                 as such it is our thread implementation.  It is responsible
                 for actually reading and writing to the database. It also
-                performs all of our transaction management.  See <a href="txnexample_java.html#dbwriter">DBWriter.java</a> for
+                performs all of our transaction management.  See <a class="xref" href="txnexample_java.html#dbwriter" title="DBWriter.java">DBWriter.java</a> for
                 implementation details.
             </p>
           </li>
           <li>
             <p>
-                <tt class="literal">PayloadData.java</tt>
+                <code class="literal">PayloadData.java</code>
             </p>
             <p>
                 This is a data class used to encapsulate several data
                 fields. It is fairly uninteresting, except that the usage
                 of a class means that we have to use the bind APIs to
-                serialize it for storage in the database.  See <a href="txnexample_java.html#payloaddata">PayloadData.java</a> for
+                serialize it for storage in the database.  See <a class="xref" href="txnexample_java.html#payloaddata" title="PayloadData.java">PayloadData.java</a> for
                 implementation details.
             </p>
           </li>
@@ -106,7 +124,6 @@
               <h3 class="title"><a id="txnguideexample"></a>TxnGuide.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             The main class in our example application is used to open and
@@ -151,7 +168,7 @@ public class TxnGuide { </pre>
 
     private static final int NUMTHREADS = 5; </pre>
         <p>
-    Next, we implement our <tt class="function">usage()</tt> method. This
+    Next, we implement our <code class="function">usage()</code> method. This
     application optionally accepts a single command line argument which is
     used to identify the environment home directory.
 </p>
@@ -160,7 +177,7 @@ public class TxnGuide { </pre>
         System.exit(-1);
     } </pre>
         <p>
-    Now we implement our <tt class="function">main()</tt> method. This method
+    Now we implement our <code class="function">main()</code> method. This method
     simply calls the methods to parse the command line arguments and open
     the environment and database. It also creates the stored class catalog
     that we use for serializing the data that we want to store in our
@@ -199,7 +216,7 @@ public class TxnGuide { </pre>
         System.out.println("All done.");
     } </pre>
         <p>
-    Next we implement <tt class="function">openEnv()</tt>. This method is used
+    Next we implement <code class="function">openEnv()</code>. This method is used
     to open the environment and then a database in that environment. Along
     the way, we make sure that every handle is free-threaded, and that the
     transactional subsystem is correctly initialized. Because this is a
@@ -225,7 +242,7 @@ public class TxnGuide { </pre>
     Finally, notice that we open the database such that it supports
     uncommitted reads. We do this so that some cursor activity later in
     this example can read uncommitted data.  If we did not do this, then
-    our <tt class="methodname">countRecords()</tt> method described later in
+    our <code class="methodname">countRecords()</code> method described later in
     this example would cause our thread to self-deadlock. This is because
     the cursor could not be opened to support uncommitted reads (that flag
     on the cursor open would, in fact, be silently ignored).
@@ -350,14 +367,13 @@ public class TxnGuide { </pre>
               <h3 class="title"><a id="payloaddata"></a>PayloadData.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
     Before we show the implementation of the database writer thread, we
     need to show the class that we will be placing into the database. This
     class is fairly minimal. It simply allows you to store and retrieve an
-    <tt class="literal">int</tt>, a <tt class="literal">String</tt>, and a
-    <tt class="literal">double</tt>. We will be using the DB bind API from
+    <code class="literal">int</code>, a <code class="literal">String</code>, and a
+    <code class="literal">double</code>. We will be using the DB bind API from
     within the writer thread to serialize instances of this class and place
     them into our database.
 </p>
@@ -388,10 +404,9 @@ public class PayloadData implements Serializable {
               <h3 class="title"><a id="dbwriter"></a>DBWriter.java</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-            <tt class="literal">DBWriter.java</tt> provides the implementation
+            <code class="literal">DBWriter.java</code> provides the implementation
             for our database writer thread. It is responsible for: 
         </p>
         <div class="itemizedlist">
@@ -421,7 +436,7 @@ public class PayloadData implements Serializable {
         <p>
                 In order to show off some of the ACID properties provided
                 by DB's transactional support,
-                <tt class="literal">DBWriter.java</tt> does some things in a less
+                <code class="literal">DBWriter.java</code> does some things in a less
                 efficient way than you would probably decide to use in a
                 true production application. First, it groups 10 database
                 writes together in a single transaction when you could just
@@ -436,7 +451,7 @@ public class PayloadData implements Serializable {
             </p>
         <p>
                 At the end of each transaction,
-                <tt class="literal">DBWriter.java</tt> runs a cursor over the
+                <code class="literal">DBWriter.java</code> runs a cursor over the
                 entire database by way of counting the number of records
                 currently existing in the database. There are better ways
                 to discover this information, but in this case we want to
@@ -473,13 +488,13 @@ public class DBWriter extends Thread
         <p>
     Next we declare our private data members. Notice that we get handles
     for the environment and the database. We also obtain a handle for an
-    <tt class="classname">EntryBinding</tt>. We will use this to serialize
-    <tt class="classname">PayloadData</tt> class instances (see <a href="txnexample_java.html#payloaddata">PayloadData.java</a>) for storage in
+    <code class="classname">EntryBinding</code>. We will use this to serialize
+    <code class="classname">PayloadData</code> class instances (see <a class="xref" href="txnexample_java.html#payloaddata" title="PayloadData.java">PayloadData.java</a>) for storage in
     the database.  The random number generator that we instantiate is used
     to generate unique data for storage in the database.  The
-    <tt class="literal">MAX_RETRY</tt> variable is used to define how many times
+    <code class="literal">MAX_RETRY</code> variable is used to define how many times
     we will retry a transaction in the face of a deadlock. And, finally,
-    <tt class="literal">keys</tt> is a <tt class="classname">String</tt> array that
+    <code class="literal">keys</code> is a <code class="classname">String</code> array that
     holds the keys used for our database entries.
 </p>
         <pre class="programlisting">    private Database myDb = null;
@@ -497,7 +512,7 @@ public class DBWriter extends Thread
         <p>
         Next we implement our class constructor. The most interesting thing
         we do here is instantiate a serial binding for serializing
-        <tt class="classname">PayloadData</tt> instances.
+        <code class="classname">PayloadData</code> instances.
     </p>
         <pre class="programlisting">    // Constructor. Get our DB handles from here
     DBWriter(Environment env, Database db, StoredClassCatalog scc)
@@ -507,16 +522,16 @@ public class DBWriter extends Thread
         dataBinding = new SerialBinding(scc, PayloadData.class);
     } </pre>
         <p>
-    Now we implement our thread's <tt class="methodname">run()</tt> method.
-    This is the method that is run when <tt class="classname">DBWriter</tt>
-    threads are started in the main program (see <a href="txnexample_java.html#txnguideexample">TxnGuide.java</a>).
+    Now we implement our thread's <code class="methodname">run()</code> method.
+    This is the method that is run when <code class="classname">DBWriter</code>
+    threads are started in the main program (see <a class="xref" href="txnexample_java.html#txnguideexample" title="TxnGuide.java">TxnGuide.java</a>).
 </p>
         <pre class="programlisting">    // Thread method that writes a series of records
     // to the database using transaction protection.
     // Deadlock handling is demonstrated here.
     public void run () { </pre>
         <p>
-    The first thing we do is get a <tt class="literal">null</tt> transaction
+    The first thing we do is get a <code class="literal">null</code> transaction
     handle before going into our main loop. We also begin the top transaction loop here that causes our application to
     perform 50 transactions.
 </p>
@@ -525,9 +540,9 @@ public class DBWriter extends Thread
         // Perform 50 transactions
         for (int i=0; i&lt;50; i++) { </pre>
         <p>
-    Next we declare a <tt class="literal">retry</tt> variable. This is used to
+    Next we declare a <code class="literal">retry</code> variable. This is used to
     determine whether a deadlock should result in our retrying the
-    operation. We also declare a  <tt class="literal">retry_count</tt> variable
+    operation. We also declare a  <code class="literal">retry_count</code> variable
     that is used to make sure we do not retry a transaction forever in the
     unlikely event that the thread is unable to ever get a necessary lock.
     (The only thing that might cause this is if some other thread dies
@@ -540,7 +555,7 @@ public class DBWriter extends Thread
            // while loop is used for deadlock retries
            while (retry) { </pre>
         <p>
-    Now we go into the <tt class="literal">try</tt> block that we use for
+    Now we go into the <code class="literal">try</code> block that we use for
     deadlock detection. We also begin our transaction here.
 </p>
         <pre class="programlisting">                // try block used for deadlock detection and
@@ -567,13 +582,13 @@ public class DBWriter extends Thread
     </p>
         <p>
     Further, notice that we store our key into a
-    <tt class="classname">DatabaseEntry</tt> using
-    <tt class="classname">com.sleepycat.bind.tuple.StringBinding</tt> to
+    <code class="classname">DatabaseEntry</code> using
+    <code class="classname">com.sleepycat.bind.tuple.StringBinding</code> to
     perform the serialization. Also, when we instantiate the
-    <tt class="classname">PayloadData</tt> object, we call
-    <tt class="methodname">getName()</tt> which gives us the string
+    <code class="classname">PayloadData</code> object, we call
+    <code class="methodname">getName()</code> which gives us the string
     representation of this thread's name, as well as
-    <tt class="methodname">Random.nextDouble()</tt> which gives us a random
+    <code class="methodname">Random.nextDouble()</code> which gives us a random
     double value. This latter value is used so as to avoid duplicate
     records in the database.
 </p>
@@ -599,14 +614,14 @@ public class DBWriter extends Thread
         commit the transaction and continue on to the next block of 10
         writes. However, we want to first illustrate a few points about
         transactional processing so instead we call our
-        <tt class="function">countRecords()</tt> method before calling the transaction
-        commit. <tt class="function">countRecords()</tt> uses a cursor to read every
+        <code class="function">countRecords()</code> method before calling the transaction
+        commit. <code class="function">countRecords()</code> uses a cursor to read every
         record in the database and return a count of the number of records
         that it found. 
     </p>
         <p>
         Because 
-        <tt class="function">countRecords()</tt> 
+        <code class="function">countRecords()</code> 
         reads every record in the database, if used incorrectly the thread
         will self-deadlock.  The writer thread has just written 500 records
         to the database, but because the transaction used for that write
@@ -629,13 +644,13 @@ public class DBWriter extends Thread
             <li>
               <p>
                 We can move the call to
-                <tt class="function">countRecords()</tt> to a point after the
+                <code class="function">countRecords()</code> to a point after the
                 thread's transaction has committed. 
             </p>
             </li>
             <li>
               <p>
-                We can allow <tt class="function">countRecords()</tt> to
+                We can allow <code class="function">countRecords()</code> to
                 operate under the same transaction as all of the writes
                 were performed.
             </p>
@@ -655,7 +670,7 @@ public class DBWriter extends Thread
         so that it knows to perform uncommitted reads.
     </p>
         <p>
-        Note that in <a href="inmem_txnexample_java.html">Base API In-Memory Transaction Example</a>, 
+        Note that in <a class="xref" href="inmem_txnexample_java.html" title="Base API In-Memory Transaction Example">Base API In-Memory Transaction Example</a>, 
         we simply perform the cursor operation using the same transaction 
         as is used for the thread's writes. 
     </p>
@@ -734,8 +749,8 @@ public class DBWriter extends Thread
         }
     } </pre>
         <p>
-    The final piece of our <tt class="classname">DBWriter</tt> class is the
-    <tt class="methodname">countRecords()</tt> implementation. Notice how in
+    The final piece of our <code class="classname">DBWriter</code> class is the
+    <code class="methodname">countRecords()</code> implementation. Notice how in
     this example we open the cursor such that it performs uncommitted
     reads:
 </p>

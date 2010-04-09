@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd017.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd017
 # TEST  Test recovery and security.  This is basically a watered
@@ -74,7 +74,7 @@ proc recd017 { method {select 0} args} {
 	# Convert the args again because fixed_len is now real.
 	# Create the databases and close the environment.
 	# cannot specify db truncate in txn protected env!!!
-	set opts [convert_args $method ""]
+	set opts [convert_args $method $args]
 	convert_encrypt $env_cmd
 	set omethod [convert_method $method]
 	set oflags "-create $omethod -mode 0644 \
@@ -139,18 +139,18 @@ proc recd017 { method {select 0} args} {
 #				continue
 #			}
 #		}
-		op_recover abort $testdir $env_cmd $testfile $cmd $msg
-		op_recover commit $testdir $env_cmd $testfile $cmd $msg
+		op_recover abort $testdir $env_cmd $testfile $cmd $msg $args
+		op_recover commit $testdir $env_cmd $testfile $cmd $msg $args
 		#
 		# Note that since prepare-discard ultimately aborts
 		# the txn, it must come before prepare-commit.
 		#
 		op_recover prepare-abort $testdir $env_cmd $testfile2 \
-		    $cmd $msg
+		    $cmd $msg $args
 		op_recover prepare-discard $testdir $env_cmd $testfile2 \
-		    $cmd $msg
+		    $cmd $msg $args
 		op_recover prepare-commit $testdir $env_cmd $testfile2 \
-		    $cmd $msg
+		    $cmd $msg $args
 	}
 	set fixed_len $orig_fixed_len
 	return

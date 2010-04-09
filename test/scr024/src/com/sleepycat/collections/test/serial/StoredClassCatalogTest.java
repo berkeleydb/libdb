@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredClassCatalogTest.java,v 12.7 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.collections.test.serial;
 
@@ -41,9 +41,7 @@ public class StoredClassCatalogTest extends TestCase
     static final String CATALOG_FILE = "catalogtest-catalog.db";
     static final String STORE_FILE = "catalogtest-store.db";
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -54,9 +52,7 @@ public class StoredClassCatalogTest extends TestCase
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite();
         for (int i = 0; i < TestEnv.ALL.length; i += 1) {
             suite.addTest(new StoredClassCatalogTest(TestEnv.ALL[i]));
@@ -82,6 +78,7 @@ public class StoredClassCatalogTest extends TestCase
         return "StoredClassCatalogTest-" + testEnv.getName();
     }
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -112,6 +109,7 @@ public class StoredClassCatalogTest extends TestCase
         return DbCompat.testOpenDatabase(env, null, file, null, config);
     }
 
+    @Override
     public void tearDown() {
 
         try {
@@ -143,6 +141,7 @@ public class StoredClassCatalogTest extends TestCase
         }
     }
 
+    @Override
     public void runTest()
         throws Exception {
 

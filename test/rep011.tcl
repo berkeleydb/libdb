@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep011.tcl,v 12.15 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep011
 # TEST	Replication: test open handle across an upgrade.
@@ -19,6 +19,7 @@
 proc rep011 { method { tnum "011" } args } {
 	global has_crypto
 	global passwd
+	global repfiles_in_memory
 
 	source ./include.tcl
 	if { $is_windows9x_test == 1 } {
@@ -31,6 +32,11 @@ proc rep011 { method { tnum "011" } args } {
 		return "ALL"
 	}
 
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set logsets [create_logsets 2]
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -41,8 +47,8 @@ proc rep011 { method { tnum "011" } args } {
 				continue
 			}
 			set envargs ""
-			puts "Rep$tnum.a ($r $envargs):\
-			    Test upgrade of open handles ($method)."
+			puts "Rep$tnum.a ($r $envargs $method):\
+			    Test upgrade of open handles $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep011_sub $method $tnum $envargs $l $r $args
@@ -66,12 +72,18 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 	source ./include.tcl
 	global testdir
 	global encrypt
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -97,7 +109,7 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    $m_logargs $envargs $verbargs -home $masterdir \
+	    $m_logargs $envargs $verbargs -home $masterdir $repmemargs \
 	    $m_txnargs -errpfx MASTER -rep_master -rep_transport \
 	    \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -105,7 +117,7 @@ proc rep011_sub { method tnum envargs logset recargs largs } {
 	# Open a client
 	repladd 2
 	set env_cmd(C) "berkdb_env_noerr -create \
-	    $c_logargs $envargs $verbargs -home $clientdir \
+	    $c_logargs $envargs $verbargs -home $clientdir $repmemargs \
 	    $c_txnargs -errpfx CLIENT -rep_client -rep_transport \
 	    \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C) $recargs]

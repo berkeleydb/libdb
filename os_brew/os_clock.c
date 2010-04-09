@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2006-2009 Oracle.  All rights reserved.
  *
- * $Id: os_clock.c,v 1.10 2008/03/13 15:36:21 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"

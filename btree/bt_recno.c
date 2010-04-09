@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_recno.c,v 12.40 2008/02/12 16:42:54 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -185,24 +185,31 @@ __ram_append(dbc, key, data)
  * __ramc_del --
  *	Recno DBC->del function.
  *
- * PUBLIC: int __ramc_del __P((DBC *));
+ * PUBLIC: int __ramc_del __P((DBC *, u_int32_t));
  */
 int
-__ramc_del(dbc)
+__ramc_del(dbc, flags)
 	DBC *dbc;
+	u_int32_t flags;
 {
 	BKEYDATA bk;
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DBT hdr, data;
+	DB_LOCK next_lock, prev_lock;
 	DB_LSN lsn;
+	db_pgno_t npgno, ppgno, save_npgno, save_ppgno;
 	int exact, nc, ret, stack, t_ret;
 
 	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	t = dbp->bt_internal;
 	stack = 0;
+	save_npgno = save_ppgno = PGNO_INVALID;
+	LOCK_INIT(next_lock);
+	LOCK_INIT(prev_lock);
+	COMPQUIET(flags, 0);
 
 	/*
 	 * The semantics of cursors during delete are as follows: in
@@ -219,7 +226,7 @@ __ramc_del(dbc)
 		return (DB_KEYEMPTY);
 
 	/* Search the tree for the key; delete only deletes exact matches. */
-	if ((ret = __bam_rsearch(dbc, &cp->recno, SR_DELETE, 1, &exact)) != 0)
+retry:	if ((ret = __bam_rsearch(dbc, &cp->recno, SR_DELETE, 1, &exact)) != 0)
 		goto err;
 	if (!exact) {
 		ret = DB_NOTFOUND;
@@ -228,9 +235,6 @@ __ramc_del(dbc)
 	stack = 1;
 
 	/* Copy the page into the cursor. */
-	if ((ret = __memp_dirty(dbp->mpf,
-	    &cp->csp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
-		goto err;
 	STACK_TO_CURSOR(cp, ret);
 	if (ret != 0)
 		goto err;
@@ -252,6 +256,20 @@ __ramc_del(dbc)
 	}
 
 	if (F_ISSET(cp, C_RENUMBER)) {
+		/* If we are going to drop the page, lock its neighbors. */
+		if (STD_LOCKING(dbc) &&
+		    NUM_ENT(cp->page) == 1 && PGNO(cp->page) != cp->root) {
+			if ((npgno = NEXT_PGNO(cp->page)) != PGNO_INVALID)
+				TRY_LOCK(dbc, npgno, save_npgno,
+				    next_lock, DB_LOCK_WRITE, retry);
+			if (ret != 0)
+				goto err;
+			if ((ppgno = PREV_PGNO(cp->page)) != PGNO_INVALID)
+				TRY_LOCK(dbc, ppgno, save_ppgno,
+				    prev_lock, DB_LOCK_WRITE, retry);
+			if (ret != 0)
+				goto err;
+		}
 		/* Delete the item, adjust the counts, adjust the cursors. */
 		if ((ret = __bam_ditem(dbc, cp->page, cp->indx)) != 0)
 			goto err;
@@ -282,7 +300,7 @@ __ramc_del(dbc)
 			 * We want to delete a single item out of the last page
 			 * that we're not deleting.
 			 */
-			ret = __bam_dpages(dbc, 0, 0);
+			ret = __bam_dpages(dbc, 0, BTD_RELINK);
 
 			/*
 			 * Regardless of the return from __bam_dpages, it will
@@ -290,6 +308,8 @@ __ramc_del(dbc)
 			 */
 			stack = 0;
 			cp->page = NULL;
+			LOCK_INIT(cp->lock);
+			cp->lock_mode = DB_LOCK_NG;
 		}
 	} else {
 		/* Use a delete/put pair to replace the record with a marker. */
@@ -308,6 +328,10 @@ __ramc_del(dbc)
 	t->re_modified = 1;
 
 err:	if (stack && (t_ret = __bam_stkrel(dbc, STK_CLRDBC)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __TLPUT(dbc, next_lock)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __TLPUT(dbc, prev_lock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -532,8 +556,8 @@ retry:	switch (flags) {
 
 		if (flags == DB_GET_BOTH ||
 		    flags == DB_GET_BOTHC || flags == DB_GET_BOTH_RANGE) {
-			if ((ret = __bam_cmp(dbp, dbc->thread_info, dbc->txn,
-			    data, cp->page, cp->indx, __bam_defcmp, &cmp)) != 0)
+			if ((ret = __bam_cmp(dbc, data, cp->page, cp->indx,
+			    __bam_defcmp, &cmp)) != 0)
 				return (ret);
 			if (cmp == 0)
 				break;
@@ -618,8 +642,8 @@ __ramc_put(dbc, key, data, flags, pgnop)
 	 * no duplicates, these are identical and mean "put the given
 	 * datum at the given recno".
 	 */
-	if (flags == DB_KEYFIRST ||
-	    flags == DB_KEYLAST || flags == DB_NOOVERWRITE) {
+	if (flags == DB_KEYFIRST || flags == DB_KEYLAST ||
+	    flags == DB_NOOVERWRITE || flags == DB_OVERWRITE_DUP) {
 		ret = __ram_getno(dbc, key, &cp->recno, 1);
 		if (ret == 0 || ret == DB_NOTFOUND)
 			ret = __ram_add(dbc, &cp->recno, data, flags, 0);
@@ -816,6 +840,11 @@ __ram_ca(dbc_arg, op, foundp)
 				    !CD_ISSET(cp)) {
 					CD_SET(cp);
 					cp->order = order;
+					/*
+					 * If we're deleting the item, we can't
+					 * keep a streaming offset cached.
+					 */
+					cp->stream_start_pgno = PGNO_INVALID;
 				}
 				break;
 			case CA_IBEFORE:
@@ -988,7 +1017,7 @@ __ram_source(dbp)
 
 	/* Find the real name, and swap out the one we had before. */
 	if ((ret = __db_appname(env,
-	    DB_APP_DATA, t->re_source, 0, NULL, &source)) != 0)
+	    DB_APP_DATA, t->re_source, NULL, &source)) != 0)
 		return (ret);
 	__os_free(env, t->re_source);
 	t->re_source = source;

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Exception Handling</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB " />
-    <link rel="previous" href="databaseLimits.html" title="Database Limits and Portability" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB" />
+    <link rel="prev" href="databaseLimits.html" title="Database Limits and Portability" />
     <link rel="next" href="returns.html" title="Error Returns" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="coreExceptions"></a>Exception Handling</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Before continuing, it is useful to spend a few moments on exception
@@ -44,14 +43,14 @@
         <span>Most</span>
         DB methods throw 
             
-            <tt class="classname">DatabaseException</tt>
+            <code class="classname">DatabaseException</code>
         in the event of a serious error. 
         
         
         <span>
             So your DB code must either catch this exception or declare it
-            to be throwable. Be aware that <tt class="classname">DatabaseException</tt> extends 
-            <tt class="classname">java.lang.Exception</tt>. For example:
+            to be throwable. Be aware that <code class="classname">DatabaseException</code> extends 
+            <code class="classname">java.lang.Exception</code>. For example:
         </span>
     </p>
       <a id="java_intro1"></a>
@@ -69,13 +68,13 @@ catch(DatabaseException e)
       <p>
         You can obtain the DB error number for a
          
-        <tt class="classname">DatabaseException</tt> 
+        <code class="classname">DatabaseException</code> 
         by using
         
         <span>
-            <tt class="methodname">DatabaseException.getErrno()</tt>. 
+            <code class="methodname">DatabaseException.getErrno()</code>. 
             You can also obtain any error message associated with that error
-            using <tt class="methodname">DatabaseException.getMessage()</tt>.
+            using <code class="methodname">DatabaseException.getMessage()</code>.
         </span>
     </p>
     </div>

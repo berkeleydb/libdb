@@ -1,8 +1,8 @@
 #See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: siutils.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Secondary index utilities.  This file used to be known as
 # sindex.tcl.

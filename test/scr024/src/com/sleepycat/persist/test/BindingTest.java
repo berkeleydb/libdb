@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: BindingTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
@@ -13,7 +13,7 @@ import static com.sleepycat.persist.model.Relationship.ONE_TO_MANY;
 import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
@@ -83,22 +83,20 @@ public class BindingTest extends TestCase {
     private DatabaseEntry keyEntry;
     private DatabaseEntry dataEntry;
 
-    public void setUp()
-        throws IOException {
-
+    @Override
+    public void setUp() {
         envHome = new File(System.getProperty(SharedTestUtils.DEST_DIR));
         SharedTestUtils.emptyDir(envHome);
         keyEntry = new DatabaseEntry();
         dataEntry = new DatabaseEntry();
     }
 
-    public void tearDown()
-        throws IOException {
-
+    @Override
+    public void tearDown() {
         if (env != null) {
             try {
                 env.close();
-            } catch (DatabaseException e) {
+            } catch (Exception e) {
                 System.out.println("During tearDown: " + e);
             }
         }
@@ -109,13 +107,15 @@ public class BindingTest extends TestCase {
         dataEntry = null;
     }
 
+    /**
+     * @throws FileNotFoundException from DB core.
+     */
     private void open()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         EnvironmentConfig envConfig = TestEnv.BDB.getConfig();
         envConfig.setAllowCreate(true);
         env = new Environment(envHome, envConfig);
-
         openCatalog();
     }
 
@@ -153,7 +153,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testBasic()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -219,7 +219,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSimpleTypes()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -256,26 +256,26 @@ public class BindingTest extends TestCase {
     static class SimpleTypes implements MyEntity {
 
         @PrimaryKey
-        private boolean f0 = true;
-        private char f1 = 'a';
-        private byte f2 = 123;
-        private short f3 = 123;
-        private int f4 = 123;
-        private long f5 = 123;
-        private float f6 = 123.4f;
-        private double f7 = 123.4;
-        private String f8 = "xxx";
-        private BigInteger f9 = BigInteger.valueOf(123);
+        private final boolean f0 = true;
+        private final char f1 = 'a';
+        private final byte f2 = 123;
+        private final short f3 = 123;
+        private final int f4 = 123;
+        private final long f5 = 123;
+        private final float f6 = 123.4f;
+        private final double f7 = 123.4;
+        private final String f8 = "xxx";
+        private final BigInteger f9 = BigInteger.valueOf(123);
         //private BigDecimal f10 = BigDecimal.valueOf(123.4);
-        private Date f11 = new Date();
-        private Boolean f12 = true;
-        private Character f13 = 'a';
-        private Byte f14 = 123;
-        private Short f15 = 123;
-        private Integer f16 = 123;
-        private Long f17 = 123L;
-        private Float f18 = 123.4f;
-        private Double f19 = 123.4;
+        private final Date f11 = new Date();
+        private final Boolean f12 = true;
+        private final Character f13 = 'a';
+        private final Byte f14 = 123;
+        private final Short f15 = 123;
+        private final Integer f16 = 123;
+        private final Long f17 = 123L;
+        private final Float f18 = 123.4f;
+        private final Double f19 = 123.4;
 
         SimpleTypes() { }
 
@@ -309,7 +309,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testArrayTypes()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -339,20 +339,20 @@ public class BindingTest extends TestCase {
     static class ArrayTypes implements MyEntity {
 
         @PrimaryKey
-        private int id = 1;
-        private boolean[] f0 =  {false, true};
-        private char[] f1 = {'a', 'b'};
-        private byte[] f2 = {1, 2};
-        private short[] f3 = {1, 2};
-        private int[] f4 = {1, 2};
-        private long[] f5 = {1, 2};
-        private float[] f6 = {1.1f, 2.2f};
-        private double[] f7 = {1.1, 2,2};
-        private String[] f8 = {"xxx", null, "yyy"};
-        private Address[] f9 = {new Address("city", "state", 123),
+        private final int id = 1;
+        private final boolean[] f0 =  {false, true};
+        private final char[] f1 = {'a', 'b'};
+        private final byte[] f2 = {1, 2};
+        private final short[] f3 = {1, 2};
+        private final int[] f4 = {1, 2};
+        private final long[] f5 = {1, 2};
+        private final float[] f6 = {1.1f, 2.2f};
+        private final double[] f7 = {1.1, 2,2};
+        private final String[] f8 = {"xxx", null, "yyy"};
+        private final Address[] f9 = {new Address("city", "state", 123),
                                 null,
                                 new Address("x", "y", 444)};
-        private boolean[][][] f10 =
+        private final boolean[][][] f10 =
         {
             {
                 {false, true},
@@ -364,7 +364,7 @@ public class BindingTest extends TestCase {
                 {false, true},
             },
         };
-        private String[][][] f11 =
+        private final String[][][] f11 =
         {
             {
                 {"xxx", null, "yyy"},
@@ -404,7 +404,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testEnumTypes()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -413,7 +413,7 @@ public class BindingTest extends TestCase {
         checkMetadata(EnumTypes.class.getName(), new String[][] {
                           {"f0", "int"},
                           {"f1", Thread.State.class.getName()},
-                          {"f2", EnumTypes.MyEnum.class.getName()},
+                          {"f2", MyEnum.class.getName()},
                           {"f3", Object.class.getName()},
                       },
                       0 /*priKeyIndex*/, null);
@@ -421,16 +421,16 @@ public class BindingTest extends TestCase {
         close();
     }
 
+    enum MyEnum { ONE, TWO };
+
     @Entity
     static class EnumTypes implements MyEntity {
 
-        private static enum MyEnum { ONE, TWO };
-
         @PrimaryKey
-        private int f0 = 1;
-        private Thread.State f1 = Thread.State.RUNNABLE;
-        private MyEnum f2 = MyEnum.ONE;
-        private Object f3 = MyEnum.TWO;
+        private final int f0 = 1;
+        private final Thread.State f1 = Thread.State.RUNNABLE;
+        private final MyEnum f2 = MyEnum.ONE;
+        private final Object f3 = MyEnum.TWO;
 
         EnumTypes() { }
 
@@ -448,7 +448,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testProxyTypes()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -475,16 +475,18 @@ public class BindingTest extends TestCase {
     static class ProxyTypes implements MyEntity {
 
         @PrimaryKey
-        private int f0 = 1;
-        private Locale f1 = Locale.getDefault();
-        private Set<Integer> f2 = new HashSet<Integer>();
-        private Set<Integer> f3 = new TreeSet<Integer>();
-        private Object f4 = new HashSet<Address>();
-        private HashMap<String,Integer> f5 = new HashMap<String,Integer>();
-        private TreeMap<String,Address> f6 = new TreeMap<String,Address>();
-        private List<Integer> f7 = new ArrayList<Integer>();
-        private LinkedList<Integer> f8 = new LinkedList<Integer>();
-        private LocalizedText f9 = new LocalizedText(f1, "xyz");
+        private final int f0 = 1;
+        private final Locale f1 = Locale.getDefault();
+        private final Set<Integer> f2 = new HashSet<Integer>();
+        private final Set<Integer> f3 = new TreeSet<Integer>();
+        private final Object f4 = new HashSet<Address>();
+        private final HashMap<String,Integer> f5 =
+            new HashMap<String,Integer>();
+        private final TreeMap<String,Address> f6 =
+            new TreeMap<String,Address>();
+        private final List<Integer> f7 = new ArrayList<Integer>();
+        private final LinkedList<Integer> f8 = new LinkedList<Integer>();
+        private final LocalizedText f9 = new LocalizedText(f1, "xyz");
 
         ProxyTypes() {
             f2.add(123);
@@ -583,7 +585,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testEmbedded()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -706,7 +708,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSubclass()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -745,6 +747,7 @@ public class BindingTest extends TestCase {
             this.two = subTwo;
 	}
 
+        @Override
         public void validate(Object other) {
             super.validate(other);
             Subclass o = (Subclass) other;
@@ -757,7 +760,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSuperclass()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -812,7 +815,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testAbstract()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -983,12 +986,13 @@ public class BindingTest extends TestCase {
     }
 
     public void testCompositeKey()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
         CompositeKey key =
-            new CompositeKey(123, 456L, "xyz", BigInteger.valueOf(789));
+            new CompositeKey(123, 456L, "xyz", BigInteger.valueOf(789),
+                             MyEnum.ONE);
         checkEntity(UseCompositeKey.class,
                     new UseCompositeKey(key, "one"));
 
@@ -1003,6 +1007,7 @@ public class BindingTest extends TestCase {
                         {"f2", "java.lang.Long"},
                         {"f3", "java.lang.String"},
                         {"f4", "java.math.BigInteger"},
+                        {"f5", MyEnum.class.getName()},
                       },
                       -1 /*priKeyIndex*/, null);
 
@@ -1019,14 +1024,17 @@ public class BindingTest extends TestCase {
         private String f3;
         @KeyField(4)
         private BigInteger f4;
+        @KeyField(5)
+        private MyEnum f5;
 
         private CompositeKey() {}
 
-        CompositeKey(int f1, Long f2, String f3, BigInteger f4) {
+        CompositeKey(int f1, Long f2, String f3, BigInteger f4, MyEnum f5) {
             this.f1 = f1;
             this.f2 = f2;
             this.f3 = f3;
             this.f4 = f4;
+            this.f5 = f5;
         }
 
         void validate(CompositeKey o) {
@@ -1034,6 +1042,8 @@ public class BindingTest extends TestCase {
             TestCase.assertTrue(nullOrEqual(f2, o.f2));
             TestCase.assertTrue(nullOrEqual(f3, o.f3));
             TestCase.assertTrue(nullOrEqual(f4, o.f4));
+            TestCase.assertEquals(f5, o.f5);
+            TestCase.assertTrue(nullOrEqual(f5, o.f5));
         }
 
         @Override
@@ -1042,7 +1052,8 @@ public class BindingTest extends TestCase {
             return f1 == o.f1 &&
                    nullOrEqual(f2, o.f2) &&
                    nullOrEqual(f3, o.f3) &&
-                   nullOrEqual(f4, o.f4);
+                   nullOrEqual(f4, o.f4) &&
+                   nullOrEqual(f5, o.f5);
         }
 
         @Override
@@ -1052,7 +1063,7 @@ public class BindingTest extends TestCase {
 
         @Override
         public String toString() {
-            return "" + f1 + ' ' + f2 + ' ' + f3 + ' ' + f4;
+            return "" + f1 + ' ' + f2 + ' ' + f3 + ' ' + f4 + ' ' + f5;
         }
     }
 
@@ -1084,7 +1095,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testComparableKey()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -1112,8 +1123,8 @@ public class BindingTest extends TestCase {
             (catalog, ComparableKey.class.getName(), false);
 
         PersistComparator comparator = new PersistComparator
-            (ComparableKey.class.getName(),
-             classMeta.getCompositeKeyFields(),
+            (/*ComparableKey.class.getName(),
+             classMeta.getCompositeKeyFields(),*/
              binding);
 
         compareKeys(comparator, binding, new ComparableKey(1, 1),
@@ -1128,7 +1139,7 @@ public class BindingTest extends TestCase {
         close();
     }
 
-    private void compareKeys(Comparator<Object> comparator,
+    private void compareKeys(Comparator<byte[]> comparator,
                              EntryBinding binding,
                              Object key1,
                              Object key2,
@@ -1214,7 +1225,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSecKeys()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -1275,6 +1286,12 @@ public class BindingTest extends TestCase {
                           {"g24", CompositeKey[].class.getName()},
                           {"f25", Set.class.getName()},
                           {"g25", Set.class.getName()},
+                          {"f26", MyEnum.class.getName()},
+                          {"g26", MyEnum.class.getName()},
+                          {"f27", MyEnum[].class.getName()},
+                          {"g27", MyEnum[].class.getName()},
+                          {"f28", Set.class.getName()},
+                          {"g28", Set.class.getName()},
                           {"f31", "java.util.Date"},
                           {"f32", "java.lang.Boolean"},
                           {"f33", "java.lang.Character"},
@@ -1309,12 +1326,15 @@ public class BindingTest extends TestCase {
         checkSecKey(obj, "f18", obj.f18, Float.class);
         checkSecKey(obj, "f19", obj.f19, Double.class);
         checkSecKey(obj, "f20", obj.f20, CompositeKey.class);
+        checkSecKey(obj, "f26", obj.f26, MyEnum.class);
 
         checkSecMultiKey(obj, "f21", toSet(obj.f21), Integer.class);
         checkSecMultiKey(obj, "f22", toSet(obj.f22), Integer.class);
         checkSecMultiKey(obj, "f23", toSet(obj.f23), Integer.class);
         checkSecMultiKey(obj, "f24", toSet(obj.f24), CompositeKey.class);
         checkSecMultiKey(obj, "f25", toSet(obj.f25), CompositeKey.class);
+        checkSecMultiKey(obj, "f27", toSet(obj.f27), MyEnum.class);
+        checkSecMultiKey(obj, "f28", toSet(obj.f28), MyEnum.class);
 
         nullifySecKey(obj, "f8", obj.f8, String.class);
         nullifySecKey(obj, "f9", obj.f9, BigInteger.class);
@@ -1329,12 +1349,15 @@ public class BindingTest extends TestCase {
         nullifySecKey(obj, "f18", obj.f18, Float.class);
         nullifySecKey(obj, "f19", obj.f19, Double.class);
         nullifySecKey(obj, "f20", obj.f20, CompositeKey.class);
+        nullifySecKey(obj, "f26", obj.f26, MyEnum.class);
 
         nullifySecMultiKey(obj, "f21", obj.f21, Integer.class);
         nullifySecMultiKey(obj, "f22", obj.f22, Integer.class);
         nullifySecMultiKey(obj, "f23", obj.f23, Integer.class);
         nullifySecMultiKey(obj, "f24", obj.f24, CompositeKey.class);
         nullifySecMultiKey(obj, "f25", obj.f25, CompositeKey.class);
+        nullifySecMultiKey(obj, "f27", obj.f27, MyEnum.class);
+        nullifySecMultiKey(obj, "f28", obj.f28, MyEnum.class);
 
         nullifySecKey(obj, "f31", obj.f31, Date.class);
         nullifySecKey(obj, "f32", obj.f32, Boolean.class);
@@ -1373,40 +1396,40 @@ public class BindingTest extends TestCase {
         long id;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private boolean f0 = false;
-        private boolean g0 = false;
+        private final boolean f0 = false;
+        private final boolean g0 = false;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private char f1 = '1';
-        private char g1 = '1';
+        private final char f1 = '1';
+        private final char g1 = '1';
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private byte f2 = 2;
-        private byte g2 = 2;
+        private final byte f2 = 2;
+        private final byte g2 = 2;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private short f3 = 3;
-        private short g3 = 3;
+        private final short f3 = 3;
+        private final short g3 = 3;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private int f4 = 4;
-        private int g4 = 4;
+        private final int f4 = 4;
+        private final int g4 = 4;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private long f5 = 5;
-        private long g5 = 5;
+        private final long f5 = 5;
+        private final long g5 = 5;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private float f6 = 6.6f;
-        private float g6 = 6.6f;
+        private final float f6 = 6.6f;
+        private final float g6 = 6.6f;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private double f7 = 7.7;
-        private double g7 = 7.7;
+        private final double f7 = 7.7;
+        private final double g7 = 7.7;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private String f8 = "8";
-        private String g8 = "8";
+        private final String f8 = "8";
+        private final String g8 = "8";
 
         @SecondaryKey(relate=MANY_TO_ONE)
         private BigInteger f9;
@@ -1417,108 +1440,128 @@ public class BindingTest extends TestCase {
         //private BigDecimal g10;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Date f11 = new Date(11);
-        private Date g11 = new Date(11);
+        private final Date f11 = new Date(11);
+        private final Date g11 = new Date(11);
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Boolean f12 = true;
-        private Boolean g12 = true;
+        private final Boolean f12 = true;
+        private final Boolean g12 = true;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Character f13 = '3';
-        private Character g13 = '3';
+        private final Character f13 = '3';
+        private final Character g13 = '3';
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Byte f14 = 14;
-        private Byte g14 = 14;
+        private final Byte f14 = 14;
+        private final Byte g14 = 14;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Short f15 = 15;
-        private Short g15 = 15;
+        private final Short f15 = 15;
+        private final Short g15 = 15;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Integer f16 = 16;
-        private Integer g16 = 16;
+        private final Integer f16 = 16;
+        private final Integer g16 = 16;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Long f17= 17L;
-        private Long g17= 17L;
+        private final Long f17= 17L;
+        private final Long g17= 17L;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Float f18 = 18.18f;
-        private Float g18 = 18.18f;
+        private final Float f18 = 18.18f;
+        private final Float g18 = 18.18f;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Double f19 = 19.19;
-        private Double g19 = 19.19;
+        private final Double f19 = 19.19;
+        private final Double g19 = 19.19;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private CompositeKey f20 =
-            new CompositeKey(20, 20L, "20", BigInteger.valueOf(20));
-        private CompositeKey g20 =
-            new CompositeKey(20, 20L, "20", BigInteger.valueOf(20));
+        private final CompositeKey f20 =
+            new CompositeKey(20, 20L, "20", BigInteger.valueOf(20),
+                             MyEnum.ONE);
+        private final CompositeKey g20 =
+            new CompositeKey(20, 20L, "20", BigInteger.valueOf(20),
+                             MyEnum.TWO);
 
         private static int[] arrayOfInt = { 100, 101, 102 };
 
         private static Integer[] arrayOfInteger = { 100, 101, 102 };
 
         private static CompositeKey[] arrayOfCompositeKey = {
-            new CompositeKey(100, 100L, "100", BigInteger.valueOf(100)),
-            new CompositeKey(101, 101L, "101", BigInteger.valueOf(101)),
-            new CompositeKey(102, 102L, "102", BigInteger.valueOf(102)),
+            new CompositeKey(100, 100L, "100", BigInteger.valueOf(100),
+                             MyEnum.ONE),
+            new CompositeKey(101, 101L, "101", BigInteger.valueOf(101),
+                             MyEnum.TWO),
+            new CompositeKey(102, 102L, "102", BigInteger.valueOf(102),
+                             MyEnum.TWO),
         };
 
-        @SecondaryKey(relate=ONE_TO_MANY)
-        private int[] f21 = arrayOfInt;
-        private int[] g21 = f21;
+        private static MyEnum[] arrayOfEnum =
+            new MyEnum[] { MyEnum.ONE, MyEnum.TWO };
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private Integer[] f22 = arrayOfInteger;
-        private Integer[] g22 = f22;
+        private final int[] f21 = arrayOfInt;
+        private final int[] g21 = f21;
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private Set<Integer> f23 = toSet(arrayOfInteger);
-        private Set<Integer> g23 = f23;
+        private final Integer[] f22 = arrayOfInteger;
+        private final Integer[] g22 = f22;
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private CompositeKey[] f24 = arrayOfCompositeKey;
-        private CompositeKey[] g24 = f24;
+        private final Set<Integer> f23 = toSet(arrayOfInteger);
+        private final Set<Integer> g23 = f23;
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private Set<CompositeKey> f25 = toSet(arrayOfCompositeKey);
-        private Set<CompositeKey> g25 = f25;
+        private final CompositeKey[] f24 = arrayOfCompositeKey;
+        private final CompositeKey[] g24 = f24;
+
+        @SecondaryKey(relate=ONE_TO_MANY)
+        private final Set<CompositeKey> f25 = toSet(arrayOfCompositeKey);
+        private final Set<CompositeKey> g25 = f25;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        private final MyEnum f26 = MyEnum.TWO;
+        private final MyEnum g26 = f26;
+
+        @SecondaryKey(relate=ONE_TO_MANY)
+        private final MyEnum[] f27 = arrayOfEnum;
+        private final MyEnum[] g27 = f27;
+
+        @SecondaryKey(relate=ONE_TO_MANY)
+        private final Set<MyEnum> f28 = toSet(arrayOfEnum);
+        private final Set<MyEnum> g28 = f28;
 
         /* Repeated key values to test shared references. */
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Date f31 = f11;
+        private final Date f31 = f11;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Boolean f32 = f12;
+        private final Boolean f32 = f12;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Character f33 = f13;
+        private final Character f33 = f13;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Byte f34 = f14;
+        private final Byte f34 = f14;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Short f35 = f15;
+        private final Short f35 = f15;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Integer f36 = f16;
+        private final Integer f36 = f16;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Long f37= f17;
+        private final Long f37= f17;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Float f38 = f18;
+        private final Float f38 = f18;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private Double f39 = f19;
+        private final Double f39 = f19;
 
         @SecondaryKey(relate=MANY_TO_ONE)
-        private CompositeKey f40 = f20;
+        private final CompositeKey f40 = f20;
 
         public Object getPriKeyObject() {
             return id;
@@ -1607,7 +1650,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSecKeyRefToPriKey()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -1633,16 +1676,16 @@ public class BindingTest extends TestCase {
     static class SecKeyRefToPriKey implements MyEntity {
 
         @PrimaryKey
-        private String priKey;
+        private final String priKey;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        private String secKey1;
+        private final String secKey1;
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private String[] secKey2;
+        private final String[] secKey2;
 
         @SecondaryKey(relate=ONE_TO_MANY)
-        private Set<String> secKey3 = new HashSet<String>();
+        private final Set<String> secKey3 = new HashSet<String>();
 
         private SecKeyRefToPriKey() {
             priKey = "sharedValue";
@@ -1668,20 +1711,22 @@ public class BindingTest extends TestCase {
     }
 
     public void testSecKeyInSuperclass()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
         SecKeyInSuperclassEntity obj = new SecKeyInSuperclassEntity();
         checkEntity(SecKeyInSuperclassEntity.class, obj);
 
-        checkMetadata(SecKeyInSuperclass.class.getName(), new String[][] {
+        checkMetadata(SecKeyInSuperclass.class.getName(),
+                      new String[][] {
                           {"priKey", "java.lang.String"},
                           {"secKey1", String.class.getName()},
                       },
                       0/*priKeyIndex*/, null);
 
-        checkMetadata(SecKeyInSuperclassEntity.class.getName(), new String[][] {
+        checkMetadata(SecKeyInSuperclassEntity.class.getName(),
+                      new String[][] {
                           {"secKey2", "java.lang.String"},
                       },
                       -1 /*priKeyIndex*/, SecKeyInSuperclass.class.getName());
@@ -1721,6 +1766,7 @@ public class BindingTest extends TestCase {
         @SecondaryKey(relate=ONE_TO_ONE)
         String secKey2 = "2";
 
+        @Override
         public void validate(Object other) {
             super.validate(other);
             SecKeyInSuperclassEntity o = (SecKeyInSuperclassEntity) other;
@@ -1730,7 +1776,7 @@ public class BindingTest extends TestCase {
     }
 
     public void testSecKeyInSubclass()
-        throws IOException, DatabaseException {
+        throws FileNotFoundException, DatabaseException {
 
         open();
 
@@ -1785,6 +1831,7 @@ public class BindingTest extends TestCase {
         @SecondaryKey(relate=ONE_TO_ONE)
         String secKey2 = "2";
 
+        @Override
         public void validate(Object other) {
             super.validate(other);
             SecKeyInSubclass o = (SecKeyInSubclass) other;
@@ -1798,9 +1845,7 @@ public class BindingTest extends TestCase {
         }
     }
 
-    private void checkEntity(Class entityCls, MyEntity entity)
-        throws DatabaseException {
-
+    private void checkEntity(Class entityCls, MyEntity entity) {
         Object priKey = entity.getPriKeyObject();
         Class keyCls = priKey.getClass();
         DatabaseEntry keyEntry2 = new DatabaseEntry();
@@ -1879,7 +1924,8 @@ public class BindingTest extends TestCase {
 
         /* Create key creator/nullifier. */
         SecondaryKeyCreator keyCreator = new PersistKeyCreator
-            (catalog, entityMeta, keyCls.getName(), secKeyMeta);
+            (catalog, entityMeta, keyCls.getName(), secKeyMeta,
+             false /*rawAcess*/);
 
         /* Convert entity to bytes. */
         PersistEntityBinding entityBinding =
@@ -1924,7 +1970,8 @@ public class BindingTest extends TestCase {
 
         /* Create key creator/nullifier. */
         SecondaryMultiKeyCreator keyCreator = new PersistKeyCreator
-            (catalog, entityMeta, keyCls.getName(), secKeyMeta);
+            (catalog, entityMeta, keyCls.getName(), secKeyMeta,
+             false /*rawAcess*/);
 
         /* Convert entity to bytes. */
         PersistEntityBinding entityBinding =
@@ -1968,7 +2015,8 @@ public class BindingTest extends TestCase {
 
         /* Create key creator/nullifier. */
         ForeignMultiKeyNullifier keyNullifier = new PersistKeyCreator
-            (catalog, entityMeta, keyCls.getName(), secKeyMeta);
+            (catalog, entityMeta, keyCls.getName(), secKeyMeta,
+             false /*rawAcess*/);
 
         /* Convert entity to bytes. */
         PersistEntityBinding entityBinding =
@@ -2017,7 +2065,8 @@ public class BindingTest extends TestCase {
 
         /* Create key creator/nullifier. */
         ForeignMultiKeyNullifier keyNullifier = new PersistKeyCreator
-            (catalog, entityMeta, keyCls.getName(), secKeyMeta);
+            (catalog, entityMeta, keyCls.getName(), secKeyMeta,
+             false /*rawAcess*/);
 
         /* Convert entity to bytes. */
         PersistEntityBinding entityBinding =
@@ -2140,9 +2189,7 @@ public class BindingTest extends TestCase {
                                String clsName,
                                String[][] nameTypePairs,
                                int priKeyIndex,
-                               String superClsName)
-        throws DatabaseException {
-
+                               String superClsName) {
         ClassMetadata classMeta = checkModel.getClassMetadata(clsName);
         assertNotNull(clsName, classMeta);
 

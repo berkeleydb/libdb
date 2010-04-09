@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Selecting the Cache Size</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dbconfig.html" title="Chapter 11. Database Configuration" />
-    <link rel="previous" href="dbconfig.html" title="Chapter 11. Database Configuration" />
+    <link rel="prev" href="dbconfig.html" title="Chapter 11. Database Configuration" />
     <link rel="next" href="btree.html" title="BTree Configuration" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="cachesize"></a>Selecting the Cache Size</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Cache size is important to your application because if it is set to too
@@ -48,8 +47,8 @@
             
             
             <span>
-                <tt class="methodname">DatabaseConfig.setCacheSize()</tt>, or 
-                <tt class="methodname">EnvironmentConfig.setCacheSize()</tt>,
+                <code class="methodname">DatabaseConfig.setCacheSize()</code>, or 
+                <code class="methodname">EnvironmentConfig.setCacheSize()</code>,
             </span>
          depending on whether you are using a database environment or not. You
          cache size must be a power of 2, but it is otherwise limited only by
@@ -66,8 +65,8 @@
         of your cache (provided that you have enough memory to do so).
     </p>
       <p>
-        You can use the <tt class="literal">db_stat</tt> command line utility with the
-        <tt class="literal">-m</tt> option to gauge the effectiveness of your cache.
+        You can use the <code class="literal">db_stat</code> command line utility with the
+        <code class="literal">-m</code> option to gauge the effectiveness of your cache.
         In particular, the number of pages found in the cache is shown, along
         with a percentage value. The closer to 100% that you can get, the
         better. If this value drops too low, and you are experiencing

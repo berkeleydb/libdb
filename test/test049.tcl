@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test049.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test049
 # TEST	Cursor operations on uninitialized cursors.
@@ -52,7 +52,8 @@ proc test049 { method args } {
 	cleanup $testdir $env
 
 	set oflags "-create -mode 0644 $rflags $omethod $args"
-	if { [is_record_based $method] == 0 && [is_rbtree $method] != 1 } {
+	if { [is_record_based $method] == 0 &&\
+	    [is_rbtree $method] != 1 && [is_compressed $args] == 0 } {
 		append oflags " -dup"
 	}
 	set db [eval {berkdb_open_noerr} $oflags $testfile]
@@ -120,13 +121,14 @@ proc test049 { method args } {
 	foreach flag { after before current keyfirst keylast } {
 		puts "\t\t...dbc->put($flag)"
 		if { [string match key* $flag] == 1 } {
-			  if { [is_record_based $method] == 1 } {
-				# keyfirst/keylast not allowed in recno
-			puts "\t\t...Skipping dbc->put($flag) for $method."
+			if { [is_record_based $method] == 1 ||\
+			   [is_compressed $args] == 1 } {
+				# Keyfirst/keylast not allowed. 
+				puts "\t\t...Skipping dbc->put($flag)."
 				continue
-			  } else {
+			} else {
 				# keyfirst/last should succeed
-		puts "\t\t...dbc->put($flag)...should succeed for $method"
+				puts "\t\t...dbc->put($flag)...should succeed."
 				error_check_good dbcput:$flag \
 				    [$dbc_u put -$flag $key$i data0] 0
 
@@ -138,8 +140,9 @@ proc test049 { method args } {
 			}
 		} elseif { [string compare $flag before ] == 0 ||
 		    [string compare $flag after ] == 0 } {
-			if { [is_record_based $method] == 0 &&
-			    [is_rbtree $method] == 0} {
+			if { [is_record_based $method] == 0 &&\
+			    [is_rbtree $method] == 0 &&\
+			    [is_compressed $args] == 0} {
 				set ret [$dbc_u put -$flag data0]
 				error_check_good "$dbc_u:put:-$flag" $ret 0
 			} elseif { $renum == 1 } {

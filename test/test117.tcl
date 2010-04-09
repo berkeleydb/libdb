@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: test117.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test117
 # TEST	Test database compaction with requested fill percent.
@@ -26,6 +26,11 @@ proc test117 { method {nentries 10000} {tnum "117"} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
@@ -171,7 +176,8 @@ proc test117 { method {nentries 10000} {tnum "117"} args } {
 			set ret [$db compact -fillpercent $fillpercent]
 			error_check_good db_sync [$db sync] 0
 			set size2 [file size $filename]
-			error_check_good verify_dir [verify_dir $testdir] 0
+			error_check_good verify_dir \
+			     [verify_dir $testdir "" 0 0 $nodump] 0
 			set free2 [stat_field $db stat "Pages on freelist"]
 
 			# The number of free pages should never decline.

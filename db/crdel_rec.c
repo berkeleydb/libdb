@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: crdel_rec.c,v 12.28 2008/02/18 04:46:42 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -44,6 +44,15 @@ __crdel_metasub_recover(env, dbtp, lsnp, op, info)
 	REC_PRINT(__crdel_metasub_print);
 	REC_INTRO(__crdel_metasub_read, ip, 0);
 
+	/*
+	 * If we are undoing this operation, but the DB that we got back
+	 * was never really opened, then this open was an in-memory open
+	 * that did not finish. We can let the file creation take care
+	 * of any necessary undo/cleanup.
+	 */
+	if (DB_UNDO(op) && !F_ISSET(file_dbp, DB_AM_OPEN_CALLED))
+		goto done;
+
 	if ((ret = __memp_fget(mpf, &argp->pgno,
 	    ip, NULL, 0, &pagep)) != 0) {
 		/* If this is an in-memory file, this might be OK. */
@@ -79,10 +88,10 @@ __crdel_metasub_recover(env, dbtp, lsnp, op, info)
 	} else if (DB_UNDO(op)) {
 		/*
 		 * We want to undo this page creation.  The page creation
-		 * happened in two parts.  First, we called __bam_new which
+		 * happened in two parts.  First, we called __db_pg_alloc which
 		 * was logged separately. Then we wrote the meta-data onto
 		 * the page.  So long as we restore the LSN, then the recovery
-		 * for __bam_new will do everything else.
+		 * for __db_pg_alloc will do everything else.
 		 *
 		 * Don't bother checking the lsn on the page.  If we are
 		 * rolling back the next thing is that this page will get

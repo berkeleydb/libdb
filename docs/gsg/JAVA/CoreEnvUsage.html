@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Databases in Environments</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="previous" href="dbErrorReporting.html" title="Error Reporting Functions" />
+    <link rel="prev" href="dbErrorReporting.html" title="Error Reporting Functions" />
     <link rel="next" href="CoreJavaUsage.html" title="Database Example" />
   </head>
   <body>
@@ -32,13 +32,12 @@
             <h2 class="title" style="clear: both"><a id="CoreEnvUsage"></a>Managing Databases in Environments</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             In 
             
             <span>
-            <a href="Env.html">Database Environments</a>, 
+            <a class="xref" href="Env.html" title="Chapter 2. Database Environments">Database Environments</a>, 
             </span>
             
             we introduced
@@ -97,9 +96,9 @@ try {
       <a id="java_env2"></a>
       <pre class="programlisting">package db.GettingStarted;
 
-<b class="userinput"><tt>import com.sleepycat.db.Database;
+<strong class="userinput"><code>import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
-import com.sleepycat.db.DatabaseType;</tt></b>
+import com.sleepycat.db.DatabaseType;</code></strong>
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
@@ -118,11 +117,11 @@ try {
     EnvironmentConfig envConf = new EnvironmentConfig();
     envConf.setAllowCreate(true);
     DatabaseConfig dbConfig = new DatabaseConfig();
-    <b class="userinput"><tt>dbConfig.setAllowCreate(true);
-    dbConfig.setType(DatabaseType.BTREE);</tt></b>
+    <strong class="userinput"><code>dbConfig.setAllowCreate(true);
+    dbConfig.setType(DatabaseType.BTREE);</code></strong>
 
     myEnv = new Environment(envHome, envConf);
-    <b class="userinput"><tt>myDb = myEnv.openDatabase(null, dbFileName, null, dbConfig);</tt></b>
+    <strong class="userinput"><code>myDb = myEnv.openDatabase(null, dbFileName, null, dbConfig);</code></strong>
 } catch (DatabaseException de) {
     // Exception handling goes here
 } catch (FileNotFoundException fnfe) {

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_fmethod.c,v 12.25 2008/05/05 17:47:01 sue Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -41,8 +41,14 @@ __memp_fcreate_pp(dbenv, retp, flags)
 	if ((ret = __db_fchk(env, "DB_ENV->memp_fcreate", flags, 0)) != 0)
 		return (ret);
 
+	if (REP_ON(env)) {
+		__db_errx(env,
+  "DB_ENV->memp_fcreate: method not permitted when replication is configured");
+		return (EINVAL);
+	}
+
 	ENV_ENTER(env, ip);
-	REPLICATION_WRAP(env, (__memp_fcreate(env, retp)), 0, ret);
+	ret = __memp_fcreate(env, retp);
 	ENV_LEAVE(env, ip);
 	return (ret);
 }

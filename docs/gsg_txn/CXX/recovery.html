@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Recovery Procedures</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="backuprestore.html" title="Backup Procedures" />
+    <link rel="prev" href="backuprestore.html" title="Backup Procedures" />
     <link rel="next" href="architectrecovery.html" title="Designing Your Application for Recovery" />
   </head>
   <body>
@@ -32,7 +32,20 @@
             <h2 class="title" style="clear: both"><a id="recovery"></a>Recovery Procedures</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="recovery.html#normalrecovery">Normal Recovery</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="recovery.html#catastrophicrecovery">Catastrophic Recovery</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
            DB supports two types of recovery: 
@@ -70,7 +83,7 @@
             corrupted your database files and you want to restore from a
             backup.  You also run catastrophic recovery when
             you create a hot backup
-            (see <a href="hotfailover.html">Using Hot Failovers</a> for more information).
+            (see <a class="xref" href="hotfailover.html" title="Using Hot Failovers">Using Hot Failovers</a> for more information).
         </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -79,7 +92,6 @@
               <h3 class="title"><a id="normalrecovery"></a>Normal Recovery</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Normal recovery examines the contents of your environment's
@@ -127,7 +139,7 @@
             </li>
             <li>
               <p>
-                        Provide the <tt class="literal">DB_RECOVER</tt> flag when
+                        Provide the <code class="literal">DB_RECOVER</code> flag when
                         you open your environment.
                     </p>
             </li>
@@ -135,7 +147,7 @@
         </div>
         <p>
                 You can also run recovery by pausing or shutting down your
-                application and using the <span><b class="command">db_recover</b></span>
+                application and using the <span class="command"><strong>db_recover</strong></span>
                 command line utility.
             </p>
         <p>
@@ -180,7 +192,6 @@ int main(void)
               <h3 class="title"><a id="catastrophicrecovery"></a>Catastrophic Recovery</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Use catastrophic recovery when you are
@@ -210,7 +221,7 @@ int main(void)
             </li>
             <li>
               <p>
-                        Provide the <tt class="literal">DB_RECOVER_FATAL</tt> flag when
+                        Provide the <code class="literal">DB_RECOVER_FATAL</code> flag when
                         you open your environment. This environment open
                         must be single-threaded.
                     </p>
@@ -219,8 +230,8 @@ int main(void)
         </div>
         <p>
                 You can also run recovery by pausing or shutting down your
-                application and using the <span><b class="command">db_recover</b></span>
-                command line utility with the the <tt class="literal">-c</tt> option.
+                application and using the <span class="command"><strong>db_recover</strong></span>
+                command line utility with the the <code class="literal">-c</code> option.
             </p>
         <p>
                 Note that catastrophic recovery examines every available
@@ -247,7 +258,7 @@ int main(void)
                           DB_INIT_MPOOL |  // Initialize the cache
                           DB_INIT_TXN   |  // Initialize transactions
                           DB_THREAD     |  // Free-thread the env handle
-                          <b class="userinput"><tt>DB_RECOVER_FATAL;   // Run catastrophic recovery</tt></b>
+                          <strong class="userinput"><code>DB_RECOVER_FATAL;   // Run catastrophic recovery</code></strong>
                                                                                                                                   
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);

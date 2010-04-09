@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Error Reporting Functions</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="CoreDBAdmin.html" title="Administrative Methods" />
+    <link rel="prev" href="CoreDBAdmin.html" title="Administrative Methods" />
     <link rel="next" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
   </head>
   <body>
@@ -32,11 +32,10 @@
             <h2 class="title" style="clear: both"><a id="dbErrorReporting"></a>Error Reporting Functions</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         To simplify error reporting and handling, the
-        <span><tt class="classname">DB</tt> structure</span>
+        <span><code class="classname">DB</code> structure</span>
         
         
         offers several useful methods. 
@@ -49,7 +48,7 @@
         <ul type="disc">
           <li>
             <p>
-                <tt class="methodname">set_errcall()</tt>
+                <code class="methodname">set_errcall()</code>
                 
             </p>
             <p>
@@ -61,16 +60,16 @@
           </li>
           <li>
             <p>
-                <tt class="methodname">set_errfile()</tt>
+                <code class="methodname">set_errfile()</code>
             </p>
             <p>
-                Sets the C library <tt class="literal">FILE *</tt> to be used for
+                Sets the C library <code class="literal">FILE *</code> to be used for
                 displaying error messages issued by the DB library. 
             </p>
           </li>
           <li>
             <p>
-                <tt class="methodname">set_errpfx()</tt>
+                <code class="methodname">set_errpfx()</code>
                 
             </p>
             <p>
@@ -80,31 +79,31 @@
           </li>
           <li>
             <p>
-                <tt class="methodname">err()</tt>
+                <code class="methodname">err()</code>
             </p>
             <p>
                 Issues an error message. The error message is sent to the 
-                callback function as defined by <tt class="methodname">set_errcall</tt>. 
+                callback function as defined by <code class="methodname">set_errcall</code>. 
                 If that method has not been used, then the error message is sent to the 
                 file defined by 
-                    <span><tt class="methodname">set_errfile()</tt>.</span>
+                    <span><code class="methodname">set_errfile()</code>.</span>
                     
                 If none of these methods have been used, then the error message is sent to
                 standard error.
             </p>
             <p>
                 The error message consists of the prefix string
-                (as defined by <tt class="methodname">set_errpfx()</tt>), 
-                an optional <tt class="literal">printf</tt>-style formatted message, 
+                (as defined by <code class="methodname">set_errpfx()</code>), 
+                an optional <code class="literal">printf</code>-style formatted message, 
                 the error message, and a trailing newline.
             </p>
           </li>
           <li>
             <p>
-                <tt class="methodname">errx()</tt>
+                <code class="methodname">errx()</code>
             </p>
             <p>
-                Behaves identically to <tt class="methodname">err()</tt> except
+                Behaves identically to <code class="methodname">err()</code> except
                 that the DB message text associated with the supplied error
                 value is not appended to the error string.
             </p>
@@ -112,7 +111,7 @@
         </ul>
       </div>
       <p>
-        In addition, you can use the <tt class="methodname">db_strerror()</tt>
+        In addition, you can use the <code class="methodname">db_strerror()</code>
         function to directly return the error string that corresponds to a
         particular error number.
      </p>

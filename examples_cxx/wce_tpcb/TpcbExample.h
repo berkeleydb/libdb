@@ -1,3 +1,10 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2007-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
 
 #ifndef _TPCBEXAMPLE_H_INCLUDE__
 #define	_TPCBEXAMPLE_H_INCLUDE__

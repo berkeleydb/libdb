@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: repmgr_elect.c,v 1.41 2008/03/13 17:31:28 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -113,7 +113,6 @@ __repmgr_elect_main(env)
 	ENV *env;
 {
 	DBT my_addr;
-	DB_ENV *dbenv;
 	DB_REP *db_rep;
 #ifdef DB_WIN32
 	DWORD duration;
@@ -126,7 +125,6 @@ __repmgr_elect_main(env)
 
 	COMPQUIET(need_success, TRUE);
 
-	dbenv = env->dbenv;
 	db_rep = env->rep_handle;
 	last_op = 0;
 	failure_recovery = succeeded = FALSE;
@@ -172,9 +170,6 @@ __repmgr_elect_main(env)
 	case ELECT_ELECTION:
 		need_success = TRUE;
 		break;
-	case ELECT_SEEK_MASTER:
-		to_do = 0;	/* Caller has already called rep_start. */
-		/* FALLTHROUGH */
 	case ELECT_REPSTART:
 		need_success = FALSE;
 		break;
@@ -219,8 +214,11 @@ __repmgr_elect_main(env)
 			if (failure_recovery && nsites > nvotes)
 				nsites--;
 
+			if (IS_USING_LEASES(env))
+				nsites = 0;
+
 			switch (ret =
-			    __rep_elect(dbenv, nsites, nvotes, 0)) {
+			    __rep_elect_int(env, nsites, nvotes, 0)) {
 			case DB_REP_UNAVAIL:
 				break;
 
@@ -245,7 +243,7 @@ __repmgr_elect_main(env)
 			if ((ret =
 			    __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 				return (ret);
-			ret = __rep_start(dbenv, &my_addr, DB_REP_CLIENT);
+			ret = __rep_start_int(env, &my_addr, DB_REP_CLIENT);
 			__os_free(env, my_addr.data);
 			if (ret != 0) {
 				__db_err(env, ret, "rep_start");
@@ -275,7 +273,7 @@ __repmgr_elect_main(env)
 		while (!succeeded && !__repmgr_is_ready(env)) {
 #ifdef DB_WIN32
 			duration = db_rep->election_retry_wait / US_PER_MS;
-			ret = SignalObjectAndWait(db_rep->mutex,
+			ret = SignalObjectAndWait(*db_rep->mutex,
 			    db_rep->check_election, duration, FALSE);
 			LOCK_MUTEX(db_rep->mutex);
 			if (ret == WAIT_TIMEOUT)
@@ -285,7 +283,7 @@ __repmgr_elect_main(env)
 			__repmgr_compute_wait_deadline(env, &deadline,
 			    db_rep->election_retry_wait);
 			if ((ret = pthread_cond_timedwait(
-			    &db_rep->check_election, &db_rep->mutex, &deadline))
+			    &db_rep->check_election, db_rep->mutex, &deadline))
 			    == ETIMEDOUT)
 				break;
 			DB_ASSERT(env, ret == 0);
@@ -314,9 +312,6 @@ __repmgr_elect_main(env)
 				/* FALLTHROUGH */
 			case ELECT_ELECTION:
 				need_success = TRUE;
-				break;
-			case ELECT_SEEK_MASTER:
-				to_do = 0;
 				break;
 			default:
 				break;
@@ -376,14 +371,10 @@ __repmgr_become_master(env)
 	ENV *env;
 {
 	DBT my_addr;
-	DB_ENV *dbenv;
 	DB_REP *db_rep;
 	int ret;
 
-	dbenv = env->dbenv;
 	db_rep = env->rep_handle;
-	db_rep->master_eid = SELF_EID;
-	db_rep->found_master = TRUE;
 
 	/*
 	 * At the moment, it's useless to pass my address to rep_start here,
@@ -393,10 +384,12 @@ __repmgr_become_master(env)
 	 */
 	if ((ret = __repmgr_prepare_my_addr(env, &my_addr)) != 0)
 		return (ret);
-	ret = __rep_start(dbenv, &my_addr, DB_REP_MASTER);
+	ret = __rep_start_int(env, &my_addr, DB_REP_MASTER);
 	__os_free(env, my_addr.data);
-	if (ret == 0)
-		__repmgr_stash_generation(env);
 
+	if (ret == 0) {
+		db_rep->master_eid = SELF_EID;
+		db_rep->found_master = TRUE;
+	}
 	return (ret);
 }

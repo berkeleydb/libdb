@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: test110.tcl,v 1.11 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test110
 # TEST	Partial get test with duplicates.
@@ -24,6 +24,11 @@ proc test110 { method {nentries 10000} {ndups 3} args } {
 		return
 	}
 
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test110 skipping for btree with compression."
+		return
+	}
 	# Create the database and open the dictionary
 	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]

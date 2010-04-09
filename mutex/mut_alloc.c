@@ -1,15 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_alloc.c,v 12.23 2008/02/27 17:00:33 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-#include "dbinc/mutex_int.h"
 
 /*
  * __mutex_alloc --
@@ -123,7 +122,7 @@ __mutex_alloc_int(env, locksys, alloc_id, flags, indxp)
 	}
 
 	*indxp = mtxregion->mutex_next;
-	mutexp = MUTEXP_SET(*indxp);
+	mutexp = MUTEXP_SET(mtxmgr, *indxp);
 	DB_ASSERT(env,
 	    ((uintptr_t)mutexp & (dbenv->mutex_align - 1)) == 0);
 	mtxregion->mutex_next = mutexp->mutex_next_link;
@@ -139,7 +138,8 @@ __mutex_alloc_int(env, locksys, alloc_id, flags, indxp)
 	/* Initialize the mutex. */
 	memset(mutexp, 0, sizeof(*mutexp));
 	F_SET(mutexp, DB_MUTEX_ALLOCATED |
-	    LF_ISSET(DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_PROCESS_ONLY));
+	    LF_ISSET(DB_MUTEX_LOGICAL_LOCK |
+		DB_MUTEX_PROCESS_ONLY | DB_MUTEX_SHARED));
 
 	/*
 	 * If the mutex is associated with a single process, set the process
@@ -214,7 +214,7 @@ __mutex_free_int(env, locksys, indxp)
 
 	mtxmgr = env->mutex_handle;
 	mtxregion = mtxmgr->reginfo.primary;
-	mutexp = MUTEXP_SET(mutex);
+	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	DB_ASSERT(env, F_ISSET(mutexp, DB_MUTEX_ALLOCATED));
 	F_CLR(mutexp, DB_MUTEX_ALLOCATED);

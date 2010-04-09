@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: rsrc001.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rsrc001
 # TEST	Recno backing file test.  Try different patterns of adding
@@ -31,6 +31,7 @@ proc rsrc001 { } {
 
 		# Create backing file for the empty-file test.
 		set oid1 [open $testdir/rsrc.txt w]
+		fconfigure $oid1 -translation binary
 		close $oid1
 
 		puts "\tRsrc001.a: Put to empty file."
@@ -46,6 +47,8 @@ proc rsrc001 { } {
 		# Now fill out the backing file and create the check file.
 		set oid1 [open $testdir/rsrc.txt a]
 		set oid2 [open $testdir/check.txt w]
+		fconfigure $oid1 -translation binary 
+		fconfigure $oid2 -translation binary 
 
 		# This one was already put into rsrc.txt.
 		puts $oid2 $rec1
@@ -78,12 +81,12 @@ proc rsrc001 { } {
 
 		# Get the last record from the text file
 		set oid [open $testdir/rsrc.txt]
+		fconfigure $oid -translation binary 
 		set laststr ""
 		while { [gets $oid str] != -1 } {
 			set laststr $str
 		}
 		close $oid
-		set data [sanitize_record $data]
 		error_check_good getlast $data $laststr
 
 		set ret [eval {$db put} $txn {$key $data}]
@@ -99,6 +102,7 @@ proc rsrc001 { } {
 		puts -nonewline "\tRsrc001.c: "
 		puts "Append some records in tree and verify in file."
 		set oid [open $testdir/check.txt a]
+		fconfigure $oid -translation binary
 		for {set i 1} {$i < 10} {incr i} {
 			set rec [replicate "New Record $i" $i]
 			puts $oid $rec
@@ -115,6 +119,7 @@ proc rsrc001 { } {
 
 		puts "\tRsrc001.d: Append by record number"
 		set oid [open $testdir/check.txt a]
+		fconfigure $oid -translation binary
 		for {set i 1} {$i < 10} {incr i} {
 			set rec [replicate "New Record (set 2) $i" $i]
 			puts $oid $rec
@@ -132,6 +137,7 @@ proc rsrc001 { } {
 
 		puts "\tRsrc001.e: Put beyond end of file."
 		set oid [open $testdir/check.txt a]
+		fconfigure $oid -translation binary
 		for {set i 1} {$i < 10} {incr i} {
 			puts $oid ""
 			incr key
@@ -191,6 +197,7 @@ proc rsrc001 { } {
 		set db [eval {berkdb_open -create -mode 0644 -recno \
 		    -source $testdir/rsrc.txt} $testfile]
 		set oid [open $testdir/check.txt a]
+		fconfigure $oid -translation binary 
 		for {set i 1} {$i < 10} {incr i} {
 			set rec [replicate "New Record $i" $i]
 			puts $oid $rec
@@ -206,15 +213,3 @@ proc rsrc001 { } {
 	}
 }
 
-# Strip CRs from a record.
-# Needed on Windows when a file is created as text (with CR/LF)
-# but read as binary (where CR is read as a separate character)
-proc sanitize_record { rec } {
-	source ./include.tcl
-
-	if { $is_windows_test != 1 } {
-		return $rec
-	}
-	regsub -all \15 $rec "" data
-	return $data
-}

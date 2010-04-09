@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: DatabaseEntry.java,v 12.13 2008/04/02 13:43:38 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -174,29 +174,37 @@ public class DatabaseEntry {
     }
 
     /**
-    Construct a DatabaseEntry with a given native I/O buffer.
+    Construct a DatabaseEntry with a given native I/O buffer.  If the buffer is
+    non-direct, the buffer's backing array is used.  If the buffer is direct,
+    the DatabaseEntry is configured with an application-owned buffer whose
+    length is set to the ByteBuffer's capacity less its position.  The
+    DatabaseEntry's size is set to the ByteBuffer's limit less its position and
+    the offset is set to buffer's position (adjusted by arrayOffset if the
+    buffer is non-direct.)
     <p>
     @param data
     NIO byte buffer wrapped by the DatabaseEntry.
     */
     public DatabaseEntry(ByteBuffer data) {
-	if (data.isDirect()) {
-	    this.data_nio = data;
-            if (data != null) {
-                this.size = this.ulen = data.limit();
-                setUserBuffer(data.limit(), true);
-            }
-	} else if (data.hasArray()) {
-   	    /* The same as calling the DatabaseEntry(byte[]) constructor. */
-	    this.data = data.array();
-	    if (this.data != null) {
-	        this.size = this.data.length;
-	    }
-	    this.data_nio = null;
-	} else {
-	    throw new IllegalArgumentException("Attempting to use a " + 
-	        "non-direct ByteBuffer without a backing byte array.");
-	}
+        if (data == null) {
+            this.data = null;
+            this.data_nio = null;
+        } else if (data.isDirect()) {
+            this.data = null;
+            this.data_nio = data;
+            this.offset = data.position();
+            this.size = data.limit() - data.position();
+            setUserBuffer(data.capacity() - data.position(), true);
+        } else if (data.hasArray()) {
+            /* The same as calling the DatabaseEntry(byte[]) constructor. */
+            this.data = data.array();
+            this.offset = data.arrayOffset() + data.position();
+            this.size = data.limit() - data.position();
+            this.data_nio = null;
+        } else {
+            throw new IllegalArgumentException("Attempting to use a " + 
+                "non-direct ByteBuffer without a backing byte array.");
+        }
     }
 
     /*
@@ -261,8 +269,10 @@ public class DatabaseEntry {
 
     /**
     *
-    Sets the java.nio.ByteBuffer.  The offset is set to zero; the size
-    is set to the length of the ByteBuffer, or to zero if null is passed.
+    Sets the java.nio.ByteBuffer (or the backing array if passed a non-direct
+    ByteBuffer,) offset and size.  If passed a direct ByteBuffer, the entry is
+    configured with an application-owned buffer whose length is set to the 
+    ByteBuffer's capacity less the offset.
     <p>
     @param data
     java.nio.ByteBuffer wrapped by the DatabaseEntry.
@@ -272,25 +282,43 @@ public class DatabaseEntry {
     int size of the ByteBuffer available.
     */
     public void setDataNIO(final ByteBuffer data, final int offset, final int size) {
-        this.data_nio = data;
-        this.offset = offset;
-        this.size = this.ulen = size;
+        if (data == null) {
+            data_nio = null;
+            this.data = null;
+            this.offset = 0;
+            this.size = 0;
+            flags = 0;
+        } else if (data.hasArray()) {
+            setData(data.array(), offset + data.arrayOffset(), size);
+        } else {
+            data_nio = data;
+            this.offset = offset;
+            this.size = size;
+            flags = 0;
+            setUserBuffer(data.capacity() - offset, true);
 
-        this.data = null;
-        flags = 0;
-        setUserBuffer(size, true);
+            this.data = null;
+        }
     }
-
+    
     /**
     *
-    Sets the java.nio.ByteBuffer.  The offset is set to zero; the size
-    is set to the length of the ByteBuffer, or to zero if null is passed.
+    Sets the java.nio.ByteBuffer.  The offset is set to the ByteBuffer's
+    position; the size is set to the ByteBuffer's limit less its position, or to
+    zero if null is passed.  If the ByteBuffer is non-direct, the backing array
+    will be used.  If passed a direct ByteBuffer, the entry is configured with
+    an application-owned buffer whose length is set to the ByteBuffer's capacity
+    less its current position.  No call to {@link #setUserBuffer} is required
+    after setting the ByteBuffer.
     <p>
     @param data
     java.nio.ByteBuffer wrapped by the DatabaseEntry.
     */
     public void setDataNIO(final ByteBuffer data) {
-        setDataNIO(data, 0, (data == null) ? 0 : data.capacity());
+        if (data == null)
+            setDataNIO(null, 0, 0);
+        else
+            setDataNIO(data, data.position(), data.limit() - data.position());
     }
 
     /**
@@ -623,7 +651,6 @@ The length of the application's buffer.
     whether the buffer is owned by the application
     */
     public void setUserBuffer(final int length, final boolean usermem) {
-
         this.ulen = length;
         if (usermem) {
             flags &= ~DbConstants.DB_DBT_MALLOC;

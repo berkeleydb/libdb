@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep035.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  	rep035
 # TEST	Test sync-up recovery in replication.
@@ -20,6 +20,9 @@
 proc rep035 { method { niter 100 } { tnum "035" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -33,10 +36,26 @@ proc rep035 { method { niter 100 } { tnum "035" } args } {
 	set saved_args $args
 	set logsets [create_logsets 3]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
 		set envargs ""
 		set args $saved_args
-		puts "Rep$tnum: Test sync-up recovery ($method)."
+		puts "Rep$tnum: Test sync-up recovery ($method) $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 		puts "Rep$tnum: Client 1 logs are [lindex $l 2]"
@@ -47,12 +66,19 @@ proc rep035 { method { niter 100 } { tnum "035" } args } {
 proc rep035_sub { method niter tnum envargs logset largs } {
 	source ./include.tcl
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -82,7 +108,7 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 
 	# Open a master.
 	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create $verbargs \
+	set env_cmd(M) "berkdb_env_noerr -create $verbargs $repmemargs \
 	    -log_max 1000000 $envargs -home $masterdir $m_logargs \
 	    -errpfx MASTER -errfile /dev/stderr $m_txnargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
@@ -90,7 +116,7 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 
 	# Open two clients
 	repladd 2
-	set env_cmd(C1) "berkdb_env_noerr -create $verbargs \
+	set env_cmd(C1) "berkdb_env_noerr -create $verbargs $repmemargs \
 	    -log_max 1000000 $envargs -home $clientdir1 $c_logargs \
 	    -errfile /dev/stderr -errpfx CLIENT $c_txnargs -rep_client \
 	    -rep_transport \[list 2 replsend\]"
@@ -98,7 +124,7 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 
 	# Second client needs lock_detect flag.
 	repladd 3
-	set env_cmd(C2) "berkdb_env_noerr -create $verbargs \
+	set env_cmd(C2) "berkdb_env_noerr -create $verbargs $repmemargs \
 	    -log_max 1000000 $envargs -home $clientdir2 $c2_logargs \
 	    -errpfx CLIENT2 -errfile /dev/stderr $c2_txnargs -rep_client \
 	    -lock_detect default -rep_transport \[list 3 replsend\]"
@@ -127,7 +153,8 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 	    rep035script.tcl $testdir/lock_detect.log \
 	    $clientdir2 detect &]
 
-	puts "\tRep$tnum.b: Fork child process running txn_checkpoint on client2."
+	puts "\tRep$tnum.b:\
+	    Fork child process running txn_checkpoint on client2."
 	set pid2 [exec $tclsh_path $test_path/wrap.tcl \
 	    rep035script.tcl $testdir/txn_checkpoint.log \
 	    $clientdir2 checkpoint &]
@@ -163,7 +190,14 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 	set mid 1
 	set clientenv $env2
 	set cid 2
-	set testfile "test$tnum.db"
+
+	# Set up databases as in-memory or on-disk as specified.
+	if { $databases_in_memory } {
+		set testfile { "" "test$tnum.db" }
+	} else { 
+		set testfile "test$tnum.db"
+	} 
+	
 	set args [convert_args $method]
 	set omethod [convert_method $method]
 	set mdb_cmd "{berkdb_open_noerr} -env $masterenv -auto_commit \
@@ -183,13 +217,13 @@ proc rep035_sub { method niter tnum envargs logset largs } {
 	for { set i 0 } { $i < $niter } { incr i } {
 
 		# Do a few ops
-		eval rep_test $method $masterenv $masterdb 2 $i $i 0 0 $largs
+		eval rep_test $method $masterenv $masterdb 2 $i $i 0 $largs
 		set envlist "{$masterenv $mid} {$clientenv $cid} {$env3 3}"
 		process_msgs $envlist
 
 		# Do one op on master and process messages and drop
 		# to clientenv to force sync-up recovery next time.
-		eval rep_test $method $masterenv $masterdb 1 $i $i 0 0 $largs
+		eval rep_test $method $masterenv $masterdb 1 $i $i 0 $largs
 		set envlist "{$masterenv $mid} {$env3 3}"
 		replclear $cid
 		process_msgs $envlist

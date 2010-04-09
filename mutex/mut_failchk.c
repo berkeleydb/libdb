@@ -1,15 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_failchk.c,v 12.8 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-#include "dbinc/mutex_int.h"
 
 /*
  * __mut_failchk --
@@ -36,7 +35,7 @@ __mut_failchk(env)
 
 	MUTEX_SYSTEM_LOCK(env);
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i, ++mutexp) {
-		mutexp = MUTEXP_SET(i);
+		mutexp = MUTEXP_SET(mtxmgr, i);
 
 		/*
 		 * We're looking for per-process mutexes where the process

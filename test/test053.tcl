@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test053.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test053
 # TEST	Test of the DB_REVSPLITOFF flag in the Btree and Btree-w-recnum
@@ -19,6 +19,11 @@ proc test053 { method args } {
 	puts "\tTest053: Test of cursor stability across btree splits."
 	if { [is_btree $method] != 1 && [is_rbtree $method] != 1 } {
 		puts "Test053: skipping for method $method."
+		return
+	}
+	
+	if { [is_partition_callback $args] == 1 } {
+		puts "Test053: skipping for method $method with partition callback."
 		return
 	}
 
@@ -97,7 +102,13 @@ proc test053 { method args } {
 		}
 	}
 
-	if { !$is_je_test } {
+# We really should not skip this test for partitioned dbs we need to
+# calculate how many pages there should be which is tricky if we
+# don't know where the keys are going to fall.  If they are all
+# in one partition then we can subtract the extra leaf pages
+# in the extra partitions.  The test further on should at least
+# check that the number of pages is the same as what is found here.
+	if { !$is_je_test && ![is_substr $args "-partition"] } {
 		puts "\tTest053.c: Check page count."
 		error_check_good page_count:check \
 		    [is_substr [$db stat] "{Leaf pages} $npages"] 1
@@ -119,7 +130,7 @@ proc test053 { method args } {
 		}
 	}
 
-	if { !$is_je_test } {
+	if { !$is_je_test && ![is_substr $args "-partition"] } {
 		puts "\tTest053.e: Check to make sure all pages are still there."
 		error_check_good page_count:check \
 		    [is_substr [$db stat] "{Leaf pages} $npages"] 1

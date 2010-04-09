@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: reputils.tcl,v 12.69 2008/05/02 15:35:17 sue Exp $
+# $Id$
 #
 # Replication testing utilities
 
@@ -55,59 +55,72 @@ global verbose_type
 set verbose_type "rep"
 
 # To run a replication test with verbose messages, type
-# 'run_verbose <test> <method>'.
+# 'run_verbose' and then the usual test command string enclosed
+# in double quotes or curly braces.  For example:
+# 
+# run_verbose "rep001 btree"
+# 
+# run_verbose {run_repmethod btree test001}
+#
 # To run a replication test with one of the subsets of verbose 
 # messages, use the same syntax with 'run_verbose_elect', 
 # 'run_verbose_lease', etc. 
 
-proc run_verbose { reptest args } {
+proc run_verbose { commandstring } {
 	global verbose_type
 	set verbose_type "rep"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verbose_elect { reptest args } {
+proc run_verbose_elect { commandstring } {
 	global verbose_type
 	set verbose_type "rep_elect"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verbose_lease { reptest args } {
+proc run_verbose_lease { commandstring } {
 	global verbose_type
 	set verbose_type "rep_lease"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verbose_misc { reptest args } {
+proc run_verbose_misc { commandstring } {
 	global verbose_type
 	set verbose_type "rep_misc"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verbose_msgs { reptest args } {
+proc run_verbose_msgs { commandstring } {
 	global verbose_type
 	set verbose_type "rep_msgs"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verbose_sync { reptest args } {
+proc run_verbose_sync { commandstring } {
 	global verbose_type
 	set verbose_type "rep_sync"
-	run_verb $reptest $args
+	run_verb $commandstring
 }
 
-proc run_verb { reptest args } {
+proc run_verbose_test { commandstring } {
+	global verbose_type
+	set verbose_type "rep_test"
+	run_verb $commandstring
+}
+
+proc run_verbose_repmgr_misc { commandstring } {
+	global verbose_type
+	set verbose_type "repmgr_misc"
+	run_verb $commandstring
+}
+
+proc run_verb { commandstring } {
 	global rep_verbose
 	global verbose_type
 
-	if { [string match rep* $reptest] == 0 } {
-		error "run_verbose runs only for rep tests"
-		return
-	}
-
 	set rep_verbose 1
 	if { [catch {
-		eval $reptest $args
+		eval $commandstring
 		flush stdout
 		flush stderr
 	} res] != 0 } {
@@ -118,7 +131,7 @@ proc run_verb { reptest args } {
 		set theError [string range $errorInfo 0 [expr $fnl - 1]]
 		if {[string first FAIL $errorInfo] == -1} {
 			error "FAIL:[timestamp]\
-			    run_verbose: $reptest: $theError"
+			    run_verbose: $commandstring: $theError"
 		} else {
 			error $theError;
 		}
@@ -126,7 +139,40 @@ proc run_verb { reptest args } {
 	set rep_verbose 0
 }
 
-# The default for replication testing is for logs to be on-disk.
+# Databases are on-disk by default for replication testing. 
+# Some replication tests have been converted to run with databases
+# in memory instead. 
+
+global databases_in_memory
+set databases_in_memory 0
+
+proc run_inmem_db { test method } {
+	run_inmem $test $method 1 0 0 0
+}
+
+# Replication files are on-disk by default for replication testing. 
+# Some replication tests have been converted to run with rep files
+# in memory instead. 
+
+global repfiles_in_memory
+set repfiles_in_memory 0
+
+proc run_inmem_rep { test method } {
+	run_inmem $test $method 0 0 1 0
+}
+
+# Region files are on-disk by default for replication testing. 
+# Replication tests can force the region files in-memory by setting 
+# the -private flag when opening an env.
+
+global env_private
+set env_private 0
+
+proc run_env_private { test method } {
+	run_inmem $test $method 0 0 0 1
+}
+
+# Logs are on-disk by default for replication testing. 
 # Mixed-mode log testing provides a mixture of on-disk and
 # in-memory logging, or even all in-memory.  When testing on a
 # 1-master/1-client test, we try all four options.  On a test
@@ -177,25 +223,14 @@ proc create_logsets { nsites } {
 	return $logsets
 }
 
-proc run_inmem { method test {display 0} {run 1} \
-    {outfile stdout} {largs ""} } {
-	global mixed_mode_logging
-	set mixed_mode_logging 2
-
-	set prefix [string range $test 0 2]
-	if { $prefix != "rep" } {
-		puts "Skipping in-mem log testing for non-rep test."
-		set mixed_mode_logging 0
-		return
-	}
-
-	eval run_method $method $test $display $run $outfile $largs
-
-	# Reset to default values after run.
-	set mixed_mode_logging 0
+proc run_inmem_log { test method } {
+	run_inmem $test $method 0 1 0 0
 }
 
-proc run_mixedmode { method test {display 0} {run 1} \
+# Run_mixedmode_log is a little different from the other run_inmem procs:
+# it provides a mixture of in-memory and on-disk logging on the different
+# hosts in a replication group.
+proc run_mixedmode_log { test method {display 0} {run 1} \
     {outfile stdout} {largs ""} } {
 	global mixed_mode_logging
 	set mixed_mode_logging 1
@@ -213,7 +248,67 @@ proc run_mixedmode { method test {display 0} {run 1} \
 	set mixed_mode_logging 0
 }
 
-# Create the directory structure for replication testing.
+# The procs run_inmem_db, run_inmem_log, run_inmem_rep, and run_env_private 
+# put databases, logs, rep files, or region files in-memory.  (Setting up 
+# an env with the -private flag puts region files in memory.)
+# The proc run_inmem allows you to put any or all of these in-memory 
+# at the same time. 
+
+proc run_inmem { test method\
+     {dbinmem 1} {logsinmem 1} {repinmem 1} {envprivate 1} } {
+
+	set prefix [string range $test 0 2]
+	if { $prefix != "rep" } {
+		puts "Skipping in-memory testing for non-rep test."
+		return
+	}
+	global databases_in_memory 
+	global mixed_mode_logging
+	global repfiles_in_memory
+	global env_private
+	global test_names
+
+	if { $dbinmem } {
+		if { [is_substr $test_names(rep_inmem) $test] == 0 } {
+                	puts "Test $test does not support in-memory databases."
+			puts "Putting databases on-disk."
+                	set databases_in_memory 0
+		} else {
+			set databases_in_memory 1
+		}
+	}
+	if { $logsinmem } {
+		set mixed_mode_logging 2
+	}
+	if { $repinmem } {
+		set repfiles_in_memory 1
+	}
+	if { $envprivate } { 
+		set env_private 1
+	}
+
+	if { [catch {eval run_method $method $test} res]  } {
+		set databases_in_memory 0
+		set mixed_mode_logging 0 
+		set repfiles_in_memory 0 
+		set env_private 0
+		puts "FAIL: $res"
+	}
+
+	set databases_in_memory 0 
+	set mixed_mode_logging 0 
+	set repfiles_in_memory 0
+	set env_private 0
+}
+
+# The proc run_diskless runs run_inmem with its default values.
+# It's useful to have this name to remind us of its testing purpose, 
+# which is to mimic a diskless host.
+
+proc run_diskless { test method } {
+	run_inmem $test $method 1 1 1 1
+}
+
 # Open the master and client environments; store these in the global repenv
 # Return the master's environment: "-env masterenv"
 proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
@@ -222,6 +317,13 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	global drop drop_msg
 	global masterdir
 	global repenv
+	global rep_verbose
+	global verbose_type
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on}"
+	}
 
 	env_cleanup $testdir
 
@@ -254,17 +356,12 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	set lockmax 40000
 	set logregion 2097152
 
-	set ma_cmd "berkdb_env -create -log_max $logmax $envargs \
+	set ma_cmd "berkdb_env_noerr -create -log_max $logmax $envargs \
 	    -cachesize { 0 4194304 1 } -log_regionmax $logregion \
 	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
+	    -errpfx $masterdir $verbargs \
 	    -home $masterdir -txn nosync -rep_master -rep_transport \
 	    \[list 1 replsend\]"
-#	set ma_cmd "berkdb_env_noerr -create -log_max $logmax $envargs \
-#	    -cachesize { 0 4194304 1 } -log_regionmax $logregion \
-#	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-#	    -verbose {rep on} -errfile /dev/stderr -errpfx $masterdir \
-#	    -home $masterdir -txn nosync -rep_master -rep_transport \
-#	    \[list 1 replsend\]"
 	set masterenv [eval $ma_cmd]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
 	set repenv(master) $masterenv
@@ -273,17 +370,12 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	for { set i 0 } { $i < $nclients } { incr i } {
 		set envid [expr $i + 2]
 		repladd $envid
-                set cl_cmd "berkdb_env -create $envargs -txn nosync \
+                set cl_cmd "berkdb_env_noerr -create $envargs -txn nosync \
 		    -cachesize { 0 10000000 0 } -log_regionmax $logregion \
 		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
+		    -errpfx $clientdir($i) $verbargs \
 		    -home $clientdir($i) -rep_client -rep_transport \
 		    \[list $envid replsend\]"
-#		set cl_cmd "berkdb_env_noerr -create $envargs -txn nosync \
-#		    -cachesize { 0 10000000 0 } -log_regionmax $logregion \
-#		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-#		    -home $clientdir($i) -rep_client -rep_transport \
-#		    \[list $envid replsend\] -verbose {rep on} \
-#		    -errfile /dev/stderr -errpfx $clientdir($i)"
                 set clientenv [eval $cl_cmd]
 		error_check_good client_env [is_valid_env $clientenv] TRUE
 		set repenv($i) $clientenv
@@ -1413,15 +1505,16 @@ proc cleanup_elections { } {
 # loop AND it takes an already-opened db handle.
 #
 proc rep_test { method env repdb {nentries 10000} \
-    {start 0} {skip 0} {needpad 0} {inmem 0} args } {
+    {start 0} {skip 0} {needpad 0} args } {
 
 	source ./include.tcl
+	global databases_in_memory
 
 	#
 	# Open the db if one isn't given.  Close before exit.
 	#
 	if { $repdb == "NULL" } {
-		if { $inmem == 1 } {
+		if { $databases_in_memory == 1 } {
 			set testfile { "" "test.db" }
 		} else {
 			set testfile "test.db"
@@ -1546,6 +1639,7 @@ proc rep_test_bulk { method env repdb {nentries 10000} \
 
 	global overflowword1
 	global overflowword2
+	global databases_in_memory
 
 	if { [is_fixed_length $method] && $useoverflow == 1 } {
 		puts "Skipping overflow for fixed length method $method"
@@ -1555,7 +1649,11 @@ proc rep_test_bulk { method env repdb {nentries 10000} \
 	# Open the db if one isn't given.  Close before exit.
 	#
 	if { $repdb == "NULL" } {
-		set testfile "test.db"
+		if { $databases_in_memory == 1 } {
+			set testfile { "" "test.db" }
+		} else {
+			set testfile "test.db"
+		}
 		set largs [convert_args $method $args]
 		set omethod [convert_method $method]
 		set db [eval {berkdb_open_noerr -env $env -auto_commit -create \
@@ -1809,6 +1907,412 @@ proc rep_test_upg.recno.check { key data } {
 	error_check_good pid $i -1
 }
 
+#
+# This is the basis for a number of simple repmgr test cases. It creates
+# an appointed master and two clients, calls rep_test to process some records 
+# and verifies the resulting databases. The following parameters control 
+# runtime options:
+#     niter    - number of records to process
+#     inmemdb  - put databases in-memory (0, 1)
+#     inmemlog - put logs in-memory (0, 1)
+#     peer     - make the second client a peer of the first client (0, 1)
+#     bulk     - use bulk processing (0, 1)
+#     inmemrep - put replication files in-memory (0, 1)
+#
+proc basic_repmgr_test { method niter tnum inmemdb inmemlog peer bulk \
+    inmemrep largs } {
+	global testdir 
+	global rep_verbose 
+	global verbose_type
+	global overflowword1
+	global overflowword2
+	global databases_in_memory
+	set overflowword1 "0"
+	set overflowword2 "0"
+	set nsites 3
+
+	# Set databases_in_memory for this test, preserving original value.
+	if { $inmemdb } {
+		set restore_dbinmem $databases_in_memory
+		set databases_in_memory 1
+	}
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	env_cleanup $testdir
+	set ports [available_ports $nsites]
+
+	set masterdir $testdir/MASTERDIR
+	set clientdir $testdir/CLIENTDIR
+	set clientdir2 $testdir/CLIENTDIR2
+
+	file mkdir $masterdir
+	file mkdir $clientdir
+	file mkdir $clientdir2
+
+	# In-memory logs require a large log buffer, and cannot
+	# be used with -txn nosync.  Adjust the args.
+	if { $inmemlog } {
+		set logtype "in-memory"
+	} else {
+		set logtype "on-disk"
+	}
+	set logargs [adjust_logargs $logtype]
+	set txnargs [adjust_txnargs $logtype]
+
+	# Determine in-memory replication argument for environments.
+	if { $inmemrep } {
+		set repmemarg "-rep_inmem_files "
+	} else {
+		set repmemarg ""
+	}
+
+	# Use different connection retry timeout values to handle any
+	# collisions from starting sites at the same time by retrying
+	# at different times.
+
+	# Open a master.
+	puts "\tRepmgr$tnum.a: Start an appointed master."
+	set ma_envcmd "berkdb_env_noerr -create $logargs $verbargs \
+	    -errpfx MASTER -home $masterdir $txnargs -rep -thread \
+	    -lock_max_locks 10000 -lock_max_objects 10000 $repmemarg"
+	set masterenv [eval $ma_envcmd]
+	$masterenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -start master
+
+	# Open first client
+	puts "\tRepmgr$tnum.b: Start first client."
+	set cl_envcmd "berkdb_env_noerr -create $verbargs $logargs \
+	    -errpfx CLIENT -home $clientdir $txnargs -rep -thread \
+	    -lock_max_locks 10000 -lock_max_objects 10000 $repmemarg"
+	set clientenv [eval $cl_envcmd]
+	$clientenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 10000000} \
+	    -local [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start client
+	await_startup_done $clientenv
+
+	# Open second client
+	puts "\tRepmgr$tnum.c: Start second client."
+	set cl2_envcmd "berkdb_env_noerr -create $verbargs $logargs \
+	    -errpfx CLIENT2 -home $clientdir2 $txnargs -rep -thread \
+	    -lock_max_locks 10000 -lock_max_objects 10000 $repmemarg"
+	set clientenv2 [eval $cl2_envcmd]
+	if { $peer } {
+		$clientenv2 repmgr -ack all -nsites $nsites \
+		    -timeout {conn_retry 5000000} \
+		    -local [list localhost [lindex $ports 2]] \
+		    -remote [list localhost [lindex $ports 0]] \
+		    -remote [list localhost [lindex $ports 1] peer] \
+		    -start client
+	} else {
+		$clientenv2 repmgr -ack all -nsites $nsites \
+		    -timeout {conn_retry 5000000} \
+		    -local [list localhost [lindex $ports 2]] \
+		    -remote [list localhost [lindex $ports 0]] \
+		    -remote [list localhost [lindex $ports 1]] \
+		    -start client
+	}
+	await_startup_done $clientenv2
+
+	#
+	# Use of -ack all guarantees replication complete before repmgr send
+	# function returns and rep_test finishes.
+	#
+	puts "\tRepmgr$tnum.d: Run some transactions at master."
+	if { $bulk } {
+		# Turn on bulk processing on master.
+		error_check_good set_bulk [$masterenv rep_config {bulk on}] 0
+
+		eval rep_test_bulk $method $masterenv NULL $niter 0 0 0 $largs
+
+		# Must turn off bulk because some configs (debug_rop/wop)
+		# generate log records when verifying databases.
+		error_check_good set_bulk [$masterenv rep_config {bulk off}] 0
+	} else {
+		eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	}
+
+	puts "\tRepmgr$tnum.e: Verifying client database contents."
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 1 1 1
+
+	# For in-memory replication, verify replication files not there.
+	if { $inmemrep } {
+		puts "\tRepmgr$tnum.f: Verify no replication files on disk."
+		no_rep_files_on_disk $masterdir
+		no_rep_files_on_disk $clientdir
+		no_rep_files_on_disk $clientdir2
+	}
+
+	# Restore original databases_in_memory value.
+	if { $inmemdb } {
+		set databases_in_memory $restore_dbinmem
+	}
+
+	error_check_good client2_close [$clientenv2 close] 0
+	error_check_good client_close [$clientenv close] 0
+	error_check_good masterenv_close [$masterenv close] 0
+}
+
+#
+# This is the basis for simple repmgr election test cases.  It opens three
+# clients of different priorities and makes sure repmgr elects the
+# expected master.  Then it shuts the master down and makes sure repmgr
+# elects the expected remaining client master.  Then it makes sure the former
+# master can join as a client.  The following parameters control 
+# runtime options:
+#     niter    - number of records to process
+#     inmemrep - put replication files in-memory (0, 1)
+#
+proc basic_repmgr_election_test { method niter tnum inmemrep largs } {
+	global rep_verbose
+	global testdir
+	global verbose_type
+	set nsites 3
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	env_cleanup $testdir
+	set ports [available_ports $nsites]
+
+	set clientdir $testdir/CLIENTDIR
+	set clientdir2 $testdir/CLIENTDIR2
+	set clientdir3 $testdir/CLIENTDIR3
+
+	file mkdir $clientdir
+	file mkdir $clientdir2
+	file mkdir $clientdir3
+
+	# Determine in-memory replication argument for environments.
+	if { $inmemrep } {
+		set repmemarg "-rep_inmem_files "
+	} else {
+		set repmemarg ""
+	}
+
+	# Use different connection retry timeout values to handle any
+	# collisions from starting sites at the same time by retrying
+	# at different times.
+
+	puts "\tRepmgr$tnum.a: Start three clients."
+
+	# Open first client
+	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT -home $clientdir -txn -rep -thread $repmemarg"
+	set clientenv [eval $cl_envcmd]
+	$clientenv repmgr -ack all -nsites $nsites -pri 100 \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start elect
+
+	# Open second client
+	set cl2_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread $repmemarg"
+	set clientenv2 [eval $cl2_envcmd]
+	$clientenv2 repmgr -ack all -nsites $nsites -pri 30 \
+	    -timeout {conn_retry 10000000} \
+	    -local [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start elect
+
+	# Open third client
+	set cl3_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT3 -home $clientdir3 -txn -rep -thread $repmemarg"
+	set clientenv3 [eval $cl3_envcmd]
+	$clientenv3 repmgr -ack all -nsites $nsites -pri 20 \
+	    -timeout {conn_retry 5000000} \
+	    -local [list localhost [lindex $ports 2]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -start elect
+
+	puts "\tRepmgr$tnum.b: Elect first client master."
+	await_expected_master $clientenv
+	set masterenv $clientenv
+	set masterdir $clientdir
+	await_startup_done $clientenv2
+	await_startup_done $clientenv3
+
+	#
+	# Use of -ack all guarantees replication complete before repmgr send
+	# function returns and rep_test finishes.
+	#
+	puts "\tRepmgr$tnum.c: Run some transactions at master."
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+
+	puts "\tRepmgr$tnum.d: Verify client database contents."
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 1 1 1
+	rep_verify $masterdir $masterenv $clientdir3 $clientenv3 1 1 1
+
+	puts "\tRepmgr$tnum.e: Shut down master, elect second client master."
+	error_check_good client_close [$clientenv close] 0
+	await_expected_master $clientenv2
+	set masterenv $clientenv2
+	await_startup_done $clientenv3
+
+	puts "\tRepmgr$tnum.f: Restart former master as client."
+	# Open -recover to clear env region, including startup_done value.
+	set clientenv [eval $cl_envcmd -recover]
+	$clientenv repmgr -ack all -nsites $nsites -pri 100 \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start client
+	await_startup_done $clientenv
+
+	puts "\tRepmgr$tnum.g: Run some transactions at new master."
+	eval rep_test $method $masterenv NULL $niter $niter 0 0 $largs
+
+	puts "\tRepmgr$tnum.h: Verify client database contents."
+	set masterdir $clientdir2
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
+	rep_verify $masterdir $masterenv $clientdir3 $clientenv3 1 1 1
+
+	# For in-memory replication, verify replication files not there.
+	if { $inmemrep } {
+		puts "\tRepmgr$tnum.i: Verify no replication files on disk."
+		no_rep_files_on_disk $clientdir
+		no_rep_files_on_disk $clientdir2
+		no_rep_files_on_disk $clientdir3
+	}
+
+	error_check_good client3_close [$clientenv3 close] 0
+	error_check_good client_close [$clientenv close] 0
+	error_check_good client2_close [$clientenv2 close] 0
+}
+
+#
+# This is the basis for simple repmgr internal init test cases.  It starts
+# an appointed master and two clients, processing transactions between each
+# additional site.  Then it verifies all expected transactions are 
+# replicated.  The following parameters control runtime options:
+#     niter    - number of records to process
+#     inmemrep - put replication files in-memory (0, 1)
+#
+proc basic_repmgr_init_test { method niter tnum inmemrep largs } {
+	global rep_verbose
+	global testdir
+	global verbose_type
+	set nsites 3
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	env_cleanup $testdir
+	set ports [available_ports $nsites]
+
+	set masterdir $testdir/MASTERDIR
+	set clientdir $testdir/CLIENTDIR
+	set clientdir2 $testdir/CLIENTDIR2
+
+	file mkdir $masterdir
+	file mkdir $clientdir
+	file mkdir $clientdir2
+
+	# Determine in-memory replication argument for environments.
+	if { $inmemrep } {
+		set repmemarg "-rep_inmem_files "
+	} else {
+		set repmemarg ""
+	}
+
+	# Use different connection retry timeout values to handle any
+	# collisions from starting sites at the same time by retrying
+	# at different times.
+
+	# Open a master.
+	puts "\tRepmgr$tnum.a: Start a master."
+	set ma_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx MASTER -home $masterdir -txn -rep -thread $repmemarg"
+	set masterenv [eval $ma_envcmd]
+	$masterenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -start master
+
+	puts "\tRepmgr$tnum.b: Run some transactions at master."
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+
+	# Open first client
+	puts "\tRepmgr$tnum.c: Start first client."
+	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT -home $clientdir -txn -rep -thread $repmemarg"
+	set clientenv [eval $cl_envcmd]
+	$clientenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 10000000} \
+	    -local [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start client
+	await_startup_done $clientenv
+
+	#
+	# Use of -ack all guarantees replication complete before repmgr send
+	# function returns and rep_test finishes.
+	#
+	puts "\tRepmgr$tnum.d: Run some more transactions at master."
+	eval rep_test $method $masterenv NULL $niter $niter 0 0 $largs
+
+	# Open second client
+	puts "\tRepmgr$tnum.e: Start second client."
+	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread $repmemarg"
+	set clientenv2 [eval $cl_envcmd]
+	$clientenv2 repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 5000000} \
+	    -local [list localhost [lindex $ports 2]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -start client
+	await_startup_done $clientenv2
+
+	puts "\tRepmgr$tnum.f: Verifying client database contents."
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 1 1 1
+
+	# For in-memory replication, verify replication files not there.
+	if { $inmemrep } {
+		puts "\tRepmgr$tnum.g: Verify no replication files on disk."
+		no_rep_files_on_disk $masterdir
+		no_rep_files_on_disk $clientdir
+		no_rep_files_on_disk $clientdir2
+	}
+
+	error_check_good client2_close [$clientenv2 close] 0
+	error_check_good client_close [$clientenv close] 0
+	error_check_good masterenv_close [$masterenv close] 0
+}
+
+#
+# Verify that no replication files are present in a given directory.
+# This checks for the gen, egen, internal init, temp db and page db
+# files.
+#
+proc no_rep_files_on_disk { dir } {
+    error_check_good nogen [file exists "$dir/__db.rep.gen"] 0
+    error_check_good noegen [file exists "$dir/__db.rep.egen"] 0
+    error_check_good noinit [file exists "$dir/__db.rep.init"] 0
+    error_check_good notmpdb [file exists "$dir/__db.rep.db"] 0
+    error_check_good nopgdb [file exists "$dir/__db.reppg.db"] 0
+}
+
 proc process_msgs { elist {perm_response 0} {dupp NONE} {errp NONE} \
     {upg 0} } {
 	if { $perm_response == 1 } {
@@ -1904,11 +2408,38 @@ proc proc_msgs_once { elist {dupp NONE} {errp NONE} } {
 }
 
 proc rep_verify { masterdir masterenv clientdir clientenv \
-    {compare_shared_portion 0} {match 1} {logcompare 1} {dbname "test.db"} } {
+    {compare_shared_portion 0} {match 1} {logcompare 1} \
+    {dbname "test.db"} {datadir ""} } {
 	global util_path
 	global encrypt
 	global passwd
+	global databases_in_memory
+	global repfiles_in_memory
+	global env_private
 
+	# Whether a named database is in-memory or on-disk, only the 
+	# the name itself is passed in.  Here we do the syntax adjustment
+	# from "test.db" to { "" "test.db" } for in-memory databases.
+	# 
+	if { $databases_in_memory && $dbname != "NULL" } {
+		set dbname " {} $dbname "
+	} 
+
+	# Check locations of dbs, repfiles, region files.
+	if { $dbname != "NULL" } {
+		check_db_location $masterenv $dbname $datadir
+		check_db_location $clientenv $dbname $datadir
+	}
+
+	if { $repfiles_in_memory } {
+		no_rep_files_on_disk $masterdir
+		no_rep_files_on_disk $clientdir
+	}
+	if { $env_private } {
+		no_region_files_on_disk $masterdir
+		no_region_files_on_disk $clientdir
+	}
+	
 	# The logcompare flag indicates whether to compare logs.
 	# Sometimes we run a test where rep_verify is run twice with
 	# no intervening processing of messages.  If that test is
@@ -1925,9 +2456,9 @@ proc rep_verify { masterdir masterenv clientdir clientenv \
 	}
 
 	if { $match } {
-		puts "\t\tRep_verify: $clientdir: $msg match"
+		puts "\t\tRep_verify: $clientdir: $msg should match"
 	} else {
-		puts "\t\tRep_verify: $clientdir: $msg do not match"
+		puts "\t\tRep_verify: $clientdir: $msg should not match"
 	}
 	# Check that master and client logs and dbs are identical.
 
@@ -1939,58 +2470,36 @@ proc rep_verify { masterdir masterenv clientdir clientenv \
 	# initialization, in-memory log wraparound, or other causes.
 	#
 	if { $logcompare } {
-		set args ""
-		if { $compare_shared_portion } {
-	                set logc [$masterenv log_cursor]
-			error_check_good logc [is_valid_logc $logc $masterenv] TRUE
-			set first [$logc get -first]
-			error_check_good close [$logc close] 0
-			set m_lsn [lindex $first 0]
-
-	                set logc [$clientenv log_cursor]
-			error_check_good logc [is_valid_logc $logc $clientenv] TRUE
-			set first [$logc get -first]
-			error_check_good close [$logc close] 0
-			set c_lsn [lindex $first 0]
-
-			if { [$masterenv log_compare $m_lsn $c_lsn] < 0 } {
-				set lsn $c_lsn
-			} else {
-				set lsn $m_lsn
-			}
-
-			set file [lindex $lsn 0]
-			set off [lindex $lsn 1]
-			set args "-b $file/$off"
-		}
-		set encargs ""
-		if { $encrypt == 1 } {
-			set encargs " -P $passwd "
-		}
-
-		set stat [catch {eval exec $util_path/db_printlog $args \
-		    $encargs -h $masterdir > $masterdir/prlog} result]
-		error_check_good stat_master_printlog $stat 0
-		set stat [catch {eval exec $util_path/db_printlog $args \
-		    $encargs -h $clientdir > $clientdir/prlog} result]
-		error_check_good stat_client_printlog $stat 0
-		if { $match } {
-			error_check_good log_cmp \
-			    [filecmp $masterdir/prlog $clientdir/prlog] 0
-		} else {
-			error_check_bad log_cmp \
-			    [filecmp $masterdir/prlog $clientdir/prlog] 0
-		}
-
+		error_check_good logcmp \
+		    [logcmp $masterenv $clientenv $compare_shared_portion] 0
+	
 		if { $dbname == "NULL" } {
 			return
 		}
 	}
 
 	# ... now the databases.
-	set db1 [eval {berkdb_open_noerr} -env $masterenv -rdonly $dbname]
-	set db2 [eval {berkdb_open_noerr} -env $clientenv -rdonly $dbname]
+	#
+	# We're defensive here and throw an error if a database does
+	# not exist.  If opening the first database succeeded but the
+	# second failed, we close the first before reporting the error.
+	#
+	if { [catch {eval {berkdb_open_noerr} -env $masterenv\
+	    -rdonly $dbname} db1] } {
+		error "FAIL:\
+		    Unable to open first db $dbname in rep_verify: $db1"
+	}
+	if { [catch {eval {berkdb_open_noerr} -env $clientenv\
+	    -rdonly $dbname} db2] } {
+		error_check_good close_db1 [$db1 close] 0
+		error "FAIL:\
+		    Unable to open second db $dbname in rep_verify: $db2"
+	}
 
+	# db_compare uses the database handles to do the comparison, and 
+	# we pass in the $mumbledir/$dbname string as a label to make it 
+	# easier to identify the offending database in case of failure. 
+	# Therefore this will work for both in-memory and on-disk databases.
 	if { $match } {
 		error_check_good [concat comparedbs. $dbname] [db_compare \
 		    $db1 $db2 $masterdir/$dbname $clientdir/$dbname] 0
@@ -2053,16 +2562,29 @@ proc available_ports { n } {
     return $ports
 }
 
-# Wait (a limited amount of time) for the given client environment to achieve
-# the "start-up done" state.
-#
-proc await_startup_done { env { limit 5 } } {
+# Wait (a limited amount of time) for an arbitrary condition to become true,
+# polling once per second.  If time runs out we throw an error: a successful
+# return implies the condition is indeed true.
+# 
+proc await_condition { cond { limit 20 } } {
 	for {set i 0} {$i < $limit} {incr i} {
-		if {[stat_field $env rep_stat "Startup complete"]} {
-			break
+		if {[uplevel 1 [list expr $cond]]} {
+			return
 		}
 		tclsleep 1
 	}
+	error "FAIL: condition \{$cond\} not achieved in $limit seconds."
+}
+
+proc await_startup_done { env { limit 20 } } {
+	await_condition {[stat_field $env rep_stat "Startup complete"]} $limit
+}
+
+# Wait (a limited amount of time) for an election to yield the expected
+# environment as winner.
+#
+proc await_expected_master { env { limit 20 } } {
+	await_condition {[stat_field $env rep_stat "Role"] == "master"} $limit
 }
 
 proc do_leaseop { env db method key envlist { domsgs 1 } } {
@@ -2126,4 +2648,96 @@ proc check_leaseget { db key getarg status } {
 		error_check_good dbckey [lindex [lindex $kd 0] 0] $key
 	}
 	$curs close
+}
+
+# Simple utility to check a client database for expected values.  It does not
+# handle dup keys.
+# 
+proc verify_client_data { env db items } {
+	set dbp [berkdb open -env $env $db]
+	foreach i $items {
+		foreach {key expected_value} $i {
+			set results [$dbp get $key]
+			error_check_good result_length [llength $results] 1
+			set value [lindex $results 0 1]
+			error_check_good expected_value $value $expected_value
+		}
+	}
+	$dbp close
+}
+
+proc make_dbconfig { dir cnfs } {
+	global rep_verbose
+
+	set f [open "$dir/DB_CONFIG" "w"]
+	foreach line $cnfs {
+		puts $f $line
+	}
+	if {$rep_verbose} {
+		puts $f "set_verbose DB_VERB_REPLICATION"
+	}
+	close $f
+}
+
+proc open_site_prog { cmds } {
+
+	set site_prog [setup_site_prog]
+
+	set s [open "| $site_prog" "r+"]
+	fconfigure $s -buffering line
+	set synced yes
+	foreach cmd $cmds {
+		puts $s $cmd
+		if {[lindex $cmd 0] == "start"} {
+			gets $s
+			set synced yes
+		} else {
+			set synced no
+		}
+	}
+	if {! $synced} {
+		puts $s "echo done"
+		gets $s
+	}
+	return $s
+}
+
+proc setup_site_prog { } {
+	source ./include.tcl
+	
+	# Generate the proper executable name for the system. 
+	if { $is_windows_test } {
+		set repsite_executable db_repsite.exe
+	} else {
+		set repsite_executable db_repsite
+	}
+
+	# Check whether the executable exists. 
+	if { [file exists $util_path/$repsite_executable] == 0 } {
+		error "Skipping: db_repsite executable\
+		    not found.  Is it built?"
+	} else {
+		set site_prog $util_path/$repsite_executable
+	}
+	return $site_prog
+}
+
+proc next_expected_lsn { env } {
+	return [stat_field $env rep_stat "Next LSN expected"]
+}
+
+proc lsn_file { lsn } {
+	if { [llength $lsn] != 2 } {
+		error "not a valid LSN: $lsn"
+	}
+
+	return [lindex $lsn 0]
+}
+
+proc assert_rep_flag { dir flag value } {
+	global util_path
+
+	set stat [exec $util_path/db_stat -N -RA -h $dir]
+	set present [is_substr $stat $flag]
+	error_check_good expected.flag.$flag $present $value
 }

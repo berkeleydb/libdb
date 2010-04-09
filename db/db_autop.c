@@ -657,18 +657,18 @@ __db_pg_init_print(env, dbtp, lsnp, notused2, notused3)
 }
 
 /*
- * PUBLIC: int __db_pg_sort_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC: int __db_pg_sort_44_print __P((ENV *, DBT *, DB_LSN *,
  * PUBLIC:     db_recops, void *));
  */
 int
-__db_pg_sort_print(env, dbtp, lsnp, notused2, notused3)
+__db_pg_sort_44_print(env, dbtp, lsnp, notused2, notused3)
 	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
 	db_recops notused2;
 	void *notused3;
 {
-	__db_pg_sort_args *argp;
+	__db_pg_sort_44_args *argp;
 	u_int32_t i;
 	int ch;
 	int ret;
@@ -677,10 +677,10 @@ __db_pg_sort_print(env, dbtp, lsnp, notused2, notused3)
 	notused3 = NULL;
 
 	if ((ret =
-	    __db_pg_sort_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
+	    __db_pg_sort_44_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
 		return (ret);
 	(void)printf(
-    "[%lu][%lu]__db_pg_sort%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+    "[%lu][%lu]__db_pg_sort_44%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
 	    (u_long)lsnp->file, (u_long)lsnp->offset,
 	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
 	    (u_long)argp->type,
@@ -693,6 +693,56 @@ __db_pg_sort_print(env, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tlast_free: %lu\n", (u_long)argp->last_free);
 	(void)printf("\tlast_lsn: [%lu][%lu]\n",
 	    (u_long)argp->last_lsn.file, (u_long)argp->last_lsn.offset);
+	(void)printf("\tlast_pgno: %lu\n", (u_long)argp->last_pgno);
+	(void)printf("\tlist: ");
+	for (i = 0; i < argp->list.size; i++) {
+		ch = ((u_int8_t *)argp->list.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __db_pg_trunc_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__db_pg_trunc_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__db_pg_trunc_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret =
+	    __db_pg_trunc_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__db_pg_trunc%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tmeta: %lu\n", (u_long)argp->meta);
+	(void)printf("\tmeta_lsn: [%lu][%lu]\n",
+	    (u_long)argp->meta_lsn.file, (u_long)argp->meta_lsn.offset);
+	(void)printf("\tlast_free: %lu\n", (u_long)argp->last_free);
+	(void)printf("\tlast_lsn: [%lu][%lu]\n",
+	    (u_long)argp->last_lsn.file, (u_long)argp->last_lsn.offset);
+	(void)printf("\tnext_free: %lu\n", (u_long)argp->next_free);
 	(void)printf("\tlast_pgno: %lu\n", (u_long)argp->last_pgno);
 	(void)printf("\tlist: ");
 	for (i = 0; i < argp->list.size; i++) {
@@ -746,7 +796,7 @@ __db_init_print(env, dtabp)
 	    __db_pg_init_print, DB___db_pg_init)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __db_pg_sort_print, DB___db_pg_sort)) != 0)
+	    __db_pg_trunc_print, DB___db_pg_trunc)) != 0)
 		return (ret);
 	return (0);
 }

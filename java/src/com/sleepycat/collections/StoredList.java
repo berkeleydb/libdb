@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredList.java,v 12.8 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -42,7 +42,7 @@ import com.sleepycat.util.keyrange.KeyRangeException;
  * </ul>
  * @author Mark Hayes
  */
-public class StoredList extends StoredCollection implements List {
+public class StoredList<E> extends StoredCollection<E> implements List<E> {
 
     private static final EntryBinding DEFAULT_KEY_BINDING =
         new IndexKeyBinding(1);
@@ -67,7 +67,8 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredList(Database database, EntryBinding valueBinding,
+    public StoredList(Database database,
+                      EntryBinding<E> valueBinding,
                       boolean writeAllowed) {
 
         super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding, null,
@@ -91,7 +92,8 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredList(Database database, EntityBinding valueEntityBinding,
+    public StoredList(Database database,
+                      EntityBinding<E> valueEntityBinding,
                       boolean writeAllowed) {
 
         super(new DataView(database, DEFAULT_KEY_BINDING, null,
@@ -116,7 +118,8 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredList(Database database, EntryBinding valueBinding,
+    public StoredList(Database database,
+                      EntryBinding<E> valueBinding,
                       PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, DEFAULT_KEY_BINDING, valueBinding,
@@ -141,7 +144,8 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredList(Database database, EntityBinding valueEntityBinding,
+    public StoredList(Database database,
+                      EntityBinding<E> valueEntityBinding,
                       PrimaryKeyAssigner keyAssigner) {
 
         super(new DataView(database, DEFAULT_KEY_BINDING, null,
@@ -167,7 +171,7 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public void add(int index, Object value) {
+    public void add(int index, E value) {
 
         checkIterAddAllowed();
         DataCursor cursor = null;
@@ -175,7 +179,7 @@ public class StoredList extends StoredCollection implements List {
         try {
             cursor = new DataCursor(view, true);
             OperationStatus status =
-                cursor.getSearchKey(new Long(index), null, false);
+                cursor.getSearchKey(Long.valueOf(index), null, false);
             if (status == OperationStatus.SUCCESS) {
                 cursor.putBefore(value);
                 closeCursor(cursor);
@@ -203,7 +207,7 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean add(Object value) {
+    public boolean add(E value) {
 
         checkIterAddAllowed();
         boolean doAutoCommit = beginAutoCommit();
@@ -236,7 +240,7 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public int append(Object value) {
+    public int append(E value) {
 
         boolean doAutoCommit = beginAutoCommit();
         try {
@@ -274,11 +278,11 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean addAll(int index, Collection coll) {
+    public boolean addAll(int index, Collection<? extends E> coll) {
 
         checkIterAddAllowed();
         DataCursor cursor = null;
-	Iterator i = null;
+	Iterator<? extends E> i = null;
         boolean doAutoCommit = beginAutoCommit();
         try {
             i = storedOrExternalIterator(coll);
@@ -287,7 +291,7 @@ public class StoredList extends StoredCollection implements List {
             }
             cursor = new DataCursor(view, true);
             OperationStatus status =
-                cursor.getSearchKey(new Long(index), null, false);
+                cursor.getSearchKey(Long.valueOf(index), null, false);
             if (status == OperationStatus.SUCCESS) {
                 while (i.hasNext()) {
                     cursor.putBefore(i.next());
@@ -329,9 +333,9 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object get(int index) {
+    public E get(int index) {
 
-        return super.get(new Long(index));
+        return (E) getValue(Long.valueOf(index));
     }
 
     /**
@@ -397,7 +401,7 @@ public class StoredList extends StoredCollection implements List {
      *
      * @see #isWriteAllowed
      */
-    public ListIterator listIterator() {
+    public ListIterator<E> listIterator() {
 
         return blockIterator();
     }
@@ -418,7 +422,7 @@ public class StoredList extends StoredCollection implements List {
      *
      * @see #isWriteAllowed
      */
-    public ListIterator listIterator(int index) {
+    public ListIterator<E> listIterator(int index) {
 
         BlockIterator i = blockIterator();
         if (i.moveToIndex(index)) {
@@ -439,12 +443,12 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object remove(int index) {
+    public E remove(int index) {
 
         try {
             Object[] oldVal = new Object[1];
-            removeKey(new Long(index), oldVal);
-            return oldVal[0];
+            removeKey(Long.valueOf(index), oldVal);
+            return (E) oldVal[0];
         } catch (IllegalArgumentException e) {
             throw new IndexOutOfBoundsException(e.getMessage());
         }
@@ -481,10 +485,10 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object set(int index, Object value) {
+    public E set(int index, E value) {
 
         try {
-            return put(new Long(index), value);
+            return (E) putKeyValue(Long.valueOf(index), value);
         } catch (IllegalArgumentException e) {
             throw new IndexOutOfBoundsException(e.getMessage());
         }
@@ -499,7 +503,7 @@ public class StoredList extends StoredCollection implements List {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public List subList(int fromIndex, int toIndex) {
+    public List<E> subList(int fromIndex, int toIndex) {
 
         if (fromIndex < 0 || fromIndex > toIndex) {
             throw new IndexOutOfBoundsException(String.valueOf(fromIndex));
@@ -507,8 +511,8 @@ public class StoredList extends StoredCollection implements List {
         try {
             int newBaseIndex = baseIndex + fromIndex;
             return new StoredList(
-                view.subView(new Long(fromIndex), true,
-                             new Long(toIndex), false,
+                view.subView(Long.valueOf(fromIndex), true,
+                             Long.valueOf(toIndex), false,
                              new IndexKeyBinding(newBaseIndex)),
                 newBaseIndex);
         } catch (KeyRangeException e) {
@@ -579,12 +583,12 @@ public class StoredList extends StoredCollection implements List {
 	return super.hashCode();
     }
 
-    Object makeIteratorData(BaseIterator iterator,
-                            DatabaseEntry keyEntry,
-                            DatabaseEntry priKeyEntry,
-                            DatabaseEntry valueEntry) {
+    E makeIteratorData(BaseIterator iterator,
+                       DatabaseEntry keyEntry,
+                       DatabaseEntry priKeyEntry,
+                       DatabaseEntry valueEntry) {
 
-        return view.makeValue(priKeyEntry, valueEntry);
+        return (E) view.makeValue(priKeyEntry, valueEntry);
     }
 
     boolean hasValues() {
@@ -601,11 +605,13 @@ public class StoredList extends StoredCollection implements List {
             this.baseIndex = baseIndex;
         }
 
-        public Object entryToObject(DatabaseEntry data) {
+        @Override
+        public Long entryToObject(DatabaseEntry data) {
 
-            return new Long(entryToRecordNumber(data) - baseIndex);
+            return Long.valueOf(entryToRecordNumber(data) - baseIndex);
         }
 
+        @Override
         public void objectToEntry(Object object, DatabaseEntry data) {
 
             recordNumberToEntry(((Number) object).intValue() + baseIndex,

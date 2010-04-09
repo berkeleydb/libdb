@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_stat.c,v 12.22 2008/03/11 21:07:19 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -13,6 +13,7 @@
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 
 #ifdef HAVE_STATISTICS
 /*
@@ -107,6 +108,12 @@ __bam_stat(dbc, spp, flags)
 	if ((ret = __bam_traverse(dbc,
 	    DB_LOCK_READ, cp->root, __bam_stat_callback, sp)) != 0)
 		goto err;
+
+#ifdef HAVE_COMPRESSION
+	if (DB_IS_COMPRESSED(dbp) && (ret = __bam_compress_count(dbc,
+	    &sp->bt_nkeys, &sp->bt_ndata)) != 0)
+		goto err;
+#endif
 
 	/*
 	 * Get the subdatabase metadata page if it's not the same as the
@@ -217,6 +224,7 @@ __bam_stat_print(dbc, flags)
 		{ BTM_RENUMBER,	"renumber" },
 		{ BTM_SUBDB,	"multiple-databases" },
 		{ BTM_DUPSORT,	"sorted duplicates" },
+		{ BTM_COMPRESS,	"compressed" },
 		{ 0,		NULL }
 	};
 	DB *dbp;
@@ -227,7 +235,12 @@ __bam_stat_print(dbc, flags)
 
 	dbp = dbc->dbp;
 	env = dbp->env;
-
+#ifdef HAVE_PARTITION
+	if (DB_IS_PARTITIONED(dbp)) {
+		if ((ret = __partition_stat(dbc, &sp, flags)) != 0)
+			return (ret);
+	} else
+#endif
 	if ((ret = __bam_stat(dbc, &sp, LF_ISSET(DB_FAST_STAT))) != 0)
 		return (ret);
 

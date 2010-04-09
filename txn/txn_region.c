@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: txn_region.c,v 12.34 2008/01/08 20:59:00 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -123,6 +123,7 @@ __txn_init(env, mgr)
 	if ((ret = __mutex_alloc(
 	    env, MTX_TXN_REGION, 0, &region->mtx_region)) != 0)
 		return (ret);
+	mgr->reginfo.mtx_alloc = region->mtx_region;
 
 	region->maxtxns = dbenv->tx_max;
 	region->last_txnid = TXN_MINIMUM;
@@ -190,7 +191,7 @@ __txn_findlastckp(env, lsnp, max_lsn)
 	while ((ret = __logc_get(logc, &lsn, &dbt, DB_PREV)) == 0) {
 		if (dbt.size < sizeof(u_int32_t))
 			continue;
-		memcpy(&rectype, dbt.data, sizeof(u_int32_t));
+		LOGCOPY_32(env, &rectype, dbt.data);
 		if (rectype == DB___txn_ckp) {
 			*lsnp = lsn;
 			break;
@@ -274,6 +275,8 @@ __txn_env_refresh(env)
 		ret = t_ret;
 
 	/* Detach from the region. */
+	if (F_ISSET(env, ENV_PRIVATE))
+		reginfo->mtx_alloc = MUTEX_INVALID;
 	if ((t_ret = __env_region_detach(env, reginfo, 0)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -396,10 +399,9 @@ __txn_oldest_reader(env, lsnp)
 	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
 		if (LOG_COMPARE(&td->read_lsn, &old_lsn) < 0)
 			old_lsn = td->read_lsn;
-	TXN_SYSTEM_UNLOCK(env);
 
-	DB_ASSERT(env, LOG_COMPARE(&old_lsn, lsnp) >= 0);
 	*lsnp = old_lsn;
+	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);
 }
@@ -449,11 +451,16 @@ __txn_remove_buffer(env, td, hash_mtx)
 
 	MUTEX_LOCK(env, td->mvcc_mtx);
 	DB_ASSERT(env, td->mvcc_ref > 0);
-	need_free = (--td->mvcc_ref == 0);
+
+	/*
+	 * We free the transaction detail here only if this is the last
+	 * reference and td is on the list of committed snapshot transactions
+	 * with active pages.
+	 */
+	need_free = (--td->mvcc_ref == 0) && F_ISSET(td, TXN_DTL_SNAPSHOT);
 	MUTEX_UNLOCK(env, td->mvcc_mtx);
 
-	if (need_free &&
-	    (td->status == TXN_COMMITTED || td->status == TXN_ABORTED)) {
+	if (need_free) {
 		MUTEX_UNLOCK(env, hash_mtx);
 
 		ret = __mutex_free(env, &td->mvcc_mtx);
@@ -467,7 +474,7 @@ __txn_remove_buffer(env, td, hash_mtx)
 		__env_alloc_free(&mgr->reginfo, td);
 		TXN_SYSTEM_UNLOCK(env);
 
-		MUTEX_LOCK(env, hash_mtx);
+		MUTEX_READLOCK(env, hash_mtx);
 	}
 
 	return (ret);

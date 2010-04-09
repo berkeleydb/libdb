@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: DataCursor.java,v 12.11 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -176,9 +176,7 @@ final class DataCursor implements Cloneable {
     /**
      * Constructor helper.
      */
-    private void initThangs()
-        throws DatabaseException {
-
+    private void initThangs() {
         keyThang = new DatabaseEntry();
         primaryKeyThang = view.isSecondary() ? (new DatabaseEntry())
                                              : keyThang;
@@ -341,18 +339,14 @@ final class DataCursor implements Cloneable {
     /**
      * Returns the key object for the last record read.
      */
-    Object getCurrentKey()
-        throws DatabaseException {
-
+    Object getCurrentKey() {
         return view.makeKey(keyThang, primaryKeyThang);
     }
 
     /**
      * Returns the value object for the last record read.
      */
-    Object getCurrentValue()
-        throws DatabaseException {
-
+    Object getCurrentValue() {
         return view.makeValue(primaryKeyThang, valueThang);
     }
 

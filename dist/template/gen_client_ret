@@ -128,22 +128,22 @@ __dbcl_env_txn_begin_ret(dbenv, parent, txnpp, flags, replyp)
 }
 
 /*
- * PUBLIC: int __dbcl_env_txn_recover_ret __P((DB_ENV *, DB_PREPLIST *, long,
- * PUBLIC:      long *, u_int32_t, __env_txn_recover_reply *));
+ * PUBLIC: int __dbcl_env_txn_recover_ret __P((DB_ENV *, DB_PREPLIST *,
+ * PUBLIC:      u_int32_t, u_int32_t *, u_int32_t, __env_txn_recover_reply *));
  */
 int
 __dbcl_env_txn_recover_ret(dbenv, preplist, count, retp, flags, replyp)
 	DB_ENV * dbenv;
 	DB_PREPLIST * preplist;
-	long count;
-	long * retp;
+	u_int32_t count;
+	u_int32_t * retp;
 	u_int32_t flags;
 	__env_txn_recover_reply *replyp;
 {
 	int ret;
 	u_int32_t *__db_txn;
 	u_int8_t *__db_gid;
-	long retcount;
+	u_int32_t retcount;
 
 	if (replyp->status != 0)
 		return (replyp->status);

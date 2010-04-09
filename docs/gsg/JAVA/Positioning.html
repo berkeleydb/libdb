@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Getting Records Using the Cursor</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Cursors.html" title="Chapter 9. Using Cursors" />
-    <link rel="previous" href="Cursors.html" title="Chapter 9. Using Cursors" />
+    <link rel="prev" href="Cursors.html" title="Chapter 9. Using Cursors" />
     <link rel="next" href="PutEntryWCursor.html" title="Putting Records Using Cursors" />
   </head>
   <body>
@@ -32,12 +32,25 @@
             <h2 class="title" style="clear: both"><a id="Positioning"></a>Getting Records Using the Cursor</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="Positioning.html#cursorsearch">Searching for Records</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="Positioning.html#getdups">Working with Duplicate Records</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         To iterate over database records, from the first record to
         the last, simply open the cursor and then use the
-            <tt class="methodname">Cursor.getNext()</tt>
+            <code class="methodname">Cursor.getNext()</code>
             
             
         method.  
@@ -95,7 +108,7 @@ try {
       <p>
     To iterate over the database from the last record to the first,
     instantiate the cursor, and then
-    use <tt class="methodname">Cursor.getPrev()</tt> until you read the first record in
+    use <code class="methodname">Cursor.getPrev()</code> until you read the first record in
     the database. For example:
     </p>
       <a id="java_cursor4"></a>
@@ -145,7 +158,6 @@ try {
               <h3 class="title"><a id="cursorsearch"></a>Searching for Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         You can use cursors to search for database records. You can search based
@@ -158,21 +170,21 @@ try {
         <p>
         Also, if the search fails, then cursor's state is left unchanged
         and 
-            <tt class="literal">OperationStatus.NOTFOUND</tt> 
+            <code class="literal">OperationStatus.NOTFOUND</code> 
              
         is returned. 
         
         
       </p>
         <p>
-        The following <tt class="classname">Cursor</tt> methods allow you to
+        The following <code class="classname">Cursor</code> methods allow you to
         perform database searches:
       </p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-            <tt class="methodname">Cursor.getSearchKey()</tt>
+            <code class="methodname">Cursor.getSearchKey()</code>
             
            </p>
               <p>
@@ -182,13 +194,13 @@ try {
             </li>
             <li>
               <p>
-            <tt class="methodname">Cursor.getSearchKeyRange()</tt>
+            <code class="methodname">Cursor.getSearchKeyRange()</code>
             
           </p>
               <p>
             <span>Identical to 
                 
-                <tt class="methodname">Cursor.getSearchKey()</tt>
+                <code class="methodname">Cursor.getSearchKey()</code>
             unless you are using the BTree access. In this case, the cursor
             moves</span>
             
@@ -216,17 +228,17 @@ try {
 Alaska
 Arizona</pre>
               <p>
-            Then providing a search key of <tt class="literal">Alaska</tt> moves the
+            Then providing a search key of <code class="literal">Alaska</code> moves the
             cursor to the second key noted above. Providing a key of
-            <tt class="literal">Al</tt> moves the cursor to the first key (<tt class="literal">Alabama</tt>), providing
-            a search key of <tt class="literal">Alas</tt> moves the cursor to the second key
-            (<tt class="literal">Alaska</tt>), and providing a key of <tt class="literal">Ar</tt> moves the
-            cursor to the last key (<tt class="literal">Arizona</tt>).
+            <code class="literal">Al</code> moves the cursor to the first key (<code class="literal">Alabama</code>), providing
+            a search key of <code class="literal">Alas</code> moves the cursor to the second key
+            (<code class="literal">Alaska</code>), and providing a key of <code class="literal">Ar</code> moves the
+            cursor to the last key (<code class="literal">Arizona</code>).
           </p>
             </li>
             <li>
               <p>
-            <tt class="methodname">Cursor.getSearchBoth()</tt>
+            <code class="methodname">Cursor.getSearchBoth()</code>
             
            </p>
               <p>
@@ -236,7 +248,7 @@ Arizona</pre>
             </li>
             <li>
               <p>
-            <tt class="methodname">Cursor.getSearchBothRange()</tt>
+            <code class="methodname">Cursor.getSearchBothRange()</code>
             
           </p>
               <p>
@@ -374,7 +386,6 @@ try {
               <h3 class="title"><a id="getdups"></a>Working with Duplicate Records</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         A record is a duplicate of another record if the two records share the
@@ -383,7 +394,7 @@ try {
         <p>
         Duplicate records are supported only for the BTree or Hash access methods.
         For information on configuring your database to use duplicate records,
-        see <a href="btree.html#duplicateRecords">Allowing Duplicate Records</a>.
+        see <a class="xref" href="btree.html#duplicateRecords" title="Allowing Duplicate Records">Allowing Duplicate Records</a>.
       </p>
         <p>
 		If your database supports duplicate records, then it can potentially
@@ -398,7 +409,7 @@ try {
         </span>
 
         The following 
-            <span><tt class="methodname">Cursor</tt> methods</span>
+            <span><code class="methodname">Cursor</code> methods</span>
             
             
         are interesting when working with databases that support duplicate records:
@@ -408,33 +419,33 @@ try {
             <li>
               <p>
             <span>
-                <tt class="methodname">Cursor.getNext()</tt>,
-                <tt class="methodname">Cursor.getPrev()</tt>
+                <code class="methodname">Cursor.getNext()</code>,
+                <code class="methodname">Cursor.getPrev()</code>
             </span>
             
           </p>
               <p>
             Shows the next/previous record in the database, regardless of
             whether it is a duplicate of the current record. For an example of
-            using these methods, see <a href="Positioning.html">Getting Records Using the Cursor</a>.
+            using these methods, see <a class="xref" href="Positioning.html" title="Getting Records Using the Cursor">Getting Records Using the Cursor</a>.
           </p>
             </li>
             <li>
               <p>
-            <tt class="methodname">Cursor.getSearchBothRange()</tt>
+            <code class="methodname">Cursor.getSearchBothRange()</code>
             
           </p>
               <p>
             Useful for seeking the cursor to a specific record, regardless of
-            whether it is a duplicate record. See <a href="Positioning.html#cursorsearch">Searching for Records</a> for more
+            whether it is a duplicate record. See <a class="xref" href="Positioning.html#cursorsearch" title="Searching for Records">Searching for Records</a> for more
             information.
           </p>
             </li>
             <li>
               <p>
             <span>
-                <tt class="methodname">Cursor.getNextNoDup()</tt>,
-                <tt class="methodname">Cursor.getPrevNoDup()</tt>
+                <code class="methodname">Cursor.getNextNoDup()</code>,
+                <code class="methodname">Cursor.getPrevNoDup()</code>
             </span>
             
           </p>
@@ -442,7 +453,7 @@ try {
             Gets the next/previous non-duplicate record in the database.  This
             allows you to skip over all the duplicates in a set of duplicate
             records. If you call 
-                <span><tt class="methodname">Cursor.getPrevNoDup()</tt>,</span> 
+                <span><code class="methodname">Cursor.getPrevNoDup()</code>,</span> 
                  
             then the cursor is positioned to the last record for the previous
             key in the database.  For example, if you have the following records
@@ -455,13 +466,13 @@ Alaska/Fairbanks
 Arizona/Avondale
 Arizona/Florence</pre>
               <p>
-          and your cursor is positioned to <tt class="literal">Alaska/Fairbanks</tt>,
+          and your cursor is positioned to <code class="literal">Alaska/Fairbanks</code>,
           and you then call 
-                <span><tt class="methodname">Cursor.getPrevNoDup()</tt>,</span> 
+                <span><code class="methodname">Cursor.getPrevNoDup()</code>,</span> 
                  
           then the cursor is positioned to Alabama/Florence. Similarly, if
           you call 
-                <span><tt class="methodname">Cursor.getNextNoDup()</tt>,</span> 
+                <span><code class="methodname">Cursor.getNextNoDup()</code>,</span> 
                  
             
           then the cursor is positioned to the first record corresponding to 
@@ -469,7 +480,7 @@ Arizona/Florence</pre>
           </p>
               <p>
             If there is no next/previous key in the database, then
-                <tt class="literal">OperationStatus.NOTFOUND</tt> 
+                <code class="literal">OperationStatus.NOTFOUND</code> 
                  
             is returned, and the cursor is left unchanged.
           </p>
@@ -487,25 +498,25 @@ Arizona/Florence</pre>
             record that shares the current key. If the
             cursor is positioned at the last record in the duplicate set and
             you call 
-                <span><tt class="methodname">Cursor.getNextDup()</tt>,</span> 
+                <span><code class="methodname">Cursor.getNextDup()</code>,</span> 
                  
 
             then 
-                <tt class="literal">OperationStatus.NOTFOUND</tt> 
+                <code class="literal">OperationStatus.NOTFOUND</code> 
                  
             is returned and the cursor is left unchanged. 
             <span>
                 Likewise, if you call 
-                <tt class="methodname">getPrevDup()</tt> and the
+                <code class="methodname">getPrevDup()</code> and the
                 cursor is positioned at the first record in the duplicate set, then
-                <tt class="literal">OperationStatus.NOTFOUND</tt> is returned and the
+                <code class="literal">OperationStatus.NOTFOUND</code> is returned and the
                 cursor is left unchanged.
              </span>
           </p>
             </li>
             <li>
               <p>
-                <tt class="methodname">Cursor.count()</tt>
+                <code class="methodname">Cursor.count()</code>
               </p>
               <p>Returns the total number of records that share the current key.</p>
             </li>

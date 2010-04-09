@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: RepRemoteHost.java,v 1.2 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 package db.repquote;
@@ -15,15 +15,15 @@ public class RepRemoteHost{
     private boolean isPeer;
 
     public RepRemoteHost(ReplicationHostAddress remoteAddr, boolean hostIsPeer){
-	addr = remoteAddr;
-	isPeer = hostIsPeer;
+        addr = remoteAddr;
+        isPeer = hostIsPeer;
     }
 
     public ReplicationHostAddress getAddress(){
-	return addr;
+        return addr;
     }
 
     public boolean isPeer(){
-	return isPeer;
+        return isPeer;
     }
 }

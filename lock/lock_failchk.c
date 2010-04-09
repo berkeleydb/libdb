@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_failchk.c,v 12.18 2008/01/08 20:58:40 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -45,14 +45,15 @@ retry:	LOCK_LOCKERS(env, lrp);
 	for (i = 0; i < lrp->locker_t_size; i++)
 		SH_TAILQ_FOREACH(lip, &lt->locker_tab[i], links, __db_locker) {
 			/*
-			 * Skip lockers that have no locks.  Check the heldby
-			 * list rather then nlocks since a lock may be PENDING.
 			 * If the locker is transactional, we can ignore it if
-			 * it has no read lock or has no locks at all;
-			 * __txn_failchk aborts any transactional lockers.
+			 * it has no read locks or has no locks at all.  Check
+			 * the heldby list rather then nlocks since a lock may
+			 * be PENDING.  __txn_failchk aborts any transactional
+			 * lockers.  Non-transactional lockers progress to  
+			 * is_alive test.
 			 */
-			if (SH_LIST_EMPTY(&lip->heldby) ||
-			     (lip->id >= TXN_MINIMUM &&
+			if ((lip->id >= TXN_MINIMUM) &&
+			     (SH_LIST_EMPTY(&lip->heldby) ||
 			     lip->nlocks == lip->nwrites))
 				continue;
 
@@ -76,15 +77,20 @@ retry:	LOCK_LOCKERS(env, lrp);
 			/*
 			 * Discard the locker and its read locks.
 			 */
-			__db_msg(env, "Freeing read locks for locker %#lx: %s",
-			    (u_long)lip->id, dbenv->thread_id_string(
-			    dbenv, lip->pid, lip->tid, buf));
-			UNLOCK_LOCKERS(env, lrp);
-			memset(&request, 0, sizeof(request));
-			request.op = DB_LOCK_PUT_READ;
-			if ((ret = __lock_vec(env,
-			    lip, 0, &request, 1, NULL)) != 0)
-				return (ret);
+			if (!SH_LIST_EMPTY(&lip->heldby)) {
+				__db_msg(env, 
+				    "Freeing read locks for locker %#lx: %s",
+			    	    (u_long)lip->id, dbenv->thread_id_string(
+			    	    dbenv, lip->pid, lip->tid, buf));
+				UNLOCK_LOCKERS(env, lrp);
+				memset(&request, 0, sizeof(request));
+				request.op = DB_LOCK_PUT_READ;
+				if ((ret = __lock_vec(env,
+			    	    lip, 0, &request, 1, NULL)) != 0)
+					return (ret);
+			}
+			else
+				UNLOCK_LOCKERS(env, lrp);
 
 			/*
 			 * This locker is most likely referenced by a cursor

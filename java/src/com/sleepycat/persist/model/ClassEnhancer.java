@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ClassEnhancer.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -39,16 +39,16 @@ import com.sleepycat.asm.ClassWriter;
  * enhancement may be used either at runtime or offline (at build time).</p>
  *
  * <p>To use enhancement offline, this class may be used as a {@link #main main
- * program}.
- * </p>
+ * program}.  It may also be used via a ClassEnhancerTask ant task: the source
+ * is in the <pre>java/ext</pre> directory in Berkeley DB.</p>
  *
  * <p>For enhancement at runtime, this class provides the low level support
  * needed to transform class bytes during class loading.  To configure runtime
  * enhancement you may use one of the following approaches:</p>
  * <ol>
- * <li>For Java 1.5, the {@code je-<version>.jar} file may be used as an instrumentation
- * agent as follows:
- * <pre class="code">{@literal java -javaagent:lib/je-<version>.jar=enhance:packageNames ...}</pre>
+ * <li>The BDB {@code je-<version>.jar} or {@code db.jar} file may be used as
+ * an instrumentation agent as follows:
+ * <pre class="code">{@literal java -javaagent:<BDB-JAR-FILE>=enhance:packageNames ...}</pre>
  * {@code packageNames} is a comma separated list of packages containing
  * persistent classes.  Sub-packages of these packages are also searched.  If
  * {@code packageNames} is omitted then all packages known to the current
@@ -120,7 +120,7 @@ public class ClassEnhancer implements ClassFileTransformer {
     /**
      * Enhances classes as specified by a JVM -javaagent argument.
      *
-     * @see java.lang.instrument
+     * @see java.lang.instrument.Instrumentation
      */
     public static void premain(String args, Instrumentation inst) {
         if (!args.startsWith(AGENT_PREFIX)) {

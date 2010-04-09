@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: txn_recover.c,v 12.37 2008/04/19 15:47:42 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -44,7 +44,7 @@ __txn_map_gid(env, gid, tdp, offp)
 	 */
 	TXN_SYSTEM_LOCK(env);
 	SH_TAILQ_FOREACH(*tdp, &region->active_txn, links, __txn_detail)
-		if (memcmp(gid, (*tdp)->xid, sizeof((*tdp)->xid)) == 0)
+		if (memcmp(gid, (*tdp)->gid, sizeof((*tdp)->gid)) == 0)
 			break;
 	TXN_SYSTEM_UNLOCK(env);
 
@@ -59,14 +59,14 @@ __txn_map_gid(env, gid, tdp, offp)
  * __txn_recover_pp --
  *	ENV->txn_recover pre/post processing.
  *
- * PUBLIC: int __txn_recover_pp
- * PUBLIC:     __P((DB_ENV *, DB_PREPLIST *, long, long *, u_int32_t));
+ * PUBLIC: int __txn_recover_pp __P((DB_ENV *,
+ * PUBLIC:     DB_PREPLIST *, u_int32_t, u_int32_t *, u_int32_t));
  */
 int
 __txn_recover_pp(dbenv, preplist, count, retp, flags)
 	DB_ENV *dbenv;
 	DB_PREPLIST *preplist;
-	long count, *retp;
+	u_int32_t count, *retp;
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
@@ -99,43 +99,13 @@ __txn_recover_pp(dbenv, preplist, count, retp, flags)
  *	ENV->txn_recover.
  *
  * PUBLIC: int __txn_recover __P((ENV *,
- * PUBLIC:         DB_PREPLIST *, long, long *, u_int32_t));
+ * PUBLIC:         DB_PREPLIST *, u_int32_t, u_int32_t *, u_int32_t));
  */
 int
-__txn_recover(env, preplist, count, retp, flags)
+__txn_recover(env, txns, count, retp, flags)
 	ENV *env;
-	DB_PREPLIST *preplist;
-	long count, *retp;
-	u_int32_t flags;
-{
-	/*
-	 * Public API to retrieve the list of prepared, but not yet committed
-	 * transactions.  See __txn_get_prepared for details.  This function
-	 * and __db_xa_recover both wrap that one.
-	 */
-	return (__txn_get_prepared(env, NULL, preplist, count, retp, flags));
-}
-
-/*
- * __txn_get_prepared --
- *	Returns a list of prepared (and for XA, heuristically completed)
- *	transactions (less than or equal to the count parameter).  One of
- *	xids or txns must be set to point to an array of the appropriate type.
- *	The count parameter indicates the number of entries in the xids and/or
- *	txns array. The retp parameter will be set to indicate the number of
- *	entries	returned in the xids/txns array.  Flags indicates the operation,
- *	one of DB_FIRST or DB_NEXT.
- *
- * PUBLIC: int __txn_get_prepared __P((ENV *,
- * PUBLIC:     XID *, DB_PREPLIST *, long, long *, u_int32_t));
- */
-int
-__txn_get_prepared(env, xids, txns, count, retp, flags)
-	ENV *env;
-	XID *xids;
 	DB_PREPLIST *txns;
-	long count;		/* This is long for XA compatibility. */
-	long *retp;
+	u_int32_t  count, *retp;
 	u_int32_t flags;
 {
 	DB_LSN min;
@@ -144,17 +114,16 @@ __txn_get_prepared(env, xids, txns, count, retp, flags)
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td;
-	XID *xidp;
-	long i;
+	u_int32_t i;
 	int restored, ret;
 
 	*retp = 0;
 
 	MAX_LSN(min);
 	prepp = txns;
-	xidp = xids;
 	restored = ret = 0;
 
+	DB_ASSERT(env, txns != NULL);
 	/*
 	 * If we are starting a scan, then we traverse the active transaction
 	 * list once making sure that all transactions are marked as not having
@@ -186,37 +155,22 @@ __txn_get_prepared(env, xids, txns, count, retp, flags)
 		if (F_ISSET(td, TXN_DTL_RESTORED))
 			restored = 1;
 
-		if (xids != NULL) {
-			xidp->formatID = td->format;
-			/*
-			 * XID structure uses longs; we use u_int32_t's as we
-			 * log them to disk.  Cast them to make the conversion
-			 * explicit.
-			 */
-			xidp->gtrid_length = (long)td->gtrid;
-			xidp->bqual_length = (long)td->bqual;
-			memcpy(xidp->data, td->xid, sizeof(td->xid));
-			xidp++;
+		if ((ret = __os_calloc(env,
+		    1, sizeof(DB_TXN), &prepp->txn)) != 0) {
+			TXN_SYSTEM_UNLOCK(env);
+			goto err;
 		}
-
-		if (txns != NULL) {
-			if ((ret = __os_calloc(env,
-			    1, sizeof(DB_TXN), &prepp->txn)) != 0) {
-				TXN_SYSTEM_UNLOCK(env);
-				goto err;
-			}
-			if ((ret = __txn_continue(env, prepp->txn, td)) != 0)
-				goto err;
-			F_SET(prepp->txn, TXN_MALLOC);
-			if (F_ISSET(env->dbenv, DB_ENV_TXN_NOSYNC))
-				F_SET(prepp->txn, TXN_NOSYNC);
-			else if (F_ISSET(env->dbenv, DB_ENV_TXN_WRITE_NOSYNC))
-				F_SET(prepp->txn, TXN_WRITE_NOSYNC);
-			else
-				F_SET(prepp->txn, TXN_SYNC);
-			memcpy(prepp->gid, td->xid, sizeof(td->xid));
-			prepp++;
-		}
+		if ((ret = __txn_continue(env, prepp->txn, td)) != 0)
+			goto err;
+		F_SET(prepp->txn, TXN_MALLOC);
+		if (F_ISSET(env->dbenv, DB_ENV_TXN_NOSYNC))
+			F_SET(prepp->txn, TXN_NOSYNC);
+		else if (F_ISSET(env->dbenv, DB_ENV_TXN_WRITE_NOSYNC))
+			F_SET(prepp->txn, TXN_WRITE_NOSYNC);
+		else
+			F_SET(prepp->txn, TXN_SYNC);
+		memcpy(prepp->gid, td->gid, sizeof(td->gid));
+		prepp++;
 
 		if (!IS_ZERO_LSN(td->begin_lsn) &&
 		    LOG_COMPARE(&td->begin_lsn, &min) < 0)
@@ -233,7 +187,7 @@ __txn_get_prepared(env, xids, txns, count, retp, flags)
 	/*
 	 * Now link all the transactions into the transaction manager's list.
 	 */
-	if (txns != NULL && *retp != 0) {
+	if (*retp != 0) {
 		MUTEX_LOCK(env, mgr->mutex);
 		for (i = 0; i < *retp; i++)
 			TAILQ_INSERT_TAIL(&mgr->txn_chain, txns[i].txn, links);

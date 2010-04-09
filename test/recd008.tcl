@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recd008.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd008
 # TEST	Test deeply nested transactions and many-child transactions.
@@ -71,10 +71,10 @@ proc recd008 { method {breadth 4} {depth 4} args} {
 	foreach pair $rlist {
 		set cmd [subst [lindex $pair 0]]
 		set msg [lindex $pair 1]
-		op_recover abort $testdir $env_cmd $dbfile $cmd $msg
-		recd008_setkval $dbfile $p1
-		op_recover commit $testdir $env_cmd $dbfile $cmd $msg
-		recd008_setkval $dbfile $p1
+		op_recover abort $testdir $env_cmd $dbfile $cmd $msg $args
+		eval recd008_setkval $dbfile $p1 $args
+		op_recover commit $testdir $env_cmd $dbfile $cmd $msg $args
+		eval recd008_setkval $dbfile $p1 $args
 	}
 
 	puts "\tRecd008.e: Verify db_printlog can read logfile"
@@ -85,11 +85,11 @@ proc recd008 { method {breadth 4} {depth 4} args} {
 	fileremove $tmpfile
 }
 
-proc recd008_setkval { dbfile p1 } {
+proc recd008_setkval { dbfile p1 args} {
 	global kvals
 	source ./include.tcl
 
-	set db [berkdb_open $testdir/$dbfile]
+	set db [eval {berkdb_open} $args $testdir/$dbfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	set ret [$db get $p1]
 	error_check_good dbclose [$db close] 0

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: env007.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	env007
 # TEST	Test DB_CONFIG config file options for berkdb env.
@@ -193,7 +193,7 @@ proc env007 { } {
 	{ "set_lg_bsize" "65536" "get_lg_bsize" "65536" }
 	{ "set_lg_dir" "." "get_lg_dir" "." }
 	{ "set_lg_max" "8388608" "get_lg_max" "8388608" }
-	{ "set_lg_regionmax" "65536" "get_lg_regionmax" "65536" }
+	{ "set_lg_regionmax" "262144" "get_lg_regionmax" "262144" }
 	{ "set_lk_detect" "db_lock_default" "get_lk_detect" "default" }
 	{ "set_lk_detect" "db_lock_expire" "get_lk_detect" "expire" }
 	{ "set_lk_detect" "db_lock_maxlocks" "get_lk_detect" "maxlocks" }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: EnvExample.cpp,v 12.6 2008/01/08 20:58:26 bostic Exp $
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -21,21 +21,9 @@ using std::ostream;
 using std::cout;
 using std::cerr;
 
-#ifdef macintosh
-#define	DATABASE_HOME	":database"
-#define	CONFIG_DATA_DIR	":database"
-#else
-#ifdef DB_WIN32
-#define	DATABASE_HOME	"\\tmp\\database"
-#define	CONFIG_DATA_DIR	"\\database\\files"
-#else
-#define	DATABASE_HOME	"/tmp/database"
-#define	CONFIG_DATA_DIR	"/database/files"
-#endif
-#endif
-
-void	db_setup(const char *, const char *, ostream&);
-void	db_teardown(const char *, const char *, ostream&);
+void db_setup(const char *, const char *, ostream&);
+void db_teardown(const char *, const char *, ostream&);
+static int usage();
 
 const char *progname = "EnvExample";			/* Program name. */
 
@@ -43,7 +31,7 @@ const char *progname = "EnvExample";			/* Program name. */
 // An example of a program creating/configuring a Berkeley DB environment.
 //
 int
-main(int, char **)
+main(int argc, char *argv[])
 {
 	//
 	// Note: it may be easiest to put all Berkeley DB operations in a
@@ -53,13 +41,29 @@ main(int, char **)
 	//
 	try {
 		const char *data_dir, *home;
+		
+		//
+		// All of the shared database files live in home,
+		// but data files live in data_dir.
+		//
+		home = "TESTDIR";
+		data_dir = "data";
 
-		//
-		// All of the shared database files live in /home/database,
-		// but data files live in /database.
-		//
-		home = DATABASE_HOME;
-		data_dir = CONFIG_DATA_DIR;
+		for (int argnum = 1; argnum < argc; ++argnum) {
+			if (strcmp(argv[argnum], "-h") == 0) {
+				if (++argnum >= argc)
+					return (usage());
+				home = argv[argnum];
+			}
+			else if (strcmp(argv[argnum], "-d") == 0) {
+				if (++argnum >= argc)
+					return (usage());
+				data_dir = argv[argnum];
+			}
+			else {
+				return (usage());
+			}
+		}
 
 		cout << "Setup env\n";
 		db_setup(home, data_dir, cerr);
@@ -97,12 +101,24 @@ db_setup(const char *home, const char *data_dir, ostream& err_stream)
 
 	// Open the environment with full transactional support.
 	dbenv->open(home,
-    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN, 0);
+	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | 
+	    DB_INIT_TXN, 0);
 
-	// Do something interesting...
+	// Open a database in the environment to verify the data_dir
+	// has been set correctly.
+	// Create a database handle, using the environment.	
+	Db *db = new Db(dbenv, 0) ;
+
+	// Open the database. 
+	db->open(NULL, "EvnExample_db1.db", NULL, DB_BTREE, DB_CREATE, 0644);
+
+	// Close the database handle.
+	db->close(0) ;
+	delete db;
 
 	// Close the handle.
 	dbenv->close(0);
+	delete dbenv;
 }
 
 void
@@ -117,4 +133,11 @@ db_teardown(const char *home, const char *data_dir, ostream& err_stream)
 	(void)dbenv->set_data_dir(data_dir);
 	dbenv->remove(home, 0);
 	delete dbenv;
+}
+
+static int
+usage()
+{
+	cerr << "usage: excxx_env [-h home] [-d data_dir]\n";
+	return (EXIT_FAILURE);
 }

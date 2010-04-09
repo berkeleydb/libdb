@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_sync.c,v 12.59 2008/01/17 13:59:12 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -261,14 +261,14 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	MPOOLFILE *mfp;
 	db_mutex_t mutex;
 	roff_t last_mf_offset;
-	u_int32_t ar_cnt, ar_max, dirty, i, n_cache, remaining, wrote_total;
-	int filecnt, maxopenfd, pass, required_write, ret, t_ret;
-	int wait_cnt, wrote_cnt;
+	u_int32_t ar_cnt, ar_max, i, n_cache, remaining, wrote_total;
+	int dirty, filecnt, maxopenfd, required_write, ret, t_ret;
+	int wrote_cnt;
 
 	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	last_mf_offset = INVALID_ROFF;
-	filecnt = pass = wrote_total = 0;
+	filecnt = wrote_total = 0;
 
 	if (wrote_totalp != NULL)
 		*wrote_totalp = 0;
@@ -315,7 +315,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 #ifdef DIAGNOSTIC
 			if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
 #else
-			if (hp->hash_page_dirty == 0)
+			if (atomic_read(&hp->hash_page_dirty) == 0)
 #endif
 				continue;
 
@@ -382,21 +382,22 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 					ar_max *= 2;
 				}
 			}
-			DB_ASSERT(env, dirty == hp->hash_page_dirty);
-			if (dirty != hp->hash_page_dirty) {
-				__db_errx(env,
-				    "memp_sync: correcting dirty count %lu %lu",
-				    (u_long)hp->hash_page_dirty, (u_long)dirty);
-				hp->hash_page_dirty = dirty;
-			}
-			MUTEX_UNLOCK(env, hp->mtx_hash);
 
 			if (ret != 0)
 				goto err;
+			/*
+			 * We are only checking this in diagnostic mode
+			 * since it requires extra latching to keep the count
+			 * in sync with the number of bits counted.
+			 */
+			DB_ASSERT(env,
+			    dirty == (int)atomic_read(&hp->hash_page_dirty));
+			MUTEX_UNLOCK(env, hp->mtx_hash);
 
 			/* Check if the call has been interrupted. */
 			if (LF_ISSET(DB_SYNC_INTERRUPT_OK) && FLD_ISSET(
 			    mp->config_flags, DB_MEMP_SYNC_INTERRUPT)) {
+				STAT(++mp->stat.st_sync_interrupted);
 				if (interruptedp != NULL)
 					*interruptedp = 1;
 				goto err;
@@ -439,10 +440,9 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * out its hash bucket pointer so we don't process a slot more than
 	 * once.
 	 */
-	for (i = pass = wrote_cnt = 0, remaining = ar_cnt; remaining > 0; ++i) {
+	for (i = wrote_cnt = 0, remaining = ar_cnt; remaining > 0; ++i) {
 		if (i >= ar_cnt) {
 			i = 0;
-			++pass;
 			__os_yield(env, 1, 0);
 		}
 		if ((hp = bharray[i].track_hp) == NULL)
@@ -450,7 +450,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 
 		/* Lock the hash bucket and find the buffer. */
 		mutex = hp->mtx_hash;
-		MUTEX_LOCK(env, mutex);
+		MUTEX_READLOCK(env, mutex);
 		SH_TAILQ_FOREACH(bhp, &hp->hash_bucket, hq, __bh)
 			if (bhp->pgno == bharray[i].track_pgno &&
 			    bhp->mf_offset == bharray[i].track_off)
@@ -473,15 +473,8 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		/*
 		 * If the buffer is locked by another thread, ignore it, we'll
 		 * come back to it.
-		 *
-		 * If the buffer is pinned and it's only the first or second
-		 * time we have looked at it, ignore it, we'll come back to
-		 * it.
-		 *
-		 * In either case, skip the buffer if we're not required to
-		 * write it.
 		 */
-		if (F_ISSET(bhp, BH_LOCKED) || (bhp->ref != 0 && pass < 2)) {
+		if (F_ISSET(bhp, BH_EXCLUSIVE)) {
 			MUTEX_UNLOCK(env, mutex);
 			if (!required_write) {
 				--remaining;
@@ -490,33 +483,28 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			continue;
 		}
 
-		/* Pin the buffer into memory and lock it. */
-		++bhp->ref;
-		F_SET(bhp, BH_LOCKED);
+		/* Pin the buffer into memory. */
+		atomic_inc(env, &bhp->ref);
+		MUTEX_UNLOCK(env, mutex);
+		MUTEX_READLOCK(env, bhp->mtx_buf);
+		DB_ASSERT(env, !F_ISSET(bhp, BH_EXCLUSIVE));
 
 		/*
-		 * If the buffer is referenced by another thread, set the sync
-		 * wait-for count (used to count down outstanding references to
-		 * this buffer as they are returned to the cache), then unlock
-		 * the hash bucket and wait for the count to go to 0.   No other
-		 * thread can acquire the buffer because we have it locked.
-		 *
-		 * If a thread attempts to re-pin a page, the wait-for count
-		 * will never go to 0 (that thread spins on our buffer lock,
-		 * while we spin on the thread's ref count).  Give up if we
-		 * don't get the buffer in 3 seconds, we'll try again later.
-		 *
-		 * If, when the wait-for count goes to 0, the buffer is found
-		 * to be dirty, write it.
+		 * When swapping the hash bucket mutex for the buffer mutex,
+		 * we may have raced with an MVCC update.  In that case, we
+		 * no longer have the most recent version, and need to retry
+		 * (the buffer header we have pinned will no longer be marked
+		 * dirty, so we can't just write it).
 		 */
-		bhp->ref_sync = bhp->ref - 1;
-		if (bhp->ref_sync != 0) {
-			MUTEX_UNLOCK(env, mutex);
-			for (wait_cnt = 1;
-			    bhp->ref_sync != 0 && wait_cnt < 4; ++wait_cnt)
-				__os_yield(env, 1, 0);
-			MUTEX_LOCK(env, mutex);
+		if (SH_CHAIN_HASNEXT(bhp, vc)) {
+			atomic_dec(env, &bhp->ref);
+			MUTEX_UNLOCK(env, bhp->mtx_buf);
+			continue;
 		}
+
+		/* we will dispose of this buffer. */
+		--remaining;
+		bharray[i].track_hp = NULL;
 
 		/*
 		 * If we've switched files, check to see if we're configured
@@ -533,19 +521,10 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		}
 
 		/*
-		 * If the ref_sync count has gone to 0, we're going to be done
-		 * with this buffer no matter what happens.
+		 * If the buffer is dirty, we write it.  We only try to
+		 * write the buffer once.
 		 */
-		if (bhp->ref_sync == 0) {
-			--remaining;
-			bharray[i].track_hp = NULL;
-		}
-
-		/*
-		 * If the ref_sync count has gone to 0 and the buffer is still
-		 * dirty, we write it.  We only try to write the buffer once.
-		 */
-		if (bhp->ref_sync == 0 && F_ISSET(bhp, BH_DIRTY)) {
+		if (F_ISSET(bhp, BH_DIRTY)) {
 			mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 			if ((t_ret =
 			    __memp_bhwrite(dbmp, hp, mfp, bhp, 1)) == 0) {
@@ -561,38 +540,15 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			}
 		}
 
-		/*
-		 * If ref_sync count never went to 0, the buffer was written
-		 * by another thread, or the write failed, we still have the
-		 * buffer locked.
-		 */
-		if (F_ISSET(bhp, BH_LOCKED))
-			F_CLR(bhp, BH_LOCKED);
-
-		/*
-		 * Reset the ref_sync count regardless of our success, we're
-		 * done with this buffer for now.
-		 */
-		bhp->ref_sync = 0;
-
 		/* Discard our buffer reference. */
-		--bhp->ref;
-
-		/*
-		 * If a thread of control is waiting in this hash bucket, wake
-		 * it up.
-		 */
-		if (F_ISSET(hp, IO_WAITER)) {
-			F_CLR(hp, IO_WAITER);
-			MUTEX_UNLOCK(env, hp->mtx_io);
-		}
-
-		/* Release the hash bucket mutex. */
-		MUTEX_UNLOCK(env, mutex);
+		DB_ASSERT(env, atomic_read(&bhp->ref) > 0);
+		atomic_dec(env, &bhp->ref);
+		MUTEX_UNLOCK(env, bhp->mtx_buf);
 
 		/* Check if the call has been interrupted. */
 		if (LF_ISSET(DB_SYNC_INTERRUPT_OK) &&
 		    FLD_ISSET(mp->config_flags, DB_MEMP_SYNC_INTERRUPT)) {
+			STAT(++mp->stat.st_sync_interrupted);
 			if (interruptedp != NULL)
 				*interruptedp = 1;
 			goto err;
@@ -858,7 +814,7 @@ __memp_mf_sync(dbmp, mfp, locked)
 	}
 
 	if ((ret = __db_appname(env, DB_APP_DATA,
-	    R_ADDR(dbmp->reginfo, mfp->path_off), 0, NULL, &rpath)) == 0) {
+	    R_ADDR(dbmp->reginfo, mfp->path_off), NULL, &rpath)) == 0) {
 		if ((ret = __os_open(env, rpath, 0, 0, 0, &fhp)) == 0) {
 			ret = __os_fsync(env, fhp);
 			if ((t_ret =

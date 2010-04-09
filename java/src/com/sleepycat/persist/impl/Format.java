@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Format.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -18,6 +18,10 @@ import java.util.Set;
 import com.sleepycat.persist.evolve.Converter;
 import com.sleepycat.persist.model.ClassMetadata;
 import com.sleepycat.persist.model.EntityMetadata;
+import com.sleepycat.persist.model.EntityModel;
+import com.sleepycat.persist.model.FieldMetadata;
+import com.sleepycat.persist.model.PrimaryKeyMetadata;
+import com.sleepycat.persist.model.SecondaryKeyMetadata;
 import com.sleepycat.persist.raw.RawField;
 import com.sleepycat.persist.raw.RawObject;
 import com.sleepycat.persist.raw.RawType;
@@ -339,7 +343,7 @@ public abstract class Format implements Reader, RawType, Serializable {
     /**
      * Returns the format ID.
      */
-    final int getId() {
+    public final int getId() {
         return id;
     }
 
@@ -511,7 +515,7 @@ public abstract class Format implements Reader, RawType, Serializable {
      * bidirectional dependencies.  This method will do nothing if the format
      * is already intialized.
      */
-    final void initializeIfNeeded(Catalog catalog) {
+    final void initializeIfNeeded(Catalog catalog, EntityModel model) {
         if (!initialized) {
             initialized = true;
             this.catalog = catalog;
@@ -535,10 +539,11 @@ public abstract class Format implements Reader, RawType, Serializable {
             }
 
             /* Perform subclass-specific initialization. */
-            initialize
-                (catalog, catalog.getInitVersion(this, false /*forReader*/));
+            initialize(catalog, model,
+                       catalog.getInitVersion(this, false /*forReader*/));
             reader.initializeReader
-                (catalog, catalog.getInitVersion(this, true /*forReader*/),
+                (catalog, model,
+                 catalog.getInitVersion(this, true /*forReader*/),
                  this);
         }
     }
@@ -548,6 +553,7 @@ public abstract class Format implements Reader, RawType, Serializable {
      * called when no separate Reader exists, and does nothing.
      */
     public void initializeReader(Catalog catalog,
+                                 EntityModel model,
                                  int initVersion,
                                  Format oldFormat) {
     }
@@ -639,6 +645,14 @@ public abstract class Format implements Reader, RawType, Serializable {
         return null;
     }
 
+    public ClassMetadata getClassMetadata() {
+        return null;
+    }
+
+    public EntityMetadata getEntityMetadata() {
+        return null;
+    }
+
     /* -- End of RawType methods. -- */
 
     /* -- Methods that may optionally be overridden by subclasses. -- */
@@ -680,26 +694,10 @@ public abstract class Format implements Reader, RawType, Serializable {
     }
 
     /**
-     * Returns the original model class metadata used to create this class, or
-     * null if this is not a model class.
-     */
-    ClassMetadata getClassMetadata() {
-        return null;
-    }
-
-    /**
-     * Returns the original model entity metadata used to create this class, or
-     * null if this is not an entity class.
-     */
-    EntityMetadata getEntityMetadata() {
-        return null;
-    }
-
-    /**
      * For an entity class or subclass, returns the base entity class; returns
      * null in other cases.
      */
-    Format getEntityFormat() {
+    ComplexFormat getEntityFormat() {
         return null;
     }
 
@@ -707,12 +705,17 @@ public abstract class Format implements Reader, RawType, Serializable {
      * Called for an existing format that may not equal the current format for
      * the same class.
      *
-     * <p>If this method returns true, then it must have determined that the
-     * old and new formats are equal, and it must have called either
-     * Evolver.useOldFormat or useEvolvedFormat.  If this method returns false,
-     * then it must have determined that the old format could not be evolved to
-     * the new format, and it must have called Evolver.addInvalidMutation,
-     * addMissingMutation or addEvolveError.</p>
+     * <p>If this method returns true, then it must have determined one of two
+     * things:
+     *  - that the old and new formats are equal, and it must have called
+     *  Evolver.useOldFormat; or
+     *  - that the old format can be evolved to the new format, and it must
+     *  have called Evolver.useEvolvedFormat.</p>
+     *
+     * <p>If this method returns false, then it must have determined that the
+     * old format could not be evolved to the new format, and it must have
+     * called Evolver.addInvalidMutation, addMissingMutation or
+     * addEvolveError.</p>
      */
     abstract boolean evolve(Format newFormat, Evolver evolver);
 
@@ -748,7 +751,9 @@ public abstract class Format implements Reader, RawType, Serializable {
      * Initializes an uninitialized format, initializing its related formats
      * (superclass formats and array component formats) first.
      */
-    abstract void initialize(Catalog catalog, int initVersion);
+    abstract void initialize(Catalog catalog,
+                             EntityModel model,
+                             int initVersion);
 
     /**
      * Calls catalog.createFormat for formats that this format depends on, or
@@ -926,11 +931,175 @@ public abstract class Format implements Reader, RawType, Serializable {
 
     @Override
     public String toString() {
-        return "[RawType class: " + getClassName() +
-               " version: " + getVersion() +
-               " internal: " + getClass().getName() +
-               ((reader != null) ?
-                   (" reader: " + reader.getClass().getName()) : "") +
-               ']';
+        final String INDENT = "  ";
+        final String INDENT2 = INDENT + "  ";
+        StringBuffer buf = new StringBuffer(500);
+        if (isSimple()) {
+            addTypeHeader(buf, "SimpleType");
+            buf.append(" primitive=\"");
+            buf.append(isPrimitive());
+            buf.append("\"/>\n");
+        } else if (isEnum()) {
+            addTypeHeader(buf, "EnumType");
+            buf.append(">\n");
+            for (String constant : getEnumConstants()) {
+                buf.append(INDENT);
+                buf.append("<Constant>");
+                buf.append(constant);
+                buf.append("</Constant>\n");
+            }
+            buf.append("</EnumType>\n");
+        } else if (isArray()) {
+            addTypeHeader(buf, "ArrayType");
+            buf.append(" componentId=\"");
+            buf.append(getComponentType().getVersion());
+            buf.append("\" componentClass=\"");
+            buf.append(getComponentType().getClassName());
+            buf.append("\" dimensions=\"");
+            buf.append(getDimensions());
+            buf.append("\"/>\n");
+        } else {
+            addTypeHeader(buf, "ComplexType");
+            Format superType = getSuperType();
+            if (superType != null) {
+                buf.append(" superTypeId=\"");
+                buf.append(superType.getId());
+                buf.append("\" superTypeClass=\"");
+                buf.append(superType.getClassName());
+                buf.append('"');
+            }
+            Format proxiedFormat = getProxiedFormat();
+            if (proxiedFormat != null) {
+                buf.append(" proxiedTypeId=\"");
+                buf.append(proxiedFormat.getId());
+                buf.append("\" proxiedTypeClass=\"");
+                buf.append(proxiedFormat.getClassName());
+                buf.append('"');
+            }
+            PrimaryKeyMetadata priMeta = null;
+            Map<String,SecondaryKeyMetadata> secondaryKeys = null;
+            List<FieldMetadata> compositeKeyFields = null;
+            ClassMetadata clsMeta = getClassMetadata();
+            if (clsMeta != null) {
+                compositeKeyFields = clsMeta.getCompositeKeyFields();
+                priMeta = clsMeta.getPrimaryKey();
+                secondaryKeys = clsMeta.getSecondaryKeys();
+            }
+            buf.append(" kind=\"");
+            buf.append(isEntity() ? "entity" :
+                       ((compositeKeyFields != null) ? "compositeKey" :
+                        "persistent"));
+            buf.append("\">\n");
+            Map<String, RawField> fields = getFields();
+            if (fields != null) {
+                for (RawField field : fields.values()) {
+                    String name = field.getName();
+                    RawType type = field.getType();
+                    buf.append(INDENT);
+                    buf.append("<Field");
+                    buf.append(" name=\"");
+                    buf.append(name);
+                    buf.append("\" typeId=\"");
+                    buf.append(type.getId());
+                    buf.append("\" typeClass=\"");
+                    buf.append(type.getClassName());
+                    buf.append('"');
+                    if (priMeta != null &&
+                        priMeta.getName().equals(name)) {
+                        buf.append(" primaryKey=\"true\"");
+                        if (priMeta.getSequenceName() != null) {
+                            buf.append(" sequence=\"");
+                            buf.append(priMeta.getSequenceName());
+                            buf.append('"');
+                        }
+                    }
+                    if (secondaryKeys != null) {
+                        SecondaryKeyMetadata secMeta =
+                            ComplexFormat.getSecondaryKeyMetadataByFieldName
+                                (secondaryKeys, name);
+                        if (secMeta != null) {
+                            buf.append(" secondaryKey=\"true\" keyName=\"");
+                            buf.append(secMeta.getKeyName());
+                            buf.append("\" relate=\"");
+                            buf.append(secMeta.getRelationship());
+                            buf.append('"');
+                            String related = secMeta.getRelatedEntity();
+                            if (related != null) {
+                                buf.append("\" relatedEntity=\"");
+                                buf.append(related);
+                                buf.append("\" onRelatedEntityDelete=\"");
+                                buf.append(secMeta.getDeleteAction());
+                                buf.append('"');
+                            }
+                        }
+                    }
+                    if (compositeKeyFields != null) {
+                        int nFields = compositeKeyFields.size();
+                        for (int i = 0; i < nFields; i += 1) {
+                            FieldMetadata fldMeta = compositeKeyFields.get(i);
+                            if (fldMeta.getName().equals(name)) {
+                                buf.append(" compositeKeyField=\"");
+                                buf.append(i + 1);
+                                buf.append('"');
+                            }
+                        }
+                    }
+                    buf.append("/>\n");
+                }
+                EntityMetadata entMeta = getEntityMetadata();
+                if (entMeta != null) {
+                    buf.append(INDENT);
+                    buf.append("<EntityKeys>\n");
+                    priMeta = entMeta.getPrimaryKey();
+                    if (priMeta != null) {
+                        buf.append(INDENT2);
+                        buf.append("<Primary class=\"");
+                        buf.append(priMeta.getDeclaringClassName());
+                        buf.append("\" field=\"");
+                        buf.append(priMeta.getName());
+                        buf.append("\"/>\n");
+                    }
+                    secondaryKeys = entMeta.getSecondaryKeys();
+                    if (secondaryKeys != null) {
+                        for (SecondaryKeyMetadata secMeta :
+                             secondaryKeys.values()) {
+                            buf.append(INDENT2);
+                            buf.append("<Secondary class=\"");
+                            buf.append(secMeta.getDeclaringClassName());
+                            buf.append("\" field=\"");
+                            buf.append(secMeta.getName());
+                            buf.append("\"/>\n");
+                        }
+                    }
+                    buf.append("</EntityKeys>\n");
+                }
+            }
+            buf.append("</ComplexType>\n");
+        }
+        return buf.toString();
+    }
+
+    private void addTypeHeader(StringBuffer buf, String elemName) {
+        buf.append('<');
+        buf.append(elemName);
+        buf.append(" id=\"");
+        buf.append(getId());
+        buf.append("\" class=\"");
+        buf.append(getClassName());
+        buf.append("\" version=\"");
+        buf.append(getVersion());
+        buf.append('"');
+        Format currVersion = getLatestVersion();
+        if (currVersion != null) {
+            buf.append(" currentVersionId=\"");
+            buf.append(currVersion.getId());
+            buf.append('"');
+        }
+        Format prevVersion = getPreviousVersion();
+        if (prevVersion != null) {
+            buf.append(" previousVersionId=\"");
+            buf.append(prevVersion.getId());
+            buf.append('"');
+        }
     }
 }

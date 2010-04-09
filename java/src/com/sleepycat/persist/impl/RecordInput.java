@@ -1,12 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: RecordInput.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.db.DatabaseEntry;
@@ -20,14 +23,34 @@ import com.sleepycat.db.DatabaseEntry;
  */
 class RecordInput extends TupleInput implements EntityInput {
 
+    /* Initial size of visited map. */
+    static final int VISITED_INIT_SIZE = 50;
+
+    /*
+     * Offset to indicate that the visited object is stored in the primary key
+     * byte array.
+     */
+    static final int PRI_KEY_VISITED_OFFSET = Integer.MAX_VALUE - 1;
+
+    /* Used by RecordOutput to prevent illegal nested references. */
+    static final int PROHIBIT_REF_OFFSET = Integer.MAX_VALUE - 2;
+
+    /* Used by RecordInput to prevent illegal nested references. */
+    static final Object PROHIBIT_REF_OBJECT = new Object();
+
+    static final String PROHIBIT_NESTED_REF_MSG =
+        "Cannot embed a reference to a proxied object in the proxy; for " +
+        "example, a collection may not be an element of the collection " +
+        "because collections are proxied";
+
     private Catalog catalog;
     private boolean rawAccess;
-    private VisitedObjects visited;
+    private Map<Integer,Object> visited;
     private DatabaseEntry priKeyEntry;
     private int priKeyFormatId;
 
     /**
-     * Creates a new input with a empty/null VisitedObjects set.
+     * Creates a new input with a empty/null visited map.
      */
     RecordInput(Catalog catalog,
                 boolean rawAccess,
@@ -91,7 +114,7 @@ class RecordInput extends TupleInput implements EntityInput {
     public Object readObject() {
 
         /* Save the current offset before reading the format ID. */
-        int visitedOffset = off;
+        Integer visitedOffset = off;
         RecordInput useInput = this;
         int formatId = readPackedInt();
         Object o = null;
@@ -105,11 +128,11 @@ class RecordInput extends TupleInput implements EntityInput {
         if (formatId < 0) {
             int offset = (-(formatId + 1));
             if (visited != null) {
-                o = visited.getObject(offset);
+                o = visited.get(offset);
             }
-            if (o == VisitedObjects.PROHIBIT_REF_OBJECT) {
+            if (o == RecordInput.PROHIBIT_REF_OBJECT) {
                 throw new IllegalArgumentException
-                    (VisitedObjects.PROHIBIT_NESTED_REF_MSG);
+                    (RecordInput.PROHIBIT_NESTED_REF_MSG);
             }
             if (o != null) {
                 /* Return a previously visited object. */
@@ -122,7 +145,7 @@ class RecordInput extends TupleInput implements EntityInput {
                  * happens when reading secondary key fields.
                  */
                 visitedOffset = offset;
-                if (offset == VisitedObjects.PRI_KEY_VISITED_OFFSET) {
+                if (offset == RecordInput.PRI_KEY_VISITED_OFFSET) {
                     assert priKeyEntry != null && priKeyFormatId > 0;
                     useInput = new RecordInput(this, priKeyEntry);
                     formatId = priKeyFormatId;
@@ -142,10 +165,9 @@ class RecordInput extends TupleInput implements EntityInput {
          * references to the parent object. [#15815]
          */
         if (visited == null) {
-            visited = new VisitedObjects();
+            visited = new HashMap<Integer,Object>(VISITED_INIT_SIZE);
         }
-        int visitedIndex =
-            visited.add(VisitedObjects.PROHIBIT_REF_OBJECT, visitedOffset);
+        visited.put(visitedOffset, RecordInput.PROHIBIT_REF_OBJECT);
 
         /* Create the object using the format indicated. */
         Format format = catalog.getFormat(formatId);
@@ -153,19 +175,19 @@ class RecordInput extends TupleInput implements EntityInput {
         o = reader.newInstance(useInput, rawAccess);
 
         /*
-         * Set the newly created object in the set of visited objects.  This
+         * Set the newly created object in the map of visited objects.  This
          * must be done before calling Reader.readObject, which allows the
          * object to contain a reference to itself.
          */
-        visited.setObject(visitedIndex, o);
+        visited.put(visitedOffset, o);
 
         /*
-         * Finish reading the object.  Then replace it in the visited list in
+         * Finish reading the object.  Then replace it in the visited map in
          * case a converted object is returned by readObject.
          */
         Object o2 = reader.readObject(o, useInput, rawAccess);
         if (o != o2) {
-            visited.replaceObject(o, o2);
+            visited.put(visitedOffset, o2);
         }
         return o2;
     }
@@ -196,7 +218,7 @@ class RecordInput extends TupleInput implements EntityInput {
             }
             if (formatId < 0) {
                 int offset = (-(formatId + 1));
-                if (offset == VisitedObjects.PRI_KEY_VISITED_OFFSET) {
+                if (offset == RecordInput.PRI_KEY_VISITED_OFFSET) {
                     assert priKeyEntry != null && priKeyFormatId > 0;
                     input = new RecordInput(this, priKeyEntry);
                     formatId = priKeyFormatId;
@@ -221,9 +243,9 @@ class RecordInput extends TupleInput implements EntityInput {
          * that the visited object is stored in the primary key byte array.
          */
         if (visited == null) {
-            visited = new VisitedObjects();
+            visited = new HashMap<Integer,Object>(VISITED_INIT_SIZE);
         }
-        visited.add(o, VisitedObjects.PRI_KEY_VISITED_OFFSET);
+        visited.put(RecordInput.PRI_KEY_VISITED_OFFSET, o);
     }
 
     /**

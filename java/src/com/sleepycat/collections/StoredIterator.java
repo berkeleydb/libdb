@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredIterator.java,v 12.9 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -49,7 +49,8 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public class StoredIterator implements BaseIterator, Cloneable {
+public class StoredIterator<E>
+    implements ListIterator<E>, BaseIterator<E>, Cloneable {
 
     /**
      * Closes the given iterator using {@link #close()} if it is a {@link
@@ -60,7 +61,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
      *
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is thrown.
      */
-    public static void close(Iterator i) {
+    public static void close(Iterator<?> i) {
 
         if (i instanceof StoredIterator) {
             ((StoredIterator) i).close();
@@ -72,16 +73,17 @@ public class StoredIterator implements BaseIterator, Cloneable {
     private static final int MOVE_FIRST = 3;
 
     private boolean lockForWrite;
-    private StoredCollection coll;
+    private StoredCollection<E> coll;
     private DataCursor cursor;
     private int toNext;
     private int toPrevious;
     private int toCurrent;
     private boolean writeAllowed;
     private boolean setAndRemoveAllowed;
-    private Object currentData;
+    private E currentData;
 
-    StoredIterator(StoredCollection coll, boolean writeAllowed,
+    StoredIterator(StoredCollection<E> coll,
+                   boolean writeAllowed,
                    DataCursor joinCursor) {
         try {
             this.coll = coll;
@@ -197,7 +199,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object next() {
+    public E next() {
 
         try {
             if (toNext != 0) {
@@ -230,7 +232,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object previous() {
+    public E previous() {
 
         try {
             if (toPrevious != 0) {
@@ -338,7 +340,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public void set(Object value) {
+    public void set(E value) {
 
         if (!coll.hasValues()) throw new UnsupportedOperationException();
         if (!setAndRemoveAllowed) throw new IllegalStateException();
@@ -415,7 +417,7 @@ public class StoredIterator implements BaseIterator, Cloneable {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public void add(Object value) {
+    public void add(E value) {
 
         coll.checkIterAddAllowed();
         try {
@@ -547,14 +549,17 @@ public class StoredIterator implements BaseIterator, Cloneable {
      *
      * @return the collection associated with this iterator.
      */
-    public final StoredCollection getCollection() {
+    public final StoredCollection<E> getCollection() {
 
         return coll;
     }
 
     // --- begin BaseIterator methods ---
 
-    public final ListIterator dup() {
+    /**
+     * Internal use only.
+     */
+    public final ListIterator<E> dup() {
 
         try {
             StoredIterator o = (StoredIterator) super.clone();
@@ -565,16 +570,23 @@ public class StoredIterator implements BaseIterator, Cloneable {
         }
     }
 
+    /**
+     * Internal use only.
+     */
     public final boolean isCurrentData(Object currentData) {
 
         return (this.currentData == currentData);
     }
 
+    /**
+     * Internal use only.
+     */
     public final boolean moveToIndex(int index) {
 
         try {
             OperationStatus status =
-                cursor.getSearchKey(new Integer(index), null, lockForWrite);
+                cursor.getSearchKey(Integer.valueOf(index),
+                                    null, lockForWrite);
             setAndRemoveAllowed = (status == OperationStatus.SUCCESS);
             return setAndRemoveAllowed;
         } catch (Exception e) {

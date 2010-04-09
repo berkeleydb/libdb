@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: PersistentProxy.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -79,8 +79,16 @@ import com.sleepycat.persist.raw.RawStore; // for javadoc
  *      Locale locale;
  *  }</pre>
  *
+ * <p>A proxied class may not be used as a superclass for a persistent class or
+ * entity class.  For example, the following is not allowed.</p>
+ * <pre class="code">
+ *  {@literal @Persistent}
+ *  class LocalizedText extends Locale { // NOT ALLOWED
+ *      String text;
+ *  }</pre>
+ *
  * <p>A proxy for proxied class P does not handle instances of subclasses of P.
- * To proxy subclasses of P, a separate proxy class is needed.</p>
+ * To proxy a subclass of P, a separate proxy class is needed.</p>
  *
  * <p>Several {@link <a href="Entity.html#proxyTypes">built in proxy types</a>}
  * are used implicitly.  An application defined proxy will be used instead of a
@@ -98,6 +106,8 @@ import com.sleepycat.persist.raw.RawStore; // for javadoc
  * added as an element of itself.  This should be avoided.  If an attempt to
  * store such an object is made, an {@code IllegalArgumentException} will be
  * thrown.</p>
+ *
+ * <p>Note that a proxy class may not be a subclass of an entity class.</p>
  *
  * @author Mark Hayes
  */

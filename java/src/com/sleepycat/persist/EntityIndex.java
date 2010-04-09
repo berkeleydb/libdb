@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EntityIndex.java,v 1.2 2008/04/28 23:11:22 sarette Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist;
@@ -16,11 +16,12 @@ import com.sleepycat.collections.StoredSortedMap;
 import com.sleepycat.db.CursorConfig;
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.DatabaseException; // for javadoc
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.DeadlockException; // for javadoc
 import com.sleepycat.db.LockMode;
-import com.sleepycat.db.SecondaryDatabase;
+import com.sleepycat.db.SecondaryDatabase; // for javadoc
 import com.sleepycat.db.Transaction;
 
 /**
@@ -466,7 +467,7 @@ import com.sleepycat.db.Transaction;
  * by other threads or other transactions while performing this query.  {@link
  * LockMode#READ_UNCOMMITTED} can be used to perform the retrievals without
  * acquiring any locks.  This reduces memory consumption, does less processing,
- * and can improve concurrency.</p>
+ * and improves concurrency.</p>
  *
  * <pre class="code">
  * {@code EntityCursor<Employee>} cursor = primaryIndex.entities(txn, null);
@@ -500,48 +501,64 @@ import com.sleepycat.db.Transaction;
  *     cursor.close();
  * }</pre>
  *
+ *
  * <p>The use of other lock modes, cursor configuration, and transaction
  * configuration are discussed in <a
  * href="{@docRoot}/../gsg_txn/JAVA/index.html">Writing
  * Transactional Applications</a>.</p>
  *
- * <p>Deadlock handling is another important topic discussed in <a
+ * <a name="retries"><h3>Performing Transaction Retries</h3></a>
+ *
+ * <p>Lock conflict handling is another important topic discussed in <a
  * href="{@docRoot}/../gsg_txn/JAVA/index.html">Writing
  * Transactional Applications</a>.  To go along with that material, here we
- * show a deadlock handling loop in the context of the Direct Persistence
+ * show a lock conflict handling loop in the context of the Direct Persistence
  * Layer.  The example below shows deleting all entities in a primary index in
- * a single transaction.  If a deadlock occurs, the transaction is aborted and
- * the operation is retried.</p>
+ * a single transaction.  If a lock conflict occurs, the transaction is aborted
+ * and the operation is retried.</p>
+ *
  *
  * <pre class="code">
- * int retryCount = 0;
- * boolean retry = true;
- * while (retry) {
- *     Transaction txn = env.beginTransaction(null, null);
- *     {@code EntityCursor<Employee>} cursor = null;
- *     try {
- *         cursor = primaryIndex.entities(txn, null);
- *         for (Employee entity : cursor) {
- *             cursor.delete();
- *         }
- *         cursor.close();
- *         cursor = null;
- *         txn.commit();
- *         txn = null;
- *         retry = false;
- *     } catch (DeadlockException e) {
- *         retryCount += 1;
- *         if (retryCount &gt;= MAX_DEADLOCK_RETRIES) {
- *             throw e;
- *         }
- *     } finally {
- *         if (cursor != null) {
- *             cursor.close();
- *         }
- *         if (txn != null) {
- *             txn.abort();
- *         }
- *     }
+ *  void doTransaction(final Environment env,
+ *                     final {@code PrimaryIndex<Long, Employee>} primaryIndex,
+ *                     final int maxTries)
+ *      throws DatabaseException {
+ *
+ *      boolean success = false;
+ *      for (int tries = 0; !success &amp;&amp; tries &lt; maxTries; tries++) {
+ *          try {
+ *              if (tries &gt; 0) {
+ *                  // May sleep for a short interval here ...
+ *              }
+ *              final Transaction txn = env.beginTransaction(null, null);
+ *              try {
+ *                  final {@code EntityCursor<Employee>} cursor =
+ *                      primaryIndex.entities(txn, null);
+ *                  try {
+ *                      // Perform read and write operations here ...
+ *                      for (Employee entity : cursor) {
+ *                          cursor.delete();
+ *                      }
+ *                      success = true;
+ *                  } finally {
+ *                      cursor.close();
+ *                  }
+ *              } finally {
+ *                  if (success) {
+ *                      txn.commit();
+ *                  } else {
+ *                      txn.abort();
+ *                  }
+ *              }
+ *          } catch (DeadlockException e) {
+ *              success = false;
+ *          }
+ *      }
+ *      if (success) {
+ *          // Transaction was committed.
+ *      } else {
+ *          // Maximum retry count was exceeded.
+ *      }
  *  }</pre>
  *
  * <h3>Low Level Access</h3>
@@ -572,6 +589,7 @@ public interface EntityIndex<K,V> {
      * <p>The operation will not be transaction protected, and {@link
      * LockMode#DEFAULT} is used implicitly.</p>
      *
+     *
      * @param key the key to search for.
      *
      * @return whether the key exists in the index.
@@ -581,6 +599,7 @@ public interface EntityIndex<K,V> {
 
     /**
      * Checks for existence of a key in this index.
+     *
      *
      * @param txn the transaction used to protect this operation, or null
      * if the operation should not be transaction protected.
@@ -672,6 +691,7 @@ public interface EntityIndex<K,V> {
      * store is transactional, the cursor may not be used to update or delete
      * entities.</p>
      *
+     *
      * @return the cursor.
      */
     EntityCursor<K> keys()
@@ -679,6 +699,7 @@ public interface EntityIndex<K,V> {
 
     /**
      * Opens a cursor for traversing all keys in this index.
+     *
      *
      * @param txn the transaction used to protect all operations performed with
      * the cursor, or null if the operations should not be transaction
@@ -733,6 +754,7 @@ public interface EntityIndex<K,V> {
      * store is transactional, the cursor may not be used to update or delete
      * entities.</p>
      *
+     *
      * @param fromKey is the lower bound of the key range, or null if the range
      * has no lower bound.
      *
@@ -757,6 +779,7 @@ public interface EntityIndex<K,V> {
 
     /**
      * Opens a cursor for traversing keys in a key range.
+     *
      *
      * @param txn the transaction used to protect all operations performed with
      * the cursor, or null if the operations should not be transaction

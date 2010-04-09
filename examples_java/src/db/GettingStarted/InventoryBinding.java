@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 // File: InventoryBinding.java
 
 package db.GettingStarted;

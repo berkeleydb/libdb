@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-Creating Tuple-Serial Entity Bindings
-</title>
+    <title>Creating Tuple-Serial Entity Bindings</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Tuple.html" title="Chapter 5. &#10;&#9;&#9;Using Tuples&#10;&#9;" />
-    <link rel="previous" href="tuplekeybindings.html" title="&#10;&#9;&#9;Creating Tuple Key Bindings&#10;&#9;" />
-    <link rel="next" href="sortedcollections.html" title="&#10;&#9;&#9;Using Sorted Collections&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Tuple.html" title="Chapter 5.  Using Tuples" />
+    <link rel="prev" href="tuplekeybindings.html" title="Creating Tuple Key Bindings" />
+    <link rel="next" href="sortedcollections.html" title="Using Sorted Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -40,72 +38,71 @@ Creating Tuple-Serial Entity Bindings
 </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 In the prior example serial keys and serial values were used,
 and the 
-<a href="../../java/com/sleepycat/bind/serial/SerialSerialBinding.html" target="_top">SerialSerialBinding</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialSerialBinding.html" target="_top">SerialSerialBinding</a>
 
 base class was used for entity bindings. In this example, tuple
 keys and serial values are used and therefore the 
-<a href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html" target="_top">TupleSerialBinding</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html" target="_top">TupleSerialBinding</a>
 
 base class is used for entity bindings.
 </p>
       <p>
 As with any entity binding, a key and value is converted to an
 entity in the 
-<a href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#entryToObject(com.sleepycat.bind.tuple.TupleInput,%20java.lang.Object)" target="_top">TupleSerialBinding.entryToObject</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#entryToObject(com.sleepycat.bind.tuple.TupleInput,%20java.lang.Object)" target="_top">TupleSerialBinding.entryToObject</a>
 
 method, and from an entity to
 a key and value in the 
-<a href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#objectToKey(java.lang.Object,%20com.sleepycat.db.DatabaseEntry)" target="_top">TupleSerialBinding.objectToKey</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#objectToKey(java.lang.Object,%20com.sleepycat.db.DatabaseEntry)" target="_top">TupleSerialBinding.objectToKey</a>
 
 and 
-<a href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#objectToData(java.lang.Object)" target="_top">TupleSerialBinding.objectToData</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html#objectToData(java.lang.Object)" target="_top">TupleSerialBinding.objectToData</a>
 
 methods. But since keys are
 stored as tuples, not as serialized objects, key fields are read
 and written using the 
-<a href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
 
 and 
-<a href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
+<a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
 
 parameters.
 </p>
       <p>
-The <tt class="classname">SampleViews</tt> class contains the modified entity
+The <code class="classname">SampleViews</code> class contains the modified entity
 binding classes that were defined in the prior example:
-<tt class="classname">PartBinding</tt>, <tt class="classname">SupplierBinding</tt> and
-<tt class="classname">ShipmentBinding</tt>.
+<code class="classname">PartBinding</code>, <code class="classname">SupplierBinding</code> and
+<code class="classname">ShipmentBinding</code>.
 </p>
       <a id="tuple_partbinding"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.serial.TupleSerialBinding;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.serial.TupleSerialBinding;
 import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.bind.tuple.TupleOutput;
-...</tt></b>
+...</code></strong>
 public class SampleViews
 {
     ...
-    private static class PartBinding extends <b class="userinput"><tt>TupleSerialBinding</tt></b> 
+    private static class PartBinding extends <strong class="userinput"><code>TupleSerialBinding</code></strong> 
     {
-        private PartBinding(ClassCatalog classCatalog, <b class="userinput"><tt>Class dataClass</tt></b>)
+        private PartBinding(ClassCatalog classCatalog, <strong class="userinput"><code>Class dataClass</code></strong>)
         {
             super(classCatalog, dataClass);
         }
-        public Object entryToObject(<b class="userinput"><tt>TupleInput</tt></b> keyInput, Object dataInput)
+        public Object entryToObject(<strong class="userinput"><code>TupleInput</code></strong> keyInput, Object dataInput)
         {
-<b class="userinput"><tt>            String number = keyInput.readString();</tt></b>
+<strong class="userinput"><code>            String number = keyInput.readString();</code></strong>
             PartData data = (PartData) dataInput;
-            return new Part(<b class="userinput"><tt>number</tt></b>, data.getName(), data.getColor(),
+            return new Part(<strong class="userinput"><code>number</code></strong>, data.getName(), data.getColor(),
                             data.getWeight(), data.getCity());
         }
         public void objectToKey(Object object, TupleOutput output)
         {
             Part part = (Part) object;
-<b class="userinput"><tt>            output.writeString(part.getNumber());</tt></b>
+<strong class="userinput"><code>            output.writeString(part.getNumber());</code></strong>
         }
         public Object objectToData(Object object)
         {
@@ -115,23 +112,23 @@ public class SampleViews
         }
     }
     ...
-    private static class SupplierBinding extends <b class="userinput"><tt>TupleSerialBinding</tt></b>
+    private static class SupplierBinding extends <strong class="userinput"><code>TupleSerialBinding</code></strong>
     {
-        private SupplierBinding(ClassCatalog classCatalog, <b class="userinput"><tt>Class dataClass</tt></b>)
+        private SupplierBinding(ClassCatalog classCatalog, <strong class="userinput"><code>Class dataClass</code></strong>)
         {
             super(classCatalog, dataClass);
         }
-        public Object entryToObject(<b class="userinput"><tt>TupleInput</tt></b> keyInput, Object dataInput)
+        public Object entryToObject(<strong class="userinput"><code>TupleInput</code></strong> keyInput, Object dataInput)
         {
-<b class="userinput"><tt>            String number = keyInput.readString();</tt></b>
+<strong class="userinput"><code>            String number = keyInput.readString();</code></strong>
             SupplierData data = (SupplierData) dataInput;
-            return new Supplier(<b class="userinput"><tt>number</tt></b>, data.getName(),
+            return new Supplier(<strong class="userinput"><code>number</code></strong>, data.getName(),
                                 data.getStatus(), data.getCity());
         }
         public void objectToKey(Object object, TupleOutput output)
         {
             Supplier supplier = (Supplier) object;
-<b class="userinput"><tt>            output.writeString(supplier.getNumber());</tt></b>
+<strong class="userinput"><code>            output.writeString(supplier.getNumber());</code></strong>
         }
         public Object objectToData(Object object)
         {
@@ -141,25 +138,25 @@ public class SampleViews
         }
     }
     ...
-    private static class ShipmentBinding extends <b class="userinput"><tt>TupleSerialBinding</tt></b>
+    private static class ShipmentBinding extends <strong class="userinput"><code>TupleSerialBinding</code></strong>
     {
-        private ShipmentBinding(ClassCatalog classCatalog, <b class="userinput"><tt>Class dataClass</tt></b>)
+        private ShipmentBinding(ClassCatalog classCatalog, <strong class="userinput"><code>Class dataClass</code></strong>)
         {
             super(classCatalog, dataClass);
         }
-        public Object entryToObject(<b class="userinput"><tt>TupleInput</tt></b> keyInput, Object dataInput)
+        public Object entryToObject(<strong class="userinput"><code>TupleInput</code></strong> keyInput, Object dataInput)
         {
-<b class="userinput"><tt>            String partNumber = keyInput.readString();
-            String supplierNumber = keyInput.readString();</tt></b>
+<strong class="userinput"><code>            String partNumber = keyInput.readString();
+            String supplierNumber = keyInput.readString();</code></strong>
             ShipmentData data = (ShipmentData) dataInput;
-            return new Shipment(<b class="userinput"><tt>partNumber, supplierNumber</tt></b>,
+            return new Shipment(<strong class="userinput"><code>partNumber, supplierNumber</code></strong>,
                                 data.getQuantity());
         }
         public void objectToKey(Object object, TupleOutput output)
         {
             Shipment shipment = (Shipment) object;
-<b class="userinput"><tt>            output.writeString(shipment.getPartNumber());
-            output.writeString(shipment.getSupplierNumber());</tt></b>
+<strong class="userinput"><code>            output.writeString(shipment.getPartNumber());
+            output.writeString(shipment.getSupplierNumber());</code></strong>
         }
         public Object objectToData(Object object)
         {

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_region.c,v 12.24 2008/03/13 14:41:19 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -149,12 +149,12 @@ __lock_open(env, create_ok)
 
 	return (0);
 
-err:	env->lk_handle = NULL;
-	if (lt->reginfo.addr != NULL) {
+err:	if (lt->reginfo.addr != NULL) {
 		if (region_locked)
 			LOCK_REGION_UNLOCK(env);
 		(void)__env_region_detach(env, &lt->reginfo, 0);
 	}
+	env->lk_handle = NULL;
 
 	__os_free(env, lt);
 	return (ret);
@@ -215,14 +215,14 @@ __lock_region_init(env, lt)
 	region->locker_t_size = __db_tablesize(dbenv->lk_max_lockers);
 	region->object_t_size = __db_tablesize(dbenv->lk_max_objects);
 	region->part_t_size = dbenv->lk_partitions;
+	region->lock_id = 0;
+	region->cur_maxid = DB_LOCK_MAXID;
+	region->nmodes = lk_modes;
 	memset(&region->stat, 0, sizeof(region->stat));
-	region->stat.st_id = 0;
-	region->stat.st_cur_maxid = DB_LOCK_MAXID;
 	region->stat.st_maxlocks = dbenv->lk_max;
 	region->stat.st_maxlockers = dbenv->lk_max_lockers;
 	region->stat.st_maxobjects = dbenv->lk_max_objects;
 	region->stat.st_partitions = dbenv->lk_partitions;
-	region->stat.st_nmodes = lk_modes;
 
 	/* Allocate room for the conflict matrix and initialize it. */
 	if ((ret = __env_alloc(
@@ -331,6 +331,7 @@ mem_err:		__db_errx(env,
 		    &region->free_lockers, lidp, links, __db_locker);
 	}
 
+	lt->reginfo.mtx_alloc = region->mtx_region;
 	return (0);
 }
 
@@ -363,6 +364,7 @@ __lock_env_refresh(env)
 	 * owned by any particular process.
 	 */
 	if (F_ISSET(env, ENV_PRIVATE)) {
+		reginfo->mtx_alloc = MUTEX_INVALID;
 		/* Discard the conflict matrix. */
 		__env_alloc_free(reginfo, R_ADDR(reginfo, lr->conf_off));
 

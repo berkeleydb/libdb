@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: ByteArrayBinding.java,v 12.7 2008/01/08 20:58:35 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind;
@@ -16,7 +16,7 @@ import com.sleepycat.db.DatabaseEntry;
  *
  * @author Mark Hayes
  */
-public class ByteArrayBinding implements EntryBinding {
+public class ByteArrayBinding implements EntryBinding<byte[]> {
 
     /*
      * We can return the same byte[] for 0 length arrays.
@@ -30,7 +30,7 @@ public class ByteArrayBinding implements EntryBinding {
     }
 
     // javadoc is inherited
-    public Object entryToObject(DatabaseEntry entry) {
+    public byte[] entryToObject(DatabaseEntry entry) {
 
 	int len = entry.getSize();
 	if (len == 0) {
@@ -44,9 +44,8 @@ public class ByteArrayBinding implements EntryBinding {
     }
 
     // javadoc is inherited
-    public void objectToEntry(Object object, DatabaseEntry entry) {
+    public void objectToEntry(byte[] object, DatabaseEntry entry) {
 
-        byte[] bytes = (byte[]) object;
-        entry.setData(bytes, 0, bytes.length);
+        entry.setData(object, 0, object.length);
     }
 }

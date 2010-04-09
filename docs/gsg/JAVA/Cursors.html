@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 9. Using Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="baseapi.html" title="Part II. Programming with the Base API" />
-    <link rel="previous" href="dbtJavaUsage.html" title="Database Usage Example" />
+    <link rel="prev" href="dbtJavaUsage.html" title="Database Usage Example" />
     <link rel="next" href="Positioning.html" title="Getting Records Using the Cursor" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="Cursors"></a>Chapter 9. Using Cursors</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -106,19 +105,18 @@
               <h2 class="title" style="clear: both"><a id="openCursor"></a>Opening and Closing Cursors</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-		To use a cursor, you must open it using the <tt class="methodname">Database.openCursor()</tt> 
+		To use a cursor, you must open it using the <code class="methodname">Database.openCursor()</code> 
 		method. When you open a
-		cursor, you can optionally pass it a <tt class="classname">CursorConfig</tt> 
+		cursor, you can optionally pass it a <code class="classname">CursorConfig</code> 
 		object to set cursor properties. 
         
         <span>
                 The cursor properties that you can set allows you to
                 control the isolation level that the cursor will obey. See
                 the
-                <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide for more
+                <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em> guide for more
                 information.
         </span>
 	</p>
@@ -146,11 +144,11 @@ try {
     // Exception handling goes here ...
 }</pre>
         <p>
-        To close the cursor, call the <tt class="methodname">Cursor.close()</tt>
+        To close the cursor, call the <code class="methodname">Cursor.close()</code>
         method. Note that if you close a database that has cursors open in it,
         then it will throw an exception and close any open cursors for you. 
         For best results, close your cursors from within a 
-        <tt class="literal">finally</tt> block.
+        <code class="literal">finally</code> block.
         
     </p>
         <a id="java_cursor2"></a>

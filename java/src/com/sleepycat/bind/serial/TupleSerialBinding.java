@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleSerialBinding.java,v 12.7 2008/01/08 20:58:35 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial;
@@ -28,12 +28,14 @@ import com.sleepycat.db.DatabaseEntry;
  * <li> {@link #objectToData(Object)} </li>
  * </ul>
  *
+ * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
+ *
  * @author Mark Hayes
  */
-public abstract class TupleSerialBinding extends TupleBase
-    implements EntityBinding {
+public abstract class TupleSerialBinding<D,E> extends TupleBase
+    implements EntityBinding<E> {
 
-    protected SerialBinding dataBinding;
+    protected SerialBinding<D> dataBinding;
 
     /**
      * Creates a tuple-serial entity binding.
@@ -44,9 +46,9 @@ public abstract class TupleSerialBinding extends TupleBase
      * @param baseClass is the base class.
      */
     public TupleSerialBinding(ClassCatalog classCatalog,
-                              Class baseClass) {
+                              Class<D> baseClass) {
 
-        this(new SerialBinding(classCatalog, baseClass));
+        this(new SerialBinding<D>(classCatalog, baseClass));
     }
 
     /**
@@ -54,20 +56,20 @@ public abstract class TupleSerialBinding extends TupleBase
      *
      * @param dataBinding is the data binding.
      */
-    public TupleSerialBinding(SerialBinding dataBinding) {
+    public TupleSerialBinding(SerialBinding<D> dataBinding) {
 
         this.dataBinding = dataBinding;
     }
 
     // javadoc is inherited
-    public Object entryToObject(DatabaseEntry key, DatabaseEntry data) {
+    public E entryToObject(DatabaseEntry key, DatabaseEntry data) {
 
         return entryToObject(entryToInput(key),
                              dataBinding.entryToObject(data));
     }
 
     // javadoc is inherited
-    public void objectToKey(Object object, DatabaseEntry key) {
+    public void objectToKey(E object, DatabaseEntry key) {
 
         TupleOutput output = getTupleOutput(object);
         objectToKey(object, output);
@@ -75,10 +77,10 @@ public abstract class TupleSerialBinding extends TupleBase
     }
 
     // javadoc is inherited
-    public void objectToData(Object object, DatabaseEntry data) {
+    public void objectToData(E object, DatabaseEntry data) {
 
-        object = objectToData(object);
-        dataBinding.objectToEntry(object, data);
+        D dataObject = objectToData(object);
+        dataBinding.objectToEntry(dataObject, data);
     }
 
     /**
@@ -91,8 +93,7 @@ public abstract class TupleSerialBinding extends TupleBase
      *
      * @return the entity object constructed from the key and data.
      */
-    public abstract Object entryToObject(TupleInput keyInput,
-                                         Object dataInput);
+    public abstract E entryToObject(TupleInput keyInput, D dataInput);
 
     /**
      * Extracts a key tuple from an entity object.
@@ -102,7 +103,7 @@ public abstract class TupleSerialBinding extends TupleBase
      * @param keyOutput is the {@link TupleOutput} to which the key should be
      * written.
      */
-    public abstract void objectToKey(Object object, TupleOutput keyOutput);
+    public abstract void objectToKey(E object, TupleOutput keyOutput);
 
     /**
      * Extracts a data object from an entity object.
@@ -111,5 +112,5 @@ public abstract class TupleSerialBinding extends TupleBase
      *
      * @return the deserialized data object.
      */
-    public abstract Object objectToData(Object object);
+    public abstract D objectToData(E object);
 }

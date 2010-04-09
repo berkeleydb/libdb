@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2008 Oracle.  All rights reserved.
+# Copyright (c) 2002-2009 Oracle.  All rights reserved.
 #
-# $Id: rep067.tcl,v 1.11 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep067
 # TEST	Replication election test with large timeouts.
@@ -23,6 +23,9 @@
 proc rep067 { method args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -43,12 +46,28 @@ proc rep067 { method args } {
 	set nclients 3
 	set logsets [create_logsets [expr $nclients + 1]]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# We don't want to run this with -recover - it takes too
 	# long and doesn't cover any new ground.
 	set recargs ""
 	foreach l $logsets {
-		puts "Rep$tnum ($recargs): Replication election\
-		    mixed long timeouts with $nclients clients."
+		puts "Rep$tnum ($recargs): Replication election mixed\
+		    long timeouts with $nclients clients $msg $msg2."
 		puts -nonewline "Rep$tnum: Started at: "
 		puts [clock format [clock seconds] -format "%H:%M %D"]
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
@@ -65,12 +84,18 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 	source ./include.tcl
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -95,7 +120,7 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_logargs $verbargs -errpfx MASTER \
 	    $m_txnargs -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -108,7 +133,7 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create \
-		    -event rep_event -home $clientdir($i) \
+		    -event rep_event $repmemargs -home $clientdir($i) \
 		    $c_logargs($i) $c_txnargs($i) -rep_client $verbargs \
 		    -errpfx CLIENT.$i -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i) $recargs]
@@ -117,9 +142,10 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 
 	# Process startup messages
 	process_msgs $envlist
+
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
 	# Process all the messages and close the master.
 	process_msgs $envlist
@@ -177,6 +203,7 @@ proc rep067_elect { ecmd celist qdir msg count \
     winner lsn_lose elist quorum logset} {
 	global elect_timeout elect_serial
 	global timeout_ok
+	global databases_in_memory
 	upvar $ecmd env_cmd
 	upvar $celist envlist
 	upvar $winner win
@@ -265,9 +292,15 @@ proc rep067_elect { ecmd celist qdir msg count \
 		set nsites [expr $nclients + 1]
 	}
 	set nvotes $nclients
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+	
 	run_election env_cmd envlist err_cmd pri crash \
 	    $qdir $msg $elector $nsites $nvotes $nclients $win \
-	    0 "test.db" 0 $timeout_ok
+	    0 $dbname 0 $timeout_ok
 	#
 	# Sometimes test elections with an existing master.
 	# Other times test elections without master by closing the

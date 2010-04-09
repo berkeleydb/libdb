@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Auto Commit</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
-    <link rel="previous" href="abortresults.html" title="Aborting a Transaction" />
+    <link rel="prev" href="abortresults.html" title="Aborting a Transaction" />
     <link rel="next" href="nestedtxn.html" title="Nested Transactions" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="autocommit"></a>Auto Commit</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             While transactions are frequently used to provide atomicity to
@@ -57,19 +56,19 @@
                         Open your environment and your databases 
                         
                         so that they support
-                    transactions.  See <a href="enabletxn.html">Enabling Transactions</a> 
+                    transactions.  See <a class="xref" href="enabletxn.html" title="Chapter 2. Enabling Transactions">Enabling Transactions</a> 
                     for details.
                 </p>
             <p>
                     Note that frequently auto commit is used for the environment
                     or database open.  To use auto commit for either your
                     environment or database open, specify 
-                    <tt class="literal">DB_AUTO_COMMIT</tt> to the 
+                    <code class="literal">DB_AUTO_COMMIT</code> to the 
 
-                    <tt class="methodname">DB_ENV-&gt;set_flags()</tt>
+                    <code class="methodname">DB_ENV-&gt;set_flags()</code>
                     
                     or
-                    <tt class="methodname">DB-&gt;open()</tt>
+                    <code class="methodname">DB-&gt;open()</code>
                     
                     method. If you specify auto commit for the environment
                     open, then you do not need to also specify auto commit
@@ -90,9 +89,18 @@
             Note that auto commit is not available for cursors. You must always
             open your cursor using a transaction if you want the cursor's
             operations to be transactional protected. See 
-            <a href="txncursor.html">Transactional Cursors</a> for details on using
+            <a class="xref" href="txncursor.html" title="Transactional Cursors">Transactional Cursors</a> for details on using
             transactional cursors.
         </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                Never have more than one active transaction in your thread
+                at a time. This is especially a problem if you mix an
+                explicit transaction with another operation that uses auto
+                commit. Doing so can result in undetectable deadlocks.
+            </p>
+      </div>
       <p>
             For example, the following uses auto commit to perform the database write operation:
         </p>

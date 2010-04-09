@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_region.c,v 12.55 2008/01/11 20:50:03 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -79,6 +79,7 @@ __rep_open(env)
 		rep->master_id = DB_EID_INVALID;
 		rep->gen = 0;
 		rep->version = DB_REPVERSION;
+		rep->config = db_rep->config;
 		if ((ret = __rep_gen_init(env, rep)) != 0)
 			return (ret);
 		if ((ret = __rep_egen_init(env, rep)) != 0)
@@ -88,7 +89,6 @@ __rep_open(env)
 		rep->request_gap = db_rep->request_gap;
 		rep->max_gap = db_rep->max_gap;
 		rep->config_nsites = db_rep->config_nsites;
-		rep->config = db_rep->config;
 		rep->elect_timeout = db_rep->elect_timeout;
 		rep->full_elect_timeout = db_rep->full_elect_timeout;
 		rep->lease_timeout = db_rep->lease_timeout;
@@ -101,13 +101,41 @@ __rep_open(env)
 
 		F_SET(rep, REP_F_NOARCHIVE);
 
+		/* Copy application type flags if set before env open. */
+		if (F_ISSET(db_rep, DBREP_APP_REPMGR))
+			F_SET(rep, REP_F_APP_REPMGR);
+		if (F_ISSET(db_rep, DBREP_APP_BASEAPI))
+			F_SET(rep, REP_F_APP_BASEAPI);
+
 		/* Initialize encapsulating region. */
 		renv->rep_off = R_OFFSET(infop, rep);
 		(void)time(&renv->rep_timestamp);
 		renv->op_timestamp = 0;
 		F_CLR(renv, DB_REGENV_REPLOCKED);
-	} else
+
+#ifdef HAVE_REPLICATION_THREADS
+		if ((ret = __repmgr_open(env, rep)) != 0)
+			return (ret);
+#endif
+	} else {
 		rep = R_ADDR(infop, renv->rep_off);
+		/*
+		 * Prevent an application type mismatch between a process
+		 * and the environment it is trying to join.
+		 */
+		if ((F_ISSET(db_rep, DBREP_APP_REPMGR) &&
+		    F_ISSET(rep, REP_F_APP_BASEAPI)) ||
+		    (F_ISSET(db_rep, DBREP_APP_BASEAPI) &&
+		    F_ISSET(rep, REP_F_APP_REPMGR))) {
+			__db_errx(env,
+"Application type mismatch for a replication process joining the environment");
+			return (EINVAL);
+		}
+#ifdef HAVE_REPLICATION_THREADS
+		if ((ret = __repmgr_join(env, rep)) != 0)
+			return (ret);
+#endif
+	}
 
 	db_rep->region = rep;
 
@@ -145,6 +173,10 @@ __rep_env_refresh(env)
 		F_CLR(rep, REP_F_GROUP_ESTD);
 		F_CLR(rep, REP_F_START_CALLED);
 	}
+
+#ifdef HAVE_REPLICATION_THREADS
+	ret = __repmgr_env_refresh(env);
+#endif
 
 	/*
 	 * If a private region, return the memory to the heap.  Not needed for
@@ -187,7 +219,7 @@ __rep_env_close(env)
 	int ret, t_ret;
 
 	ret = __rep_preclose(env);
-	if ((t_ret = __rep_closefiles(env, 0)) != 0 && ret == 0)
+	if ((t_ret = __rep_closefiles(env)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -262,12 +294,11 @@ out:	MUTEX_UNLOCK(env, db_rep->region->mtx_clientdb);
  *	be called from __env_close and we need to check if the env,
  *	handles and regions are set up, or not.
  *
- * PUBLIC: int __rep_closefiles __P((ENV *, int));
+ * PUBLIC: int __rep_closefiles __P((ENV *));
  */
 int
-__rep_closefiles(env, do_restored)
+__rep_closefiles(env)
 	ENV *env;
-	int do_restored;
 {
 	DB_LOG *dblp;
 	DB_REP *db_rep;
@@ -282,7 +313,7 @@ __rep_closefiles(env, do_restored)
 		return (ret);
 	if (dblp == NULL)
 		return (ret);
-	if ((ret = __dbreg_close_files(env, do_restored)) == 0)
+	if ((ret = __dbreg_close_files(env, 0)) == 0)
 		F_CLR(db_rep, DBREP_OPENFILES);
 
 	return (ret);
@@ -305,15 +336,15 @@ __rep_egen_init(env, rep)
 	size_t cnt;
 	char *p;
 
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, REP_EGENNAME, 0, NULL, &p)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, REP_EGENNAME, NULL, &p)) != 0)
 		return (ret);
 	/*
 	 * If the file doesn't exist, create it now and initialize with 1.
 	 */
 	if (__os_exists(env, p, NULL) != 0) {
 		rep->egen = rep->gen + 1;
-		if ((ret = __rep_write_egen(env, rep->egen)) != 0)
+		if ((ret = __rep_write_egen(env, rep, rep->egen)) != 0)
 			goto err;
 	} else {
 		/*
@@ -337,11 +368,12 @@ err:	__os_free(env, p);
  * __rep_write_egen --
  *	Write out the egen into the env file.
  *
- * PUBLIC: int __rep_write_egen __P((ENV *, u_int32_t));
+ * PUBLIC: int __rep_write_egen __P((ENV *, REP *, u_int32_t));
  */
 int
-__rep_write_egen(env, egen)
+__rep_write_egen(env, rep, egen)
 	ENV *env;
+	REP *rep;
 	u_int32_t egen;
 {
 	DB_FH *fhp;
@@ -349,8 +381,16 @@ __rep_write_egen(env, egen)
 	size_t cnt;
 	char *p;
 
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, REP_EGENNAME, 0, NULL, &p)) != 0)
+	/*
+	 * If running in-memory replication, return without any file
+	 * operations.
+	 */
+	if (FLD_ISSET(rep->config, REP_C_INMEM)) {
+		return (0);
+	}
+
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, REP_EGENNAME, NULL, &p)) != 0)
 		return (ret);
 	if ((ret = __os_open(
 	    env, p, 0, DB_OSO_CREATE | DB_OSO_TRUNC, DB_MODE_600, &fhp)) == 0) {
@@ -380,15 +420,15 @@ __rep_gen_init(env, rep)
 	size_t cnt;
 	char *p;
 
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, REP_GENNAME, 0, NULL, &p)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, REP_GENNAME, NULL, &p)) != 0)
 		return (ret);
 	/*
 	 * If the file doesn't exist, create it now and initialize with 0.
 	 */
 	if (__os_exists(env, p, NULL) != 0) {
 		rep->gen = 0;
-		if ((ret = __rep_write_gen(env, rep->gen)) != 0)
+		if ((ret = __rep_write_gen(env, rep, rep->gen)) != 0)
 			goto err;
 	} else {
 		/*
@@ -412,11 +452,12 @@ err:	__os_free(env, p);
  * __rep_write_gen --
  *	Write out the gen into the env file.
  *
- * PUBLIC: int __rep_write_gen __P((ENV *, u_int32_t));
+ * PUBLIC: int __rep_write_gen __P((ENV *, REP *, u_int32_t));
  */
 int
-__rep_write_gen(env, gen)
+__rep_write_gen(env, rep, gen)
 	ENV *env;
+	REP *rep;
 	u_int32_t gen;
 {
 	DB_FH *fhp;
@@ -424,8 +465,16 @@ __rep_write_gen(env, gen)
 	size_t cnt;
 	char *p;
 
-	if ((ret =
-	    __db_appname(env, DB_APP_NONE, REP_GENNAME, 0, NULL, &p)) != 0)
+	/*
+	 * If running in-memory replication, return without any file
+	 * operations.
+	 */
+	if (FLD_ISSET(rep->config, REP_C_INMEM)) {
+		return (0);
+	}
+
+	if ((ret = __db_appname(env,
+	    DB_APP_NONE, REP_GENNAME, NULL, &p)) != 0)
 		return (ret);
 	if ((ret = __os_open(
 	    env, p, 0, DB_OSO_CREATE | DB_OSO_TRUNC, DB_MODE_600, &fhp)) == 0) {

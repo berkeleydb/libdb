@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: AnnotationModel.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -13,6 +13,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -96,6 +97,13 @@ public class AnnotationModel extends EntityModel {
             if (entity == null && persistent == null) {
                 return null;
             }
+            if (type.isEnum() ||
+                type.isInterface() ||
+                type.isPrimitive()) {
+                throw new IllegalArgumentException
+                    ("@Entity and @Persistent not allowed for enum, " +
+                     "interface, or primitive type: " + type.getName());
+            }
             if (entity != null && persistent != null) {
                 throw new IllegalArgumentException
                     ("Both @Entity and @Persistent are not allowed: " +
@@ -117,23 +125,69 @@ public class AnnotationModel extends EntityModel {
             }
             /* Get instance fields. */
             List<Field> fields = new ArrayList<Field>();
-            for (Field field : type.getDeclaredFields()) {
-                int mods = field.getModifiers();
-                if (!Modifier.isTransient(mods) && !Modifier.isStatic(mods)) {
-                    fields.add(field);
+            boolean nonDefaultRules = getInstanceFields(fields, type);
+            Collection<FieldMetadata> nonDefaultFields = null;
+            if (nonDefaultRules) {
+                nonDefaultFields = new ArrayList<FieldMetadata>(fields.size());
+                for (Field field : fields) {
+                    nonDefaultFields.add(new FieldMetadata
+                        (field.getName(), field.getType().getName(),
+                         type.getName()));
                 }
+                nonDefaultFields =
+                    Collections.unmodifiableCollection(nonDefaultFields);
             }
             /* Get the rest of the metadata and save it. */
             metadata = new ClassMetadata
                 (className, version, proxiedClassName, isEntity,
                  getPrimaryKey(type, fields),
                  getSecondaryKeys(type, fields),
-                 getCompositeKeyFields(type, fields));
+                 getCompositeKeyFields(type, fields),
+                 nonDefaultFields);
             classMap.put(className, metadata);
             /* Add any new information about entities. */
             updateEntityInfo(metadata);
         }
         return metadata;
+    }
+
+    /**
+     * Fills in the fields array and returns true if the default rules for
+     * field persistence were overridden.
+     */
+    private boolean getInstanceFields(List<Field> fields, Class<?> type) {
+        boolean nonDefaultRules = false;
+        for (Field field : type.getDeclaredFields()) {
+            boolean notPersistent =
+                (field.getAnnotation(NotPersistent.class) != null);
+            boolean notTransient = 
+                (field.getAnnotation(NotTransient.class) != null);
+            if (notPersistent && notTransient) {
+                throw new IllegalArgumentException
+                    ("Both @NotTransient and @NotPersistent not allowed");
+            }
+            if (notPersistent || notTransient) {
+                nonDefaultRules = true;
+            }
+            int mods = field.getModifiers();
+
+            if (!Modifier.isStatic(mods) &&
+                !notPersistent &&
+                (!Modifier.isTransient(mods) || notTransient)) {
+                /* Field is DPL persistent. */
+                fields.add(field);
+            } else {
+                /* If non-persistent, no other annotations should be used. */
+                if (field.getAnnotation(PrimaryKey.class) != null ||
+                    field.getAnnotation(SecondaryKey.class) != null ||
+                    field.getAnnotation(KeyField.class) != null) {
+                    throw new IllegalArgumentException
+                        ("@PrimaryKey, @SecondaryKey and @KeyField not " +
+                         "allowed on non-persistent field");
+                }
+            }
+        }
+        return nonDefaultRules;
     }
 
     private PrimaryKeyMetadata getPrimaryKey(Class<?> type,
@@ -210,15 +264,19 @@ public class AnnotationModel extends EntityModel {
         if (cls.isArray()) {
             return cls.getComponentType().getName();
         }
-        if (java.util.Collection.class.isAssignableFrom(cls)) {
-            Type[] typeArgs = ((ParameterizedType) field.getGenericType()).
-                getActualTypeArguments();
+        if (Collection.class.isAssignableFrom(cls)) {
+            Type[] typeArgs = null;
+            if (field.getGenericType() instanceof ParameterizedType) {
+                typeArgs = ((ParameterizedType) field.getGenericType()).
+                    getActualTypeArguments();
+            }
             if (typeArgs == null ||
                 typeArgs.length != 1 ||
                 !(typeArgs[0] instanceof Class)) {
                 throw new IllegalArgumentException
                     ("Collection typed secondary key field must have a" +
-                     " single generic type argument: " +
+                     " single generic type argument and a wildcard or" +
+                     " type bound is not allowed: " +
                      field.getDeclaringClass().getName() + '.' +
                      field.getName());
             }
@@ -299,7 +357,7 @@ public class AnnotationModel extends EntityModel {
             if (data.isEntityClass()) {
                 if (entityClass != null) {
                     throw new IllegalArgumentException
-                        ("An entity class may not derived from another" +
+                        ("An entity class may not be derived from another" +
                          " entity class: " + entityClass +
                          ' ' + data.getClassName());
                 }

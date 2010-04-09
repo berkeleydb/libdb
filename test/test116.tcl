@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: test116.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test116
 # TEST	Test of basic functionality of lsn_reset.
@@ -23,7 +23,8 @@ proc test116 { method {tnum "116"} args } {
 	set omethod [convert_method $method]
 
 	set testfile A.db
-	set newfile B.db
+	set newtag new
+	set newfile $testfile.$newtag
 	set nentries 50
 	set filenames "A B C D E"
 
@@ -71,6 +72,12 @@ proc test116 { method {tnum "116"} args } {
 	}
 
 	foreach lorder { 1234 4321 } {
+		if { $lorder == 1234 } {
+			set pattern "i i"
+		} else {
+			set pattern "I I"
+		}
+
 		# Open database A, populate and close.
 		puts "\tTest$tnum.b: Creating database with lorder $lorder."
 	 	cleanup $testdir $env
@@ -85,8 +92,8 @@ proc test116 { method {tnum "116"} args } {
 
 		# We test with subdatabases except with the queue access
 		# method, where they are not allowed.
-		if { [is_queue $method] == 1 } {
-			set db [eval {berkdb_open} -env $env \
+		if { [is_queue $method] == 1 || [is_partitioned $args] == 1} {
+			set db [eval {berkdb_open} -env $env -lorder $lorder \
 			    $omethod $args -create -mode 0644 $testfile]
 			error_check_good dbopen [is_valid_db $db] TRUE
 			set pgsize [stat_field $db stat "Page size"]
@@ -108,7 +115,7 @@ proc test116 { method {tnum "116"} args } {
 		} else {
 			foreach filename $filenames {
 				set db [eval {berkdb_open} -env $env \
-				    $omethod $args -create \
+				    -lorder $lorder $omethod $args -create \
 				    -mode 0644 $testfile $filename]
 				error_check_good dbopen [is_valid_db $db] TRUE
 				set pgsize [stat_field $db stat "Page size"]
@@ -147,50 +154,61 @@ proc test116 { method {tnum "116"} args } {
 		# the LSNs would get reset on the original file.
 
 		file copy -force $testdir/$testfile $testdir/$newfile
+		# If we're using queue extents or partitions , we must 
+		# copy the extents/partitions to the new file name as well.
+		set extents ""
+		if { [is_queueext $method] || [is_partitioned $args]} {
+			copy_extent_file $testdir $testfile $newtag
+		}
 		error_check_good fileid_reset [$env id_reset $newfile] 0
 		error_check_good \
 		    lsn_reset [eval {$env lsn_reset} $resetargs {$newfile}] 0
 
 		file copy -force $testdir/$newfile $newdir/$testfile
 
-		# If we're using queue extents, we must copy the extents.
-		if { [is_queueext $method] } {
-			set cwd [pwd]
-			cd $testdir
-			set extents [glob __dbq.*]
+		# If we're using queue extents, we must copy the extents
+		# to the new directory  as well.
+		if { [is_queueext $method] || [is_partitioned $args]} {
+			set extents [get_extfiles $testdir $newfile ""]
 			foreach extent $extents {
-				set idx [string last . $extent]
-				incr idx
-				set suffix [string range $extent $idx end]
-				file copy -force $extent __dbq.$newfile.$suffix
-				file copy -force \
-				    $extent NEWDIR/__dbq.$testfile.$suffix
+				set nextent [make_ext_filename \
+				    $testdir/NEWDIR $testfile $extent]
+				file copy -force $extent $nextent
 			}
-			cd $cwd
 		}
 
-		# Get the LSNs and compare them.
-		set npages [getlsns $testdir/$testfile $pgsize orig_lsns]
-		set newpages [getlsns $testdir/$newfile $pgsize new_lsns]
-		set newdirpages [getlsns $newdir/$testfile $pgsize newdir_lsns]
+		# Get the LSNs and check them.
+		set npages [getlsns \
+		     $testdir $testfile $extents $pgsize orig_lsns]
+		set newpages [getlsns \
+		     $testdir $newfile $extents $pgsize new_lsns]
+		set newdirpages [getlsns \
+		     $newdir $testfile $extents $pgsize newdir_lsns]
 		error_check_good newpages_match $npages $newpages
 		error_check_good newdirpages_match $npages $newdirpages
 		for { set i 0 } { $i < $npages } { incr i } {
-			error_check_bad \
-			    newlsns_match $orig_lsns($i) $new_lsns($i)
-			error_check_bad \
-			    newdirlsns_match $orig_lsns($i) $newdir_lsns($i)
+			error_check_binary \
+			    new_lsns [binary format $pattern 0 1]  $new_lsns($i)
+			error_check_binary \
+			    newdirlsns_match \
+			        [binary format $pattern 0 1] $newdir_lsns($i)
 		}
 
+		if { [ is_partitioned $args] } {
+			set nodump 1
+		} else {
+			set nodump 0
+		}
 		puts "\tTest$tnum.d: Verify directories with reset LSNs."
 	 	error_check_good \
-		    verify [verify_dir $testdir "\tTest$tnum.d: "] 0
+		    verify [verify_dir $testdir "\tTest$tnum.d: " 0 0 $nodump] 0
 	 	error_check_good \
-		    verify [verify_dir $newdir "\tTest$tnum.e: "] 0
+		    verify [verify_dir $newdir "\tTest$tnum.e: " 0 0 $nodump] 0
 
 		puts "\tTest$tnum.f: Open new db, check data, close db."
-		if { [is_queue $method] == 1 } {
+		if { [is_queue $method] == 1 || [is_partitioned $args] == 1 } {
 			set db [eval {berkdb_open} -env $newenv \
+			    -lorder $lorder \
 			    $omethod $args -create -mode 0644 $testfile]
 			error_check_good dbopen [is_valid_db $db] TRUE
 			if { $txnenv == 1 } {
@@ -211,8 +229,8 @@ proc test116 { method {tnum "116"} args } {
 			error_check_good db_close [$db close] 0
 		} else {
 			foreach filename $filenames {
-				set db [eval {berkdb_open} \
-				    -env $newenv $omethod $args \
+				set db [eval {berkdb_open} -env $newenv \
+				    -lorder $lorder $omethod $args \
 				    -create -mode 0644 $testfile $filename ]
 				error_check_good dbopen [is_valid_db $db] TRUE
 				if { $txnenv == 1 } {
@@ -234,6 +252,7 @@ proc test116 { method {tnum "116"} args } {
 				error_check_good db_close [$db close] 0
 			}
 		}
+		error_check_good newfile_rm [$env dbremove $newfile] 0
 		error_check_good newenv_close [$newenv close] 0
 		fileremove -f $newdir
 	}
@@ -245,9 +264,9 @@ proc test116 { method {tnum "116"} args } {
 	}
 }
 
-proc getlsns { dbfile pgsize lsns } {
+proc getlsns { testdir dbfile extents pgsize lsns } {
 	upvar $lsns file_lsns
-	set fid [open $dbfile r]
+	set fid [open $testdir/$dbfile r]
 	fconfigure $fid -translation binary
 	set eof 0
 	set pg 0
@@ -260,5 +279,25 @@ proc getlsns { dbfile pgsize lsns } {
 	}
 	close $fid
 	incr pg -1
+	foreach extent $extents {
+		set ep [getlsns $testdir \
+		    [make_ext_filename "." $dbfile $extent] \
+		    {} $pgsize elsns]
+		for {set i 0} {$i < $ep} {incr i} {
+			set file_lsns($pg) $elsns($i)
+			incr pg
+		}
+	}
 	return $pg
+}
+
+proc error_check_binary {func desired result} {
+	if { [binary_compare $desired $result] != 0 } {
+		flush stdout
+		flush stderr
+		binary scan $desired h16 d
+		binary scan $result h16 r
+		error "FAIL:[timestamp]\
+		    $func: expected $d, got $r"
+	}
 }

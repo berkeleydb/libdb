@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 5. 
-		Using Tuples
-	</title>
+    <title>Chapter 5.  Using Tuples</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="entitieswithcollections.html" title="&#10;&#9;&#9;Using Entities with Collections&#10;&#9;" />
-    <link rel="next" href="tupleswithkeycreators.html" title="&#10;&#9;&#9;Using Tuples with Key Creators&#10;&#9;" />
+    <link rel="prev" href="entitieswithcollections.html" title="Using Entities with Collections" />
+    <link rel="next" href="tupleswithkeycreators.html" title="Using Tuples with Key Creators" />
   </head>
   <body>
     <div class="navheader">
@@ -38,7 +36,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -117,7 +114,7 @@ Creating Tuple-Serial Entity Bindings
 </p>
       <p>
     Compare this example to the prior Entity example and you'll see
-	that the <tt class="classname">Sample</tt> class has not changed. When changing a
+	that the <code class="classname">Sample</code> class has not changed. When changing a
 	database format, while new bindings are needed to map key and value
 	objects to the new format, the application using the objects often
 	does not need to be modified.
@@ -135,23 +132,22 @@ Creating Tuple-Serial Entity Bindings
 	</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
     Tuples are sequences of primitive Java values that can be
 	written to, and read from, the raw data bytes of a stored record.
 	The primitive values are written or read one at a time in sequence,
 	using the DB Java Collections API 
-    <a href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleInput.html" target="_top">TupleInput</a>
     
 	and 
-    <a href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" target="_top">TupleOutput</a>
     
 	classes. These classes are very similar to the standard Java
-	<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/DataInput.html" target="_top">DataInput</a>
+	<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/DataInput.html" target="_top">DataInput</a>
 	
 	and 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/DataOutput.html" target="_top">DataOutput</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/io/DataOutput.html" target="_top">DataOutput</a>
     
 	interfaces. The primary difference is the binary format of the
 	data, which is designed for sorting in the case of tuples.
@@ -161,7 +157,7 @@ Creating Tuple-Serial Entity Bindings
 	values, the following code snippets could be used.
 </p>
         <a id="tuple_tuplefragment"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.bind.tuple.TupleInput;
+        <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.bind.tuple.TupleOutput;
 ...
 TupleInput input;
@@ -171,7 +167,7 @@ String partNumber = input.readString();
 String supplierNumber = input.readString();
 ...
 output.writeString(partNumber);
-output.writeString(supplierNumber); </tt></b> </pre>
+output.writeString(supplierNumber); </code></strong> </pre>
         <p>
     Since a tuple is defined as an ordered sequence, reading and
 	writing order must match. If the wrong data type is read (an
@@ -190,9 +186,7 @@ output.writeString(supplierNumber); </tt></b> </pre>
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="entitieswithcollections.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="tupleswithkeycreators.html">Next</a></td>
         </tr>
         <tr>

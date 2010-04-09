@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 3. Database Records</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="CoreDbUsage.html" title="Database Example" />
+    <link rel="prev" href="CoreDbUsage.html" title="Database Example" />
     <link rel="next" href="usingDbt.html" title="Reading and Writing Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="DBEntry"></a>Chapter 3. Database Records</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -99,7 +98,7 @@
     and its corresponding data are 
       encapsulated in
            
-          <span><tt class="classname">DBT</tt> structures.</span> 
+          <span><code class="classname">DBT</code> structures.</span> 
            
     Therefore, to access a DB record, you need two such
         <span>structures,</span>
@@ -107,7 +106,7 @@
         one for the data.
   </p>
       <p>
-    <tt class="classname">DBT</tt> structures provide a <tt class="literal">void *</tt>
+    <code class="classname">DBT</code> structures provide a <code class="literal">void *</code>
     field that you use to point to your data, and another field that identifies
     the data length.  They can therefore be used to store anything from simple
     primitive data to complex structures so long as the information you want to
@@ -115,7 +114,7 @@
   </p>
       <p>
     This chapter describes 
-    <tt class="classname">DBT</tt> 
+    <code class="classname">DBT</code> 
      
     usage. It also 
     introduces storing and retrieving key/value pairs from a database. 
@@ -127,12 +126,11 @@
               <h2 class="title" style="clear: both"><a id="usingDbEntry"></a>Using Database Records</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         Each database record is comprised of two 
         
-        <span><tt class="classname">DBT</tt> structures</span>
+        <span><code class="classname">DBT</code> structures</span>
         
         — one for the key and another for the data. 
 
@@ -140,7 +138,7 @@
     </p>
         <p>
         To store a database record where the key and/or the data are primitive
-        data (<tt class="literal">int</tt>, <tt class="literal">float</tt>, and so forth),
+        data (<code class="literal">int</code>, <code class="literal">float</code>, and so forth),
         or where the key and/or the data contain an array, we need only to point
         to the memory location where that data resides and identify its
         length. For example:
@@ -165,8 +163,8 @@ key.size = sizeof(float);
 data.data = description;
 data.size = strlen(description) + 1; </pre>
         <p>
-    To retrieve the record, simply assign the <tt class="literal">void *</tt> returned in the 
-    <tt class="methodname">DBT</tt>
+    To retrieve the record, simply assign the <code class="literal">void *</code> returned in the 
+    <code class="methodname">DBT</code>
     
     to the appropriate variable.
 </p>
@@ -177,9 +175,9 @@ data.size = strlen(description) + 1; </pre>
     memory as returned by DB
     may not be properly aligned (the same problem may exist for structures
     on some systems). We tell DB to use our memory instead of its
-    own by specifying the <tt class="literal">DB_DBT_USERMEM</tt> flag. Be aware that
+    own by specifying the <code class="literal">DB_DBT_USERMEM</code> flag. Be aware that
     when we do this, we must also identify how much user memory is available 
-    through the use of the <tt class="literal">ulen</tt> field.
+    through the use of the <code class="literal">ulen</code> field.
 </p>
         <a id="c_dbt2"></a>
         <pre class="programlisting">#include &lt;db.h&gt;
@@ -212,9 +210,7 @@ description = data.data;</pre>
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="CoreDbUsage.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="usingDbt.html">Next</a></td>
         </tr>
         <tr>

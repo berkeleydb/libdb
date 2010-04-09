@@ -2,36 +2,34 @@
 
 use strict ;
 
+use lib 't';
+use Test::More ;
+
 BEGIN 
 {
-    if ($] < 5.005) {
-	print "1..0 # Skip: this is Perl $], skipping test\n" ;
-	exit 0 ;
-    }
+	plan skip_all => "this is Perl $], skipping test\n"
+        if $] < 5.005 ;
 
     eval { require Data::Dumper ; };
     if ($@) {
-	print "1..0 # Skip: Data::Dumper is not installed on this system.\n";
-	exit 0 ;
+        plan skip_all =>  "Data::Dumper is not installed on this system.\n";
     }
     {
         local ($^W) = 0 ;
         if ($Data::Dumper::VERSION < 2.08) {
-            print "1..0 # Skip: Data::Dumper 2.08 or better required (found $Data::Dumper::VERSION).\n";
-        exit 0 ;
+            plan skip_all =>  "Data::Dumper 2.08 or better required (found $Data::Dumper::VERSION).\n";
     }
     }
     eval { require MLDBM ; };
     if ($@) {
-	print "1..0 # Skip: MLDBM is not installed on this system.\n";
-	exit 0 ;
+        plan skip_all =>  "MLDBM is not installed on this system.\n";
     }
+
+    plan tests => 12;    
 }
 
 use lib 't' ;
 use util ;
-
-print "1..12\n";
 
 {
     package BTREE ;
@@ -39,6 +37,7 @@ print "1..12\n";
     use BerkeleyDB ;
     use MLDBM qw(BerkeleyDB::Btree) ; 
     use Data::Dumper;
+    use Test::More;
     
     my $filename = "";
     my $lex = new LexFile $filename;
@@ -48,8 +47,8 @@ print "1..12\n";
     my $db = tie %o, 'MLDBM', -Filename => $filename,
     		     -Flags    => DB_CREATE
     		or die $!;
-    ::ok 1, $db ;
-    ::ok 2, $db->type() == DB_BTREE ;
+    ok $db ;
+    ok $db->type() == DB_BTREE ;
     
     my $c = [\'c'];
     my $b = {};
@@ -63,10 +62,10 @@ print "1..12\n";
     $o{f} = 1024.1024;
     
     my $struct = [@o{qw(a b c)}];
-    ::ok 3, ::_compare([$a, $b, $c], $struct);
-    ::ok 4, $o{d} eq "{once upon a time}" ;
-    ::ok 5, $o{e} == 1024 ;
-    ::ok 6, $o{f} eq 1024.1024 ;
+    ok ::_compare([$a, $b, $c], $struct);
+    ok $o{d} eq "{once upon a time}" ;
+    ok $o{e} == 1024 ;
+    ok $o{f} eq 1024.1024 ;
     
 }
 
@@ -87,8 +86,8 @@ print "1..12\n";
     my $db = tie %o, 'MLDBM', -Filename => $filename,
 		         -Flags    => DB_CREATE
 		    or die $!;
-    ::ok 7, $db ;
-    ::ok 8, $db->type() == DB_HASH ;
+    ::ok $db ;
+    ::ok $db->type() == DB_HASH ;
 
 
     my $c = [\'c'];
@@ -103,9 +102,9 @@ print "1..12\n";
     $o{f} = 1024.1024;
 
     my $struct = [@o{qw(a b c)}];
-    ::ok 9, ::_compare([$a, $b, $c], $struct);
-    ::ok 10, $o{d} eq "{once upon a time}" ;
-    ::ok 11, $o{e} == 1024 ;
-    ::ok 12, $o{f} eq 1024.1024 ;
+    ::ok ::_compare([$a, $b, $c], $struct);
+    ::ok $o{d} eq "{once upon a time}" ;
+    ::ok $o{e} == 1024 ;
+    ::ok $o{f} eq 1024.1024 ;
 
 }

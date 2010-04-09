@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.codegen,v 1.4 2007/05/01 17:44:31 bostic Exp $
+# $Id$
 #
 # Check to make sure that the db_codegen examples build and compile.
 

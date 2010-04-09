@@ -1,5 +1,5 @@
 /*-
- * $Id: win_db.h,v 12.26 2008/03/19 07:18:07 alexg Exp $
+ * $Id$
  *
  * The following provides the information necessary to build Berkeley
  * DB on native Windows, and other Windows environments such as MinGW.

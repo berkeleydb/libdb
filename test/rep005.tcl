@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2008 Oracle.  All rights reserved.
+# Copyright (c) 2002-2009 Oracle.  All rights reserved.
 #
-# $Id: rep005.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep005
 # TEST	Replication election test with error handling.
 # TEST
-# TEST	Run a modified version of test001 in a replicated master environment;
+# TEST	Run rep_test in a replicated master environment;
 # TEST  hold an election among a group of clients to make sure they select
 # TEST  a proper master from amongst themselves, forcing errors at various
 # TEST	locations in the election path.
@@ -15,6 +15,9 @@
 proc rep005 { method args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -30,17 +33,31 @@ proc rep005 { method args } {
 		return
 	}
 
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set tnum "005"
 	set niter 10
 	set nclients 3
 	set logsets [create_logsets [expr $nclients + 1]]
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases."
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
 
 	# We don't want to run this with -recover - it takes too
 	# long and doesn't cover any new ground.
 	set recargs ""
 	foreach l $logsets {
 		puts "Rep$tnum ($recargs): Replication election\
-		    error test with $nclients clients."
+		    error test with $nclients clients $msg $msg2."
 		puts -nonewline "Rep$tnum: Started at: "
 		puts [clock format [clock seconds] -format "%H:%M %D"]
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
@@ -57,12 +74,19 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 	source ./include.tcl
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -87,7 +111,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_logargs -errpfx MASTER $verbargs \
 	    $m_txnargs -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -100,7 +124,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create \
-		    -event rep_event \
+		    -event rep_event $repmemargs \
 		    -home $clientdir($i) $c_logargs($i) \
 		    $c_txnargs($i) -rep_client $verbargs \
 		    -errpfx CLIENT$i \
@@ -111,19 +135,26 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 
 	# Process startup messages
 	process_msgs $envlist
-	# Run a modified test001 in the master.
-	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	# Run rep_test in the master.
+	puts "\tRep$tnum.a: Running rep_test in replicated env."
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
 	# Process all the messages and close the master.
 	process_msgs $envlist
+	
+	# Check that databases are in-memory or on-disk as expected.
+	check_db_location $masterenv
+	for { set i 0 } { $i < $nclients } { incr i } { 
+		check_db_location $clientenv($i)
+	}
+	
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
 
 	for { set i 0 } { $i < $nclients } { incr i } {
 		replclear [expr $i + 2]
 	}
-	#
+
 	# We set up the error list for each client.  We know that the
 	# first client is the one calling the election, therefore, add
 	# the error location on sending the message (electsend) for that one.
@@ -131,10 +162,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 	set count 0
 	set win -1
 	#
-	# A full test can take a long time to run.  For normal testing
-	# pare it down a lot so that it runs in a shorter time.
-	#
-	set c0err { none electinit none }
+	set c0err { none electinit }
 	set c1err $c0err
 	set c2err $c0err
 	set numtests [expr [llength $c0err] * [llength $c1err] * \
@@ -168,6 +196,7 @@ proc rep005_elect { ecmd celist qdir msg count \
     winner lsn_lose elist logset} {
 	global elect_timeout elect_serial
 	global timeout_ok
+	global databases_in_memory
 	upvar $ecmd env_cmd
 	upvar $celist envlist
 	upvar $winner win
@@ -232,9 +261,14 @@ proc rep005_elect { ecmd celist qdir msg count \
 	set msg $msg.c.$count
 	set nsites $nclients
 	set nvotes $nsites
+	if { $databases_in_memory } {
+		set dbname { "" test.db } 
+	} else {
+		set dbname test.db
+	}
 	run_election env_cmd envlist err_cmd pri crash \
 	    $qdir $msg $el $nsites $nvotes $nclients $win \
-	    0 "test.db" 0 $timeout_ok
+	    0 $dbname 0 $timeout_ok
 
 	#
 	# Sometimes test elections with an existing master.

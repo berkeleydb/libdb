@@ -5,7 +5,7 @@ use strict ;
 use lib 't' ;
 use BerkeleyDB; 
 use Test::More ;
-use util qw(1);
+use util ;
 
 plan(skip_all => "this needs Berkeley DB 3.x or better\n" )
     if $BerkeleyDB::db_version < 3;

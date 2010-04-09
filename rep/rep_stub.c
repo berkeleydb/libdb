@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_stub.c,v 12.41 2008/01/08 20:58:48 bostic Exp $
+ * $Id$
  */
 
 #ifndef HAVE_REPLICATION
@@ -99,7 +99,7 @@ __rep_env_refresh(env)
 }
 
 int
-__rep_elect(dbenv, nsites, nvotes, flags)
+__rep_elect_pp(dbenv, nsites, nvotes, flags)
 	DB_ENV *dbenv;
 	u_int32_t nsites, nvotes;
 	u_int32_t flags;
@@ -127,11 +127,9 @@ __rep_lease_check(env, refresh)
 }
 
 int
-__rep_lease_expire(env, locked)
+__rep_lease_expire(env)
 	ENV *env;
-	int locked;
 {
-	COMPQUIET(locked, 0);
 	return (__db_norep(env));
 }
 
@@ -269,7 +267,7 @@ __rep_preclose(env)
 }
 
 int
-__rep_process_message(dbenv, control, rec, eid, ret_lsnp)
+__rep_process_message_pp(dbenv, control, rec, eid, ret_lsnp)
 	DB_ENV *dbenv;
 	DBT *control, *rec;
 	int eid;
@@ -311,7 +309,7 @@ __rep_set_limit(dbenv, gbytes, bytes)
 }
 
 int
-__rep_set_transport(dbenv, eid, f_send)
+__rep_set_transport_pp(dbenv, eid, f_send)
 	DB_ENV *dbenv;
 	int eid;
 	int (*f_send) __P((DB_ENV *, const DBT *, const DBT *, const DB_LSN *,
@@ -343,7 +341,7 @@ __rep_get_request(dbenv, minp, maxp)
 }
 
 int
-__rep_start(dbenv, dbt, flags)
+__rep_start_pp(dbenv, dbt, flags)
 	DB_ENV *dbenv;
 	DBT *dbt;
 	u_int32_t flags;

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_unlink.c,v 12.26 2008/05/07 12:27:35 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -75,7 +75,7 @@ __os_unlink(env, path, overwrite_test)
 		 * Try removing the file using the delete-on-close flag.  This
 		 * plays nicer with files that are still open than DeleteFile.
 		 */
-		h = CreateFile(tpath, 0, 
+		h = CreateFile(tpath, 0,
 		    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		    NULL, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		if (h != INVALID_HANDLE_VALUE) {

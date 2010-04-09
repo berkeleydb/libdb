@@ -1,16 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Store.java,v 1.5 2008/02/18 14:48:11 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -40,18 +38,19 @@ import com.sleepycat.persist.DatabaseNamer;
 import com.sleepycat.persist.PrimaryIndex;
 import com.sleepycat.persist.SecondaryIndex;
 import com.sleepycat.persist.StoreConfig;
+import com.sleepycat.persist.StoreExistsException;
+import com.sleepycat.persist.StoreNotFoundException;
 import com.sleepycat.persist.evolve.Converter;
 import com.sleepycat.persist.evolve.EvolveConfig;
 import com.sleepycat.persist.evolve.EvolveEvent;
 import com.sleepycat.persist.evolve.EvolveInternal;
 import com.sleepycat.persist.evolve.EvolveListener;
 import com.sleepycat.persist.evolve.EvolveStats;
+import com.sleepycat.persist.evolve.IncompatibleClassException;
 import com.sleepycat.persist.evolve.Mutations;
-import com.sleepycat.persist.model.ClassMetadata;
 import com.sleepycat.persist.model.DeleteAction;
 import com.sleepycat.persist.model.EntityMetadata;
 import com.sleepycat.persist.model.EntityModel;
-import com.sleepycat.persist.model.FieldMetadata;
 import com.sleepycat.persist.model.ModelInternal;
 import com.sleepycat.persist.model.PrimaryKeyMetadata;
 import com.sleepycat.persist.model.Relationship;
@@ -81,7 +80,6 @@ public class Store {
     private static SyncHook syncHook;
 
     private Environment env;
-    private boolean locking;
     private boolean rawAccess;
     private PersistCatalog catalog;
     private EntityModel model;
@@ -104,7 +102,10 @@ public class Store {
                  String storeName,
                  StoreConfig config,
                  boolean rawAccess)
-        throws DatabaseException {
+        throws StoreExistsException,
+               StoreNotFoundException,
+               IncompatibleClassException,
+               DatabaseException {
 
         this.env = env;
         this.storeName = storeName;
@@ -123,8 +124,6 @@ public class Store {
         } else {
             storeConfig = config.cloneConfig();
         }
-
-        locking = DbCompat.getInitializeLocking(env.getConfig());
 
         storePrefix = NAME_PREFIX + storeName + NAME_SEPARATOR;
         priIndexMap = new HashMap<String,PrimaryIndex>();
@@ -170,6 +169,8 @@ public class Store {
                     try {
                         DatabaseConfig dbConfig = new DatabaseConfig();
                         dbConfig.setAllowCreate(storeConfig.getAllowCreate());
+                        dbConfig.setExclusiveCreate
+                            (storeConfig.getExclusiveCreate());
                         dbConfig.setReadOnly(storeConfig.getReadOnly());
                         dbConfig.setTransactional
                             (storeConfig.getTransactional());
@@ -256,10 +257,6 @@ public class Store {
         return storeName;
     }
 
-    public void dumpCatalog() {
-        catalog.dump();
-    }
-
 
     public EntityModel getModel() {
         return model;
@@ -341,14 +338,9 @@ public class Store {
                 /* Open the primary database. */
                 String[] fileAndDbNames =
                     parseDbName(storePrefix + entityClassName);
-                Database db;
-                try {
-                    db = DbCompat.openDatabase
-                        (env, txn, fileAndDbNames[0], fileAndDbNames[1],
-                         dbConfig);
-                } catch (FileNotFoundException e) {
-                    throw new DatabaseException(e);
-                }
+                Database db = DbCompat.openDatabase
+                    (env, txn, fileAndDbNames[0], fileAndDbNames[1], dbConfig);
+                assert db != null;
                 priOpenState.addDatabase(db);
 
                 /* Create index object. */
@@ -388,8 +380,6 @@ public class Store {
                 } else {
                     if (txn != null) {
                         txn.abort();
-                    } else {
-                        priOpenState.closeDatabases();
                     }
                     priOpenState.undoState();
                 }
@@ -432,26 +422,21 @@ public class Store {
         }
 
         /**
-         * Close any databases opened during this operation when it fails.
-         * This method should be called if a non-transactional operation fails,
-         * since we cannot rely on the transaction abort to cleanup any
-         * databases that were opened.
+         * Reset all state information and closes any databases opened, when
+         * this operation fails.  This method should be called for both
+         * transactional and non-transsactional operation.
+         *
+         * For transactional operations on JE, we don't strictly need to close
+         * the databases since the transaction abort will do that.  However,
+         * closing them is harmless on JE, and required for DB core.
          */
-        void closeDatabases() {
+        void undoState() {
             for (Database db : databases.keySet()) {
                 try {
                     db.close();
                 } catch (Exception ignored) {
                 }
             }
-        }
-
-        /**
-         * Reset all state information when this operation fails.  This method
-         * should be called for both transactional and non-transsactional
-         * operation.
-         */
-        void undoState() {
             priIndexMap.remove(entityClassName);
             for (String secName : secNames) {
                 secIndexMap.remove(secName);
@@ -544,6 +529,14 @@ public class Store {
                      " is declared in a different class: " +
                      makeSecName(declaringClassName, keyName));
             }
+
+            /*
+             * Get/create the subclass format to ensure it is stored in the
+             * catalog, even if no instances of the subclass are stored.
+             * [#16399]
+             */
+            catalog.getFormat(entityClass,
+                              false /*checkEntitySubclassIndexes*/);
         }
 
         /*
@@ -584,15 +577,11 @@ public class Store {
     }
 
     /**
-     * Opens any secondary indexes defined in the given entity metadata that
-     * are not already open.  This method is called when a new entity subclass
-     * is encountered when an instance of that class is stored, and the
-     * EntityStore.getSubclassIndex has not been previously called for that
-     * class. [#15247]
+     * Opens secondary indexes for a given primary index metadata.
      */
-    synchronized void openSecondaryIndexes(Transaction txn,
-                                           EntityMetadata entityMeta,
-                                           PrimaryOpenState priOpenState)
+    private void openSecondaryIndexes(Transaction txn,
+                                      EntityMetadata entityMeta,
+                                      PrimaryOpenState priOpenState)
         throws DatabaseException {
 
         String entityClassName = entityMeta.getClassName();
@@ -665,34 +654,11 @@ public class Store {
 
         PersistKeyBinding keyBinding = getKeyBinding(keyClassName);
         
-        /*
-         * doNotCreate is true when StoreConfig.getSecondaryBulkLoad is true
-         * and we are opening a secondary as a side effect of opening a
-         * primary, i.e., getSecondaryIndex is not being called.  If
-         * doNotCreate is true and the database does not exist, we silently
-         * ignore the DatabaseNotFoundException and return null.  When
-         * getSecondaryIndex is subsequently called, the secondary database
-         * will be created and populated from the primary -- a bulk load.
-         */
-        SecondaryDatabase db;
-        boolean saveAllowCreate = config.getAllowCreate();
-        try {
-            if (doNotCreate) {
-                config.setAllowCreate(false);
-            }
-            db = DbCompat.openSecondaryDatabase
-                (env, txn, fileAndDbNames[0], fileAndDbNames[1], priDb,
-                 config);
-        } catch (FileNotFoundException e) {
-            if (doNotCreate) {
-                return null;
-            } else {
-                throw new DatabaseException(e);
-            }
-        } finally {
-            if (doNotCreate) {
-                config.setAllowCreate(saveAllowCreate);
-            }
+        SecondaryDatabase db = openSecondaryDatabase
+            (txn, fileAndDbNames, priDb, config, doNotCreate);
+        if (db == null) {
+            assert doNotCreate;
+            return null;
         }
         SecondaryIndex<SK,PK,E2> secIndex = new SecondaryIndex
             (db, null, primaryIndex, keyClass, keyBinding);
@@ -707,6 +673,93 @@ public class Store {
             priOpenState.addSecondaryName(secName);
         }
         return secIndex;
+    }
+
+    /**
+     * Open a secondary database, setting AllowCreate, ExclusiveCreate and
+     * AllowPopulate appropriately.  We either set all three of these params to
+     * true or all to false.  This ensures that we only populate a database
+     * when it is created, never if it just happens to be empty.  [#16399]
+     *
+     * @param doNotCreate is true when StoreConfig.getSecondaryBulkLoad is true
+     * and we are opening a secondary as a side effect of opening a primary,
+     * i.e., getSecondaryIndex is not being called.  If doNotCreate is true and
+     * the database does not exist, we silently ignore the failure to create
+     * the DB and return null.  When getSecondaryIndex is subsequently called,
+     * the secondary database will be created and populated from the primary --
+     * a bulk load.
+     */
+    private SecondaryDatabase
+        openSecondaryDatabase(final Transaction txn,
+                              final String[] fileAndDbNames,
+                              final Database priDb,
+                              final SecondaryConfig config,
+                              final boolean doNotCreate)
+        throws DatabaseException {
+
+        assert config.getAllowPopulate();
+        assert !config.getExclusiveCreate();
+        final boolean saveAllowCreate = config.getAllowCreate();
+        try {
+            if (doNotCreate) {
+                config.setAllowCreate(false);
+            }
+            /* First try creating a new database, populate if needed. */
+            if (config.getAllowCreate()) {
+                config.setExclusiveCreate(true);
+                /* AllowPopulate is already set to true. */
+                final SecondaryDatabase db = DbCompat.openSecondaryDatabase
+                    (env, txn, fileAndDbNames[0], fileAndDbNames[1], priDb,
+                     config);
+                if (db != null) {
+                    return db;
+                }
+            }
+            /* Next try opening an existing database. */
+            config.setAllowCreate(false);
+            config.setAllowPopulate(false);
+            config.setExclusiveCreate(false);
+            final SecondaryDatabase db = DbCompat.openSecondaryDatabase
+                (env, txn, fileAndDbNames[0], fileAndDbNames[1], priDb,
+                 config);
+            return db;
+        } finally {
+            config.setAllowPopulate(true);
+            config.setExclusiveCreate(false);
+            config.setAllowCreate(saveAllowCreate);
+        }
+    }
+
+    /**
+     * Checks that all secondary indexes defined in the given entity metadata
+     * are already open.  This method is called when a new entity subclass
+     * is encountered when an instance of that class is stored.  [#16399]
+     *
+     * @throws IllegalArgumentException if a secondary is not open.
+     */
+    synchronized void
+        checkEntitySubclassSecondaries(final EntityMetadata entityMeta,
+                                       final String subclassName)
+        throws DatabaseException {
+        
+        if (storeConfig.getSecondaryBulkLoad()) {
+            return;
+        }
+
+        final String entityClassName = entityMeta.getClassName();
+
+        for (final SecondaryKeyMetadata secKeyMeta :
+             entityMeta.getSecondaryKeys().values()) {
+            final String keyName = secKeyMeta.getKeyName();
+            final String secName = makeSecName(entityClassName, keyName);
+            if (!secIndexMap.containsKey(secName)) {
+                throw new IllegalArgumentException
+                    ("Entity subclasses defining a secondary key must be " +
+                     "registered by calling EntityModel.registerClass or " +
+                     "EntityStore.getSubclassIndex before storing an " +
+                     "instance of the subclass: " + subclassName);
+            }
+        }
     }
 
 
@@ -729,7 +782,7 @@ public class Store {
 
         /*
          * Truncate the primary first and let any exceptions propogate
-         * upwards.  Then truncate each secondary, only throwing the first
+         * upwards.  Then remove each secondary, only throwing the first
          * exception.
          */
         boolean primaryExists = truncateIfExists(txn, storePrefix + clsName);
@@ -737,17 +790,11 @@ public class Store {
             DatabaseException firstException = null;
             for (SecondaryKeyMetadata keyMeta :
                  entityMeta.getSecondaryKeys().values()) {
-                try {
-                    truncateIfExists
-                        (txn,
-                         storePrefix +
-                         makeSecName(clsName, keyMeta.getKeyName()));
-                    /* Ignore secondaries that do not exist. */
-                } catch (DatabaseException e) {
-                    if (firstException == null) {
-                        firstException = e;
-                    }
-                }
+                /* Ignore secondaries that do not exist. */
+                removeIfExists
+                    (txn,
+                     storePrefix +
+                     makeSecName(clsName, keyMeta.getKeyName()));
             }
             if (firstException != null) {
                 throw firstException;
@@ -758,15 +805,17 @@ public class Store {
     private boolean truncateIfExists(Transaction txn, String dbName)
         throws DatabaseException {
 
-        try {
-            String[] fileAndDbNames = parseDbName(dbName);
-            DbCompat.truncateDatabase
-                (env, txn, fileAndDbNames[0], fileAndDbNames[1],
-                 false/*returnCount*/);
-            return true;
-        } catch (FileNotFoundException e) {
-            return false;
-        }
+        String[] fileAndDbNames = parseDbName(dbName);
+        return DbCompat.truncateDatabase
+            (env, txn, fileAndDbNames[0], fileAndDbNames[1]);
+    }
+
+    private boolean removeIfExists(Transaction txn, String dbName)
+        throws DatabaseException {
+
+        String[] fileAndDbNames = parseDbName(dbName);
+        return DbCompat.removeDatabase
+            (env, txn, fileAndDbNames[0], fileAndDbNames[1]);
     }
 
     public synchronized void closeClass(Class entityClass)
@@ -810,7 +859,10 @@ public class Store {
     public synchronized void close()
         throws DatabaseException {
 
-        checkOpen();
+        if (catalog == null) {
+            return;
+        }
+
         DatabaseException firstException = null;
         try {
             if (rawAccess) {
@@ -833,6 +885,15 @@ public class Store {
                 firstException = e;
             }
         }
+		for (Sequence seq : sequenceMap.values()) {
+			try {
+				seq.close();
+			} catch (DatabaseException e) {
+				if (firstException == null) {
+					firstException = e;
+				}
+			}
+		}		
         firstException = closeDb(sequenceDb, firstException);
         for (SecondaryIndex index : secIndexMap.values()) {
             firstException = closeDb(index.getDatabase(), firstException);
@@ -864,17 +925,15 @@ public class Store {
                 dbConfig.setTransactional(storeConfig.getTransactional());
                 dbConfig.setAllowCreate(true);
                 DbCompat.setTypeBtree(dbConfig);
-                try {
-                    sequenceDb = DbCompat.openDatabase
-                        (env, null/*txn*/, fileAndDbNames[0],
-                         fileAndDbNames[1], dbConfig);
-                } catch (FileNotFoundException e) {
-                    throw new DatabaseException(e);
-                }
+                sequenceDb = DbCompat.openDatabase
+                    (env, null/*txn*/, fileAndDbNames[0],
+                     fileAndDbNames[1], dbConfig);
+                assert sequenceDb != null;
             }
             DatabaseEntry entry = new DatabaseEntry();
             StringBinding.stringToEntry(name, entry);
-            seq = sequenceDb.openSequence(null, entry, getSequenceConfig(name));
+                seq = sequenceDb.openSequence(null, entry,
+                                              getSequenceConfig(name));
             sequenceMap.put(name, seq);
         }
         return seq;
@@ -898,6 +957,12 @@ public class Store {
     public synchronized void setSequenceConfig(String name,
                                                SequenceConfig config) {
         checkOpen();
+        if (config.getExclusiveCreate() ||
+            config.getAllowCreate() == storeConfig.getReadOnly()) {
+            throw new IllegalArgumentException
+                ("One of these properties was illegally changed: " +
+                 "AllowCreate, ExclusiveCreate");
+        }
         sequenceConfigMap.put(name, config);
     }
 
@@ -933,11 +998,14 @@ public class Store {
         }
         EntityMetadata meta = checkEntityClass(clsName);
         DatabaseConfig dbConfig = getPrimaryConfig(meta);
-        if (config.getSortedDuplicates() ||
+        if (config.getExclusiveCreate() ||
+            config.getAllowCreate() == config.getReadOnly() ||
+            config.getSortedDuplicates() ||
             config.getBtreeComparator() != dbConfig.getBtreeComparator()) {
             throw new IllegalArgumentException
                 ("One of these properties was illegally changed: " +
-                 " SortedDuplicates or BtreeComparator");
+                 "AllowCreate, ExclusiveCreate, SortedDuplicates, Temporary " +
+                 "or BtreeComparator, ");
         }
         if (!DbCompat.isTypeBtree(config)) {
             throw new IllegalArgumentException("Only type BTREE allowed");
@@ -971,16 +1039,14 @@ public class Store {
             config.setAllowCreate(!priConfig.getReadOnly());
             config.setReadOnly(priConfig.getReadOnly());
             DbCompat.setTypeBtree(config);
-            DbCompat.setDeferredWrite
-                (config, DbCompat.getDeferredWrite(priConfig));
             /* Set secondary properties based on metadata. */
             config.setAllowPopulate(true);
             Relationship rel = secKeyMeta.getRelationship();
             config.setSortedDuplicates(rel == Relationship.MANY_TO_ONE ||
                                        rel == Relationship.MANY_TO_MANY);
-            setBtreeComparator(config, secKeyMeta.getClassName());
+            setBtreeComparator(config, keyClassName);
             PersistKeyCreator keyCreator = new PersistKeyCreator
-                (catalog, entityMeta, keyClassName, secKeyMeta);
+                (catalog, entityMeta, keyClassName, secKeyMeta, rawAccess);
             if (rel == Relationship.ONE_TO_MANY ||
                 rel == Relationship.MANY_TO_MANY) {
                 config.setMultiKeyCreator(keyCreator);
@@ -1028,7 +1094,9 @@ public class Store {
         }
         SecondaryConfig dbConfig =
             getSecondaryConfig(secName, entityMeta, keyClassName, secKeyMeta);
-        if (config.getSortedDuplicates() != dbConfig.getSortedDuplicates() ||
+        if (config.getExclusiveCreate() ||
+            config.getAllowCreate() == config.getReadOnly() ||
+            config.getSortedDuplicates() != dbConfig.getSortedDuplicates() ||
             config.getBtreeComparator() != dbConfig.getBtreeComparator() ||
             config.getDuplicateComparator() != null ||
             config.getAllowPopulate() != dbConfig.getAllowPopulate() ||
@@ -1043,7 +1111,8 @@ public class Store {
             config.getForeignKeyDatabase() != null) {
             throw new IllegalArgumentException
                 ("One of these properties was illegally changed: " +
-                 " SortedDuplicates, BtreeComparator, DuplicateComparator," +
+                 " AllowCreate, ExclusiveCreate, SortedDuplicates," +
+                 " BtreeComparator, DuplicateComparator, Temporary," +
                  " AllowPopulate, KeyCreator, MultiKeyCreator," +
                  " ForeignKeyNullifer, ForeignMultiKeyNullifier," +
                  " ForeignKeyDeleteAction, ForeignKeyDatabase");
@@ -1099,6 +1168,18 @@ public class Store {
         return result;
     }
 
+    /**
+     * Creates a message identifying the database from the pair of strings
+     * returned by parseDbName.
+     */
+    String getDbNameMessage(String[] names) {
+        if (DbCompat.SEPARATE_DATABASE_FILES) {
+            return "file: " + names[0];
+        } else {
+            return "database: " + names[1];
+        }
+    }
+
     private void checkOpen() {
         if (catalog == null) {
             throw new IllegalStateException("Store has been closed");
@@ -1146,18 +1227,12 @@ public class Store {
 
     private void setBtreeComparator(DatabaseConfig config, String clsName) {
         if (!rawAccess) {
-            ClassMetadata meta = model.getClassMetadata(clsName);
-            if (meta != null) {
-                List<FieldMetadata> compositeKeyFields =
-                    meta.getCompositeKeyFields();
-                if (compositeKeyFields != null) {
-                    Class keyClass = SimpleCatalog.keyClassForName(clsName);
-                    if (Comparable.class.isAssignableFrom(keyClass)) {
-                        Comparator<Object> cmp = new PersistComparator
-                            (clsName, compositeKeyFields,
-                             getKeyBinding(clsName));
-                        config.setBtreeComparator(cmp);
-                    }
+            PersistKeyBinding binding = getKeyBinding(clsName);
+            Format format = binding.keyFormat;
+            if (format instanceof CompositeKeyFormat) {
+                Class keyClass = format.getType();
+                if (Comparable.class.isAssignableFrom(keyClass)) {
+                    config.setBtreeComparator(new PersistComparator(binding));
                 }
             }
         }
@@ -1254,9 +1329,10 @@ public class Store {
                     oneWritten = true;
                     nWritten += 1;
                 }
+                /* Update event stats, even if no listener. [#17024] */
+                EvolveInternal.updateEvent
+                    (event, entityClassName, 1, oneWritten ? 1 : 0);
                 if (listener != null) {
-                    EvolveInternal.updateEvent
-                        (event, entityClassName, 1, oneWritten ? 1 : 0);
                     if (!listener.evolveProgress(event)) {
                         break;
                     }

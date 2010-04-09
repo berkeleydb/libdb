@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: repmgr_msg.c,v 1.42 2008/01/08 20:58:48 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -15,6 +15,7 @@ static int message_loop __P((ENV *));
 static int process_message __P((ENV*, DBT*, DBT*, int));
 static int handle_newsite __P((ENV *, const DBT *));
 static int ack_message __P((ENV *, u_int32_t, DB_LSN *));
+static int ack_msg_conn __P((ENV *, REPMGR_CONNECTION *, u_int32_t, DB_LSN *));
 
 /*
  * PUBLIC: void *__repmgr_msg_thread __P((void *));
@@ -67,15 +68,16 @@ process_message(env, control, rec, eid)
 	u_int32_t generation;
 
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
 
 	/*
 	 * Save initial generation number, in case it changes in a close race
-	 * with a NEWMASTER.  See msgdir.10000/10039/msg00086.html.
+	 * with a NEWMASTER.
 	 */
-	generation = db_rep->generation;
+	generation = rep->gen;
 
 	switch (ret =
-	    __rep_process_message(env->dbenv, control, rec, eid, &permlsn)) {
+	    __rep_process_message_int(env, control, rec, eid, &permlsn)) {
 	case 0:
 		if (db_rep->takeover_pending) {
 			db_rep->takeover_pending = FALSE;
@@ -108,7 +110,6 @@ process_message(env, control, rec, eid)
 		/*
 		 * Don't bother sending ack if master doesn't care about it.
 		 */
-		rep = db_rep->region;
 		if (db_rep->perm_policy == DB_REPMGR_ACKS_NONE ||
 		    (IS_PEER_POLICY(db_rep->perm_policy) &&
 		    rep->priority == 0))
@@ -172,7 +173,6 @@ __repmgr_handle_event(env, event, info)
 
 		db_rep->found_master = TRUE;
 		db_rep->master_eid = *(int *)info;
-		__repmgr_stash_generation(env);
 
 		/* Application still needs to see this. */
 		break;
@@ -182,19 +182,13 @@ __repmgr_handle_event(env, event, info)
 	return (DB_EVENT_NOT_HANDLED);
 }
 
-/*
- * Acknowledges a message.
- */
 static int
 ack_message(env, generation, lsn)
 	ENV *env;
 	u_int32_t generation;
 	DB_LSN *lsn;
 {
-	DBT control2, rec2;
 	DB_REP *db_rep;
-	__repmgr_ack_args ack;
-	u_int8_t buf[__REPMGR_ACK_SIZE];
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
 	int ret;
@@ -205,19 +199,55 @@ ack_message(env, generation, lsn)
 	 * site.  If we're not in touch with the master, we drop it, since
 	 * there's not much else we can do.
 	 */
+	ret = 0;
+	LOCK_MUTEX(db_rep->mutex);
 	if (!IS_VALID_EID(db_rep->master_eid) ||
 	    db_rep->master_eid == SELF_EID) {
 		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 		    "dropping ack with master %d", db_rep->master_eid));
-		return (0);
+		goto unlock;
 	}
 
-	ret = 0;
-	LOCK_MUTEX(db_rep->mutex);
 	site = SITE_FROM_EID(db_rep->master_eid);
+
+	/*
+	 * Send the ack out on any/all connections that need it, rather than
+	 * going to the trouble of trying to keep track of what LSN's each
+	 * connection may be waiting for.
+	 */
 	if (site->state == SITE_CONNECTED &&
-	    site->ref.conn->state == CONN_READY) {
-		conn = site->ref.conn;
+	    (ret = ack_msg_conn(env, site->ref.conn, generation, lsn)) != 0)
+		goto unlock;
+	TAILQ_FOREACH(conn, &site->sub_conns, entries) {
+		if ((ret = ack_msg_conn(env, conn, generation, lsn)) != 0)
+			goto unlock;
+	}
+
+unlock:
+	UNLOCK_MUTEX(db_rep->mutex);
+	return (ret);
+}
+
+/*
+ * Sends an acknowledgment on one connection, if it needs it.
+ *
+ * !!! Called with mutex held.
+ */
+static int
+ack_msg_conn(env, conn, generation, lsn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+	u_int32_t generation;
+	DB_LSN *lsn;
+{
+	DBT control2, rec2;
+	__repmgr_ack_args ack;
+	u_int8_t buf[__REPMGR_ACK_SIZE];
+	int ret;
+
+	ret = 0;
+
+	if (conn->state == CONN_READY) {
 		DB_ASSERT(env, conn->version > 0);
 		ack.generation = generation;
 		memcpy(&ack.lsn, lsn, sizeof(DB_LSN));
@@ -239,8 +269,6 @@ ack_message(env, generation, lsn)
 		    &control2, &rec2, FALSE)) == DB_REP_UNAVAIL)
 			ret = __repmgr_bust_connection(env, conn);
 	}
-
-	UNLOCK_MUTEX(db_rep->mutex);
 	return (ret);
 }
 
@@ -252,11 +280,9 @@ handle_newsite(env, rec)
 	ENV *env;
 	const DBT *rec;
 {
-	ADDRINFO *ai;
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
 	SITE_STRING_BUFFER buffer;
-	repmgr_netaddr_t *addr;
 	size_t hlen;
 	u_int16_t port;
 	int ret;
@@ -292,28 +318,19 @@ handle_newsite(env, rec)
 	}
 
 	LOCK_MUTEX(db_rep->mutex);
-	if ((ret = __repmgr_add_site(env, host, port, &site)) == EEXIST) {
+	if ((ret = __repmgr_add_site(env, host, port, &site, 0)) == EEXIST) {
 		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
 		    "NEWSITE info from %s was already known",
 		    __repmgr_format_site_loc(site, buffer)));
 		/*
-		 * In case we already know about this site only because it
-		 * first connected to us, we may not yet have had a chance to
-		 * look up its addresses.  Even though we don't need them just
-		 * now, this is an advantageous opportunity to get them since we
-		 * can do so away from the critical select thread.  Give up only
-		 * for a disastrous failure.
+		 * This is a good opportunity to look up the host name, if
+		 * needed, because we're on a message thread (not the critical
+		 * select() thread).
 		 */
-		addr = &site->net_addr;
-		if (addr->address_list == NULL) {
-			if ((ret = __repmgr_getaddr(env,
-			    addr->host, addr->port, 0, &ai)) == 0)
-				addr->address_list = ai;
-			else if (ret != DB_REP_UNAVAIL)
-				goto unlock;
-		}
+		if ((ret = __repmgr_check_host_name(env,
+		    EID_FROM_SITE(site))) != 0)
+			return (ret);
 
-		ret = 0;
 		if (site->state == SITE_CONNECTED)
 			goto unlock; /* Nothing to do. */
 	} else {
@@ -332,20 +349,4 @@ handle_newsite(env, rec)
 
 unlock: UNLOCK_MUTEX(db_rep->mutex);
 	return (ret);
-}
-
-/*
- * PUBLIC: void __repmgr_stash_generation __P((ENV *));
- */
-void
-__repmgr_stash_generation(env)
-	ENV *env;
-{
-	DB_REP *db_rep;
-	REP *rep;
-
-	db_rep = env->rep_handle;
-	rep = db_rep->region;
-
-	db_rep->generation = rep->gen;
 }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: repmgr_net.c,v 1.70 2008/03/13 17:31:28 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -43,10 +43,10 @@
  * to the trouble of doing that, other sites to which we also want to send the
  * message (in the case of a broadcast), may as well take advantage of the
  * simplified structure also.
- *     This structure holds it all.  Note that this structure, and the
- * "flat_msg" structure, are allocated separately, because (1) the flat_msg
- * version is usually not needed; and (2) when it is needed, it will need to
- * live longer than the wrapping sending_msg structure.
+ *     The sending_msg structure below holds it all.  Note that this structure,
+ * and the "flat_msg" structure, are allocated separately, because (1) the
+ * flat_msg version is usually not needed; and (2) when a flat_msg is needed, it
+ * will need to live longer than the wrapping sending_msg structure.
  *     Note that, for the broadcast case, where we're going to use this
  * repeatedly, the iovecs is a template that must be copied, since in normal use
  * the iovecs pointers and lengths get adjusted after every partial write.
@@ -58,6 +58,9 @@ struct sending_msg {
 	REPMGR_FLAT *fmsg;
 };
 
+static int final_cleanup __P((ENV *, REPMGR_CONNECTION *, void *));
+static int flatten __P((ENV *, struct sending_msg *));
+static void remove_connection __P((ENV *, REPMGR_CONNECTION *));
 static int __repmgr_close_connection __P((ENV *, REPMGR_CONNECTION *));
 static int __repmgr_destroy_connection __P((ENV *, REPMGR_CONNECTION *));
 static void setup_sending_msg
@@ -66,7 +69,6 @@ static int __repmgr_send_internal
     __P((ENV *, REPMGR_CONNECTION *, struct sending_msg *, int));
 static int enqueue_msg
     __P((ENV *, REPMGR_CONNECTION *, struct sending_msg *, size_t));
-static int flatten __P((ENV *, struct sending_msg *));
 static REPMGR_SITE *__repmgr_available_site __P((ENV *, int));
 
 /*
@@ -85,6 +87,7 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 	u_int32_t flags;
 {
 	DB_REP *db_rep;
+	REP *rep;
 	ENV *env;
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
@@ -93,8 +96,29 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 
 	env = dbenv->env;
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	ret = 0;
 
 	LOCK_MUTEX(db_rep->mutex);
+
+	/*
+	 * If we're already "finished", we can't send anything.  This covers the
+	 * case where a bulk buffer is flushed at env close, or perhaps an
+	 * unexpected __repmgr_thread_failure.
+	 */ 
+	if (db_rep->finished) {
+		ret = DB_REP_UNAVAIL;
+		goto out;
+	}
+	
+	/*
+	 * Check whether we need to refresh our site address information with
+	 * more recent updates from shared memory.
+	 */
+	if (rep->siteaddr_seq > db_rep->siteaddr_seq &&
+	    (ret = __repmgr_sync_siteaddr(env)) != 0)
+		goto out;
+
 	if (eid == DB_EID_BROADCAST) {
 		if ((ret = __repmgr_send_broadcast(env, REPMGR_REP_MESSAGE,
 		    control, rec, &nsites_sent, &npeers_sent)) != 0)
@@ -242,6 +266,45 @@ __repmgr_available_site(env, eid)
 }
 
 /*
+ * Synchronize our list of sites with new information that has been added to the
+ * list in the shared region.
+ *
+ * PUBLIC: int __repmgr_sync_siteaddr __P((ENV *));
+ */
+int
+__repmgr_sync_siteaddr(env)
+	ENV *env;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	char *host;
+	u_int added;
+	int ret;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+
+	ret = 0;
+
+	MUTEX_LOCK(env, rep->mtx_repmgr);
+
+	if (db_rep->my_addr.host == NULL && rep->my_addr.host != INVALID_ROFF) {
+		host = R_ADDR(env->reginfo, rep->my_addr.host);
+		if ((ret = __repmgr_pack_netaddr(env,
+		    host, rep->my_addr.port, NULL, &db_rep->my_addr)) != 0)
+			goto out;
+	}
+
+	added = db_rep->site_cnt;
+	if ((ret = __repmgr_copy_in_added_sites(env)) == 0)
+		ret = __repmgr_init_new_sites(env, added, db_rep->site_cnt);
+
+out:
+	MUTEX_UNLOCK(env, rep->mtx_repmgr);
+	return (ret);
+}
+
+/*
  * Sends message to all sites with which we currently have an active
  * connection.  Sets result parameters according to how many sites we attempted
  * to begin sending to, even if we did nothing more than queue it for later
@@ -263,11 +326,14 @@ __repmgr_send_broadcast(env, type, control, rec, nsitesp, npeersp)
 	struct sending_msg msg;
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
-	u_int nsites, npeers;
+	u_int eid, nsites, npeers;
 	int ret;
 
 	static const u_int version_max_msg_type[] = {
-		0, REPMGR_MAX_V1_MSG_TYPE, REPMGR_MAX_V2_MSG_TYPE
+		0,
+		REPMGR_MAX_V1_MSG_TYPE,
+		REPMGR_MAX_V2_MSG_TYPE,
+		REPMGR_MAX_V3_MSG_TYPE
 	};
 
 	db_rep = env->rep_handle;
@@ -284,14 +350,12 @@ __repmgr_send_broadcast(env, type, control, rec, nsitesp, npeersp)
 	setup_sending_msg(&msg, type, control, rec);
 	nsites = npeers = 0;
 
-	/*
-	 * Traverse the connections list.  Here, even in bust_connection, we
-	 * don't unlink the current list entry, so we can use the TAILQ_FOREACH
-	 * macro.
-	 */
-	TAILQ_FOREACH(conn, &db_rep->connections, entries) {
-		if (conn->state != CONN_READY)
+	/* Send to (only the main connection with) every site. */
+	for (eid = 0; eid < db_rep->site_cnt; eid++) {
+		if ((site = __repmgr_available_site(env, (int)eid)) == NULL)
 			continue;
+		conn = site->ref.conn;
+
 		DB_ASSERT(env, IS_VALID_EID(conn->eid) &&
 		    conn->version > 0 &&
 		    conn->version <= DB_REPMGR_VERSION);
@@ -467,7 +531,11 @@ empty:
 	}
 
 	if (ret != WOULDBLOCK) {
+#ifdef EBADF
+		DB_ASSERT(env, ret != EBADF);
+#endif
 		__db_err(env, ret, "socket writing failure");
+		STAT(env->rep_handle->region->mstat.st_connection_drop++);
 		return (DB_REP_UNAVAIL);
 	}
 
@@ -539,7 +607,7 @@ __repmgr_is_permanent(env, lsnp)
 			continue;
 		}
 
-		if (log_compare(&site->max_ack, lsnp) >= 0) {
+		if (LOG_COMPARE(&site->max_ack, lsnp) >= 0) {
 			nsites++;
 			if (site->priority > 0)
 				npeers++;
@@ -611,11 +679,10 @@ __repmgr_is_permanent(env, lsnp)
 /*
  * Abandons a connection, to recover from an error.  Takes necessary recovery
  * action.  Note that we don't actually close and clean up the connection here;
- * that happens later, in the select() thread main loop.  See the definition of
- * DISABLE_CONNECTION (repmgr.h) for more discussion.
+ * that happens later, in the select() thread main loop.  See further
+ * explanation at function __repmgr_disable_connection().
  *
- * PUBLIC: int __repmgr_bust_connection __P((ENV *,
- * PUBLIC:     REPMGR_CONNECTION *));
+ * PUBLIC: int __repmgr_bust_connection __P((ENV *, REPMGR_CONNECTION *));
  *
  * !!!
  * Caller holds mutex.
@@ -626,7 +693,8 @@ __repmgr_bust_connection(env, conn)
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
-	int connecting, ret, eid;
+	REPMGR_SITE *site;
+	int connecting, ret, subordinate_conn, eid;
 
 	db_rep = env->rep_handle;
 	ret = 0;
@@ -634,34 +702,51 @@ __repmgr_bust_connection(env, conn)
 	eid = conn->eid;
 	connecting = (conn->state == CONN_CONNECTING);
 
-	DISABLE_CONNECTION(conn);
+	__repmgr_disable_connection(env, conn);
 
 	/*
-	 * When we first accepted the incoming connection, we set conn->eid to
-	 * -1 to indicate that we didn't yet know what site it might be from.
-	 * If we then get here because we later decide it was a redundant
-	 * connection, the following scary stuff will correctly not happen.
+	 * Any sort of connection, in any active state, could produce an error.
+	 * But when we're done DEFUNCT-ifying it here it should end up on the
+	 * orphans list.  So, move it if it's not already there.
 	 */
 	if (IS_VALID_EID(eid)) {
-		/* schedule_connection_attempt wakes the main thread. */
-		if ((ret = __repmgr_schedule_connection_attempt(
-		    env, (u_int)eid, FALSE)) != 0)
+		site = SITE_FROM_EID(eid);
+		subordinate_conn = (conn != site->ref.conn);
+
+		/* Note: schedule_connection_attempt wakes the main thread. */
+		if (!subordinate_conn &&
+		    (ret = __repmgr_schedule_connection_attempt(env,
+		    (u_int)eid, FALSE)) != 0)
 			return (ret);
 
 		/*
-		 * If this connection had gotten no further than the CONNECTING
-		 * state, this can't count as a loss of connection to the
-		 * master.
+		 * If the failed connection was the one between us and the
+		 * master, assume that the master may have failed, and call for
+		 * an election.  But only do this for the connection to the main
+		 * master process, not a subordinate one.  And only do it if
+		 * we're our site's main process, not a subordinate one.  And
+		 * only do it if the connection had managed to progress beyond
+		 * the "connecting" state, because otherwise it was just a
+		 * reconnection attempt that may have found the site unreachable
+		 * or the master process not running.
 		 */
-		if (!connecting && eid == db_rep->master_eid) {
-			(void)__memp_set_config(
-			    env->dbenv, DB_MEMP_SYNC_INTERRUPT, 1);
-			if ((ret = __repmgr_init_election(
-			    env, ELECT_FAILURE_ELECTION)) != 0)
-				return (ret);
-		}
+		if (!IS_SUBORDINATE(db_rep) && !subordinate_conn &&
+		    !connecting && eid == db_rep->master_eid &&
+		    (ret = __repmgr_init_election(
+		    env, ELECT_FAILURE_ELECTION)) != 0)
+			return (ret);
 	} else {
 		/*
+		 * The connection was not marked with a valid EID, so we know it
+		 * must have been an incoming connection in the very early
+		 * stages.  Obviously it's correct for us to avoid the
+		 * site-specific recovery steps above.  But even if we have just
+		 * learned which site the connection came from, and are killing
+		 * it because it's redundant, it means we already have a
+		 * perfectly fine connection, and so -- again -- it makes sense
+		 * for us to be skipping scheduling a reconnection, and checking
+		 * for a master crash.
+		 *
 		 * One way or another, make sure the main thread is poked, so
 		 * that we do the deferred clean-up.
 		 */
@@ -671,8 +756,55 @@ __repmgr_bust_connection(env, conn)
 }
 
 /*
- * PUBLIC: int __repmgr_cleanup_connection
- * PUBLIC:    __P((ENV *, REPMGR_CONNECTION *));
+ * Remove a connection from the possibility of any further activity, making sure
+ * it ends up on the main connections list, so that it will be cleaned up at the
+ * next opportunity in the select() thread.
+ *
+ * Various threads write onto TCP/IP sockets, and an I/O error could occur at
+ * any time.  However, only the dedicated "select()" thread may close the socket
+ * file descriptor, because under POSIX we have to drop our mutex and then call
+ * select() as two distinct (non-atomic) operations.
+ *
+ * To simplify matters, there is a single place in the select thread where we
+ * close and clean up after any defunct connection.  Even if the I/O error
+ * happens in the select thread we follow this convention.
+ *
+ * When an error occurs, we disable the connection (mark it defunct so that no
+ * one else will try to use it, and so that the select thread will find it and
+ * clean it up), and then usually take some additional recovery action: schedule
+ * a connection retry for later, and possibly call for an election if it was a
+ * connection to the master.  (This happens in the function
+ * __repmgr_bust_connection.)  But sometimes we don't want to do the recovery
+ * part; just the disabling part.
+ *
+ * PUBLIC: void __repmgr_disable_connection __P((ENV *, REPMGR_CONNECTION *));
+ */
+void
+__repmgr_disable_connection(env, conn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+{
+	DB_REP *db_rep;
+	REPMGR_SITE *site;
+	int eid;
+
+	db_rep = env->rep_handle;
+	eid = conn->eid;
+
+	if (IS_VALID_EID(eid)) {
+		site = SITE_FROM_EID(eid);
+		if (conn != site->ref.conn)
+			/* It's a subordinate connection. */
+			TAILQ_REMOVE(&site->sub_conns, conn, entries);
+		TAILQ_INSERT_TAIL(&db_rep->connections, conn, entries);
+	}
+
+	conn->state = CONN_DEFUNCT;
+	conn->eid = -1;
+}
+
+/*
+ * PUBLIC: int __repmgr_cleanup_connection __P((ENV *, REPMGR_CONNECTION *));
  *
  * !!!
  * Idempotent.  This can be called repeatedly as blocking message threads (of
@@ -701,12 +833,32 @@ __repmgr_cleanup_connection(env, conn)
 		goto out;
 	}
 
+	DB_ASSERT(env, !IS_VALID_EID(conn->eid) && conn->state == CONN_DEFUNCT);
 	TAILQ_REMOVE(&db_rep->connections, conn, entries);
-
 	ret = __repmgr_destroy_connection(env, conn);
 
 out:
 	return (ret);
+}
+
+static void
+remove_connection(env, conn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+{
+	DB_REP *db_rep;
+	REPMGR_SITE *site;
+
+	db_rep = env->rep_handle;
+	if (IS_VALID_EID(conn->eid)) {
+		site = SITE_FROM_EID(conn->eid);
+
+		if (site->state == SITE_CONNECTED && conn == site->ref.conn) {
+			/* Not on any list, so no need to do anything. */
+		} else
+			TAILQ_REMOVE(&site->sub_conns, conn, entries);
+	} else
+		TAILQ_REMOVE(&db_rep->connections, conn, entries);
 }
 
 static int
@@ -872,9 +1024,9 @@ flatten(env, msg)
 }
 
 /*
- * PUBLIC: int __repmgr_find_site __P((ENV *, const char *, u_int));
+ * PUBLIC: REPMGR_SITE *__repmgr_find_site __P((ENV *, const char *, u_int));
  */
-int
+REPMGR_SITE *
 __repmgr_find_site(env, host, port)
 	ENV *env;
 	const char *host;
@@ -890,17 +1042,15 @@ __repmgr_find_site(env, host, port)
 
 		if (strcmp(site->net_addr.host, host) == 0 &&
 		    site->net_addr.port == port)
-			return ((int)i);
+			return (site);
 	}
 
-	return (-1);
+	return (NULL);
 }
 
 /*
- * Stash a copy of the given host name and port number into a convenient data
- * structure so that we can save it permanently.  This is kind of like a
- * constructor for a netaddr object, except that the caller supplies the memory
- * for the base struct (though not the subordinate attachments).
+ * Initialize the fields of a (given) netaddr structure, with the given values.
+ * We copy the host name, but take ownership of the ADDRINFO buffer.
  *
  * All inputs are assumed to have been already validated.
  *
@@ -941,9 +1091,6 @@ __repmgr_getaddr(env, host, port, flags, result)
 {
 	ADDRINFO *answer, hints;
 	char buffer[10];		/* 2**16 fits in 5 digits. */
-#ifdef DB_WIN32
-	int ret;
-#endif
 
 	/*
 	 * Ports are really 16-bit unsigned values, but it's too painful to
@@ -954,12 +1101,6 @@ __repmgr_getaddr(env, host, port, flags, result)
 		    port, UINT16_MAX);
 		return (EINVAL);
 	}
-
-#ifdef DB_WIN32
-	if (!env->rep_handle->wsa_inited &&
-	    (ret = __repmgr_wsa_init(env)) != 0)
-		return (ret);
-#endif
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -988,86 +1129,133 @@ __repmgr_getaddr(env, host, port, flags, result)
  * site.  Unless newsitep is passed in as NULL, which is allowed.
  *
  * PUBLIC: int __repmgr_add_site
- * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **));
+ * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **, u_int32_t));
  *
  * !!!
- * Caller is expected to hold the mutex.
+ * Caller is expected to hold db_rep->mutex on entry.
  */
 int
-__repmgr_add_site(env, host, port, newsitep)
+__repmgr_add_site(env, host, port, sitep, flags)
 	ENV *env;
 	const char *host;
 	u_int port;
-	REPMGR_SITE **newsitep;
+	REPMGR_SITE **sitep;
+	u_int32_t flags;
 {
-	ADDRINFO *address_list;
+	int peer, state;
+
+	state = SITE_IDLE;
+	peer = LF_ISSET(DB_REPMGR_PEER);
+	return (__repmgr_add_site_int(env, host, port, sitep, peer, state));
+}
+
+/*
+ * PUBLIC: int __repmgr_add_site_int
+ * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **, int, int));
+ */
+int
+__repmgr_add_site_int(env, host, port, sitep, peer, state)
+	ENV *env;
+	const char *host;
+	u_int port;
+	REPMGR_SITE **sitep;
+	int peer, state;
+{
 	DB_REP *db_rep;
-	repmgr_netaddr_t addr;
+	REP *rep;
+	DB_THREAD_INFO *ip;
 	REPMGR_SITE *site;
-	int ret, eid;
+	u_int base;
+	int eid, locked, pre_exist, ret, t_ret;
 
-	ret = 0;
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	COMPQUIET(site, NULL);
+	COMPQUIET(pre_exist, 0);
+	eid = DB_EID_INVALID;
 
-	if (IS_VALID_EID(eid = __repmgr_find_site(env, host, port))) {
-		site = SITE_FROM_EID(eid);
-		ret = EEXIST;
+	/* Make sure we're up to date before adding to our local list. */
+	ENV_ENTER(env, ip);
+	MUTEX_LOCK(env, rep->mtx_repmgr);
+	locked = TRUE;
+	base = db_rep->site_cnt;
+	if ((ret = __repmgr_copy_in_added_sites(env)) != 0)
 		goto out;
+
+	/* Once we're this far, we're committed to doing init_new_sites. */
+
+	/* If it's still not found, now it's safe to add it. */
+	if ((site = __repmgr_find_site(env, host, port)) == NULL) {
+		pre_exist = FALSE;
+
+		/*
+		 * Store both locally and in shared region.
+		 */
+		if ((ret = __repmgr_new_site(env,
+		    &site, host, port, state)) != 0)
+			goto init;
+		eid = EID_FROM_SITE(site);
+		DB_ASSERT(env, (u_int)eid == db_rep->site_cnt - 1);
+
+		if ((ret = __repmgr_share_netaddrs(env,
+		    rep, (u_int)eid, db_rep->site_cnt)) != 0) {
+			/*
+			 * Rescind the added local slot.
+			 */
+			db_rep->site_cnt--;
+			__repmgr_cleanup_netaddr(env, &site->net_addr);
+		}
+	} else {
+		pre_exist = TRUE;
+		eid = EID_FROM_SITE(site);
 	}
 
-	if ((ret = __repmgr_getaddr(
-	    env, host, port, 0, &address_list)) == DB_REP_UNAVAIL) {
-		/* Allow re-tryable errors.  We'll try again later. */
-		address_list = NULL;
-	} else if (ret != 0)
-		return (ret);
-
-	if ((ret = __repmgr_pack_netaddr(
-	    env, host, port, address_list, &addr)) != 0) {
-		__os_freeaddrinfo(env, address_list);
-		return (ret);
+	/*
+	 * Bump sequence count explicitly, to cover the pre-exist case.  In the
+	 * other case it's wasted, but that's not worth worrying about.
+	 */
+	if (peer) {
+		db_rep->peer = rep->peer = EID_FROM_SITE(site);
+		db_rep->siteaddr_seq = ++rep->siteaddr_seq;
 	}
 
-	if ((ret = __repmgr_new_site(env, &site, &addr, SITE_IDLE)) != 0) {
-		__repmgr_cleanup_netaddr(env, &addr);
-		return (ret);
-	}
+init:
+	MUTEX_UNLOCK(env, rep->mtx_repmgr);
+	locked = FALSE;
 
-	if (db_rep->selector != NULL &&
-	    (ret = __repmgr_schedule_connection_attempt(
-	    env, (u_int)EID_FROM_SITE(site), TRUE)) != 0)
-		return (ret);
+	/*
+	 * Initialize all new sites (including the ones we snarfed via
+	 * copy_in_added_sites), even if it doesn't include a pre_existing one.
+	 * But if the new one is already connected, it doesn't need this
+	 * initialization, so skip over that one (which we accomplish by making
+	 * two calls with sub-ranges).
+	 */
+	if (state != SITE_CONNECTED || eid == DB_EID_INVALID)
+		t_ret = __repmgr_init_new_sites(env, base, db_rep->site_cnt);
+	else
+		if ((t_ret = __repmgr_init_new_sites(env,
+		    base, (u_int)eid)) == 0)
+			t_ret = __repmgr_init_new_sites(env,
+			    (u_int)(eid+1), db_rep->site_cnt);
+	if (t_ret != 0 && ret == 0)
+		ret = t_ret;
 
-	/* Note that we should only come here for success and EEXIST. */
 out:
-	if (newsitep != NULL)
-		*newsitep = site;
+	if (locked)
+		MUTEX_UNLOCK(env, rep->mtx_repmgr);
+	ENV_LEAVE(env, ip);
+	if (ret == 0) {
+		if (sitep != NULL)
+			*sitep = site;
+		if (pre_exist)
+			ret = EEXIST;
+	}
 	return (ret);
 }
 
 /*
- * Initializes net-related memory in the db_rep handle.
- *
- * PUBLIC: int __repmgr_net_create __P((DB_REP *));
- */
-int
-__repmgr_net_create(db_rep)
-	DB_REP *db_rep;
-{
-	db_rep->listen_fd = INVALID_SOCKET;
-	db_rep->master_eid = DB_EID_INVALID;
-
-	TAILQ_INIT(&db_rep->connections);
-	TAILQ_INIT(&db_rep->retries);
-
-	return (0);
-}
-
-/*
- * listen_socket_init --
- *	Initialize a socket for listening.  Sets
- *	a file descriptor for the socket, ready for an accept() call
- *	in a thread that we're happy to let block.
+ * Initialize a socket for listening.  Sets a file descriptor for the socket,
+ * ready for an accept() call in a thread that we're happy to let block.
  *
  * PUBLIC:  int __repmgr_listen __P((ENV *));
  */
@@ -1085,12 +1273,19 @@ __repmgr_listen(env)
 
 	/* Use OOB value as sentinel to show no socket open. */
 	s = INVALID_SOCKET;
-	ai = ADDR_LIST_FIRST(&db_rep->my_addr);
+
+	if ((ai = ADDR_LIST_FIRST(&db_rep->my_addr)) == NULL) {
+		if ((ret = __repmgr_getaddr(env, db_rep->my_addr.host,
+		    db_rep->my_addr.port, AI_PASSIVE, &ai)) == 0)
+			ADDR_LIST_INIT(&db_rep->my_addr, ai);
+		else
+			return (ret);
+	}
 
 	/*
 	 * Given the assert is correct, we execute the loop at least once, which
-	 * means 'why' will have been set by the time it's needed.  But I guess
-	 * lint doesn't know about DB_ASSERT.
+	 * means 'why' will have been set by the time it's needed.  But of
+	 * course lint doesn't know about DB_ASSERT.
 	 */
 	COMPQUIET(why, "");
 	DB_ASSERT(env, ai != NULL);
@@ -1150,46 +1345,37 @@ __repmgr_net_close(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
-	REPMGR_CONNECTION *conn;
-#ifndef DB_WIN32
-	struct sigaction sigact;
-#endif
-	int ret, t_ret;
+	REP *rep;
+	int ret;
 
 	db_rep = env->rep_handle;
-	if (db_rep->listen_fd == INVALID_SOCKET)
-		return (0);
+	rep = db_rep->region;
 
-	ret = 0;
-	while (!TAILQ_EMPTY(&db_rep->connections)) {
-		conn = TAILQ_FIRST(&db_rep->connections);
-		if ((t_ret = __repmgr_close_connection(env, conn)) != 0 &&
-		    ret == 0)
-			ret = t_ret;
-		TAILQ_REMOVE(&db_rep->connections, conn, entries);
-		if ((t_ret = __repmgr_destroy_connection(env, conn)) != 0 &&
-		    ret == 0)
-			ret = t_ret;
+	ret = __repmgr_each_connection(env, final_cleanup, NULL, FALSE);
+
+	if (db_rep->listen_fd != INVALID_SOCKET) {
+		if (closesocket(db_rep->listen_fd) == SOCKET_ERROR && ret == 0)
+			ret = net_errno;
+		db_rep->listen_fd = INVALID_SOCKET;
+		rep->listener = 0;
 	}
+	return (ret);
+}
 
-	if (closesocket(db_rep->listen_fd) == SOCKET_ERROR && ret == 0)
-		ret = net_errno;
+static int
+final_cleanup(env, conn, unused)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+	void *unused;
+{
+	int ret, t_ret;
 
-#ifdef DB_WIN32
-	/* Shut down the Windows sockets DLL. */
-	if (WSACleanup() == SOCKET_ERROR && ret == 0)
-		ret = net_errno;
-	db_rep->wsa_inited = FALSE;
-#else
-	/* Restore original SIGPIPE handling configuration. */
-	if (db_rep->chg_sig_handler) {
-		memset(&sigact, 0, sizeof(sigact));
-		sigact.sa_handler = SIG_DFL;
-		if (sigaction(SIGPIPE, &sigact, NULL) == -1 && ret == 0)
-			ret = errno;
-	}
-#endif
-	db_rep->listen_fd = INVALID_SOCKET;
+	COMPQUIET(unused, NULL);
+
+	remove_connection(env, conn);
+	ret = __repmgr_close_connection(env, conn);
+	if ((t_ret = __repmgr_destroy_connection(env, conn)) != 0 && ret == 0)
+		ret = t_ret;
 	return (ret);
 }
 
@@ -1201,7 +1387,6 @@ __repmgr_net_destroy(env, db_rep)
 	ENV *env;
 	DB_REP *db_rep;
 {
-	REPMGR_CONNECTION *conn;
 	REPMGR_RETRY *retry;
 	REPMGR_SITE *site;
 	u_int i;
@@ -1217,13 +1402,11 @@ __repmgr_net_destroy(env, db_rep)
 		__os_free(env, retry);
 	}
 
-	while (!TAILQ_EMPTY(&db_rep->connections)) {
-		conn = TAILQ_FIRST(&db_rep->connections);
-		(void)__repmgr_destroy_connection(env, conn);
-	}
+	DB_ASSERT(env, TAILQ_EMPTY(&db_rep->connections));
 
 	for (i = 0; i < db_rep->site_cnt; i++) {
 		site = &db_rep->sites[i];
+		DB_ASSERT(env, TAILQ_EMPTY(&site->sub_conns));
 		__repmgr_cleanup_netaddr(env, &site->net_addr);
 	}
 	__os_free(env, db_rep->sites);

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2006-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_resize.c,v 12.14 2008/03/13 15:21:21 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -21,16 +21,17 @@ static int __memp_remove_bucket __P((DB_MPOOL *));
 static int __memp_remove_region __P((DB_MPOOL *));
 
 /*
- * PUBLIC: int __memp_get_bucket __P((ENV *,
- * PUBLIC:     MPOOLFILE *, db_pgno_t, REGINFO **, DB_MPOOL_HASH **));
+ * PUBLIC: int __memp_get_bucket __P((ENV *, MPOOLFILE *,
+ * PUBLIC:     db_pgno_t, REGINFO **, DB_MPOOL_HASH **, u_int32_t *));
  */
 int
-__memp_get_bucket(env, mfp, pgno, infopp, hpp)
+__memp_get_bucket(env, mfp, pgno, infopp, hpp, bucketp)
 	ENV *env;
 	MPOOLFILE *mfp;
 	db_pgno_t pgno;
 	REGINFO **infopp;
 	DB_MPOOL_HASH **hpp;
+	u_int32_t *bucketp;
 {
 	DB_MPOOL *dbmp;
 	DB_MPOOL_HASH *hp;
@@ -76,7 +77,7 @@ __memp_get_bucket(env, mfp, pgno, infopp, hpp)
 			hp = R_ADDR(infop, c_mp->htab);
 			hp = &hp[bucket - region * mp->htab_buckets];
 
-			MUTEX_LOCK(env, hp->mtx_hash);
+			MUTEX_READLOCK(env, hp->mtx_hash);
 
 			/*
 			 * Check that we still have the correct region mapped.
@@ -107,6 +108,8 @@ __memp_get_bucket(env, mfp, pgno, infopp, hpp)
 		break;
 	}
 
+	if (bucketp != NULL)
+		*bucketp = bucket - region * mp->htab_buckets;
 	return (ret);
 }
 
@@ -159,10 +162,12 @@ free_old:
 			 * after a split, since everyone will look for it in
 			 * the new hash bucket.
 			 */
-			DB_ASSERT(env, !F_ISSET(bhp, BH_LOCKED | BH_DIRTY) &&
-			    bhp->ref == 0);
-			if ((ret = __memp_bhfree(dbmp,
-			    new_infop, new_hp, bhp, BH_FREE_FREEMEM)) != 0) {
+			DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY) &&
+			    atomic_read(&bhp->ref) == 0);
+			atomic_inc(env, &bhp->ref);
+			mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
+			if ((ret = __memp_bhfree(dbmp, new_infop,
+			    mfp, new_hp, bhp, BH_FREE_FREEMEM)) != 0) {
 				MUTEX_UNLOCK(env, new_hp->mtx_hash);
 				return (ret);
 			}
@@ -186,28 +191,40 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 		MP_HASH_BUCKET(MP_HASH(bhp->mf_offset, bhp->pgno),
 		    new_nbuckets, high_mask, bucket);
 
-		if (bucket == new_bucket &&
-		    (F_ISSET(bhp, BH_LOCKED) || bhp->ref != 0)) {
+		if (bucket == new_bucket && atomic_read(&bhp->ref) != 0) {
 			MUTEX_UNLOCK(env, old_hp->mtx_hash);
 			__os_yield(env, 0, 0);
 			goto retry;
 		} else if (bucket == new_bucket && F_ISSET(bhp, BH_FROZEN)) {
-			++bhp->ref;
+			atomic_inc(env, &bhp->ref);
+			/*
+			 * We need to drop the hash bucket mutex to avoid
+			 * self-blocking when we allocate a new buffer.
+			 */
+			MUTEX_UNLOCK(env, old_hp->mtx_hash);
+			MUTEX_LOCK(env, bhp->mtx_buf);
+			F_SET(bhp, BH_EXCLUSIVE);
 			if (BH_OBSOLETE(bhp, old_hp->old_reader, vlsn))
 				alloc_bhp = NULL;
 			else {
 				mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
-				MUTEX_UNLOCK(env, old_hp->mtx_hash);
 				if ((ret = __memp_alloc(dbmp,
 				    old_infop, mfp, 0, NULL, &alloc_bhp)) != 0)
-					return (ret);
-				MUTEX_LOCK(env, old_hp->mtx_hash);
+					goto err;
 			}
-			if ((ret = __memp_bh_thaw(dbmp,
-			    old_infop, old_hp, bhp, alloc_bhp)) != 0) {
-				MUTEX_UNLOCK(env, old_hp->mtx_hash);
-				return (ret);
-			}
+			/*
+			 * But we need to lock the hash bucket again before
+			 * thawing the buffer.  The call to __memp_bh_thaw
+			 * will unlock the hash bucket mutex.
+			 */
+			MUTEX_LOCK(env, old_hp->mtx_hash);
+			if (F_ISSET(bhp, BH_THAWED)) {
+				ret = __memp_bhfree(dbmp, old_infop, NULL, NULL,
+				    alloc_bhp,
+				    BH_FREE_FREEMEM | BH_FREE_UNLOCKED);
+			} else
+				ret = __memp_bh_thaw(dbmp,
+				    old_infop, old_hp, bhp, alloc_bhp);
 
 			/*
 			 * We've dropped the mutex in order to thaw, so we need
@@ -215,7 +232,11 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 			 * the buffers we care about are still unlocked and
 			 * unreferenced.
 			 */
-			MUTEX_UNLOCK(env, old_hp->mtx_hash);
+err:			atomic_dec(env, &bhp->ref);
+			F_CLR(bhp, BH_EXCLUSIVE);
+			MUTEX_UNLOCK(env, bhp->mtx_buf);
+			if (ret != 0)
+				return (ret);
 			goto retry;
 		}
 	}
@@ -242,12 +263,12 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 		    current_bhp != NULL;
 		    current_bhp = SH_CHAIN_PREV(current_bhp, vc, __bh),
 		    next_bhp = alloc_bhp) {
+			/* Allocate in the new region. */
 			if ((ret = __memp_alloc(dbmp,
 			    new_infop, mfp, 0, NULL, &alloc_bhp)) != 0)
 				break;
 
 			alloc_bhp->ref = current_bhp->ref;
-			alloc_bhp->ref_sync = current_bhp->ref_sync;
 			alloc_bhp->priority = current_bhp->priority;
 			alloc_bhp->pgno = current_bhp->pgno;
 			alloc_bhp->mf_offset = current_bhp->mf_offset;
@@ -287,14 +308,13 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 		MUTEX_LOCK(env, new_hp->mtx_hash);
 		SH_TAILQ_INSERT_TAIL(&new_hp->hash_bucket, new_bhp, hq);
 		if (F_ISSET(new_bhp, BH_DIRTY))
-			++new_hp->hash_page_dirty;
-
-		MUTEX_UNLOCK(env, new_hp->mtx_hash);
+			atomic_inc(env, &new_hp->hash_page_dirty);
 
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			F_CLR(bhp, BH_DIRTY);
-			--old_hp->hash_page_dirty;
+			atomic_dec(env, &old_hp->hash_page_dirty);
 		}
+		MUTEX_UNLOCK(env, new_hp->mtx_hash);
 	}
 
 	if (ret == 0)

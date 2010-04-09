@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep030.tcl,v 12.26 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep030
 # TEST	Test of internal initialization multiple files and pagesizes.
@@ -17,6 +17,9 @@
 proc rep030 { method { niter 500 } { tnum "030" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -38,9 +41,25 @@ proc rep030 { method { niter 500 } { tnum "030" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.
-	set opts { clean noclean bulk }
+	set opts { noclean clean bulk }
 	foreach r $test_recopts {
 		foreach c $opts {
 			foreach l $logsets {
@@ -52,7 +71,7 @@ proc rep030 { method { niter 500 } { tnum "030" } args } {
 				}
 				puts "Rep$tnum ($method $r $c):\
 				    Internal initialization - hold some\
-				    databases open on master."
+				    databases open on master $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep030_sub $method $niter $tnum $l $r $c $args
@@ -64,12 +83,19 @@ proc rep030 { method { niter 500 } { tnum "030" } args } {
 proc rep030_sub { method niter tnum logset recargs opts largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -98,9 +124,6 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 
-	# Open a master.
-
-	#
 	# Run internal init using a data directory
 	#
 	file mkdir $masterdir/data
@@ -113,8 +136,10 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	#
 	set data_diropts " -data_dir data -data_dir data -data_dir data2"
 
+	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $repmemargs \
 	    $m_logargs -log_max $log_max -errpfx MASTER \
 	    -cachesize { 0 $cache 1 } $data_diropts $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
@@ -123,6 +148,7 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $repmemargs \
 	    $c_logargs -log_max $log_max -errpfx CLIENT \
 	    -cachesize { 0 $cache 1 } $data_diropts $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
@@ -154,7 +180,7 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		set pagesize [lindex $pglist $i]
 		set largs " -pagesize $pagesize "
 		eval rep_test $method $masterenv NULL $nentries $mult $mult \
-		    0 0 $largs
+		    0 $largs
 		process_msgs $envlist
 
 		#
@@ -163,8 +189,13 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		#
 		set old "test.db"
 		set new "test.$i.db"
-		error_check_good rename [$masterenv dbrename \
-		    -auto_commit $old $new] 0
+		if { $databases_in_memory == 0 } {
+			error_check_good rename [$masterenv dbrename \
+			    -auto_commit $old $new] 0
+		} else {
+			error_check_good inmem_rename [$masterenv dbrename \
+			    "" $old $new] 0
+		}
 		process_msgs $envlist
 		#
 		# We want to keep some databases open so that we test the
@@ -172,25 +203,40 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		# them in dbreg list.
 		#
 		if { [expr $i % 2 ] == 0 } {
-			set db [berkdb_open_noerr -env $masterenv $new]
+			if { $databases_in_memory == 1 } {
+				set db [berkdb_open_noerr\
+				    -env $masterenv "" $new]
+			} else {
+				set db [berkdb_open_noerr\
+				    -env $masterenv $new]
+			}
 			error_check_good dbopen.$i [is_valid_db $db] TRUE
 			lappend dbopen $db
 		}
 	}
-	#
+
 	# Set up a few special databases too.  We want one with a subdatabase
-	# and we want an empty database.
-	#
-	set testfile "test.db"
+	# and we want an empty database, in addition to in-memory dbs.
+
+	# Set up databases in-memory or on-disk as expected.
+	if { $databases_in_memory } {
+		set testfile { "" "test.db" }
+		set emptyfile { "" "empty.db" }
+	} else { 
+		set testfile "test.db"
+		set emptyfile "empty.db"
+	} 
+	
 	if { [is_queue $method] } {
 		set sub ""
 	} else {
 		set sub "subdb"
 	}
+
 	set omethod [convert_method $method]
 	set largs " -pagesize $maxpg "
 	set largs [convert_args $method $largs]
-	set emptyfile "empty.db"
+
 	#
 	# Create/close an empty database.
 	#
@@ -199,14 +245,20 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	error_check_good emptydb [is_valid_db $db] TRUE
 	error_check_good empty_close [$db close] 0
 	#
-	# Keep this subdb (regular if queue) database open.
+	# If we're not using in-mem named databases, open a subdb and 
+	# keep it open.  (Do a regular db if method is queue.)
 	# We need it a few times later on.
 	#
-	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit -create \
-	    -mode 0644} $largs $omethod $testfile $sub]
+	if { $databases_in_memory } {
+		set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		    -create -mode 0644} $largs $omethod $testfile]
+	} else {
+		set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		     -create -mode 0644} $largs $omethod $testfile $sub]
+	}
 	error_check_good subdb [is_valid_db $db] TRUE
 	set start 0
-	eval rep_test $method $masterenv $db $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv $db $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -221,7 +273,7 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 	 	eval rep_test \
-		    $method $masterenv $db $niter $start $start 0 0 $largs
+		    $method $masterenv $db $niter $start $start 0 $largs
 		incr start $niter
 		replclear 2
 
@@ -259,7 +311,7 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		# logs and that will trigger it.
 		#
 		set entries 100
-		eval rep_test $method $masterenv $db $entries $start $start 0 0 $largs
+		eval rep_test $method $masterenv $db $entries $start $start 0 $largs
 		incr start $entries
 		process_msgs $envlist 0 NONE err
 	}
@@ -279,11 +331,13 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		error_check_good bulk [$masterenv rep_config {bulk off}] 0
 		process_msgs $envlist 0 NONE err
 	}
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+
+	rep_verify $masterdir $masterenv $clientdir $clientenv\
+	    1 1 1 test.db $masterdir/data
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv \
-		    1 1 0 $dbname
+		    1 1 0 $dbname $masterdir/data
 	}
 
 	# Close the database held open on master for initialization.
@@ -294,18 +348,25 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	# Add records to the master and update client.
 	puts "\tRep$tnum.g: Add more records and check again."
 	set entries 10
-	set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
-	    -mode 0644} $largs $omethod $testfile $sub]
+	if { $databases_in_memory }  {
+		set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		    -mode 0644} $largs $omethod $testfile]
+	} else {
+		set db [eval {berkdb_open_noerr -env $masterenv -auto_commit \
+		    -mode 0644} $largs $omethod $testfile $sub]
+
+	}
 	error_check_good subdb [is_valid_db $db] TRUE
-	eval rep_test $method $masterenv $db $entries $niter 0 0 0 $largs
+	eval rep_test $method $masterenv $db $entries $niter 0 0 $largs
 	error_check_good subdb_close [$db close] 0
 	process_msgs $envlist 0 NONE err
 
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 0
+	rep_verify $masterdir $masterenv $clientdir $clientenv \
+	    1 1 0 test.db $masterdir/data
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv \
-		    1 1 0 $dbname
+		    1 1 0 $dbname $masterdir/data
 	}
 	set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	if { $opts == "bulk" } {
@@ -314,6 +375,10 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 		error_check_good bulkxferoff $bulkxfer 0
 	}
 
+	# Check that databases and logs are in-memory or on-disk as expected.
+	check_db_location $masterenv $dbname $masterdir/data
+	check_db_location $clientenv $dbname $clientdir/data
+	
 	check_log_location $masterenv
 	check_log_location $clientenv
 

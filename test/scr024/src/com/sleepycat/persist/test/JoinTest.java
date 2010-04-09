@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: JoinTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
@@ -35,8 +35,10 @@ public class JoinTest extends TxnTestCase {
 
     private static final int N_RECORDS = 5;
 
+    static protected Class<?> testClass = JoinTest.class;
+
     public static Test suite() {
-        return txnTestSuite(JoinTest.class, null, null);
+        return txnTestSuite(testClass, null, null);
     }
 
     private EntityStore store;

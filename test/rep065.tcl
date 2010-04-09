@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2008 Oracle.  All rights reserved.
+# Copyright (c) 2006-2009 Oracle.  All rights reserved.
 #
-# $Id: rep065.tcl,v 12.22 2008/02/20 16:59:14 sue Exp $
+# $Id$
 #
 # TEST	rep065
 # TEST	Tests replication running with different versions.
@@ -17,6 +17,7 @@
 # TEST	the current tcl code (e.g. test.tcl).
 proc rep065 { method { nsites 3 } args } {
 	source ./include.tcl
+	global repfiles_in_memory
 	global noenv_messaging
 	set noenv_messaging 1
 
@@ -38,13 +39,18 @@ proc rep065 { method { nsites 3 } args } {
 		return
 	}
 
-	#
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Make the list of {method version} pairs to test.
 	#
 	set mvlist [method_version]
 	set mvlen [llength $mvlist]
 	puts "Rep065: Testing the following $mvlen method/version pairs:"
 	puts "Rep065: $mvlist"
+	puts "Rep065: $msg2"
 	set count 1
 	set total [llength $mvlist]
 	set slist [setup_sites $nsites]
@@ -383,7 +389,7 @@ proc method_version { } {
 	set midx [lsearch -exact $meth btree]
 	set meth [lreplace $meth $midx $midx]
 
-	set vers {db-4.4.20 db-4.5.20 db-4.6.21}
+	set vers {db-4.4.20 db-4.5.20 db-4.6.21 db-4.7.25}
 	set dbvlen [llength $vers]
 	#
 	# NOTE: The values in "vers_list" are indices into $vers above.
@@ -393,7 +399,7 @@ proc method_version { } {
 	# add some new items to $vers_list to choose that index.
 	# Also need to add an entry for 'vtest' below.
 	#
-	set vers_list { 0 0 1 1 2 2 2 }
+	set vers_list { 0 0 1 1 2 2 2 3 3 3 }
 	set vers_len [expr [llength $vers_list] - 1]
 
 	# Walk through the list of remaining methods and randomly
@@ -401,9 +407,14 @@ proc method_version { } {
 	while { 1 } {
 		set mv $startmv
 		# We want to make sure we test each version.
+		# 4.4.20
 		set vtest(0) 1
+		# 4.5.20
 		set vtest(1) 1
+		# 4.6.21
 		set vtest(2) 0
+		# 4.7.25
+		set vtest(3) 0
 		foreach m $meth {
 			# Index into distribution list.
 			set vidx [berkdb random_int 0 $vers_len]

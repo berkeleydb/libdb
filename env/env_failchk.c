@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: env_failchk.c,v 12.44 2008/03/12 20:52:53 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -54,6 +54,26 @@ __env_failchk_pp(dbenv, flags)
 		return (__db_ferr(env, "DB_ENV->failchk", 0));
 
 	ENV_ENTER(env, ip);
+	FAILCHK_THREAD(env, ip);	/* mark as failchk thread */
+	ret = __env_failchk_int(dbenv);
+	ENV_LEAVE(env, ip);
+	return (ret);
+}
+/*
+ * __env_failchk_int --
+ *	Process the subsystem failchk routines
+ *
+ * PUBLIC: int __env_failchk_int __P((DB_ENV *));
+ */
+int
+__env_failchk_int(dbenv)
+	DB_ENV *dbenv;
+{
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
+	F_SET(dbenv, DB_ENV_FAILCHK);
 
 	/*
 	 * We check for dead threads in the API first as this would be likely
@@ -70,6 +90,11 @@ __env_failchk_pp(dbenv, flags)
 	    (ret = __dbreg_failchk(env)) != 0))
 		goto err;
 
+#ifdef HAVE_REPLICATION_THREADS
+	if (REP_ON(env) && (ret = __repmgr_failchk(env)) != 0)
+		goto err;
+#endif
+
 	/* Mark any dead blocked threads as dead. */
 	__env_clear_state(env);
 
@@ -77,10 +102,9 @@ __env_failchk_pp(dbenv, flags)
 	ret = __mut_failchk(env);
 #endif
 
-err:	ENV_LEAVE(env, ip);
+err:	F_CLR(dbenv, DB_ENV_FAILCHK);
 	return (ret);
 }
-
 /*
  * __env_thread_init --
  *	Initialize the thread control block table.
@@ -298,6 +322,10 @@ __env_set_state(env, ipp, state)
 	dbenv = env->dbenv;
 	htab = env->thr_hashtab;
 
+	if (F_ISSET(dbenv, DB_ENV_NOLOCKING)) {
+		*ipp = NULL;
+		return (0);
+	}
 	dbenv->thread_id(dbenv, &id.pid, &id.tid);
 
 	/*
@@ -327,13 +355,19 @@ __env_set_state(env, ipp, state)
 #endif
 	}
 
-#ifdef DIAGNOSTIC
-	/* A check to ensure the thread of control has been registered. */
+	/*
+	 * If ipp is not null,  return the thread control block if found.
+	 * Check to ensure the thread of control has been registered.
+	 */
 	if (state == THREAD_VERIFY) {
 		DB_ASSERT(env, ip != NULL && ip->dbth_state != THREAD_OUT);
+		if (ipp != NULL) {
+			if (ip == NULL) /* The control block wasnt found */
+				return (EINVAL);
+			*ipp = ip;
+		}
 		return (0);
 	}
-#endif
 
 	*ipp = NULL;
 	ret = 0;
@@ -389,6 +423,9 @@ init:			ip->dbth_pid = id.pid;
 		ip->dbth_state = state;
 	*ipp = ip;
 
+	DB_ASSERT(env, ret == 0);
+	if (ret != 0)
+		__db_errx(env, "Unable to allocate thread control block");
 	return (ret);
 }
 

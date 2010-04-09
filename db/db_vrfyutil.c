@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: db_vrfyutil.c,v 12.22 2008/03/18 17:29:39 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -660,13 +660,14 @@ err:	(void)__db_close(dbp, NULL, 0);
 /*
  * __db_salvage_destroy --
  *	Close salvager database.
- * PUBLIC: void  __db_salvage_destroy __P((VRFY_DBINFO *));
+ * PUBLIC: int  __db_salvage_destroy __P((VRFY_DBINFO *));
  */
-void
+int
 __db_salvage_destroy(vdp)
 	VRFY_DBINFO *vdp;
 {
-	(void)__db_close(vdp->salvage_pages, NULL, 0);
+	return (vdp->salvage_pages == NULL ? 0 :
+	    __db_close(vdp->salvage_pages, NULL, 0));
 }
 
 /*

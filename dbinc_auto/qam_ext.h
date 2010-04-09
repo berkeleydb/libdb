@@ -6,13 +6,13 @@
 extern "C" {
 #endif
 
-int __qam_position __P((DBC *, db_recno_t *, db_lockmode_t, u_int32_t, int *));
+int __qam_position __P((DBC *, db_recno_t *, u_int32_t, int *));
 int __qam_pitem __P((DBC *,  QPAGE *, u_int32_t, db_recno_t, DBT *));
 int __qam_append __P((DBC *, DBT *, DBT *));
 int __qamc_dup __P((DBC *, DBC *));
 int __qamc_init __P((DBC *));
 int __qam_truncate __P((DBC *, u_int32_t *));
-int __qam_delete __P((DBC *,  DBT *));
+int __qam_delete __P((DBC *,  DBT *, u_int32_t));
 int __qam_incfirst_read __P((ENV *, DB **, void *, void *, __qam_incfirst_args **));
 int __qam_incfirst_log __P((DB *, DB_TXN *, DB_LSN *, u_int32_t, db_recno_t, db_pgno_t));
 int __qam_mvptr_read __P((ENV *, DB **, void *, void *, __qam_mvptr_args **));
@@ -40,13 +40,14 @@ int __qam_gen_filelist __P((DB *, DB_THREAD_INFO *, QUEUE_FILELIST **));
 int __qam_extent_names __P((ENV *, char *, char ***));
 void __qam_exid __P((DB *, u_int8_t *, u_int32_t));
 int __qam_nameop __P((DB *, DB_TXN *, const char *, qam_name_op));
+int __qam_lsn_reset __P((DB *, DB_THREAD_INFO *));
 int __qam_db_create __P((DB *));
 int __qam_db_close __P((DB *, u_int32_t));
 int __qam_get_extentsize __P((DB *, u_int32_t *));
 int __queue_pageinfo __P((DB *, db_pgno_t *, db_pgno_t *, int *, int, u_int32_t));
 int __db_prqueue __P((DB *, u_int32_t));
-int __qam_remove __P((DB *, DB_TXN *, const char *, const char *));
-int __qam_rename __P((DB *, DB_TXN *, const char *, const char *, const char *));
+int __qam_remove __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, u_int32_t));
+int __qam_rename __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, const char *));
 void __qam_map_flags __P((DB *, u_int32_t *, u_int32_t *));
 int __qam_set_flags __P((DB *, u_int32_t *flagsp));
 int __qam_open __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, db_pgno_t, int, u_int32_t));
@@ -64,6 +65,7 @@ int __db_no_queue_am __P((ENV *));
 int __qam_31_qammeta __P((DB *, char *, u_int8_t *));
 int __qam_32_qammeta __P((DB *, char *, u_int8_t *));
 int __qam_vrfy_meta __P((DB *, VRFY_DBINFO *, QMETA *, db_pgno_t, u_int32_t));
+int __qam_meta2pgset __P((DB *, VRFY_DBINFO *, DB *));
 int __qam_vrfy_data __P((DB *, VRFY_DBINFO *, QPAGE *, db_pgno_t, u_int32_t));
 int __qam_vrfy_structure __P((DB *, VRFY_DBINFO *, u_int32_t));
 int __qam_vrfy_walkqueue __P((DB *, VRFY_DBINFO *, void *, int (*)(void *, const void *), u_int32_t));

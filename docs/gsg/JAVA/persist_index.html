@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 4. Working with Indices</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
-    <link rel="previous" href="saveret.html" title="Saving a Retrieving Data" />
+    <link rel="prev" href="saveret.html" title="Saving a Retrieving Data" />
     <link rel="next" href="dplindexcreate.html" title="Creating Indexes" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="persist_index"></a>Chapter 4. Working with Indices</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -95,7 +94,7 @@
             One way to organize access to your primary and secondary
             indexes is to create a <span class="emphasis"><em>data accessor</em></span>
             class. We show an implementation of a data accessor class in 
-            <a href="simpleda.html">SimpleDA.class</a>.
+            <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a>.
     </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -104,7 +103,20 @@
               <h2 class="title" style="clear: both"><a id="dplindexaccess"></a>Accessing Indexes</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="persist_index.html#primaryindexaccess">Accessing Primary Indices</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="persist_index.html#secondaryindexaccess">Accessing Secondary Indices</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
                   In order to retrieve any object from an entity store, you
@@ -113,7 +125,7 @@
                   different primary indexes, but all entity classes must have a
                   primary index declared for it. The primary index is just
                   the default index used for the class. (That is, it is the
-                  data's <span class="emphasis"><em>key</em></span> for the underlying database.)
+                  data's primary <span class="emphasis"><em>key</em></span> for the underlying database.)
           </p>
         <p>
                   Entity classes can optionally have secondary indexes
@@ -127,11 +139,10 @@
                 <h3 class="title"><a id="primaryindexaccess"></a>Accessing Primary Indices</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                             You retrieve a primary index using the
-                            <tt class="methodname">EntityStore.getPrimaryIndex()</tt>
+                            <code class="methodname">EntityStore.getPrimaryIndex()</code>
                             method. To do this, you indicate the index key type
                             (that is, whether it is a String, Integer, and
                             so forth) and the class of the entities stored
@@ -139,10 +150,10 @@
                     </p>
           <p>
                         For example, the following retrieves the
-                        primary index for an <tt class="classname">Inventory</tt>
+                        primary index for an <code class="classname">Inventory</code>
                         class (we provide an implementation of this class in
-                        <a href="inventoryclass.html">Inventory.class</a>). 
-                        These index keys are of type <tt class="classname">String</tt>.
+                        <a class="xref" href="inventoryclass.html" title="Inventory.java">Inventory.java</a>). 
+                        These index keys are of type <code class="classname">String</code>.
                     </p>
           <pre class="programlisting">PrimaryIndex&lt;String,Inventory&gt; inventoryBySku = 
     store.getPrimaryIndex(String.class, Inventory.class); </pre>
@@ -154,11 +165,10 @@
                 <h3 class="title"><a id="secondaryindexaccess"></a>Accessing Secondary Indices</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                             You retrieve a secondary index using the
-                            <tt class="methodname">EntityStore.getSecondaryIndex()</tt>
+                            <code class="methodname">EntityStore.getSecondaryIndex()</code>
                             method. Because secondary indices actually
                             refer to a primary index somewhere in your data
                             store, to access a secondary index you:
@@ -169,15 +179,15 @@
                 <p>
                                             Provide the primary index as
                                             returned by
-                                            <tt class="methodname">EntityStore.getPrimaryIndex()</tt>.
+                                            <code class="methodname">EntityStore.getPrimaryIndex()</code>.
                                     </p>
               </li>
               <li>
                 <p>
                                             Identify the key data type used by
                                             the secondary index
-                                            (<tt class="classname">String</tt>,
-                                            <tt class="classname">Long</tt>,
+                                            (<code class="classname">String</code>,
+                                            <code class="classname">Long</code>,
                                             and so forth).
                                     </p>
               </li>
@@ -186,7 +196,7 @@
                                             Identify the name of the
                                             secondary key field.
                                             When you declare the
-                                            <tt class="classname">SecondaryIndex</tt>
+                                            <code class="classname">SecondaryIndex</code>
                                             object, you identify the entity class
                                             to which the secondary index
                                             must refer.
@@ -198,8 +208,8 @@
                         For example, the following first retrieves the
                         primary index, and then uses that to retrieve a secondary
                         index. The secondary key is held by the
-                        <tt class="literal">itemName</tt> field of the
-                        <tt class="classname">Inventory</tt> class.
+                        <code class="literal">itemName</code> field of the
+                        <code class="classname">Inventory</code> class.
                     </p>
           <pre class="programlisting">PrimaryIndex&lt;String,Inventory&gt; inventoryBySku = 
 store.getPrimaryIndex(String.class, Inventory.class); 

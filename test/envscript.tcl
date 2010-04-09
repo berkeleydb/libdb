@@ -1,26 +1,28 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: envscript.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Envscript -- for use with env012, DB_REGISTER test.
-# Usage: envscript testdir testfile putget key data recover envclose wait
+# Usage: envscript testdir testfile putget key data recover failchk wait
 # testdir: directory containing the env we are joining.
 # testfile: file name for database.
 # putget: What to do in the db: put, get, or loop.
 # key: key to store or get
 # data: data to store or get
 # recover: include or omit the -recover flag in opening the env.
-# envclose: close env at end of test?
+# failchk: include or omit the -failchk flag in opening the env. 2 options
+#     here, one with just -failchk and one with both -failchk & -isalive
 # wait: how many seconds to wait before closing env at end of test.
 
 source ./include.tcl
+source $test_path/testutils.tcl
 
-set usage "envscript testdir testfile putget key data recover envclose wait"
+set usage "envscript testdir testfile putget key data recover failchk wait"
 
 # Verify usage
-if { $argc != 7 } {
+if { $argc != 8 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -32,16 +34,25 @@ set putget [lindex $argv 2 ]
 set key [ lindex $argv 3 ]
 set data [ lindex $argv 4 ]
 set recover [ lindex $argv 5 ]
-set wait [ lindex $argv 6 ]
+set failchk [lindex $argv 6 ]
+set wait [ lindex $argv 7 ]
 
-set flags {}
+set flag1 {}
 if { $recover == "RECOVER" } {
-	set flags " -recover "
+	set flag1 " -recover "
+}
+
+set flag2 {}
+if {$failchk == "FAILCHK0" } {
+	set flag2 " -failchk "
+}
+if {$failchk == "FAILCHK1"} {
+	set flag2 " -failchk -isalive my_isalive -reg_timeout 100 "
 }
 
 # Open and register environment.
 if {[catch {eval {berkdb_env} \
-    -create -home $testdir -txn -register $flags} dbenv]} {
+    -create -home $testdir -txn -register $flag1 $flag2} dbenv]} {
     	puts "FAIL: opening env returned $dbenv"
 }
 error_check_good envopen [is_valid_env $dbenv] TRUE

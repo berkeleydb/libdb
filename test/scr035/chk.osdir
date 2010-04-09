@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.osdir,v 1.1 2007/12/06 21:01:09 bostic Exp $
+# $Id$
 #
 # Check to make sure the @OSDIR@ entries in the Makefile are correct.
 

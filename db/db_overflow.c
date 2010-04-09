@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_overflow.c,v 12.26 2008/03/12 20:32:32 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -61,30 +61,36 @@
  * __db_goff --
  *	Get an offpage item.
  *
- * PUBLIC: int __db_goff __P((DB *, DB_THREAD_INFO *, DB_TXN *, DBT *,
- * PUBLIC:     u_int32_t, db_pgno_t, void **, u_int32_t *));
+ * PUBLIC: int __db_goff __P((DBC *,
+ * PUBLIC:     DBT *, u_int32_t, db_pgno_t, void **, u_int32_t *));
  */
 int
-__db_goff(dbp, ip, txn, dbt, tlen, pgno, bpp, bpsz)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
+__db_goff(dbc, dbt, tlen, pgno, bpp, bpsz)
+	DBC *dbc;
 	DBT *dbt;
 	u_int32_t tlen;
 	db_pgno_t pgno;
 	void **bpp;
 	u_int32_t *bpsz;
 {
+	DB *dbp;
 	DB_MPOOLFILE *mpf;
+	DB_TXN *txn;
+	DBC_INTERNAL *cp;
 	ENV *env;
 	PAGE *h;
+	DB_THREAD_INFO *ip;
 	db_indx_t bytes;
 	u_int32_t curoff, needed, start;
 	u_int8_t *p, *src;
 	int ret;
 
+	dbp = dbc->dbp;
+	cp = dbc->internal;
 	env = dbp->env;
+	ip = dbc->thread_info;
 	mpf = dbp->mpf;
+	txn = dbc->txn;
 
 	/*
 	 * Check if the buffer is big enough; if it is not and we are
@@ -103,6 +109,17 @@ __db_goff(dbp, ip, txn, dbt, tlen, pgno, bpp, bpsz)
 	} else {
 		start = 0;
 		needed = tlen;
+	}
+
+	/*
+	 * If the caller has not requested any data, return success. This
+	 * "early-out" also avoids setting up the streaming optimization when
+	 * no page would be retrieved. If it were removed, the streaming code
+	 * should only initialize when needed is not 0.
+	 */
+	if (needed == 0) {
+		dbt->size = 0;
+		return (0);
 	}
 
 	if (F_ISSET(dbt, DB_DBT_USERCOPY))
@@ -136,13 +153,25 @@ __db_goff(dbp, ip, txn, dbt, tlen, pgno, bpp, bpsz)
 	}
 
 skip_alloc:
+	/* Set up a start page in the overflow chain if streaming. */
+	if (cp->stream_start_pgno != PGNO_INVALID &&
+	    pgno == cp->stream_start_pgno && start >= cp->stream_off &&
+	    start < cp->stream_off + P_MAXSPACE(dbp, dbp->pgsize)) {
+		pgno = cp->stream_curr_pgno;
+		curoff = cp->stream_off;
+	} else {
+		cp->stream_start_pgno = cp->stream_curr_pgno = pgno;
+		cp->stream_off = curoff = 0;
+	}
+
 	/*
 	 * Step through the linked list of pages, copying the data on each
 	 * one into the buffer.  Never copy more than the total data length.
 	 */
 	dbt->size = needed;
-	for (curoff = 0, p = dbt->data; pgno != PGNO_INVALID && needed > 0;) {
-		if ((ret = __memp_fget(mpf, &pgno, ip, txn, 0, &h)) != 0)
+	for (p = dbt->data; pgno != PGNO_INVALID && needed > 0;) {
+		if ((ret = __memp_fget(mpf,
+		    &pgno, ip, txn, 0, &h)) != 0)
 			return (ret);
 		DB_ASSERT(env, TYPE(h) == P_OVERFLOW);
 
@@ -166,8 +195,8 @@ skip_alloc:
 				if ((ret = env->dbt_usercopy(
 				    dbt, dbt->size - needed,
 				    src, bytes, DB_USERCOPY_SETDATA)) != 0) {
-					(void)__memp_fput(mpf, ip,
-					     h, dbp->priority);
+					(void)__memp_fput(mpf,
+					    ip, h, dbp->priority);
 					return (ret);
 				}
 			} else
@@ -175,10 +204,13 @@ skip_alloc:
 			p += bytes;
 			needed -= bytes;
 		}
+		cp->stream_off = curoff;
 		curoff += OV_LEN(h);
+		cp->stream_curr_pgno = pgno;
 		pgno = h->next_pgno;
 		(void)__memp_fput(mpf, ip, h, dbp->priority);
 	}
+
 	return (0);
 }
 
@@ -196,11 +228,12 @@ __db_poff(dbc, dbt, pgnop)
 {
 	DB *dbp;
 	DBT tmp_dbt;
-	DB_LSN new_lsn, null_lsn;
+	DB_LSN null_lsn;
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep, *lastp;
 	db_indx_t pagespace;
-	u_int32_t sz;
+	db_pgno_t pgno;
+	u_int32_t space, sz, tlen;
 	u_int8_t *p;
 	int ret, t_ret;
 
@@ -210,13 +243,57 @@ __db_poff(dbc, dbt, pgnop)
 	 * item.
 	 */
 	dbp = dbc->dbp;
+	lastp = NULL;
 	mpf = dbp->mpf;
 	pagespace = P_MAXSPACE(dbp, dbp->pgsize);
+	p = dbt->data;
+	sz = dbt->size;
+
+	/*
+	 * Check whether we are streaming at the end of the overflow item.
+	 * If so, the last pgno and offset will be cached in the cursor.
+	 */
+	if (F_ISSET(dbt, DB_DBT_STREAMING)) {
+		tlen = dbt->size - dbt->dlen;
+		pgno = dbc->internal->stream_curr_pgno;
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info,
+		    dbc->txn, DB_MPOOL_DIRTY, &lastp)) != 0)
+			return (ret);
+
+		/*
+		 * Calculate how much we can write on the last page of the
+		 * overflow item.
+		 */
+		DB_ASSERT(dbp->env,
+		    OV_LEN(lastp) == (tlen - dbc->internal->stream_off));
+		space = pagespace - OV_LEN(lastp);
+
+		/* Only copy as much data as we have. */
+		if (space > dbt->dlen)
+			space = dbt->dlen;
+
+		if (DBC_LOGGING(dbc)) {
+			tmp_dbt.data = dbt->data;
+			tmp_dbt.size = space;
+			ZERO_LSN(null_lsn);
+			if ((ret = __db_big_log(dbp, dbc->txn,
+			    &LSN(lastp), 0, DB_APPEND_BIG, pgno,
+			    PGNO_INVALID, PGNO_INVALID, &tmp_dbt,
+			    &LSN(lastp), &null_lsn, &null_lsn)) != 0)
+				goto err;
+		} else
+			LSN_NOT_LOGGED(LSN(lastp));
+
+		memcpy((u_int8_t *)lastp + P_OVERHEAD(dbp) + OV_LEN(lastp),
+		    dbt->data, space);
+		OV_LEN(lastp) += space;
+		sz -= space + dbt->doff;
+		p += space;
+		*pgnop = dbc->internal->stream_start_pgno;
+	}
 
 	ret = 0;
-	lastp = NULL;
-	for (p = dbt->data,
-	    sz = dbt->size; sz > 0; p += pagespace, sz -= pagespace) {
+	for (; sz > 0; p += pagespace, sz -= pagespace) {
 		/*
 		 * Reduce pagespace so we terminate the loop correctly and
 		 * don't copy too much data.
@@ -229,54 +306,65 @@ __db_poff(dbc, dbt, pgnop)
 		 * the item onto the page.  If sz is less than pagespace, we
 		 * have a partial record.
 		 */
-		if ((ret = __db_new(dbc, P_OVERFLOW, &pagep)) != 0)
+		if ((ret = __db_new(dbc, P_OVERFLOW, NULL, &pagep)) != 0)
 			break;
 		if (DBC_LOGGING(dbc)) {
 			tmp_dbt.data = p;
 			tmp_dbt.size = pagespace;
 			ZERO_LSN(null_lsn);
 			if ((ret = __db_big_log(dbp, dbc->txn,
-			    &new_lsn, 0, DB_ADD_BIG, PGNO(pagep),
+			    &LSN(pagep), 0, DB_ADD_BIG, PGNO(pagep),
 			    lastp ? PGNO(lastp) : PGNO_INVALID,
 			    PGNO_INVALID, &tmp_dbt, &LSN(pagep),
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
 			    &null_lsn)) != 0) {
-				if (lastp != NULL)
-					(void)__memp_fput(mpf, dbc->thread_info,
-					     lastp, dbc->priority);
-				lastp = pagep;
-				break;
+				(void)__memp_fput(mpf, dbc->thread_info,
+				    pagep, dbc->priority);
+				goto err;
 			}
 		} else
-			LSN_NOT_LOGGED(new_lsn);
+			LSN_NOT_LOGGED(LSN(pagep));
 
 		/* Move LSN onto page. */
 		if (lastp != NULL)
-			LSN(lastp) = new_lsn;
-		LSN(pagep) = new_lsn;
+			LSN(lastp) = LSN(pagep);
 
 		OV_LEN(pagep) = pagespace;
 		OV_REF(pagep) = 1;
 		memcpy((u_int8_t *)pagep + P_OVERHEAD(dbp), p, pagespace);
 
 		/*
-		 * If this is the first entry, update the user's info.
-		 * Otherwise, update the entry on the last page filled
-		 * in and release that page.
+		 * If this is the first entry, update the user's info and
+		 * initialize the cursor to allow for streaming of subsequent
+		 * updates.  Otherwise, update the entry on the last page
+		 * filled in and release that page.
 		 */
-		if (lastp == NULL)
+		if (lastp == NULL) {
 			*pgnop = PGNO(pagep);
-		else {
+			dbc->internal->stream_start_pgno =
+			    dbc->internal->stream_curr_pgno = *pgnop;
+			dbc->internal->stream_off = 0;
+		} else {
 			lastp->next_pgno = PGNO(pagep);
 			pagep->prev_pgno = PGNO(lastp);
-			(void)__memp_fput(mpf,
-			    dbc->thread_info, lastp, dbc->priority);
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, lastp, dbc->priority)) != 0) {
+				lastp = NULL;
+				goto err;
+			}
 		}
 		lastp = pagep;
 	}
-	if (lastp != NULL && (t_ret = __memp_fput(mpf,
-	     dbc->thread_info, lastp, dbc->priority)) != 0 && ret == 0)
-		ret = t_ret;
+err:	if (lastp != NULL) {
+		if (ret == 0) {
+			dbc->internal->stream_curr_pgno = PGNO(lastp);
+			dbc->internal->stream_off = dbt->size - OV_LEN(lastp);
+		}
+
+		if ((t_ret = __memp_fput(mpf, dbc->thread_info, lastp,
+		    dbc->priority)) != 0 && ret == 0)
+			ret = t_ret;
+	}
 	return (ret);
 }
 
@@ -366,8 +454,9 @@ __db_doff(dbc, pgno)
 
 		if ((ret = __memp_dirty(mpf, &pagep,
 		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0) {
-			(void)__memp_fput(mpf,
-			    dbc->thread_info, pagep, dbc->priority);
+			if (pagep != NULL)
+				(void)__memp_fput(mpf,
+				    dbc->thread_info, pagep, dbc->priority);
 			return (ret);
 		}
 
@@ -409,28 +498,29 @@ __db_doff(dbc, pgno)
  * ordering off page items. __db_moff matches an overflow DBT with an offpage
  * item. __db_coff compares two offpage items for lexicographic sort order.
  *
- * PUBLIC: int __db_moff __P((DB *,
- * PUBLIC:     DB_THREAD_INFO *, DB_TXN *, const DBT *, db_pgno_t,
- * PUBLIC:     u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
+ * PUBLIC: int __db_moff __P((DBC *, const DBT *, db_pgno_t, u_int32_t,
+ * PUBLIC:     int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
-__db_moff(dbp, ip, txn, dbt, pgno, tlen, cmpfunc, cmpp)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
+__db_moff(dbc, dbt, pgno, tlen, cmpfunc, cmpp)
+	DBC *dbc;
 	const DBT *dbt;
 	db_pgno_t pgno;
 	u_int32_t tlen;
 	int (*cmpfunc) __P((DB *, const DBT *, const DBT *)), *cmpp;
 {
+	DB *dbp;
 	DBT local_dbt;
 	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	void *buf;
 	u_int32_t bufsize, cmp_bytes, key_left;
 	u_int8_t *p1, *p2;
 	int ret;
 
+	dbp = dbc->dbp;
+	ip = dbc->thread_info;
 	mpf = dbp->mpf;
 
 	/*
@@ -442,7 +532,7 @@ __db_moff(dbp, ip, txn, dbt, pgno, tlen, cmpfunc, cmpp)
 		buf = NULL;
 		bufsize = 0;
 
-		if ((ret = __db_goff(dbp, ip, txn,
+		if ((ret = __db_goff(dbc,
 		    &local_dbt, tlen, pgno, &buf, &bufsize)) != 0)
 			return (ret);
 		/* Pass the key as the first argument */
@@ -454,7 +544,8 @@ __db_moff(dbp, ip, txn, dbt, pgno, tlen, cmpfunc, cmpp)
 	/* While there are both keys to compare. */
 	for (*cmpp = 0, p1 = dbt->data,
 	    key_left = dbt->size; key_left > 0 && pgno != PGNO_INVALID;) {
-		if ((ret = __memp_fget(mpf, &pgno, ip, txn, 0, &pagep)) != 0)
+		if ((ret =
+		    __memp_fget(mpf, &pgno, ip, dbc->txn, 0, &pagep)) != 0)
 			return (ret);
 
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
@@ -496,19 +587,20 @@ __db_moff(dbp, ip, txn, dbt, pgno, tlen, cmpfunc, cmpp)
  * require extracting the total length, and page number, dependent on the
  * DBT type.
  *
- * PUBLIC: int __db_coff __P((DB *, DB_THREAD_INFO *, DB_TXN *, const DBT *,
- * PUBLIC:     const DBT *, int (*)(DB *, const DBT *, const DBT *), int *));
+ * PUBLIC: int __db_coff __P((DBC *, const DBT *, const DBT *,
+ * PUBLIC:     int (*)(DB *, const DBT *, const DBT *), int *));
  */
 int
-__db_coff(dbp, ip, txn, dbt, match, cmpfunc, cmpp)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
+__db_coff(dbc, dbt, match, cmpfunc, cmpp)
+	DBC *dbc;
 	const DBT *dbt, *match;
 	int (*cmpfunc) __P((DB *, const DBT *, const DBT *)), *cmpp;
 {
-	DBT local_key, local_match;
+	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_MPOOLFILE *mpf;
+	DB_TXN *txn;
+	DBT local_key, local_match;
 	PAGE *dbt_pagep, *match_pagep;
 	db_pgno_t dbt_pgno, match_pgno;
 	u_int32_t cmp_bytes, dbt_bufsz, dbt_len, match_bufsz;
@@ -517,6 +609,9 @@ __db_coff(dbp, ip, txn, dbt, match, cmpfunc, cmpp)
 	int ret;
 	void *dbt_buf, *match_buf;
 
+	dbp = dbc->dbp;
+	ip = dbc->thread_info;
+	txn = dbc->txn;
 	mpf = dbp->mpf;
 	page_sz = dbp->pgsize;
 	*cmpp = 0;
@@ -542,10 +637,10 @@ __db_coff(dbp, ip, txn, dbt, match, cmpfunc, cmpp)
 		dbt_buf = match_buf = NULL;
 		dbt_bufsz = match_bufsz = 0;
 
-		if ((ret = __db_goff(dbp, ip, txn, &local_key, dbt_len,
+		if ((ret = __db_goff(dbc, &local_key, dbt_len,
 		    dbt_pgno, &dbt_buf, &dbt_bufsz)) != 0)
 			goto err1;
-		if ((ret = __db_goff(dbp, ip, txn, &local_match, match_len,
+		if ((ret = __db_goff(dbc, &local_match, match_len,
 		    match_pgno, &match_buf, &match_bufsz)) != 0)
 			goto err1;
 		/* The key needs to be the first argument for sort order */

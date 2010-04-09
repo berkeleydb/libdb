@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_sig,v 12.4 2008/03/25 12:18:09 mjc Exp $
+#	$Id$
 #
 # Build structure signature code.
 
@@ -7,7 +7,7 @@ a=/tmp/__db_a.$$
 b=/tmp/__db_b.$$
 trap 'rm -f $a $b; exit 0' 0 1 2 3 13 15
 
-cat ../dbinc/*.in ../dbinc/*.h | 
+cat ../dbinc/db.in ../dbinc/db_int.in ../dbinc/*.h | 
 sed -e '/__addrinfo/d' \
     -e '/__aes_cipher/d' \
     -e '/__cipher/d' \
@@ -30,7 +30,7 @@ cat << END_OF_TEXT > $b
 /*-
  * DO NOT EDIT: automatically built by dist/s_sig.
  *
- * $Id: s_sig,v 12.4 2008/03/25 12:18:09 mjc Exp $
+ * \$Id$
  */
 
 #include "db_config.h"
@@ -48,9 +48,7 @@ cat << END_OF_TEXT > $b
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
-#ifdef HAVE_MUTEX_SUPPORT
-#include "dbinc/mutex_int.h"
-#endif
+#include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 

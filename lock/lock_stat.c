@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock_stat.c,v 12.40 2008/04/11 16:13:53 ubell Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -70,7 +70,8 @@ __lock_stat(env, statp, flags)
 	DB_LOCK_HSTAT htmp;
 	DB_LOCK_PSTAT ptmp;
 	int ret;
-	u_int32_t i, tmp_wait, tmp_nowait;
+	u_int32_t i;
+	uintmax_t tmp_wait, tmp_nowait;
 
 	*statp = NULL;
 	lt = env->lk_handle;
@@ -85,6 +86,10 @@ __lock_stat(env, statp, flags)
 	memcpy(stats, &region->stat, sizeof(*stats));
 	stats->st_locktimeout = region->lk_timeout;
 	stats->st_txntimeout = region->tx_timeout;
+	stats->st_id = region->lock_id;
+	stats->st_cur_maxid = region->cur_maxid;
+	stats->st_nlockers = region->nlockers;
+	stats->st_nmodes = region->nmodes;
 
 	for (i = 0; i < region->object_t_size; i++) {
 		stats->st_nrequests += lt->obj_stat[i].st_nrequests;
@@ -173,18 +178,15 @@ __lock_stat(env, statp, flags)
 				__mutex_clear(env, lt->part_array[i].mtx_part);
 		}
 
-		region->stat.st_id = tmp.st_id;
-		region->stat.st_cur_maxid = tmp.st_cur_maxid;
 		region->stat.st_maxlocks = tmp.st_maxlocks;
 		region->stat.st_maxlockers = tmp.st_maxlockers;
 		region->stat.st_maxobjects = tmp.st_maxobjects;
 		region->stat.st_nlocks =
 		    region->stat.st_maxnlocks = tmp.st_nlocks;
-		region->stat.st_nlockers =
-		    region->stat.st_maxnlockers = tmp.st_nlockers;
+		region->stat.st_maxnlockers = region->nlockers;
 		region->stat.st_nobjects =
 		    region->stat.st_maxnobjects = tmp.st_nobjects;
-		region->stat.st_nmodes = tmp.st_nmodes;
+		region->stat.st_partitions = tmp.st_partitions;
 	}
 
 	LOCK_REGION_UNLOCK(env);

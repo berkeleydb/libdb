@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: csv_extern.h,v 1.10 2008/01/08 20:58:23 bostic Exp $
+ * $Id$
  */
 
 extern DbRecord DbRecord_base;			/* Initialized structure. */

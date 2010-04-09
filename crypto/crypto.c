@@ -1,12 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield
  * -- astubble@rice.edu
  *
- * $Id: crypto.c,v 12.24 2008/01/08 20:58:09 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -54,14 +54,19 @@ __crypto_region_init(env)
 		 * information that contains the passwd.  After we copy the
 		 * passwd, we smash and free the one in the env.
 		 */
-		if ((ret = __env_alloc(infop, sizeof(CIPHER), &cipher)) != 0)
+		MUTEX_LOCK(env, renv->mtx_regenv);
+		if ((ret = __env_alloc(infop, sizeof(CIPHER), &cipher)) != 0) {
+			MUTEX_UNLOCK(env, renv->mtx_regenv);
 			return (ret);
+		}
 		memset(cipher, 0, sizeof(*cipher));
 		if ((ret =
 		    __env_alloc(infop, dbenv->passwd_len, &sh_passwd)) != 0) {
 			__env_alloc_free(infop, cipher);
+			MUTEX_UNLOCK(env, renv->mtx_regenv);
 			return (ret);
 		}
+		MUTEX_UNLOCK(env, renv->mtx_regenv);
 		memset(sh_passwd, 0, dbenv->passwd_len);
 		cipher->passwd = R_OFFSET(infop, sh_passwd);
 		cipher->passwd_len = dbenv->passwd_len;
@@ -171,8 +176,10 @@ __crypto_env_refresh(env)
 		renv = infop->primary;
 		if (renv->cipher_off != INVALID_ROFF) {
 			cipher = R_ADDR(infop, renv->cipher_off);
+			MUTEX_LOCK(env, renv->mtx_regenv);
 			__env_alloc_free(infop, R_ADDR(infop, cipher->passwd));
 			__env_alloc_free(infop, cipher);
+			MUTEX_UNLOCK(env, renv->mtx_regenv);
 		}
 	}
 	return (0);

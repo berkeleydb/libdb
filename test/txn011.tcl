@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: txn011.tcl,v 12.8 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	txn011
 # TEST	Test durable and non-durable txns.
@@ -10,7 +10,7 @@
 # TEST	dbs), then a purely non-durable env.  Make sure commit
 # TEST	and abort work, and that only the log records we
 # TEST	expect are written.
-# TEST	Test that we can't get a durable handle on a ND
+# TEST	Test that we can't get a durable handle on an open ND
 # TEST	database, or vice versa.  Test that all subdb's
 # TEST	must be of the same type (D or ND).
 proc txn011 { {ntxns 100} } {
@@ -102,15 +102,19 @@ proc txn011 { {ntxns 100} } {
 
 		# Try to get a not-durable handle on the durable db.
 		puts "\tTxn011.g: Try to get a not-durable handle on\
-		    a durable db."
+		    an open durable db."
 		set errormsg "Cannot open DURABLE and NOT DURABLE handles"
 		catch {berkdb_open_noerr \
 		    -auto_commit -env $env -notdurable $durfile} res
 		error_check_good handle_error1 [is_substr $res $errormsg] 1
 		error_check_good ddb_close [$ddb close] 0
-		catch {berkdb_open_noerr \
-		    -auto_commit -env $env -notdurable $durfile} res
-		error_check_good handle_error2 [is_substr $res $errormsg] 1
+
+		# Try to get a not-durable handle when reopening the durable 
+		# db (this should work).
+		set db [berkdb_open_noerr \
+		    -auto_commit -env $env -notdurable $durfile]  
+		error_check_good db_reopen [is_valid_db $db] TRUE
+		error_check_good db_close [$db close] 0
 
 		# Now reopen as durable for the remainder of the test.
 		set ddb [berkdb_open_noerr \
@@ -146,12 +150,15 @@ proc txn011 { {ntxns 100} } {
 		puts "\tTxn011.k: Try to get a durable handle on a\
 		    not-durable db."
 		# Try to get a durable handle on a not-durable database,
-		# while open or on a new open.  Both should fail.
+		# while open.  This should fail, but getting a durable handle
+		# when re-opening should work. 
 		catch {berkdb_open_noerr -auto_commit -env $env $nondurfile} res
 		error_check_good handle_error [is_substr $res $errormsg] 1
 		error_check_good ndb_close [$ndb close] 0
-		catch {berkdb_open_noerr -auto_commit -env $env $nondurfile} res
-		error_check_good handle_error [is_substr $res $errormsg] 1
+
+		set ndb [berkdb_open_noerr -auto_commit -env $env $nondurfile]
+		error_check_good ndb_reopen [is_valid_db $ndb] TRUE
+		error_check_good ndb_close [$ndb close] 0
 
 		# Clean up mixed env.
 		error_check_good ddb_close [$ddb close] 0

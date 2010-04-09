@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TestClassCatalog.java,v 12.6 2008/01/08 20:58:55 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial.test;
@@ -19,20 +19,17 @@ import com.sleepycat.db.DatabaseException;
  */
 public class TestClassCatalog implements ClassCatalog {
 
-    private HashMap idToDescMap = new HashMap();
-    private HashMap nameToIdMap = new HashMap();
+    private final HashMap idToDescMap = new HashMap();
+    private final HashMap nameToIdMap = new HashMap();
     private int nextId = 1;
 
     public TestClassCatalog() {
     }
 
-    public void close()
-        throws DatabaseException {
+    public void close() {
     }
 
-    public synchronized byte[] getClassID(ObjectStreamClass desc)
-        throws DatabaseException {
-
+    public synchronized byte[] getClassID(ObjectStreamClass desc) {
         String className = desc.getName();
         byte[] id = (byte[]) nameToIdMap.get(className);
         if (id == null) {

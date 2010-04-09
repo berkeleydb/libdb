@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: os_truncate.c,v 12.13 2008/02/18 19:34:21 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

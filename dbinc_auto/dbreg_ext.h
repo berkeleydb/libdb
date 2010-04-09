@@ -11,7 +11,7 @@ int __dbreg_teardown __P((DB *));
 int __dbreg_teardown_int __P((ENV *, FNAME *));
 int __dbreg_new_id __P((DB *, DB_TXN *));
 int __dbreg_get_id __P((DB *, DB_TXN *, int32_t *));
-int __dbreg_assign_id __P((DB *, int32_t));
+int __dbreg_assign_id __P((DB *, int32_t, int));
 int __dbreg_revoke_id __P((DB *, int, int32_t));
 int __dbreg_revoke_id_int __P((ENV *, FNAME *, int, int, int32_t));
 int __dbreg_close_id __P((DB *, DB_TXN *, u_int32_t));

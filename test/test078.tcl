@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: test078.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test078
 # TEST	Test of DBC->c_count(). [#303]
@@ -100,14 +100,21 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum "078" } args } {
 	foreach {let descrip dupopt} \
 	    {b sorted "-dup -dupsort" c unsorted "-dup"} {
 
+		if { [is_compressed $args] } {
+			if { $dupopt == "-dup" } {
+				continue
+			}
+		}
 		if { $eindex == -1 } {
 			set testfile $testdir/test$tnum-b.db
 			set env NULL
 		} else {
 			set testfile test$tnum-b.db
 			set env [lindex $args $eindex]
-			if { $is_je_test && $dupopt == "-dup" } {
-				continue
+			if { $is_je_test } {
+				if { $dupopt == "-dup" } {
+					continue
+				}
 			}
 			set testdir [get_home $env]
 		}
@@ -139,6 +146,7 @@ proc test078 { method { nkeys 100 } { pagesize 512 } { tnum "078" } args } {
 
 		puts -nonewline "\t\tTest$tnum.$let.2: "
 		puts "Verifying duplicate counts."
+$db sync
 		for { set i 1 } { $i <= $nkeys } { incr i } {
 			error_check_good count.$let,$i \
 			    [$db count $i] $i

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test087.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test087
 # TEST	Test of cursor stability when converting to and modifying
@@ -54,11 +54,15 @@ proc test087 { method {pagesize 512} {ndups 50} {tnum "087"} args } {
 	if { [is_record_based $method] || [is_rbtree $method] } {
 		puts "Skipping for method $method."
 		return
+	} elseif { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
 	} else {
 		puts "Test$tnum: Cursor stability on dup. pages w/ aborts."
 	}
 
-	set env [eval {berkdb_env -create -home $testdir -txn} $encargs]
+	set env [eval {berkdb_env \
+	     -create -home $testdir -txn -pagesize $pagesize} $encargs]
 	error_check_good env_create [is_valid_env $env] TRUE
 
 	set db [eval {berkdb_open -auto_commit \

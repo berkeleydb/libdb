@@ -1,4 +1,4 @@
-; $Id: libdb_tcl.def,v 12.0 2004/11/17 03:48:15 bostic Exp $
+; $Id$
 
 DESCRIPTION     'Berkeley DB TCL interface Library'
 EXPORTS

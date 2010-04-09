@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: bt_search.c,v 12.40 2008/05/07 12:27:31 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -70,8 +70,10 @@ __bam_get_root(dbc, pg, slevel, flags, stack)
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
 	db_lockmode_t lock_mode;
+	u_int32_t get_mode;
 	int ret, t_ret;
 
+	LOCK_INIT(lock);
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
@@ -91,46 +93,121 @@ try_again:
 	if (*stack ||
 	    LF_ISSET(SR_DEL) || (LF_ISSET(SR_NEXT) && LF_ISSET(SR_WRITE)))
 		lock_mode = DB_LOCK_WRITE;
-	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
-		return (ret);
+	if ((lock_mode == DB_LOCK_WRITE || F_ISSET(dbc, DBC_DOWNREV) ||
+	    dbc->dbtype == DB_RECNO || F_ISSET(cp, C_RECNUM))) {
+lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
+			return (ret);
+	}
+
+	/*
+	 * Get the root.  If the root happens to be a leaf page then
+	 * we are supposed to get a read lock on it before latching
+	 * it.  So if we have not locked it do a try get first.
+	 * If we can't get the root shared, then get a lock on it and
+	 * then wait for the latch.
+	 */
+	if (lock_mode == DB_LOCK_WRITE)
+		get_mode = DB_MPOOL_DIRTY;
+	else if (LOCK_ISSET(lock) || !STD_LOCKING(dbc))
+		get_mode = 0;
+	else
+		get_mode = DB_MPOOL_TRY;
+
 	if ((ret = __memp_fget(mpf, &pg,
-	     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
+	    dbc->thread_info, dbc->txn, get_mode, &h)) != 0) {
+		if (ret == DB_LOCK_NOTGRANTED)
+			goto lock_it;
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
 	}
 
 	/*
-	 * Decide if we need to save this page; if we do, write lock it.
-	 * We deliberately don't lock-couple on this call.  If the tree
-	 * is tiny, i.e., one page, and two threads are busily updating
-	 * the root page, we're almost guaranteed deadlocks galore, as
-	 * each one gets a read lock and then blocks the other's attempt
-	 * for a write lock.
+	 * Decide if we need to dirty and/or lock this page.
+	 * We must not hold the latch while we get the lock.
 	 */
 	if (!*stack &&
 	    ((LF_ISSET(SR_PARENT) && (u_int8_t)(slevel + 1) >= LEVEL(h)) ||
-	    (LF_ISSET(SR_WRITE) && LEVEL(h) == LEAFLEVEL) ||
+	    LEVEL(h) == LEAFLEVEL ||
 	    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
-		if (!STD_LOCKING(dbc))
-			goto no_relock;
-		ret = __memp_fput(mpf, dbc->thread_info, h, dbc->priority);
-		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			return (ret);
-		lock_mode = DB_LOCK_WRITE;
-		if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
-			return (ret);
-		if ((ret = __memp_fget(mpf, &pg,
-		     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
-			/* Did not read it, so we can release the lock */
-			(void)__LPUT(dbc, lock);
-			return (ret);
+		*stack = 1;
+		/* If we already have the write lock, we are done. */
+		if (dbc->dbtype == DB_RECNO || F_ISSET(cp, C_RECNUM)) {
+			if (lock_mode == DB_LOCK_WRITE)
+				goto done;
+			if ((ret = __LPUT(dbc, lock)) != 0)
+				return (ret);
 		}
+
+		/*
+		 * Now that we know what level the root is at, do we need a
+		 * write lock?  If not and we got the lock before latching
+		 * we are done.
+		 */
+		if (LEVEL(h) != LEAFLEVEL || LF_ISSET(SR_WRITE)) {
+			lock_mode = DB_LOCK_WRITE;
+			/* Drop the read lock if we got it above. */
+			if ((ret = __LPUT(dbc, lock)) != 0)
+				return (ret);
+		} else if (LOCK_ISSET(lock))
+			goto done;
+		if (!STD_LOCKING(dbc)) {
+			if (lock_mode != DB_LOCK_WRITE)
+				goto done;
+			if ((ret = __memp_dirty(mpf, &h, dbc->thread_info,
+			    dbc->txn, dbc->priority, 0)) != 0) {
+				if (h != NULL)
+					(void)__memp_fput(mpf,
+					    dbc->thread_info, h, dbc->priority);
+				return (ret);
+			}
+		} else {
+			/* Try to lock the page without waiting first. */
+			if ((ret = __db_lget(dbc,
+			    0, pg, lock_mode, DB_LOCK_NOWAIT, &lock)) == 0) {
+				if (lock_mode == DB_LOCK_WRITE && (ret =
+				    __memp_dirty(mpf, &h, dbc->thread_info,
+				    dbc->txn, dbc->priority, 0)) != 0) {
+					if (h != NULL)
+						(void)__memp_fput(mpf,
+						    dbc->thread_info, h,
+						    dbc->priority);
+					return (ret);
+				}
+				goto done;
+			}
+
+			t_ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority);
+
+			if (ret == DB_LOCK_DEADLOCK ||
+			    ret == DB_LOCK_NOTGRANTED)
+				ret = 0;
+			if (ret == 0)
+				ret = t_ret;
+
+			if (ret != 0)
+				return (ret);
+
+			if ((ret = __db_lget(dbc,
+			     0, pg, lock_mode, 0, &lock)) != 0)
+				return (ret);
+			if ((ret = __memp_fget(mpf,
+			     &pg, dbc->thread_info, dbc->txn,
+			     lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0,
+			     &h)) != 0) {
+				/* Did not read it, release the lock */
+				(void)__LPUT(dbc, lock);
+				return (ret);
+			}
+		}
+		/*
+		 * While getting dirty or locked we need to drop the mutex
+		 * so someone else could get in and split the root.
+		 */
 		if (!((LF_ISSET(SR_PARENT) &&
 		    (u_int8_t)(slevel + 1) >= LEVEL(h)) ||
-		    (LF_ISSET(SR_WRITE) && LEVEL(h) == LEAFLEVEL) ||
+		    LEVEL(h) == LEAFLEVEL ||
 		    (LF_ISSET(SR_START) && slevel == LEVEL(h)))) {
 			/* Someone else split the root, start over. */
 			ret = __memp_fput(mpf,
@@ -141,9 +218,9 @@ try_again:
 				return (ret);
 			goto try_again;
 		}
-no_relock:	*stack = 1;
 	}
-	BT_STK_ENTER(dbp->env, cp, h, 0, lock, lock_mode, ret);
+
+done:	BT_STK_ENTER(dbp->env, cp, h, 0, lock, lock_mode, ret);
 
 	return (ret);
 }
@@ -167,44 +244,79 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	DB_LOCK lock;
+	DB_LOCK lock, saved_lock;
 	DB_MPOOLFILE *mpf;
 	ENV *env;
-	PAGE *h;
+	PAGE *h, *parent_h;
 	db_indx_t base, i, indx, *inp, lim;
 	db_lockmode_t lock_mode;
-	db_pgno_t pg;
+	db_pgno_t pg, saved_pg;
 	db_recno_t recno;
 	int adjust, cmp, deloffset, ret, set_stack, stack, t_ret;
+	int getlock, was_next;
 	int (*func) __P((DB *, const DBT *, const DBT *));
+	u_int32_t get_mode, wait;
+	u_int8_t level, saved_level;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	h = NULL;
+	parent_h = NULL;
 	t = dbp->bt_internal;
 	recno = 0;
-	set_stack = 0;
+	t_ret = 0;
 
 	BT_STK_CLR(cp);
+	LOCK_INIT(saved_lock);
+	LOCK_INIT(lock);
+	was_next = LF_ISSET(SR_NEXT);
+	wait = DB_LOCK_NOWAIT;
 
 	/*
 	 * There are several ways we search a btree tree.  The flags argument
-	 * specifies if we're acquiring read or write locks, if we position
+	 * specifies if we're acquiring read or write latches, if we position
 	 * to the first or last item in a set of duplicates, if we return
-	 * deleted items, and if we are locking pairs of pages.  In addition,
-	 * if we're modifying record numbers, we have to lock the entire tree
+	 * deleted items, and if we are latching pairs of pages.  In addition,
+	 * if we're modifying record numbers, we have to latch the entire tree
 	 * regardless.  See btree.h for more details.
 	 */
 
 	if (root_pgno == PGNO_INVALID)
 		root_pgno = cp->root;
-	if ((ret = __bam_get_root(dbc, root_pgno, slevel, flags, &stack)) != 0)
-		return (ret);
+	saved_pg = root_pgno;
+	saved_level = MAXBTREELEVEL;
+retry:	if ((ret = __bam_get_root(dbc, root_pgno, slevel, flags, &stack)) != 0)
+		goto err;
 	lock_mode = cp->csp->lock_mode;
-	lock = cp->csp->lock;
+	get_mode = lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0;
 	h = cp->csp->page;
+	pg = PGNO(h);
+	lock = cp->csp->lock;
+	set_stack = stack;
+	/*
+	 * Determine if we need to lock interiror nodes.
+	 * If we have record numbers we always lock.  Otherwise we only
+	 * need to do this if we are write locking and we are returning
+	 * a stack of nodes.  SR_NEXT will eventually get a stack and
+	 * release the locks above that level.
+	 */
+	if (F_ISSET(dbc, DBC_DOWNREV)) {
+		getlock = 1;
+		wait = 0;
+	} else
+		getlock = F_ISSET(cp, C_RECNUM) ||
+		   (lock_mode == DB_LOCK_WRITE &&
+		   (stack || LF_ISSET(SR_NEXT | SR_DEL)));
+
+	/*
+	 * If we are asked a level that is above the root,
+	 * just return the root.  This can happen if the tree
+	 * collapses while we are trying to lock the root.
+	 */
+	if (!LF_ISSET(SR_START) && LEVEL(h) < slevel)
+		goto done;
 
 	BT_STK_CLR(cp);
 
@@ -214,8 +326,26 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	    t->bt_compare;
 
 	for (;;) {
+		if (TYPE(h) == P_LBTREE)
+			adjust = P_INDX;
+		else {
+			/*
+			 * It is possible to catch an internal page as a change
+			 * is being backed out.  Its leaf pages will be locked
+			 * but we must be sure we get to one.  If the page
+			 * is not populated enough lock it.
+			 */
+			if (TYPE(h) != P_LDUP && NUM_ENT(h) == 0) {
+				getlock = 1;
+				level = LEVEL(h) + 1;
+				if ((ret = __memp_fput(mpf, dbc->thread_info,
+				     h, dbc->priority)) != 0)
+					goto err;
+				goto lock_next;
+			}
+			adjust = O_INDX;
+		}
 		inp = P_INP(dbp, h);
-		adjust = TYPE(h) == P_LBTREE ? P_INDX : O_INDX;
 		if (LF_ISSET(SR_MIN | SR_MAX)) {
 			if (LF_ISSET(SR_MIN) || NUM_ENT(h) == 0)
 				indx = 0;
@@ -239,10 +369,10 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 		 * page, they're an index per page item.  If we find an exact
 		 * match on a leaf page, we're done.
 		 */
-		DB_BINARY_SEARCH_FOR(base, lim, h, adjust) {
+		DB_BINARY_SEARCH_FOR(base, lim, NUM_ENT(h), adjust) {
 			DB_BINARY_SEARCH_INCR(indx, base, lim, adjust);
-			if ((ret = __bam_cmp(dbp, dbc->thread_info,
-			     dbc->txn, key, h, indx, func, &cmp)) != 0)
+			if ((ret = __bam_cmp(dbc, key, h, indx,
+			    func, &cmp)) != 0)
 				goto err;
 			if (cmp == 0) {
 				if (LEVEL(h) == LEAFLEVEL ||
@@ -284,7 +414,10 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 				if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 				     h, dbc->priority)) != 0 && ret == 0)
 					ret = t_ret;
-				return (ret);
+				h = NULL;
+				if (ret != 0)
+					goto err;
+				goto done;
 			}
 			if (LF_ISSET(SR_NEXT)) {
 get_next:			/*
@@ -295,34 +428,52 @@ get_next:			/*
 					ret = DB_NOTFOUND;
 					goto err;
 				}
-				/*
-				 * Save the root of the subtree
-				 * and drop the rest of the subtree
-				 * and search down again starting at
-				 * the next child.
-				 */
-				if ((ret = __LPUT(dbc, lock)) != 0)
-					goto err;
-				if ((ret = __memp_fput(mpf,
-				    dbc->thread_info, h, dbc->priority)) != 0)
-					goto err;
-				h = NULL;
-				LF_SET(SR_MIN);
-				LF_CLR(SR_NEXT);
+
 				indx = cp->sp->indx + 1;
 				if (indx == NUM_ENT(cp->sp->page)) {
 					ret = DB_NOTFOUND;
 					cp->csp++;
 					goto err;
 				}
-				h = cp->sp->page;
-				cp->sp->page = NULL;
-				lock = cp->sp->lock;
-				LOCK_INIT(cp->sp->lock);
-				if ((ret = __bam_stkrel(dbc, STK_NOLOCK)) != 0)
-					goto err;
-				stack = 1;
-				goto next;
+				/*
+				 * If we want both the key page and the next
+				 * page, push the key page on the stack
+				 * otherwise save the root of the subtree
+				 * and drop the rest of the subtree.
+				 * Search down again starting at the
+				 * next child of the root of this subtree.
+				 */
+				LF_SET(SR_MIN);
+				LF_CLR(SR_NEXT);
+				set_stack = stack = 1;
+				if (LF_ISSET(SR_BOTH)) {
+					cp->csp++;
+					BT_STK_PUSH(env,
+					    cp, h, indx, lock, lock_mode, ret);
+					if (ret != 0)
+						goto err;
+					LOCK_INIT(lock);
+					h = cp->sp->page;
+					pg = GET_BINTERNAL(dbp, h, indx)->pgno;
+					level = LEVEL(h);
+					h = NULL;
+					goto lock_next;
+				} else {
+					if ((ret = __LPUT(dbc, lock)) != 0)
+						goto err;
+					if ((ret = __memp_fput(mpf,
+					    dbc->thread_info,
+					    h, dbc->priority)) != 0)
+						goto err;
+					h = cp->sp->page;
+					cp->sp->page = NULL;
+					lock = cp->sp->lock;
+					LOCK_INIT(cp->sp->lock);
+					if ((ret = __bam_stkrel(dbc,
+					    STK_NOLOCK)) != 0)
+						goto err;
+					goto next;
+				}
 			}
 
 			/*
@@ -338,7 +489,7 @@ get_next:			/*
 			BT_STK_ENTER(env, cp, h, base, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
-			return (0);
+			goto done;
 		}
 
 		/*
@@ -358,44 +509,35 @@ next:		if (recnop != NULL)
 				recno += GET_BINTERNAL(dbp, h, i)->nrecs;
 
 		pg = GET_BINTERNAL(dbp, h, indx)->pgno;
+		level = LEVEL(h);
 
 		/* See if we are at the level to start stacking. */
-		if (LF_ISSET(SR_START) && slevel == LEVEL(h))
-			stack = 1;
+		if (LF_ISSET(SR_START) && slevel == level)
+			set_stack = stack = 1;
 
 		if (LF_ISSET(SR_STK_ONLY)) {
 			if (slevel == LEVEL(h)) {
 				BT_STK_NUM(env, cp, h, indx, ret);
-				if ((t_ret =
-				    __LPUT(dbc, lock)) != 0 && ret == 0)
-					ret = t_ret;
 				if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 				    h, dbc->priority)) != 0 && ret == 0)
 					ret = t_ret;
-				return (ret);
+				h = NULL;
+				if (ret != 0)
+					goto err;
+				goto done;
 			}
 			BT_STK_NUMPUSH(env, cp, h, indx, ret);
 			(void)__memp_fput(mpf,
 			    dbc->thread_info, h, dbc->priority);
 			h = NULL;
-			if ((ret = __db_lget(dbc,
-			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
-				/*
-				 * Discard our lock and return on failure.  This
-				 * is OK because it only happens when descending
-				 * the tree holding read-locks.
-				 */
-				(void)__LPUT(dbc, lock);
-				return (ret);
-			}
 		} else if (stack) {
 			/* Return if this is the lowest page wanted. */
-			if (LF_ISSET(SR_PARENT) && slevel == LEVEL(h)) {
+			if (LF_ISSET(SR_PARENT) && slevel == level) {
 				BT_STK_ENTER(env,
 				    cp, h, indx, lock, lock_mode, ret);
 				if (ret != 0)
 					goto err;
-				return (0);
+				goto done;
 			}
 			if (LF_ISSET(SR_DEL) && NUM_ENT(h) > 1) {
 				/*
@@ -412,24 +554,33 @@ next:		if (recnop != NULL)
 			    cp, h, indx, lock, lock_mode, ret);
 			if (ret != 0)
 				goto err;
-			h = NULL;
 
+			LOCK_INIT(lock);
+			get_mode = DB_MPOOL_DIRTY;
 			lock_mode = DB_LOCK_WRITE;
-			if ((ret =
-			    __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
-				goto err;
+			goto lock_next;
 		} else {
 			/*
 			 * Decide if we want to return a reference to the next
-			 * page in the return stack.  If so, lock it and never
-			 * unlock it.  We will want to stack things on the
+			 * page in the return stack.  If so, latch it and don't
+			 * unlatch it.  We will want to stack things on the
 			 * next iteration.  The stack variable cannot be
-			 * set until we leave this clause.
+			 * set until we leave this clause. If we are locking
+			 * then we must lock this level before getting the page.
 			 */
 			if ((LF_ISSET(SR_PARENT) &&
-			    (u_int8_t)(slevel + 1) >= (LEVEL(h) - 1)) ||
-			    (LEVEL(h) - 1) == LEAFLEVEL)
+			    (u_int8_t)(slevel + 1) >= (level - 1)) ||
+			    (level - 1) == LEAFLEVEL)
 				set_stack = 1;
+
+			/*
+			 * Check for a normal search.  If so, we need to
+			 * latch couple the parent/chid buffers.
+			 */
+			if (!LF_ISSET(SR_DEL | SR_NEXT)) {
+				parent_h = h;
+				goto lock_next;
+			}
 
 			/*
 			 * Returning a subtree.  See if we have hit the start
@@ -443,12 +594,6 @@ next:		if (recnop != NULL)
 			 * edge of the subtree.  When we leave the right
 			 * edge, then drop the subtree.
 			 */
-			if (!LF_ISSET(SR_DEL | SR_NEXT)) {
-				if ((ret = __memp_fput(mpf,
-				    dbc->thread_info, h, dbc->priority)) != 0)
-					goto err;
-				goto lock_next;
-			}
 
 			if ((LF_ISSET(SR_DEL) && NUM_ENT(h) == 1)) {
 				/*
@@ -462,7 +607,7 @@ next:		if (recnop != NULL)
 				cp->csp++;
 				/* Push this node. */
 				BT_STK_PUSH(env, cp, h,
-				     indx, lock, lock_mode, ret);
+				     indx, lock, DB_LOCK_NG, ret);
 				if (ret != 0)
 					goto err;
 				LOCK_INIT(lock);
@@ -494,25 +639,125 @@ do_del:				if (cp->csp->page != NULL) {
 
 lock_next:		h = NULL;
 
-			if (set_stack && LF_ISSET(SR_WRITE))
+			if (set_stack && LF_ISSET(SR_WRITE)) {
 				lock_mode = DB_LOCK_WRITE;
-			if ((ret = __db_lget(dbc,
-			    LCK_COUPLE_ALWAYS, pg, lock_mode, 0, &lock)) != 0) {
+				get_mode = DB_MPOOL_DIRTY;
+				getlock = 1;
+			}
+			/*
+			 * If we are retrying and we are back at the same
+			 * page then we already have it locked.  If we are
+			 * at a different page we want to lock couple and
+			 * release that lock.
+			 */
+			if (level - 1 == saved_level) {
+				if ((ret = __LPUT(dbc, lock)) != 0)
+					goto err;
+				lock = saved_lock;
+				LOCK_INIT(saved_lock);
+				saved_level = MAXBTREELEVEL;
+				if (pg == saved_pg)
+					goto skip_lock;
+			}
+			if ((getlock || level - 1 == LEAFLEVEL) &&
+			    (ret = __db_lget(dbc, LCK_COUPLE_ALWAYS,
+			    pg, lock_mode, wait, &lock)) != 0) {
 				/*
-				 * If we fail, discard the lock we held.  This
-				 * is OK because this only happens when we are
-				 * descending the tree holding read-locks.
+				 * If we are doing DEL or NEXT then we
+				 * have an extra level saved in the stack,
+				 * push it so it will get freed.
 				 */
-				(void)__LPUT(dbc, lock);
 				if (LF_ISSET(SR_DEL | SR_NEXT) && !stack)
 					cp->csp++;
-				goto err;
+				/*
+				 * If we fail, discard the lock we held.
+				 * This is ok because we will either search
+				 * again or exit without actually looking
+				 * at the data.
+				 */
+				if ((t_ret = __LPUT(dbc, lock)) != 0 &&
+				    ret == 0)
+					ret = t_ret;
+				/*
+				 * If we blocked at a different level release
+				 * the previous saved lock.
+				 */
+				if ((t_ret = __LPUT(dbc, saved_lock)) != 0 &&
+				    ret == 0)
+					ret = t_ret;
+				if (wait == 0 || (ret != DB_LOCK_NOTGRANTED &&
+				     ret != DB_LOCK_DEADLOCK))
+					goto err;
+
+				/* Relase the parent if we are holding it. */
+				if (parent_h != NULL &&
+				    (ret = __memp_fput(mpf, dbc->thread_info,
+				    parent_h, dbc->priority)) != 0)
+					goto err;
+				parent_h = NULL;
+
+				BT_STK_POP(cp);
+				if ((ret = __bam_stkrel(dbc, STK_NOLOCK)) != 0)
+					goto err;
+				if ((ret = __db_lget(dbc,
+				    0, pg, lock_mode, 0, &saved_lock)) != 0)
+					goto err;
+				/*
+				 * A very strange case: if this page was
+				 * freed while we wait then we cannot hold
+				 * the lock on it while we reget the root
+				 * latch because allocation is one place
+				 * we lock while holding a latch.
+				 * Noone can have a free page locked, so
+				 * check for that case.  We do this by
+				 * checking the level, since it will be 0
+				 * if free and we might as well see if this
+				 * page moved and drop the lock in that case.
+				 */
+				if ((ret = __memp_fget(mpf, &pg,
+				     dbc->thread_info,
+				     dbc->txn, get_mode, &h)) != 0 &&
+				     ret != DB_PAGE_NOTFOUND)
+					goto err;
+
+				if (ret != 0 || LEVEL(h) != level - 1) {
+					ret = __LPUT(dbc, saved_lock);
+					if (ret != 0)
+						goto err;
+					pg = root_pgno;
+					saved_level = MAXBTREELEVEL;
+				}
+				if (h != NULL && (ret = __memp_fput(mpf,
+				    dbc->thread_info, h, dbc->priority)) != 0)
+					goto err;
+				h = NULL;
+
+				if (was_next) {
+					LF_CLR(SR_MIN);
+					LF_SET(SR_NEXT);
+				}
+				/*
+				 * We have the lock but we dropped the
+				 * latch so we need to search again. If
+				 * we get back to the same page then all
+				 * is good, otherwise we need to try to
+				 * lock the new page.
+				 */
+				saved_pg = pg;
+				saved_level = level - 1;
+				goto retry;
 			}
-			stack = set_stack;
+skip_lock:		stack = set_stack;
 		}
+		/* Get the child page. */
 		if ((ret = __memp_fget(mpf, &pg,
-		     dbc->thread_info, dbc->txn, 0, &h)) != 0)
+		     dbc->thread_info, dbc->txn, get_mode, &h)) != 0)
 			goto err;
+		/* Release the parent. */
+		if (parent_h != NULL && (ret = __memp_fput(mpf,
+		    dbc->thread_info, parent_h, dbc->priority)) != 0)
+			goto err;
+		parent_h = NULL;
 	}
 	/* NOTREACHED */
 
@@ -590,8 +835,6 @@ found:	*exactp = 1;
 
 	if (LF_ISSET(SR_STK_ONLY)) {
 		BT_STK_NUM(env, cp, h, indx, ret);
-		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-			ret = t_ret;
 		if ((t_ret = __memp_fput(mpf,
 		     dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 			ret = t_ret;
@@ -603,18 +846,31 @@ found:	*exactp = 1;
 	if (ret != 0)
 		goto err;
 
+	cp->csp->lock = lock;
+	DB_ASSERT(env, parent_h == NULL);
+
+done:	if ((ret = __LPUT(dbc, saved_lock)) != 0)
+		return (ret);
+
 	return (0);
 
-err:	if (h != NULL && (t_ret = __memp_fput(mpf,
+err:	if (ret == 0)
+		ret = t_ret;
+	if (h != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (parent_h != NULL && (t_ret = __memp_fput(mpf,
+	    dbc->thread_info, parent_h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Keep any not-found page locked for serializability. */
 	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 
+	(void)__LPUT(dbc, saved_lock);
+
 	BT_STK_POP(cp);
-	__bam_stkrel(dbc, 0);
+	(void)__bam_stkrel(dbc, 0);
 
 	return (ret);
 }
@@ -636,6 +892,7 @@ __bam_stkrel(dbc, flags)
 	EPG *epg;
 	int ret, t_ret;
 
+	DB_ASSERT(NULL, dbc != NULL);
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
@@ -655,13 +912,6 @@ __bam_stkrel(dbc, flags)
 			if ((t_ret = __memp_fput(mpf, dbc->thread_info,
 			     epg->page, dbc->priority)) != 0 && ret == 0)
 				ret = t_ret;
-			/*
-			 * XXX
-			 * Temporary fix for #3243 -- under certain deadlock
-			 * conditions we call here again and re-free the page.
-			 * The correct fix is to never release a stack that
-			 * doesn't hold items.
-			 */
 			epg->page = NULL;
 		}
 		/*

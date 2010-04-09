@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: recd013.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd013
 # TEST	Test of cursor adjustment on child transaction aborts. [#2373]
@@ -25,6 +25,12 @@ proc recd013 { method { nitems 100 } args } {
 	set omethod [convert_method $method]
 	set tnum "013"
 	set pgsz 512
+
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 
 	puts "Recd$tnum $method ($args): Test of aborted cursor adjustments."
 	set pgindex [lsearch -exact $args "-pagesize"]
@@ -145,7 +151,7 @@ proc recd013 { method { nitems 100 } args } {
 
 	error_check_good db_sync [$db sync] 0
 	error_check_good db_verify \
-	    [verify_dir $testdir "\t\tRecd$tnum.b.3: "] 0
+	    [verify_dir $testdir "\t\tRecd$tnum.b.3: " 0 0 $nodump] 0
 
 	# Now put back all the even records, this time in the parent.
 	# Commit and re-begin the transaction so we can abort and
@@ -269,7 +275,7 @@ proc recd013 { method { nitems 100 } args } {
 	# Sync and verify.
 	error_check_good db_sync [$db sync] 0
 	error_check_good db_verify \
-	    [verify_dir $testdir "\t\tRecd$tnum.c.5: "] 0
+	    [verify_dir $testdir "\t\tRecd$tnum.c.5: " 0 0 $nodump] 0
 
 	puts "\tRecd$tnum.d: Clean up."
 	error_check_good txn_commit [$txn commit] 0
@@ -277,7 +283,7 @@ proc recd013 { method { nitems 100 } args } {
 	error_check_good log_flush [$env log_flush] 0
 	error_check_good env_close [$env close] 0
 	error_check_good verify_dir \
-	    [verify_dir $testdir "\t\tRecd$tnum.d.1: "] 0
+	    [verify_dir $testdir "\t\tRecd$tnum.d.1: " 0 0 $nodump] 0
 
 	if { $log_log_record_types == 1 } {
 		logtrack_read $testdir

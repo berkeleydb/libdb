@@ -1,16 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_name.c,v 12.90 2008/01/11 20:49:59 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
 
-static int __db_tmp_open __P((ENV *, u_int32_t, char *, DB_FH **));
+static int __db_fullpath
+    __P((ENV *, const char *, const char *, int, int, char **));
 
 #define	DB_ADDSTR(add) {						\
 	/*								\
@@ -34,42 +35,99 @@ static int __db_tmp_open __P((ENV *, u_int32_t, char *, DB_FH **));
 }
 
 /*
+ * __db_fullpath --
+ *	Constructs a path name relative to the environment home, and optionally
+ *	checks whether the file or directory exist.
+ */
+static int
+__db_fullpath(env, dir, file, check_file, check_dir, namep)
+	ENV *env;
+	const char *dir;
+	const char *file;
+	int check_file;
+	int check_dir;
+	char **namep;
+{
+	size_t len;
+	const char *home;
+	char *p, *str;
+	int isdir, ret, slash;
+
+	/* All paths are relative to the environment home. */
+	home = (env == NULL) ? NULL : env->db_home;
+
+	len =
+	    (home == NULL ? 0 : strlen(home) + 1) +
+	    (dir == NULL ? 0 : strlen(dir) + 1) +
+	    (file == NULL ? 0 : strlen(file) + 1);
+
+	if ((ret = __os_malloc(env, len, &str)) != 0)
+		return (ret);
+
+	slash = 0;
+	p = str;
+	DB_ADDSTR(home);
+	DB_ADDSTR(dir);
+	*p = '\0';
+	if (check_dir && (__os_exists(env, str, &isdir) != 0 || !isdir)) {
+		__os_free(env, str);
+		return (ENOENT);
+	}
+	DB_ADDSTR(file);
+	*p = '\0';
+
+	/*
+	 * If we're opening a data file, see if it exists.  If not, keep
+	 * trying.
+	 */
+	if (check_file && __os_exists(env, str, NULL) != 0) {
+		__os_free(env, str);
+		return (ENOENT);
+	}
+
+	if (namep == NULL)
+		__os_free(env, str);
+	else
+		*namep = str;
+	return (0);
+}
+
+#define	DB_CHECKFILE(file, dir, check_file, check_dir, namep, ret_dir) do { \
+	ret = __db_fullpath(env, dir, file,				\
+			check_file, check_dir, namep);			\
+	if (ret == 0 && (ret_dir) != NULL)				\
+		*(ret_dir) = (dir);					\
+	if (ret != ENOENT)						\
+		return (ret);						\
+} while (0)
+
+/*
  * __db_appname --
  *	Given an optional DB environment, directory and file name and type
  *	of call, build a path based on the ENV->open rules, and return
- *	it in allocated space.
+ *	it in allocated space.  Dirp can be used to specify a data directory
+ *	to use.  If not and one is used then drip will contain a pointer
+ *	to the directory name.
  *
  * PUBLIC: int __db_appname __P((ENV *, APPNAME,
- * PUBLIC:    const char *, u_int32_t, DB_FH **, char **));
+ * PUBLIC:    const char *, const char **, char **));
  */
 int
-__db_appname(env, appname, file, tmp_oflags, fhpp, namep)
+__db_appname(env, appname, file, dirp, namep)
 	ENV *env;
 	APPNAME appname;
 	const char *file;
-	u_int32_t tmp_oflags;
-	DB_FH **fhpp;
+	const char **dirp;
 	char **namep;
 {
 	DB_ENV *dbenv;
-	enum { TRY_NOTSET, TRY_DATA_DIR, TRY_ENV_HOME, TRY_CREATE } try_state;
-	size_t len, str_len;
-	int data_entry, ret, slash, tmp_create;
-	const char *a, *b;
-	char *p, *str;
+	char **ddp;
+	const char *dir;
+	int ret;
 
 	dbenv = env->dbenv;
-	try_state = TRY_NOTSET;
-	a = b = NULL;
-	data_entry = 0;
-	tmp_create = 0;
+	dir = NULL;
 
-	/*
-	 * We don't return a name when creating temporary files, just a file
-	 * handle.  Default to an error now.
-	 */
-	if (fhpp != NULL)
-		*fhpp = NULL;
 	if (namep != NULL)
 		*namep = NULL;
 
@@ -80,11 +138,7 @@ __db_appname(env, appname, file, tmp_oflags, fhpp, namep)
 	if (file != NULL && __os_abspath(file))
 		return (__os_strdup(env, file, namep));
 
-	/* Everything else is relative to the environment home. */
-	if (env != NULL)
-		a = env->db_home;
-
-retry:	/*
+	/*
 	 * DB_APP_NONE:
 	 *      DB_HOME/file
 	 * DB_APP_DATA:
@@ -97,121 +151,74 @@ retry:	/*
 	switch (appname) {
 	case DB_APP_NONE:
 		break;
+	case DB_APP_RECOVER:
 	case DB_APP_DATA:
-		if (env == NULL || dbenv->db_data_dir == NULL) {
-			try_state = TRY_CREATE;
-			break;
-		}
-
 		/*
 		 * First, step through the data_dir entries, if any, looking
 		 * for the file.
 		 */
-		if ((b = dbenv->db_data_dir[data_entry]) != NULL) {
-			++data_entry;
-			try_state = TRY_DATA_DIR;
-			break;
-		}
+		if (dbenv != NULL && dbenv->db_data_dir != NULL)
+			for (ddp = dbenv->db_data_dir; *ddp != NULL; ddp++)
+				DB_CHECKFILE(file, *ddp, 1, 0, namep, dirp);
 
 		/* Second, look in the environment home directory. */
-		if (try_state != TRY_ENV_HOME) {
-			try_state = TRY_ENV_HOME;
-			break;
-		}
+		DB_CHECKFILE(file, NULL, 1, 0, namep, dirp);
 
-		/* Third, try creation in the first data_dir entry. */
-		try_state = TRY_CREATE;
-		b = dbenv->db_data_dir[0];
+		/*
+		 * Otherwise, we're going to create.  Use the specified
+		 * directory unless we're in recovery and it doesn't exist.
+		 */
+		if (dirp != NULL && *dirp != NULL)
+			DB_CHECKFILE(file, *dirp, 0,
+			    appname == DB_APP_RECOVER, namep, dirp);
+
+		/* Finally, use the create directory, if set. */
+		if (dbenv != NULL && dbenv->db_create_dir != NULL)
+			dir = dbenv->db_create_dir;
 		break;
 	case DB_APP_LOG:
-		if (env != NULL)
-			b = dbenv->db_log_dir;
+		if (dbenv != NULL)
+			dir = dbenv->db_log_dir;
 		break;
 	case DB_APP_TMP:
-		if (env != NULL)
-			b = dbenv->db_tmp_dir;
-		tmp_create = 1;
+		if (dbenv != NULL)
+			dir = dbenv->db_tmp_dir;
 		break;
 	}
 
-	len =
-	    (a == NULL ? 0 : strlen(a) + 1) +
-	    (b == NULL ? 0 : strlen(b) + 1) +
-	    (file == NULL ? 0 : strlen(file) + 1);
-
 	/*
-	 * Allocate space to hold the current path information, as well as any
-	 * temporary space that we're going to need to create a temporary file
-	 * name.
+	 * Construct the full path.  For temporary files, it is an error if the
+	 * directory does not exist: if it doesn't, checking whether millions
+	 * of temporary files exist inside it takes a *very* long time.
 	 */
-#define	DB_TRAIL	"BDBXXXXX"
-	str_len = len + sizeof(DB_TRAIL) + 10;
-	if ((ret = __os_malloc(env, str_len, &str)) != 0)
-		return (ret);
+	DB_CHECKFILE(file, dir, 0, appname == DB_APP_TMP, namep, dirp);
 
-	slash = 0;
-	p = str;
-	DB_ADDSTR(a);
-	DB_ADDSTR(b);
-	DB_ADDSTR(file);
-	*p = '\0';
-
-	/*
-	 * If we're opening a data file, see if it exists.  If it does,
-	 * return it, otherwise, try and find another one to open.
-	 */
-	if (appname == DB_APP_DATA &&
-	    __os_exists(env, str, NULL) != 0 && try_state != TRY_CREATE) {
-		__os_free(env, str);
-		b = NULL;
-		goto retry;
-	}
-
-	/* Create the file if so requested. */
-	if (tmp_create &&
-	    (ret = __db_tmp_open(env, tmp_oflags, str, fhpp)) != 0) {
-		__os_free(env, str);
-		return (ret);
-	}
-
-	if (namep == NULL)
-		__os_free(env, str);
-	else
-		*namep = str;
-	return (0);
+	return (ret);
 }
 
 /*
  * __db_tmp_open --
  *	Create a temporary file.
+ *
+ * PUBLIC: int __db_tmp_open __P((ENV *, u_int32_t, DB_FH **));
  */
-static int
-__db_tmp_open(env, tmp_oflags, path, fhpp)
+int
+__db_tmp_open(env, oflags, fhpp)
 	ENV *env;
-	u_int32_t tmp_oflags;
-	char *path;
+	u_int32_t oflags;
 	DB_FH **fhpp;
 {
 	pid_t pid;
-	int filenum, i, isdir, ret;
+	int filenum, i, ret;
+	char *path;
 	char *firstx, *trv;
 
-	/*
-	 * Check the target directory; if you have six X's and it doesn't
-	 * exist, this runs for a *very* long time.
-	 */
-	if ((ret = __os_exists(env, path, &isdir)) != 0) {
-		__db_err(env, ret, "%s", path);
-		return (ret);
-	}
-	if (!isdir) {
-		__db_err(env, EINVAL, "%s", path);
-		return (EINVAL);
-	}
+	DB_ASSERT(env, fhpp != NULL);
+	*fhpp = NULL;
 
-	/* Build the path. */
-	(void)strncat(path, PATH_SEPARATOR, 1);
-	(void)strcat(path, DB_TRAIL);
+#define	DB_TRAIL	"BDBXXXXX"
+	if ((ret = __db_appname(env, DB_APP_TMP, DB_TRAIL, NULL, &path)) != 0)
+		goto done;
 
 	/* Replace the X's with the process ID (in decimal). */
 	__os_id(env->dbenv, &pid, NULL);
@@ -222,9 +229,11 @@ __db_tmp_open(env, tmp_oflags, path, fhpp)
 	/* Loop, trying to open a file. */
 	for (filenum = 1;; filenum++) {
 		if ((ret = __os_open(env, path, 0,
-		    tmp_oflags | DB_OSO_CREATE | DB_OSO_EXCL | DB_OSO_TEMP,
-		    DB_MODE_600, fhpp)) == 0)
-			return (0);
+		    oflags | DB_OSO_CREATE | DB_OSO_EXCL | DB_OSO_TEMP,
+		    DB_MODE_600, fhpp)) == 0) {
+			ret = 0;
+			goto done;
+		}
 
 		/*
 		 * !!!:
@@ -235,7 +244,7 @@ __db_tmp_open(env, tmp_oflags, path, fhpp)
 		 */
 		if (ret != EEXIST) {
 			__db_err(env, ret, "temporary open: %s", path);
-			return (ret);
+			goto done;
 		}
 
 		/*
@@ -254,11 +263,15 @@ __db_tmp_open(env, tmp_oflags, path, fhpp)
 		 * file names.
 		 */
 		for (i = filenum, trv = firstx; i > 0; i = (i - 1) / 26)
-			if (*trv++ == '\0')
-				return (EINVAL);
+			if (*trv++ == '\0') {
+				ret = EINVAL;
+				goto done;
+			}
 
 		for (i = filenum; i > 0; i = (i - 1) / 26)
 			*--trv = 'a' + ((i - 1) % 26);
 	}
-	/* NOTREACHED */
+done:
+	__os_free(env, path);
+	return (ret);
 }

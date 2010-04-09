@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: PersistEntityBinding.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -11,7 +11,6 @@ package com.sleepycat.persist.impl;
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.tuple.TupleBase;
 import com.sleepycat.db.DatabaseEntry;
-import com.sleepycat.persist.model.EntityModel;
 import com.sleepycat.persist.raw.RawObject;
 
 /**
@@ -33,20 +32,10 @@ public class PersistEntityBinding implements EntityBinding {
                                 String entityClassName,
                                 boolean rawAccess) {
         this.catalog = catalog;
-        if (rawAccess) {
-            entityFormat = catalog.getFormat(entityClassName);
-            if (entityFormat == null || !entityFormat.isEntity()) {
-                throw new IllegalArgumentException
-                    ("Not an entity class: " + entityClassName);
-            }
-        } else {
-            Class entityCls;
-            try {
-                entityCls = EntityModel.classForName(entityClassName);
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(e);
-            }
-            entityFormat = catalog.getFormat(entityCls);
+        entityFormat = getOrCreateFormat(catalog, entityClassName, rawAccess);
+        if (!entityFormat.isEntity()) {
+            throw new IllegalArgumentException
+                ("Not an entity class: " + entityClassName);
         }
         this.rawAccess = rawAccess;
     }
@@ -152,7 +141,8 @@ public class PersistEntityBinding implements EntityBinding {
             }
             format = (Format) ((RawObject) entity).getType();
         } else {
-            format = catalog.getFormat(entity.getClass());
+            format = catalog.getFormat
+                (entity.getClass(), true /*checkEntitySubclassIndexes*/);
         }
 
         /* Check that the entity class/subclass is valid for this binding. */
@@ -164,5 +154,25 @@ public class PersistEntityBinding implements EntityBinding {
         }
 
         return format;
+    }
+    
+    /**
+     * Utility method for getting or creating a format as appropriate for
+     * bindings and key creators.
+     */
+    static Format getOrCreateFormat(Catalog catalog,
+                                    String clsName,
+                                    boolean rawAccess) {
+        if (rawAccess) {
+            Format format = catalog.getFormat(clsName);
+            if (format == null) {
+                throw new IllegalArgumentException
+                    ("Not a persistent class: " + clsName);
+            }
+            return format;
+        } else {
+            Class cls = SimpleCatalog.keyClassForName(clsName);
+            return catalog.getFormat(cls, true /*checkEntitySubclassIndexes*/);
+        }
     }
 }

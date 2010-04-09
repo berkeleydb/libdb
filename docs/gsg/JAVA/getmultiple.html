@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Retrieving Multiple Objects</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="simpleget.html" title="Retrieving Objects from an Entity Store" />
+    <link rel="prev" href="simpleget.html" title="Retrieving Objects from an Entity Store" />
     <link rel="next" href="dpl_entityjoin.html" title="Join Cursors" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="getmultiple"></a>Retrieving Multiple Objects</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="getmultiple.html#dpl_cursor_initialize">Cursor Initialization</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="getmultiple.html#dpl_dups">Working with Duplicate Keys</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="getmultiple.html#dpl_cursor_range">Key Ranges</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
                     It is possible to iterate over every object referenced
@@ -42,7 +60,7 @@
             </p>
       <p>
                    In addition, some indexes result in the retrieval of multiple
-                   objects. For example, <tt class="literal">MANY_TO_ONE</tt>
+                   objects. For example, <code class="literal">MANY_TO_ONE</code>
                    secondary indexes can result in more than one object for any given
                    key (also known as <span class="emphasis"><em>duplicate keys</em></span>). 
                    When this is the case, you must iterate
@@ -52,9 +70,9 @@
       <p>
                    There are two ways to iterate over a collection of
                    objects as returned by an index. One is to use a
-                   standard Java <tt class="classname">Iterator</tt>, which you
-                   obtain using an <tt class="classname">EntityCursor</tt>,
-                   which in turn you can obtain from a <tt class="classname">PrimaryIndex</tt>:
+                   standard Java <code class="classname">Iterator</code>, which you
+                   obtain using an <code class="classname">EntityCursor</code>,
+                   which in turn you can obtain from a <code class="classname">PrimaryIndex</code>:
            </p>
       <pre class="programlisting">PrimaryIndex&lt;String,SimpleEntityClass&gt; pi =
     store.getPrimaryIndex(String.class, SimpleEntityClass.class);
@@ -90,35 +108,34 @@ try {
               <h3 class="title"><a id="dpl_cursor_initialize"></a>Cursor Initialization</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             When a cursor is first opened, it is not
                             positioned to any value; that is,
                             it is not <span class="emphasis"><em>initialized</em></span>.
-                            Most of the <tt class="classname">EntityCursor</tt>
+                            Most of the <code class="classname">EntityCursor</code>
                             methods that move a cursor will initialize it
                             to either the first or last object, depending
                             on whether the operation is moving the cursor
-                            forward (all <tt class="literal">next...</tt>
+                            forward (all <code class="literal">next...</code>
                             methods) or backwards (all
-                            <tt class="literal">prev...</tt>) methods.
+                            <code class="literal">prev...</code>) methods.
                     </p>
         <p>
                             You can also force a cursor, whether it is
                             initialized or not, to return the first object
                             by calling
-                            <tt class="methodname">EntityCursor.first()</tt>.
+                            <code class="methodname">EntityCursor.first()</code>.
                             Similarly, you can force a return of the last
                             object using
-                            <tt class="methodname">EntityCursor.last()</tt>.
+                            <code class="methodname">EntityCursor.last()</code>.
                     </p>
         <p>
                             Operations that do not move the cursor (such as
-                            <tt class="methodname">EntityCursor.current()</tt>
-                            or <tt class="methodname">EntityCursor.delete()</tt>
+                            <code class="methodname">EntityCursor.current()</code>
+                            or <code class="methodname">EntityCursor.delete()</code>
                             will throw an 
-                            <tt class="classname">IllegalStateException</tt>
+                            <code class="classname">IllegalStateException</code>
                             when used on an uninitialized cursor.
                     </p>
       </div>
@@ -129,15 +146,14 @@ try {
               <h3 class="title"><a id="dpl_dups"></a>Working with Duplicate Keys</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                    If you have duplicate secondary keys, you can return an
-                   <tt class="classname">EntityIndex</tt> class object for them
-                   using <tt class="methodname">SecondaryIndex.subIndex()</tt>
+                   <code class="classname">EntityIndex</code> class object for them
+                   using <code class="methodname">SecondaryIndex.subIndex()</code>
                    Then, use that object's
-                   <tt class="methodname">entities()</tt>
-                   method to obtain an <tt class="classname">EntityCursor</tt>
+                   <code class="methodname">entities()</code>
+                   method to obtain an <code class="classname">EntityCursor</code>
                    instance.
            </p>
         <p>
@@ -162,13 +178,13 @@ for (SimpleEntityClass seci : sec_cursor) {
         <p>
                 Note that if you are working with duplicate keys, you can
                 control how cursor iteration works by using the following
-                <tt class="classname">EntityCursor</tt> methods:
+                <code class="classname">EntityCursor</code> methods:
         </p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                                <tt class="methodname">nextDup()</tt>
+                                <code class="methodname">nextDup()</code>
                         </p>
               <p>
                             Moves the cursor to the next object with the
@@ -176,12 +192,12 @@ for (SimpleEntityClass seci : sec_cursor) {
                             referencing. That is, this method returns the
                             next duplicate object. If no such object
                             exists, this method returns
-                            <tt class="literal">null</tt>.
+                            <code class="literal">null</code>.
                         </p>
             </li>
             <li>
               <p>
-                                <tt class="methodname">prevDup()</tt>
+                                <code class="methodname">prevDup()</code>
                         </p>
               <p>
                             Moves the cursor to the previous object with the
@@ -189,12 +205,12 @@ for (SimpleEntityClass seci : sec_cursor) {
                             referencing. That is, this method returns the
                             previous duplicate object in the cursor's set
                             of objects. If no such object exists, this method returns
-                            <tt class="literal">null</tt>.
+                            <code class="literal">null</code>.
                         </p>
             </li>
             <li>
               <p>
-                                <tt class="methodname">nextNoDup()</tt>
+                                <code class="methodname">nextNoDup()</code>
                         </p>
               <p>
                             Moves the cursor to the next object in the
@@ -204,12 +220,12 @@ for (SimpleEntityClass seci : sec_cursor) {
                             duplicate objects and returns the
                             next non-duplicate object in the cursor's set
                             of objects. If no such object exists, this method returns
-                            <tt class="literal">null</tt>.
+                            <code class="literal">null</code>.
                         </p>
             </li>
             <li>
               <p>
-                                <tt class="methodname">prevNoDup()</tt>
+                                <code class="methodname">prevNoDup()</code>
                         </p>
               <p>
                             Moves the cursor to the previous object in the
@@ -219,7 +235,7 @@ for (SimpleEntityClass seci : sec_cursor) {
                             duplicate objects and returns the
                             previous non-duplicate object in the cursor's set
                             of objects. If no such object exists, this method returns
-                            <tt class="literal">null</tt>.
+                            <code class="literal">null</code>.
                         </p>
             </li>
           </ul>
@@ -237,8 +253,9 @@ EntityCursor&lt;SimpleEntityClass&gt; sec_cursor =
     si.subIndex("skeyone").entities(); 
 
 try {
+    SimpleEntityClass sec;
     Iterator&lt;SimpleEntityClass&gt; i = sec_cursor.iterator();
-    while (i.nextNoDup()) {
+    while (sec = i.nextNoDup() != null) {
         // Do something here
     }
 // Always make sure the cursor is closed when we are done with it.
@@ -252,7 +269,6 @@ try {
               <h3 class="title"><a id="dpl_cursor_range"></a>Key Ranges</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         You can restrict the scope of a cursor's movement
@@ -265,15 +281,15 @@ try {
                         range bound is <span class="emphasis"><em>inclusive</em></span> or
                         <span class="emphasis"><em>exclusive</em></span> by providing a
                         boolean value for each range.
-                        <tt class="literal">true</tt> indicates that the provided
-                        bound is inclusive, while <tt class="literal">false</tt>
+                        <code class="literal">true</code> indicates that the provided
+                        bound is inclusive, while <code class="literal">false</code>
                         indicates that it is exclusive.
                 </p>
         <p>
                         You provide this information when you call
-                        <tt class="classname">PrimaryIndex.entities()</tt>
+                        <code class="classname">PrimaryIndex.entities()</code>
                         or
-                        <tt class="classname">SecondaryIndex.entities()</tt>.
+                        <code class="classname">SecondaryIndex.entities()</code>.
                         For example, suppose you had a class indexed by
                         numerical information. Suppose further that you
                         wanted to examine only those objects with indexed

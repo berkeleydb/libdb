@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep066.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep066
 # TEST	Replication and dead log handles.
@@ -22,6 +22,9 @@
 proc rep066 { method { niter 10 } { tnum "066" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -42,6 +45,22 @@ proc rep066 { method { niter 10 } { tnum "066" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -52,7 +71,7 @@ proc rep066 { method { niter 10 } { tnum "066" } args } {
 				continue
 			}
 			puts "Rep$tnum ($method $r):\
-			    Replication and dead log handles."
+			    Replication and dead log handles $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep066_sub $method $niter $tnum $l $r $args
@@ -62,12 +81,19 @@ proc rep066 { method { niter 10 } { tnum "066" } args } {
 
 proc rep066_sub { method niter tnum logset recargs largs } {
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -100,6 +126,7 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	# Later we'll open a 2nd handle to this env.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	    $repmemargs \
 	    $m_logargs -errpfx ENV0 -log_max $log_max $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set env0 [eval $ma_envcmd $recargs -rep_master]
@@ -108,6 +135,7 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	# Open a client.
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	    $repmemargs \
 	    $c_logargs -errpfx ENV1 -log_max $log_max $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set env1 [eval $cl_envcmd $recargs -rep_client]
@@ -119,7 +147,7 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.a.0: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	set nstart $niter
@@ -128,7 +156,7 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	while { $stop == 0 } {
 		puts "\tRep$tnum.b: Run test on master until log file changes."
 		eval rep_test\
-		    $method $masterenv NULL $niter $nstart $nstart 0 0 $largs
+		    $method $masterenv NULL $niter $nstart $nstart 0 $largs
 		incr nstart $niter
 		replclear 2
 		set last_master_log [get_logfile $masterenv last]
@@ -144,12 +172,19 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	set 2ndenv [eval $ma_envcmd -rep_master -errpfx 2NDENV]
 	error_check_good master_env [is_valid_env $2ndenv] TRUE
 
-	set testfile2 "test$tnum.2.db"
+
+	# Set up databases as in-memory or on-disk.
+	if { $databases_in_memory } {
+		set testfile { "" "test.db" }
+	} else { 
+		set testfile "test.db"
+	} 
+	
 	set omethod [convert_method $method]
 	set txn [$masterenv txn]
 	error_check_good txn [is_valid_txn $txn $masterenv] TRUE
 	set db [eval {berkdb_open_noerr -env $masterenv -errpfx MASTER \
-	    -txn $txn -create -mode 0644} $largs $omethod $testfile2]
+	    -txn $txn -create -mode 0644} $largs $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Flush on the 2nd handle
@@ -194,9 +229,9 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	set last_master_log [get_logfile $masterenv last]
 	set stop 0
 	while { $stop == 0 } {
-		puts "\tRep$tnum.b: Run test on master until log file changes."
+		puts "\tRep$tnum.e: Run test on master until log file changes."
 		eval rep_test\
-		    $method $masterenv NULL $niter $nstart $nstart 0 0 $largs
+		    $method $masterenv NULL $niter $nstart $nstart 0 $largs
 		process_msgs $envlist
 		incr nstart $niter
 		set last_master_log [get_logfile $masterenv last]
@@ -208,7 +243,7 @@ proc rep066_sub { method niter tnum logset recargs largs } {
 	set txn [$masterenv txn]
 	error_check_good txn [is_valid_txn $txn $masterenv] TRUE
 	set db [eval {berkdb_open_noerr -env $masterenv -errpfx MASTER \
-	    -txn $txn -create -mode 0644} $largs $omethod $testfile2]
+	    -txn $txn -create -mode 0644} $largs $omethod $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	process_msgs $envlist

@@ -3,15 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Implementing Key 
-        Creators
-        
-        </title>
+    <title>Implementing Key Creators</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 10. Secondary Databases" />
-    <link rel="previous" href="indexes.html" title="Chapter 10. Secondary Databases" />
+    <link rel="prev" href="indexes.html" title="Chapter 10. Secondary Databases" />
     <link rel="next" href="secondaryProps.html" title="Secondary Database Properties" />
   </head>
   <body>
@@ -19,7 +16,7 @@
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">Implementing Key 
-        Creators
+        <span>Creators</span>
         
         </th>
         </tr>
@@ -41,7 +38,15 @@
         </h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="keyCreator.html#multikeys">Working with Multiple Keys</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         You must provide every secondary database with a 
@@ -52,7 +57,7 @@
             
         
         <span>
-            using the <tt class="methodname">SecondaryConfig.setKeyCreator()</tt> 
+            using the <code class="methodname">SecondaryConfig.setKeyCreator()</code> 
             method.
         </span>
         
@@ -66,25 +71,25 @@
     </p>
       <p>
         You implement a key creator by writing a class that implements the
-        <tt class="classname">SecondaryKeyCreator</tt> interface. This interface
-        requires you to implement the <tt class="methodname">SecondaryKeyCreator.createSecondaryKey()</tt>
+        <code class="classname">SecondaryKeyCreator</code> interface. This interface
+        requires you to implement the <code class="methodname">SecondaryKeyCreator.createSecondaryKey()</code>
         method.
    </p>
       <p>
         One thing to remember when implementing this method is that you will
         need a way to extract the necessary information from the data's
-        <tt class="classname">DatabaseEntry</tt> and/or the key's
-        <tt class="classname">DatabaseEntry</tt> that are provided on calls to this
+        <code class="classname">DatabaseEntry</code> and/or the key's
+        <code class="classname">DatabaseEntry</code> that are provided on calls to this
         method. If you are using complex objects, then you are probably using the
         Bind APIs to perform this conversion. The easiest thing to do is to
-        instantiate the <tt class="classname">EntryBinding</tt> or
-        <tt class="classname">TupleBinding</tt> that you need to perform the
+        instantiate the <code class="classname">EntryBinding</code> or
+        <code class="classname">TupleBinding</code> that you need to perform the
         conversion, and then provide this to your key creator's constructor.
-        The Bind APIs are introduced in <a href="bindAPI.html">Using the BIND APIs</a>.
+        The Bind APIs are introduced in <a class="xref" href="bindAPI.html" title="Using the BIND APIs">Using the BIND APIs</a>.
     </p>
       <p>
-        <tt class="methodname">SecondaryKeyCreator.createSecondaryKey()</tt> returns a
-        boolean. A return value of <tt class="literal">false</tt> indicates that 
+        <code class="methodname">SecondaryKeyCreator.createSecondaryKey()</code> returns a
+        boolean. A return value of <code class="literal">false</code> indicates that 
         no secondary key exists, and therefore no record should be added to the secondary database for that primary record.
         If a record already exists in the secondary database, it is deleted.
     </p>
@@ -120,10 +125,10 @@ public class PersonData {
 } </pre>
       <p>
         Also, suppose that you have created a custom tuple binding,
-        <tt class="classname">PersonDataBinding</tt>, that you use to convert
-        <tt class="classname">PersonData</tt> objects to and from
-        <tt class="classname">DatabaseEntry</tt> objects. (Custom tuple bindings are
-        described in <a href="bindAPI.html#customTuple">Custom Tuple Bindings</a>.)
+        <code class="classname">PersonDataBinding</code>, that you use to convert
+        <code class="classname">PersonData</code> objects to and from
+        <code class="classname">DatabaseEntry</code> objects. (Custom tuple bindings are
+        described in <a class="xref" href="bindAPI.html#customTuple" title="Custom Tuple Bindings">Custom Tuple Bindings</a>.)
     </p>
       <p>
         Finally, suppose you want a secondary database that is keyed based
@@ -221,7 +226,6 @@ try {
               <h3 class="title"><a id="multikeys"></a>Working with Multiple Keys</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                     Until now we have only discussed indexes as if there is
@@ -241,22 +245,22 @@ try {
             </p>
         <p>
                     To do this, you write a key creator that implements
-                    <tt class="classname">SecondaryMultiKeyCreator</tt>
+                    <code class="classname">SecondaryMultiKeyCreator</code>
                     instead of
-                    <tt class="classname">SecondaryKeyCreator</tt>. The key
+                    <code class="classname">SecondaryKeyCreator</code>. The key
                     difference between the two is that 
-                    <tt class="classname">SecondaryKeyCreator</tt>
-                    uses a single <tt class="classname">DatabaseEntry</tt>
+                    <code class="classname">SecondaryKeyCreator</code>
+                    uses a single <code class="classname">DatabaseEntry</code>
                     object as the result, while  
-                    <tt class="classname">SecondaryMultiKeyCreator</tt>
-                    returns a set of <tt class="classname">DatabaseEntry</tt>
-                    objects (using <tt class="classname">java.util.Set</tt>).
+                    <code class="classname">SecondaryMultiKeyCreator</code>
+                    returns a set of <code class="classname">DatabaseEntry</code>
+                    objects (using <code class="classname">java.util.Set</code>).
                     Also, you assign the 
-                    <tt class="classname">SecondaryMultiKeyCreator</tt>
+                    <code class="classname">SecondaryMultiKeyCreator</code>
                     implementation using 
-                    <tt class="methodname">SecondaryConfig.setMultiKeyCreator()</tt>
+                    <code class="methodname">SecondaryConfig.setMultiKeyCreator()</code>
                     instead of
-                    <tt class="methodname">SecondaryConfig.setKeyCreator()</tt>.
+                    <code class="methodname">SecondaryConfig.setKeyCreator()</code>.
              </p>
         <p>
                      For example:

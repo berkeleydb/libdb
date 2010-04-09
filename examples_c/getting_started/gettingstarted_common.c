@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  */
 
 #include "gettingstarted_common.h"
@@ -148,7 +148,7 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
 	 * Error reporting is handled in open_database() so just return
 	 * the return code.
 	 */
-	return (0);
+	return (ret);
 
     /*
      * Associate the itemname db with its primary db

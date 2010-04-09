@@ -1,5 +1,9 @@
 /*
- * $Id: test_micro.c,v 1.7 2008/05/07 12:27:36 bschmeck Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 
 #include "bench.h"
@@ -10,6 +14,7 @@ static int  test_micro_run __P((char *));
 static int  test_micro_usage __P((void));
 
 char *progname;					/* program name */
+db_timespec __start_time, __end_time;		/* TIMER_START & TIMER_END */
 
 static int test_start = 1;			/* first test to run */
 static int test_end = 0;			/* last test to run */
@@ -23,6 +28,7 @@ static struct {
 	{ "b_del", b_del },
 	{ "b_get", b_get },
 	{ "b_inmem", b_inmem },
+	{ "b_latch", b_latch },
 	{ "b_load", b_load },
 	{ "b_open", b_open },
 	{ "b_put", b_put },

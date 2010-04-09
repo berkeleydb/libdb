@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: log006.tcl,v 12.9 2008/04/02 18:22:28 carol Exp $
+# $Id$
 #
 # TEST	log006
 # TEST	Test log file auto-remove.

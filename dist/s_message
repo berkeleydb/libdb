@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_message,v 12.2 2008/01/11 18:49:48 sue Exp $
+#	$Id$
 #
 # Build the automatically generated rep & repmgr message files.
 

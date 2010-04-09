@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Cursor Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Cursors.html" title="Chapter 4. Using Cursors" />
-    <link rel="previous" href="ReplacingEntryWCursor.html" title="Replacing Records Using Cursors" />
+    <link rel="prev" href="ReplacingEntryWCursor.html" title="Replacing Records Using Cursors" />
     <link rel="next" href="indexes.html" title="Chapter 5. Secondary Databases" />
   </head>
   <body>
@@ -32,12 +32,11 @@
             <h2 class="title" style="clear: both"><a id="CoreCursorUsage"></a>Cursor Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         In 
              
-            <a href="DbCXXUsage.html">Database Usage Example</a> 
+            <a class="xref" href="DbCXXUsage.html" title="Database Usage Example">Database Usage Example</a> 
         we wrote an
         application that loaded two databases with
         vendor and inventory information. In this example, we will write an
@@ -46,7 +45,7 @@
         can provide the item and show the vendor's contact information.
     </p>
       <p>
-        Specifically, the <tt class="classname">example_database_read</tt>
+        Specifically, the <code class="classname">example_database_read</code>
         application does the following:
     </p>
       <div class="orderedlist">
@@ -54,10 +53,10 @@
           <li>
             <p>
             Opens the the inventory and vendor databases
-            that were created by our <tt class="classname">example_database_load</tt>
+            that were created by our <code class="classname">example_database_load</code>
             application. See 
                  
-                <a href="DbCXXUsage.html#exampledbload-cxx">example_database_load</a> 
+                <a class="xref" href="DbCXXUsage.html#exampledbload-cxx" title="Example 3.3 example_database_load">example_database_load</a> 
             for information on how that
             application creates the databases and writes data to them.
          </p>
@@ -94,7 +93,7 @@
     </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_cxx/getting_started</pre>
       <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.
     </p>
       <div class="example">
@@ -102,13 +101,14 @@
         <p class="title">
           <b>Example 4.1 example_database_read</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             To begin, we include the necessary header files and perform our
-            forward declarations. We also write our <tt class="function">usage()</tt>
+            forward declarations. We also write our <code class="function">usage()</code>
             function.
         </p>
-        <a id="cxx_cursor10"></a>
-        <pre class="programlisting">// File: example_database_read.cpp
+          <a id="cxx_cursor10"></a>
+          <pre class="programlisting">// File: example_database_read.cpp
 #include &lt;iostream&gt;
 #include &lt;fstream&gt;
 #include &lt;cstdlib&gt;
@@ -119,13 +119,13 @@
 // Forward declarations
 int show_all_records(MyDb &amp;inventoryDB, MyDb &amp;vendorDB);
 int show_vendor(MyDb &amp;vendorDB, const char *vendor); </pre>
-        <p>
-        Next we write our <tt class="function">main()</tt> function. Note that it is
+          <p>
+        Next we write our <code class="function">main()</code> function. Note that it is
         somewhat unnecessarily complicated here because we will be extending it
         in the next chapter to perform inventory item lookups.
    </p>
-        <a id="cxx_cursor11"></a>
-        <pre class="programlisting">// Displays all inventory items and the associated vendor record.
+          <a id="cxx_cursor11"></a>
+          <pre class="programlisting">// Displays all inventory items and the associated vendor record.
 int
 main (int argc, char *argv[])
 {
@@ -158,15 +158,15 @@ main (int argc, char *argv[])
 
     return(0);
 } // End main </pre>
-        <p>
-        Next we need to write the <tt class="function">show_all_records()</tt>
+          <p>
+        Next we need to write the <code class="function">show_all_records()</code>
         function. This function displays all
         of the inventory records found in the inventory database. Once it shows
         the inventory record, it retrieves the vendor's name from that record
         and uses it to look up and display the appropriate vendor record:
     </p>
-        <a id="cxx_cursor12"></a>
-        <pre class="programlisting">// Shows all the records in the inventory database.
+          <a id="cxx_cursor12"></a>
+          <pre class="programlisting">// Shows all the records in the inventory database.
 // For each inventory record shown, the appropriate
 // vendor record is also displayed.
 int
@@ -200,21 +200,21 @@ show_all_records(MyDb &amp;inventoryDB, MyDb &amp;vendorDB)
     cursorp-&gt;close();
     return (0);
 } </pre>
-        <p>
-        Note that the <tt class="classname">InventoryData</tt> class that we use here
+          <p>
+        Note that the <code class="classname">InventoryData</code> class that we use here
         is described in
-        <a href="DbCXXUsage.html#InventoryData">InventoryData Class</a>.
+        <a class="xref" href="DbCXXUsage.html#InventoryData" title="Example 3.2 InventoryData Class">InventoryData Class</a>.
     </p>
-        <p>
+          <p>
         Having displayed the inventory record, we now want to display the
         vendor record corresponding to this record.
         In this case we do not need to use a
         cursor to display the vendor record. Using a cursor here complicates our
         code slightly for no good gain. Instead, we simply perform a
-        <tt class="function">get()</tt> directly against the vendor database.
+        <code class="function">get()</code> directly against the vendor database.
     </p>
-        <a id="cxx_cursor13"></a>
-        <pre class="programlisting">// Shows a vendor record. Each vendor record is an instance of
+          <a id="cxx_cursor13"></a>
+          <pre class="programlisting">// Shows a vendor record. Each vendor record is an instance of
 // a vendor structure. See loadVendorDB() in
 // example_database_load for how this structure was originally
 // put into the database.
@@ -258,10 +258,12 @@ show_vendor(MyDb &amp;vendorDB, const char *vendor)
     }
     return (0);
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <p>
         That completes the implementation of
-        <tt class="classname">example_database_read()</tt>. In the next chapter, we
+        <code class="classname">example_database_read()</code>. In the next chapter, we
         will extend this application to make use of a secondary database so that
         we can query the inventory database for a specific inventory item.
     </p>

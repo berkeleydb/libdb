@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Using Transactions
-	</title>
+    <title>Using Transactions</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="implementingmain.html" title="&#10;&#9;&#9;Implementing the Main Program&#10;&#9;" />
-    <link rel="next" href="addingdatabaseitems.html" title="&#10;&#9;&#9;Adding Database Items&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="implementingmain.html" title="Implementing the Main Program" />
+    <link rel="next" href="addingdatabaseitems.html" title="Adding Database Items" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     DB transactional applications have standard
@@ -65,7 +62,7 @@
             Since the Java collections API is used for data access, there
             is no way to pass a transaction object to methods such
             as 
-            <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>.
+            <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#put" target="_top">Map.put</a>.
         </p>
           </li>
         </ul>
@@ -73,16 +70,16 @@
       <p>
     The DB Java Collections API provides two transaction APIs. The
 	lower-level API is the 
-    <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
     
 	class. It provides a way to get the transaction for the current
 	thread, and to begin, commit and abort transactions. It also
 	provides access to the Berkeley DB core API 
     
-    <a href="../../java/com/sleepycat/db/Transaction.html" target="_top">Transaction</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/Transaction.html" target="_top">Transaction</a>
     
 	object. With 
-    <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>,
+    <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>,
 	just as in the 
         
         <span>com.sleepycat.db</span>
@@ -94,51 +91,51 @@
 </p>
       <p>
     The example uses the higher-level 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
     
 	and 
-    <a href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
     
 	APIs, which are build on top of 
-    <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>.
-	<tt class="methodname">TransactionRunner.run()</tt> automatically begins a transaction and
-	then calls the <tt class="methodname">TransactionWorker.doWork()</tt> method, which is
+    <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>.
+	<code class="methodname">TransactionRunner.run()</code> automatically begins a transaction and
+	then calls the <code class="methodname">TransactionWorker.doWork()</code> method, which is
 	implemented by the application.
 </p>
       <p>
-    The <tt class="methodname">TransactionRunner.run()</tt> method automatically detects
+    The <code class="methodname">TransactionRunner.run()</code> method automatically detects
 	deadlock exceptions and performs retries by repeatedly calling the
-	<tt class="methodname">TransactionWorker.doWork()</tt> method until the operation succeeds
+	<code class="methodname">TransactionWorker.doWork()</code> method until the operation succeeds
 	or the maximum retry count is reached. If the maximum retry count
 	is reached or if another exception (other than 
     
     <span>
-        <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>)
+        <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>)
     </span>
-	is thrown by <tt class="methodname">TransactionWorker.doWork()</tt>, then the transaction
+	is thrown by <code class="methodname">TransactionWorker.doWork()</code>, then the transaction
 	will be automatically aborted. Otherwise, the transaction will be
 	automatically committed.
 </p>
       <p>
-    Using this high-level API, if <tt class="methodname">TransactionRunner.run()</tt>
+    Using this high-level API, if <code class="methodname">TransactionRunner.run()</code>
 	throws an exception, the application can assume that the operation
 	failed and the transaction was aborted; otherwise, when an
 	exception is not thrown, the application can assume the operation
 	succeeded and the transaction was committed.
 </p>
       <p>
-    The <tt class="methodname">Sample.run()</tt> method creates a <tt class="classname">TransactionRunner</tt>
-	object and calls its <tt class="methodname">run()</tt> method.
+    The <code class="methodname">Sample.run()</code> method creates a <code class="classname">TransactionRunner</code>
+	object and calls its <code class="methodname">run()</code> method.
 </p>
       <a id="cb_sample1"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.collections.TransactionRunner;
-import com.sleepycat.collections.TransactionWorker;</tt></b>
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.collections.TransactionRunner;
+import com.sleepycat.collections.TransactionWorker;</code></strong>
 ...
 public class Sample
 {
     private SampleDatabase db;
     ...
-<b class="userinput"><tt>    private void run()
+<strong class="userinput"><code>    private void run()
         throws Exception
     {
         TransactionRunner runner = new TransactionRunner(db.getEnvironment());
@@ -160,24 +157,24 @@ public class Sample
             throws Exception
         {
         }
-    }</tt></b>
+    }</code></strong>
 } </pre>
       <p>
-    The <tt class="methodname">run()</tt> method is called by <tt class="methodname">main()</tt> and was outlined
+    The <code class="methodname">run()</code> method is called by <code class="methodname">main()</code> and was outlined
 	in the previous section. It first creates a
-	<tt class="classname">TransactionRunner</tt>, passing the database environment to its
+	<code class="classname">TransactionRunner</code>, passing the database environment to its
 	constructor.
 </p>
       <p>
-    It then calls <tt class="methodname">TransactionRunner.run()</tt> to execute two
+    It then calls <code class="methodname">TransactionRunner.run()</code> to execute two
 	transactions, passing instances of the application-defined
-	<tt class="classname">PopulateDatabase</tt> and
-    <tt class="classname">PrintDatabase</tt> nested classes.
-	These classes implement the <tt class="methodname">TransactionWorker.doWork()</tt> method
+	<code class="classname">PopulateDatabase</code> and
+    <code class="classname">PrintDatabase</code> nested classes.
+	These classes implement the <code class="methodname">TransactionWorker.doWork()</code> method
 	and will be fully described in the next two sections.
 </p>
       <p>
-    For each call to <tt class="methodname">TransactionRunner.run()</tt>, a separate
+    For each call to <code class="methodname">TransactionRunner.run()</code>, a separate
 	transaction will be performed. The use of two transactions in the
 	example — one for populating the database and another for printing
 	its contents — is arbitrary. A real-life application should be
@@ -186,11 +183,11 @@ public class Sample
 	taking into account the impact of transactions on performance.
 </p>
       <p>
-    The advantage of using <tt class="classname">TransactionRunner</tt> is that deadlock
+    The advantage of using <code class="classname">TransactionRunner</code> is that deadlock
 	retries and transaction begin, commit and abort are handled
-	automatically. However, a <tt class="classname">TransactionWorker</tt> class must be
+	automatically. However, a <code class="classname">TransactionWorker</code> class must be
 	implemented for each type of transaction. If desired, anonymous
-	inner classes can be used to implement the <tt class="classname">TransactionWorker</tt>
+	inner classes can be used to implement the <code class="classname">TransactionWorker</code>
 	interface.
 </p>
     </div>

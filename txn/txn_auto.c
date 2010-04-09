@@ -142,8 +142,6 @@ __txn_regop_log(env, txnp, ret_lsnp, flags,
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
 		if (txnp == NULL)
 			return (0);
-		if (txnp == NULL)
-			return (0);
 		is_durable = 0;
 	} else
 		is_durable = 1;
@@ -406,8 +404,6 @@ __txn_ckp_log(env, txnp, ret_lsnp, flags,
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
 		if (txnp == NULL)
 			return (0);
-		if (txnp == NULL)
-			return (0);
 		is_durable = 0;
 	} else
 		is_durable = 1;
@@ -611,8 +607,6 @@ __txn_child_log(env, txnp, ret_lsnp, flags,
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
 		if (txnp == NULL)
 			return (0);
-		if (txnp == NULL)
-			return (0);
 		is_durable = 0;
 	} else
 		is_durable = 1;
@@ -730,22 +724,22 @@ __txn_child_log(env, txnp, ret_lsnp, flags,
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_read __P((ENV *, void *,
- * PUBLIC:     __txn_xa_regop_args **));
+ * PUBLIC: int __txn_xa_regop_42_read __P((ENV *, void *,
+ * PUBLIC:     __txn_xa_regop_42_args **));
  */
 int
-__txn_xa_regop_read(env, recbuf, argpp)
+__txn_xa_regop_42_read(env, recbuf, argpp)
 	ENV *env;
 	void *recbuf;
-	__txn_xa_regop_args **argpp;
+	__txn_xa_regop_42_args **argpp;
 {
-	__txn_xa_regop_args *argp;
+	__txn_xa_regop_42_args *argp;
 	u_int32_t uinttmp;
 	u_int8_t *bp;
 	int ret;
 
 	if ((ret = __os_malloc(env,
-	    sizeof(__txn_xa_regop_args) + sizeof(DB_TXN), &argp)) != 0)
+	    sizeof(__txn_xa_regop_42_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
@@ -793,30 +787,76 @@ __txn_xa_regop_read(env, recbuf, argpp)
 }
 
 /*
- * PUBLIC: int __txn_xa_regop_log __P((ENV *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, u_int32_t, const DBT *, int32_t, u_int32_t, u_int32_t,
- * PUBLIC:     DB_LSN *, const DBT *));
+ * PUBLIC: int __txn_prepare_read __P((ENV *, void *, __txn_prepare_args **));
  */
 int
-__txn_xa_regop_log(env, txnp, ret_lsnp, flags,
-    opcode, xid, formatID, gtrid, bqual, begin_lsn,
-    locks)
+__txn_prepare_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__txn_prepare_args **argpp;
+{
+	__txn_prepare_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__txn_prepare_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	LOGCOPY_32(env, &argp->opcode, bp);
+	bp += sizeof(argp->opcode);
+
+	memset(&argp->gid, 0, sizeof(argp->gid));
+	LOGCOPY_32(env,&argp->gid.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->gid.data = bp;
+	bp += argp->gid.size;
+
+	LOGCOPY_TOLSN(env, &argp->begin_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->locks, 0, sizeof(argp->locks));
+	LOGCOPY_32(env,&argp->locks.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->locks.data = bp;
+	bp += argp->locks.size;
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __txn_prepare_log __P((ENV *, DB_TXN *, DB_LSN *,
+ * PUBLIC:     u_int32_t, u_int32_t, const DBT *, DB_LSN *, const DBT *));
+ */
+int
+__txn_prepare_log(env, txnp, ret_lsnp, flags,
+    opcode, gid, begin_lsn, locks)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	u_int32_t opcode;
-	const DBT *xid;
-	int32_t formatID;
-	u_int32_t gtrid;
-	u_int32_t bqual;
+	const DBT *gid;
 	DB_LSN * begin_lsn;
 	const DBT *locks;
 {
 	DBT logrec;
 	DB_LSN *lsnp, null_lsn, *rlsnp;
 	DB_TXNLOGREC *lr;
-	u_int32_t zero, uinttmp, rectype, txn_num;
+	u_int32_t zero, rectype, txn_num;
 	u_int npad;
 	u_int8_t *bp;
 	int is_durable, ret;
@@ -824,13 +864,11 @@ __txn_xa_regop_log(env, txnp, ret_lsnp, flags,
 	COMPQUIET(lr, NULL);
 
 	rlsnp = ret_lsnp;
-	rectype = DB___txn_xa_regop;
+	rectype = DB___txn_prepare;
 	npad = 0;
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -857,10 +895,7 @@ __txn_xa_regop_log(env, txnp, ret_lsnp, flags,
 
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t)
-	    + sizeof(u_int32_t) + (xid == NULL ? 0 : xid->size)
-	    + sizeof(u_int32_t)
-	    + sizeof(u_int32_t)
-	    + sizeof(u_int32_t)
+	    + sizeof(u_int32_t) + (gid == NULL ? 0 : gid->size)
 	    + sizeof(*begin_lsn)
 	    + sizeof(u_int32_t) + (locks == NULL ? 0 : locks->size);
 	if (CRYPTO_ON(env)) {
@@ -903,26 +938,16 @@ __txn_xa_regop_log(env, txnp, ret_lsnp, flags,
 	LOGCOPY_32(env, bp, &opcode);
 	bp += sizeof(opcode);
 
-	if (xid == NULL) {
+	if (gid == NULL) {
 		zero = 0;
 		LOGCOPY_32(env, bp, &zero);
 		bp += sizeof(u_int32_t);
 	} else {
-		LOGCOPY_32(env, bp, &xid->size);
-		bp += sizeof(xid->size);
-		memcpy(bp, xid->data, xid->size);
-		bp += xid->size;
+		LOGCOPY_32(env, bp, &gid->size);
+		bp += sizeof(gid->size);
+		memcpy(bp, gid->data, gid->size);
+		bp += gid->size;
 	}
-
-	uinttmp = (u_int32_t)formatID;
-	LOGCOPY_32(env,bp, &uinttmp);
-	bp += sizeof(uinttmp);
-
-	LOGCOPY_32(env, bp, &gtrid);
-	bp += sizeof(gtrid);
-
-	LOGCOPY_32(env, bp, &bqual);
-	bp += sizeof(bqual);
 
 	if (begin_lsn != NULL)
 		LOGCOPY_FROMLSN(env, bp, begin_lsn);
@@ -973,7 +998,7 @@ __txn_xa_regop_log(env, txnp, ret_lsnp, flags,
 
 #ifdef LOG_DIAGNOSTIC
 	if (ret != 0)
-		(void)__txn_xa_regop_print(env,
+		(void)__txn_prepare_print(env,
 		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
 #endif
 
@@ -1055,8 +1080,6 @@ __txn_recycle_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -1192,7 +1215,7 @@ __txn_init_recover(env, dtabp)
 	    __txn_child_recover, DB___txn_child)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __txn_xa_regop_recover, DB___txn_xa_regop)) != 0)
+	    __txn_prepare_recover, DB___txn_prepare)) != 0)
 		return (ret);
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_recycle_recover, DB___txn_recycle)) != 0)

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep071.tcl,v 12.5 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep071
 # TEST	Test of multiple simultaneous client env handles and
@@ -17,6 +17,9 @@
 proc rep071 { method { niter 10 } { tnum "071" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -38,6 +41,7 @@ proc rep071 { method { niter 10 } { tnum "071" } args } {
 		puts "Rep$tnum: Skipping for HP-UX."
 		return
 	}
+
 	# This test depends on copying logs, so can't be run with
 	# in-memory logging.
 	global mixed_mode_logging
@@ -48,10 +52,26 @@ proc rep071 { method { niter 10 } { tnum "071" } args } {
 
 	set args [convert_args $method $args]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
-		puts "Rep$tnum ($method $r):\
-		    Replication backup and synchronizing."
+		puts "Rep$tnum ($method $r): Replication\
+		    backup and synchronizing $msg $msg2."
 		rep071_sub $method $niter $tnum $r $args
 	}
 }
@@ -59,12 +79,19 @@ proc rep071 { method { niter 10 } { tnum "071" } args } {
 proc rep071_sub { method niter tnum recargs largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -80,14 +107,14 @@ proc rep071_sub { method niter tnum recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -home $masterdir -errpfx MASTER \
+	    -home $masterdir -errpfx MASTER $repmemargs \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -home $clientdir -errpfx CLIENT \
+	    -home $clientdir -errpfx CLIENT $repmemargs \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good clenv [is_valid_env $clientenv] TRUE
@@ -105,7 +132,7 @@ proc rep071_sub { method niter tnum recargs largs } {
 
 	# Run a modified test001 in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.b: Downgrade master and upgrade client."
@@ -113,7 +140,7 @@ proc rep071_sub { method niter tnum recargs largs } {
 	error_check_good client_close [$clientenv rep_start -master] 0
 
 	puts "\tRep$tnum.b: Run rep_test."
-	eval rep_test $method $clientenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $clientenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.c: Downgrade back to client and upgrade master"
@@ -127,8 +154,10 @@ proc rep071_sub { method niter tnum recargs largs } {
 	error_check_good master_close [$masterenv rep_start -master] 0
 
 	puts "\tRep$tnum.d: Run rep_test in master."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
+
+	rep_verify $masterdir $masterenv $clientdir $clientenv
 
 	error_check_good master_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0

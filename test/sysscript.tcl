@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: sysscript.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # System integration test script.
 # This script runs a single process that tests the full functionality of
@@ -32,10 +32,10 @@ source $test_path/testutils.tcl
 
 set mypid [pid]
 
-set usage "sysscript dir nfiles key_avg data_avg method"
+set usage "sysscript dir nfiles key_avg data_avg method args"
 
 # Verify usage
-if { $argc != 5 } {
+if { $argc < 5 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -48,6 +48,7 @@ set nfiles [ lindex $argv 1 ]
 set key_avg [ lindex $argv 2 ]
 set data_avg [ lindex $argv 3 ]
 set method [ lindex $argv 4 ]
+set args [ lindex $argv 5 ]
 
 # Initialize seed
 global rand_init
@@ -72,7 +73,7 @@ if {$err != 0} {
 # Now open the files
 for { set i 0 } { $i < $nfiles } { incr i } {
 	set file test044.$i.db
-	set db_set($i) [berkdb open -auto_commit -env $dbenv $method $file]
+	set db_set($i) [eval {berkdb open} -auto_commit -env $dbenv $args $method $file ]
 	set err [catch {error_check_bad $mypid:dbopen $db_set($i) NULL} ret]
 	if {$err != 0} {
 		puts $ret

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: FastOutputStreamTest.java,v 12.7 2008/02/07 17:12:33 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.util.test;
@@ -13,16 +13,13 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import com.sleepycat.util.FastOutputStream;
-import com.sleepycat.util.test.SharedTestUtils;
 
 /**
  * @author Mark Hayes
  */
 public class FastOutputStreamTest extends TestCase {
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -33,9 +30,7 @@ public class FastOutputStreamTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(FastOutputStreamTest.class);
         return suite;
     }
@@ -45,14 +40,13 @@ public class FastOutputStreamTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp() {
 
         SharedTestUtils.printTestName("FastOutputStreamTest." + getName());
     }
 
-    public void testBufferSizing()
-        throws Exception {
-
+    public void testBufferSizing() {
         FastOutputStream fos = new FastOutputStream();
         assertEquals
             (FastOutputStream.DEFAULT_INIT_SIZE, fos.getBufferBytes().length);

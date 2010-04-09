@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: txn_chkpt.c,v 12.53 2008/04/23 15:39:56 alanb Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -105,8 +105,24 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	u_int32_t bytes, id, logflags, mbytes, op;
 	int ret;
 
-	DB_ASSERT(env, !IS_REP_CLIENT(env));
 	ret = 0;
+
+	/*
+	 * A client will only call through here during recovery,
+	 * so just sync the Mpool and go home.  We want to be sure
+	 * that since queue meta pages are not rolled back that they
+	 * are clean in the cache prior to any transaction log
+	 * truncation due to syncup.
+	 */
+	if (IS_REP_CLIENT(env)) {
+		if (MPOOL_ON(env) &&
+		    (ret = __memp_sync(env, DB_SYNC_CHECKPOINT, NULL)) != 0) {
+			__db_err(env, ret,
+		    "txn_checkpoint: failed to flush the buffer cache");
+			return (ret);
+		}
+		return (0);
+	}
 
 	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
@@ -190,10 +206,26 @@ do_ckp:
 	 * clients can start flushing their cache in preparation for the
 	 * arrival of the checkpoint record.
 	 */
-	if (LOGGING_ON(env) &&
-	    IS_REP_MASTER(env) && env->rep_handle->send != NULL)
-		(void)__rep_send_message(env,
-		    DB_EID_BROADCAST, REP_START_SYNC, &ckp_lsn, NULL, 0, 0);
+	if (LOGGING_ON(env) && IS_REP_MASTER(env)) {
+#ifdef HAVE_REPLICATION_THREADS
+		/*
+		 * If repmgr is configured in the shared environment (which we
+		 * know if we have a local host address), but no send() function
+		 * configured for this process, assume we have a
+		 * replication-unaware process that wants to automatically
+		 * participate in replication (i.e., sending replication
+		 * messages to clients).
+		 */
+		if (env->rep_handle->send == NULL &&
+		    F_ISSET(env, ENV_THREAD) &&
+		    env->rep_handle->region->my_addr.host != INVALID_ROFF &&
+		    (ret = __repmgr_autostart(env)) != 0)
+			goto err;
+#endif
+		if (env->rep_handle->send != NULL)
+			(void)__rep_send_message(env, DB_EID_BROADCAST,
+			    REP_START_SYNC, &ckp_lsn, NULL, 0, 0);
+	}
 
 	/* Flush the cache. */
 	if (MPOOL_ON(env) &&

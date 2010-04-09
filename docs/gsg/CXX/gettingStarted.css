@@ -18,20 +18,20 @@ pre.programlisting {
 	background-color: #eae8e9;
 }
 
-div.navheader { font-size: 9pt;
+div.navheader { font-size: 10pt;
 				width: 60em;
 				margin-left: -2em;
 			  }
 
-div.navheader table tr td { font-size: 9pt; }
+div.navheader table tr td { font-size: 10pt; }
 				
-div.navfooter { font-size: 9pt;
+div.navfooter { font-size: 10pt;
 				width: 60em;
 				margin-left: -2em;
 			  }
-div.navfooter table tr td { font-size: 9pt; }
+div.navfooter table tr td { font-size: 10pt; }
 
-span.emphasis { font-style: italic; font-size: 9pt;}
+span.emphasis { font-style: italic;}
 
 div.appendix div.informaltable { font-size: 9pt; }
 div.appendix div.informaltable td  { vertical-align: top; }

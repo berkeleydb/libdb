@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep050.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep050
 # TEST	Replication and delay syncing clients - change master test.
@@ -19,6 +19,8 @@
 #
 proc rep050 { method { niter 10 } { tnum "050" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -33,6 +35,22 @@ proc rep050 { method { niter 10 } { tnum "050" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 5]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -42,8 +60,8 @@ proc rep050 { method { niter 10 } { tnum "050" } args } {
 				    for in-memory logs with -recover."
 				continue
 			}
-			puts "Rep$tnum ($r):\
-			    Replication and ($method) delayed sync-up."
+			puts "Rep$tnum ($r): Replication\
+			    and ($method) delayed sync-up $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client 0 logs are [lindex $l 1]"
 			puts "Rep$tnum: Delay Client 1 logs are [lindex $l 2]"
@@ -57,12 +75,19 @@ proc rep050 { method { niter 10 } { tnum "050" } args } {
 proc rep050_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -108,7 +133,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs -errpfx ENV1 $verbargs \
+	    $m_logargs -errpfx ENV1 $verbargs $repmemargs \
 	    -home $env1dir -rep_transport \[list 1 replsend\]"
 	set env1 [eval $ma_envcmd $recargs -rep_master]
 	$env1 rep_limit 0 0
@@ -116,28 +141,29 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 	# Open two clients
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs -errpfx ENV2 $verbargs -cachesize {0 2097152 2} \
+	    $c_logargs -errpfx ENV2 $verbargs $repmemargs \
+	    -cachesize {0 2097152 2} \
 	    -home $env2dir -rep_transport \[list 2 replsend\]"
 	set env2 [eval $cl_envcmd $recargs -rep_client]
 	$env2 rep_limit 0 0
 
 	repladd 3
 	set dc1_envcmd "berkdb_env_noerr -create $dc1_txnargs \
-	    $dc1_logargs -errpfx ENV3 $verbargs \
+	    $dc1_logargs -errpfx ENV3 $verbargs $repmemargs \
 	    -home $delaycldir1 -rep_transport \[list 3 replsend\]"
 	set dc1env [eval $dc1_envcmd $recargs -rep_client]
 	$dc1env rep_limit 0 0
 
 	repladd 4
 	set dc2_envcmd "berkdb_env_noerr -create $dc2_txnargs \
-	    $dc2_logargs -errpfx ENV4 $verbargs \
+	    $dc2_logargs -errpfx ENV4 $verbargs $repmemargs \
 	    -home $delaycldir2 -rep_transport \[list 4 replsend\]"
 	set dc2env [eval $dc2_envcmd $recargs -rep_client]
 	$dc2env rep_limit 0 0
 
 	repladd 5
 	set dc3_envcmd "berkdb_env_noerr -create $dc3_txnargs \
-	    $dc3_logargs -errpfx ENV5 $verbargs \
+	    $dc3_logargs -errpfx ENV5 $verbargs $repmemargs \
 	    -home $delaycldir3 -rep_transport \[list 5 replsend\]"
 
 	# Bring the clients online by processing the startup messages.
@@ -152,7 +178,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.a: Run rep_test in master env."
 	set start 0
-	eval rep_test $method $env1 NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $env1 NULL $niter $start $start 0 $largs
 
 	process_msgs $envlist
 
@@ -195,16 +221,16 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 		#
 		puts "\tRep$tnum.d: Run rep_test in new master env"
 		set start [expr $start + $niter]
-		eval rep_test $method $env2 NULL $niter $start $start 0 0 $largs
+		eval rep_test $method $env2 NULL $niter $start $start 0 $largs
 		process_msgs $envlist
 
 		#
 		# Delayed clients should be different.
 		# Former master should by synced.
 		#
-		rep_verify $mdir $masterenv $cdir $clientenv
-		rep_verify $mdir $masterenv $delaycldir1 $dc1env 0 0
-		rep_verify $mdir $masterenv $delaycldir2 $dc2env 0 0
+		rep_verify $mdir $masterenv $cdir $clientenv 0 1 1
+		rep_verify $mdir $masterenv $delaycldir1 $dc1env 0 0 0
+		rep_verify $mdir $masterenv $delaycldir2 $dc2env 0 0 0
 
 		#
 		# Run rep_test again, but don't process on former master.
@@ -213,7 +239,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 		puts "\tRep$tnum.e: Run rep_test in new master env only"
 		set start [expr $start + $niter]
 		eval rep_test \
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv NULL $niter $start $start 0 $largs
 		replclear $cid
 		replclear 3
 		replclear 4
@@ -262,7 +288,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 		}
 		puts "\tRep$tnum.$nextlet: Run rep_test and sync delayed client"
 		set start [expr $start + $niter]
-		eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+		eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 		process_msgs $envlist
 		error_check_good rep_sync [$dc1env rep_sync] 0
 		error_check_good rep_sync [$dc3env rep_sync] 0
@@ -312,9 +338,9 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 		#
 		# Delayed client should be the same now.
 		#
-		rep_verify $mdir $masterenv $delaycldir1 $dc1env
-		rep_verify $mdir $masterenv $delaycldir3 $dc3env
-		rep_verify $mdir $masterenv $delaycldir2 $dc2env 0 0
+		rep_verify $mdir $masterenv $delaycldir1 $dc1env 0 1 1
+		rep_verify $mdir $masterenv $delaycldir3 $dc3env 0 1 1
+		rep_verify $mdir $masterenv $delaycldir2 $dc2env 0 0 0
 		error_check_good dc3_close [$dc3env close] 0
 		env_cleanup $delaycldir3
 		set envlist "{$env1 1} {$env2 2} {$dc1env 3} {$dc2env 4}"
@@ -323,7 +349,7 @@ proc rep050_sub { method niter tnum logset recargs largs } {
 	puts "\tRep$tnum.j: Sync up 2nd delayed client and verify."
 	error_check_good rep_sync [$dc2env rep_sync] 0
 	process_msgs $envlist
-	rep_verify $mdir $masterenv $delaycldir2 $dc2env
+	rep_verify $mdir $masterenv $delaycldir2 $dc2env 0 1 1
 
 	puts "\tRep$tnum.k: Closing"
 	error_check_good env1_close [$env1 close] 0

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 6. Summary and Examples</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="logconfig.html" title="Configuring the Logging Subsystem" />
+    <link rel="prev" href="logconfig.html" title="Configuring the Logging Subsystem" />
     <link rel="next" href="txnexample_java.html" title="Base API Transaction Example" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="wrapup"></a>Chapter 6. Summary and Examples</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -113,7 +112,6 @@
               <h2 class="title" style="clear: both"><a id="anatomy"></a>Anatomy of a Transactional Application</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         Transactional applications are characterized by performing the
@@ -279,7 +277,7 @@
               <p>
                 Periodically checkpoint your application. Checkpoints will
                 reduce the time to run recovery in the event that one is
-                required. See <a href="filemanagement.html#checkpoints">Checkpoints</a>
+                required. See <a class="xref" href="filemanagement.html#checkpoints" title="Checkpoints">Checkpoints</a>
                 for details.
             </p>
             </li>
@@ -288,7 +286,7 @@
                 Periodically back up your database and log files. This is
                 required in order to fully obtain the durability guarantee
                 made by DB's transaction ACID support. See
-                <a href="backuprestore.html">Backup Procedures</a>
+                <a class="xref" href="backuprestore.html" title="Backup Procedures">Backup Procedures</a>
                 for more information.
             </p>
             </li>
@@ -296,7 +294,7 @@
               <p>
                 You may want to maintain a hot failover if 24x7 processing
                 with rapid restart in the face of a disk hit is important
-                to you. See <a href="hotfailover.html">Using Hot Failovers</a>
+                to you. See <a class="xref" href="hotfailover.html" title="Using Hot Failovers">Using Hot Failovers</a>
                 for more information.
             </p>
             </li>
@@ -309,9 +307,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="logconfig.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="txnexample_java.html">Next</a></td>
         </tr>
         <tr>

@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2007-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 //{{NO_DEPENDENCIES}}
 // Microsoft eMbedded Visual C++ generated include file.
 // Used by wce_tpcb.rc

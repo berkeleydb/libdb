@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: LockRequest.java,v 12.7 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 package com.sleepycat.db;
 
@@ -21,11 +21,8 @@ public class LockRequest {
     private int timeout;
 
     /**
-    Construct a LockRequest with the specified operation, mode and lock,
-    for the specified object.
-    <p>
-    @param lock
-    The lock type for the object.
+    Construct a LockRequest with the specified operation and mode for the
+    specified object.
     <p>
     @param mode
     The permissions mode for the object.
@@ -35,6 +32,29 @@ public class LockRequest {
     <p>
     @param op
     The operation being performed.
+    */
+    public LockRequest(final LockOperation op,
+                       final LockRequestMode mode,
+                       final DatabaseEntry obj) {
+
+        this(op, mode, obj, null, 0);
+    }
+
+    /**
+    Construct a LockRequest with the specified operation, mode and lock,
+    for the specified object.
+    <p>
+    @param mode
+    The permissions mode for the object.
+    <p>
+    @param obj
+    The object being locked.
+    <p>
+    @param op
+    The operation being performed.
+    <p>
+    @param lock
+    The lock type for the object.
     */
     public LockRequest(final LockOperation op,
                        final LockRequestMode mode,
@@ -83,7 +103,7 @@ public class LockRequest {
     The lock reference.
     */
     public void setLock(final Lock lock) {
-        this.lock = lock.unwrap();
+        this.lock = (lock == null) ? null : lock.unwrap();
     }
 
     /**
@@ -131,7 +151,10 @@ public class LockRequest {
     Return the lock reference.
     */
     public Lock getLock() {
-        return lock.wrapper;
+        if (lock != null && lock.wrapper != null)
+            return lock.wrapper;
+        else
+            return Lock.wrap(lock);
     }
 
     /**

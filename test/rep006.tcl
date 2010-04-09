@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep006.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep006
 # TEST	Replication and non-rep env handles.
@@ -15,6 +15,9 @@
 proc rep006 { method { niter 1000 } { tnum "006" } args } {
 
 	source ./include.tcl
+	global databases_in_memory 
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -26,6 +29,21 @@ proc rep006 { method { niter 1000 } { tnum "006" } args } {
 		return "ALL"
 	}
 
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -35,8 +53,8 @@ proc rep006 { method { niter 1000 } { tnum "006" } args } {
 				    with -recover."
 				continue
 			}
-			puts "Rep$tnum ($method $r):\
-			    Replication and non-rep env handles"
+			puts "Rep$tnum ($method $r): Replication and\
+			    non-rep env handles $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep006_sub $method $niter $tnum $l $r $args
@@ -48,12 +66,19 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
 	global testdir
 	global is_hp_test
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -87,7 +112,7 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 	set max_locks 2500
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
 	    -lock_max_objects $max_locks -lock_max_locks $max_locks \
-	    -home $masterdir -errpfx MASTER $verbargs \
+	    -home $masterdir -errpfx MASTER $verbargs $repmemargs \
 	    $m_txnargs $m_logargs -rep_master -rep_transport \
 	    \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -96,7 +121,7 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 	repladd 2
 	set env_cmd(C) "berkdb_env_noerr -create $c_txnargs $c_logargs \
 	    -lock_max_objects $max_locks -lock_max_locks $max_locks \
-	    -home $clientdir -errpfx CLIENT $verbargs \
+	    -home $clientdir -errpfx CLIENT $verbargs $repmemargs \
 	    -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C) $recargs]
 
@@ -106,16 +131,25 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update client).
 	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
+	# Check that databases are in-memory or on-disk as expected.
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+	check_db_location $masterenv
+	check_db_location $clientenv
+	
 	# Verify the database in the client dir.
 	puts "\tRep$tnum.b: Verifying client database contents."
 	set testdir [get_home $masterenv]
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
-	open_and_dump_file test.db $clientenv $t1 \
+	open_and_dump_file $dbname $clientenv $t1 \
 	    $checkfunc dump_file_direction "-first" "-next"
 
 	# Determine whether this build is configured with --enable-debug_rop
@@ -161,7 +195,7 @@ proc rep006_sub { method niter tnum logset recargs largs } {
 		# write out a log record, which should fail.
 		#
 		set stat \
-		    [catch {berkdb_open_noerr -env $rdenv test.db} ret]
+		    [catch {berkdb_open_noerr -env $rdenv $dbname} ret]
 		error_check_good open_err $stat 1
 		error_check_good \
 		    open_err1 [is_substr $ret "attempting to modify"] 1

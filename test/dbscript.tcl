@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: dbscript.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Random db tester.
 # Usage: dbscript file numops min_del max_add key_avg data_avgdups
@@ -22,10 +22,10 @@ source ./include.tcl
 source $test_path/test.tcl
 source $test_path/testutils.tcl
 
-set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errpcnt"
+set usage "dbscript file numops ncurs min_del max_add key_avg data_avg dups errpcnt args"
 
 # Verify usage
-if { $argc != 10 } {
+if { $argc < 10 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -41,6 +41,7 @@ set key_avg [ lindex $argv 6 ]
 set data_avg [ lindex $argv 7 ]
 set dups [ lindex $argv 8 ]
 set errpct [ lindex $argv 9 ]
+set args [ lindex $argv 10 ]
 
 berkdb srand $rand_init
 
@@ -52,6 +53,7 @@ puts "$min_del keys before deletes allowed"
 puts "$max_add or fewer keys to add"
 puts "$key_avg average key length"
 puts "$data_avg average data length"
+puts "$method $args"
 if { $dups != 1 } {
 	puts "No dups"
 } else {
@@ -61,7 +63,7 @@ puts "$errpct % Errors"
 
 flush stdout
 
-set db [berkdb_open $file]
+set db [eval {berkdb_open} $args $file]
 set cerr [catch {error_check_good dbopen [is_substr $db db] 1} cret]
 if {$cerr != 0} {
 	puts $cret
@@ -86,7 +88,7 @@ set txn ""
 set curslist {}
 for { set i 0 } { $i < $ncurs } { incr i } {
 	set dbc [$db cursor]
-	set cerr [catch {error_check_good dbopen [is_substr $dbc $db.c] 1} cret]
+	set cerr [catch {error_check_good dbcopen [is_substr $dbc $db.c] 1} cret]
 	if {$cerr != 0} {
 		puts $cret
 		return
@@ -351,6 +353,6 @@ puts "Successful ops: $adds adds $gets gets $puts puts $dels dels"
 puts "Error ops: $bad_adds adds $bad_gets gets $bad_puts puts $bad_dels dels"
 flush stdout
 
-filecheck $file $txn
+eval filecheck $file {$txn} $args
 
 exit

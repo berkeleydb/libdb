@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>In-Memory Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="txnexample_c.html" title="Transaction Example" />
+    <link rel="prev" href="txnexample_c.html" title="Transaction Example" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,6 @@
             <h2 class="title" style="clear: both"><a id="inmem_txnexample_c"></a>In-Memory Transaction Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         DB is sometimes used for applications that simply need to cache
@@ -54,7 +53,7 @@
             <p>
                 Refrain from specifying a home directory when you open your
                 environment. The exception to this is if you are using the
-                <tt class="literal">DB_CONFIG</tt> configuration file — in
+                <code class="literal">DB_CONFIG</code> configuration file — in
                 that case you must identify the environment's home
                 directory so that the configuration file can be found.
             </p>
@@ -93,7 +92,7 @@
       </div>
       <p>
         As an example, this section takes the transaction example provided
-        in <a href="txnexample_c.html">Transaction Example</a>
+        in <a class="xref" href="txnexample_c.html" title="Transaction Example">Transaction Example</a>
         and it updates that example so that the environment, database, log
         files, and regions are all kept entirely in-memory. 
     </p>
@@ -101,10 +100,10 @@
         For illustration purposes, we also modify this example so that 
         uncommitted reads are no longer used to enable the 
             
-            <tt class="function">countRecords()</tt>
+            <code class="function">countRecords()</code>
         function. Instead, we simply provide a transaction handle to
             
-            <tt class="function">countRecords()</tt>
+            <code class="function">countRecords()</code>
         so as to avoid the self-deadlock. Be aware that using a transaction handle here rather than
         uncommitted reads will work just as well as if we had continued to use uncommitted reads. However,
             the usage of the transaction handle here will 
@@ -115,8 +114,8 @@
         To begin, we simplify the beginning of our example a bit. Because
         we no longer need an environment home directory, we can remove all
         the code that we used to determine path delimiters
-        and include the <tt class="function">getopt</tt> function. We can also
-        remove our <tt class="function">usage()</tt> function because we no
+        and include the <code class="function">getopt</code> function. We can also
+        remove our <code class="function">usage()</code> function because we no
         longer require any command line arguments. 
     </p>
       <pre class="programlisting">// File TxnGuideInMemory.cpp
@@ -140,15 +139,15 @@ int openDb(Db **, const char *, const char *, DbEnv *, u_int32_t);
 int usage(void);
 void *writerThread(void *);  </pre>
       <p>
-    Next, in our <tt class="function">main()</tt>, we also eliminate some
+    Next, in our <code class="function">main()</code>, we also eliminate some
     variables that this example no longer needs. In particular, we are able to remove
     the 
          
-        <tt class="literal">dbHomeDir</tt> 
+        <code class="literal">dbHomeDir</code> 
     and 
         
-        <tt class="literal">fileName</tt>
-    variables. We also remove all our <tt class="function">getopt</tt> code.
+        <code class="literal">fileName</code>
+    variables. We also remove all our <code class="function">getopt</code> code.
 </p>
       <pre class="programlisting">int
 main(void)
@@ -165,19 +164,19 @@ main(void)
     const char *progName = "TxnGuideInMemory";  </pre>
       <p>
         Next we create our environment as always. However, we add
-        <tt class="literal">DB_PRIVATE</tt> to our environment open flags. This
+        <code class="literal">DB_PRIVATE</code> to our environment open flags. This
         flag causes our environment to back regions using our
         application's heap memory rather than by using the filesystem.
         This is the first important step to keeping our DB data
         entirely in-memory.
     </p>
       <p>
-        We also remove the <tt class="literal">DB_RECOVER</tt> flag from the environment open flags. Because our databases,
+        We also remove the <code class="literal">DB_RECOVER</code> flag from the environment open flags. Because our databases,
         logs, and regions are maintained in-memory, there will never be anything to recover.
     </p>
       <p>
         Note that we show the additional code here in
-        <b class="userinput"><tt>bold.</tt></b>
+        <strong class="userinput"><code>bold.</code></strong>
     </p>
       <pre class="programlisting">    // Env open flags
     envFlags =
@@ -187,8 +186,8 @@ main(void)
       DB_INIT_TXN   |  // Initialize the transactional subsystem. This
                        // also turns on logging.
       DB_INIT_MPOOL |  // Initialize the memory pool (in-memory cache)
-      <b class="userinput"><tt>DB_PRIVATE    |  // Region files are not backed by the filesystem.
-                       // Instead, they are backed by heap memory.</tt></b>
+      <strong class="userinput"><code>DB_PRIVATE    |  // Region files are not backed by the filesystem.
+                       // Instead, they are backed by heap memory.</code></strong>
       DB_THREAD;       // Cause the environment to be free-threaded
 
     try {
@@ -201,16 +200,16 @@ main(void)
         application's workload.
       </p>
       <pre class="programlisting">
-        <b class="userinput">
-          <tt>        // Specify in-memory logging
+        <strong class="userinput">
+          <code>        // Specify in-memory logging
         envp-&gt;log_set_config(DB_LOG_IN_MEMORY, 1);
 
         // Specify the size of the in-memory log buffer.
         envp-&gt;set_lg_bsize(10 * 1024 * 1024);
 
         // Specify the size of the in-memory cache
-        envp-&gt;set_cachesize(0, 10 * 1024 * 1024, 1); </tt>
-        </b>
+        envp-&gt;set_cachesize(0, 10 * 1024 * 1024, 1); </code>
+        </strong>
       </pre>
       <p>
     Next, we open the environment and setup our lock detection. This is
@@ -224,14 +223,14 @@ main(void)
         envp-&gt;set_lk_detect(DB_LOCK_MINWRITE);
 
         // Open the environment
-        envp-&gt;open(<b class="userinput"><tt>NULL</tt></b>, envFlags, 0); </pre>
+        envp-&gt;open(<strong class="userinput"><code>NULL</code></strong>, envFlags, 0); </pre>
       <p>
         When we call 
              
-            <span><tt class="function">openDb()</tt>,</span> 
+            <span><code class="function">openDb()</code>,</span> 
         which is what we use
         to open our database, we no not provide a database filename for the
-        third parameter. When the filename is <tt class="literal">NULL</tt>, the database is not
+        third parameter. When the filename is <code class="literal">NULL</code>, the database is not
         backed by the filesystem.
     </p>
       <pre class="programlisting">        // If we had utility threads (for running checkpoints or 
@@ -240,11 +239,11 @@ main(void)
         // that is not required.
 
         // Open the database
-        openDb(&amp;dbp, progName, <b class="userinput"><tt>NULL</tt></b>,
+        openDb(&amp;dbp, progName, <strong class="userinput"><code>NULL</code></strong>,
             envp, DB_DUPSORT);
         </pre>
       <p>
-    After that, our <tt class="function">main()</tt> function is unchanged,
+    After that, our <code class="function">main()</code> function is unchanged,
     except that when we 
         
         <span>check for exceptions on the database open,</span>
@@ -265,7 +264,7 @@ main(void)
             (void)pthread_join(writerThreads[i], NULL);
 
     } catch(DbException &amp;e) {
-        <b class="userinput"><tt>std::cerr &lt;&lt; "Error opening database environment: "</tt></b>
+        <strong class="userinput"><code>std::cerr &lt;&lt; "Error opening database environment: "</code></strong>
                   &lt;&lt; std::endl;
         std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
         return (EXIT_FAILURE);
@@ -292,15 +291,15 @@ main(void)
     return (EXIT_SUCCESS);
 } </pre>
       <p>
-        That completes <tt class="function">main()</tt>. The bulk of our 
-        <tt class="function">writerThread()</tt> function implementation is
+        That completes <code class="function">main()</code>. The bulk of our 
+        <code class="function">writerThread()</code> function implementation is
         unchanged from the initial transaction example, except that we now pass
-        <tt class="function">countRecords</tt> a transaction handle, rather than configuring our
+        <code class="function">countRecords</code> a transaction handle, rather than configuring our
         application to perform uncommitted reads. Both mechanisms work well-enough
             for preventing a self-deadlock. However, the individual count
             in this example will tend to be lower than the counts seen in
             the previous transaction example, because
-            <tt class="function">countRecords()</tt> can no longer see records
+            <code class="function">countRecords()</code> can no longer see records
             created but not yet committed by other threads.
     </p>
       <pre class="programlisting">// A function that performs a series of writes to a
@@ -372,7 +371,7 @@ writerThread(void *args)
                 // countRecords runs a cursor over the entire database.
                 // We do this to illustrate issues of deadlocking
                 std::cout &lt;&lt; thread_num &lt;&lt;  " : Found "
-                          &lt;&lt;  countRecords(dbp, <b class="userinput"><tt>txn</tt></b>)
+                          &lt;&lt;  countRecords(dbp, <strong class="userinput"><code>txn</code></strong>)
                           &lt;&lt; " records in the database." &lt;&lt; std::endl;
 
                 std::cout &lt;&lt; thread_num &lt;&lt;  " : committing txn : " &lt;&lt; i
@@ -426,12 +425,12 @@ writerThread(void *args)
       <p>
     Next we update 
         
-        <span><tt class="function">countRecords()</tt>.</span>
+        <span><code class="function">countRecords()</code>.</span>
     The only difference
-    here is that we no longer specify <tt class="literal">DB_READ_UNCOMMITTED</tt> when
+    here is that we no longer specify <code class="literal">DB_READ_UNCOMMITTED</code> when
     we open our cursor. Note that even this minor change is not required.
     If we do not configure our database to support uncommitted reads,
-    <tt class="literal">DB_READ_UNCOMMITTED</tt> on the cursor open will be silently
+    <code class="literal">DB_READ_UNCOMMITTED</code> on the cursor open will be silently
     ignored. However, we remove the flag anyway from the cursor open so as to
     avoid confusion.
 </p>
@@ -444,7 +443,7 @@ countRecords(Db *dbp, DbTxn *txn)
 
     try {
         // Get the cursor
-        dbp-&gt;cursor(txn, &amp;cursorp, <b class="userinput"><tt>0</tt></b>);
+        dbp-&gt;cursor(txn, &amp;cursorp, <strong class="userinput"><code>0</code></strong>);
 
         Dbt key, value;
         while (cursorp-&gt;get(&amp;key, &amp;value, DB_NEXT) == 0) {
@@ -473,9 +472,9 @@ countRecords(Db *dbp, DbTxn *txn)
       <p>
         Finally, we update 
              
-            <span><tt class="function">openDb()</tt>.</span> 
+            <span><code class="function">openDb()</code>.</span> 
         This involves
-        removing <tt class="literal">DB_READ_UNCOMMITTED</tt> from the
+        removing <code class="literal">DB_READ_UNCOMMITTED</code> from the
         open flags. 
 
         
@@ -498,9 +497,9 @@ openDb(Db **dbpp, const char *progname, const char *fileName,
             ret = dbp-&gt;set_flags(extraFlags);
 
         // Now open the database
-        <b class="userinput"><tt>openFlags = DB_CREATE   |      // Allow database creation
+        <strong class="userinput"><code>openFlags = DB_CREATE   |      // Allow database creation
                     DB_THREAD        |        
-                    DB_AUTO_COMMIT;    // Allow auto commit</tt></b>
+                    DB_AUTO_COMMIT;    // Allow auto commit</code></strong>
 
         dbp-&gt;open(NULL,       // Txn pointer
                   fileName,   // File name

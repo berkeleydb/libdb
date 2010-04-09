@@ -19,16 +19,6 @@ CFG=db_static - Win32 Debug x86
 !MESSAGE 
 !MESSAGE "db_static - Win32 Release x86" (based on "Win32 (x86) Static Library")
 !MESSAGE "db_static - Win32 Debug x86" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 ASCII Release x86" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 ASCII Debug x86" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - x64 Debug AMD64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - x64 Release AMD64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - x64 Debug IA64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - x64 Release IA64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 Debug AMD64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 Release AMD64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 Debug IA64" (based on "Win32 (x86) Static Library")
-!MESSAGE "db_static - Win32 Release IA64" (based on "Win32 (x86) Static Library")
 !MESSAGE 
 
 # Begin Project
@@ -42,13 +32,13 @@ RSC=rc.exe
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release"
-# PROP BASE Intermediate_Dir "Release/db_static"
+# PROP BASE Output_Dir "Win32/Release"
+# PROP BASE Intermediate_Dir "Win32/Release/db_static"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release"
-# PROP Intermediate_Dir "Release/db_static"
+# PROP Output_Dir "Win32/Release"
+# PROP Intermediate_Dir "Win32/Release/db_static"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MD /W3 /GX /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
 # ADD CPP /nologo /MD /W3 /GX /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
@@ -58,20 +48,20 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release/libdb47s.lib"
+# ADD BASE LIB32 /nologo /out:"Win32/Release/libdb48s.lib"
+# ADD LIB32 /nologo /out:"Win32/Release/libdb48s.lib"
 
 !ELSEIF  "$(CFG)" == "db_static - Win32 Debug x86"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug"
-# PROP BASE Intermediate_Dir "Debug/db_static"
+# PROP BASE Output_Dir "Win32/Debug"
+# PROP BASE Intermediate_Dir "Win32/Debug/db_static"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug"
-# PROP Intermediate_Dir "Debug/db_static"
+# PROP Output_Dir "Win32/Debug"
+# PROP Intermediate_Dir "Win32/Debug/db_static"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
 # ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
@@ -81,238 +71,8 @@ BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 ASCII Release x86"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_ASCII"
-# PROP BASE Intermediate_Dir "Release_ASCII/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_ASCII"
-# PROP Intermediate_Dir "Release_ASCII/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /GX /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "." /I ".." /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_ASCII/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release_ASCII/libdb47s.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 ASCII Debug x86"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_ASCII"
-# PROP BASE Intermediate_Dir "Debug_ASCII/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_ASCII"
-# PROP Intermediate_Dir "Debug_ASCII/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
-# ADD CPP /nologo /MDd /W3 /GX /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_ASCII/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_ASCII/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - x64 Debug AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_AMD64"
-# PROP BASE Intermediate_Dir "Debug/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_AMD64"
-# PROP Intermediate_Dir "Debug_AMD64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /Wp64 /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_AMD64/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_AMD64/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - x64 Release AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_AMD64"
-# PROP BASE Intermediate_Dir "Release_AMD64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_AMD64"
-# PROP Intermediate_Dir "Release_AMD64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_AMD64/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release_AMD64/libdb47s.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - x64 Debug IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_IA64"
-# PROP BASE Intermediate_Dir "Debug_IA64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_IA64"
-# PROP Intermediate_Dir "Debug_IA64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_IA64/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_IA64/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - x64 Release IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_IA64"
-# PROP BASE Intermediate_Dir "Release_IA64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_IA64"
-# PROP Intermediate_Dir "Release_IA64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_IA64/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release_IA64/libdb47s.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 Debug AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_AMD64"
-# PROP BASE Intermediate_Dir "Debug/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_AMD64"
-# PROP Intermediate_Dir "Debug_AMD64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /Wp64 /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_AMD64/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_AMD64/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 Release AMD64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_AMD64"
-# PROP BASE Intermediate_Dir "Release_AMD64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_AMD64"
-# PROP Intermediate_Dir "Release_AMD64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_AMD64/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release_AMD64/libdb47s.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 Debug IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "Debug_IA64"
-# PROP BASE Intermediate_Dir "Debug_IA64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_IA64"
-# PROP Intermediate_Dir "Debug_IA64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MDd /W3 /EHsc /Z7 /Od /I "." /I ".." /D "DIAGNOSTIC" /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_IA64/libdb47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_IA64/libdb47sd.lib"
-
-!ELSEIF  "$(CFG)" == "db_static - Win32 Release IA64"
-
-# PROP BASE Use_MFC 0
-# PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "Release_IA64"
-# PROP BASE Intermediate_Dir "Release_IA64/db_static"
-# PROP BASE Target_Dir ""
-# PROP Use_MFC 0
-# PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_IA64"
-# PROP Intermediate_Dir "Release_IA64/db_static"
-# PROP Target_Dir ""
-# ADD BASE CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD CPP /nologo /MD /W3 /EHsc /O2 /I "." /I ".." /D "UNICODE" /D "_UNICODE" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_CRT_SECURE_NO_DEPRECATE" /D "_CRT_NONSTDC_NO_DEPRECATE"  /Wp64 /FD /c
-# ADD BASE RSC /l 0xc09
-# ADD RSC /l 0xc09
-BSC32=bscmake.exe
-# ADD BASE BSC32 /nologo
-# ADD BSC32 /nologo
-LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_IA64/libdb47s.lib"
-# ADD LIB32 /nologo /out:"Release_IA64/libdb47s.lib"
+# ADD BASE LIB32 /nologo /out:"Win32/Debug/libdb48sd.lib"
+# ADD LIB32 /nologo /out:"Win32/Debug/libdb48sd.lib"
 
 !ENDIF 
 
@@ -320,16 +80,6 @@ LIB32=link.exe -lib
 
 # Name "db_static - Win32 Release x86"
 # Name "db_static - Win32 Debug x86"
-# Name "db_static - Win32 ASCII Release x86"
-# Name "db_static - Win32 ASCII Debug x86"
-# Name "db_static - x64 Debug AMD64"
-# Name "db_static - x64 Release AMD64"
-# Name "db_static - x64 Debug IA64"
-# Name "db_static - x64 Release IA64"
-# Name "db_static - Win32 Debug AMD64"
-# Name "db_static - Win32 Release AMD64"
-# Name "db_static - Win32 Debug IA64"
-# Name "db_static - Win32 Release IA64"
 # Begin Source File
 
 SOURCE=..\btree\bt_compact.c
@@ -337,6 +87,10 @@ SOURCE=..\btree\bt_compact.c
 # Begin Source File
 
 SOURCE=..\btree\bt_compare.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\btree\bt_compress.c
 # End Source File
 # Begin Source File
 
@@ -413,6 +167,10 @@ SOURCE=..\clib\strsep.c
 # Begin Source File
 
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\db_compint.c
 # End Source File
 # Begin Source File
 
@@ -632,6 +390,10 @@ SOURCE=..\db\db_setlsn.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\db\db_sort_multiple.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_stati.c
 # End Source File
 # Begin Source File
@@ -653,6 +415,10 @@ SOURCE=..\db\db_vrfy.c
 # Begin Source File
 
 SOURCE=..\db\db_vrfyutil.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\partition.c
 # End Source File
 # Begin Source File
 
@@ -1265,18 +1031,6 @@ SOURCE=..\txn\txn_stat.c
 # Begin Source File
 
 SOURCE=..\txn\txn_util.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa_db.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa_map.c
 # End Source File
 # End Target
 # End Project

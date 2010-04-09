@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Administrative Methods</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="DBOpenFlags.html" title="Database Open Flags" />
+    <link rel="prev" href="DBOpenFlags.html" title="Database Open Flags" />
     <link rel="next" href="dbErrorReporting.html" title="Error Reporting Functions" />
   </head>
   <body>
@@ -32,12 +32,11 @@
             <h2 class="title" style="clear: both"><a id="CoreDBAdmin"></a>Administrative Methods</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 		The following 
 		 
-		<tt class="classname">Db</tt> 
+		<code class="classname">Db</code> 
 
 
 		methods may be useful to you when managing DB databases:
@@ -47,7 +46,7 @@
           <li>
             <p>
                 
-                <tt class="methodname">Db::get_open_flags()</tt>
+                <code class="methodname">Db::get_open_flags()</code>
             </p>
             <p>
                 Returns the current open flags. It is an error to use this method on 
@@ -66,11 +65,11 @@ db.get_open_flags(&amp;open_flags); </pre>
           <li>
             <p>
                 
-                <tt class="methodname">Db::remove()</tt>
+                <code class="methodname">Db::remove()</code>
             </p>
             <p>
                 Removes the specified database. If no value is given for the 
-				<i class="parameter"><tt>database</tt></i> parameter, then the entire file
+				<em class="parameter"><code>database</code></em> parameter, then the entire file
 				referenced by this method is removed.
             </p>
             <p>
@@ -93,11 +92,11 @@ db.remove("mydb.db",             // Database file to remove
           <li>
             <p>
                 
-                <tt class="methodname">Db::rename()</tt>
+                <code class="methodname">Db::rename()</code>
             </p>
             <p>
                 Renames the specified database. If no value is given for the 
-				<i class="parameter"><tt>database</tt></i> parameter, then the entire file
+				<em class="parameter"><code>database</code></em> parameter, then the entire file
 				referenced by this method is renamed.
             </p>
             <p>

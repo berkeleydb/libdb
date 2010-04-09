@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_seq.c,v 12.11 2008/01/08 20:58:52 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -218,8 +218,8 @@ tcl_SeqStat(interp, objc, objv, seq)
 		return (result);
 
 	res = Tcl_NewObj();
-	MAKE_STAT_LIST("Wait", sp->st_wait);
-	MAKE_STAT_LIST("No wait", sp->st_nowait);
+	MAKE_WSTAT_LIST("Wait", sp->st_wait);
+	MAKE_WSTAT_LIST("No wait", sp->st_nowait);
 	MAKE_WSTAT_LIST("Current", sp->st_current);
 	MAKE_WSTAT_LIST("Cached", sp->st_value);
 	MAKE_WSTAT_LIST("Max Cached", sp->st_last_value);

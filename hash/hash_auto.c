@@ -213,7 +213,7 @@ __ham_insdel_log(dbp, txnp, ret_lsnp, flags,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -489,7 +489,7 @@ __ham_newpage_log(dbp, txnp, ret_lsnp, flags,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(prevlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, prevlsn) != 0))
+			    __log_check_page_lsn(env, dbp, prevlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, prevlsn);
@@ -505,7 +505,7 @@ __ham_newpage_log(dbp, txnp, ret_lsnp, flags,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -521,7 +521,7 @@ __ham_newpage_log(dbp, txnp, ret_lsnp, flags,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(nextlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, nextlsn) != 0))
+			    __log_check_page_lsn(env, dbp, nextlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, nextlsn);
@@ -779,7 +779,7 @@ __ham_splitdata_log(dbp, txnp, ret_lsnp, flags, opcode, pgno, pageimage, pagelsn
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -1037,7 +1037,7 @@ __ham_replace_log(dbp, txnp, ret_lsnp, flags, pgno, ndx, pagelsn, off, olditem,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -1325,7 +1325,7 @@ __ham_copypage_log(dbp, txnp, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextlsn
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -1341,7 +1341,7 @@ __ham_copypage_log(dbp, txnp, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextlsn
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(nextlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, nextlsn) != 0))
+			    __log_check_page_lsn(env, dbp, nextlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, nextlsn);
@@ -1357,7 +1357,7 @@ __ham_copypage_log(dbp, txnp, ret_lsnp, flags, pgno, pagelsn, next_pgno, nextlsn
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(nnextlsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, nnextlsn) != 0))
+			    __log_check_page_lsn(env, dbp, nnextlsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, nnextlsn);
@@ -1710,7 +1710,7 @@ __ham_metagroup_log(dbp, txnp, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(mmetalsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, mmetalsn) != 0))
+			    __log_check_page_lsn(env, dbp, mmetalsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, mmetalsn);
@@ -1726,7 +1726,7 @@ __ham_metagroup_log(dbp, txnp, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(metalsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, metalsn) != 0))
+			    __log_check_page_lsn(env, dbp, metalsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, metalsn);
@@ -1742,7 +1742,7 @@ __ham_metagroup_log(dbp, txnp, ret_lsnp, flags, bucket, mmpgno, mmetalsn, mpgno,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(pagelsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, pagelsn) != 0))
+			    __log_check_page_lsn(env, dbp, pagelsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, pagelsn);
@@ -2045,7 +2045,7 @@ __ham_groupalloc_log(dbp, txnp, ret_lsnp, flags, meta_lsn, start_pgno, num, unus
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(meta_lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, meta_lsn) != 0))
+			    __log_check_page_lsn(env, dbp, meta_lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, meta_lsn);

@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 2. 
-		The Basic Program
-	</title>
+    <title>Chapter 2.  The Basic Program</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="tutorialintroduction.html" title="Tutorial Introduction" />
-    <link rel="next" href="opendbenvironment.html" title="&#10;&#9;&#9;Opening and Closing the Database Environment&#10;&#9;" />
+    <link rel="prev" href="tutorialintroduction.html" title="Tutorial Introduction" />
+    <link rel="next" href="opendbenvironment.html" title="Opening and Closing the Database Environment" />
   </head>
   <body>
     <div class="navheader">
@@ -38,7 +36,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -135,7 +132,6 @@
 	</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
     The key and value classes for each type of shipment record —
@@ -169,17 +165,17 @@
 </p>
         <p>
     Notice that the key and value classes defined below do not
-	contain any references to <tt class="literal">com.sleepycat</tt> packages. An
+	contain any references to <code class="literal">com.sleepycat</code> packages. An
 	important characteristic of these classes is that they are
 	independent of the database. Therefore, they may be easily used in
 	other contexts and may be defined in a way that is compatible with
 	other tools and libraries.
 </p>
         <p>
-    The <tt class="classname">PartKey</tt> class contains only the Part's Number field.
+    The <code class="classname">PartKey</code> class contains only the Part's Number field.
 </p>
         <p>
-    Note that <tt class="classname">PartKey</tt> (as well as <tt class="classname">SupplierKey</tt> below)
+    Note that <code class="classname">PartKey</code> (as well as <code class="classname">SupplierKey</code> below)
 	contain only a single String field. Instead of defining a specific
 	class for each type of key, the String class by itself could have
 	been used. Specific key classes were used to illustrate strong
@@ -192,7 +188,7 @@
     
 </p>
         <a id="cb_partkey"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class PartKey implements Serializable
 {
@@ -209,13 +205,13 @@ public class PartKey implements Serializable
     public String toString() {
         return "[PartKey: number=" + number + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
-    The <tt class="classname">PartData</tt> class contains the Part's Name, Color,
+    The <code class="classname">PartData</code> class contains the Part's Name, Color,
 	Weight and City fields.
 </p>
         <a id="cb_partdata"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class PartData implements Serializable
 {
@@ -259,15 +255,15 @@ public class PartData implements Serializable
                " weight=" + weight +
                " city=" + city + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
-    The <tt class="classname">Weight</tt> class is also defined here, and is used as the
+    The <code class="classname">Weight</code> class is also defined here, and is used as the
 	type of the Part's Weight field. Just as in standard Java
 	serialization, nothing special is needed to store nested objects as
 	long as they are all Serializable.
 </p>
         <a id="cb_weight"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class Weight implements Serializable
 {
@@ -297,13 +293,13 @@ public class Weight implements Serializable
     {
         return "[" + amount + ' ' + units + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
-    The <tt class="classname">SupplierKey</tt> class contains the Supplier's Number
+    The <code class="classname">SupplierKey</code> class contains the Supplier's Number
 	field.
 </p>
         <a id="cb_supplierkey"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class SupplierKey implements Serializable
 {
@@ -323,13 +319,13 @@ public class SupplierKey implements Serializable
     {
         return "[SupplierKey: number=" + number + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
-    The <tt class="classname">SupplierData</tt> class contains the Supplier's Name,
+    The <code class="classname">SupplierData</code> class contains the Supplier's Name,
 	Status and City fields.
 </p>
         <a id="cb_supplierdata"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class SupplierData implements Serializable
 {
@@ -365,14 +361,14 @@ public class SupplierData implements Serializable
                " status=" + status +
                " city=" + city + ']';
     }
-}</tt></b>
+}</code></strong>
 	</pre>
         <p>
-    The <tt class="classname">ShipmentKey</tt> class contains the keys of both the Part
+    The <code class="classname">ShipmentKey</code> class contains the keys of both the Part
 	and Supplier.
 </p>
         <a id="cb_shipmentkey"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class ShipmentKey implements Serializable
 {
@@ -400,16 +396,16 @@ public class ShipmentKey implements Serializable
         return "[ShipmentKey: supplier=" + supplierNumber +
                 " part=" + partNumber + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
-    The <tt class="classname">ShipmentData</tt> class contains only the Shipment's
-	Quantity field. Like <tt class="classname">PartKey</tt> and <tt class="classname">SupplierKey</tt>,
-	<tt class="classname">ShipmentData</tt> contains only a single primitive field.
+    The <code class="classname">ShipmentData</code> class contains only the Shipment's
+	Quantity field. Like <code class="classname">PartKey</code> and <code class="classname">SupplierKey</code>,
+	<code class="classname">ShipmentData</code> contains only a single primitive field.
 	Therefore the Integer class could have been used instead of
 	defining a specific value class.
 </p>
         <a id="cb_shipmentdata"></a>
-        <pre class="programlisting"><b class="userinput"><tt>import java.io.Serializable;
+        <pre class="programlisting"><strong class="userinput"><code>import java.io.Serializable;
 
 public class ShipmentData implements Serializable
 {
@@ -429,7 +425,7 @@ public class ShipmentData implements Serializable
     {
         return "[ShipmentData: quantity=" + quantity + ']';
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
       </div>
     </div>
     <div class="navfooter">
@@ -437,9 +433,7 @@ public class ShipmentData implements Serializable
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="tutorialintroduction.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="opendbenvironment.html">Next</a></td>
         </tr>
         <tr>

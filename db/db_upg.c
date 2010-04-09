@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_upg.c,v 12.25 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -122,7 +122,7 @@ __db_upgrade(dbp, fname, flags)
 
 	/* Get the real backing file name. */
 	if ((ret = __db_appname(env,
-	    DB_APP_DATA, fname, 0, NULL, &real_name)) != 0)
+	    DB_APP_DATA, fname, NULL, &real_name)) != 0)
 		return (ret);
 
 	/* Open the file. */

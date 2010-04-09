@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test046.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test046
 # TEST	Overwrite test of small/big key/data with cursor checks.
@@ -643,6 +643,14 @@ proc test046 { method args } {
 		error_check_good txn [$t commit] 0
 	}
 	error_check_good db_close [$db close] 0
+
+	# Skip the rest of the test for compressed btree, now that
+	# we're no longer running with -dupsort. 
+	if { [is_compressed $args] == 1 } {
+		puts "Skipping remainder of test046\
+		    for btree with compression."
+		return
+	}
 
 	set db [eval {berkdb_open} \
 	    $oflags -dup $testfile.h.db]

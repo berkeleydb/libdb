@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2008 Oracle.  All rights reserved.
+# Copyright (c) 2006-2009 Oracle.  All rights reserved.
 #
-# $Id: test121.tcl,v 1.11 2008/03/26 14:43:20 carol Exp $
+# $Id$
 #
 # TEST	test121
 # TEST	Tests of multi-version concurrency control.
@@ -38,6 +38,8 @@ proc test121 { method {tnum "121"} args } {
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set filename "test.db"
+	set pageargs ""
+	set args [split_pageargs $args pageargs]
 
 	# Create transactional env.  Specifying -multiversion makes
 	# all databases opened within the env -multiversion.
@@ -52,13 +54,13 @@ proc test121 { method {tnum "121"} args } {
 	set max_objects 2000
 	set env [eval {berkdb_env -create -cachesize "0 $cachesize 1"}\
 	    -lock_max_locks $max_locks -lock_max_objects $max_objects\
-	    -txn -multiversion $encargs -home $testdir]
+	    -txn -multiversion $encargs $pageargs -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# Open database.
 	puts "\tTest$tnum.b: Creating -multiversion db."
 	set db [eval {berkdb_open} \
-	    -create -auto_commit -env $env $omethod $args $filename]
+	    -create -auto_commit -env $env $omethod $args $pageargs $filename]
 	error_check_good db_open [is_valid_db $db] TRUE
 
 	# Start transactions.

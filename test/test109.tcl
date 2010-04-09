@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: test109.tcl,v 12.12 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test109
 # TEST
@@ -17,6 +17,11 @@ proc test109 { method {tnum "109"} args } {
 	set txnenv 0
 	set rpcenv 0
 	set sargs " -thread "
+
+	if { [is_partitioned $args] == 1 } {
+		puts "Test109 skipping for partitioned $method"
+		return
+	}
 	if { $eindex == -1 } {
 		set env NULL
 	} else {

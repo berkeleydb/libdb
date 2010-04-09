@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: TpcbExample.java,v 12.11 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 package db;
@@ -88,6 +88,7 @@ class TpcbExample {
         EnvironmentConfig config = new EnvironmentConfig();
         config.setErrorStream(System.err);
         config.setErrorPrefix(progname);
+        config.setLockDetectMode(LockDetectMode.DEFAULT);
         config.setCacheSize(cachesize == 0 ? 4 * 1024 * 1024 : cachesize);
         config.setTxnNoSync(noSync);
         config.setLockDetectMode(LockDetectMode.DEFAULT);

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007,2008 Oracle.  All rights reserved.
+# Copyright (c) 2007-2009 Oracle.  All rights reserved.
 #
-# $Id: rep074.tcl,v 12.8 2008/04/09 16:26:32 carol Exp $
+# $Id$
 #
 # TEST	rep074
 # TEST	Verify replication withstands send errors processing requests.
@@ -12,6 +12,8 @@
 proc rep074 { method { niter 20 } { tnum "074" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
@@ -28,12 +30,27 @@ proc rep074 { method { niter 20 } { tnum "074" } args } {
 	}
 
 	set args [convert_args $method $args]
-
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
-		puts "Rep$tnum ($method): Test of send errors processing \
-		    requests"
+		puts "Rep$tnum ($method): Test of send errors processing\
+		    requests $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client logs are [lindex $l 1]"
 		rep074_sub $method $niter $tnum $l $args
@@ -41,14 +58,22 @@ proc rep074 { method { niter 20 } { tnum "074" } args } {
 }
 
 proc rep074_sub { method niter tnum logset largs } {
-	global testdir rep074_failure_count
+	global testdir
+	global rep074_failure_count
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set rep074_failure_count -1
+
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -75,7 +100,7 @@ proc rep074_sub { method niter tnum logset largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $verbargs -errpfx MASTER \
-	    -home $masterdir $m_logargs $m_txnargs \
+	    -home $masterdir $m_logargs $m_txnargs $repmemargs \
 	    -rep_transport \[list 1 rep074_replsend\]"
 	set masterenv [eval $ma_envcmd -rep_master]
 
@@ -83,12 +108,12 @@ proc rep074_sub { method niter tnum logset largs } {
 	# substantial to say when asked for LOG_REQ.
 	#
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $verbargs -errpfx CLIENT \
-	    -home $clientdir $c_logargs $c_txnargs \
+	    -home $clientdir $c_logargs $c_txnargs $repmemargs \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd -rep_client]
 	set envlist "{$masterenv 1} {$clientenv 2}"
@@ -113,7 +138,7 @@ proc rep074_sub { method niter tnum logset largs } {
 	proc_msgs_once $envlist
 
 	# Force a sending error at the master while processing the LOG_REQ.
-	# We should ignore it, and return success to rep_proces_message
+	# We should ignore it, and return success to rep_process_message
 	#
 	puts "\tRep$tnum.e: Simulate a send error."
 	set rep074_failure_count [expr $niter / 2]
@@ -128,14 +153,19 @@ proc rep074_sub { method niter tnum logset largs } {
 	error_check_bad startupdone \
 	    [stat_field $clientenv rep_stat "Startup complete"] 1
 
+	#
 	# Run some more new txns at the master, so that the client eventually
 	# decides to request the remainder of the LOG_REQ response that it's
 	# missing.  Pause for a second to make sure we reach the lower 
-	# threshold for re-request on fast machines.
+	# threshold for re-request on fast machines.  We need to force a
+	# checkpoint because we need to create a gap, and then pause to
+	# reach the rerequest threshold.
 	#
 	set rep074_failure_count -1
+	$masterenv txn_checkpoint -force
+	process_msgs $envlist
 	tclsleep 1
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	error_check_good startupdone \

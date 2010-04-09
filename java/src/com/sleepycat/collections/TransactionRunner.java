@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TransactionRunner.java,v 12.10 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -20,7 +20,7 @@ import com.sleepycat.util.ExceptionUnwrapper;
  * Starts a transaction, calls {@link TransactionWorker#doWork}, and handles
  * transaction retry and exceptions.  To perform a transaction, the user
  * implements the {@link TransactionWorker} interface and passes an instance of
- * that class to the {@link #run} method.
+ * that class to the {@link #run run} method.
  *
  * <p>A single TransactionRunner instance may be used by any number of threads
  * for any number of transactions.</p>
@@ -32,8 +32,8 @@ import com.sleepycat.util.ExceptionUnwrapper;
  * <ul>
  * <li>When the run() method is called in a transactional environment and no
  * transaction is active for the current thread, a new transaction is started
- * before calling doWork().  If DeadlockException is thrown by doWork(), the
- * transaction will be aborted and the process will be repeated up to the
+ * before calling doWork().  If DeadlockException is thrown by doWork(),
+ * the transaction will be aborted and the process will be repeated up to the
  * maximum number of retries.  If another exception is thrown by doWork() or
  * the maximum number of retries has occurred, the transaction will be aborted
  * and the exception will be rethrown by the run() method.  If no exception is
@@ -218,11 +218,9 @@ public class TransactionRunner {
 
         if (currentTxn != null &&
             (allowNestedTxn || currentTxn.getTransaction() == null)) {
-
-            /*
-             * Transactional and (not nested or nested txns allowed).
-             */
-            for (int i = 0;; i += 1) {
+            /* Transactional and (not nested or nested txns allowed). */
+            int useMaxRetries = maxRetries;
+            for (int retries = 0;; retries += 1) {
                 Transaction txn = null;
                 try {
                     txn = currentTxn.beginTransaction(config);
@@ -243,32 +241,94 @@ public class TransactionRunner {
                              * information is not lost when we throw the
                              * original exception.
                              */
-			    if (DbCompat.TRANSACTION_RUNNER_PRINT_STACK_TRACES) {
+			    if (DbCompat.
+                                TRANSACTION_RUNNER_PRINT_STACK_TRACES) {
 				e2.printStackTrace();
 			    }
                             /* Force the original exception to be thrown. */
-                            i = maxRetries + 1;
+                            retries = useMaxRetries;
                         }
                     }
-                    if (i >= maxRetries || !(e instanceof DeadlockException)) {
-                        if (e instanceof Exception) {
-                            throw (Exception) e;
-                        } else {
-                            throw (Error) e;
-                        }
+                    /* An Error should not require special handling. */
+                    if (e instanceof Error) {
+                        throw (Error) e;
+                    }
+                    /* Allow a subclass to determine retry policy. */
+                    Exception ex = (Exception) e;
+                    useMaxRetries =
+                        handleException(ex, retries, useMaxRetries);
+                    if (retries >= useMaxRetries) {
+                        throw ex;
                     }
                 }
             }
         } else {
-
-            /*
-             * Non-transactional or (nested and no nested txns allowed).
-             */
+            /* Non-transactional or (nested and no nested txns allowed). */
             try {
                 worker.doWork();
             } catch (Exception e) {
                 throw ExceptionUnwrapper.unwrap(e);
             }
+        }
+    }
+
+    /**
+     * Handles exceptions that occur during a transaction, and may implement
+     * transaction retry policy.  The transaction is aborted by the {@link
+     * #run run} method before calling this method.
+     *
+     * <p>The default implementation of this method throws the {@code
+     * exception} parameter if it is not an instance of {@link
+     * DeadlockException} and otherwise returns the {@code maxRetries}
+     * parameter value.  This method can be overridden to throw a different
+     * exception or return a different number of retries.  For example:</p>
+     * <ul>
+     * <li>This method could call {@code Thread.sleep} for a short interval to
+     * allow other transactions to finish.</li>
+     *
+     * <li>This method could return a different {@code maxRetries} value
+     * depending on the {@code exception} that occurred.</li>
+     *
+     * <li>This method could throw an application-defined exception when the
+     * {@code retries} value is greater or equal to the {@code maxRetries} and
+     * a {@link DeadlockException} occurs, to override the default behavior
+     * which is to throw the {@link DeadlockException}.</li>
+     * </ul>
+     *
+     * @param exception an exception that was thrown by the {@link
+     * TransactionWorker#doWork} method or thrown when beginning or committing
+     * the transaction.  If the {@code retries} value is greater or equal to
+     * {@code maxRetries} when this method returns normally, this exception
+     * will be thrown by the {@link #run run} method.
+     *
+     * @param retries the current value of a counter that starts out at zero
+     * and is incremented when each retry is performed.
+     *
+     * @param maxRetries the maximum retries to be performed.  By default,
+     * this value is set to {@link #getMaxRetries}.  This method may return a
+     * different maximum retries value to override that default.
+     *
+     * @return the maximum number of retries to perform.  The
+     * default policy is to return the {@code maxRetries} parameter value
+     * if the {@code exception} parameter value is an instance of {@link
+     * DeadlockException}.
+     *
+     * @throws Exception to cause the exception to be thrown by the {@link
+     * #run run} method.  The default policy is to throw the {@code exception}
+     * parameter value if it is not an instance of {@link
+     * DeadlockException}.
+     *
+     * @since 3.4
+     */
+    public int handleException(Exception exception,
+                               int retries,
+                               int maxRetries)
+        throws Exception {
+
+        if (exception instanceof DeadlockException) {
+            return maxRetries;
+        } else {
+            throw exception;
         }
     }
 }

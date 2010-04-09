@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep042.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep042
 # TEST	Concurrency with updates.
@@ -18,6 +18,8 @@
 proc rep042 { method { niter 10 } { tnum "042" } args } {
 
 	source ./include.tcl
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -31,6 +33,11 @@ proc rep042 { method { niter 10 } { tnum "042" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -42,7 +49,7 @@ proc rep042 { method { niter 10 } { tnum "042" } args } {
 			}
 
 			puts "Rep$tnum ($method $r):\
-			    Concurrency with updates."
+			    Concurrency with updates $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep042_sub $method $niter $tnum $l $r $args
@@ -53,12 +60,18 @@ proc rep042 { method { niter 10 } { tnum "042" } args } {
 proc rep042_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
 	global perm_response_list
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -83,7 +96,7 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_cmd "berkdb_env_noerr -create \
+	set ma_cmd "berkdb_env_noerr -create $repmemargs \
 	    -log_max 1000000 $m_txnargs $m_logargs $verbargs \
 	    -home $masterdir -rep_master -errpfx MASTER \
 	    -rep_transport \[list 1 replsend\]"
@@ -91,7 +104,7 @@ proc rep042_sub { method niter tnum logset recargs largs } {
 
 	# Open a client
 	repladd 2
-	set cl_cmd "berkdb_env_noerr -create -home $clientdir \
+	set cl_cmd "berkdb_env_noerr -create -home $clientdir $repmemargs \
 	    $c_txnargs $c_logargs $verbargs -errpfx CLIENT -rep_client \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_cmd $recargs]

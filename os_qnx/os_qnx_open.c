@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_qnx_open.c,v 12.30 2008/01/30 21:04:39 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

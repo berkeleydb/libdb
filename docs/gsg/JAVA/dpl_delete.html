@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Deleting Entity Objects</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="dpl_entityjoin.html" title="Join Cursors" />
+    <link rel="prev" href="dpl_entityjoin.html" title="Join Cursors" />
     <link rel="next" href="dpl_replace.html" title="Replacing Entity Objects" />
   </head>
   <body>
@@ -32,16 +32,15 @@
             <h2 class="title" style="clear: both"><a id="dpl_delete"></a>Deleting Entity Objects</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                 The simplest way to remove an object from your entity store
                 is to delete it by its primary index. For example,
-                using the <tt class="classname">SimpleDA</tt> class that we
+                using the <code class="classname">SimpleDA</code> class that we
                 created earlier in this document 
-                (see <a href="simpleda.html">SimpleDA.class</a>),
-                you can delete the <tt class="classname">SimpleEntityClass</tt>
-                object with a primary key of <tt class="literal">keyone</tt> as
+                (see <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a>),
+                you can delete the <code class="classname">SimpleEntityClass</code>
+                object with a primary key of <code class="literal">keyone</code> as
                 follows:
            </p>
       <pre class="programlisting">sda.pIdx.delete("keyone");</pre>
@@ -52,15 +51,40 @@
           </p>
       <p>
                   For example, the following deletes all
-                  <tt class="classname">SimpleEntityClass</tt> with a secondary
-                  key of <tt class="literal">skeyone</tt>:
+                  <code class="classname">SimpleEntityClass</code> with a secondary
+                  key of <code class="literal">skeyone</code>:
           </p>
       <pre class="programlisting">sda.sIdx.delete("skeyone");</pre>
+      <p>
+                You can delete any single object by positioning a cursor to
+                that object and then calling the cursor's
+                <code class="methodname">delete()</code> method.
+        </p>
+      <pre class="programlisting">PrimaryIndex&lt;String,SimpleEntityClass&gt; pi =
+    store.getPrimaryIndex(String.class, SimpleEntityClass.class);
+
+SecondaryIndex&lt;String,String,SimpleEntityClass&gt; si = 
+    store.getSecondaryIndex(pi, String.class, "sKey");
+
+EntityCursor&lt;SimpleEntityClass&gt; sec_cursor = 
+    si.subIndex("skeyone").entities(); 
+
+try {
+    SimpleEntityClass sec;
+    Iterator&lt;SimpleEntityClass&gt; i = sec_cursor.iterator();
+    while (sec = i.nextDup() != null) {
+        if (sec.getSKey() == "some value") {
+            i.delete();
+        }
+    }
+// Always make sure the cursor is closed when we are done with it.
+} finally {
+    sec_cursor.close(); } </pre>
       <p>
                 Finally, if you are indexing by foreign key, then the
                 results of deleting the key is determined by the foreign 
                 key constraint that you have set for the index. See
-                <a href="dplindexcreate.html#foreignkey">Foreign Key Constraints</a>
+                <a class="xref" href="dplindexcreate.html#foreignkey" title="Foreign Key Constraints">Foreign Key Constraints</a>
                 for more information.
         </p>
     </div>

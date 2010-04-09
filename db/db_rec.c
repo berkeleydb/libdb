@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
- * $Id: db_rec.c,v 12.53 2008/03/12 20:33:03 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -54,6 +54,7 @@ __db_addrem_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_ADD_DUP) ||
 	    (cmp_n == 0 && DB_UNDO(op) && argp->opcode == DB_REM_DUP)) {
 		/* Need to redo an add, or undo a delete. */
@@ -130,6 +131,7 @@ __db_big_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if ((cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_ADD_BIG) ||
 	    (cmp_n == 0 && DB_UNDO(op) && argp->opcode == DB_REM_BIG)) {
 		/* We are either redo-ing an add, or undoing a delete. */
@@ -151,6 +153,20 @@ __db_big_recover(env, dbtp, lsnp, op, info)
 		 */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		modified = 1;
+	} else if (cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_APPEND_BIG) {
+		/* We are redoing an append. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		memcpy((u_int8_t *)pagep + P_OVERHEAD(file_dbp) +
+		    OV_LEN(pagep), argp->dbt.data, argp->dbt.size);
+		OV_LEN(pagep) += argp->dbt.size;
+		modified = 1;
+	} else if (cmp_n == 0 && DB_UNDO(op) && argp->opcode == DB_APPEND_BIG) {
+		/* We are undoing an append. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		OV_LEN(pagep) -= argp->dbt.size;
+		memset((u_int8_t *)pagep + P_OVERHEAD(file_dbp) +
+		    OV_LEN(pagep), 0, argp->dbt.size);
+		modified = 1;
 	}
 	if (modified)
 		LSN(pagep) = DB_REDO(op) ? *lsnp : argp->pagelsn;
@@ -161,10 +177,11 @@ __db_big_recover(env, dbtp, lsnp, op, info)
 		goto out;
 
 	/*
-	 * We only delete a whole chain of overflow.
-	 * Each page is handled individually
+	 * We only delete a whole chain of overflow items, and appends only
+	 * apply to a single page.  Adding a page is the only case that
+	 * needs to update the chain.
 	 */
-	if (argp->opcode == DB_REM_BIG)
+	if (argp->opcode != DB_ADD_BIG)
 		goto done;
 
 	/* Now check the previous page. */
@@ -175,6 +192,7 @@ ppage:	if (argp->prev_pgno != PGNO_INVALID) {
 		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->prevlsn);
 		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->prevlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 		if (cmp_p == 0 && DB_REDO(op) && argp->opcode == DB_ADD_BIG) {
 			/* Redo add, undo delete. */
@@ -205,6 +223,7 @@ npage:	if (argp->next_pgno != PGNO_INVALID) {
 		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nextlsn);
 		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->nextlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 		if (cmp_p == 0 && DB_REDO(op)) {
 			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 			PREV_PGNO(pagep) = PGNO_INVALID;
@@ -351,6 +370,7 @@ __db_noop_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->prevlsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->prevlsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 		LSN(pagep) = *lsnp;
@@ -418,6 +438,7 @@ __db_pg_alloc_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(meta));
 	cmp_p = LOG_COMPARE(&LSN(meta), &argp->meta_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(meta), &argp->meta_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(meta), lsnp);
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &meta);
@@ -440,9 +461,8 @@ __db_pg_alloc_recover(env, dbtp, lsnp, op, info)
 
 #ifdef HAVE_FTRUNCATE
 	/*
-	 * Check to see if we are keeping a sorted
-	 * freelist, if so put this back in the in
-	 * memory list.  It must be the first element.
+	 * check to see if we are keeping a sorted freelist, if so put
+	 * this back in the in memory list.  It must be the first element.
 	 */
 	if (op == DB_TXN_ABORT && !IS_ZERO_LSN(argp->page_lsn)) {
 		db_pgno_t *list;
@@ -450,12 +470,12 @@ __db_pg_alloc_recover(env, dbtp, lsnp, op, info)
 
 		if ((ret = __memp_get_freelist(mpf, &nelem, &list)) != 0)
 			goto out;
-		if (list != NULL) {
+		if (list != NULL && (nelem == 0 || *list != argp->pgno)) {
 			if ((ret =
 			    __memp_extend_freelist(mpf, nelem + 1, &list)) != 0)
 				goto out;
 			if (nelem != 0)
-				memmove(list + 1, list, nelem * sizeof(list));
+				memmove(list + 1, list, nelem * sizeof(*list));
 			*list = argp->pgno;
 		}
 	}
@@ -555,7 +575,7 @@ do_truncate:
 		}
 		/* Give the page back to the OS. */
 		if (meta->last_pgno <= argp->pgno && (ret = __memp_ftruncate(
-		    mpf, ip, argp->pgno, MP_TRUNC_RECOVER)) != 0)
+		    mpf, NULL, ip, argp->pgno, MP_TRUNC_RECOVER)) != 0)
 			goto out;
 	}
 
@@ -619,6 +639,7 @@ __db_pg_free_recover_int(env, ip, argp, file_dbp, lsnp, mpf, op, data)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(meta));
 	cmp_p = LOG_COMPARE(&LSN(meta), &argp->meta_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(meta), &argp->meta_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(meta), lsnp);
 
 	/*
 	 * Fix up the metadata page.  If we're redoing or undoing the operation
@@ -704,7 +725,7 @@ check_meta:
 			    pagep, DB_PRIORITY_VERY_LOW)) != 0)
 				goto out;
 			pagep = NULL;
-trunc:			if ((ret = __memp_ftruncate(mpf, ip,
+trunc:			if ((ret = __memp_ftruncate(mpf, NULL, ip,
 			    argp->pgno, MP_TRUNC_RECOVER)) != 0)
 				goto out;
 		} else if (argp->last_pgno == argp->pgno) {
@@ -749,10 +770,19 @@ trunc:			if ((ret = __memp_ftruncate(mpf, ip,
 			if (!is_meta) {
 				__db_freelist_pos(argp->pgno, lp, nelem, &pos);
 
-				DB_ASSERT(env, argp->pgno == lp[pos]);
+				/* 
+				 * If we aborted after logging but before
+				 * updating the free list don't do anything.
+				*/
+				if (argp->pgno != lp[pos]) {
+					DB_ASSERT(env,
+					    argp->meta_pgno == lp[pos]);
+					goto done;
+				}
 				DB_ASSERT(env,
 				    argp->meta_pgno == lp[pos - 1]);
-			}
+			} else if (nelem != 0 && argp->pgno != lp[pos])
+				goto done;
 
 			if (pos < nelem)
 				memmove(&lp[pos], &lp[pos + 1],
@@ -947,6 +977,7 @@ __db_pg_init_recover(env, dbtp, lsnp, op, info)
 	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
 	cmp_p = LOG_COMPARE(&LSN(pagep), &copy_lsn);
 	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &copy_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
 
 	if (cmp_p == 0 && DB_REDO(op)) {
 		if (TYPE(pagep) == P_HASH)
@@ -974,14 +1005,14 @@ out:
 }
 
 /*
- * __db_pg_sort_recover --
- *	Recovery function for pg_sort.
+ * __db_pg_trunc_recover --
+ *	Recovery function for pg_trunc.
  *
- * PUBLIC: int __db_pg_sort_recover
+ * PUBLIC: int __db_pg_trunc_recover
  * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__db_pg_sort_recover(env, dbtp, lsnp, op, info)
+__db_pg_trunc_recover(env, dbtp, lsnp, op, info)
 	ENV *env;
 	DBT *dbtp;
 	DB_LSN *lsnp;
@@ -989,7 +1020,199 @@ __db_pg_sort_recover(env, dbtp, lsnp, op, info)
 	void *info;
 {
 #ifdef HAVE_FTRUNCATE
-	__db_pg_sort_args *argp;
+	__db_pg_trunc_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DBMETA *meta;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	db_pglist_t *pglist, *lp;
+	db_pgno_t last_pgno, *list;
+	u_int32_t felem, nelem, pos;
+	int ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	REC_PRINT(__db_pg_trunc_print);
+	REC_INTRO(__db_pg_trunc_read, ip, 1);
+
+	pglist = (db_pglist_t *) argp->list.data;
+	nelem = argp->list.size / sizeof(db_pglist_t);
+	if (DB_REDO(op)) {
+		/*
+		 * First call __db_pg_truncate to find the truncation
+		 * point, truncate the file and return the new last_pgno.
+		 */
+		last_pgno = argp->last_pgno;
+		if ((ret = __db_pg_truncate(dbc, NULL, pglist,
+		    NULL, &nelem, argp->next_free, &last_pgno, lsnp, 1)) != 0)
+			goto out;
+
+		if (argp->last_free != PGNO_INVALID) {
+			/* 
+			 * Update the next pointer of the last page in
+			 * the freelist.  If the truncation point is
+			 * beyond next_free then this is still in the freelist
+			 * otherwise the last_free page is at the end.
+			 */
+			if ((ret = __memp_fget(mpf,
+			    &argp->last_free, ip, NULL, 0, &meta)) == 0) {
+				if (LOG_COMPARE(&LSN(meta),
+				     &argp->last_lsn) == 0) {
+					REC_DIRTY(mpf,
+					    ip, dbc->priority, &meta);
+					if (pglist->pgno > last_pgno)
+						NEXT_PGNO(meta) = PGNO_INVALID;
+					else
+						NEXT_PGNO(meta) = pglist->pgno;
+					LSN(meta) = *lsnp;
+				}
+				if ((ret = __memp_fput(mpf, ip,
+				    meta, file_dbp->priority)) != 0)
+					goto out;
+				meta = NULL;
+			} else if (ret != DB_PAGE_NOTFOUND)
+				goto out;
+		}
+		if ((ret = __memp_fget(mpf, &argp->meta, ip, NULL,
+		    0, &meta)) != 0)
+			goto out;
+		if (LOG_COMPARE(&LSN(meta), &argp->meta_lsn) == 0) {
+			REC_DIRTY(mpf, ip, dbc->priority, &meta);
+			if (argp->last_free == PGNO_INVALID) {
+				if (nelem == 0)
+					meta->free = PGNO_INVALID;
+				else
+					meta->free = pglist->pgno;
+			}
+			meta->last_pgno = last_pgno;
+			LSN(meta) = *lsnp;
+		}
+	} else {
+		/* Put the free list back in its original order. */
+		for (lp = pglist; lp < &pglist[nelem]; lp++) {
+			if ((ret = __memp_fget(mpf, &lp->pgno, ip,
+			    NULL, DB_MPOOL_CREATE, &pagep)) != 0)
+				goto out;
+			if (IS_ZERO_LSN(LSN(pagep)) ||
+			     LOG_COMPARE(&LSN(pagep), lsnp) == 0) {
+				REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+				P_INIT(pagep, file_dbp->pgsize, lp->pgno,
+				    PGNO_INVALID, lp->next_pgno, 0, P_INVALID);
+				LSN(pagep) = lp->lsn;
+			}
+			if ((ret = __memp_fput(mpf,
+			    ip, pagep, file_dbp->priority)) != 0)
+				goto out;
+		}
+		/*
+		 * Link the truncated part back into the free list.
+		 * Its either after the last_free page or direclty
+		 * linked to the metadata page.
+		 */
+		if (argp->last_free != PGNO_INVALID) {
+			if ((ret = __memp_fget(mpf, &argp->last_free,
+			    ip, NULL, DB_MPOOL_EDIT, &meta)) == 0) {
+				if (LOG_COMPARE(&LSN(meta), lsnp) == 0) {
+					NEXT_PGNO(meta) = argp->next_free;
+					LSN(meta) = argp->last_lsn;
+				}
+				if ((ret = __memp_fput(mpf, ip,
+				    meta, file_dbp->priority)) != 0)
+					goto out;
+			} else if (ret != DB_PAGE_NOTFOUND)
+				goto out;
+			meta = NULL;
+		}
+		if ((ret = __memp_fget(mpf, &argp->meta,
+		    ip, NULL, DB_MPOOL_EDIT, &meta)) != 0)
+			goto out;
+		if (LOG_COMPARE(&LSN(meta), lsnp) == 0) {
+			REC_DIRTY(mpf, ip, dbc->priority, &meta);
+			/*
+			 * If we had to break up the list last_pgno
+			 * may only represent the end of the block.
+			 */
+			if (meta->last_pgno < argp->last_pgno)
+				meta->last_pgno = argp->last_pgno;
+			if (argp->last_free == PGNO_INVALID)
+				meta->free = argp->next_free;
+			LSN(meta) = argp->meta_lsn;
+		}
+	}
+
+	if ((ret = __memp_fput(mpf, ip, meta, file_dbp->priority)) != 0)
+		goto out;
+
+	if (op == DB_TXN_ABORT) {
+		/*
+		 * Put the pages back on the in memory free list.
+		 * If this is part of a multi-record truncate then
+		 * we need to find this batch, it may not be at the end.
+		 * If we aborted while writing one of the log records
+		 * then this set may still be in the list.
+		 */
+		if ((ret = __memp_get_freelist(mpf, &felem, &list)) != 0)
+			goto out;
+		if (list != NULL) {
+			if (felem != 0 && list[felem - 1] > pglist->pgno) {
+				__db_freelist_pos(
+				    pglist->pgno, list, felem, &pos);
+				DB_ASSERT(env, pos < felem);
+				if (pglist->pgno == list[pos])
+					goto done;
+				pos++;
+			} else if (felem != 0 &&
+			    list[felem - 1] == pglist->pgno)
+				goto done;
+			else 
+				pos = felem;
+			if ((ret = __memp_extend_freelist(
+			    mpf, felem + nelem, &list)) != 0)
+				goto out;
+			if (pos != felem)
+				memmove(&list[nelem + pos], &list[pos],
+				    sizeof(*list) * (felem - pos));
+			for (lp = pglist; lp < &pglist[nelem]; lp++)
+				list[pos++] = lp->pgno;
+		}
+	}
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
+#else
+	/*
+	 * If HAVE_FTRUNCATE is not defined, we'll never see pg_trunc records
+	 * to recover.
+	 */
+	COMPQUIET(env, NULL);
+	COMPQUIET(dbtp, NULL);
+	COMPQUIET(lsnp, NULL);
+	COMPQUIET(op,  DB_TXN_ABORT);
+	COMPQUIET(info, NULL);
+	return (EINVAL);
+#endif
+}
+/*
+ * __db_pg_sort_44_recover --
+ *	Recovery function for pg_sort.
+ * This is deprecated and kept for replication upgrades.
+ *
+ * PUBLIC: int __db_pg_sort_44_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_pg_sort_44_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+#ifdef HAVE_FTRUNCATE
+	__db_pg_sort_44_args *argp;
 	DB_THREAD_INFO *ip;
 	DB *file_dbp;
 	DBC *dbc;
@@ -1002,15 +1225,16 @@ __db_pg_sort_recover(env, dbtp, lsnp, op, info)
 	int ret;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
-	REC_PRINT(__db_pg_sort_print);
-	REC_INTRO(__db_pg_sort_read, ip, 1);
+	REC_PRINT(__db_pg_sort_44_print);
+	REC_INTRO(__db_pg_sort_44_read, ip, 1);
 
 	pglist = (db_pglist_t *) argp->list.data;
 	nelem = argp->list.size / sizeof(db_pglist_t);
 	if (DB_REDO(op)) {
 		pgno = argp->last_pgno;
+		__db_freelist_sort(pglist, nelem);
 		if ((ret = __db_pg_truncate(dbc, NULL,
-		    pglist, NULL, &nelem, &pgno, lsnp, 1)) != 0)
+		    pglist, NULL, &nelem, PGNO_INVALID, &pgno, lsnp, 1)) != 0)
 			goto out;
 
 		if (argp->last_free != PGNO_INVALID) {
@@ -1070,8 +1294,6 @@ __db_pg_sort_recover(env, dbtp, lsnp, op, info)
 			if ((ret = __memp_fget(mpf, &argp->last_free,
 			    ip, NULL, DB_MPOOL_EDIT, &meta)) == 0) {
 				if (LOG_COMPARE(&LSN(meta), lsnp) == 0) {
-					REC_DIRTY(mpf,
-					    ip, dbc->priority, &pagep);
 					NEXT_PGNO(meta) = pglist->pgno;
 					LSN(meta) = argp->last_lsn;
 				}

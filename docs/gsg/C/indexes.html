@@ -5,11 +5,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 5. Secondary Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="CoreCursorUsage.html" title="Cursor Example" />
-    <link rel="next" href="keyCreator.html" title="Implementing Key &#10;        &#10;        Extractors&#10;        " />
+    <link rel="prev" href="CoreCursorUsage.html" title="Cursor Example" />
+    <link rel="next" href="keyCreator.html" title="Implementing Key Extractors" />
   </head>
   <body>
     <div class="navheader">
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="indexes"></a>Chapter 5. Secondary Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -48,7 +47,7 @@
             <span class="sect1">
               <a href="keyCreator.html">Implementing Key 
         
-        Extractors
+        <span>Extractors</span>
         </a>
             </span>
           </dt>
@@ -75,7 +74,7 @@
             <span class="sect1">
               <a href="secondaryCursor.html">
         
-        Using Cursors with Secondary Databases
+        <span>Using Cursors with Secondary Databases</span>
     </a>
             </span>
           </dt>
@@ -174,7 +173,7 @@
          
         <span>secondary database.</span> 
     
-    See <a href="secondaryDelete.html">Deleting Secondary Database Records</a> for more
+    See <a class="xref" href="secondaryDelete.html" title="Deleting Secondary Database Records">Deleting Secondary Database Records</a> for more
     information.
   </p>
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
@@ -187,20 +186,20 @@
             <span>key creator callback function</span>
         returns 
              
-            <span><tt class="literal">0</tt>.</span> 
+            <span><code class="literal">0</code>.</span> 
         If 
              
-            <span>a value other than <tt class="literal">0</tt></span>
+            <span>a value other than <code class="literal">0</code></span>
         is returned, then DB will not add the key to the secondary database, and 
         in the event of a record update it will remove any existing key. 
 
         <span>Note that the callback can use either
-        <tt class="literal">DB_DONOTINDEX</tt> or some error code outside of DB's
+        <code class="literal">DB_DONOTINDEX</code> or some error code outside of DB's
         name space to indicate that the entry should not be indexed.</span>
 
      </p>
         <p>
-        See <a href="keyCreator.html">Implementing Key 
+        See <a class="xref" href="keyCreator.html" title="Implementing Key Extractors">Implementing Key 
         
         <span>Extractors</span>
         </a> for more
@@ -224,7 +223,6 @@
               <h2 class="title" style="clear: both"><a id="CoreDbAssociate"></a>Opening and Closing Secondary Databases</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         You manage secondary database opens and closes in the same way as you
@@ -235,7 +233,7 @@
             <li>
               <p>
                 You must associate the secondary to a primary database using
-                    <span><tt class="methodname">DB-&gt;associate()</tt>.</span>
+                    <span><code class="methodname">DB-&gt;associate()</code>.</span>
                     
             </p>
             </li>
@@ -339,9 +337,7 @@ if (dbp != NULL)
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="CoreCursorUsage.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="keyCreator.html">Next</a></td>
         </tr>
         <tr>
@@ -351,7 +347,7 @@ if (dbp != NULL)
           </td>
           <td width="40%" align="right" valign="top"> Implementing Key 
         
-        Extractors
+        <span>Extractors</span>
         </td>
         </tr>
       </table>

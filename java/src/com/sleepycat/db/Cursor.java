@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Cursor.java,v 12.11 2008/04/02 13:43:38 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -129,6 +129,26 @@ public class Cursor {
     */
     public Database getDatabase() {
         return database;
+    }
+
+    /**
+    Return a comparison of the two cursors.
+    <p>
+    @return
+    An integer representing the result of the comparison. 0 is equal, 1 
+    indicates this cursor is greater than OtherCursor, -1 indicates that 
+    OtherCursor is greater than this cursor.
+    <p>
+    <p>
+@throws DeadlockException if the operation was selected to resolve a
+deadlock.
+<p>
+@throws DatabaseException if a failure occurs.
+    */
+    public int compare(Cursor OtherCursor)
+        throws DatabaseException {
+
+        return dbc.cmp(OtherCursor.dbc, 0);
     }
 
     /**
@@ -734,8 +754,7 @@ found; {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY
         throws DatabaseException {
 
         return OperationStatus.fromInt(
-            dbc.get(key, data,
-                DbConstants.DB_GET_BOTH_RANGE |
+            dbc.get(key, data, DbConstants.DB_GET_BOTH_RANGE |
                 LockMode.getFlag(lockMode) |
                 ((data == null) ? 0 : data.getMultiFlag())));
     }

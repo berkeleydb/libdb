@@ -1,5 +1,9 @@
 /*
- * $Id: b_workload.h,v 1.9 2008/04/14 02:21:47 david Exp $
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$
  */
 
 /*
@@ -125,18 +129,18 @@ typedef enum {
 
 typedef struct
 {
-	size_t ksize;
-	size_t dsize;
+	u_int32_t ksize;
+	u_int32_t dsize;
 	size_t orderedkeys;
 	size_t num_dups;
-	size_t pagesz;
-	size_t cachesz;
-	size_t pcount;
+	u_int32_t pagesz;
+	u_int32_t cachesz;
+	u_int32_t pcount;
 	size_t gcount;
 	size_t cursor_del;
 	size_t verbose;
 	test_type workload;
-	size_t seed;
+	u_int32_t seed;
 	size_t presize;
 	DBTYPE type;
 	char   *ts;

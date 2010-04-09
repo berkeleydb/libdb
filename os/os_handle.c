@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
- * $Id: os_handle.c,v 12.23 2008/01/31 18:40:46 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"

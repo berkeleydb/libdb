@@ -1,4 +1,4 @@
-# $Id: README,v 12.1 2005/07/20 16:51:55 bostic Exp $
+# $Id$
 
 Note: this only applies to locking using test-and-set and fcntl calls,
 pthreads were added after this was written.

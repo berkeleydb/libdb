@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep033.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep033
 # TEST	Test of internal initialization with rename and remove of dbs.
@@ -15,6 +15,9 @@
 proc rep033 { method { niter 200 } { tnum "033" } args } {
 
 	source ./include.tcl
+	global databases_in_memory 
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -36,6 +39,22 @@ proc rep033 { method { niter 200 } { tnum "033" } args } {
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.
 	set envargs ""
@@ -45,7 +64,7 @@ proc rep033 { method { niter 200 } { tnum "033" } args } {
 		foreach c $cleanopts {
 			foreach w $when {
 				puts "Rep$tnum ($method $envargs $c $r $w $args):\
-				    Test of internal initialization."
+				    Test of internal initialization $msg $msg2."
 				rep033_sub $omethod $niter $tnum $envargs \
 				    $r $c $w $args
 			}
@@ -56,12 +75,19 @@ proc rep033 { method { niter 200 } { tnum "033" } args } {
 proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -86,7 +112,7 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
 	    -log_buffer $log_buf -log_max $log_max $envargs \
-	    -errpfx MASTER $verbargs \
+	    -errpfx MASTER $verbargs $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
@@ -94,7 +120,7 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
 	    -log_buffer $log_buf -log_max $log_max $envargs \
-	    -errpfx CLIENT $verbargs \
+	    -errpfx CLIENT $verbargs $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 
@@ -108,12 +134,19 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	#
 	$masterenv test force noarchive_timeout
 
+	# Set up for in-memory or on-disk databases.
+	if { $databases_in_memory } {
+		set memargs { "" }
+	} else {
+		set memargs ""
+	}
+	
 	puts "\tRep$tnum.a: Create several databases on master."
 	set oflags " -env $masterenv $method -create -auto_commit "
-	set dbw [eval {berkdb_open_noerr} $oflags $largs w.db]
-	set dbx [eval {berkdb_open_noerr} $oflags $largs x.db]
-	set dby [eval {berkdb_open_noerr} $oflags $largs y.db]
-	set dbz [eval {berkdb_open_noerr} $oflags $largs z.db]
+	set dbw [eval {berkdb_open_noerr} $oflags $largs $memargs w.db]
+	set dbx [eval {berkdb_open_noerr} $oflags $largs $memargs x.db]
+	set dby [eval {berkdb_open_noerr} $oflags $largs $memargs y.db]
+	set dbz [eval {berkdb_open_noerr} $oflags $largs $memargs z.db]
 	error_check_good dbw_close [$dbw close] 0
 	error_check_good dbx_close [$dbx close] 0
 	error_check_good dby_close [$dby close] 0
@@ -137,10 +170,10 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	# rep_test an existing handle.
 	#
 	puts "\tRep$tnum.c: Create new databases.  Populate with rep_test."
-	set dba [eval {berkdb_open_noerr} $oflags $largs a.db]
-	set dbb [eval {berkdb_open_noerr} $oflags $largs b.db]
-	eval rep_test $method $masterenv $dba $niter 0 0 0 0 $largs
-	eval rep_test $method $masterenv $dbb $niter 0 0 0 0 $largs
+	set dba [eval {berkdb_open_noerr} $oflags $largs $memargs a.db]
+	set dbb [eval {berkdb_open_noerr} $oflags $largs $memargs b.db]
+	eval rep_test $method $masterenv $dba $niter 0 0 0 $largs
+	eval rep_test $method $masterenv $dbb $niter 0 0 0 $largs
 	error_check_good dba_close [$dba close] 0
 	error_check_good dbb_close [$dbb close] 0
 
@@ -152,8 +185,8 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	if { $when == "after" } {
 		rep033_rename_remove $masterenv
 	}
-	error_check_good rename_b [$masterenv dbrename b.db x.db] 0
-	error_check_good remove_a [$masterenv dbremove a.db] 0
+	error_check_good rename_b [eval {$masterenv dbrename} $memargs b.db x.db] 0
+	error_check_good remove_a [eval {$masterenv dbremove} $memargs a.db] 0
 
 	puts "\tRep$tnum.d: Run db_archive on master."
 	set res [eval exec $util_path/db_archive -l -h $masterdir]
@@ -179,7 +212,7 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 		# logs and that will trigger it.
 		#
 		set entries 10
-		eval rep_test $method $masterenv NULL $entries $niter 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $entries $niter 0 0 $largs
 		process_msgs $envlist 0 NONE err
 	}
 
@@ -194,9 +227,9 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	set dbnames "x.db w.db c.db"
 	foreach db $dbnames {
 		set db1 [eval \
-		    {berkdb_open_noerr -env $masterenv} $largs {-rdonly $db}]
+		    {berkdb_open_noerr -env $masterenv} $largs -rdonly $memargs $db]
 		set db2 [eval \
-		    {berkdb_open_noerr -env $clientenv} $largs {-rdonly $db}]
+		    {berkdb_open_noerr -env $clientenv} $largs -rdonly $memargs $db]
 
 		error_check_good compare:$db [db_compare \
 		    $db1 $db2 $masterdir/$db $clientdir/$db] 0
@@ -211,7 +244,7 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	# Currently we cannot remove z.db on the client because
 	# we don't own the file namespace.  So, we cannot do
 	# the check below.  If that changes, we want the test below.
-	# error_check_good dbz_gone [file exists $clientdir/z.db] 0
+	error_check_good dbz_gone [file exists $clientdir/z.db] 0
 
 	# Clean up.
 	error_check_good masterenv_close [$masterenv close] 0
@@ -220,15 +253,21 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 }
 
 proc rep033_rename_remove { env } {
+	global databases_in_memory 
+	if { $databases_in_memory } {
+		set memargs { "" }
+	} else {
+		set memargs ""
+	}	
 
 	# Here we manipulate databases W, X, Y, and Z.
 	# Remove W.
-	error_check_good remove_w [$env dbremove w.db] 0
+	error_check_good remove_w [eval $env dbremove $memargs w.db] 0
 
 	# Rename X to W, Y to C (an entirely new name).
-	error_check_good rename_x [$env dbrename x.db w.db] 0
-	error_check_good rename_y [$env dbrename y.db c.db] 0
+	error_check_good rename_x [eval $env dbrename $memargs x.db w.db] 0
+	error_check_good rename_y [eval $env dbrename $memargs y.db c.db] 0
 
 	# Remove Z.
-	error_check_good remove_z [$env dbremove z.db] 0
+	error_check_good remove_z [eval $env dbremove $memargs z.db] 0
 }

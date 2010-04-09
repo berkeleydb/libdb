@@ -2,30 +2,6 @@ package util ;
 
 use strict;
 
-use vars qw( $wantOK) ;
-$wantOK = 1 ;
-
-sub _ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-    return $result;
-}
-
-sub import
-{
-    my $class = shift ;
-    my $no_want_ok = shift ;
-
-    $wantOK = 0 if $no_want_ok ;
-    if (! $no_want_ok)
-    {
-        *main::ok = \&_ok ;
-    }
-}
 
 package main ;
 
@@ -200,6 +176,16 @@ sub docat_del_sort
     $result = normalise($result);
     return $result;
 }   
+
+sub readFile
+{
+    my $file = shift;
+    local $/ = undef;
+    open(RD,$file) || die "Cannot open $file:$!";
+    my $result = <RD>;
+    close(RD);
+    return $result;
+}
 
 sub writeFile
 {

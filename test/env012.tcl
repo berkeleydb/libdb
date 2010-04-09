@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: env012.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	env012
 # TEST	Test DB_REGISTER.
@@ -29,6 +29,25 @@
 # TEST	5. We had a bug where recovery was always run with -register
 # TEST	if there were empty slots in the process registry file.  Verify
 # TEST	that recovery doesn't automatically run if there is an empty slot.
+# TEST
+# TEST  6. Verify process cannot connect when specifying -failchk and an
+# TEST  isalive function has not been declared.
+# TEST
+# TEST  7. Verify that a 2nd process can enter the existing env with -register
+# TEST  and -failchk and having specified an isalive function
+# TEST
+# TEST  8. Kill the 1st process, and verify that the 2nd process can enter
+# TEST  with "-register -failchk -recover"
+# TEST 
+# TEST  9. 2nd process enters with "-register -failchk".  Kill the 1st process.
+# TEST  2nd process may get blocked on a mutex held by process one.  Verify
+# TEST  3rd process can enter with "-register -recover -failchk".   3rd process
+# TEST  should run failchk, clear out open txn/log from process 1.   It will
+# TEST  enter env without need for any additional recovery.   We look for 
+# TEST  "Freeing log information .." sentence in the log for 3rd process as 
+# TEST  an indication that failchk ran.   If DB_RUNRECOVERY were returned 
+# TEST  instead it would mean failchk could not recover. 
+
 proc env012 { } {
 	source ./include.tcl
 	set tnum "012"
@@ -53,7 +72,7 @@ proc env012 { } {
 	puts "\t\tEnv$tnum.b1: Start process 1."
 	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p1 \
-	    $testdir $testfile PUT $key $data RECOVER 10 &]
+	    $testdir $testfile PUT $key $data RECOVER 0 10 &]
 
 	# Wait a while so process 1 has a chance to get going.
 	tclsleep 2
@@ -61,7 +80,7 @@ proc env012 { } {
 	puts "\t\tEnv$tnum.b2: Start process 2."
 	set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p2 \
-	    $testdir $testfile GET $key $data 0 0 &]
+	    $testdir $testfile GET $key $data 0 0 0 &]
 
 	watch_procs $p1 1 120
 	watch_procs $p2 1 120
@@ -78,7 +97,7 @@ proc env012 { } {
 	set pids {}
 	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p1 \
-	    $testdir $testfile PUT $key $data RECOVER 10 &]
+	    $testdir $testfile PUT $key $data RECOVER 0 10 &]
 	lappend pids $p1
 	tclsleep 2
 
@@ -91,7 +110,7 @@ proc env012 { } {
 	puts "\t\tEnv$tnum.c3: Start process 2."
 	set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p2 \
-	    $testdir $testfile GET $key $data RECOVER 0 &]
+	    $testdir $testfile GET $key $data RECOVER 0 0 &]
 
 	watch_procs $p2 1 120
 
@@ -110,7 +129,7 @@ proc env012 { } {
 		set pids {}
 		set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 		    $testdir/env$tnum.log.p1 \
-		    $testdir $testfile PUT $key $data RECOVER 10 &]
+		    $testdir $testfile PUT $key $data RECOVER 0 10 &]
 		lappend pids $p1
 		tclsleep 2
 	
@@ -123,7 +142,7 @@ proc env012 { } {
 		puts "\t\tEnv$tnum.d3: Start process 2."
 		set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 		    $testdir/env$tnum.log.p2 \
-		    $testdir $testfile GET $key $data 0 0 &]
+		    $testdir $testfile GET $key $data 0 0 0 &]
 		tclsleep 2
 		watch_procs $p2 1 120
 	
@@ -139,7 +158,7 @@ proc env012 { } {
 		set pids {}
 		set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 		    $testdir/env$tnum.log.p1 \
-		    $testdir $testfile PUT $key $data RECOVER 10 &]
+		    $testdir $testfile PUT $key $data RECOVER 0 10 &]
 		lappend pids $p1
 		tclsleep 2
 	
@@ -149,7 +168,7 @@ proc env012 { } {
 		puts "\t\tEnv$tnum.e2: Start process 2."
 		set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 		    $testdir/env$tnum.log.p2 \
-		    $testdir $testfile LOOP $key $data 0 10 &]
+		    $testdir $testfile LOOP $key $data 0 0 10 &]
 	
 		puts "\t\tEnv$tnum.e3: Kill process 1."
 		foreach pid $pids {
@@ -159,7 +178,7 @@ proc env012 { } {
 		puts "\t\tEnv$tnum.e4: Start process 3."
 		set p3 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 		    $testdir/env$tnum.log.p3 \
-		    $testdir $testfile GET $key $data RECOVER 0 &]
+		    $testdir $testfile GET $key $data RECOVER 0 0 &]
 		tclsleep 2
 	
 		watch_procs $p2 1 120
@@ -179,12 +198,12 @@ proc env012 { } {
 	puts "\t\tEnv$tnum.f1: Start process 1."
 	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p1 \
-	    $testdir $testfile PUT $key $data RECOVER 1 &]
+	    $testdir $testfile PUT $key $data RECOVER 0 1 &]
 
 	puts "\t\tEnv$tnum.f2: Start process 2."
 	set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p2 \
-	    $testdir $testfile GET $key $data 0 1 &]
+	    $testdir $testfile GET $key $data 0 0 1 &]
 
 	watch_procs $p1 1 60
 	watch_procs $p2 1 60
@@ -196,14 +215,14 @@ proc env012 { } {
 	puts "\t\tEnv$tnum.f3: Start process 3."
 	set p3 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p3 \
-	    $testdir $testfile GET $key $data RECOVER 10 &]
+	    $testdir $testfile GET $key $data RECOVER 0 10 &]
 
 	tclsleep 2
 
 	puts "\t\tEnv$tnum.f4: Start process 4."
 	set p4 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
 	    $testdir/env$tnum.log.p4 \
-	    $testdir $testfile PUT $key $data 0 10 &]
+	    $testdir $testfile PUT $key $data 0 0 10 &]
 
 	watch_procs $p3 1 120
 	watch_procs $p4 1 120
@@ -211,6 +230,128 @@ proc env012 { } {
 	# Check log files: neither process should have returned DB_RUNRECOVERY.
 	logcheck $testdir/env$tnum.log.p3
 	logcheck $testdir/env$tnum.log.p4
+
+	puts "\tEnv$tnum.g: One process with -register & -failchk & no isalive"
+
+	# use -failchk only, test will fail as isalive function is needed
+	puts "\t\tEnv$tnum.g1: Start process 1."
+	env_cleanup $testdir
+
+	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+	    $testdir/env$tnum.log.p1 \
+	    $testdir $testfile PUT $key $data RECOVER FAILCHK0 10 &]
+
+	watch_procs $p1 1 60
+
+	# Check log files for failures.  Expect to see a failure.
+	logcheckfails $testdir/env$tnum.log.p1 DB_FAILCHK
+
+	puts "\tEnv$tnum.h: Second process joins with -register and -failchk."
+	env_cleanup $testdir
+
+        # use -failchk and -isalive flags
+	puts "\t\tEnv$tnum.h1: Start process 1."
+	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+	    $testdir/env$tnum.log.p1 \
+	    $testdir $testfile PUT $key $data RECOVER FAILCHK1 10 &]
+
+	# Wait a while so process 1 has a chance to get going.
+	tclsleep 2
+
+	puts "\t\tEnv$tnum.h2: Start process 2."
+	set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+	    $testdir/env$tnum.log.p2 \
+	    $testdir $testfile GET $key $data 0 FAILCHK1 0 &]
+
+	watch_procs $p1 1 120
+	watch_procs $p2 1 120
+
+	# Check log files for failures.
+	logcheck $testdir/env$tnum.log.p1
+	logcheck $testdir/env$tnum.log.p2
+
+	puts "\tEnv$tnum.i: Second process can join with -register\
+	    -recover -failchk after first process is killed."
+	env_cleanup $testdir
+
+	puts "\t\tEnv$tnum.i1: Start process 1."
+	set pids {}
+	set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+	    $testdir/env$tnum.log.p1 \
+	    $testdir $testfile PUT $key $data RECOVER FAILCHK1 10 &]
+	lappend pids $p1
+	tclsleep 2
+
+	puts "\t\tEnv$tnum.i2: Kill process 1."
+	set pids [findprocessids $testdir $pids]
+	foreach pid $pids {
+		tclkill $pid
+	}
+
+	puts "\t\tEnv$tnum.i3: Start process 2."
+	set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+	    $testdir/env$tnum.log.p2 \
+	    $testdir $testfile GET $key $data RECOVER FAILCHK1 0 &]
+
+	watch_procs $p2 1 120
+
+	# Check log files for failures.
+	logcheck $testdir/env$tnum.log.p1
+	logcheck $testdir/env$tnum.log.p2
+
+	if { $is_windows_test == 1 } {
+		puts "Skipping sections .j on Windows platform."
+	} else {
+		puts "\tEnv$tnum.j: Running registered process detects failure and recovers."
+		env_cleanup $testdir
+	
+		puts "\t\tEnv$tnum.j1: Start process 1."
+		set pids {}
+		set p1 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+		    $testdir/env$tnum.log.p1 \
+		    $testdir $testfile LOOP $key $data RECOVER FAILCHK1 5 &]
+		lappend pids $p1
+		tclsleep 2
+	
+		# Identify child process to kill later.
+		set pids [findprocessids $testdir $pids]
+	
+		puts "\t\tEnv$tnum.j2: Start process 2."
+		set p2 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+		    $testdir/env$tnum.log.p2 \
+		    $testdir $testfile LOOP $key $data 0 0 10 &]
+	
+		puts "\t\tEnv$tnum.j3: Kill process 1."
+		foreach pid $pids {
+			tclkill $pid
+		}
+
+		#identify child process 2, do after process 1 has died 	
+		lappend pids $p2                
+
+		# Identify child process to kill later.
+		set pids [findprocessids $testdir $pids]
+
+		puts "\t\tEnv$tnum.j4: Start process 3."
+		set p3 [exec $tclsh_path $test_path/wrap.tcl envscript.tcl \
+		    $testdir/env$tnum.log.p3 \
+		    $testdir $testfile GET $key $data RECOVER FAILCHK1 0 &]
+		#sleep for approx 20 seconds -- process 2 should still be going
+		tclsleep 20
+
+		puts "\t\tEnv$tnum.j5: Kill process 2."
+		foreach pid $pids {
+			tclkill $pid
+		}
+
+		watch_procs $p3 1 30
+	
+		# Check log files.  Logs p1 and p2 should be clean, but we
+		# expect failchk messages in p3 from cleanup
+		logcheckfails $testdir/env$tnum.log.p3 Freeing
+		logcheck $testdir/env$tnum.log.p2 
+		logcheck $testdir/env$tnum.log.p1
+	}
 }
 
 # Check log file and report failures with FAIL.  Use this when

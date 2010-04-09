@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EvolveConfig.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.evolve;
@@ -35,10 +35,25 @@ public class EvolveConfig implements Cloneable {
 
     /**
      * Returns a shallow copy of the configuration.
+     *
+     * @deprecated As of JE 4.0.13, replaced by {@link
+     * EvolveConfig#clone()}.</p>
      */
     public EvolveConfig cloneConfig() {
         try {
-            return (EvolveConfig) clone();
+            return (EvolveConfig) super.clone();
+        } catch (CloneNotSupportedException cannotHappen) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns a shallow copy of the configuration.
+     */
+    @Override
+    public EvolveConfig clone() {
+        try {
+            return (EvolveConfig) super.clone();
         } catch (CloneNotSupportedException cannotHappen) {
             return null;
         }

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Open Flags</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="coredbclose.html" title="Closing Databases" />
+    <link rel="prev" href="coredbclose.html" title="Closing Databases" />
     <link rel="next" href="CoreDBAdmin.html" title="Administrative Methods" />
   </head>
   <body>
@@ -32,21 +32,20 @@
             <h2 class="title" style="clear: both"><a id="DBOpenFlags"></a>Database Open Flags</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
 		The following are the flags that you may want to use at database open time.  
 		Note that this list is not exhaustive — it includes only those flags likely 
 		to be of interest for introductory, single-threaded
 		database applications. For a complete list of the flags available to you, see the 
-		<i class="citetitle">Berkeley DB C API guide.</i>
+		<em class="citetitle">Berkeley DB C API guide.</em>
 		
 	</p>
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
 		To specify more than one flag on the call to 
-		<span><tt class="methodname">DB-&gt;open()</tt>,</span>
+		<span><code class="methodname">DB-&gt;open()</code>,</span>
         
 		you must bitwise inclusively OR them together:
 	</p>
@@ -57,7 +56,7 @@
         <ul type="disc">
           <li>
             <p>
-				<tt class="literal">DB_CREATE</tt>
+				<code class="literal">DB_CREATE</code>
 			</p>
             <p>
 				If the database does not currently exist, create it. By default, the database open 
@@ -66,17 +65,17 @@
           </li>
           <li>
             <p>
-				<tt class="literal">DB_EXCL</tt>
+				<code class="literal">DB_EXCL</code>
 			</p>
             <p>
 				Exclusive database creation. Causes the database open to fail if the database 
 				already exists.  This flag is only meaningful when used with 
-				<tt class="literal">DB_CREATE</tt>.
+				<code class="literal">DB_CREATE</code>.
 			</p>
           </li>
           <li>
             <p>
-				<tt class="literal">DB_RDONLY</tt>
+				<code class="literal">DB_RDONLY</code>
 			</p>
             <p>
 				Open the database for read operations only. Causes any subsequent database write 
@@ -85,7 +84,7 @@
           </li>
           <li>
             <p>
-				<tt class="literal">DB_TRUNCATE</tt>
+				<code class="literal">DB_TRUNCATE</code>
 			</p>
             <p>
 				Physically truncate (empty) the on-disk file that contains the database. 

@@ -1,8 +1,8 @@
 # Sel the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: rpc002.tcl,v 12.10 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rpc002
 # TEST	Test invalid RPC functions and make sure we error them correctly

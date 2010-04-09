@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep041.tcl,v 12.21 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep041
 # TEST  Turn replication on and off at run-time.
@@ -18,6 +18,9 @@
 proc rep041 { method { niter 500 } { tnum "041" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -40,6 +43,22 @@ proc rep041 { method { niter 500 } { tnum "041" } args } {
                 return
         }
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
@@ -55,7 +74,7 @@ proc rep041 { method { niter 500 } { tnum "041" } args } {
 			set envargs ""
 			set args $saved_args
 			puts "Rep$tnum ($method $envargs $r $args):\
-			    Turn replication on and off."
+			    Turn replication on and off, $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep041_sub $method $niter $tnum $envargs \
@@ -67,12 +86,19 @@ proc rep041 { method { niter 500 } { tnum "041" } args } {
 proc rep041_sub { method niter tnum envargs logset recargs largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -106,14 +132,14 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $verbargs \
 	    $m_logargs -log_max $log_max $envargs -errpfx MASTER \
-	    -home $masterdir -rep"
+	    $repmemargs -home $masterdir -rep"
 	set masterenv [eval $ma_envcmd $recargs]
 	$masterenv rep_limit 0 0
 
         # Run rep_test in the master to advance log files.
 	puts "\tRep$tnum.b: Running rep_test to create some log files."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 
 	# Reset transport function to replnoop, and specify that
@@ -134,7 +160,7 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 
         # Run rep_test some more - this simulates running without clients.
 	puts "\tRep$tnum.d: Running rep_test."
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 
 	# Open a client
@@ -142,7 +168,7 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $verbargs \
 	    $c_logargs -log_max $log_max $envargs -errpfx CLIENT \
-	    -home $clientdir \
+	    $repmemargs -home $clientdir \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	$clientenv rep_limit 0 0
@@ -166,14 +192,14 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 		# Create some new messages, and process them.
 		set nentries 50
 		eval rep_test \
-		    $method $masterenv NULL $nentries $start $start 0 0 $largs
+		    $method $masterenv NULL $nentries $start $start 0 $largs
 		incr start $nentries
 		process_msgs $envlist
 
 		puts "\tRep$tnum.g.$i: Verify that client is up to date."
+
 		# Check that master and client contents match, to verify
 		# that client is up to date.
-		set dbname "test.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv 0 1 0
 
 		# Process messages again -- the rep_verify created some.
@@ -185,7 +211,7 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 
 		puts "\tRep$tnum.i.$i: Running rep_test in replicated env."
 		eval rep_test \
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv NULL $niter $start $start 0 $largs
 		incr start $niter
 
 		puts "\tRep$tnum.j.$i:\
@@ -198,6 +224,7 @@ proc rep041_sub { method niter tnum envargs logset recargs largs } {
 		rep_verify $masterdir $masterenv $clientdir $clientenv 0 0 0
 
 	}
+
 	error_check_good clientenv_close [$clientenv close] 0
 	error_check_good masterenv_close [$masterenv close] 0
 	replclose $testdir/MSGQUEUEDIR

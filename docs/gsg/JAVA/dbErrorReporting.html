@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Error Reporting Functions</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="previous" href="DBAdmin.html" title="Administrative Methods" />
+    <link rel="prev" href="DBAdmin.html" title="Administrative Methods" />
     <link rel="next" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
   </head>
   <body>
@@ -32,13 +32,12 @@
             <h2 class="title" style="clear: both"><a id="dbErrorReporting"></a>Error Reporting Functions</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         To simplify error reporting and handling, the
         
         
-        <span><tt class="classname">DatabaseConfig</tt> class</span>
+        <span><code class="classname">DatabaseConfig</code> class</span>
         offers several useful methods. 
         
         
@@ -50,19 +49,19 @@
           <li>
             <p>
                 
-                <tt class="methodname">DatabaseConfig.setErrorStream()</tt>
+                <code class="methodname">DatabaseConfig.setErrorStream()</code>
             </p>
             <p>
                 Sets the 
                     
-                    <span>Java <tt class="classname">OutputStream</tt></span>
+                    <span>Java <code class="classname">OutputStream</code></span>
                 to be used for displaying error messages issued by the DB library. 
             </p>
           </li>
           <li>
             <p>
                 
-                <tt class="methodname">DatabaseConfig.setMessageHandler()</tt>
+                <code class="methodname">DatabaseConfig.setMessageHandler()</code>
             </p>
             <p>
                 Defines the message handler that is called when an error message is
@@ -72,14 +71,14 @@
             </p>
             <p>
                 Note that the message handler must be an implementation of the
-                <tt class="classname">com.sleepycat.db.MessageHandler</tt>
+                <code class="classname">com.sleepycat.db.MessageHandler</code>
                 interface.
             </p>
           </li>
           <li>
             <p>
                 
-                <tt class="methodname">DatabaseConfig.setErrorPrefix()</tt>
+                <code class="methodname">DatabaseConfig.setErrorPrefix()</code>
             </p>
             <p>
                 Sets the prefix used for any error messages issued by the
@@ -111,7 +110,7 @@ public class MyMessageHandler implements MessageHandler  {
 }</pre>
       <p>
         And then set up your database to use the message handler by identifying
-        it on the database's <tt class="classname">DatabaseConfig</tt> object:
+        it on the database's <code class="classname">DatabaseConfig</code> object:
     </p>
       <a id="java_db11"></a>
       <pre class="programlisting">package db.GettingStarted;

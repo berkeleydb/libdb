@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_conv.c,v 12.11 2008/01/30 12:18:21 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"

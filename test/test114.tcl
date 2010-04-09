@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: test114.tcl,v 12.13 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test114
 # TEST	Test database compaction with overflows.
@@ -33,6 +33,11 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
@@ -168,17 +173,37 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		}
 
 		puts "\tTest$tnum.d: Compact and verify database."
-		set ret [$db compact -freespace]
-		error_check_good db_sync [$db sync] 0
-		error_check_good verify_dir [verify_dir $testdir] 0
+		for {set commit 0} {$commit <= $txnenv} {incr commit} {
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
+			set ret [eval $db compact $txn -freespace]
+			if { $txnenv == 1 } {
+				if { $commit == 0 } {
+					puts "\tTest$tnum.d: Aborting."
+					error_check_good txn_abort [$t abort] 0
+				} else {
+					puts "\tTest$tnum.d: Committing."
+					error_check_good txn_commit [$t commit] 0
+				}
+			}
+			error_check_good db_sync [$db sync] 0
+			error_check_good verify_dir \
+			    [ verify_dir $testdir "" 0 0 $nodump] 0
+		}
 
 		set size2 [file size $filename]
 		set free2 [stat_field $db stat "Pages on freelist"]
 
 		# Reduction in on-disk size should be substantial.
+#### We should look at the partitioned files #####
+if { [is_partitioned $args] == 0 } {
 		set reduction .80
 		error_check_good \
 		    file_size [expr [expr $size1 * $reduction] > $size2] 1
+}
 
 		# Pages should be freed for all methods except maybe
 		# record-based non-queue methods.  Even with recno, the
@@ -260,20 +285,41 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		}
 
 		puts "\tTest$tnum.i: Compact and verify database again."
-		set ret [$db compact -freespace]
-		error_check_good db_sync [$db sync] 0
-		error_check_good verify_dir [verify_dir $testdir] 0
+		for {set commit 0} {$commit <= $txnenv} {incr commit} {
+			if { $txnenv == 1 } {
+				set t [$env txn]
+				error_check_good txn [is_valid_txn $t $env] TRUE
+				set txn "-txn $t"
+			}
+			set ret [eval $db compact $txn -freespace]
+			if { $txnenv == 1 } {
+				if { $commit == 0 } {
+					puts "\tTest$tnum.d: Aborting."
+					error_check_good txn_abort [$t abort] 0
+				} else {
+					puts "\tTest$tnum.d: Committing."
+					error_check_good txn_commit [$t commit] 0
+				}
+			}
+			error_check_good db_sync [$db sync] 0
+			error_check_good verify_dir \
+			    [ verify_dir $testdir "" 0 0 $nodump] 0
+		}
 
 		set size4 [file size $filename]
 		set free4 [stat_field $db stat "Pages on freelist"]
 
+#### We should look at the partitioned files #####
+if { [is_partitioned $args] == 0 } {
 		error_check_good \
 		    file_size [expr [expr $size3 * $reduction] > $size4] 1
+#### We are specifying -freespace why should there be more things on the free list? #######
 		if { [is_record_based $method] == 1 } {
 			error_check_good pages_freed [expr $free4 >= $free3] 1
 		} else {
 			error_check_good pages_freed [expr $free4 > $free3] 1
 		}
+}
 
 		puts "\tTest$tnum.j: Contents are the same after compaction."
 		if { $txnenv == 1 } {

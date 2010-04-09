@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2008 Oracle.  All rights reserved.
+# Copyright (c) 1999-2009 Oracle.  All rights reserved.
 #
-# $Id: test061.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test061
 # TEST	Test of txn abort and commit for in-memory databases.
@@ -28,17 +28,23 @@ proc test061 { method args } {
 		puts "Test061 skipping for env $env"
 		return
 	}
+	if { [is_partitioned $args] == 1 } {
+		puts "Test061 skipping for partitioned $method"
+		return
+	}
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 	if { [is_queueext $method] == 1} {
 		puts "Test061 skipping for method $method"
 		return
 	}
-	set encargs ""
-	set args [split_encargs $args encargs]
-
 	puts "Test061: Transaction abort and commit test for in-memory data."
 	puts "Test061: $method $args"
+
+	set encargs ""
+	set args [split_encargs $args encargs]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	set key "key"
 	set data "data"
@@ -57,7 +63,7 @@ proc test061 { method args } {
 
 	# create environment
 	set eflags "-create -txn $encargs -home $testdir"
-	set dbenv [eval {berkdb_env} $eflags]
+	set dbenv [eval {berkdb_env} $eflags $pageargs ]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
 	# db open -- no file specified, in-memory database

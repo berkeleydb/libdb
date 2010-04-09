@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.code,v 12.2 2007/04/20 13:50:31 bostic Exp $
+# $Id$
 #
 # Check to make sure that the code samples in the documents build.
 

@@ -2,9 +2,9 @@
 #
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: gen_rec.awk,v 12.43 2008/04/19 15:30:36 mjc Exp $
+# $Id$
 #
 
 # This awk script generates all the log, print, and read routines for the DB
@@ -397,8 +397,6 @@ function log_function()
 			printf("F_ISSET(dbp, DB_AM_NOT_DURABLE)) {\n") >> CFILE
 		} else {
 			printf(") {\n") >> CFILE
-			printf("\t\tif (txnp == NULL)\n") >> CFILE
-			printf("\t\t\treturn (0);\n") >> CFILE
 		}
 		printf("\t\tif (txnp == NULL)\n") >> CFILE
 		printf("\t\t\treturn (0);\n") >> CFILE
@@ -540,7 +538,7 @@ function log_function()
 	"\t\t\tif (LOG_COMPARE(%s, &lp->lsn) >= 0 && (ret =\n", vars[i])\
 				    >> CFILE
 				printf(\
-	"\t\t\t    __log_check_page_lsn(env, dbp, %s) != 0))\n", vars[i])\
+	"\t\t\t    __log_check_page_lsn(env, dbp, %s)) != 0)\n", vars[i])\
 				    >> CFILE
 				printf("\t\t\t\treturn (ret);\n") >> CFILE
 				printf("\t\t}") >> CFILE

@@ -3,14 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-        Serialized Object Storage
-    </title>
+    <title>Serialized Object Storage</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="collectionOverview.html" title="Appendix A. &#10;        API Notes and Details&#10;    " />
-    <link rel="previous" href="UsingStoredCollections.html" title="&#10;        Using Stored Collections&#10;    " />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="collectionOverview.html" title="Appendix 1.  API Notes and Details" />
+    <link rel="prev" href="UsingStoredCollections.html" title="Using Stored Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +20,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="UsingStoredCollections.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix A. 
+          <th width="60%" align="center">Appendix 1. 
         API Notes and Details
     </th>
           <td width="20%" align="right"> </td>
@@ -39,7 +37,6 @@
     </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Serialization of an object graph includes class information as
@@ -47,15 +44,16 @@
         class is serialized as separate serialization operations then the
         class information exists more than once. To eliminate this
         inefficiency the 
-        <a href="../../java/com/sleepycat/bind/serial/StoredClassCatalog.html" target="_top">StoredClassCatalog</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/serial/StoredClassCatalog.html" target="_top">StoredClassCatalog</a>
         
         class will store the class format for all database records stored
         using a 
-        <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>.
+        <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>.
         Refer to the
-        <tt class="literal">ship</tt> sample code for examples (the class
-        <tt class="literal">SampleDatabase</tt> in
-        <tt class="filename">examples_java/src/com/sleepycat/examples/collections/ship/basic/SampleDatabase.java</tt>
+        <code class="literal">ship</code> sample code for examples (the class
+        <code class="literal">SampleDatabase</code> in
+        <code class="filename">examples_java/src/com/sleepycat/examples/collections/ship/basic/SampleDatabase.java</code>
+        
         is a good place to start).
     </p>
     </div>

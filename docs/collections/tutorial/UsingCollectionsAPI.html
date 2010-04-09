@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-        Using the DB Java Collections API
-    </title>
+    <title>Using the DB Java Collections API</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="collectionOverview.html" title="Appendix A. &#10;        API Notes and Details&#10;    " />
-    <link rel="previous" href="collectionOverview.html" title="Appendix A. &#10;        API Notes and Details&#10;    " />
-    <link rel="next" href="UsingStoredCollections.html" title="&#10;        Using Stored Collections&#10;    " />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="collectionOverview.html" title="Appendix 1.  API Notes and Details" />
+    <link rel="prev" href="collectionOverview.html" title="Appendix 1.  API Notes and Details" />
+    <link rel="next" href="UsingStoredCollections.html" title="Using Stored Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -23,7 +21,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="collectionOverview.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix A. 
+          <th width="60%" align="center">Appendix 1. 
         API Notes and Details
     </th>
           <td width="20%" align="right"> <a accesskey="n" href="UsingStoredCollections.html">Next</a></td>
@@ -40,22 +38,51 @@
     </h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="UsingCollectionsAPI.html#UsingTransactions">
+            Using Transactions
+        </a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="UsingCollectionsAPI.html#TransactionRollback">
+            Transaction Rollback
+        </a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="UsingCollectionsAPI.html#SelectingAccessMethods">Selecting Access Methods</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="UsingCollectionsAPI.html#AccessMethodRestrictions">
+            Access Method Restrictions
+        </a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         An 
         
-        <a href="../../java/com/sleepycat/db/Environment.html" target="_top">Environment</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/Environment.html" target="_top">Environment</a>
         
         manages the resources for one or more data stores. A
         
-        <a href="../../java/com/sleepycat/db/Database.html" target="_top">Database</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/Database.html" target="_top">Database</a>
         
         object
         represents a single database and is created via a method on the
         environment object. 
         
-        <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>
         
         objects represent an index associated with a primary database.
         
@@ -66,7 +93,7 @@
 
         Primary and secondary databases are then used to create stored
         collection objects, as described in
-        <a href="UsingStoredCollections.html">
+        <a class="xref" href="UsingStoredCollections.html" title="Using Stored Collections">
         Using Stored Collections
     </a>.
     </p>
@@ -79,7 +106,6 @@
         </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         Once you have an environment, one or more databases, and one or
@@ -91,16 +117,16 @@
     </p>
         <p>
         The recommended technique is to use the 
-        <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
         
         class along with your own implementation of the 
-        <a href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
         
         interface. 
-        <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
         
         will call your 
-        <a href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/TransactionWorker.html" target="_top">TransactionWorker</a>
         
         implementation class to perform the data access or work of the
         transaction. This technique has the following benefits:
@@ -116,15 +142,15 @@
             <li>
               <p>
                 The transaction will automatically be committed if your
-                <a href="../../java/com/sleepycat/collections/TransactionWorker.html#doWork()" target="_top">TransactionWorker.doWork()</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/TransactionWorker.html#doWork()" target="_top">TransactionWorker.doWork()</a>
                 
                 method returns normally, or will be
-                aborted if <tt class="methodname">doWork()</tt> throws an exception.
+                aborted if <code class="methodname">doWork()</code> throws an exception.
             </p>
             </li>
             <li>
               <p>
-                <tt class="classname">TransactionRunner</tt> can be used for non-transactional
+                <code class="classname">TransactionRunner</code> can be used for non-transactional
                 environments as well, allowing you to write your application
                 independently of the environment.
             </p>
@@ -133,9 +159,9 @@
         </div>
         <p>
         If you don't want to use 
-          <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>,
+          <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>,
         the alternative is to use the 
-        <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
         
         class.
     </p>
@@ -144,7 +170,7 @@
             <li>
               <p>
                 Obtain a CurrentTransaction instance by calling the
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#getInstance(com.sleepycat.db.Environment)" target="_top">CurrentTransaction.getInstance</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#getInstance(com.sleepycat.db.Environment)" target="_top">CurrentTransaction.getInstance</a>
                 
                 method. The instance returned
                 can be used by all threads in a program.
@@ -153,11 +179,11 @@
             <li>
               <p>
                 Use
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" target="_top">CurrentTransaction.beginTransaction()</a>,
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" target="_top">CurrentTransaction.commitTransaction()</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" target="_top">CurrentTransaction.beginTransaction()</a>,
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" target="_top">CurrentTransaction.commitTransaction()</a>
                 
                 and
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" target="_top">CurrentTransaction.abortTransaction()</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" target="_top">CurrentTransaction.abortTransaction()</a>
                 
                 to directly begin, commit and abort transactions.
             </p>
@@ -168,7 +194,7 @@
         If you choose to use CurrentTransaction directly you must handle
         the 
         
-        <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
         
         exception and perform retries yourself. Also note that
         CurrentTransaction may only be used in a transactional
@@ -176,20 +202,20 @@
     </p>
         <p>
         The DB Java Collections API supports nested transactions. If
-            <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a>
             
             or 
-            <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" target="_top">CurrentTransaction.beginTransaction()</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" target="_top">CurrentTransaction.beginTransaction()</a>
             ,
             is called while another transaction is active, a child transaction
             is created. When 
-            <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a>
             
             returns, or when
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" target="_top">CurrentTransaction.commitTransaction()</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" target="_top">CurrentTransaction.commitTransaction()</a>
                 
             or
-                <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" target="_top">CurrentTransaction.abortTransaction()</a>
+                <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" target="_top">CurrentTransaction.abortTransaction()</a>
                 
             is called, the parent transaction becomes active again. Note that
             because only one transaction is active per-thread, it is impossible
@@ -204,14 +230,14 @@
         <p>
         The DB Java Collections API also supports transaction
         dirty-read via the 
-        <a href="../../java/com/sleepycat/collections/StoredCollections.html" target="_top">StoredCollections</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/StoredCollections.html" target="_top">StoredCollections</a>
         
         class. When dirty-read is enabled for a collection, data will be
         read that has been modified by another transaction but not
         committed. Using dirty-read can improve concurrency since reading
         will not wait for other transactions to complete. For a
         non-transactional container, dirty-read has no effect. See 
-        <a href="../../java/com/sleepycat/collections/StoredCollections.html" target="_top">StoredCollections</a>
+        <a class="ulink" href="../../java/com/sleepycat/collections/StoredCollections.html" target="_top">StoredCollections</a>
         
         for how to create a dirty-read collection.
     </p>
@@ -225,7 +251,6 @@
         </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         When a transaction is aborted (or rolled back) the application
@@ -283,7 +308,6 @@
               <h3 class="title"><a id="SelectingAccessMethods"></a>Selecting Access Methods</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         For each data store and secondary index, you must choose from one of the
@@ -310,7 +334,7 @@
                 <th>Duplicates</th>
                 <th>Record Numbers</th>
                 <th>Database Type</th>
-                <th><tt class="classname">DatabaseConfig</tt> Method</th>
+                <th><code class="classname">DatabaseConfig</code> Method</th>
               </tr>
             </thead>
             <tbody>
@@ -328,8 +352,9 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a> 
+                        
+                    </td>
                 <td>
                         None
                     </td>
@@ -348,11 +373,13 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" target="_top">setUnsortedDuplicates</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" target="_top">setUnsortedDuplicates</a> 
+                        
+                    </td>
               </tr>
               <tr>
                 <td>
@@ -368,11 +395,13 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" target="_top">setSortedDuplicates</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" target="_top">setSortedDuplicates</a> 
+                        
+                    </td>
               </tr>
               <tr>
                 <td>
@@ -388,11 +417,13 @@
                         Yes, Renumbered
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" target="_top">BTREE</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setBtreeRecordNumbers(boolean)" target="_top">setBtreeRecordNumbers</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setBtreeRecordNumbers(boolean)" target="_top">setBtreeRecordNumbers</a> 
+                        
+                    </td>
               </tr>
               <tr>
                 <td>
@@ -408,8 +439,9 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a> 
+                        
+                    </td>
                 <td>
                         None
                     </td>
@@ -428,11 +460,13 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" target="_top">setUnsortedDuplicates</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" target="_top">setUnsortedDuplicates</a> 
+                        
+                    </td>
               </tr>
               <tr>
                 <td>
@@ -448,11 +482,13 @@
                         No
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#HASH" target="_top">HASH</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" target="_top">setSortedDuplicates</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" target="_top">setSortedDuplicates</a> 
+                        
+                    </td>
               </tr>
               <tr>
                 <td>
@@ -468,8 +504,9 @@
                         Yes, Fixed
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#QUEUE" target="_top">QUEUE</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#QUEUE" target="_top">QUEUE</a> 
+                        
+                    </td>
                 <td>
                         None
                     </td>
@@ -488,8 +525,9 @@
                         Yes, Fixed
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" target="_top">RECNO</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" target="_top">RECNO</a> 
+                        
+                    </td>
                 <td>
                         None
                     </td>
@@ -508,19 +546,21 @@
                         Yes, Renumbered
                     </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" target="_top">RECNO</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" target="_top">RECNO</a> 
+                        
+                    </td>
                 <td>
-                  <a href="../../java/com/sleepycat/db/DatabaseConfig.html#setRenumbering(boolean)" target="_top">setRenumbering</a>
-                </td>
+                        <a class="ulink" href="../../java/com/sleepycat/db/DatabaseConfig.html#setRenumbering(boolean)" target="_top">setRenumbering</a> 
+                        
+                    </td>
               </tr>
             </tbody>
           </table>
         </div>
         <p>
         Please see
-            <span class="html"><a href="../../ref/am_conf/intro.html" target="_top">Available Access Methods</a> in</span>
-            the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>
+        <span class="html"><a class="ulink" href="../../programmer_reference/am_conf.html#am_conf_intro" target="_top">Available Access Methods</a> in</span>
+            the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>
         for more information on access method configuration.
     </p>
       </div>
@@ -533,7 +573,6 @@
         </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         The restrictions imposed by the access method on the database
@@ -545,7 +584,7 @@
               <p>
                 If keys are ordered then data may be enumerated in key order and
                 key ranges may be used to form subsets of a data store. The 
-                <tt class="classname">SortedMap</tt> and <tt class="classname">SortedSet</tt>
+                <code class="classname">SortedMap</code> and <code class="classname">SortedSet</code>
                 interfaces are supported for collections with ordered keys.
             </p>
             </li>
@@ -554,7 +593,7 @@
                 If duplicates are allowed then more than one value may be
                 associated with the same key. This means that the data store cannot
                 be strictly considered a map — it is really a multi-map. See
-                <a href="UsingStoredCollections.html">
+                <a class="xref" href="UsingStoredCollections.html" title="Using Stored Collections">
         Using Stored Collections
     </a>
                 for implications on the use of the collection interfaces.
@@ -601,7 +640,7 @@
         </div>
         <p>
         See 
-        <a href="UsingStoredCollections.html">
+        <a class="xref" href="UsingStoredCollections.html" title="Using Stored Collections">
         Using Stored Collections
     </a>
         for more information on how access methods impact the use of stored
@@ -620,7 +659,7 @@
           <td width="40%" align="right"> <a accesskey="n" href="UsingStoredCollections.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Appendix A. 
+          <td width="40%" align="left" valign="top">Appendix 1. 
         API Notes and Details
      </td>
           <td width="20%" align="center">

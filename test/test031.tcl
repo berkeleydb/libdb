@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test031.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test031
 # TEST	Duplicate sorting functionality
@@ -27,6 +27,10 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum "031"} args } {
 	berkdb srand $rand_init
 
 	set args [convert_args $method $args]
+	set checkargs [split_partition_args $args]
+
+	# The checkdb is of type hash so it can't use compression.
+	set checkargs [strip_compression_args $checkargs]
 	set omethod [convert_method $method]
 
 	# Create the database and open the dictionary
@@ -47,6 +51,7 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum "031"} args } {
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
 			append args " -auto_commit "
+			append checkargs " -auto_commit "
 			#
 			# If we are using txns and running with the
 			# default, set the default down a bit.
@@ -76,7 +81,7 @@ proc test031 { method {nentries 10000} {ndups 5} {tnum "031"} args } {
 	set did [open $dict]
 
 	set check_db [eval {berkdb_open \
-	     -create -mode 0644} $args {-hash $checkdb}]
+	     -create -mode 0644} $checkargs {-hash $checkdb}]
 	error_check_good dbopen:check_db [is_valid_db $check_db] TRUE
 
 	set pflags ""

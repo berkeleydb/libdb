@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SharedTestUtils.java,v 12.1 2008/02/07 17:12:33 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.util.test;
@@ -66,9 +66,7 @@ public class SharedTestUtils {
         // System.out.println(name);
     }
 
-    public static File getExistingDir(String name)
-        throws IOException {
-
+    public static File getExistingDir(String name) {
         File dir = new File(getTestDir(), name);
         if (!dir.exists() || !dir.isDirectory()) {
             throw new IllegalStateException(
@@ -77,15 +75,11 @@ public class SharedTestUtils {
         return dir;
     }
 
-    public static File getNewDir()
-        throws IOException {
-
+    public static File getNewDir() {
         return getNewDir("test-dir");
     }
 
-    public static void emptyDir(File dir)
-        throws IOException {
-
+    public static void emptyDir(File dir) {
         if (dir.isDirectory()) {
             String[] files = dir.list();
             if (files != null) {
@@ -99,29 +93,21 @@ public class SharedTestUtils {
         }
     }
 
-    public static File getNewDir(String name)
-        throws IOException {
-
+    public static File getNewDir(String name) {
         File dir = new File(getTestDir(), name);
         emptyDir(dir);
         return dir;
     }
 
-    public static File getNewFile()
-        throws IOException {
-
+    public static File getNewFile() {
         return getNewFile("test-file");
     }
 
-    public static File getNewFile(String name)
-        throws IOException {
-
+    public static File getNewFile(String name) {
         return getNewFile(getTestDir(), name);
     }
 
-    public static File getNewFile(File dir, String name)
-        throws IOException {
-
+    public static File getNewFile(File dir, String name) {
         File file = new File(dir, name);
         file.delete();
         return file;

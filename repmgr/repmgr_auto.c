@@ -17,6 +17,7 @@ __repmgr_handshake_marshal(env, argp, bp)
 {
 	DB_HTONS_COPYOUT(env, bp, argp->port);
 	DB_HTONL_COPYOUT(env, bp, argp->priority);
+	DB_HTONL_COPYOUT(env, bp, argp->flags);
 }
 
 /*
@@ -35,6 +36,7 @@ __repmgr_handshake_unmarshal(env, argp, bp, max, nextp)
 		goto too_few;
 	DB_NTOHS_COPYIN(env, argp->port, bp);
 	DB_NTOHL_COPYIN(env, argp->priority, bp);
+	DB_NTOHL_COPYIN(env, argp->flags, bp);
 
 	if (nextp != NULL)
 		*nextp = bp;
@@ -43,6 +45,47 @@ __repmgr_handshake_unmarshal(env, argp, bp, max, nextp)
 too_few:
 	__db_errx(env,
 	    "Not enough input bytes to fill a __repmgr_handshake message");
+	return (EINVAL);
+}
+
+/*
+ * PUBLIC: void __repmgr_v2handshake_marshal __P((ENV *,
+ * PUBLIC:	 __repmgr_v2handshake_args *, u_int8_t *));
+ */
+void
+__repmgr_v2handshake_marshal(env, argp, bp)
+	ENV *env;
+	__repmgr_v2handshake_args *argp;
+	u_int8_t *bp;
+{
+	DB_HTONS_COPYOUT(env, bp, argp->port);
+	DB_HTONL_COPYOUT(env, bp, argp->priority);
+}
+
+/*
+ * PUBLIC: int __repmgr_v2handshake_unmarshal __P((ENV *,
+ * PUBLIC:	 __repmgr_v2handshake_args *, u_int8_t *, size_t, u_int8_t **));
+ */
+int
+__repmgr_v2handshake_unmarshal(env, argp, bp, max, nextp)
+	ENV *env;
+	__repmgr_v2handshake_args *argp;
+	u_int8_t *bp;
+	size_t max;
+	u_int8_t **nextp;
+{
+	if (max < __REPMGR_V2HANDSHAKE_SIZE)
+		goto too_few;
+	DB_NTOHS_COPYIN(env, argp->port, bp);
+	DB_NTOHL_COPYIN(env, argp->priority, bp);
+
+	if (nextp != NULL)
+		*nextp = bp;
+	return (0);
+
+too_few:
+	__db_errx(env,
+	    "Not enough input bytes to fill a __repmgr_v2handshake message");
 	return (EINVAL);
 }
 

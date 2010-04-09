@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep078.tcl,v 12.12 2008/04/30 19:12:50 carol Exp $
+# $Id$
 #
 # TEST  rep078
 # TEST
@@ -16,6 +16,8 @@
 #
 proc rep078 { method { tnum "078" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
@@ -31,6 +33,21 @@ proc rep078 { method { tnum "078" } args } {
 
 	set args [convert_args $method $args]
 	set logsets [create_logsets 3]
+
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
 
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
@@ -60,8 +77,8 @@ proc rep078 { method { tnum "078" } args } {
 				}
 			}
 
-			puts "Rep$tnum ($method $r):\
-			    Replication and basic master leases."
+			puts "Rep$tnum ($method $r): Replication\
+			    and basic master leases $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client 1 logs are [lindex $l 1]"
 			puts "Rep$tnum: Client 2 logs are [lindex $l 2]"
@@ -73,12 +90,19 @@ proc rep078 { method { tnum "078" } args } {
 proc rep078_sub { method tnum logset recargs largs } {
 	source ./include.tcl
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -130,7 +154,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(0) "berkdb_env -create $m_txnargs $m_logargs \
 	    $verbargs -errpfx MASTER -home $masterdir \
 	    -rep_lease \[list $nsites $lease_to\] \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -rep_client -rep_transport \[list 2 replsend\]"
 	set masterenv [eval $envcmd(0) $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
@@ -143,7 +167,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(1) "berkdb_env -create $c_txnargs $c_logargs \
 	    $verbargs -errpfx CLIENT -home $clientdir \
 	    -rep_lease \[list $nsites $lease_to $clock_fast $clock_slow\] \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -rep_client -rep_transport \[list 3 replsend\]"
 	set clientenv [eval $envcmd(1) $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
@@ -155,7 +179,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(2) "berkdb_env -create $c2_txnargs $c2_logargs \
 	    $verbargs -errpfx CLIENT2 -home $clientdir2 \
 	    -rep_lease \[list $nsites $lease_to\] \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -rep_client -rep_transport \[list 4 replsend\]"
 	set clientenv2 [eval $envcmd(2) $recargs]
 	error_check_good client_env [is_valid_env $clientenv2] TRUE
@@ -293,6 +317,10 @@ proc rep078_sub { method tnum logset recargs largs } {
 	watch_procs $pid 5
 
 	process_msgs $envlist
+	puts "\tRep$tnum.i: Downgrade master."
+	$masterenv rep_start -client
+	process_msgs $envlist
+
 	rep_verify $masterdir $masterenv $clientdir $clientenv
 	process_msgs $envlist
 	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 0 1 0

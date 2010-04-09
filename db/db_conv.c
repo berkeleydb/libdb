@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_conv.c,v 12.27 2008/04/19 15:30:35 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -614,8 +614,9 @@ __db_byteswap(dbp, pg, h, pagesize, pgin)
 				M_16_SWAP(inp[i]);
 		}
 		break;
-	case P_OVERFLOW:
 	case P_INVALID:
+	case P_OVERFLOW:
+	case P_QAMDATA:
 		/* Nothing to do. */
 		break;
 	default:
@@ -641,7 +642,7 @@ out:	if (!pgin) {
  *	referenced by the "pp" argument and the pdata argument will be NULL.
  *	This function is also called by automatically generated log functions,
  *	where the page may be split into separate header and data parts.  In
- *	that case, pdata is not NULL we reconsitute 
+ *	that case, pdata is not NULL we reconsitute
  *
  * PUBLIC: int __db_pageswap
  * PUBLIC:         __P((DB *, void *, size_t, DBT *, int));
@@ -672,14 +673,15 @@ __db_pageswap(dbp, pp, len, pdata, pgin)
 
 	case P_QAMMETA:
 		return (__qam_mswap(env, pp));
-	
+
 	case P_INVALID:
 	case P_OVERFLOW:
+	case P_QAMDATA:
 		/*
-		 * We may have been passed an invalid page, or an overflow page
-		 * where fields like hoffset have a special meaning.  In that
-		 * case, no swapping of the page data is required, just the
-		 * fields in the page header.
+		 * We may have been passed an invalid page, or a queue data
+		 * page, or an overflow page where fields like hoffset have a
+		 * special meaning.  In that case, no swapping of the page data
+		 * is required, just the fields in the page header.
 		 */
 		pdata = NULL;
 		break;
@@ -708,7 +710,7 @@ __db_pageswap(dbp, pp, len, pdata, pgin)
 
 		ret = __db_byteswap(dbp, pg, (PAGE *)pgcopy, pgsize, pgin);
 		memcpy(pp, pgcopy, len);
-		
+
 		/*
 		 * If we are swapping data to be written to the log, we can't
 		 * overwrite the buffer that was passed in: it may be a pointer

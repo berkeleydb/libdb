@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 7. Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="baseapi.html" title="Part II. Programming with the Base API" />
-    <link rel="previous" href="baseapi.html" title="Part II. Programming with the Base API" />
+    <link rel="prev" href="baseapi.html" title="Part II. Programming with the Base API" />
     <link rel="next" href="coredbclose.html" title="Closing Databases" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="DB"></a>Chapter 7. Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -81,33 +80,41 @@
   </p>
       <p>
 	Conceptually, you can think of a 
-		<tt class="classname">Database</tt>
+		<code class="classname">Database</code>
 		 
 	as containing a two-column table where column 1 contains a key and column 2
 	contains data.  Both the key and the data are managed using 
-		<tt class="classname">DatabaseEntry</tt> 
+		<code class="classname">DatabaseEntry</code> 
 		
 		
 		<span>class instances</span>
 		
-	(see <a href="DBEntry.html">Database Records</a> for details on this 
+	(see <a class="xref" href="DBEntry.html" title="Chapter 8. Database Records">Database Records</a> for details on this 
 	    <span>class</span>
 	    ).
 	So, fundamentally, using a DB 
-		<tt class="classname">Database</tt> 
+		<code class="classname">Database</code> 
 		 
 	involves putting, getting, and deleting database records, which in turns involves efficiently 
 	managing information 
 		<span>encapsulated by </span>
 		
 		
-		<tt class="classname">DatabaseEntry</tt> 
+		<code class="classname">DatabaseEntry</code> 
 		
 		
 		
 		<span>objects.</span>
 		
 	The next several chapters of this book are dedicated to those activities.
+  </p>
+      <p>
+        Also, note that in the previous section of this book, <a class="xref" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer">Programming with the Direct Persistence Layer</a>, 
+        we described the DPL The DPL handles all database management
+        for you, including creating all primary and secondary databases as is
+        required by your application. That said, if you are using the DPL
+        you can access the underlying database for a given index if
+        necessary. See the Javadoc for the DPL for more information.
   </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -116,15 +123,14 @@
               <h2 class="title" style="clear: both"><a id="DBOpen"></a>Opening Databases</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-        You open a database by instantiating a <tt class="classname">Database</tt>
+        You open a database by instantiating a <code class="classname">Database</code>
         object.
     </p>
         <p>
 		Note that by default, DB does not create databases if they do not already exist. 
-		To override this behavior, set the <a href="DBConfig.html" title="Database Properties">creation property</a> to true.
+		To override this behavior, set the <a class="link" href="DBConfig.html" title="Database Properties">creation property</a> to true.
 	</p>
         <p>
         The following code fragment illustrates a database open:

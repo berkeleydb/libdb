@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.rpc,v 1.2 2006/09/11 15:40:46 bostic Exp $
+# $Id$
 #
 # Check to make sure that the code samples in the documents build.
 

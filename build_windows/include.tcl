@@ -1,7 +1,8 @@
 # Automatically built by dist/s_test; may require local editing.
 
 set tclsh_path SET_YOUR_TCLSH_PATH
-set tcllib ./Debug/libdb_tcl47d.dll
+set buildpath Win32/Debug
+set tcllib libdb_tcl48d.dll
 
 set src_root ..
 set test_path ../test
@@ -25,4 +26,4 @@ global valid_methods
 global checking_valid_methods
 global test_recopts
 
-set KILL ./dbkill.exe
+set KILL dbkill.exe

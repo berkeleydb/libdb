@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep023.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep023
 # TEST	Replication using two master handles.
@@ -16,6 +16,9 @@
 proc rep023 { method { niter 10 } { tnum "023" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -36,6 +39,22 @@ proc rep023 { method { niter 10 } { tnum "023" } args } {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery, and
 	# with and without -rep_start.
 	foreach r $test_recopts {
@@ -48,12 +67,12 @@ proc rep023 { method { niter 10 } { tnum "023" } args } {
 			}
 			foreach startopt { 0 1 } {
 				if { $startopt == 1 } {
-					set msg "with rep_start"
+					set startmsg "with rep_start"
 				} else {
-					set msg ""
+					set startmsg ""
 				}
-				puts "Rep$tnum ($method $r $msg):\
-				    Replication and openfiles."
+				puts "Rep$tnum ($method $r $startmsg):\
+				    Replication with two master handles $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep023_sub $method \
@@ -65,12 +84,19 @@ proc rep023 { method { niter 10 } { tnum "023" } args } {
 
 proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -95,7 +121,7 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	# Open 1st master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
-	    $verbargs -errpfx MASTER -home $masterdir \
+	    $verbargs -errpfx MASTER -home $masterdir $repmemargs \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv1 [eval $ma_envcmd $recargs -rep_master]
 
@@ -108,7 +134,7 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 
 	# Open a client.
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $repmemargs \
 	    $c_logargs $verbargs -errpfx CLIENT -home $clientdir \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -118,9 +144,17 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	set envlist "{$masterenv1 1} {$clientenv 2}"
 	process_msgs $envlist
 
+	# Set up databases in-memory or on-disk.
+	if { $databases_in_memory } {
+		set testfile1 { "" m1$tnum.db }
+		set testfile2 { "" m2$tnum.db } 
+	} else { 
+		set testfile1 "m1$tnum.db"
+		set testfile2 "m2$tnum.db"
+	} 
+
 	puts "\tRep$tnum.a: Create database using 1st master handle."
 	# Create a database using the 1st master.
-	set testfile1 "m1$tnum.db"
 	set omethod [convert_method $method]
 	set db1 [eval {berkdb_open_noerr -env $masterenv1 -auto_commit \
 	     -create -mode 0644} $largs $omethod $testfile1]
@@ -128,7 +162,6 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 
 	puts "\tRep$tnum.b: Create database using 2nd master handle."
 	# Create a different database using the 2nd master.
-	set testfile2 "m2$tnum.db"
 	set db2 [eval {berkdb_open_noerr -env $masterenv2 -auto_commit \
 	     -create -mode 0644} $largs $omethod $testfile2]
 	error_check_good dbopen [is_valid_db $db2] TRUE
@@ -137,12 +170,18 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	# Process messages.
 	process_msgs $envlist
 
+	# Check that databases are in-memory or on-disk as expected.
+	check_db_location $masterenv1 $testfile1
+	check_db_location $masterenv2 $testfile1
+	check_db_location $masterenv1 $testfile2
+	check_db_location $masterenv2 $testfile2
+
 	puts "\tRep$tnum.d: Run rep_test in 1st master; process messages."
-	eval rep_test $method $masterenv1 $db1 $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv1 $db1 $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.e: Run rep_test in 2nd master; process messages."
-	eval rep_test $method $masterenv2 $db2 $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv2 $db2 $niter 0 0 0 $largs
 	process_msgs $envlist
 
 	# Contents of the two databases should match.
@@ -154,7 +193,7 @@ proc rep023_sub { method niter tnum logset recargs startopt largs } {
 	error_check_good master2_close [$masterenv2 close] 0
 
 	puts "\tRep$tnum.g: Run test in master again."
-	eval rep_test $method $masterenv1 $db1 $niter $niter 0 0 0 $largs
+	eval rep_test $method $masterenv1 $db1 $niter $niter 0 0 $largs
 	process_msgs $envlist
 
 	puts "\tRep$tnum.h: Closing"

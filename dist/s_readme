@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_readme,v 12.2 2006/11/01 00:52:45 bostic Exp $
+#	$Id$
 #
 # Build the README.
 

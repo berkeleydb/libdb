@@ -1,17 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Enhanced3.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
 
 /*
-import java.math.BigIngeter;
 import java.math.BigDecimal;
 */
+import java.math.BigInteger;
 import java.util.Date;
 
 import com.sleepycat.persist.impl.Enhanced;
@@ -28,6 +28,8 @@ import com.sleepycat.persist.model.Persistent;
  */
 @Persistent
 class Enhanced3 implements Enhanced {
+
+    enum MyEnum { ONE, TWO };
 
     @KeyField(1) boolean z;
     @KeyField(2) char c;
@@ -49,9 +51,10 @@ class Enhanced3 implements Enhanced {
 
     @KeyField(17) Date date;
     @KeyField(18) String str;
+    @KeyField(19) MyEnum e;
+    @KeyField(20) BigInteger bigint;
     /*
-    @KeyField(19) BigIngeter bigint;
-    @KeyField(20) BigDecimal bigdec;
+    @KeyField(21) BigDecimal bigdec;
     */
 
     static {
@@ -86,6 +89,16 @@ class Enhanced3 implements Enhanced {
     }
 
     public void bdbWriteNonKeyFields(EntityOutput output) {
+    }
+
+    public void bdbReadNonKeyFields(EntityInput input,
+                                    int startField,
+                                    int endField,
+                                    int superLevel) {
+    }
+
+    public void bdbWriteCompositeKeyFields(EntityOutput output,
+                                           Format[] formats) {
         output.writeBoolean(z);
         output.writeChar(c);
         output.writeByte(b);
@@ -106,12 +119,12 @@ class Enhanced3 implements Enhanced {
 
         output.writeLong(date.getTime());
         output.writeString(str);
+        output.writeKeyObject(e, formats[18]);
+        output.writeBigInteger(bigint);
     }
 
-    public void bdbReadNonKeyFields(EntityInput input,
-                                    int startField,
-                                    int endField,
-                                    int superLevel) {
+    public void bdbReadCompositeKeyFields(EntityInput input,
+                                          Format[] formats) {
         z = input.readBoolean();
         c = input.readChar();
         b = input.readByte();
@@ -132,6 +145,8 @@ class Enhanced3 implements Enhanced {
 
         date = new Date(input.readLong());
         str = input.readString();
+        e = (MyEnum) input.readKeyObject(formats[18]);
+        bigint = input.readBigInteger();
     }
 
     public boolean bdbNullifyKeyField(Object o,

@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.str,v 12.2 2008/05/07 12:45:00 bschmeck Exp $
+# $Id$
 #
 # Check spelling in quoted strings.
 

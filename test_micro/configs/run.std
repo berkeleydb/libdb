@@ -114,3 +114,10 @@ b_workload -w F -c 100000 -g 10 -d 20 -p 1024 -t hash
 b_workload -w G -c 100000 -g 10 -d 20 -p 1024 -t btree
 b_workload -w G -c 100000 -g 10 -d 20 -p 1024 -t hash
 b_workload -w H -c 10000000 -d 20 -p 1024 -t hash
+
+b_latch -c 100000000
+b_latch -c 100000000 -n 1
+b_latch -c 100000000 -n 2
+b_latch -c 100000000 -n 4
+b_latch -c 100000000 -n 8
+b_latch -c 100000000 -n 64

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: env_alloc.c,v 12.22 2008/01/27 18:02:31 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -76,9 +76,10 @@ typedef struct __alloc_element {
 
 	/*
 	 * The "len" field is the total length of the chunk, not the size
-	 * available to the caller.
+	 * available to the caller.  Use a uintmax_t to guarantee that the
+	 * size of this struct will be aligned correctly.
 	 */
-	size_t len;				/* Chunk length */
+	uintmax_t len;				/* Chunk length */
 
 	/*
 	 * The "ulen" field is the length returned to the caller.
@@ -99,7 +100,7 @@ typedef struct __alloc_element {
 #define	SET_QUEUE_FOR_SIZE(head, q, i, len) do {			\
 	for (i = 0; i < DB_SIZE_Q_COUNT; ++i) {				\
 		q = &(head)->sizeq[i];					\
-		if ((len) <= (size_t)1024 << i)				\
+		if ((len) <= (u_int64_t)1024 << i)			\
 			break;						\
 	}								\
 } while (0)
@@ -212,6 +213,9 @@ __env_alloc(infop, len, retp)
 #endif
 	env = infop->env;
 	*(void **)retp = NULL;
+#ifdef HAVE_MUTEX_SUPPORT
+	MUTEX_REQUIRED(env, infop->mtx_alloc);
+#endif
 
 	/*
 	 * In a heap-backed environment, we call malloc for additional space.
@@ -219,15 +223,18 @@ __env_alloc(infop, len, retp)
 	 *
 	 * In a heap-backed environment, memory is laid out as follows:
 	 *
-	 * { size_t total-length } { user-memory } { guard-byte }
+	 * { uintmax_t total-length } { user-memory } { guard-byte }
 	 */
 	if (F_ISSET(env, ENV_PRIVATE)) {
 		/* Check if we're over the limit. */
 		if (infop->allocated >= infop->max_alloc)
 			return (ENOMEM);
 
-		/* We need an additional size_t to hold the length. */
-		len += sizeof(size_t);
+		/*
+		 * We need an additional uintmax_t to hold the length (and
+		 * keep the buffer aligned on 32-bit systems).
+		 */
+		len += sizeof(uintmax_t);
 
 #ifdef DIAGNOSTIC
 		/* Plus one byte for the guard byte. */
@@ -238,11 +245,11 @@ __env_alloc(infop, len, retp)
 			return (ret);
 		infop->allocated += len;
 
-		*(size_t *)p = len;
+		*(uintmax_t *)p = len;
 #ifdef DIAGNOSTIC
 		p[len - 1] = GUARD_BYTE;
 #endif
-		*(void **)retp = p + sizeof(size_t);
+		*(void **)retp = p + sizeof(uintmax_t);
 		return (0);
 	}
 
@@ -356,8 +363,8 @@ __env_alloc_free(infop, ptr)
 	/* In a private region, we call free. */
 	if (F_ISSET(env, ENV_PRIVATE)) {
 		/* Find the start of the memory chunk and its length. */
-		p = (u_int8_t *)((size_t *)ptr - 1);
-		len = *(size_t *)p;
+		p = (u_int8_t *)((uintmax_t *)ptr - 1);
+		len = (size_t)*(uintmax_t *)p;
 
 		infop->allocated -= len;
 
@@ -372,6 +379,10 @@ __env_alloc_free(infop, ptr)
 		return;
 	}
 
+#ifdef HAVE_MUTEX_SUPPORT
+	MUTEX_REQUIRED(env, infop->mtx_alloc);
+#endif
+
 	head = infop->addr;
 	STAT((++head->freed));
 
@@ -383,7 +394,7 @@ __env_alloc_free(infop, ptr)
 	DB_ASSERT(env, p[elp->ulen] == GUARD_BYTE);
 
 	/* Trash the memory chunk. */
-	memset(p, CLEAR_BYTE, elp->len - sizeof(ALLOC_ELEMENT));
+	memset(p, CLEAR_BYTE, (size_t)elp->len - sizeof(ALLOC_ELEMENT));
 #endif
 
 	/* Mark the memory as no longer in use. */
@@ -446,7 +457,7 @@ __env_size_insert(head, elp)
 
 	/* Find the correct slot in the size queue. */
 	SH_TAILQ_FOREACH(elp_tmp, q, sizeq, __alloc_element)
-		if (elp->len <= elp_tmp->len)
+		if (elp->len >= elp_tmp->len)
 			break;
 	if (elp_tmp == NULL)
 		SH_TAILQ_INSERT_TAIL(q, elp, sizeq);

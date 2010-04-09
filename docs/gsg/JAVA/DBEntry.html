@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 8. Database Records</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="baseapi.html" title="Part II. Programming with the Base API" />
-    <link rel="previous" href="CoreJavaUsage.html" title="Database Example" />
+    <link rel="prev" href="CoreJavaUsage.html" title="Database Example" />
     <link rel="next" href="usingDbt.html" title="Reading and Writing Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="DBEntry"></a>Chapter 8. Database Records</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -108,7 +107,7 @@
       DB records contain two parts — a key and some data. Both the key
     and its corresponding data are 
       encapsulated in
-          <span><tt class="classname">DatabaseEntry</tt> class objects.</span> 
+          <span><code class="classname">DatabaseEntry</code> class objects.</span> 
            
            
     Therefore, to access a DB record, you need two such
@@ -117,18 +116,18 @@
         one for the data.
   </p>
       <p>
-    <tt class="classname">DatabaseEntry</tt> can hold any kind of data from simple
+    <code class="classname">DatabaseEntry</code> can hold any kind of data from simple
     Java primitive types to complex Java objects so long as that data can be
-    represented as a Java <tt class="literal">byte</tt> array. Note that due to
+    represented as a Java <code class="literal">byte</code> array. Note that due to
     performance considerations, you should not use Java serialization to convert
-    a Java object to a <tt class="literal">byte</tt> array. Instead, use the Bind APIs
+    a Java object to a <code class="literal">byte</code> array. Instead, use the Bind APIs
     to perform this conversion (see 
-    <a href="bindAPI.html">Using the BIND APIs</a> for more
+    <a class="xref" href="bindAPI.html" title="Using the BIND APIs">Using the BIND APIs</a> for more
     information).
   </p>
       <p>
     This chapter describes how you can convert both Java primitives and Java
-    class objects into and out of <tt class="literal">byte</tt> arrays. It also
+    class objects into and out of <code class="literal">byte</code> arrays. It also
     introduces storing and retrieving key/value pairs from a database. In
     addition, this chapter describes how you can use comparators to influence
     how DB sorts its database records.
@@ -140,28 +139,27 @@
               <h2 class="title" style="clear: both"><a id="usingDbEntry"></a>Using Database Records</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         Each database record is comprised of two 
-        <span><tt class="classname">DatabaseEntry</tt> objects</span>
+        <span><code class="classname">DatabaseEntry</code> objects</span>
         
         
         — one for the key and another for the data. 
 
         <span>The key and data information are passed to-
         and returned from DB using
-        <tt class="classname">DatabaseEntry</tt> objects as <tt class="literal">byte</tt>
-        arrays. Using <tt class="classname">DatabaseEntry</tt>s allows DB to
+        <code class="classname">DatabaseEntry</code> objects as <code class="literal">byte</code>
+        arrays. Using <code class="classname">DatabaseEntry</code>s allows DB to
         change the underlying byte array as well as return multiple values (that
-        is, key and data).  Therefore, using <tt class="classname">DatabaseEntry</tt> instances
+        is, key and data).  Therefore, using <code class="classname">DatabaseEntry</code> instances
         is mostly an exercise in efficiently moving your keys and your data in
-        and out of <tt class="literal">byte</tt> arrays.</span>
+        and out of <code class="literal">byte</code> arrays.</span>
     </p>
         <p>
         For example, to store a database record where both the key and the
-        data are Java <tt class="classname">String</tt> objects, you instantiate a
-        pair of <tt class="classname">DatabaseEntry</tt> objects:
+        data are Java <code class="classname">String</code> objects, you instantiate a
+        pair of <code class="classname">DatabaseEntry</code> objects:
     </p>
         <a id="java_dbt1"></a>
         <pre class="programlisting">package db.GettingStarted;
@@ -184,19 +182,19 @@ try {
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
-            Notice that we specify <tt class="literal">UTF-8</tt> when we retrieve the
-            <tt class="literal">byte</tt> array from our <tt class="classname">String</tt>
-            object. Without parameters, <tt class="methodname">String.getBytes()</tt> uses the
+            Notice that we specify <code class="literal">UTF-8</code> when we retrieve the
+            <code class="literal">byte</code> array from our <code class="classname">String</code>
+            object. Without parameters, <code class="methodname">String.getBytes()</code> uses the
             Java system's default encoding. You should never use a system's default
             encoding when storing data in a database because the encoding can change.
         </p>
         </div>
         <p>
         When the record is retrieved from the database, the method that you
-        use to perform this operation populates two <tt class="classname">DatabaseEntry</tt>
+        use to perform this operation populates two <code class="classname">DatabaseEntry</code>
         instances for you, one for the key and another for the data. Assuming Java
-        <tt class="classname">String</tt> objects, you retrieve your data from the
-        <tt class="classname">DatabaseEntry</tt> as follows:
+        <code class="classname">String</code> objects, you retrieve your data from the
+        <code class="classname">DatabaseEntry</code> as follows:
     </p>
         <a id="java_dbt2"></a>
         <pre class="programlisting">package db.GettingStarted;
@@ -220,16 +218,16 @@ String key = new String(myKey, "UTF-8");
 String data = new String(myData, "UTF-8"); </pre>
         <p>
         There are a large number of mechanisms that you can use to move data in
-        and out of <tt class="literal">byte</tt> arrays. To help you with this
+        and out of <code class="literal">byte</code> arrays. To help you with this
         activity, DB provides the bind APIs. These APIs allow you to
         efficiently store both primitive data types and complex objects in
-        <tt class="literal">byte</tt> arrays.
+        <code class="literal">byte</code> arrays.
     </p>
         <p>
         The next section describes basic database put and get operations. A
         basic understanding of database access is useful when describing database
         storage of more complex data such as is supported by the bind APIs. Basic
-        bind API usage is then described in <a href="bindAPI.html">Using the BIND APIs</a>.
+        bind API usage is then described in <a class="xref" href="bindAPI.html" title="Using the BIND APIs">Using the BIND APIs</a>.
     </p>
       </div>
     </div>

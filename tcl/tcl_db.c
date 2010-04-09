@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_db.c,v 12.37 2008/02/19 17:01:58 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -651,7 +651,7 @@ tcl_DbStat(interp, objc, objv, dbp)
 		MAKE_STAT_LIST("Buckets", hsp->hash_buckets);
 		if (flag != DB_FAST_STAT) {
 			MAKE_STAT_LIST("Free pages", hsp->hash_free);
-			MAKE_STAT_LIST("Bytes free", hsp->hash_bfree);
+			MAKE_WSTAT_LIST("Bytes free", hsp->hash_bfree);
 			MAKE_STAT_LIST("Number of big pages",
 			    hsp->hash_bigpages);
 			MAKE_STAT_LIST("Big pages bytes free",
@@ -669,14 +669,15 @@ tcl_DbStat(interp, objc, objv, dbp)
 		MAKE_STAT_LIST("Version", qsp->qs_version);
 		MAKE_STAT_LIST("Page size", qsp->qs_pagesize);
 		MAKE_STAT_LIST("Extent size", qsp->qs_extentsize);
-		MAKE_STAT_LIST("Number of records", qsp->qs_nkeys);
+		MAKE_STAT_LIST("Number of keys", qsp->qs_nkeys);
+		MAKE_STAT_LIST("Number of records", qsp->qs_ndata);
 		MAKE_STAT_LIST("Record length", qsp->qs_re_len);
 		MAKE_STAT_LIST("Record pad", qsp->qs_re_pad);
 		MAKE_STAT_LIST("First record number", qsp->qs_first_recno);
 		MAKE_STAT_LIST("Last record number", qsp->qs_cur_recno);
 		if (flag != DB_FAST_STAT) {
 			MAKE_STAT_LIST("Number of pages", qsp->qs_pages);
-			MAKE_STAT_LIST("Bytes free", qsp->qs_pgfree);
+			MAKE_WSTAT_LIST("Bytes free", qsp->qs_pgfree);
 		}
 	} else {	/* BTREE and RECNO are same stats */
 		bsp = (DB_BTREE_STAT *)sp;
@@ -817,7 +818,10 @@ tcl_DbPut(interp, objc, objv, dbp)
 		"-nodupdata",
 #endif
 		"-append",
+		"-multiple",
+		"-multiple_key",
 		"-nooverwrite",
+		"-overwritedup",
 		"-partial",
 		"-txn",
 		NULL
@@ -827,28 +831,33 @@ tcl_DbPut(interp, objc, objv, dbp)
 		DBGET_NODUPDATA,
 #endif
 		DBPUT_APPEND,
+		DBPUT_MULTIPLE,
+		DBPUT_MULTIPLE_KEY,
 		DBPUT_NOOVER,
+		DBPUT_OVER,
 		DBPUT_PART,
 		DBPUT_TXN
 	};
 	static const char *dbputapp[] = {
-		"-append",	NULL
+		"-append",
+		"-multiple_key",
+		NULL
 	};
-	enum dbputapp { DBPUT_APPEND0 };
+	enum dbputapp { DBPUT_APPEND0, DBPUT_MULTIPLE_KEY0 };
 	DBT key, data;
 	DBTYPE type;
 	DB_TXN *txn;
-	Tcl_Obj **elemv, *res;
-	void *dtmp, *ktmp;
+	Tcl_Obj **delemv, **elemv, *res;
+	void *dtmp, *ktmp, *ptr;
 	db_recno_t recno;
-	u_int32_t flag;
-	int elemc, end, freekey, freedata;
-	int i, optindex, result, ret;
+	u_int32_t flag, multiflag;
+	int delemc, elemc, end, freekey, freedata;
+	int dlen, klen, i, optindex, result, ret;
 	char *arg, msg[MSG_SIZE];
 
 	txn = NULL;
 	result = TCL_OK;
-	flag = 0;
+	flag = multiflag = 0;
 	if (objc <= 3) {
 		Tcl_WrongNumArgs(interp, 2, objv, "?-args? key data");
 		return (TCL_ERROR);
@@ -858,6 +867,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 	freekey = freedata = 0;
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
+	COMPQUIET(recno, 0);
 
 	/*
 	 * If it is a QUEUE or RECNO database, the key is a record number
@@ -867,25 +877,25 @@ tcl_DbPut(interp, objc, objv, dbp)
 	(void)dbp->get_type(dbp, &type);
 
 	/*
-	 * We need to determine where the end of required args are.  If we
-	 * are using a QUEUE/RECNO db and -append, then there is just one
-	 * req arg (data).  Otherwise there are two (key data).
+	 * We need to determine where the end of required args are.  If we are
+	 * using a QUEUE/RECNO db and -append, or -multiple_key is specified,
+	 * then there is just one req arg (data).  Otherwise there are two
+	 * (key data).
 	 *
 	 * We preparse the list to determine this since we need to know
 	 * to properly check # of args for other options below.
 	 */
 	end = objc - 2;
-	if (type == DB_QUEUE || type == DB_RECNO) {
-		i = 2;
-		while (i < objc - 1) {
-			if (Tcl_GetIndexFromObj(interp, objv[i++], dbputapp,
-			    "option", TCL_EXACT, &optindex) != TCL_OK)
-				continue;
-			switch ((enum dbputapp)optindex) {
-			case DBPUT_APPEND0:
-				end = objc - 1;
-				break;
-			}
+	i = 2;
+	while (i < objc - 1) {
+		if (Tcl_GetIndexFromObj(interp, objv[i++], dbputapp,
+		    "option", TCL_EXACT, &optindex) != TCL_OK)
+			continue;
+		switch ((enum dbputapp)optindex) {
+		case DBPUT_APPEND0:
+		case DBPUT_MULTIPLE_KEY0:
+			end = objc - 1;
+			break;
 		}
 	}
 	Tcl_ResetResult(interp);
@@ -926,9 +936,21 @@ tcl_DbPut(interp, objc, objv, dbp)
 			FLAG_CHECK(flag);
 			flag = DB_APPEND;
 			break;
+		case DBPUT_MULTIPLE:
+			FLAG_CHECK(multiflag);
+			multiflag = DB_MULTIPLE;
+			break;
+		case DBPUT_MULTIPLE_KEY:
+			FLAG_CHECK(multiflag);
+			multiflag = DB_MULTIPLE_KEY;
+			break;
 		case DBPUT_NOOVER:
 			FLAG_CHECK(flag);
 			flag = DB_NOOVERWRITE;
+			break;
+		case DBPUT_OVER:
+			FLAG_CHECK(flag);
+			flag = DB_OVERWRITE_DUP;
 			break;
 		case DBPUT_PART:
 			if (i > (end - 1)) {
@@ -969,11 +991,116 @@ tcl_DbPut(interp, objc, objv, dbp)
 	if (result == TCL_ERROR)
 		return (result);
 
-	/*
-	 * If we are a recno db and we are NOT using append, then the 2nd
-	 * last arg is the key.
-	 */
-	if (type == DB_QUEUE || type == DB_RECNO) {
+	if (multiflag == DB_MULTIPLE) {
+		/*
+		 * To work out how big a buffer is needed, we first need to
+		 * find out the total length of the data and the number of data
+		 * items (elemc).
+		 */
+		ktmp = Tcl_GetByteArrayFromObj(objv[objc - 2], &klen);
+		result = Tcl_ListObjGetElements(interp, objv[objc - 2],
+		    &elemc, &elemv);
+		if (result != TCL_OK)
+			return (result);
+
+		dtmp = Tcl_GetByteArrayFromObj(objv[objc - 1], &dlen);
+		result = Tcl_ListObjGetElements(interp, objv[objc - 1],
+		    &delemc, &delemv);
+		if (result != TCL_OK)
+			return (result);
+
+		if (elemc < delemc)
+			delemc = elemc;
+		else
+			elemc = delemc;
+
+		memset(&key, 0, sizeof(key));
+		key.ulen = DB_ALIGN((u_int32_t)klen +
+		    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+		if ((ret = __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
+			return (ret);
+		freekey = 1;
+
+		memset(&data, 0, sizeof(data));
+		data.ulen = DB_ALIGN((u_int32_t)dlen +
+		    (u_int32_t)delemc * sizeof(u_int32_t) * 2, 1024UL);
+		data.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+		if ((ret = __os_malloc(dbp->env, data.ulen, &data.data)) != 0)
+			return (ret);
+		freedata = 1;
+
+		if (type == DB_QUEUE || type == DB_RECNO) {
+			DB_MULTIPLE_RECNO_WRITE_INIT(ptr, &key);
+			for (i = 0; i < elemc; i++) {
+				result = _GetUInt32(interp, elemv[i], &recno);
+				DB_MULTIPLE_RECNO_WRITE_NEXT(ptr, &key, recno,
+				    dtmp, 0);
+				DB_ASSERT(dbp->env, ptr != NULL);
+			}
+		} else {
+			DB_MULTIPLE_WRITE_INIT(ptr, &key);
+			for (i = 0; i < elemc; i++) {
+				ktmp = Tcl_GetByteArrayFromObj(elemv[i], &klen);
+				DB_MULTIPLE_WRITE_NEXT(ptr,
+				    &key, ktmp, (u_int32_t)klen);
+				DB_ASSERT(dbp->env, ptr != NULL);
+			}
+		}
+		DB_MULTIPLE_WRITE_INIT(ptr, &data);
+		for (i = 0; i < elemc; i++) {
+			dtmp = Tcl_GetByteArrayFromObj(delemv[i], &dlen);
+			DB_MULTIPLE_WRITE_NEXT(ptr,
+			    &data, dtmp, (u_int32_t)dlen);
+			DB_ASSERT(dbp->env, ptr != NULL);
+		}
+	} else if (multiflag == DB_MULTIPLE_KEY) {
+		/*
+		 * To work out how big a buffer is needed, we first need to
+		 * find out the total length of the data (len) and the number
+		 * of data items (elemc).
+		 */
+		ktmp = Tcl_GetByteArrayFromObj(objv[objc - 1], &klen);
+		result = Tcl_ListObjGetElements(interp, objv[objc - 1],
+		    &elemc, &elemv);
+		if (result != TCL_OK)
+			return (result);
+
+		memset(&key, 0, sizeof(key));
+		key.ulen = DB_ALIGN((u_int32_t)klen +
+		    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+		if ((ret = __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
+			return (ret);
+		freekey = 1;
+
+		if (type == DB_QUEUE || type == DB_RECNO) {
+			DB_MULTIPLE_RECNO_WRITE_INIT(ptr, &key);
+			for (i = 0; i + 1 < elemc; i += 2) {
+				result = _GetUInt32(interp, elemv[i], &recno);
+				dtmp = Tcl_GetByteArrayFromObj(elemv[i + 1],
+				    &dlen);
+				DB_MULTIPLE_RECNO_WRITE_NEXT(ptr, &key,
+				    recno, dtmp, (u_int32_t)dlen);
+				DB_ASSERT(dbp->env, ptr != NULL);
+			}
+		} else {
+			DB_MULTIPLE_WRITE_INIT(ptr, &key);
+			for (i = 0; i + 1 < elemc; i += 2) {
+				ktmp = Tcl_GetByteArrayFromObj(elemv[i], &klen);
+				dtmp = Tcl_GetByteArrayFromObj(elemv[i + 1],
+				    &dlen);
+				DB_MULTIPLE_KEY_WRITE_NEXT(ptr,
+				    &key, ktmp, (u_int32_t)klen,
+				    dtmp, (u_int32_t)dlen);
+				DB_ASSERT(dbp->env, ptr != NULL);
+			}
+		}
+	} else if (type == DB_QUEUE || type == DB_RECNO) {
+		/*
+		 * If we are a recno db and we are NOT using append, then the
+		 * 2nd last arg is the key.
+		 */
 		key.data = &recno;
 		key.ulen = key.size = sizeof(db_recno_t);
 		key.flags = DB_DBT_USERMEM;
@@ -985,8 +1112,6 @@ tcl_DbPut(interp, objc, objv, dbp)
 				return (result);
 		}
 	} else {
-		COMPQUIET(recno, 0);
-
 		ret = _CopyObjBytes(interp, objv[objc-2], &ktmp,
 		    &key.size, &freekey);
 		if (ret != 0) {
@@ -996,15 +1121,19 @@ tcl_DbPut(interp, objc, objv, dbp)
 		}
 		key.data = ktmp;
 	}
-	ret = _CopyObjBytes(interp, objv[objc-1], &dtmp, &data.size, &freedata);
-	if (ret != 0) {
-		result = _ReturnSetup(interp, ret,
-		    DB_RETOK_DBPUT(ret), "db put");
-		goto out;
+
+	if (multiflag == 0) {
+		ret = _CopyObjBytes(interp,
+		    objv[objc-1], &dtmp, &data.size, &freedata);
+		if (ret != 0) {
+			result = _ReturnSetup(interp, ret,
+			    DB_RETOK_DBPUT(ret), "db put");
+			goto out;
+		}
+		data.data = dtmp;
 	}
-	data.data = dtmp;
 	_debug_check();
-	ret = dbp->put(dbp, txn, &key, &data, flag);
+	ret = dbp->put(dbp, txn, &key, &data, flag | multiflag);
 	result = _ReturnSetup(interp, ret, DB_RETOK_DBPUT(ret), "db put");
 
 	/* We may have a returned record number. */
@@ -1014,10 +1143,10 @@ tcl_DbPut(interp, objc, objv, dbp)
 		Tcl_SetObjResult(interp, res);
 	}
 
-out:	if (dtmp != NULL && freedata)
-		__os_free(dbp->env, dtmp);
-	if (ktmp != NULL && freekey)
-		__os_free(dbp->env, ktmp);
+out:	if (freedata && data.data != NULL)
+		__os_free(dbp->env, data.data);
+	if (freekey && key.data != NULL)
+		__os_free(dbp->env, key.data);
 	return (result);
 }
 
@@ -1576,7 +1705,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			goto out1;
 		}
 		key.data = prefix;
-		key.size = strlen(prefix);
+		key.size = (u_int32_t)strlen(prefix);
 		/*
 		 * If they give us an empty pattern string
 		 * (i.e. -glob *), go through entire DB.
@@ -1684,26 +1813,35 @@ tcl_DbDelete(interp, objc, objv, dbp)
 	DB *dbp;			/* Database pointer */
 {
 	static const char *dbdelopts[] = {
+		"-consume",
 		"-glob",
+		"-multiple",
+		"-multiple_key",
 		"-txn",
 		NULL
 	};
 	enum dbdelopts {
+		DBDEL_CONSUME,
 		DBDEL_GLOB,
+		DBDEL_MULTIPLE,
+		DBDEL_MULTIPLE_KEY,
 		DBDEL_TXN
 	};
 	DBC *dbc;
 	DBT key, data;
 	DBTYPE type;
 	DB_TXN *txn;
-	void *ktmp;
+	Tcl_Obj **elemv;
+	void *dtmp, *ktmp, *ptr;
 	db_recno_t recno;
-	int freekey, i, optindex, result, ret;
-	u_int32_t flag;
+	int dlen, elemc, freekey, i, j, klen, optindex, result, ret;
+	u_int32_t dflag, flag, multiflag;
 	char *arg, *pattern, *prefix, msg[MSG_SIZE];
 
 	result = TCL_OK;
 	freekey = 0;
+	dflag = 0;
+	multiflag = 0;
 	pattern = prefix = NULL;
 	txn = NULL;
 	if (objc < 3) {
@@ -1711,7 +1849,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		return (TCL_ERROR);
 	}
 
-	ktmp = NULL;
+	dtmp = ktmp = NULL;
 	memset(&key, 0, sizeof(key));
 	/*
 	 * The first arg must be -glob, -txn or a list of keys.
@@ -1766,6 +1904,18 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			}
 			pattern = Tcl_GetStringFromObj(objv[i++], NULL);
 			break;
+		case DBDEL_CONSUME:
+			FLAG_CHECK(dflag);
+			dflag = DB_CONSUME;
+			break;
+		case DBDEL_MULTIPLE:
+			FLAG_CHECK(multiflag);
+			multiflag |= DB_MULTIPLE;
+			break;
+		case DBDEL_MULTIPLE_KEY:
+			FLAG_CHECK(multiflag);
+			multiflag |= DB_MULTIPLE_KEY;
+			break;
 		}
 		if (result != TCL_OK)
 			break;
@@ -1813,7 +1963,98 @@ tcl_DbDelete(interp, objc, objv, dbp)
 	ret = 0;
 	while (i < objc && ret == 0) {
 		memset(&key, 0, sizeof(key));
-		if (type == DB_RECNO || type == DB_QUEUE) {
+		if (multiflag == DB_MULTIPLE) {
+			/*
+			 * To work out how big a buffer is needed, we first
+			 * need to find out the total length of the data and
+			 * the number of data items (elemc).
+			 */
+			ktmp = Tcl_GetByteArrayFromObj(objv[i], &klen);
+			result = Tcl_ListObjGetElements(interp, objv[i++],
+			    &elemc, &elemv);
+			if (result != TCL_OK)
+				return (result);
+
+			memset(&key, 0, sizeof(key));
+			key.ulen = DB_ALIGN((u_int32_t)klen + (u_int32_t)elemc
+			    * sizeof(u_int32_t) * 2, 1024UL);
+			key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+			if ((ret =
+			    __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
+				return (ret);
+			freekey = 1;
+
+			if (type == DB_RECNO || type == DB_QUEUE) {
+				DB_MULTIPLE_RECNO_WRITE_INIT(ptr, &key);
+				for (j = 0; j < elemc; j++) {
+					result =
+					    _GetUInt32(interp,
+					    elemv[j], &recno);
+					if (result != TCL_OK)
+						return (result);
+					DB_MULTIPLE_RECNO_WRITE_NEXT(ptr,
+					    &key, recno, dtmp, 0);
+					DB_ASSERT(dbp->env, ptr != NULL);
+				}
+			} else {
+				DB_MULTIPLE_WRITE_INIT(ptr, &key);
+				for (j = 0; j < elemc; j++) {
+					ktmp = Tcl_GetByteArrayFromObj(elemv[j],
+					    &klen);
+					DB_MULTIPLE_WRITE_NEXT(ptr,
+					    &key, ktmp, (u_int32_t)klen);
+					DB_ASSERT(dbp->env, ptr != NULL);
+				}
+			}
+		} else if (multiflag == DB_MULTIPLE_KEY) {
+			/*
+			 * To work out how big a buffer is needed, we first
+			 * need to find out the total length of the data (len)
+			 * and the number of data items (elemc).
+			 */
+			ktmp = Tcl_GetByteArrayFromObj(objv[i], &klen);
+			result = Tcl_ListObjGetElements(interp, objv[i++],
+			    &elemc, &elemv);
+			if (result != TCL_OK)
+				return (result);
+
+			memset(&key, 0, sizeof(key));
+			key.ulen = DB_ALIGN((u_int32_t)klen +
+			    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+			key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+			if ((ret =
+			    __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
+				return (ret);
+			freekey = 1;
+
+			if (type == DB_RECNO || type == DB_QUEUE) {
+				DB_MULTIPLE_RECNO_WRITE_INIT(ptr, &key);
+				for (j = 0; j + 1 < elemc; j += 2) {
+					result =
+					    _GetUInt32(interp,
+					    elemv[j], &recno);
+					if (result != TCL_OK)
+						return (result);
+					dtmp = Tcl_GetByteArrayFromObj(
+					    elemv[j + 1], &dlen);
+					DB_MULTIPLE_RECNO_WRITE_NEXT(ptr,
+					    &key, recno, dtmp, (u_int32_t)dlen);
+					DB_ASSERT(dbp->env, ptr != NULL);
+				}
+			} else {
+				DB_MULTIPLE_WRITE_INIT(ptr, &key);
+				for (j = 0; j + 1 < elemc; j += 2) {
+					ktmp = Tcl_GetByteArrayFromObj(
+					    elemv[j], &klen);
+					dtmp = Tcl_GetByteArrayFromObj(
+					    elemv[j + 1], &dlen);
+					DB_MULTIPLE_KEY_WRITE_NEXT(ptr,
+					    &key, ktmp, (u_int32_t)klen,
+					    dtmp, (u_int32_t)dlen);
+					DB_ASSERT(dbp->env, ptr != NULL);
+				}
+			}
+		} else if (type == DB_RECNO || type == DB_QUEUE) {
 			result = _GetUInt32(interp, objv[i++], &recno);
 			if (result == TCL_OK) {
 				key.data = &recno;
@@ -1831,13 +2072,13 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			key.data = ktmp;
 		}
 		_debug_check();
-		ret = dbp->del(dbp, txn, &key, 0);
+		ret = dbp->del(dbp, txn, &key, dflag | multiflag);
 		/*
 		 * If we have any error, set up return result and stop
 		 * processing keys.
 		 */
-		if (ktmp != NULL && freekey)
-			__os_free(dbp->env, ktmp);
+		if (freekey && key.data != NULL)
+			__os_free(dbp->env, key.data);
 		if (ret != 0)
 			break;
 	}
@@ -1868,7 +2109,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			goto out;
 		}
 		key.data = prefix;
-		key.size = strlen(prefix);
+		key.size = (u_int32_t)strlen(prefix);
 		if (strlen(prefix) == 0)
 			flag = DB_FIRST;
 		else
@@ -1882,7 +2123,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			 * move ahead.
 			 */
 			_debug_check();
-			ret = dbc->del(dbc, 0);
+			ret = dbc->del(dbc, dflag);
 			if (ret != 0) {
 				result = _ReturnSetup(interp, ret,
 				    DB_RETOK_DBCDEL(ret), "db c_del");
@@ -1928,6 +2169,7 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 		"-read_uncommitted",
 		"-update",
 #endif
+		"-bulk",
 		"-txn",
 		NULL
 	};
@@ -1937,6 +2179,7 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 		DBCUR_READ_UNCOMMITTED,
 		DBCUR_UPDATE,
 #endif
+		DBCUR_BULK,
 		DBCUR_TXN
 	};
 	DB_TXN *txn;
@@ -1967,6 +2210,9 @@ tcl_DbCursor(interp, objc, objv, dbp, dbcp)
 			flag |= DB_WRITECURSOR;
 			break;
 #endif
+		case DBCUR_BULK:
+			flag |= DB_CURSOR_BULK;
+			break;
 		case DBCUR_TXN:
 			if (i == objc) {
 				Tcl_WrongNumArgs(interp, 2, objv, "?-txn id?");
@@ -2285,7 +2531,7 @@ tcl_second_call(dbp, pkey, data, skey)
 
 		memset(tskey, 0, sizeof(DBT));
 		tskey->data = databuf;
-		tskey->size = len;
+		tskey->size = (u_int32_t)len;
 		F_SET(tskey, DB_DBT_APPMALLOC);
 	}
 

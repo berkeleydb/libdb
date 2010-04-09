@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleSerialMarshalledKeyCreator.java,v 12.6 2008/01/08 20:58:35 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial;
@@ -18,11 +18,15 @@ import com.sleepycat.bind.tuple.TupleOutput;
  * methods of the {@link MarshalledTupleKeyEntity} interface to create and
  * clear the index key fields.
  *
+ * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
+ *
  * @author Mark Hayes
  */
-public class TupleSerialMarshalledKeyCreator extends TupleSerialKeyCreator {
+public class TupleSerialMarshalledKeyCreator<D extends
+                                             MarshalledTupleKeyEntity>
+    extends TupleSerialKeyCreator<D> {
 
-    private TupleSerialMarshalledBinding binding;
+    private TupleSerialMarshalledBinding<D> binding;
     private String keyName;
 
     /**
@@ -34,7 +38,7 @@ public class TupleSerialMarshalledKeyCreator extends TupleSerialKeyCreator {
      * MarshalledTupleKeyEntity#marshalSecondaryKey} method to identify the
      * index key.
      */
-    public TupleSerialMarshalledKeyCreator(TupleSerialMarshalledBinding
+    public TupleSerialMarshalledKeyCreator(TupleSerialMarshalledBinding<D>
                                            binding,
                                            String keyName) {
 
@@ -49,7 +53,7 @@ public class TupleSerialMarshalledKeyCreator extends TupleSerialKeyCreator {
 
     // javadoc is inherited
     public boolean createSecondaryKey(TupleInput primaryKeyInput,
-                                      Object dataInput,
+                                      D dataInput,
                                       TupleOutput indexKeyOutput) {
 
         /*
@@ -57,16 +61,16 @@ public class TupleSerialMarshalledKeyCreator extends TupleSerialKeyCreator {
          * account for cases where the index key includes fields taken from the
          * primary key.
          */
-        MarshalledTupleKeyEntity entity = (MarshalledTupleKeyEntity)
+        MarshalledTupleKeyEntity entity =
             binding.entryToObject(primaryKeyInput, dataInput);
 
         return entity.marshalSecondaryKey(keyName, indexKeyOutput);
     }
 
     // javadoc is inherited
-    public Object nullifyForeignKey(Object dataInput) {
+    public D nullifyForeignKey(D dataInput) {
 
-        MarshalledTupleKeyEntity entity = (MarshalledTupleKeyEntity)
+        MarshalledTupleKeyEntity entity =
             binding.entryToObject(null, dataInput);
 
         return entity.nullifyForeignKey(keyName) ? dataInput : null;

@@ -1,16 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: PackedIntegerTest.java,v 1.5 2008/01/08 20:58:58 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.util.test;
 
-import com.sleepycat.util.PackedInteger;
 import junit.framework.Test;
 import junit.framework.TestCase;
+
+import com.sleepycat.util.PackedInteger;
 
 public class PackedIntegerTest extends TestCase
 {
@@ -23,9 +24,7 @@ public class PackedIntegerTest extends TestCase
     static final long MAX_6 = 0xFFFFFFFFFFFFL;
     static final long MAX_7 = 0xFFFFFFFFFFFFFFL;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -46,6 +45,7 @@ public class PackedIntegerTest extends TestCase
         super("PackedIntegerTest");
     }
 
+    @Override
     public void runTest() {
 
         /* Packed int tests. */

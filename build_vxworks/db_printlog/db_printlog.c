@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_printlog.c,v 12.31 2008/01/30 04:30:37 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -19,14 +19,14 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996,2008 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
 #endif
 
 int db_printlog_print_app_record __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
 int db_printlog_env_init_print __P((ENV *, u_int32_t, DB_DISTAB *));
 int db_printlog_env_init_print_42 __P((ENV *, DB_DISTAB *));
 int db_printlog_env_init_print_43 __P((ENV *, DB_DISTAB *));
-int db_printlog_env_init_print_45 __P((ENV *, DB_DISTAB *));
+int db_printlog_env_init_print_47 __P((ENV *, DB_DISTAB *));
 int db_printlog_lsn_arg __P((char *, DB_LSN *));
 int db_printlog_main __P((int, char *[]));
 int db_printlog_open_rep_db __P((DB_ENV *, DB **, DBC **));
@@ -341,10 +341,32 @@ db_printlog_env_init_print(env, version, dtabp)
 	 * functions.  Then we overwrite only specific entries based on
 	 * each previous version we support.
 	 */
-	if ((ret = db_printlog_env_init_print_45(env, dtabp)) != 0)
-		return (ret);
+	if ((ret = __bam_init_print(env, dtabp)) != 0)
+		goto err;
+	if ((ret = __crdel_init_print(env, dtabp)) != 0)
+		goto err;
+	if ((ret = __db_init_print(env, dtabp)) != 0)
+		goto err;
+	if ((ret = __dbreg_init_print(env, dtabp)) != 0)
+		goto err;
+	if ((ret = __fop_init_print(env, dtabp)) != 0)
+		goto err;
+#ifdef HAVE_HASH
+	if ((ret = __ham_init_print(env, dtabp)) != 0)
+		goto err;
+#endif
+#ifdef HAVE_QUEUE
+	if ((ret = __qam_init_print(env, dtabp)) != 0)
+		goto err;
+#endif
+	if ((ret = __txn_init_print(env, dtabp)) != 0)
+		goto err;
 
 	switch (version) {
+	case DB_LOGVERSION:
+		ret = 0;
+		break;
+
 	/*
 	 * There are no log record/recovery differences between
 	 * 4.4 and 4.5.  The log version changed due to checksum.
@@ -352,11 +374,16 @@ db_printlog_env_init_print(env, version, dtabp)
 	 * 4.5 and 4.6.  The name of the rep_gen in txn_checkpoint
 	 * changed (to spare, since we don't use it anymore).
 	 */
+	case DB_LOGVERSION_48:
+		if ((ret = __db_add_recovery_int(env, dtabp,
+		    __db_pg_sort_44_print, DB___db_pg_sort_44)) != 0)
+			goto err;
+		break;
 	case DB_LOGVERSION_47:
 	case DB_LOGVERSION_46:
 	case DB_LOGVERSION_45:
 	case DB_LOGVERSION_44:
-		ret = 0;
+		ret = db_printlog_env_init_print_47(env, dtabp);
 		break;
 	case DB_LOGVERSION_43:
 		ret = db_printlog_env_init_print_43(env, dtabp);
@@ -370,7 +397,7 @@ db_printlog_env_init_print(env, version, dtabp)
 		ret = EINVAL;
 		break;
 	}
-	return (ret);
+err:	return (ret);
 }
 
 int
@@ -380,6 +407,9 @@ db_printlog_env_init_print_42(env, dtabp)
 {
 	int ret;
 
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	   __bam_split_42_print, DB___bam_split_42)) != 0)
+		goto err;
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __db_relink_42_print, DB___db_relink_42)) != 0)
 		goto err;
@@ -406,6 +436,21 @@ db_printlog_env_init_print_42(env, dtabp)
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_regop_42_print, DB___txn_regop_42)) != 0)
 		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_create_42_print, DB___fop_create_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_write_42_print, DB___fop_write_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_noundo_46)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
+		goto err;
 err:
 	return (ret);
 }
@@ -420,47 +465,71 @@ db_printlog_env_init_print_43(env, dtabp)
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __bam_relink_43_print, DB___bam_relink_43)) != 0)
 		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	   __bam_split_42_print, DB___bam_split_42)) != 0)
+		goto err;
 	/*
 	 * We want to use the 4.2-based txn_regop record.
 	 */
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_regop_42_print, DB___txn_regop_42)) != 0)
 		goto err;
+
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_create_42_print, DB___fop_create_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_write_42_print, DB___fop_write_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_noundo_46)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
+		goto err;
 err:
 	return (ret);
 }
 
 /*
- * env_init_print_45 --
+ * env_init_print_47 --
  *
  */
 int
-db_printlog_env_init_print_45(env, dtabp)
+db_printlog_env_init_print_47(env, dtabp)
 	ENV *env;
 	DB_DISTAB *dtabp;
 {
 	int ret;
 
-	if ((ret = __bam_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	   __bam_split_42_print, DB___bam_split_42)) != 0)
 		goto err;
-	if ((ret = __crdel_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __db_pg_sort_44_print, DB___db_pg_sort_44)) != 0)
 		goto err;
-	if ((ret = __db_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __db_pg_sort_44_print, DB___db_pg_sort_44)) != 0)
 		goto err;
-	if ((ret = __dbreg_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_create_42_print, DB___fop_create_42)) != 0)
 		goto err;
-	if ((ret = __fop_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_write_42_print, DB___fop_write_42)) != 0)
 		goto err;
-#ifdef HAVE_HASH
-	if ((ret = __ham_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_42)) != 0)
 		goto err;
-#endif
-#ifdef HAVE_QUEUE
-	if ((ret = __qam_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __fop_rename_42_print, DB___fop_rename_noundo_46)) != 0)
 		goto err;
-#endif
-	if ((ret = __txn_init_print(env, dtabp)) != 0)
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
 		goto err;
+
 err:
 	return (ret);
 }

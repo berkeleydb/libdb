@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: IncompatibleClassException.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.evolve;
@@ -21,7 +21,9 @@ package com.sleepycat.persist.evolve;
  */
 public class IncompatibleClassException extends RuntimeException {
 
-    public IncompatibleClassException(String msg) {
-        super(msg);
+    private static final long serialVersionUID = 2103957824L;
+
+    public IncompatibleClassException(String message) {
+        super(message);
     }
 }

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_util.c,v 12.149 2008/03/13 16:21:04 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -78,18 +78,20 @@ __rep_bulk_message(env, bulk, repth, lsn, dbt, flags)
 
 	/*
 	 * Figure out the total number of bytes needed for this record.
+	 * !!! The marshalling code includes the given len, but also
+	 * puts its own copy of the dbt->size with the DBT portion of
+	 * the record.  Account for that here.
 	 */
-	recsize = dbt->size + sizeof(DB_LSN) + sizeof(dbt->size);
+	recsize = sizeof(len) + dbt->size + sizeof(DB_LSN) + sizeof(dbt->size);
 
 	/*
-	 * If *this* buffer is actively being transmitted, wait until
-	 * we can use it.
+	 * If *this* buffer is actively being transmitted, don't wait,
+	 * just return so that it can be sent as a singleton.
 	 */
 	MUTEX_LOCK(env, rep->mtx_clientdb);
-	while (FLD_ISSET(*(bulk->flagsp), BULK_XMIT)) {
+	if (FLD_ISSET(*(bulk->flagsp), BULK_XMIT)) {
 		MUTEX_UNLOCK(env, rep->mtx_clientdb);
-		__os_yield(env, 1, 0);
-		MUTEX_LOCK(env, rep->mtx_clientdb);
+		return (DB_REP_BULKOVF);
 	}
 
 	/*
@@ -334,7 +336,7 @@ __rep_send_message(env, eid, rtype, lsnp, dbt, ctlflags, repflags)
 	__rep_control_args cntrl;
 	db_timespec msg_time;
 	int ret;
-	u_int32_t myflags, rectype;
+	u_int32_t myflags;
 	u_int8_t buf[__REP_CONTROL_SIZE];
 	size_t len;
 
@@ -403,16 +405,6 @@ __rep_send_message(env, eid, rtype, lsnp, dbt, ctlflags, repflags)
 		myflags |= DB_REP_PERMANENT;
 	else if (rtype != REP_LOG || FLD_ISSET(ctlflags, REPCTL_RESEND))
 		myflags |= DB_REP_NOBUFFER;
-	if (rtype == REP_LOG && !FLD_ISSET(ctlflags, REPCTL_PERM)) {
-		/*
-		 * Check if this is a log record we just read that
-		 * may need a REPCTL_PERM.  This is of type REP_LOG,
-		 * so we know that dbt is a log record.
-		 */
-		LOGCOPY_32(env, &rectype, dbt->data);
-		if (rectype == DB___txn_regop || rectype == DB___txn_ckp)
-			F_SET(&cntrl, REPCTL_PERM);
-	}
 
 	/*
 	 * Let everyone know if we've been in an established group.
@@ -572,7 +564,6 @@ __rep_new_master(env, cntrl, eid)
 	int eid;
 {
 	DBT dbt;
-	DB_ENV *dbenv;
 	DB_LOG *dblp;
 	DB_LOGC *logc;
 	DB_LSN first_lsn, lsn;
@@ -586,7 +577,6 @@ __rep_new_master(env, cntrl, eid)
 	u_int32_t unused;
 	int change, do_req, lockout, ret, t_ret;
 
-	dbenv = env->dbenv;
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	dblp = env->lg_handle;
@@ -596,6 +586,12 @@ __rep_new_master(env, cntrl, eid)
 	lockout = 0;
 	REP_SYSTEM_LOCK(env);
 	change = rep->gen != cntrl->gen || rep->master_id != eid;
+	/*
+	 * If we're hearing from a current or new master, then we
+	 * want to clear EPHASE0 in case this site is waiting to
+	 * hear from the master.
+	 */
+	F_CLR(rep, REP_F_EPHASE0);
 	if (change) {
 		/*
 		 * If we are already locking out others, we're either
@@ -604,10 +600,15 @@ __rep_new_master(env, cntrl, eid)
 		 * rep_start, but we cannot be racing that because we
 		 * don't allow rep_proc_msg when rep_start is going on).
 		 *
-		 * If we were in the middle of an internal initialization
-		 * and we've discovered a new master instead, clean up
-		 * our old internal init information.  We need to clean
-		 * up any flags and unlock our lockout.
+		 * We're about to become the client of a new master.  Since we
+		 * want to be able to sync with the new master as quickly as
+		 * possible, interrupt any STARTSYNC from the old master.  The
+		 * new master may need to rely on acks from us and the old
+		 * STARTSYNC is now irrelevant.
+		 *
+		 * Note that, conveniently, the "lockout" flag defines the
+		 * section of this code path during which both "message lockout"
+		 * and "memp sync interrupt" are in effect.
 		 */
 		if (F_ISSET(rep, REP_F_READY_MSG))
 			goto lckout;
@@ -615,6 +616,7 @@ __rep_new_master(env, cntrl, eid)
 		if ((ret = __rep_lockout_msg(env, rep, 1)) != 0)
 			goto errlck;
 
+		(void)__memp_set_config(env->dbenv, DB_MEMP_SYNC_INTERRUPT, 1);
 		lockout = 1;
 		/*
 		 * We must wait any remaining lease time before accepting
@@ -627,6 +629,7 @@ __rep_new_master(env, cntrl, eid)
 			REP_SYSTEM_UNLOCK(env);
 			__os_yield(env, 0, (u_long)lease_to);
 			REP_SYSTEM_LOCK(env);
+			F_SET(rep, REP_F_LEASE_EXPIRED);
 		}
 
 		if ((ret = __env_init_rec(env, cntrl->log_version)) != 0)
@@ -638,6 +641,7 @@ __rep_new_master(env, cntrl, eid)
 		__os_gettime(env, &lp->rcvd_ts, 1);
 		lp->wait_ts = rep->request_gap;
 		ZERO_LSN(lp->verify_lsn);
+		ZERO_LSN(lp->prev_ckp);
 		ZERO_LSN(lp->waiting_lsn);
 		ZERO_LSN(lp->max_wait_lsn);
 		/*
@@ -650,6 +654,12 @@ __rep_new_master(env, cntrl, eid)
 			goto err;
 		}
 
+		/*
+		 * If we were in the middle of an internal initialization
+		 * and we've discovered a new master instead, clean up
+		 * our old internal init information.  We need to clean
+		 * up any flags and unlock our lockout.
+		 */
 		REP_SYSTEM_LOCK(env);
 		if (F_ISSET(rep, REP_F_READY_API | REP_F_READY_OP)) {
 			ret = __rep_init_cleanup(env, rep, DB_FORCE);
@@ -660,7 +670,7 @@ __rep_new_master(env, cntrl, eid)
 			 * environment for a moment (until the master responds
 			 * to our ALL_REQ).
 			 */
-			F_CLR(rep, REP_F_RECOVER_MASK);
+			F_CLR(rep, REP_F_ABBREVIATED | REP_F_RECOVER_MASK);
 		}
 		MUTEX_UNLOCK(env, rep->mtx_clientdb);
 		if (ret != 0) {
@@ -671,6 +681,7 @@ __rep_new_master(env, cntrl, eid)
 		if ((ret = __db_truncate(db_rep->rep_db, ip, NULL, &unused))
 		    != 0)
 			goto errlck;
+		rep->stat.st_log_queued = 0;
 
 		/*
 		 * This needs to be performed under message lockout
@@ -681,7 +692,7 @@ __rep_new_master(env, cntrl, eid)
 		    "Updating gen from %lu to %lu from master %d",
 		    (u_long)rep->gen, (u_long)cntrl->gen, eid));
 		rep->gen = cntrl->gen;
-		(void)__rep_write_gen(env, rep->gen);
+		(void)__rep_write_gen(env, rep, rep->gen);
 		if (rep->egen <= rep->gen)
 			rep->egen = rep->gen + 1;
 		rep->master_id = eid;
@@ -702,6 +713,7 @@ __rep_new_master(env, cntrl, eid)
 			F_SET(rep, REP_F_DELAY);
 		F_SET(rep, REP_F_NOARCHIVE | REP_F_RECOVER_VERIFY);
 		F_CLR(rep, REP_F_READY_MSG);
+		(void)__memp_set_config(env->dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
 		lockout = 0;
 	} else
 		__rep_elect_done(env, rep, 1);
@@ -752,16 +764,14 @@ __rep_new_master(env, cntrl, eid)
 	if (IS_INIT_LSN(lsn) || IS_ZERO_LSN(lsn)) {
 		if ((ret = __rep_newmaster_empty(env, eid)) != 0)
 			goto err;
-		(void)__memp_set_config(dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
-		return (DB_REP_NEWMASTER);
+		goto newmaster_complete;
 	}
 
 	memset(&dbt, 0, sizeof(dbt));
 	/*
 	 * If this client is farther ahead on the log file than the master, see
 	 * if there is any overlap in the logs.  If not, the client is too
-	 * far ahead of the master and we cannot determine they're part of
-	 * the same replication group.
+	 * far ahead of the master and the client will start over.
 	 */
 	if (cntrl->lsn.file < lsn.file) {
 		if ((ret = __log_cursor(env, &logc)) != 0)
@@ -797,17 +807,17 @@ __rep_new_master(env, cntrl, eid)
 	if (!F_ISSET(rep, REP_F_DELAY))
 		(void)__rep_send_message(env,
 		    eid, REP_VERIFY_REQ, &lsn, NULL, 0, DB_REP_ANYWHERE);
-
-	(void)__memp_set_config(dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
-	return (DB_REP_NEWMASTER);
+	goto newmaster_complete;
 
 err:	/*
 	 * If we failed, we need to clear the flags we may have set above
 	 * because we're not going to be setting the verify_lsn.
 	 */
 	REP_SYSTEM_LOCK(env);
-errlck:	if (lockout)
+errlck:	if (lockout) {
 		F_CLR(rep, REP_F_READY_MSG);
+		(void)__memp_set_config(env->dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
+	}
 	F_CLR(rep, REP_F_RECOVER_MASK | REP_F_DELAY);
 lckout:	REP_SYSTEM_UNLOCK(env);
 	return (ret);
@@ -821,15 +831,15 @@ notfound:
 	 * were empty.  In-memory logs can't be completely
 	 * zeroed using __log_vtruncate, so just zero them out.
 	 */
-	if (lp->db_log_inmemory)
-		ZERO_LSN(lsn);
-	else
-		INIT_LSN(lsn);
 	RPRINT(env, DB_VERB_REP_MISC,
 	    (env, "No commit or ckp found.  Truncate log."));
-	ret = lp->db_log_inmemory ?
-	    __log_zero(env, &lsn) :
-	    __log_vtruncate(env, &lsn, &lsn, NULL);
+	if (lp->db_log_inmemory) {
+		ZERO_LSN(lsn);
+		ret = __log_zero(env, &lsn);
+	} else {
+		INIT_LSN(lsn);
+		ret = __log_vtruncate(env, &lsn, &lsn, NULL);
+	}
 	if (ret != 0 && ret != DB_NOTFOUND)
 		return (ret);
 	infop = env->reginfo;
@@ -839,6 +849,7 @@ notfound:
 	REP_SYSTEM_UNLOCK(env);
 	if ((ret = __rep_newmaster_empty(env, eid)) != 0)
 		goto err;
+newmaster_complete:
 	return (DB_REP_NEWMASTER);
 }
 
@@ -1010,8 +1021,7 @@ __rep_elect_done(env, rep, found_master)
 	db_timespec endtime;
 
 	inelect = IN_ELECTION(rep);
-	F_CLR(rep,
-	    REP_F_EPHASE0 | REP_F_EPHASE1 | REP_F_EPHASE2 | REP_F_TALLY);
+	F_CLR(rep, REP_F_EPHASE1 | REP_F_EPHASE2 | REP_F_TALLY);
 	/*
 	 * Finding a master trumps finding a new egen.
 	 */
@@ -1037,82 +1047,6 @@ __rep_elect_done(env, rep, found_master)
 	}
 	RPRINT(env, DB_VERB_REP_ELECT,
 	    (env, "Election done; egen %lu", (u_long)rep->egen));
-}
-
-/*
- * __rep_grow_sites --
- *	Called to allocate more space in the election tally information.
- * Called with the rep mutex held.  We need to call the region mutex, so
- * we need to make sure that we *never* acquire those mutexes in the
- * opposite order.
- *
- * PUBLIC: int __rep_grow_sites __P((ENV *, u_int32_t));
- */
-int
-__rep_grow_sites(env, nsites)
-	ENV *env;
-	u_int32_t nsites;
-{
-	REGENV *renv;
-	REGINFO *infop;
-	REP *rep;
-	int ret, *tally;
-	u_int32_t nalloc;
-
-	rep = env->rep_handle->region;
-
-	/*
-	 * Allocate either twice the current allocation or nsites,
-	 * whichever is more.
-	 */
-	nalloc = 2 * rep->asites;
-	if (nalloc < nsites)
-		nalloc = nsites;
-
-	infop = env->reginfo;
-	renv = infop->primary;
-	MUTEX_LOCK(env, renv->mtx_regenv);
-
-	/*
-	 * We allocate 2 tally regions, one for tallying VOTE1's and
-	 * one for VOTE2's.  Always grow them in tandem, because if we
-	 * get more VOTE1's we'll always expect more VOTE2's then too.
-	 */
-	if ((ret = __env_alloc(infop,
-	    (size_t)nalloc * sizeof(REP_VTALLY), &tally)) == 0) {
-		if (rep->tally_off != INVALID_ROFF)
-			 __env_alloc_free(
-			     infop, R_ADDR(infop, rep->tally_off));
-		rep->tally_off = R_OFFSET(infop, tally);
-		if ((ret = __env_alloc(infop,
-		    (size_t)nalloc * sizeof(REP_VTALLY), &tally)) == 0) {
-			/* Success */
-			if (rep->v2tally_off != INVALID_ROFF)
-				 __env_alloc_free(infop,
-				    R_ADDR(infop, rep->v2tally_off));
-			rep->v2tally_off = R_OFFSET(infop, tally);
-			rep->asites = nalloc;
-			rep->nsites = nsites;
-		} else {
-			/*
-			 * We were unable to allocate both.  So, we must
-			 * free the first one and reinitialize.  If
-			 * v2tally_off is valid, it is from an old
-			 * allocation and we are clearing it all out due
-			 * to the error.
-			 */
-			if (rep->v2tally_off != INVALID_ROFF)
-				 __env_alloc_free(infop,
-				    R_ADDR(infop, rep->v2tally_off));
-			__env_alloc_free(infop,
-			    R_ADDR(infop, rep->tally_off));
-			rep->v2tally_off = rep->tally_off = INVALID_ROFF;
-			rep->asites = 0;
-			rep->nsites = 0;
-		}
-	}
-	MUTEX_UNLOCK(env, renv->mtx_regenv);
-	return (ret);
 }
 
 /*
@@ -1160,6 +1094,11 @@ __env_rep_enter(env, checklock)
 	REP_SYSTEM_LOCK(env);
 	for (cnt = 0; F_ISSET(rep, REP_F_READY_API);) {
 		REP_SYSTEM_UNLOCK(env);
+		/*
+		 * We're spinning - environment may be hung. Check if
+		 * recovery has been initiated.
+		 */
+		PANIC_CHECK(env);
 		if (FLD_ISSET(rep->config, REP_C_NOWAIT)) {
 			__db_errx(env,
     "Operation locked out.  Waiting for replication lockout to complete");
@@ -1217,6 +1156,10 @@ __env_db_rep_exit(env)
  * the application will immediately try again and could reach a retry
  * limit before replication has a chance to finish.  The sleep increases
  * the probability that an application retry will succeed.
+ *
+ * Typically calls with txns set return_now so that we return immediately.
+ * We want to return immediately because we want the txn to abort ASAP
+ * so that the lockout can proceed.
  *
  * PUBLIC: int __db_rep_enter __P((DB *, int, int, int));
  */
@@ -1313,6 +1256,11 @@ __op_rep_enter(env)
 	REP_SYSTEM_LOCK(env);
 	for (cnt = 0; F_ISSET(rep, REP_F_READY_OP);) {
 		REP_SYSTEM_UNLOCK(env);
+		/*
+		 * We're spnning - enironment may be hung.  Check if
+		 * recovery has been initiated.
+		 */
+		PANIC_CHECK(env);
 		if (FLD_ISSET(rep->config, REP_C_NOWAIT)) {
 			__db_errx(env,
     "Operation locked out.  Waiting for replication lockout to complete");
@@ -1454,6 +1402,10 @@ __rep_lockout_int(env, rep, fieldp, field_val, msg, lockout_flag)
 	F_SET(rep, lockout_flag);
 	for (wait_cnt = 0; *fieldp > field_val;) {
 		REP_SYSTEM_UNLOCK(env);
+		/* We're spinning - environment may be hung.  Check if
+		 * recovery has been initiated.
+		 */
+		PANIC_CHECK(env);
 		__os_yield(env, 1, 0);
 #ifdef DIAGNOSTIC
 		if (wait_cnt == 5)
@@ -1833,7 +1785,11 @@ __rep_print(env, fmt, va_alist)
 	va_list ap;
 	DB_MSGBUF mb;
 	REP *rep;
+	db_timespec ts;
+	pid_t pid;
+	db_threadid_t tid;
 	const char *s;
+	char buf[DB_THREADID_STRLEN];
 
 	DB_MSGBUF_INIT(&mb);
 
@@ -1849,7 +1805,11 @@ __rep_print(env, fmt, va_alist)
 	}
 	if (s == NULL)
 		s = "REP_UNDEF";
-	__db_msgadd(env, &mb, "%s: ", s);
+	__os_gettime(env, &ts, 1);
+	__os_id(env->dbenv, &pid, &tid);
+	__db_msgadd(env, &mb, "[%lu:%lu][%s] %s: ",
+	    (u_long)ts.tv_sec, (u_long)ts.tv_nsec/NS_PER_US,
+	    env->dbenv->thread_id_string(env->dbenv, pid, tid, buf), s);
 
 #ifdef STDC_HEADERS
 	va_start(ap, fmt);
@@ -2001,7 +1961,7 @@ __rep_print_message(env, eid, rp, str, flags)
 		(void)strcat(ftype, " lease");		/* 24 */
 	if (LF_ISSET(DB_REP_NOBUFFER))
 		(void)strcat(ftype, " nobuf");		/* 30 */
-	if (LF_ISSET(DB_REP_PERMANENT))
+	if (FLD_ISSET(ctlflags, REPCTL_PERM))
 		(void)strcat(ftype, " perm");		/* 35 */
 	if (LF_ISSET(DB_REP_REREQUEST))
 		(void)strcat(ftype, " rereq");		/* 41 */

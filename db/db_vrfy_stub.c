@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_vrfy_stub.c,v 12.9 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #ifndef HAVE_VERIFY
@@ -94,5 +94,24 @@ __db_vrfy_putpageinfo(env, vdp, pip)
 	COMPQUIET(vdp, NULL);
 	COMPQUIET(pip, NULL);
 	return (__db_novrfy(env));
+}
+
+int
+__db_vrfy_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
+        DBT *dbtp;
+        int checkprint;
+        const char *prefix;
+        void *handle;
+        int (*callback) __P((void *, const void *));
+        int is_recno;
+        VRFY_DBINFO *vdp;
+{
+	COMPQUIET(dbtp, NULL);
+	COMPQUIET(checkprint, 0);
+	COMPQUIET(prefix, NULL);
+	COMPQUIET(handle, NULL);
+	COMPQUIET(callback, NULL);
+	COMPQUIET(is_recno, 0);
+	return (__db_novrfy(vdp->pgdbp->env));
 }
 #endif /* !HAVE_VERIFY */

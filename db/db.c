@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db.c,v 12.81 2008/02/18 19:11:59 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -49,6 +49,7 @@
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
@@ -57,7 +58,6 @@ static int __db_disassociate_foreign __P ((DB *));
 
 #ifdef CONFIG_TEST
 static int __db_makecopy __P((ENV *, const char *, const char *));
-static int __db_testdocopy __P((ENV *, const char *));
 static int __qam_testdocopy __P((DB *, const char *));
 #endif
 
@@ -334,7 +334,7 @@ __db_master_update(mdbp, sdbp, ip, txn, subdb, type, action, newname, flags)
 
 		/* Create a subdatabase. */
 		if ((ret = __db_new(dbc,
-		    type == DB_HASH ? P_HASHMETA : P_BTREEMETA, &p)) != 0)
+		    type == DB_HASH ? P_HASHMETA : P_BTREEMETA, NULL, &p)) != 0)
 			goto err;
 		sdbp->meta_pgno = PGNO(p);
 
@@ -349,7 +349,7 @@ __db_master_update(mdbp, sdbp, ip, txn, subdb, type, action, newname, flags)
 		memset(&ndata, 0, sizeof(ndata));
 		ndata.data = &t_pgno;
 		ndata.size = sizeof(db_pgno_t);
-		if ((ret = __dbc_put(dbc, &key, &ndata, DB_KEYLAST)) != 0)
+		if ((ret = __dbc_put(dbc, &key, &ndata, 0)) != 0)
 			goto err;
 		F_SET(sdbp, DB_AM_CREATED);
 		break;
@@ -630,7 +630,7 @@ __env_mpool(dbp, fname, flags)
 		    dbp->type != DB_QUEUE && dbp->type != DB_UNKNOWN)
 			LF_SET(DB_MULTIVERSION);
 
-	if ((ret = __memp_fopen(mpf, NULL, fname,
+	if ((ret = __memp_fopen(mpf, NULL, fname, &dbp->dirname,
 	    LF_ISSET(DB_CREATE | DB_DURABLE_UNKNOWN | DB_MULTIVERSION |
 		DB_NOMMAP | DB_ODDFILESIZE | DB_RDONLY | DB_TRUNCATE) |
 	    (F_ISSET(env->dbenv, DB_ENV_DIRECT_DB) ? DB_DIRECT : 0) |
@@ -992,6 +992,11 @@ never_opened:
 	 * otherwise affect closing down the database.  Specifically, we can't
 	 * abort and recover any of the information they control.
 	 */
+#ifdef HAVE_PARTITION
+	if (dbp->p_internal != NULL &&
+	    (t_ret = __partition_close(dbp, txn, flags)) != 0 && ret == 0)
+		ret = t_ret;
+#endif
 	if ((t_ret = __bam_db_close(dbp)) != 0 && ret == 0)
 		ret = t_ret;
 	if ((t_ret = __ham_db_close(dbp)) != 0 && ret == 0)
@@ -1051,10 +1056,6 @@ never_opened:
 		 */
 		save_flags = F_ISSET(dbp, DB_AM_INMEM | DB_AM_TXN);
 
-		/*
-		 * XXX If this is an XA handle, we'll want to specify
-		 * DB_XA_CREATE.
-		 */
 		if ((ret = __bam_db_create(dbp)) != 0)
 			return (ret);
 		if ((ret = __ham_db_create(dbp)) != 0)
@@ -1339,6 +1340,11 @@ __db_testcopy(env, dbp, name)
 	if (dbp != NULL && dbp->type == DB_QUEUE)
 		return (__qam_testdocopy(dbp, name));
 	else
+#ifdef HAVE_PARTITION
+	if (dbp != NULL && DB_IS_PARTITIONED(dbp))
+		return (__part_testdocopy(dbp, name));
+	else
+#endif
 		return (__db_testdocopy(env, name));
 }
 
@@ -1379,8 +1385,9 @@ done:	__os_free(dbp->env, filelist);
 /*
  * __db_testdocopy
  *	Create a copy of all backup files and our "main" DB.
+ * PUBLIC: int __db_testdocopy __P((ENV *, const char *));
  */
-static int
+int
 __db_testdocopy(env, name)
 	ENV *env;
 	const char *name;
@@ -1395,7 +1402,7 @@ __db_testdocopy(env, name)
 
 	/* Create the real backing file name. */
 	if ((ret = __db_appname(env,
-	    DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
+	    DB_APP_DATA, name, NULL, &real_name)) != 0)
 		return (ret);
 
 	/*
@@ -1460,8 +1467,8 @@ __db_testdocopy(env, name)
 			__os_free(env, real_name);
 			real_name = NULL;
 		}
-		if ((ret = __db_appname(
-		    env, DB_APP_DATA, namesp[i], 0, NULL, &real_name)) != 0)
+		if ((ret = __db_appname(env,
+		    DB_APP_DATA, namesp[i], NULL, &real_name)) != 0)
 			goto err;
 		if (copy != NULL) {
 			__os_free(env, copy);

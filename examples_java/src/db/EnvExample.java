@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: EnvExample.java,v 12.7 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 package db;
@@ -21,17 +21,27 @@ import java.io.OutputStream;
  */
 public class EnvExample {
     private static final String progname = "EnvExample";
-    private static final File DATABASE_HOME = new File("/tmp/database");
 
     private static void runApplication(Environment dbenv)
-        throws DatabaseException {
+        throws DatabaseException, FileNotFoundException {
+         
+        // Open a database in the environment to verify the data_dir
+        // has been set correctly.
+        DatabaseConfig dbconfig = new DatabaseConfig();
 
-        // Do something interesting...
-        // Your application goes here.
+        // The database is DB_BTREE.
+        dbconfig.setAllowCreate(true);
+        dbconfig.setMode(0644);
+        dbconfig.setType(DatabaseType.BTREE);
+        Database db=dbenv.openDatabase(null, 
+            "jEnvExample_db1.db", null, dbconfig);
+
+        // Close the database.
+        db.close();
     }
 
     private static void setupEnvironment(File home,
-                                         String dataDir,
+                                         File dataDir,
                                          OutputStream errs)
         throws DatabaseException, FileNotFoundException {
 
@@ -72,7 +82,7 @@ public class EnvExample {
     }
 
     private static void teardownEnvironment(File home,
-                                            String dataDir,
+                                            File dataDir,
                                             OutputStream errs)
         throws DatabaseException, FileNotFoundException {
 
@@ -85,17 +95,36 @@ public class EnvExample {
         Environment.remove(home, true, config);
     }
 
-    public static void main(String[] args) {
+    private static void usage() {
+        System.err.println("usage: java db.EnvExample [-h home] [-d data_dir]");
+        System.exit(1);
+    }
+
+    public static void main(String[] argv) {
         //
-        // All of the shared database files live in /tmp/database,
-        // but data files live in /database/files.
+        // All of the shared database files live in home,
+        // but data files live in dataDir.
         //
         // Using Berkeley DB in C/C++, we need to allocate two elements
         // in the array and set config[1] to NULL.  This is not
         // necessary in Java.
         //
-        File home = DATABASE_HOME;
-        String dataDir = "/database/files";
+        File home = new File("TESTDIR");
+        File dataDir = new File("data");
+
+        for (int i = 0; i < argv.length; ++i) {
+            if (argv[i].equals("-h")) {
+                if (++i >= argv.length)
+                    usage();
+                home = new File(argv[i]);
+            } else if (argv[i].equals("-d")) {
+                if (++i >= argv.length)
+                    usage();
+                dataDir = new File(argv[i]);
+            } else if (argv[i].equals("-u")) {
+                usage();
+            }
+        }
 
         try {
             System.out.println("Setup env");

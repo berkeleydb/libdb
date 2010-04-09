@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: log_put.c,v 12.70 2008/05/13 00:33:27 alexg Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -109,18 +109,30 @@ __log_put(env, lsnp, udbt, flags)
 	ZERO_LSN(old_lsn);
 	hdr.len = hdr.prev = 0;
 
-#if !defined(DEBUG_ROP) && !defined(DEBUG_WOP)
 	/*
-	 * If we are not a rep application, but are sharing a master rep env,
-	 * we should not be writing log records.
+	 * In general, if we are not a rep application, but are sharing a master
+	 * rep env, we should not be writing log records.  However, we can allow
+	 * a non-replication-aware process to join a pre-existing repmgr
+	 * environment, if env handle meets repmgr's DB_THREAD requirement.
 	 */
+
 	if (IS_REP_MASTER(env) && db_rep->send == NULL) {
-		__db_errx(env, "%s %s",
-		    "Non-replication DB_ENV handle attempting",
-		    "to modify a replicated environment");
-		return (EINVAL);
-	}
+#ifdef HAVE_REPLICATION_THREADS
+		if (F_ISSET(env, ENV_THREAD) &&
+		    rep->my_addr.host != INVALID_ROFF) {
+			if ((ret = __repmgr_autostart(env)) != 0)
+				return (ret);
+		} else
 #endif
+		{
+#if !defined(DEBUG_ROP) && !defined(DEBUG_WOP)
+			__db_errx(env, "%s %s",
+			    "Non-replication DB_ENV handle attempting",
+			    "to modify a replicated environment");
+			return (EINVAL);
+#endif
+		}
+	}
 	DB_ASSERT(env, !IS_REP_CLIENT(env));
 
 	/*
@@ -148,11 +160,7 @@ __log_put(env, lsnp, udbt, flags)
 	else
 		key = NULL;
 
-	/* Before we grab the region lock, calculate the record's checksum. */
-	if (lp->persist.version != DB_LOGVERSION)
-		__db_chksum(NULL, dbt->data, dbt->size, key, hdr.chksum);
-	else
-		__db_chksum(&hdr, dbt->data, dbt->size, key, hdr.chksum);
+	__db_chksum(&hdr, dbt->data, dbt->size, key, hdr.chksum);
 
 	LOG_SYSTEM_LOCK(env);
 	lock_held = 1;
@@ -260,16 +268,9 @@ __log_put(env, lsnp, udbt, flags)
 		 * Flush it, even if we're running with TXN_NOSYNC,
 		 * on the grounds that it should be in durable
 		 * form somewhere.
-		 *
-		 * If the send fails with this perm record and leases
-		 * are in use, we need to forcibly expire all lease
-		 * grants to prevent authoritative reads.
 		 */
-		if (ret != 0 && FLD_ISSET(ctlflags, REPCTL_PERM)) {
+		if (ret != 0 && FLD_ISSET(ctlflags, REPCTL_PERM))
 			LF_SET(DB_FLUSH);
-			if (IS_USING_LEASES(env))
-				(void)__rep_lease_expire(env, 0);
-		}
 		/*
 		 * We ignore send failures so reset 'ret' to 0 here.
 		 * We needed to check special return values from
@@ -1403,7 +1404,7 @@ __log_name(dblp, filenumber, namep, fhpp, flags)
 	 */
 	(void)snprintf(new, sizeof(new), LFNAME, filenumber);
 	if ((ret = __db_appname(env,
-	    DB_APP_LOG, new, 0, NULL, namep)) != 0 || fhpp == NULL)
+	    DB_APP_LOG, new, NULL, namep)) != 0 || fhpp == NULL)
 		return (ret);
 
 	/* The application may have specified an absolute file mode. */
@@ -1440,7 +1441,8 @@ __log_name(dblp, filenumber, namep, fhpp, flags)
 
 	/* Create an old-style file name. */
 	(void)snprintf(old, sizeof(old), LFNAME_V1, filenumber);
-	if ((ret = __db_appname(env, DB_APP_LOG, old, 0, NULL, &oname)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_LOG, old, NULL, &oname)) != 0)
 		goto err;
 
 	/*

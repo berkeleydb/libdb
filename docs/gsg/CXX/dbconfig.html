@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 6. Database Configuration</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="coreindexusage.html" title="Secondary Database Example" />
+    <link rel="prev" href="coreindexusage.html" title="Secondary Database Example" />
     <link rel="next" href="cachesize.html" title="Selecting the Cache Size" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="dbconfig"></a>Chapter 6. Database Configuration</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -108,7 +107,7 @@
     applications use BTree. For this reason, where configuration issues are
     dependent on the type of access method in use, this chapter will focus on
     BTree only. For configuration descriptions surrounding the other access
-    methods, see the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>.
+    methods, see the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
   </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -117,7 +116,30 @@
               <h2 class="title" style="clear: both"><a id="pagesize"></a>Setting the Page Size</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="dbconfig.html#overflowpages">Overflow Pages</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="dbconfig.html#Locking">Locking</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="dbconfig.html#IOEfficiency">IO Efficiency</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="dbconfig.html#pagesizeAdvice">Page Sizing Advice</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
         Internally, DB stores database entries on pages. Page sizes are
@@ -128,7 +150,7 @@
         that you select must be a power of 2. You set your database's
         page size using 
             
-            <span><tt class="methodname">Db::set_pagesize()</tt>.</span>
+            <span><code class="methodname">Db::set_pagesize()</code>.</span>
             
     </p>
         <p>
@@ -167,7 +189,6 @@
                 <h3 class="title"><a id="overflowpages"></a>Overflow Pages</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Overflow pages are used to hold a key or data item
@@ -195,13 +216,13 @@
             <span>
             using the
                 
-                <tt class="methodname">Db::stat()</tt>
+                <code class="methodname">Db::stat()</code>
             method, 
             </span>
             
             
             or by examining your database using the
-            <tt class="literal">db_stat</tt> command line utility.
+            <code class="literal">db_stat</code> command line utility.
         </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
@@ -211,7 +232,6 @@
                 <h3 class="title"><a id="Locking"></a>Locking</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Locking and multi-threaded access to DB databases is built into
@@ -272,11 +292,11 @@
             in your application by examining your database environment lock
             statistics. Either use the
                 
-                <tt class="methodname">DbEnv::lock_stat()</tt>
-                <tt class="methodname">Environment.getLockStats()</tt>
-            method, or use the <tt class="literal">db_stat</tt> command line utility.
+                <code class="methodname">DbEnv::lock_stat()</code>
+                <code class="methodname">Environment.getLockStats()</code>
+            method, or use the <code class="literal">db_stat</code> command line utility.
             The number of unavailable locks that your application waited for is
-            held in the lock statistic's <tt class="literal">st_lock_wait</tt> field.
+            held in the lock statistic's <code class="literal">st_lock_wait</code> field.
                 
         </p>
         </div>
@@ -287,7 +307,6 @@
                 <h3 class="title"><a id="IOEfficiency"></a>IO Efficiency</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Page size can affect how efficient DB is at moving data to and
@@ -340,7 +359,7 @@
                 filesystem's block size causes DB to write pages in block
                 size increments. As a result, it is possible for a partial page
                 to be written as the result of a transactional commit. For more
-                information, see <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/transapp/reclimit.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/transapp/reclimit.html</a>.
+                information, see <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/transapp/reclimit.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/db/ref/transapp/reclimit.html</a>.
             </p>
           </div>
         </div>
@@ -351,7 +370,6 @@
                 <h3 class="title"><a id="pagesizeAdvice"></a>Page Sizing Advice</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Page sizing can be confusing at first, so here are some general
@@ -382,9 +400,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="coreindexusage.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="cachesize.html">Next</a></td>
         </tr>
         <tr>

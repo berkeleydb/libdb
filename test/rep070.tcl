@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep070.tcl,v 1.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep070
 # TEST	Test of startup_done condition with idle master.
@@ -14,12 +14,15 @@
 proc rep070 { method { niter 200 } { tnum "070" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	# Run for btree and queue only.
 	if { $checking_valid_methods } {
 		set test_methods {}
 		foreach method $valid_methods {
-			if { [is_btree $method] == 1 || [is_queue $method] == 1 } {
+			if { [is_btree $method] == 1 ||\
+			    [is_queue $method] == 1 } {
 				lappend test_methods $method
 			}
 		}
@@ -28,6 +31,18 @@ proc rep070 { method { niter 200 } { tnum "070" } args } {
 	if { [is_btree $method] != 1 && [is_queue $method] != 1 } {
 		puts "Skipping rep070 for method $method."
 		return
+	}
+
+	# This test does not cover any new ground with in-memory 
+	# databases.
+	if { $databases_in_memory } {
+		puts "Skipping Rep$tnum for in-memory databases."
+		return 
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
 	}
 
 	set args [convert_args $method $args]
@@ -46,7 +61,7 @@ proc rep070 { method { niter 200 } { tnum "070" } args } {
 				continue
 			}
 			puts "Rep$tnum ($method $r $args): Test of\
-			    internal initialization and startup_done."
+			    internal initialization and startup_done $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep070_sub $method $niter $tnum $l $r $args
@@ -56,13 +71,18 @@ proc rep070 { method { niter 200 } { tnum "070" } args } {
 
 proc rep070_sub { method niter tnum logset recargs largs } {
 	source ./include.tcl
-	global startp_done
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -87,28 +107,28 @@ proc rep070_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
-	    $m_logargs $verbargs -errpfx MASTER \
+	    $m_logargs $verbargs -errpfx MASTER $repmemargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
 	# Put some data into the database
 	puts "\tRep$tnum.a: Run rep_test in master env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 
 	# Open a client
 	puts "\tRep$tnum.b: Open client."
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
-	    $c_logargs $verbargs -errpfx CLIENT \
+	    $c_logargs $verbargs -errpfx CLIENT $repmemargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	rep070_verify_startup_done $clientenv $envlist
 
-	# Close and re-open the client.  What happens next depends on whether we
-	# used -recover.
+	# Close and re-open the client.  What happens next depends on whether
+	# we used -recover.
 	#
 	$clientenv close
 	set clientenv [eval $cl_envcmd $recargs -rep_client]

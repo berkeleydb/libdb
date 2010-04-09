@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Putting Records Using Cursors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Cursors.html" title="Chapter 4. Using Cursors" />
-    <link rel="previous" href="Positioning.html" title="Getting Records Using the Cursor" />
+    <link rel="prev" href="Positioning.html" title="Getting Records Using the Cursor" />
     <link rel="next" href="DeleteEntryWCursor.html" title="Deleting Records Using Cursors" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="PutEntryWCursor"></a>Putting Records Using Cursors</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         You can use cursors to put records into the database. DB's behavior
@@ -46,7 +45,7 @@
     </p>
       <p>
         You use 
-            <tt class="methodname">DBC-&gt;put()</tt>
+            <code class="methodname">DBC-&gt;put()</code>
             
             
         to put (write) records to the database. You can use the following flags
@@ -57,12 +56,12 @@
           <li>
             <p>
             
-            <tt class="literal">DB_NODUPDATA</tt>
+            <code class="literal">DB_NODUPDATA</code>
          </p>
             <p>
             If the provided key  already exists 
             in the database, then this method returns 
-            <tt class="literal">DB_KEYEXIST</tt>.
+            <code class="literal">DB_KEYEXIST</code>.
         </p>
             <p>
             If the key does not exist, then the order that the record is put into the database 
@@ -79,7 +78,7 @@
             <p>
             This flag can only be used for the BTree and Hash access methods,
             and only if the database has been configured to support sorted
-            duplicate data items (<tt class="literal">DB_DUPSORT</tt> was specified at
+            duplicate data items (<code class="literal">DB_DUPSORT</code> was specified at
             database creation time).
         </p>
             <p>
@@ -87,13 +86,13 @@
         </p>
             <p>
             For more information on duplicate records, see
-            <a href="btree.html#duplicateRecords">Allowing Duplicate Records</a>.
+            <a class="xref" href="btree.html#duplicateRecords" title="Allowing Duplicate Records">Allowing Duplicate Records</a>.
         </p>
           </li>
           <li>
             <p>
             
-            <tt class="literal">DB_KEYFIRST</tt>
+            <code class="literal">DB_KEYFIRST</code>
         </p>
             <p>
             For databases that do not support duplicates, this method behaves
@@ -115,11 +114,11 @@
           <li>
             <p>
             
-            <tt class="literal">DB_KEYLAST</tt>
+            <code class="literal">DB_KEYLAST</code>
         </p>
             <p>
             Behaves exactly as if 
-                <tt class="literal">DB_KEYFIRST</tt> 
+                <code class="literal">DB_KEYFIRST</code> 
                 
             was used, except that if the key already exists in the database and no
             duplicate sort function has been specified, the

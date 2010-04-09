@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_test,v 12.5 2006/07/07 19:05:59 bostic Exp $
+#	$Id$
 #
 # Build the Tcl test files.
 
@@ -51,7 +51,8 @@ cmp $t $f > /dev/null 2>&1 ||
 (echo "$msg1"					&& \
  echo ""					&& \
  echo "set tclsh_path SET_YOUR_TCLSH_PATH"	&& \
- echo "set tcllib ./Debug/libdb_tcl${DB_VERSION_MAJOR}${DB_VERSION_MINOR}d.dll" && \
+ echo "set buildpath Win32/Debug"	&& \
+ echo "set tcllib libdb_tcl${DB_VERSION_MAJOR}${DB_VERSION_MINOR}d.dll" && \
  echo ""					&& \
  echo "set src_root .."				&& \
  echo "set test_path ../test"			&& \
@@ -75,7 +76,7 @@ cmp $t $f > /dev/null 2>&1 ||
  echo "global checking_valid_methods"		&& \
  echo "global test_recopts"			&& \
  echo ""					&& \
- echo "set KILL ./dbkill.exe") > $t
+ echo "set KILL dbkill.exe") > $t
 
 f=../build_windows/include.tcl
 cmp $t $f > /dev/null 2>&1 ||

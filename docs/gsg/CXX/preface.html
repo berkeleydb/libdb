@@ -5,11 +5,11 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Preface</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="next" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB " />
+    <link rel="prev" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="next" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB" />
   </head>
   <body>
     <div class="navheader">
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="preface"></a>Preface</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -58,7 +57,7 @@
       <p>
         Welcome to Berkeley DB (DB).  This document introduces 
             
-            <span>DB, version 4.7.  </span>
+            <span>DB, version 4.8.  </span>
         It is intended 
 		to provide a rapid introduction to the DB API set and related concepts. The goal of this document is 
 		to provide you with an efficient mechanism
@@ -80,21 +79,29 @@
               <h2 class="title" style="clear: both"><a id="conventions"></a>Conventions Used in this Book</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="preface.html#moreinfo">For More Information</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
         The following typographical conventions are used within in this manual:
     </p>
         <p>
-        Class names are represented in <tt class="classname">monospaced font</tt>, as are <tt class="methodname">method
-        names</tt>. For example: 
+        Class names are represented in <code class="classname">monospaced font</code>, as are <code class="methodname">method
+        names</code>. For example: 
         
         
 
         
 
-        <span>"<tt class="methodname">Db::open()</tt> is a 
-		<tt class="classname">Db</tt> class method."</span>
+        <span>"<code class="methodname">Db::open()</code> is a 
+		<code class="classname">Db</code> class method."</span>
 
         
     </p>
@@ -106,7 +113,7 @@
         directory."
     </p>
         <p>
-        Program examples are displayed in a <tt class="classname">monospaced font</tt> on a shaded background.
+        Program examples are displayed in a <code class="classname">monospaced font</code> on a shaded background.
         For example:
     </p>
         <pre class="programlisting">typedef struct vendor {
@@ -119,7 +126,7 @@
 } VENDOR; </pre>
         <p>
         In some situations, programming examples are updated from one chapter to the next. When
-        this occurs, the new code is presented in <b class="userinput"><tt>monospaced bold</tt></b> font. For example:
+        this occurs, the new code is presented in <strong class="userinput"><code>monospaced bold</code></strong> font. For example:
     </p>
         <pre class="programlisting">typedef struct vendor {
     char name[MAXFIELD];             // Vendor name
@@ -128,8 +135,8 @@
     char state[3];                   // Two-digit US state code
     char zipcode[6];                 // US zipcode
     char phone_number[13];           // Vendor phone number
-    <b class="userinput"><tt>char sales_rep[MAXFIELD];        // Name of sales representative
-    char sales_rep_phone[MAXFIELD];  // Sales rep's phone number </tt></b>
+    <strong class="userinput"><code>char sales_rep[MAXFIELD];        // Name of sales representative
+    char sales_rep_phone[MAXFIELD];  // Sales rep's phone number </code></strong>
 } VENDOR; </pre>
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
@@ -145,7 +152,6 @@
                 <h3 class="title"><a id="moreinfo"></a>For More Information</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Beyond this manual, you may also find the following sources of information useful when building a
@@ -158,7 +164,7 @@
                     
 
                     
-                    <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_txn/CXX/index.html" target="_top">
+                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_txn/CXX/index.html" target="_top">
                         Getting Started with Transaction Processing for C++
                     </a>
                     
@@ -169,7 +175,7 @@
               <li>
                 <p>
                         
-                        <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_db_rep/CXX/index.html" target="_top">
+                        <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_db_rep/CXX/index.html" target="_top">
                                 Berkeley DB Getting Started with Replicated Applications for C++
                         </a>
                         
@@ -177,17 +183,22 @@
               </li>
               <li>
                 <p>
-                    <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/ref/toc.html" target="_top">
+                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/programmer_reference/index.html" target="_top">
                         Berkeley DB Programmer's Reference Guide
                     </a>
                 </p>
               </li>
               <li>
                 <p>
+                    <span>
                     
-                    <a href="http://www.oracle.com/technology/documentation/berkeley-db/db/api_cxx/frame.html" target="_top">
+                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/api_reference/CXX/frame_main.html" target="_top">
                         Berkeley DB C++ API
                     </a>
+                    </span>
+
+                    
+
                     
                     
                     
@@ -204,9 +215,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="introduction.html">Next</a></td>
         </tr>
         <tr>

@@ -3,16 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Opening a Transactional Environment and
-            Database
-            
-            
-        </title>
+    <title>Opening a Transactional Environment and Database</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="enabletxn.html" title="Chapter 2. Enabling Transactions" />
-    <link rel="previous" href="enabletxn.html" title="Chapter 2. Enabling Transactions" />
+    <link rel="prev" href="enabletxn.html" title="Chapter 2. Enabling Transactions" />
     <link rel="next" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
   </head>
   <body>
@@ -20,7 +16,7 @@
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">Opening a Transactional Environment and
-            Database
+            <span>Database</span>
             
             
         </th>
@@ -44,14 +40,12 @@
         </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             To enable transactions for your environment, you must initialize the
             transactional subsystem. Note that doing this also initializes the
             logging subsystem. In addition, you must initialize the memory pool
-            (in-memory cache). Frequently, but not always, you will also 
-            initialize the locking subsystem.  
+            (in-memory cache). You must also initialize the locking subsystem.  
             
             
             <span>
@@ -61,7 +55,7 @@
         </p>
       <p>
         Notice in the following example that you create your environment
-        handle using the <tt class="function">db_env_create()</tt> function before you open 
+        handle using the <code class="function">db_env_create()</code> function before you open 
         the environment:
     </p>
       <pre class="programlisting">#include &lt;stdio.h&gt;
@@ -120,12 +114,12 @@ err:
             The only difference is that you must pass the environment handle to
             the 
                 <span>
-                    <tt class="function">db_create()</tt> function, 
+                    <code class="function">db_create()</code> function, 
                 </span>
                 
              and you must open the database within a transaction.
              Typically auto commit is used for this purpose. To do so, pass 
-            <tt class="literal">DB_AUTO_COMMIT</tt> to the database open command.
+            <code class="literal">DB_AUTO_COMMIT</code> to the database open command.
             Also, make sure you close all your databases before you close 
             your environment.
             For example:
@@ -142,13 +136,13 @@ int
 main(void)
 {
     int ret, ret_c;
-    u_int32_t <b class="userinput"><tt>db_flags,</tt></b> env_flags;
-    <b class="userinput"><tt>DB *dbp;</tt></b>
+    u_int32_t <strong class="userinput"><code>db_flags,</code></strong> env_flags;
+    <strong class="userinput"><code>DB *dbp;</code></strong>
     DB_ENV *envp;
     const char *db_home_dir = "/tmp/myEnvironment";
-    <b class="userinput"><tt>const char *file_name = "mydb.db";
+    <strong class="userinput"><code>const char *file_name = "mydb.db";
     
-    dbp = NULL;</tt></b>
+    dbp = NULL;</code></strong>
     envp = NULL;
 
     /* Open the environment */
@@ -173,7 +167,7 @@ main(void)
         goto err;
     }
 
-    <b class="userinput"><tt>/* Initialize the DB handle */
+    <strong class="userinput"><code>/* Initialize the DB handle */
     ret = db_create(&amp;dbp, envp, 0);
     if (ret != 0) {
         envp-&gt;err(envp, ret, "Database creation failed");
@@ -192,18 +186,18 @@ main(void)
         envp-&gt;err(envp, ret, "Database '%s' open failed",
             file_name);
         goto err;
-    }</tt></b>
+    }</code></strong>
 
 
 err:
-    <b class="userinput"><tt>/* Close the database */
+    <strong class="userinput"><code>/* Close the database */
     if (dbp != NULL) {
         ret_c = dbp-&gt;close(dbp, 0);
         if (ret_c != 0) {
             envp-&gt;err(envp, ret_c, "Database close failed.");
             ret = ret_c
         }
-    }</tt></b>
+    }</code></strong>
 
 
     /* Close the environment */

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006,2008 Oracle.  All rights reserved.
+# Copyright (c) 2006-2009 Oracle.  All rights reserved.
 #
-# $Id: test122.tcl,v 1.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test122
 # TEST	Tests of multi-version concurrency control.
@@ -33,6 +33,8 @@ proc test122 { method {tnum "122"} args } {
 	set omethod [convert_method $method]
 	set encargs ""
 	set args [split_encargs $args encargs]
+	set pageargs ""
+	split_pageargs $args pageargs
 	set filename "test.db"
 
 	# Create transactional env.  Don't specify -multiversion to
@@ -40,7 +42,9 @@ proc test122 { method {tnum "122"} args } {
 	env_cleanup $testdir
 
 	puts "\tTest$tnum.a: Creating txn env."
-	set env [eval {berkdb_env} -create -txn $encargs -home $testdir]
+	set cacheargs " -cachesize {0 524288 1} "
+	set env [eval {berkdb_env}\
+	    -create $cacheargs -txn $pageargs $encargs -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# Open database.

@@ -25,8 +25,13 @@ t/db-3.1.t
 t/db-3.2.t
 t/db-3.3.t
 t/db-4.x.t
+t/db-4.3.t
 t/db-4.4.t
+t/db-4.6.t
+t/db-4.7.t
+t/db-4.8.t
 t/destroy.t
+t/encode.t
 t/encrypt.t
 t/env.t
 t/examples.t
@@ -40,6 +45,7 @@ t/mldbm.t
 t/pod.t
 t/queue.t
 t/recno.t
+t/sequence.t
 t/strict.t
 t/subdb.t
 t/txn.t

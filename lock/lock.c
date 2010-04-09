@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: lock.c,v 12.59 2008/05/07 12:27:35 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -367,13 +367,13 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
  *	ENV->lock_get pre/post processing.
  *
  * PUBLIC: int __lock_get_pp __P((DB_ENV *,
- * PUBLIC:     u_int32_t, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
+ * PUBLIC:     u_int32_t, u_int32_t, DBT *, db_lockmode_t, DB_LOCK *));
  */
 int
 __lock_get_pp(dbenv, locker, flags, obj, lock_mode, lock)
 	DB_ENV *dbenv;
 	u_int32_t locker, flags;
-	const DBT *obj;
+	DBT *obj;
 	db_lockmode_t lock_mode;
 	DB_LOCK *lock;
 {
@@ -389,6 +389,9 @@ __lock_get_pp(dbenv, locker, flags, obj, lock_mode, lock)
 	/* Validate arguments. */
 	if ((ret = __db_fchk(env, "DB_ENV->lock_get", flags,
 	    DB_LOCK_NOWAIT | DB_LOCK_UPGRADE | DB_LOCK_SWITCH)) != 0)
+		return (ret);
+
+	if ((ret = __dbt_usercopy(env, obj)) != 0)
 		return (ret);
 
 	ENV_ENTER(env, ip);
@@ -460,7 +463,8 @@ __lock_get(env, locker, flags, obj, lock_mode, lock)
 /*
  * __lock_alloclock -- allocate a lock from another partition.
  *	We assume we have the partition locked on entry and leave
- * it unlocked on exit since we will have to retry the lock operation.
+ * it unlocked on success since we will have to retry the lock operation.
+ * The mutex will be locked if we are out of space.
  */
 static int
 __lock_alloclock(lt, part_id)
@@ -509,6 +513,9 @@ again:	for (cur_p++; sh_lock == NULL && cur_p < end_p; cur_p++) {
 		end_p = &lt->part_array[part_id];
 		goto again;
 	}
+
+	cur_p = &lt->part_array[part_id];
+	MUTEX_LOCK(lt->env, cur_p->mtx_part);
 
 err:	return (__lock_nomem(lt->env, "lock entries"));
 }
@@ -569,7 +576,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	sh_obj = NULL;
 
 	/* Check that the lock mode is valid.  */
-	if (lock_mode >= (db_lockmode_t)region->stat.st_nmodes) {
+	if (lock_mode >= (db_lockmode_t)region->nmodes) {
 		__db_errx(env, "DB_ENV->lock_get: invalid lock mode %lu",
 		    (u_long)lock_mode);
 		return (EINVAL);
@@ -783,23 +790,6 @@ again:	if (obj == NULL) {
 			    lt->part_array[part_id].part_stat.st_nlocks;
 #endif
 
-		/*
-		 * Allocate a mutex if we do not have a mutex backing the lock.
-		 *
-		 * Use the lock mutex to block the thread; lock the mutex
-		 * when it is allocated so that we will block when we try
-		 * to lock it again.  We will wake up when another thread
-		 * grants the lock and releases the mutex.  We leave it
-		 * locked for the next use of this lock object.
-		 */
-		if (newl->mtx_lock == MUTEX_INVALID) {
-			if ((ret = __mutex_alloc(env, MTX_LOGICAL_LOCK,
-			    DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_SELF_BLOCK,
-			    &newl->mtx_lock)) != 0)
-				goto err;
-			MUTEX_LOCK(env, newl->mtx_lock);
-		}
-
 		newl->holder = R_OFFSET(&lt->reginfo, sh_locker);
 		newl->refcount = 1;
 		newl->mode = lock_mode;
@@ -818,6 +808,23 @@ again:	if (obj == NULL) {
 
 		SH_LIST_INSERT_HEAD(
 		    &sh_locker->heldby, newl, locker_links, __db_lock);
+
+		/*
+		 * Allocate a mutex if we do not have a mutex backing the lock.
+		 *
+		 * Use the lock mutex to block the thread; lock the mutex
+		 * when it is allocated so that we will block when we try
+		 * to lock it again.  We will wake up when another thread
+		 * grants the lock and releases the mutex.  We leave it
+		 * locked for the next use of this lock object.
+		 */
+		if (newl->mtx_lock == MUTEX_INVALID) {
+			if ((ret = __mutex_alloc(env, MTX_LOGICAL_LOCK,
+			    DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_SELF_BLOCK,
+			    &newl->mtx_lock)) != 0)
+				goto err;
+			MUTEX_LOCK(env, newl->mtx_lock);
+		}
 		break;
 
 	case UPGRADE:
@@ -910,7 +917,7 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 		    &region->next_timeout, &sh_locker->lk_expire, >)))
 			region->next_timeout = sh_locker->lk_expire;
 
-		newl->status = DB_LSTAT_WAITING;
+in_abort:	newl->status = DB_LSTAT_WAITING;
 		STAT(lt->obj_stat[ndx].st_lock_wait++);
 		/* We are about to block, deadlock detector must run. */
 		region->need_dd = 1;
@@ -956,6 +963,13 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 
 		switch (newl->status) {
 		case DB_LSTAT_ABORTED:
+			/*
+			 * If we raced with the deadlock detector and it
+			 * mistakenly picked this tranaction to abort again
+			 * ignore the abort and request the lock again.
+			 */
+			if (F_ISSET(sh_locker, DB_LOCKER_INABORT))
+				goto in_abort;
 			ret = DB_LOCK_DEADLOCK;
 			goto err;
 		case DB_LSTAT_EXPIRED:
@@ -1326,7 +1340,6 @@ __lock_freelock(lt, lockp, sh_locker, flags)
 	region = lt->reginfo.primary;
 
 	if (LF_ISSET(DB_LOCK_UNLINK)) {
-
 		SH_LIST_REMOVE(lockp, locker_links, __db_lock);
 		if (lockp->status == DB_LSTAT_HELD) {
 			sh_locker->nlocks--;

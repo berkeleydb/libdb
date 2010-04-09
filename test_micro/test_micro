@@ -1,6 +1,14 @@
 #! /bin/sh
 #
-# $Id: test_micro,v 1.51 2008/04/14 02:21:47 david Exp $
+# $Id$
+LIBS=${LIBS:-"-lpthread"}
+WINBUILDDIR="Win32/Release"
+
+CYGWIN=0
+HOSTOS="`uname -o 2>/dev/null||uname -s 2>/dev/null`"
+if test `echo "$HOSTOS"|grep -i cygwin|wc -l` -gt 0;then
+	CYGWIN=1
+fi
 
 # build_test_micro_posix
 #	Build test_micro on a POSIX system.
@@ -9,7 +17,7 @@ build_test_micro_posix()
 	# See if there's a test_micro binary already.
 	test $clean -eq 0 && test -x test_micro && return 0
 
-	echo 'Compiling test_micro...'
+	echo 'Compiling test_micro on posix system...'
 	rm -f test_micro
 	CC=${CC:-gcc}
 	if [ "$CC" = "gcc" ]; then
@@ -17,8 +25,8 @@ build_test_micro_posix()
 	else
 		CC="$CC -O"
 	fi
-	$CC -I. -I.. -I../include -I../include_auto -I$h/source\
-	    $SRC -o test_micro libdb.a $LIBS || return 1
+	$CC -I. -I../dbinc -I../dbinc_auto -I.. -I$h/source \
+	    $SRC -o test_micro ./libdb.a $LIBS || return 1
 }
 
 # build_test_micro_windows
@@ -28,11 +36,12 @@ build_test_micro_windows()
 	# See if there's a test_micro binary already.
 	test $clean -eq 0 && test -x test_micro && return 0
 
-	echo 'Compiling test_micro...'
+	echo 'Compiling test_micro on windows ...'
 	rm -f test_micro
+
 	cl /nologo /o test_micro /DDB_WIN32 /G6 /Ox /MD\
-	    -I.. -I../.. -I../include -I../include_auto $SRC $WINSRC\
-	    libdb*.lib ws2_32.lib advapi32.lib || return 1
+	  -I./  -I../ -I$h/source/ -I../dbinc -I../dbinc_auto $SRC $WINSRC\
+	    ./$WINBUILDDIR/libdb*.lib ./Release/libdb*.lib ws2_32.lib advapi32.lib 
 }
 
 # run --
@@ -41,21 +50,39 @@ run()
 {
 	# You can set the MAJOR and MINOR environment variables to limit
 	# the BDB releases on which the tests are run.
+	echo Versions db-${MAJOR:-[3-9]}.${MINOR:-*}.*
 	for i in db-${MAJOR:-[3-9]}.${MINOR:-*}.*; do
-		if [ -f $i/build_unix/libdb.a ] ; then
-			(cd $i/build_unix/ &&
-			    build_test_micro_posix || exit 1)
-		elif [ -f $i/build_win*/Release/libdb??.lib ] ; then
-			(cd $i/build_win*/Release &&
-			    build_test_micro_windows || exit 1)
+
+		major=`echo $i|sed "s/db-//g"|cut -d . -f 1`
+		minor=`echo $i|sed "s/db-//g"|cut -d . -f 2`
+		if test $major -gt "4";then
+			WINBUILDDIR="Win32/Release"
+		elif test $major -lt "4";then
+			WINBUILDDIR="Release"
+		elif test "X$minor" = "X" -o "$minor" -lt "8";then
+			WINBUILDDIR="Release"
+		else
+			WINBUILDDIR="Win32/Release"
 		fi
+
+		if [ -f $i/$variant/libdb.a ] ; then
+			(cd $i/$variant/ &&
+			    build_test_micro_posix || exit 1)
+		elif [ -f $i/build_windows/${WINBUILDDIR}/libdb??.lib ] ; then
+			(cd $i/build_windows &&
+			    build_test_micro_windows || exit 1)
+		 fi
 
 		echo "$i run begins: `date`"
 		echo "test_micro $1..."
-		if [ -f $i/build_unix/libdb.a ] ; then
-			(cd $i/build_unix/ && ./test_micro $1 || exit 1)
-		elif [ -f $i/build_win*/Release/libdb??.lib ] ; then
-			(cd $i/build_win*/Release && ./test_micro $1 || exit 1)
+		if [ -f $i/$variant/libdb.a ] ; then
+			(cd $i/$variant/ && ./test_micro $1 || exit 1)
+			if [ -f $t/gmon.out ] ; then
+				mv $t/gmon.out $i/$variant
+				gprof $i/$variant/.libs/lt-test_micro $i/$variant/gmon.out > $i/$variant/gprof.out
+			fi
+		elif [ -f $i/build_windows/${WINBUILDDIR}/libdb??.lib  ] ; then
+			(cd $i/build_windows/ && ./test_micro $1 || exit 1)
 		fi
 		echo "$i run ends: `date`"
 	done
@@ -63,11 +90,13 @@ run()
 
 # Get a path to this shellscript.
 t=`dirname $0`
-h=`(cd $t && echo $PWD)`
-
+h=`(cd $t && pwd)`
+if [ "$CYGWIN" = "1" ];then
+	h="`cygpath -m -a \"$h\"`"
+fi
 # We may need to re-compile, create a list of our sources.
 SRC="$h/source/b_curalloc.c $h/source/b_curwalk.c $h/source/b_del.c
-$h/source/b_get.c $h/source/b_inmem.c $h/source/b_load.c
+$h/source/b_get.c $h/source/b_inmem.c $h/source/b_load.c $h/source/b_latch.c
 $h/source/b_open.c $h/source/b_put.c $h/source/b_recover.c
 $h/source/b_txn.c $h/source/b_txn_write.c $h/source/b_uname.c
 $h/source/b_util.c $h/source/b_workload.c $h/source/test_micro.c
@@ -80,6 +109,7 @@ clean=0					# Rebuild test_micro
 workload=0				# Run workload tests
 start_test=0				# Start test
 end_test=0				# End test
+variant=build_unix
 while :
 	do case "$1" in
 	-c)				# Rebuild test_micro.
@@ -98,6 +128,8 @@ while :
 		start_test="$1"
 		end_test="$1"
 		shift;;
+	-v)	variant=$2	# get code here, rather than from build_unix
+		shift; shift;;
 	*)
 		break;;
 	esac
@@ -117,8 +149,11 @@ fi
 # Create the run directory, and initialize test_micro's arguments.
 t=RUN.`hostname | sed 's/\..*//'`
 [ -d $t ] || mkdir $t
-cmd="$cmd -d `(cd $t && pwd)`"
-
+if [ "$CYGWIN" = "1" ];then
+	cmd="$cmd -d `(cd $t && cygpath -m -a \"$PWD\")`"
+else
+	cmd="$cmd -d `(cd $t && pwd)`"
+fi
 # Set input file.
 if test "$workload" -eq 1; then
 	cmd="$cmd -i $h/configs/run.workload"

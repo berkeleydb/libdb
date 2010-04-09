@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ReplicationStatus.java,v 12.11 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;

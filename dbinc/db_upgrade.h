@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_upgrade.h,v 12.7 2008/01/08 20:58:18 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_UPGRADE_H_

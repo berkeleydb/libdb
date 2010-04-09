@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2008 Oracle.  All rights reserved.
+# Copyright (c) 2002-2009 Oracle.  All rights reserved.
 #
-# $Id: rep016.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep016
 # TEST	Replication election test with varying required nvotes.
@@ -13,6 +13,8 @@
 
 proc rep016 { method args } {
 	global errorInfo
+	global databases_in_memory
+	global repfiles_in_memory
 
 	source ./include.tcl
 	if { $is_windows9x_test == 1 } {
@@ -34,6 +36,22 @@ proc rep016 { method args } {
 	set nclients 5
 	set logsets [create_logsets [expr $nclients + 1]]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases"
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
 		foreach l $logsets {
@@ -43,8 +61,8 @@ proc rep016 { method args } {
 				    for in-memory logs with -recover."
 				continue
 			}
-			puts "Rep$tnum ($method $r): \
-			    Replication elections with varying nvotes."
+			puts "Rep$tnum ($method $r): Replication\
+			    elections with varying nvotes $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			for { set i 0 } { $i < $nclients } { incr i } {
 				puts "Rep$tnum: Client $i logs are\
@@ -57,12 +75,19 @@ proc rep016 { method args } {
 
 proc rep016_sub { method nclients tnum logset recargs largs } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -90,7 +115,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master $verbargs \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -103,7 +128,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create -home $clientdir($i) \
-		    -event rep_event \
+		    -event rep_event $repmemargs \
 		    $c_txnargs($i) $c_logargs($i) -rep_client $verbargs \
 		    -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i) $recargs]
@@ -114,8 +139,20 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
+
+	# Check that databases are in-memory or on-disk as expected.
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+	check_db_location $masterenv
+	for { set i 0 } { $i < $nclients } { incr i } { 
+		check_db_location $clientenv($i)
+	}
+	
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
 
@@ -197,7 +234,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set winner 0
 	setpriority pri $nclients $winner
 	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 test.db
+	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 	#
 	# Now run with all clients.  Client0 should always get elected
@@ -213,7 +250,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set winner [rep016_selectwinner $nsites $nvotes $nclients]
 	setpriority pri $nclients $winner
 	run_election env_cmd envlist err_cmd pri crash\
-	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 test.db
+	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 	#
 	# Elect with varying levels of participation.  Start with nsites
@@ -229,7 +266,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		set winner [rep016_selectwinner $nsites $n $n]
 		setpriority pri $nclients $winner
 		run_election env_cmd envlist err_cmd pri crash\
-		    $qdir $m $elector $nsites $n $n $winner 1 test.db
+		    $qdir $m $elector $nsites $n $n $winner 1 $dbname
 		incr count
 	}
 

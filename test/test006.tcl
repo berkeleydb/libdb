@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test006.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test006
 # TEST	Small keys/medium data
@@ -32,6 +32,11 @@ proc test006_body { method {nentries 10000} {reopen 0} {tnum "006"} \
     {ndups 5} sort flags {largs ""} } {
 	global is_je_test
 	source ./include.tcl
+
+	if { [is_compressed $largs] && $sort == "unsorted" } {
+		puts "Test$tnum skipping $sort duplicates for compression"
+		return
+	}
 
 	set do_renumber [is_rrecno $method]
         set largs [convert_args $method $largs]
@@ -130,7 +135,7 @@ proc test006_body { method {nentries 10000} {reopen 0} {tnum "006"} \
 	if { $reopen == 1 } {
 		error_check_good db_close [$db close] 0
 
-		set db [eval {berkdb_open} $largs {$testfile}]
+		set db [eval {berkdb_open} $largs $flags {$testfile}]
 		error_check_good dbopen [is_valid_db $db] TRUE
 	}
 
@@ -155,7 +160,7 @@ proc test006_body { method {nentries 10000} {reopen 0} {tnum "006"} \
 		if { $i == 1 } {
 			set curkey $key
 		}
-		error_check_good seq_get:key $key $curkey
+		error_check_good seq_get:key:$i $key $curkey
 
 		if { $i == $ndups } {
 			set i 1
@@ -175,7 +180,7 @@ proc test006_body { method {nentries 10000} {reopen 0} {tnum "006"} \
 
 	puts "\t$tname.c: verify empty file"
 	# Double check that file is now empty
-	set db [eval {berkdb_open} $largs $testfile]
+	set db [eval {berkdb_open} $largs $flags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 	if { $txnenv == 1 } {
 		set t [$env txn]

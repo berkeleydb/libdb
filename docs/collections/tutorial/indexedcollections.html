@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Creating Indexed Collections
-	</title>
+    <title>Creating Indexed Collections</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="UsingSecondaries.html" title="Chapter 3. &#10;&#9;&#9;Using Secondary Indices&#10;&#9;" />
-    <link rel="previous" href="openingforeignkeys.html" title="&#10;&#9;&#9;&#10;&#9;&#9;More Secondary Key Indices&#10;&#9;" />
-    <link rel="next" href="retrievingbyindexkey.html" title="&#10;&#9;&#9;Retrieving Items by Index Key&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="UsingSecondaries.html" title="Chapter 3.  Using Secondary Indices" />
+    <link rel="prev" href="openingforeignkeys.html" title="More Secondary Key Indices" />
+    <link rel="next" href="retrievingbyindexkey.html" title="Retrieving Items by Index Key" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     In the prior Basic example, bindings and Java collections were
@@ -48,7 +45,7 @@
 	example, bindings and collections are added for accessing the same
 	databases via their index keys. As in the prior example, serial
 	bindings and the Java 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html" target="_top">Map</a>
     
 	class are used.
 </p>
@@ -56,7 +53,7 @@
     When a map is created from a 
     
     <span>
-        <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>,
+        <a class="ulink" href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>,
     </span>
 	the keys of the map will be the index keys. However, the values of
 	the map will be the values of the primary database associated with
@@ -66,19 +63,19 @@
       <p>
     For example, the Supplier's City field is an index key that can
 	be used to access the Supplier database. When a map is created
-	using the <tt class="methodname">supplierByCityDb()</tt> method, the key to the map will be the
+	using the <code class="methodname">supplierByCityDb()</code> method, the key to the map will be the
 	City field, a 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/String.html" target="_top">String</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/String.html" target="_top">String</a>
     
 	object. When 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get</a>
     
 	is called passing the City as the key parameter, a
-	<tt class="classname">SupplierData</tt>
+	<code class="classname">SupplierData</code>
     object will be returned.
 </p>
       <p>
-    The <tt class="classname">SampleViews</tt> class is extended to create an index key
+    The <code class="classname">SampleViews</code> class is extended to create an index key
 	binding for the Supplier's City field and three Java maps based on
 	the three indices created in the prior section.
 </p>
@@ -92,16 +89,16 @@ import com.sleepycat.collections.StoredMap;
 public class SampleViews
 {
     ...
-<b class="userinput"><tt>    private StoredMap supplierByCityMap;
+<strong class="userinput"><code>    private StoredMap supplierByCityMap;
     private StoredMap shipmentByPartMap;
-    private StoredMap shipmentBySupplierMap;</tt></b>
+    private StoredMap shipmentBySupplierMap;</code></strong>
     ...
 
     public SampleViews(SampleDatabase db)
     {
         ClassCatalog catalog = db.getClassCatalog();
         ...
-<b class="userinput"><tt>        EntryBinding cityKeyBinding =
+<strong class="userinput"><code>        EntryBinding cityKeyBinding =
             new SerialBinding(catalog, String.class);
         ...
         supplierByCityMap =
@@ -112,7 +109,7 @@ public class SampleViews
                           partKeyBinding, shipmentValueBinding, true);
         shipmentBySupplierMap =
             new StoredMap(db.getShipmentBySupplierDatabase(),
-                          supplierKeyBinding, shipmentValueBinding, true); </tt></b>
+                          supplierKeyBinding, shipmentValueBinding, true); </code></strong>
     ...
     }
 } </pre>
@@ -126,16 +123,16 @@ public class SampleViews
           <li>
             <p>
             The first parameter of the 
-            <a href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
             
             constructor is a 
             
-            <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>
+            <a class="ulink" href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>
             
             rather than a 
             
             <span>
-                <a href="../../java/com/sleepycat/db/Database.html" target="_top">Database</a>.
+                <a class="ulink" href="../../java/com/sleepycat/db/Database.html" target="_top">Database</a>.
             </span>
         </p>
           </li>
@@ -148,30 +145,30 @@ public class SampleViews
         </ul>
       </div>
       <p>
-    For the <tt class="literal">supplierByCityMap</tt>, the <tt class="literal">cityKeyBinding</tt> must
+    For the <code class="literal">supplierByCityMap</code>, the <code class="literal">cityKeyBinding</code> must
 	first be created. This binding was not created in the Basic example
 	because the City field is not a primary key.
 </p>
       <p>
     Like the bindings created earlier for keys and values, the
-	<tt class="literal">cityKeyBinding</tt> is a 
-    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>.
+	<code class="literal">cityKeyBinding</code> is a 
+    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>.
 	Unlike the bindings created earlier, it is an example of creating a
 	binding for a built-in Java class, 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/String.html" target="_top">String</a>,
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/String.html" target="_top">String</a>,
 	instead of an application-defined class. Any serializable class may
 	be used.
 </p>
       <p>
-    For the <tt class="literal">shipmentByPartMap</tt> and
-	<tt class="literal">shipmentBySupplierMap</tt>, the <tt class="literal">partKeyBinding</tt> and
-	<tt class="literal">supplierKeyBinding</tt> are used. These were created in the Basic
-	example and used as the primary key bindings for the <tt class="literal">partMap</tt>
-	and <tt class="literal">supplierMap</tt>.
+    For the <code class="literal">shipmentByPartMap</code> and
+	<code class="literal">shipmentBySupplierMap</code>, the <code class="literal">partKeyBinding</code> and
+	<code class="literal">supplierKeyBinding</code> are used. These were created in the Basic
+	example and used as the primary key bindings for the <code class="literal">partMap</code>
+	and <code class="literal">supplierMap</code>.
 </p>
       <p>
-    The value bindings — <tt class="literal">supplierValueBinding</tt> and
-	<tt class="literal">shipmentValueBinding</tt> — were also created in the Basic
+    The value bindings — <code class="literal">supplierValueBinding</code> and
+	<code class="literal">shipmentValueBinding</code> — were also created in the Basic
 	example.
 </p>
       <p>
@@ -188,7 +185,7 @@ public class SampleViews
       <pre class="programlisting">public class SampleViews
 {
     ...
-<b class="userinput"><tt>    public final StoredMap getShipmentByPartMap()
+<strong class="userinput"><code>    public final StoredMap getShipmentByPartMap()
     {
         return shipmentByPartMap;
     }
@@ -216,7 +213,7 @@ public class SampleViews
     public final StoredEntrySet getSupplierByCityEntrySet()
     {
         return (StoredEntrySet) supplierByCityMap.entrySet();
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
     </div>
@@ -233,7 +230,7 @@ public class SampleViews
         <tr>
           <td width="40%" align="left" valign="top">
 		
-		More Secondary Key Indices
+		<span>More Secondary Key Indices</span>
 	 </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>

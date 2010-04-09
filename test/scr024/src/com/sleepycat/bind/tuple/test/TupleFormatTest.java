@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleFormatTest.java,v 12.9 2008/02/07 17:12:30 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple.test;
@@ -29,9 +29,7 @@ public class TupleFormatTest extends TestCase {
     private TupleOutput out;
     private DatabaseEntry buffer;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -42,9 +40,7 @@ public class TupleFormatTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(TupleFormatTest.class);
         return suite;
     }
@@ -54,6 +50,7 @@ public class TupleFormatTest extends TestCase {
         super(name);
     }
 
+    @Override
     public void setUp() {
 
         SharedTestUtils.printTestName("TupleFormatTest." + getName());
@@ -61,6 +58,7 @@ public class TupleFormatTest extends TestCase {
         out = new TupleOutput();
     }
 
+    @Override
     public void tearDown() {
 
         /* Ensure that GC can cleanup. */
@@ -561,7 +559,7 @@ public class TupleFormatTest extends TestCase {
         out.writeInt(val);
         assertEquals(4, out.size());
         copyOutputToInput();
-        assertEquals((int) val, in.readInt());
+        assertEquals(val, in.readInt());
     }
 
     public void testInt() {
@@ -600,7 +598,7 @@ public class TupleFormatTest extends TestCase {
         out.writeLong(val);
         assertEquals(8, out.size());
         copyOutputToInput();
-        assertEquals((long) val, in.readLong());
+        assertEquals(val, in.readLong());
     }
 
     public void testLong() {
@@ -695,13 +693,13 @@ public class TupleFormatTest extends TestCase {
     private void doubleTest(double val) {
 
         out.reset();
-        out.writeDouble((double) val);
+        out.writeDouble(val);
         assertEquals(8, out.size());
         copyOutputToInput();
         if (Double.isNaN(val)) {
             assertTrue(Double.isNaN(in.readDouble()));
         } else {
-            assertEquals((double) val, in.readDouble(), 0);
+            assertEquals(val, in.readDouble(), 0);
         }
     }
 
@@ -812,13 +810,13 @@ public class TupleFormatTest extends TestCase {
     private void sortedDoubleTest(double val) {
 
         out.reset();
-        out.writeSortedDouble((double) val);
+        out.writeSortedDouble(val);
         assertEquals(8, out.size());
         copyOutputToInput();
         if (Double.isNaN(val)) {
             assertTrue(Double.isNaN(in.readSortedDouble()));
         } else {
-            assertEquals((double) val, in.readSortedDouble(), 0);
+            assertEquals(val, in.readSortedDouble(), 0);
         }
     }
 

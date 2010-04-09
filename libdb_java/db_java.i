@@ -296,11 +296,14 @@ import java.util.Comparator;
 	public Database wrapper;
 	private RecordNumberAppender append_recno_handler;
 	private Comparator bt_compare_handler;
+	private BtreeCompressor bt_compress_handler;
+	private BtreeCompressor bt_decompress_handler;
 	private BtreePrefixCalculator bt_prefix_handler;
 	private Comparator dup_compare_handler;
 	private FeedbackHandler db_feedback_handler;
 	private Comparator h_compare_handler;
 	private Hasher h_hash_handler;
+	private PartitionHandler partition_handler;
 	private SecondaryKeyCreator seckey_create_handler;
 	private SecondaryMultiKeyCreator secmultikey_create_handler;
 	private ForeignKeyNullifier foreignkey_nullify_handler;
@@ -355,8 +358,30 @@ import java.util.Comparator;
 		return bt_compare_handler.compare(arr1, arr2);
 	}
 
+	private final int handle_bt_compress(DatabaseEntry dbt1,
+	    DatabaseEntry dbt2, DatabaseEntry dbt3, DatabaseEntry dbt4,
+	    DatabaseEntry dbt5) {
+		return bt_compress_handler.compress(wrapper, dbt1, dbt2,
+		    dbt3, dbt4, dbt5) ? 0 : DbConstants.DB_BUFFER_SMALL;
+	}
+
+	private final int handle_bt_decompress(DatabaseEntry dbt1,
+	    DatabaseEntry dbt2, DatabaseEntry dbt3, DatabaseEntry dbt4,
+	    DatabaseEntry dbt5) {
+		return bt_compress_handler.decompress(wrapper, dbt1, dbt2,
+		    dbt3, dbt4, dbt5) ? 0 : DbConstants.DB_BUFFER_SMALL;
+	}
+
 	public Comparator get_bt_compare() {
 		return bt_compare_handler;
+	}
+
+	public BtreeCompressor get_bt_compress() {
+		return bt_compress_handler;
+	}
+
+	public BtreeCompressor get_bt_decompress() {
+		return bt_decompress_handler;
 	}
 
 	private final int handle_bt_prefix(DatabaseEntry dbt1,
@@ -456,6 +481,14 @@ import java.util.Comparator;
 
 	public void set_foreignmultikey_nullifier(ForeignMultiKeyNullifier nullify){
 		this.foreignmultikey_nullify_handler = nullify;
+	}
+
+	private final int handle_partition(DatabaseEntry dbt1) {
+		return partition_handler.partition(wrapper, dbt1);
+	}
+
+	public PartitionHandler get_partition_callback() {
+		return partition_handler;
 	}
 
 	public synchronized void remove(String file, String database, int flags)

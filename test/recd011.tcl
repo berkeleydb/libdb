@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: recd011.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	recd011
 # TEST	Verify that recovery to a specific timestamp works.
@@ -98,7 +98,7 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 		error_check_good db_recover($i,$t,$r) $ret 0
 
 		# Now open the db and check the timestamp.
-		set db [eval {berkdb_open} $testdir/$testfile]
+		set db [eval {berkdb_open} $args $testdir/$testfile]
 		error_check_good db_open($i) [is_valid_db $db] TRUE
 
 		set dbt [$db get $key]
@@ -124,7 +124,7 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 	error_check_good db_recover(after,$t) $ret 0
 
 	# Now open the db and check the timestamp.
-	set db [eval {berkdb_open} $testdir/$testfile]
+	set db [eval {berkdb_open} $args $testdir/$testfile]
 	error_check_good db_open(after) [is_valid_db $db] TRUE
 
 	set dbt [$db get $key]

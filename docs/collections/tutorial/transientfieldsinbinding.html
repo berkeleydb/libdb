@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Using Transient Fields in an Entity Binding
-	</title>
+    <title>Using Transient Fields in an Entity Binding</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="SerializableEntity.html" title="Chapter 6. &#10;&#9;&#9;Using Serializable Entities&#10;&#9;" />
-    <link rel="previous" href="SerializableEntity.html" title="Chapter 6. &#10;&#9;&#9;Using Serializable Entities&#10;&#9;" />
-    <link rel="next" href="removingredundantvalueclasses.html" title="&#10;&#9;&#9;Removing the Redundant Value Classes&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="SerializableEntity.html" title="Chapter 6.  Using Serializable Entities" />
+    <link rel="prev" href="SerializableEntity.html" title="Chapter 6.  Using Serializable Entities" />
+    <link rel="next" href="removingredundantvalueclasses.html" title="Removing the Redundant Value Classes" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     The entity bindings from the prior example have been changed in
@@ -48,14 +45,14 @@
 	entity object.
 </p>
       <p>
-    Before, the <tt class="methodname">entryToObject()</tt> method combined the
+    Before, the <code class="methodname">entryToObject()</code> method combined the
 	deserialized value object with the key fields to create a new
 	entity object. Now, this method uses the deserialized object
 	directly as an entity, and initializes its key using the fields
 	read from the key tuple.
 </p>
       <p>
-    Before, the <tt class="methodname">objectToData()</tt> method constructed a new value
+    Before, the <code class="methodname">objectToData()</code> method constructed a new value
 	object using information in the entity. Now it simply returns the
 	entity. Nothing needs to be changed in the entity, since the
 	transient key fields won't be serialized.
@@ -76,9 +73,9 @@ public class SampleViews
         public Object entryToObject(TupleInput keyInput, Object dataInput)
         {
             String number = keyInput.readString();
-<b class="userinput"><tt>            Part part = (Part) dataInput;
+<strong class="userinput"><code>            Part part = (Part) dataInput;
             part.setKey(number);
-            return part;</tt></b>
+            return part;</code></strong>
         }
 
         public void objectToKey(Object object, TupleOutput output)
@@ -89,7 +86,7 @@ public class SampleViews
 
         public Object objectToData(Object object)
         {
-<b class="userinput"><tt>            return object;</tt></b>
+<strong class="userinput"><code>            return object;</code></strong>
         }
     }
 
@@ -103,9 +100,9 @@ public class SampleViews
         public Object entryToObject(TupleInput keyInput, Object dataInput)
         {
             String number = keyInput.readString();
-<b class="userinput"><tt>            Supplier supplier = (Supplier) dataInput;
+<strong class="userinput"><code>            Supplier supplier = (Supplier) dataInput;
             supplier.setKey(number);
-            return supplier;</tt></b>
+            return supplier;</code></strong>
         }
 
         public void objectToKey(Object object, TupleOutput output)
@@ -116,7 +113,7 @@ public class SampleViews
 
         public Object objectToData(Object object)
         {
-<b class="userinput"><tt>            return object;</tt></b>
+<strong class="userinput"><code>            return object;</code></strong>
         }
     }
 
@@ -131,9 +128,9 @@ public class SampleViews
         {
             String partNumber = keyInput.readString();
             String supplierNumber = keyInput.readString();
-<b class="userinput"><tt>            Shipment shipment = (Shipment) dataInput;
+<strong class="userinput"><code>            Shipment shipment = (Shipment) dataInput;
             shipment.setKey(partNumber, supplierNumber);
-            return shipment;</tt></b>
+            return shipment;</code></strong>
         }
 
         public void objectToKey(Object object, TupleOutput output)
@@ -145,7 +142,7 @@ public class SampleViews
 
         public Object objectToData(Object object)
         {
-<b class="userinput"><tt>            return object;</tt></b>
+<strong class="userinput"><code>            return object;</code></strong>
         }
     }
 } </pre>

@@ -1,9 +1,9 @@
 #
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: gen_msg.awk,v 12.4 2008/01/11 21:51:46 sue Exp $
+# $Id$
 #
 
 BEGIN {

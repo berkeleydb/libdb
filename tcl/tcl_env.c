@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_env.c,v 12.48 2008/02/01 18:27:17 sue Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -49,6 +49,7 @@ env_Cmd(clientData, interp, objc, objv)
 		"errfile",
 		"errpfx",
 		"event",
+		"failchk",
 		"id_reset",
 		"lock_detect",
 		"lock_id",
@@ -73,6 +74,16 @@ env_Cmd(clientData, interp, objc, objv)
 		"mpool_stat",
 		"mpool_sync",
 		"mpool_trickle",
+		"mutex",
+		"mutex_free",
+		"mutex_get_align",
+		"mutex_get_incr",
+		"mutex_get_max",
+		"mutex_get_tas_spins",
+		"mutex_lock",
+		"mutex_set_tas_spins",
+		"mutex_stat",
+		"mutex_unlock",
 		"rep_config",
 		"rep_elect",
 		"rep_flush",
@@ -91,6 +102,7 @@ env_Cmd(clientData, interp, objc, objv)
 		"rep_sync",
 		"rep_transport",
 		"repmgr",
+		"repmgr_site_list",
 		"repmgr_stat",
 		"rpcid",
 		"set_flags",
@@ -144,6 +156,7 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVERRFILE,
 		ENVERRPFX,
 		ENVEVENT,
+		ENVFAILCHK,
 		ENVIDRESET,
 		ENVLKDETECT,
 		ENVLKID,
@@ -168,6 +181,16 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVMPSTAT,
 		ENVMPSYNC,
 		ENVTRICKLE,
+		ENVMUTEX,
+		ENVMUTFREE,
+		ENVMUTGETALIGN,
+		ENVMUTGETINCR,
+		ENVMUTGETMAX,
+		ENVMUTGETTASSPINS,
+		ENVMUTLOCK,
+		ENVMUTSETTASSPINS,
+		ENVMUTSTAT,
+		ENVMUTUNLOCK,
 		ENVREPCONFIG,
 		ENVREPELECT,
 		ENVREPFLUSH,
@@ -186,6 +209,7 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVREPSYNC,
 		ENVREPTRANSPORT,
 		ENVREPMGR,
+		ENVREPMGRSITELIST,
 		ENVREPMGRSTAT,
 		ENVRPCID,
 		ENVSETFLAGS,
@@ -288,6 +312,19 @@ env_Cmd(clientData, interp, objc, objv)
 			return (TCL_ERROR);
 		}
 		result = tcl_EventNotify(interp, dbenv, objv[2], envip);
+		break;
+	case ENVFAILCHK:
+		/*
+		 * No args for this.  Error if there are some.
+		 */
+		if (objc > 2) {
+			Tcl_WrongNumArgs(interp, 2, objv, NULL);
+			return (TCL_ERROR);
+		}
+		_debug_check();
+		ret = dbenv->failchk(dbenv, 0);
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "failchk");
 		break;
 	case ENVIDRESET:
 		result = tcl_EnvIdReset(interp, objc, objv, dbenv);
@@ -436,6 +473,40 @@ env_Cmd(clientData, interp, objc, objv)
 	case ENVMP:
 		result = tcl_Mp(interp, objc, objv, dbenv, envip);
 		break;
+	case ENVMUTEX:
+		result = tcl_Mutex(interp, objc, objv, dbenv);
+		break;
+	case ENVMUTFREE:
+		result = tcl_MutFree(interp, objc, objv, dbenv);
+		break;
+	case ENVMUTGETALIGN:
+		result = tcl_MutGet(interp, dbenv, DBTCL_MUT_ALIGN);
+		break;
+	case ENVMUTGETINCR:
+		result = tcl_MutGet(interp, dbenv, DBTCL_MUT_INCR);
+		break;
+	case ENVMUTGETMAX:
+		result = tcl_MutGet(interp, dbenv, DBTCL_MUT_MAX);
+		break;
+	case ENVMUTGETTASSPINS:
+		result = tcl_MutGet(interp, dbenv, DBTCL_MUT_TAS);
+		break;
+	case ENVMUTLOCK:
+		result = tcl_MutLock(interp, objc, objv, dbenv);
+		break;
+	case ENVMUTSETTASSPINS:
+		if (objc != 3) {
+			Tcl_WrongNumArgs(interp, 2, objv, NULL);
+			return (TCL_ERROR);
+		}
+		result = tcl_MutSet(interp, objv[2], dbenv, DBTCL_MUT_TAS);
+		break;
+	case ENVMUTSTAT:
+		result = tcl_MutStat(interp, objc, objv, dbenv);
+		break;
+	case ENVMUTUNLOCK:
+		result = tcl_MutUnlock(interp, objc, objv, dbenv);
+		break;
 	case ENVREPCONFIG:
 		/*
 		 * Two args for this.  Error if different.
@@ -533,6 +604,9 @@ env_Cmd(clientData, interp, objc, objv)
 		break;
 	case ENVREPMGR:
 		result = tcl_RepMgr(interp, objc, objv, dbenv);
+		break;
+	case ENVREPMGRSITELIST:
+		result = tcl_RepMgrSiteList(interp, objc, objv, dbenv);
 		break;
 	case ENVREPMGRSTAT:
 		result = tcl_RepMgrStat(interp, objc, objv, dbenv);
@@ -1381,6 +1455,7 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 		"rep_misc",
 		"rep_msgs",
 		"rep_sync",
+		"rep_test",
 		"repmgr_connfail",
 		"repmgr_misc",
 		"wait",
@@ -1398,6 +1473,7 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 		ENVVERB_REP_MISC,
 		ENVVERB_REP_MSGS,
 		ENVVERB_REP_SYNC,
+		ENVVERB_REP_TEST,
 		ENVVERB_REPMGR_CONNFAIL,
 		ENVVERB_REPMGR_MISC,
 		ENVVERB_WAITSFOR
@@ -1451,6 +1527,9 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 		break;
 	case ENVVERB_REP_SYNC:
 		wh = DB_VERB_REP_SYNC;
+		break;
+	case ENVVERB_REP_TEST:
+		wh = DB_VERB_REP_TEST;
 		break;
 	case ENVVERB_REPMGR_CONNFAIL:
 		wh = DB_VERB_REPMGR_CONNFAIL;
@@ -1910,12 +1989,14 @@ env_DbRemove(interp, objc, objv, dbenv)
 {
 	static const char *envdbrem[] = {
 		"-auto_commit",
+		"-notdurable",
 		"-txn",
 		"--",
 		NULL
 	};
 	enum envdbrem {
 		TCL_EDBREM_COMMIT,
+		TCL_EDBREM_NOTDURABLE,
 		TCL_EDBREM_TXN,
 		TCL_EDBREM_ENDARG
 	};
@@ -1975,6 +2056,9 @@ env_DbRemove(interp, objc, objv, dbenv)
 			break;
 		case TCL_EDBREM_ENDARG:
 			endarg = 1;
+			break;
+		case TCL_EDBREM_NOTDURABLE:
+			flag |= DB_TXN_NOT_DURABLE;
 			break;
 		}
 		/*
@@ -2252,16 +2336,19 @@ env_GetOpenFlag(interp, objc, objv, dbenv)
 		char *arg;
 	} open_flags[] = {
 		{ DB_CREATE, "-create" },
+		{ DB_FAILCHK, "-failchk" },
 		{ DB_INIT_CDB, "-cdb" },
 		{ DB_INIT_LOCK, "-lock" },
 		{ DB_INIT_LOG, "-log" },
 		{ DB_INIT_MPOOL, "-mpool" },
+		{ DB_INIT_REP, "-rep" },
 		{ DB_INIT_TXN, "-txn" },
 		{ DB_LOCKDOWN, "-lockdown" },
 		{ DB_PRIVATE, "-private" },
 		{ DB_RECOVER, "-recover" },
 		{ DB_RECOVER_FATAL, "-recover_fatal" },
 		{ DB_REGISTER, "-register" },
+		{ DB_FAILCHK, "-failchk" },
 		{ DB_SYSTEM_MEM, "-system_mem" },
 		{ DB_THREAD, "-thread" },
 		{ DB_USE_ENVIRON, "-use_environ" },
@@ -2411,8 +2498,9 @@ env_GetTimeout(interp, objc, objv, dbenv)
 		u_int32_t flag;
 		char *arg;
 	} timeout_flags[] = {
-		{ DB_SET_TXN_TIMEOUT, "txn" },
 		{ DB_SET_LOCK_TIMEOUT, "lock" },
+		{ DB_SET_REG_TIMEOUT, "reg" },
+		{ DB_SET_TXN_TIMEOUT, "txn" },
 		{ 0, NULL }
 	};
 	Tcl_Obj *res;
@@ -2474,6 +2562,7 @@ env_GetVerbose(interp, objc, objv, dbenv)
 		{ DB_VERB_REP_MISC, "rep_misc" },
 		{ DB_VERB_REP_MSGS, "rep_msgs" },
 		{ DB_VERB_REP_SYNC, "rep_sync" },
+		{ DB_VERB_REP_TEST, "rep_test" },
 		{ DB_VERB_REPMGR_CONNFAIL, "repmgr_connfail" },
 		{ DB_VERB_REPMGR_MISC, "repmgr_misc" },
 		{ DB_VERB_WAITSFOR, "wait" },

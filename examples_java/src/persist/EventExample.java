@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: EventExample.java,v 1.1 2008/02/07 17:12:24 mark Exp $
+ * $Id$
  */
 
 package persist;

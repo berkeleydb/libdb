@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Environment Properties</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="Env.html" title="Chapter 2. Database Environments" />
-    <link rel="previous" href="EnvClose.html" title="Closing Database Environments" />
+    <link rel="prev" href="EnvClose.html" title="Closing Database Environments" />
     <link rel="next" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
   </head>
   <body>
@@ -32,11 +32,24 @@
             <h2 class="title" style="clear: both"><a id="EnvProps"></a>Environment Properties</h2>
           </div>
         </div>
-        <div></div>
       </div>
-      <p>You set properties for the <tt class="classname">Environment</tt> using
-    the <tt class="classname">EnvironmentConfig</tt> class. You can also set properties for a specific
-    <tt class="classname">Environment</tt> instance using <tt class="classname">EnvironmentMutableConfig</tt>.
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="EnvProps.html#envconfig">The EnvironmentConfig Class</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="EnvProps.html#envhandleconfig">EnvironmentMutableConfig</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>You set properties for the <code class="classname">Environment</code> using
+    the <code class="classname">EnvironmentConfig</code> class. You can also set properties for a specific
+    <code class="classname">Environment</code> instance using <code class="classname">EnvironmentMutableConfig</code>.
     </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -45,49 +58,48 @@
               <h3 class="title"><a id="envconfig"></a>The EnvironmentConfig Class</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-    The <tt class="classname">EnvironmentConfig</tt> class makes a
+    The <code class="classname">EnvironmentConfig</code> class makes a
     large number of fields and methods available to you.  Describing all of these
     tuning parameters is beyond the scope of this manual. However, there are a
     few properties that you are likely to want to set. They are described
     here.</p>
         <p>Note that for each of the properties that you can commonly set, there is a
     corresponding getter method. Also, you can always retrieve the
-    <tt class="classname">EnvironmentConfig</tt> object used by your environment
-    using the <tt class="methodname">Environment.getConfig()</tt> method.
+    <code class="classname">EnvironmentConfig</code> object used by your environment
+    using the <code class="methodname">Environment.getConfig()</code> method.
     </p>
         <p>
 		You set environment configuration parameters using the following methods on the 
-		<tt class="classname">EnvironmentConfig</tt> class:
+		<code class="classname">EnvironmentConfig</code> class:
 	</p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                <tt class="methodname">EnvironmentConfig.setAllowCreate()</tt>
+                <code class="methodname">EnvironmentConfig.setAllowCreate()</code>
               </p>
-              <p>If <tt class="literal">true</tt>, the database environment is created
-        when it is opened. If <tt class="literal">false</tt>, environment open fails if the environment
+              <p>If <code class="literal">true</code>, the database environment is created
+        when it is opened. If <code class="literal">false</code>, environment open fails if the environment
         does not exist. This property has no meaning if the database
-        environment already exists. Default is <tt class="literal">false</tt>.</p>
+        environment already exists. Default is <code class="literal">false</code>.</p>
             </li>
             <li>
               <p>
-                <tt class="methodname">EnvironmentConfig.setReadOnly()</tt>
+                <code class="methodname">EnvironmentConfig.setReadOnly()</code>
               </p>
-              <p>If <tt class="literal">true</tt>, then all databases opened in this
+              <p>If <code class="literal">true</code>, then all databases opened in this
         environment must be opened as read-only. If you are writing a
         multi-process application, then all but one of your processes must set
-        this value to <tt class="literal">true</tt>. Default is <tt class="literal">false</tt>.</p>
+        this value to <code class="literal">true</code>. Default is <code class="literal">false</code>.</p>
             </li>
             <li>
               <p>
-                <tt class="methodname">EnvironmentConfig.setTransactional()</tt>
+                <code class="methodname">EnvironmentConfig.setTransactional()</code>
               </p>
-              <p>If <tt class="literal">true</tt>, configures the database environment
-        to support transactions. Default is <tt class="literal">false</tt>.</p>
+              <p>If <code class="literal">true</code>, configures the database environment
+        to support transactions. Default is <code class="literal">false</code>.</p>
             </li>
           </ul>
         </div>
@@ -125,75 +137,74 @@ try {
               <h3 class="title"><a id="envhandleconfig"></a>EnvironmentMutableConfig</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-		<tt class="classname">EnvironmentMutableConfig</tt> manages properties that can be reset after the
-		<tt class="classname">Environment</tt> object has been constructed. In addition, <tt class="classname">EnvironmentConfig</tt>
-		extends <tt class="classname">EnvironmentMutableConfig</tt>, so you can set these mutable properties at
-		<tt class="classname">Environment</tt> construction time if necessary.
+		<code class="classname">EnvironmentMutableConfig</code> manages properties that can be reset after the
+		<code class="classname">Environment</code> object has been constructed. In addition, <code class="classname">EnvironmentConfig</code>
+		extends <code class="classname">EnvironmentMutableConfig</code>, so you can set these mutable properties at
+		<code class="classname">Environment</code> construction time if necessary.
 		</p>
         <p>
-            The <tt class="classname">EnvironmentMutableConfig</tt> class allows you to set the following
+            The <code class="classname">EnvironmentMutableConfig</code> class allows you to set the following
             properties:
         </p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                    <tt class="literal">setCachePercent()</tt>
+                    <code class="literal">setCachePercent()</code>
                 </p>
               <p>
                     Determines the percentage of JVM memory available to the DB cache.
-                    See <a href="cachesize.html">Selecting the Cache Size</a> 
+                    See <a class="xref" href="cachesize.html" title="Selecting the Cache Size">Selecting the Cache Size</a> 
                     for more information.
                 </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">setCacheSize()</tt>
+                    <code class="literal">setCacheSize()</code>
                 </p>
               <p>
                     Determines the total amount of memory available to the database cache.
-                    See <a href="cachesize.html">Selecting the Cache Size</a> 
+                    See <a class="xref" href="cachesize.html" title="Selecting the Cache Size">Selecting the Cache Size</a> 
                     for more information.
                 </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">setTxnNoSync()</tt>
+                    <code class="literal">setTxnNoSync()</code>
                 </p>
               <p>
                     Determines whether change records created due to a transaction commit are written to the backing
-                    log files on disk. A value of <tt class="literal">true</tt> causes
+                    log files on disk. A value of <code class="literal">true</code> causes
                     the data to not be flushed to
                     disk.  See the 
                      
-                    <i class="citetitle">Getting Started with Transaction Processing for Java</i> 
+                    <em class="citetitle">Getting Started with Transaction Processing for Java</em> 
                     guide for more information.
                 </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">setTxnWriteNoSync()</tt>
+                    <code class="literal">setTxnWriteNoSync()</code>
                 </p>
               <p>
                     Determines whether logs are flushed on transaction commit (the logs are still written, however). 
-                    By setting this value to <tt class="literal">true</tt>, you potentially gain better performance than if
+                    By setting this value to <code class="literal">true</code>, you potentially gain better performance than if
                     you flush the logs on commit, but you do so by losing some of your transaction durability guarantees.
                     See the 
                      
-                    <i class="citetitle">Getting Started with Transaction Processing for Java</i> 
+                    <em class="citetitle">Getting Started with Transaction Processing for Java</em> 
                     guide for more information.
                 </p>
             </li>
           </ul>
         </div>
         <p>
-        There is also a corresponding getter method (<tt class="methodname">getTxnNoSync()</tt>).
+        There is also a corresponding getter method (<code class="methodname">getTxnNoSync()</code>).
         Moreover, you can always retrieve your environment's 
-        <tt class="classname">EnvironmentMutableConfig</tt> object by
-        using the <tt class="methodname">Environment.getMutableConfig()</tt> method.
+        <code class="classname">EnvironmentMutableConfig</code> object by
+        using the <code class="methodname">Environment.getMutableConfig()</code> method.
      </p>
         <p>
             For example:

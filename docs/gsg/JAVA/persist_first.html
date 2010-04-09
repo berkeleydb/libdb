@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 3. Direct Persistence Layer First Steps</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
-    <link rel="previous" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
+    <link rel="prev" href="dpl.html" title="Part I. Programming with the Direct Persistence Layer" />
     <link rel="next" href="persistobject.html" title="Persistent Objects" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="persist_first"></a>Chapter 3. Direct Persistence Layer First Steps</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -76,7 +75,7 @@
                           Opening your environment as was described in
                           
                           <span>
-                          <a href="Env.html#EnvOpen">Opening Database Environments</a>.
+                          <a class="xref" href="Env.html#EnvOpen" title="Opening Database Environments">Opening Database Environments</a>.
                           </span>
                   </p>
           </li>
@@ -88,8 +87,8 @@
           <li>
             <p>
                           Identifying the classes that you want to store in
-                          DB as either a <tt class="literal">persistent</tt>
-                          class or an <tt class="literal">entity</tt>.
+                          DB as either a <code class="literal">persistent</code>
+                          class or an <code class="literal">entity</code>.
                   </p>
           </li>
         </ol>
@@ -107,7 +106,15 @@
               <h2 class="title" style="clear: both"><a id="entitystore"></a>Entity Stores</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="persist_first.html#persist-open">Opening and Closing Environments and Stores</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
                 Entity stores are the basic unit of storage that you use with the DPL. That is, it
@@ -121,7 +128,7 @@
           </p>
         <p>
                   Entity stores have configurations in the same way that environments have
-                  configurations. You can use a <tt class="classname">StoreConfig</tt> object 
+                  configurations. You can use a <code class="classname">StoreConfig</code> object 
                   to identify store properties. Among these are methods that allow you to declare
                   whether:
           </p>
@@ -131,39 +138,32 @@
               <p>
                                   the store can be created if it does not exist at the time
                                   it is opened. Use the
-                                  <tt class="methodname">StoreConfig.setAllowCreate()</tt>
-                                  method to set this.
-                          </p>
-            </li>
-            <li>
-              <p>
-                                  deferred writes are allowed for the store. Use the
-                                  <tt class="methodname">StoreConfig.setDeferredWrite()</tt>
+                                  <code class="methodname">StoreConfig.setAllowCreate()</code>
                                   method to set this.
                           </p>
             </li>
             <li>
               <p>
                                   the store is read-only. Use the
-                                  <tt class="methodname">StoreConfig.setReadOnly()</tt>
+                                  <code class="methodname">StoreConfig.setReadOnly()</code>
                                   method to set this.
                           </p>
             </li>
             <li>
               <p>
                                   the store supports transactions. Use the
-                                  <tt class="methodname">StoreConfig.setTransactional()</tt>
+                                  <code class="methodname">StoreConfig.setTransactional()</code>
                                   method to set this.
                           </p>
               <p>
                                   Writing DB transactional applications is described in  the
-                                  <i class="citetitle">Berkeley DB Java Edition Getting Started with Transaction Processing</i> guide.
+                                  <em class="citetitle">Berkeley DB Java Edition Getting Started with Transaction Processing</em> guide.
                           </p>
             </li>
           </ul>
         </div>
         <p>
-                  <tt class="classname">EntityStore</tt> objects also provide methods for retrieving
+                  <code class="classname">EntityStore</code> objects also provide methods for retrieving
                   information about the store, such as:
           </p>
         <div class="itemizedlist">
@@ -171,23 +171,23 @@
             <li>
               <p>
                                   the store's name. Use the
-                                  <tt class="methodname">EntityStore.getStoreName()</tt>
+                                  <code class="methodname">EntityStore.getStoreName()</code>
                                   method to retrieve this.
                           </p>
             </li>
             <li>
               <p>
                                   a handle to the environment in which the store is opened. Use the
-                                  <tt class="methodname">EntityStore.getEnvironment</tt>
+                                  <code class="methodname">EntityStore.getEnvironment</code>
                                   method to retrieve this handle.
                           </p>
             </li>
           </ul>
         </div>
         <p>
-                  You can also use the <tt class="classname">EntityStore</tt> to
+                  You can also use the <code class="classname">EntityStore</code> to
                   retrieve all the primary and secondary indexes related to a given type of entity
-                  object contained in the store. See <a href="persist_index.html">Working with Indices</a> for
+                  object contained in the store. See <a class="xref" href="persist_index.html" title="Chapter 4. Working with Indices">Working with Indices</a> for
                   more information.
           </p>
         <div class="sect2" lang="en" xml:lang="en">
@@ -197,13 +197,12 @@
                 <h3 class="title"><a id="persist-open"></a>Opening and Closing Environments and Stores</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                   As described in
                   
                   <span>
-                          <a href="Env.html">Database Environments</a>, 
+                          <a class="xref" href="Env.html" title="Chapter 2. Database Environments">Database Environments</a>, 
                   </span>
                           
                   an
@@ -214,7 +213,7 @@
           </p>
           <p>
                   To use an entity store, you must first open an environment and then provide that
-                  environment handle to the <tt class="classname">EntityStore</tt> constructor. 
+                  environment handle to the <code class="classname">EntityStore</code> constructor. 
           </p>
           <p>
                   For example, the following code fragment configures both

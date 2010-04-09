@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: btree.h,v 12.17 2008/01/08 20:58:17 bostic Exp $
+ * $Id$
  */
 #ifndef	_DB_BTREE_H_
 #define	_DB_BTREE_H_
@@ -69,6 +69,7 @@ struct __epg;		typedef struct __epg EPG;
 
 /* Flags for __bam_split_log(). */
 #define	SPL_NRECS	0x01		/* Split tree has record count. */
+#define	SPL_RECNO	0x02		/* This is a Recno cursor. */
 
 /* Flags for __bam_iitem(). */
 #define	BI_DELETED	0x01		/* Key/data pair only placeholder. */
@@ -121,6 +122,7 @@ typedef enum {
 #define	SR_NEXT		0x20000		/* Get the page after this key */
 #define	SR_DEL		0x40000		/* Get the tree to delete this key. */
 #define	SR_START	0x80000		/* Level to start stack. */
+#define	SR_BOTH		0x100000	/* Get this and the NEXT page */
 
 #define	SR_DELETE							\
 	(SR_WRITE | SR_DUPFIRST | SR_DELNO | SR_EXACT | SR_STACK)
@@ -160,7 +162,7 @@ struct __epg {
 
 #define	BT_STK_ENTER(env, c, pagep, page_indx, l, mode, ret) do {	\
 	if ((ret = ((c)->csp == (c)->esp ?				\
-	    __bam_stkgrow(env, c) : 0)) == 0) {			\
+	    __bam_stkgrow(env, c) : 0)) == 0) {				\
 		(c)->csp->page = pagep;					\
 		(c)->csp->indx = (page_indx);				\
 		(c)->csp->entries = NUM_ENT(pagep);			\
@@ -193,6 +195,84 @@ struct __epg {
 #define	BT_STK_POP(c)							\
 	((c)->csp == (c)->sp ? NULL : --(c)->csp)
 
+/*
+ * Flags for __bam_dpages.
+ */
+#define	BTD_UPDATE	0x0001		/* Update parents. */
+#define	BTD_RELINK	0x0002		/* Relink leaf pages. */
+
+/*
+ * TRY_LOCK
+ *	When holding a stack we have pages latched but not locked so
+ * we must avoid an undetectable deadlock by not then blocking on a
+ * lock.
+ */
+#define	TRY_LOCK(dbc, pgno, saved_pgno, saved_lock, lock_mode, label) \
+	TRY_LOCK2(dbc, NULL, pgno, saved_pgno, saved_lock, lock_mode, label)
+/*
+ * TRY_LOCK2
+ *	This is a special call for __bam_compact_int which uses 2
+ * overlapping stacks.
+ */
+
+#ifdef BTREE_DEBUG
+#define	TRY_LOCK2(dbc, ndbc, pgno,					\
+    saved_pgno, saved_lock, lock_mode, label) do {			\
+	static int BTcount = 0;						\
+	if ((pgno) != (saved_pgno) &&					\
+	    ((BTcount++ % 5) == 0 ||					\
+	    (ret = __db_lget(dbc, LCK_COUPLE_ALWAYS, pgno,		\
+	    lock_mode, DB_LOCK_NOWAIT, &(saved_lock))) != 0)) {		\
+		if (ret != 0 && ret != DB_LOCK_NOTGRANTED &&		\
+		     ret != DB_LOCK_DEADLOCK)				\
+			break;						\
+		if ((ndbc) != NULL) {					\
+			BTREE_CURSOR *__cp;				\
+			__cp = (BTREE_CURSOR *) (dbc)->internal;	\
+			__cp->sp->page = NULL;				\
+			LOCK_INIT(__cp->sp->lock);			\
+			if ((ret = __bam_stkrel(ndbc, 0)) != 0)		\
+				break;					\
+		}							\
+		if ((ret = __bam_stkrel(dbc, 0)) != 0)			\
+			break;						\
+		if ((ret = __db_lget(dbc, LCK_COUPLE_ALWAYS, pgno,	\
+		    lock_mode, 0, &(saved_lock))) != 0)			\
+			break;						\
+		saved_pgno = pgno;					\
+		goto label;						\
+	}								\
+	saved_pgno = pgno;						\
+} while (0)
+#else
+#define	TRY_LOCK2(dbc, ndbc, pgno,					\
+    saved_pgno, saved_lock, lock_mode, label) do {			\
+	if ((pgno) != (saved_pgno) &&					\
+	    (ret = __db_lget(dbc, LCK_COUPLE_ALWAYS, pgno,		\
+	    lock_mode, DB_LOCK_NOWAIT, &(saved_lock))) != 0) {		\
+		if (ret != DB_LOCK_NOTGRANTED &&			\
+		     ret != DB_LOCK_DEADLOCK)				\
+			break;						\
+		if ((ndbc) != NULL) {					\
+			BTREE_CURSOR *__cp;				\
+			__cp = (BTREE_CURSOR *) (dbc)->internal;	\
+			__cp->sp->page = NULL;				\
+			LOCK_INIT(__cp->sp->lock);			\
+			if ((ret = __bam_stkrel(ndbc, 0)) != 0)		\
+				break;					\
+		}							\
+		if ((ret = __bam_stkrel(dbc, 0)) != 0)			\
+			break;						\
+		if ((ret = __db_lget(dbc, LCK_COUPLE_ALWAYS, pgno,	\
+		    lock_mode, 0, &(saved_lock))) != 0)	\
+			break;						\
+		saved_pgno = pgno;					\
+		goto label;						\
+	}								\
+	saved_pgno = pgno;						\
+} while (0)
+#endif
+
 /* Btree/Recno cursor. */
 struct __cursor {
 	/* struct __dbc_internal */
@@ -209,6 +289,43 @@ struct __cursor {
 	db_recno_t	 recno;		/* Current record number. */
 	u_int32_t	 order;		/* Relative order among deleted curs. */
 
+#ifdef HAVE_COMPRESSION
+	/*
+	 * Compression:
+	 *
+	 * We need to hold the current compressed chunk, as well as the previous
+	 * key/data, in order to decompress the next key/data. We do that by
+	 * swapping whether prevKey/Data and currentKey/Data point to
+	 * key1/data1, or key2/data2.
+	 *
+	 * We store prevcursor in order to be able to perform one level of
+	 * DB_PREV by returning prevKey/prevData. We need prev2cursor to more
+	 * efficiently do a subsequent DB_PREV with a linear search from the
+	 * begining of the compressed chunk.
+	 *
+	 * When we delete entries, we set the cursor to point to the next entry
+	 * after the last deleted key, and set C_COMPRESS_DELETED. The del_key
+	 * DBT holds the key of the deleted entry supposedly pointed to by a
+	 * compressed cursor, and is used to implement DB_PREV_DUP,
+	 * DB_PREV_NODUP, DB_NEXT_DUP, and DB_NEXT_NODUP on a deleted entry.
+	 */
+	DBT		 compressed;	/* Current compressed chunk */
+	DBT		 key1;		/* Holds prevKey or currentKey */
+	DBT		 key2;		/* Holds prevKey or currentKey */
+	DBT		 data1;		/* Holds prevData or currentData */
+	DBT		 data2;		/* Holds prevData or currentData */
+	DBT		 del_key;	/* Holds key from the deleted entry */
+	DBT		 del_data;	/* Holds data from the deleted entry */
+	DBT		*prevKey;	/* Previous key decompressed */
+	DBT		*prevData;	/* Previous data decompressed */
+	DBT		*currentKey;	/* Current key decompressed */
+	DBT		*currentData;	/* Current data decompressed */
+	u_int8_t	*compcursor;	/* Current position in compressed */
+	u_int8_t	*compend;	/* End of compressed */
+	u_int8_t	*prevcursor;	/* Previous current position */
+	u_int8_t	*prev2cursor;	/* Previous previous current position */
+#endif
+
 	/*
 	 * Btree:
 	 * We set a flag in the cursor structure if the underlying object has
@@ -221,20 +338,31 @@ struct __cursor {
 	 * "deleted" records end up positioned between two records, and so must
 	 * be specially adjusted on the next operation.
 	 */
-#define	C_DELETED	0x0001		/* Record was deleted. */
+#define	C_DELETED		0x0001	/* Record was deleted. */
 	/*
 	 * There are three tree types that require maintaining record numbers.
 	 * Recno AM trees, Btree AM trees for which the DB_RECNUM flag was set,
 	 * and Btree off-page duplicate trees.
 	 */
-#define	C_RECNUM	0x0002		/* Tree requires record counts. */
+#define	C_RECNUM		0x0002	/* Tree requires record counts. */
 	/*
 	 * Recno trees have immutable record numbers by default, but optionally
 	 * support mutable record numbers.  Off-page duplicate Recno trees have
 	 * mutable record numbers.  All Btrees with record numbers (including
 	 * off-page duplicate trees) are mutable by design, no flag is needed.
 	 */
-#define	C_RENUMBER	0x0004		/* Tree records are mutable. */
+#define	C_RENUMBER		0x0004	/* Tree records are mutable. */
+	/*
+	 * The current compressed key/data could be deleted, as well as the
+	 * key/data that the underlying BTree cursor points to.
+	 */
+#define	C_COMPRESS_DELETED	0x0008	/* Compressed record was deleted. */
+	/*
+	 * The current compressed chunk has been modified by another DBC. A
+	 * compressed cursor will have to seek it's position again if necessary
+	 * when it is next accessed.
+	 */
+#define	C_COMPRESS_MODIFIED	0x0010	/* Compressed record was modified. */
 	u_int32_t	 flags;
 };
 
@@ -274,6 +402,16 @@ struct __btree {			/* Btree access method. */
 	int (*bt_compare) __P((DB *, const DBT *, const DBT *));
 					/* Btree prefix function. */
 	size_t (*bt_prefix) __P((DB *, const DBT *, const DBT *));
+					/* Btree compress function. */
+#ifdef HAVE_COMPRESSION
+	int (*bt_compress) __P((DB *, const DBT *, const DBT *, const DBT *,
+				       const DBT *, DBT *));
+					/* Btree decompress function. */
+	int (*bt_decompress) __P((DB *, const DBT *, const DBT *, DBT *, DBT *,
+					 DBT *));
+					/* dup_compare for compression */
+	int (*compress_dup_compare) __P((DB *, const DBT *, const DBT *));
+#endif
 
 					/* Recno access method. */
 	int	  re_pad;		/* Fixed-length padding byte. */
@@ -329,6 +467,8 @@ typedef enum {
  */
 #define	BPI_SPACEONLY	0x01		/* Only check for space to update. */
 #define	BPI_NORECNUM	0x02		/* Not update the recnum on the left. */
+#define	BPI_NOLOGGING	0x04		/* Don't log the update. */
+#define	BPI_REPLACE	0x08		/* Repleace the record. */
 
 #if defined(__cplusplus)
 }

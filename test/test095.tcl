@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: test095.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test095
 # TEST	Bulk get test for methods supporting dups. [#2934]
@@ -62,8 +62,10 @@ proc test095 { method {tnum "095"} args } {
 	# We run the meat of the test twice: once with unsorted dups,
 	# once with sorted dups.
 	foreach { dflag sort } { -dup unsorted {-dup -dupsort} sorted } {
-		if { $is_je_test && $sort == "unsorted" } {
-			continue
+		if { $is_je_test || [is_compressed $args] } {
+			if { $sort == "unsorted" } {
+				continue
+			}
 		}
 
 		set testfile $basename-$sort.db
@@ -312,6 +314,7 @@ proc t95_verify { res multiple_keys } {
 	while { 1 } {
 		set key [lindex [lindex $res $i] 0]
 		set datum [lindex [lindex $res $i] 1]
+
 		if { $datum_count >= $nkeys } {
 			if { [llength $key] != 0 } {
 				# If there are keys beyond $nkeys, we'd

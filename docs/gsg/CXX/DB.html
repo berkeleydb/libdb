@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 2. Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="gettingit.html" title="Getting and Using DB " />
+    <link rel="prev" href="gettingit.html" title="Getting and Using DB" />
     <link rel="next" href="coredbclose.html" title="Closing Databases" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="DB"></a>Chapter 2. Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -87,10 +86,10 @@
 	contains data.  Both the key and the data are managed using 
 		 
 		
-		<tt class="classname">Dbt</tt>
+		<code class="classname">Dbt</code>
 		<span>class instances</span>
 		
-	(see <a href="DBEntry.html">Database Records</a> for details on this 
+	(see <a class="xref" href="DBEntry.html" title="Chapter 3. Database Records">Database Records</a> for details on this 
 	    <span>class</span>
 	    ).
 	So, fundamentally, using a DB 
@@ -103,7 +102,7 @@
 		
 		 
 		
-		<tt class="classname">Dbt</tt>
+		<code class="classname">Dbt</code>
 		
 		<span>objects.</span>
 		
@@ -116,17 +115,16 @@
               <h2 class="title" style="clear: both"><a id="DBOpen"></a>Opening Databases</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-        You open a database by instantiating a <tt class="classname">Db</tt> object
-        and then calling its <tt class="methodname">open()</tt> method.
+        You open a database by instantiating a <code class="classname">Db</code> object
+        and then calling its <code class="methodname">open()</code> method.
     </p>
         <p>
 		Note that by default, DB does not create databases if they do not already exist. 
 		To override this behavior, specify the 
-		<a href="DBOpenFlags.html" title="Database Open Flags"><tt class="literal">DB_CREATE</tt></a> flag on the
-		<tt class="methodname">open()</tt> method.
+		<a class="link" href="DBOpenFlags.html" title="Database Open Flags"><code class="literal">DB_CREATE</code></a> flag on the
+		<code class="methodname">open()</code> method.
 	</p>
         <p>
         The following code fragment illustrates a database open:
@@ -163,9 +161,7 @@ try {
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="gettingit.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="coredbclose.html">Next</a></td>
         </tr>
         <tr>

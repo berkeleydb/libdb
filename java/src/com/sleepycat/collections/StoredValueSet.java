@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredValueSet.java,v 12.7 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -25,7 +25,7 @@ import com.sleepycat.db.OperationStatus;
  *
  * @author Mark Hayes
  */
-public class StoredValueSet extends StoredCollection implements Set {
+public class StoredValueSet<E> extends StoredCollection<E> implements Set<E> {
 
     /*
      * This class is also used internally for the set returned by duplicates().
@@ -49,7 +49,7 @@ public class StoredValueSet extends StoredCollection implements Set {
      * thrown.
      */
     public StoredValueSet(Database database,
-                          EntryBinding valueBinding,
+                          EntryBinding<E> valueBinding,
                           boolean writeAllowed) {
 
         super(new DataView(database, null, valueBinding, null,
@@ -74,7 +74,7 @@ public class StoredValueSet extends StoredCollection implements Set {
      * thrown.
      */
     public StoredValueSet(Database database,
-                          EntityBinding valueEntityBinding,
+                          EntityBinding<E> valueEntityBinding,
                           boolean writeAllowed) {
 
         super(new DataView(database, null, null, valueEntityBinding,
@@ -102,7 +102,7 @@ public class StoredValueSet extends StoredCollection implements Set {
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean add(Object entity) {
+    public boolean add(E entity) {
 
         if (view.isSecondary()) {
             throw new UnsupportedOperationException(
@@ -166,12 +166,12 @@ public class StoredValueSet extends StoredCollection implements Set {
         return removeValue(value);
     }
 
-    Object makeIteratorData(BaseIterator iterator,
-                            DatabaseEntry keyEntry,
-                            DatabaseEntry priKeyEntry,
-                            DatabaseEntry valueEntry) {
+    E makeIteratorData(BaseIterator iterator,
+                       DatabaseEntry keyEntry,
+                       DatabaseEntry priKeyEntry,
+                       DatabaseEntry valueEntry) {
 
-        return view.makeValue(priKeyEntry, valueEntry);
+        return (E) view.makeValue(priKeyEntry, valueEntry);
     }
 
     boolean hasValues() {

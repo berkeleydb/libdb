@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: fop_basic.c,v 12.30 2008/01/11 20:50:00 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -52,20 +52,20 @@
  * to create DB files now, potentially blobs, queue extents and anything
  * else you wish to store in a file system object.
  *
- * PUBLIC: int __fop_create __P((ENV *,
- * PUBLIC:     DB_TXN *, DB_FH **, const char *, APPNAME, int, u_int32_t));
+ * PUBLIC: int __fop_create __P((ENV *, DB_TXN *,
+ * PUBLIC:     DB_FH **, const char *, const char **, APPNAME, int, u_int32_t));
  */
 int
-__fop_create(env, txn, fhpp, name, appname, mode, flags)
+__fop_create(env, txn, fhpp, name, dirp, appname, mode, flags)
 	ENV *env;
 	DB_TXN *txn;
 	DB_FH **fhpp;
-	const char *name;
+	const char *name, **dirp;
 	APPNAME appname;
 	int mode;
 	u_int32_t flags;
 {
-	DBT data;
+	DBT data, dirdata;
 	DB_FH *fhp;
 	DB_LSN lsn;
 	int ret;
@@ -74,8 +74,7 @@ __fop_create(env, txn, fhpp, name, appname, mode, flags)
 	real_name = NULL;
 	fhp = NULL;
 
-	if ((ret =
-	    __db_appname(env, appname, name, 0, NULL, &real_name)) != 0)
+	if ((ret = __db_appname(env, appname, name, dirp, &real_name)) != 0)
 		return (ret);
 
 	if (mode == 0)
@@ -87,9 +86,13 @@ __fop_create(env, txn, fhpp, name, appname, mode, flags)
 #endif
 	    ) {
 		DB_INIT_DBT(data, name, strlen(name) + 1);
+		if (dirp != NULL && *dirp != NULL)
+			DB_INIT_DBT(dirdata, *dirp, strlen(*dirp) + 1);
+		else
+			memset(&dirdata, 0, sizeof(dirdata));
 		if ((ret = __fop_create_log(env, txn, &lsn,
 		    flags | DB_FLUSH,
-		    &data, (u_int32_t)appname, (u_int32_t)mode)) != 0)
+		    &data, &dirdata, (u_int32_t)appname, (u_int32_t)mode)) != 0)
 			goto err;
 	}
 
@@ -113,15 +116,15 @@ DB_TEST_RECOVERY_LABEL
  * __fop_remove --
  *	Remove a file system object.
  *
- * PUBLIC: int __fop_remove __P((ENV *,
- * PUBLIC:     DB_TXN *, u_int8_t *, const char *, APPNAME, u_int32_t));
+ * PUBLIC: int __fop_remove __P((ENV *, DB_TXN *,
+ * PUBLIC:     u_int8_t *, const char *, const char **, APPNAME, u_int32_t));
  */
 int
-__fop_remove(env, txn, fileid, name, appname, flags)
+__fop_remove(env, txn, fileid, name, dirp, appname, flags)
 	ENV *env;
 	DB_TXN *txn;
 	u_int8_t *fileid;
-	const char *name;
+	const char *name, **dirp;
 	APPNAME appname;
 	u_int32_t flags;
 {
@@ -132,8 +135,7 @@ __fop_remove(env, txn, fileid, name, appname, flags)
 
 	real_name = NULL;
 
-	if ((ret =
-	    __db_appname(env, appname, name, 0, NULL, &real_name)) != 0)
+	if ((ret = __db_appname(env, appname, name, dirp, &real_name)) != 0)
 		goto err;
 
 	if (!IS_REAL_TXN(txn)) {
@@ -175,16 +177,16 @@ err:	if (real_name != NULL)
  * handling, then we'll have to zero out regions on abort (and possibly
  * log the before image of the data in the log record).
  *
- * PUBLIC: int __fop_write __P((ENV *,
- * PUBLIC:     DB_TXN *, const char *, APPNAME, DB_FH *, u_int32_t, db_pgno_t,
- * PUBLIC:     u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t));
+ * PUBLIC: int __fop_write __P((ENV *, DB_TXN *,
+ * PUBLIC:     const char *, const char *, APPNAME, DB_FH *, u_int32_t,
+ * PUBLIC:     db_pgno_t, u_int32_t, void *, u_int32_t, u_int32_t, u_int32_t));
  */
 int
-__fop_write(env,
-    txn, name, appname, fhp, pgsize, pageno, off, buf, size, istmp, flags)
+__fop_write(env, txn,
+    name, dirname, appname, fhp, pgsize, pageno, off, buf, size, istmp, flags)
 	ENV *env;
 	DB_TXN *txn;
-	const char *name;
+	const char *name, *dirname;
 	APPNAME appname;
 	DB_FH *fhp;
 	u_int32_t pgsize;
@@ -193,7 +195,7 @@ __fop_write(env,
 	void *buf;
 	u_int32_t size, istmp, flags;
 {
-	DBT data, namedbt;
+	DBT data, namedbt, dirdbt;
 	DB_LSN lsn;
 	size_t nbytes;
 	int local_open, ret, t_ret;
@@ -204,10 +206,6 @@ __fop_write(env,
 	ret = local_open = 0;
 	real_name = NULL;
 
-	if ((ret =
-	    __db_appname(env, appname, name, 0, NULL, &real_name)) != 0)
-		return (ret);
-
 	if (DBENV_LOGGING(env)
 #if !defined(DEBUG_WOP)
 	    && txn != NULL
@@ -217,14 +215,22 @@ __fop_write(env,
 		data.data = buf;
 		data.size = size;
 		DB_INIT_DBT(namedbt, name, strlen(name) + 1);
+		if (dirname != NULL)
+			DB_INIT_DBT(dirdbt, dirname, strlen(dirname) + 1);
+		else
+			memset(&dirdbt, 0, sizeof(dirdbt));
 		if ((ret = __fop_write_log(env, txn,
-		    &lsn, flags, &namedbt, (u_int32_t)appname,
+		    &lsn, flags, &namedbt, &dirdbt, (u_int32_t)appname,
 		    pgsize, pageno, off, &data, istmp)) != 0)
 			goto err;
 	}
 
 	if (fhp == NULL) {
 		/* File isn't open; we need to reopen it. */
+		if ((ret = __db_appname(env,
+		    appname, name, &dirname, &real_name)) != 0)
+			return (ret);
+
 		if ((ret = __os_open(env, real_name, 0, 0, 0, &fhp)) != 0)
 			goto err;
 		local_open = 1;
@@ -251,29 +257,30 @@ err:	if (local_open &&
  * __fop_rename --
  *	Change a file's name.
  *
- * PUBLIC: int __fop_rename __P((ENV *, DB_TXN *, const char *,
- * PUBLIC:      const char *, u_int8_t *, APPNAME, int, u_int32_t));
+ * PUBLIC: int __fop_rename __P((ENV *, DB_TXN *, const char *, const char *,
+ * PUBLIC:      const char **, u_int8_t *, APPNAME, int, u_int32_t));
  */
 int
-__fop_rename(env, txn, oldname, newname, fid, appname, with_undo, flags)
+__fop_rename(env, txn, oldname, newname, dirp, fid, appname, with_undo, flags)
 	ENV *env;
 	DB_TXN *txn;
 	const char *oldname;
 	const char *newname;
+	const char **dirp;
 	u_int8_t *fid;
 	APPNAME appname;
 	int with_undo;
 	u_int32_t flags;
 {
-	DBT fiddbt, new, old;
+	DBT fiddbt, dir, new, old;
 	DB_LSN lsn;
 	int ret;
 	char *n, *o;
 
 	o = n = NULL;
-	if ((ret = __db_appname(env, appname, oldname, 0, NULL, &o)) != 0)
+	if ((ret = __db_appname(env, appname, oldname, dirp, &o)) != 0)
 		goto err;
-	if ((ret = __db_appname(env, appname, newname, 0, NULL, &n)) != 0)
+	if ((ret = __db_appname(env, appname, newname, dirp, &n)) != 0)
 		goto err;
 
 	if (DBENV_LOGGING(env)
@@ -283,17 +290,21 @@ __fop_rename(env, txn, oldname, newname, fid, appname, with_undo, flags)
 	    ) {
 		DB_INIT_DBT(old, oldname, strlen(oldname) + 1);
 		DB_INIT_DBT(new, newname, strlen(newname) + 1);
+		if (dirp != NULL && *dirp != NULL)
+			DB_INIT_DBT(dir, *dirp, strlen(*dirp) + 1);
+		else
+			memset(&dir, 0, sizeof(dir));
 		memset(&fiddbt, 0, sizeof(fiddbt));
 		fiddbt.data = fid;
 		fiddbt.size = DB_FILE_ID_LEN;
 		if (with_undo)
 			ret = __fop_rename_log(env,
 			    txn, &lsn, flags | DB_FLUSH,
-			    &old, &new, &fiddbt, (u_int32_t)appname);
+			    &old, &new, &dir, &fiddbt, (u_int32_t)appname);
 		else
 			ret = __fop_rename_noundo_log(env,
 			    txn, &lsn, flags | DB_FLUSH,
-			    &old, &new, &fiddbt, (u_int32_t)appname);
+			    &old, &new, &dir, &fiddbt, (u_int32_t)appname);
 		if (ret != 0)
 			goto err;
 	}

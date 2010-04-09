@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_verify.c,v 12.39 2008/03/11 21:07:01 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -12,6 +12,7 @@
 #include "dbinc/db_page.h"
 #include "dbinc/db_verify.h"
 #include "dbinc/btree.h"
+#include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
 static int __bam_safe_getdata __P((DB *, DB_THREAD_INFO *,
@@ -143,6 +144,47 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
     "Page %lu: metadata page has renumber flag set but is not recno",
 		    (u_long)pgno));
 	}
+
+#ifdef HAVE_COMPRESSION
+	if (F_ISSET(&meta->dbmeta, BTM_COMPRESS)) {
+		F_SET(pip, VRFY_HAS_COMPRESS);
+		if (!DB_IS_COMPRESSED(dbp)) {
+			((BTREE *)dbp->bt_internal)->bt_compress =
+			    __bam_defcompress;
+			((BTREE *)dbp->bt_internal)->bt_decompress =
+			    __bam_defdecompress;
+		}
+		/*
+		 * Copy dup_compare to compress_dup_compare, and use the
+		 * compression duplicate compare.
+		 */
+		if (F_ISSET(pip, VRFY_HAS_DUPSORT)) {
+			if (dbp->dup_compare == NULL)
+				dbp->dup_compare = __bam_defcmp;
+			if (((BTREE *)dbp->bt_internal)->compress_dup_compare
+				== NULL) {
+				((BTREE *)dbp->bt_internal)->
+					compress_dup_compare = dbp->dup_compare;
+				dbp->dup_compare = __bam_compress_dupcmp;
+			}
+		}
+	}
+
+	if (F_ISSET(pip, VRFY_HAS_RECNUMS) && F_ISSET(pip, VRFY_HAS_COMPRESS)) {
+		EPRINT((env,
+    "Page %lu: Btree metadata page illegally has both recnums and compression",
+		    (u_long)pgno));
+		isbad = 1;
+	}
+	if (F_ISSET(pip, VRFY_HAS_DUPS) && !F_ISSET(pip, VRFY_HAS_DUPSORT) &&
+	    F_ISSET(pip, VRFY_HAS_COMPRESS)) {
+		EPRINT((env,
+    "Page %lu: Btree metadata page illegally has both unsorted duplicates%s",
+		    (u_long)pgno,
+		    " and compression"));
+		isbad = 1;
+	}
+#endif
 
 	if (F_ISSET(pip, VRFY_IS_RECNO) && F_ISSET(pip, VRFY_HAS_DUPS)) {
 		EPRINT((env,
@@ -859,6 +901,7 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
 	BTREE *bt;
+	DBC *dbc;
 	DBT dbta, dbtb, dup_1, dup_2, *p1, *p2, *tmp;
 	ENV *env;
 	VRFY_PAGEINFO *pip;
@@ -910,9 +953,12 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	 * We alternate our use of dbta and dbtb so that we can walk
 	 * through the page key-by-key without copying a dbt twice.
 	 * p1 is always the dbt for index i - 1, and p2 for index i.
+	 * Reset the data pointers in case we are retrying.
 	 */
-	p1 = &dbta;
+retry:	p1 = &dbta;
+	p1->data = NULL;
 	p2 = &dbtb;
+	p2->data = NULL;
 
 	/*
 	 * Loop through the entries.  nentries ought to contain the
@@ -921,12 +967,14 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	 * on a leaf page, we care only about keys.  On internal pages
 	 * and LDUP pages, we want to check the order of all entries.
 	 *
-	 * Note that on IBTREE pages, we start with item 1, since item
-	 * 0 doesn't get looked at by __bam_cmp.
+	 * Note that on IBTREE pages or the index page of a partitioned
+	 * database, we start with item 1, since item 0 doesn't get looked
+	 * at by __bam_cmp.
 	 */
 	inp = P_INP(dbp, h);
 	adj = (TYPE(h) == P_LBTREE) ? P_INDX : O_INDX;
-	for (i = (TYPE(h) == P_IBTREE) ? 1 : 0; i < nentries; i += adj) {
+	for (i = (TYPE(h) == P_IBTREE || dbp->p_internal != NULL) ? adj : 0;
+	    i < nentries; i += adj) {
 		/*
 		 * Put key i-1, now in p2, into p1, by swapping DBTs and bufs.
 		 */
@@ -1016,7 +1064,10 @@ overflow:		if (!ovflok) {
 			 * was just pointing at a non-overflow item.)
 			 */
 			p2->data = buf2;
-			if ((ret = __db_goff(dbp, ip, NULL,
+			if ((ret = __db_cursor_int(dbp, ip, NULL, DB_BTREE,
+			    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
+				goto err;
+			if ((ret = __db_goff(dbc,
 			    p2, bo->tlen, bo->pgno, NULL, NULL)) != 0) {
 				isbad = 1;
 				EPRINT((env,
@@ -1033,6 +1084,18 @@ overflow:		if (!ovflok) {
 
 			/* comparison succeeded */
 			if (cmp > 0) {
+				/*
+				 * If we are looking at an internal page, we
+				 * don't know whether it is part of the main
+				 * database or in an off-page-duplicate tree.
+				 * If the main comparator fails, retry with
+				 * the duplicate comparator.
+				 */
+				if (TYPE(h) == P_IBTREE && func != dupfunc) {
+					func = dupfunc;
+					goto retry;
+				}
+
 				isbad = 1;
 				EPRINT((env,
 				    "Page %lu: out-of-order key at entry %lu",
@@ -1040,10 +1103,16 @@ overflow:		if (!ovflok) {
 				/* proceed */
 			} else if (cmp == 0) {
 				if (inp[i] != inp[i - adj]) {
+					/* See above. */
+					if (TYPE(h) == P_IBTREE &&
+					    func != dupfunc) {
+						func = dupfunc;
+						goto retry;
+					}
+					isbad = 1;
 					EPRINT((env,
 				     "Page %lu: non-dup dup key at entry %lu",
 					   (u_long)pgno, (u_long)i));
-					isbad = 1;
 				}
 				/*
 				 * If they compared equally, this
@@ -1054,6 +1123,12 @@ overflow:		if (!ovflok) {
 				if (pip != NULL)
 					F_SET(pip, VRFY_HAS_DUPS);
 				else if (hasdups == 0) {
+					/* See above. */
+					if (TYPE(h) == P_IBTREE &&
+					    func != dupfunc) {
+						func = dupfunc;
+						goto retry;
+					}
 					isbad = 1;
 					EPRINT((env,
 	"Page %lu: database with no duplicates has duplicated keys",
@@ -1144,13 +1219,14 @@ err:	if (pip != NULL && ((t_ret =
  *	database containing subdbs).
  *
  * PUBLIC: int __bam_vrfy_structure __P((DB *, VRFY_DBINFO *, db_pgno_t,
- * PUBLIC:     u_int32_t));
+ * PUBLIC:     void *, void *, u_int32_t));
  */
 int
-__bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
+__bam_vrfy_structure(dbp, vdp, meta_pgno, lp, rp, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	db_pgno_t meta_pgno;
+	void *lp, *rp;
 	u_int32_t flags;
 {
 	DB *pgset;
@@ -1205,7 +1281,7 @@ __bam_vrfy_structure(dbp, vdp, meta_pgno, flags)
 		if (F_ISSET(mip, VRFY_HAS_RECNUMS))
 			stflags |= DB_ST_RECNUM;
 		ret = __bam_vrfy_subtree(dbp,
-		    vdp, root, NULL, NULL, stflags, NULL, NULL, NULL);
+		    vdp, root, lp, rp, stflags, NULL, NULL, NULL);
 		break;
 	case P_IRECNO:
 	case P_LRECNO:
@@ -1911,6 +1987,7 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 	u_int32_t flags;
 {
 	BOVERFLOW *bo;
+	DBC *dbc;
 	DBT dbt;
 	ENV *env;
 	db_indx_t last;
@@ -1941,6 +2018,10 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 		return (__db_unknown_path(env, "__bam_vrfy_treeorder"));
 	}
 
+	/* Populate a dummy cursor. */
+	if ((ret = __db_cursor_int(dbp, ip, NULL, DB_BTREE,
+	    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
+		return (ret);
 	/*
 	 * The key on page h, the child page, is more likely to be
 	 * an overflow page, so we pass its offset, rather than lp/rp's,
@@ -1955,12 +2036,15 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 	 * parent and falsely report a failure.)
 	 */
 	if (lp != NULL && TYPE(h) != P_IBTREE) {
+		if ((ret = __db_cursor_int(dbp, ip, NULL, DB_BTREE,
+		    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
+			return (ret);
 		if (lp->type == B_KEYDATA) {
 			dbt.data = lp->data;
 			dbt.size = lp->len;
 		} else if (lp->type == B_OVERFLOW) {
 			bo = (BOVERFLOW *)lp->data;
-			if ((ret = __db_goff(dbp, ip, NULL, &dbt,
+			if ((ret = __db_goff(dbc, &dbt,
 			    bo->tlen, bo->pgno, NULL, NULL)) != 0)
 				return (ret);
 		} else
@@ -1968,8 +2052,7 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 			    __db_unknown_path(env, "__bam_vrfy_treeorder"));
 
 		/* On error, fall through, free if needed, and return. */
-		if ((ret = __bam_cmp(dbp, ip,
-		    NULL, &dbt, h, 0, func, &cmp)) == 0) {
+		if ((ret = __bam_cmp(dbc, &dbt, h, 0, func, &cmp)) == 0) {
 			if (cmp > 0) {
 				EPRINT((env,
 	    "Page %lu: first item on page sorted greater than parent entry",
@@ -1993,7 +2076,7 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 			dbt.size = rp->len;
 		} else if (rp->type == B_OVERFLOW) {
 			bo = (BOVERFLOW *)rp->data;
-			if ((ret = __db_goff(dbp, ip, NULL, &dbt,
+			if ((ret = __db_goff(dbc, &dbt,
 			    bo->tlen, bo->pgno, NULL, NULL)) != 0)
 				return (ret);
 		} else
@@ -2001,8 +2084,7 @@ __bam_vrfy_treeorder(dbp, ip, h, lp, rp, func, flags)
 			    __db_unknown_path(env, "__bam_vrfy_treeorder"));
 
 		/* On error, fall through, free if needed, and return. */
-		if ((ret = __bam_cmp(dbp, ip,
-		    NULL, &dbt, h, last, func, &cmp)) == 0) {
+		if ((ret = __bam_cmp(dbc, &dbt, h, last, func, &cmp)) == 0) {
 			if (cmp < 0) {
 				EPRINT((env,
 	    "Page %lu: last item on page sorted greater than parent entry",
@@ -2050,9 +2132,13 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	VRFY_ITEM *pgmap;
 	db_indx_t i, last, beg, end, *inp;
 	db_pgno_t ovflpg;
-	u_int32_t himark;
+	u_int32_t himark, ovfl_bufsz;
 	void *ovflbuf;
 	int adj, ret, t_ret, t2_ret;
+#ifdef HAVE_COMPRESSION
+	DBT kcpy, *last_key;
+	int unknown_dup_key;
+#endif
 
 	env = dbp->env;
 	ovflbuf = pgmap = NULL;
@@ -2061,6 +2147,13 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	memset(&dbt, 0, sizeof(DBT));
 	dbt.flags = DB_DBT_REALLOC;
 	memset(&repldbt, 0, sizeof(DBT));
+
+#ifdef HAVE_COMPRESSION
+	memset(&kcpy, 0, sizeof(DBT));
+	unknown_dup_key = LF_ISSET(DB_SA_UNKNOWNKEY);
+	last_key = unknown_dup_key ? NULL : key;
+#endif
+	LF_CLR(DB_SA_UNKNOWNKEY);
 
 	DB_INIT_DBT(unknown_key, "UNKNOWN_KEY", sizeof("UNKNOWN_KEY") - 1);
 	DB_INIT_DBT(unknown_data, "UNKNOWN_DATA", sizeof("UNKNOWN_DATA") - 1);
@@ -2071,6 +2164,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	 */
 	if ((ret = __os_malloc(env, dbp->pgsize, &ovflbuf)) != 0)
 		goto err;
+	ovfl_bufsz = dbp->pgsize;
 
 	if (LF_ISSET(DB_AGGRESSIVE) && (ret =
 	    __os_calloc(env, dbp->pgsize, sizeof(pgmap[0]), &pgmap)) != 0)
@@ -2085,8 +2179,12 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 	 */
 	himark = dbp->pgsize;
 	for (i = 0, last = UINT16_MAX;; i += O_INDX) {
-		/* If we're not aggressive, break when we hit NUM_ENT(h). */
-		if (!LF_ISSET(DB_AGGRESSIVE) && i >= NUM_ENT(h))
+		/*
+		 * If we're not aggressive, or if we're on an internal page,
+		 * break when we hit NUM_ENT(h).
+		 */
+		if ((!LF_ISSET(DB_AGGRESSIVE) ||
+		    pgtype == P_IBTREE) && i >= NUM_ENT(h))
 			break;
 
 		/* Verify the current item. */
@@ -2137,12 +2235,16 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 		 * item for which we didn't print out a key, fix this imbalance
 		 * by printing an "UNKNOWN_KEY".
 		 */
-		if (pgtype == P_LBTREE && i % P_INDX == 1 &&
-		    last != i - 1 && (t_ret = __db_vrfy_prdbt(
-		    &unknown_key, 0, " ", handle, callback, 0, vdp)) != 0) {
-			if (ret == 0)
-				ret = t_ret;
-			goto err;
+		if (pgtype == P_LBTREE && i % P_INDX == 1 && last != i - 1) {
+#ifdef HAVE_COMPRESSION
+			last_key = NULL;
+#endif
+			if ((t_ret = __db_vrfy_prdbt(&unknown_key,
+			    0, " ", handle, callback, 0, vdp)) != 0) {
+				if (ret == 0)
+					ret = t_ret;
+				goto err;
+			}
 		}
 		last = i;
 
@@ -2152,13 +2254,17 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 		 * first, unless DB_SA_SKIPFIRSTKEY is set and we're on the
 		 * first entry.
 		 */
-		if (key != NULL && (i != 0 || !LF_ISSET(DB_SA_SKIPFIRSTKEY)))
+		if (key != NULL && (i != 0 || !LF_ISSET(DB_SA_SKIPFIRSTKEY))) {
+#ifdef HAVE_COMPRESSION
+			last_key = unknown_dup_key ? NULL : key;
+#endif
 			if ((t_ret = __db_vrfy_prdbt(key,
 			    0, " ", handle, callback, 0, vdp)) != 0) {
 				if (ret == 0)
 					ret = t_ret;
 				goto err;
 			}
+		}
 
 		beg = end = inp[i];
 		switch (B_TYPE(bk->type)) {
@@ -2187,7 +2293,12 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			 */
 			if (!IS_VALID_PGNO(bo->pgno) || (i % P_INDX == 0)) {
 				/* Not much to do on failure. */
-				if ((t_ret = __db_vrfy_prdbt(&unknown_key,
+#ifdef HAVE_COMPRESSION
+				if (key == NULL && i % P_INDX == 0)
+					last_key = NULL;
+#endif
+				if ((t_ret = __db_vrfy_prdbt(
+				 i % P_INDX == 0 ? &unknown_key : &unknown_data,
 				    0, " ", handle, callback, 0, vdp)) != 0) {
 					if (ret == 0)
 						ret = t_ret;
@@ -2199,7 +2310,11 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			/* Don't stop on error. */
 			if ((t_ret = __db_salvage_duptree(dbp,
 			    vdp, bo->pgno, &dbt, handle, callback,
-			    flags | DB_SA_SKIPFIRSTKEY)) != 0 && ret == 0)
+			    flags | DB_SA_SKIPFIRSTKEY
+#ifdef HAVE_COMPRESSION
+			    | (last_key == NULL ? DB_SA_UNKNOWNKEY : 0)
+#endif
+			    )) != 0 && ret == 0)
 				ret = t_ret;
 
 			break;
@@ -2212,12 +2327,44 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 
 			dbt.data = bk->data;
 			dbt.size = bk->len;
-			if ((t_ret = __db_vrfy_prdbt(&dbt,
-			    0, " ", handle, callback, 0, vdp)) != 0) {
-				if (ret == 0)
-					ret = t_ret;
-				goto err;
+
+#ifdef HAVE_COMPRESSION
+			if (DB_IS_COMPRESSED(dbp) && last_key != NULL &&
+			    (key != NULL || (i % P_INDX == 1))) {
+				/* Decompress the key/data pair  - the key
+				   is in last_key, and the data is in dbt */
+				if ((t_ret = __bam_compress_salvage(dbp, vdp,
+				    handle, callback, last_key, &dbt)) != 0) {
+					if (t_ret == DB_VERIFY_FATAL) {
+						if (ret == 0)
+							ret = DB_VERIFY_BAD;
+						if (!LF_ISSET(DB_AGGRESSIVE))
+							goto err;
+					} else if (ret == 0) {
+						ret = t_ret;
+						goto err;
+					}
+				}
+			} else {
+				if (key == NULL && i % P_INDX == 0) {
+					if ((ret = __os_realloc(
+					    env, dbt.size, &kcpy.data)) != 0)
+						goto err;
+					memcpy(kcpy.data, dbt.data, dbt.size);
+					kcpy.size = dbt.size;
+					last_key = &kcpy;
+				}
+#endif
+
+				if ((t_ret = __db_vrfy_prdbt(&dbt,
+				    0, " ", handle, callback, 0, vdp)) != 0) {
+					if (ret == 0)
+						ret = t_ret;
+					goto err;
+				}
+#ifdef HAVE_COMPRESSION
 			}
+#endif
 			break;
 		case B_OVERFLOW:
 			if (pgtype != P_IBTREE)
@@ -2231,42 +2378,36 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 			 * the previous dbt.
 			 *
 			 * P_IBTREE pages will never have replicated overflow
-			 * keys and will never pass this test.
+			 * keys.
 			 */
 			adj = pgtype == P_IBTREE ? O_INDX : P_INDX;
-			if (i > adj - 1 && i % adj == 0 &&
-			    inp[i] == inp[i - adj]) {
-				DB_ASSERT(env, pgtype != P_IBTREE);
+			if (pgtype == P_IBTREE) {
+				/*
+				 * If we're looking at a P_IBTREE, we just want
+				 * to mark the overflow page as seen.
+				 *
+				 * Note that this call to __db_safe_goff differs
+				 * from the non-P_IBTREE call.
+				 *
+				 * Only call __db_safe_goff if the overflow page
+				 * hasn't been seen.
+				 */
+				ovflpg = ((BOVERFLOW *)
+				    ((BINTERNAL *)bk)->data)->pgno;
+				if (__db_salvage_isdone(vdp, ovflpg) == 0 &&
+				    (t_ret =__db_safe_goff(dbp, vdp, ovflpg,
+					&dbt, &ovflbuf,
+					&ovfl_bufsz, flags)) != 0 && ret == 0)
+					ret = t_ret;
+				break;
+			} else if (i > adj - 1 &&
+			    i % adj == 0 && inp[i] == inp[i - adj])
 				dbt = repldbt;
-			} else {
-				if (pgtype == P_IBTREE) {
-					/*
-					 * If we're looking at a P_IBTREE, we
-					 * just want to mark the overflow page
-					 * as seen.  P_IBTREE entries will
-					 * always fail the above test, we'll
-					 * always wind up here.
-					 *
-					 * Note that this call to __db_safe_goff
-					 * differs from the non-P_IBTREE call.
-					 *
-					 * Only call __db_safe_goff if the
-					 * overflow page hasn't been seen.
-					 */
-					ovflpg = ((BOVERFLOW *)
-					    ((BINTERNAL *)bk)->data)->pgno;
-					if (__db_salvage_isdone(vdp,
-					    ovflpg) == 0 && (t_ret =
-					    __db_safe_goff(dbp, vdp, ovflpg,
-					    &dbt, &ovflbuf, flags)) != 0 &&
-					    ret == 0)
-						ret = t_ret;
-					break;
-				}
-
+			else {
 				/* Don't stop on error. */
-				if ((t_ret = __db_safe_goff(dbp, vdp, bo->pgno,
-				    &dbt, &ovflbuf, flags)) != 0 && ret == 0)
+				if ((t_ret = __db_safe_goff(dbp, vdp,
+				    bo->pgno, &dbt, &ovflbuf,
+				    &ovfl_bufsz, flags)) != 0 && ret == 0)
 					ret = t_ret;
 
 				/*
@@ -2277,20 +2418,71 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 				 * getting a data item.
 				 */
 				if (i % P_INDX == 0) {
-					if ((ret = __os_realloc(env,
-					    dbt.size, &repldbt.data)) != 0)
-						goto err;
-					memcpy(repldbt.data, dbt.data,
-					    dbt.size);
-					repldbt.size = dbt.size;
+					if (t_ret == 0) {
+						if ((t_ret = __os_realloc(env,
+						        dbt.size,
+							&repldbt.data)) != 0) {
+							if (ret == 0)
+								ret = t_ret;
+							goto err;
+						}
+						memcpy(repldbt.data,
+						    dbt.data, dbt.size);
+						repldbt.size = dbt.size;
+					} else {
+						if (__os_realloc(env,
+						    unknown_key.size,
+						    &repldbt.data) != 0)
+							goto err;
+						memcpy(repldbt.data,
+						    unknown_key.data,
+						    unknown_key.size);
+						repldbt.size = unknown_key.size;
+					}
 				}
 
 			}
 
-			if ((t_ret = __db_vrfy_prdbt(
-			    t_ret == 0 ? &dbt : &unknown_key,
-			    0, " ", handle, callback, 0, vdp)) != 0 && ret == 0)
-				ret = t_ret;
+#ifdef HAVE_COMPRESSION
+			if (DB_IS_COMPRESSED(dbp) && last_key && t_ret == 0 &&
+			    (key != NULL || (i % P_INDX == 1))) {
+				/* Decompress the key/data pair  - the key
+				   is in last_key, and the data is in dbt */
+				if ((t_ret = __bam_compress_salvage(dbp, vdp,
+				    handle, callback, last_key, &dbt)) != 0) {
+					if (t_ret == DB_VERIFY_FATAL) {
+						if (ret == 0)
+							ret = DB_VERIFY_BAD;
+						if (!LF_ISSET(DB_AGGRESSIVE))
+							goto err;
+					} else if (ret == 0) {
+						ret = t_ret;
+						goto err;
+					}
+				}
+			} else {
+				if (key == NULL && i % P_INDX == 0) {
+					if (t_ret == 0) {
+						if ((ret = __os_realloc(env,
+						    dbt.size, &kcpy.data)) != 0)
+							goto err;
+						memcpy(kcpy.data, dbt.data,
+							dbt.size);
+						kcpy.size = dbt.size;
+						last_key = &kcpy;
+					} else
+						last_key = NULL;
+				}
+#endif
+
+				if ((t_ret = __db_vrfy_prdbt(
+					     t_ret == 0 ? &dbt : &unknown_key,
+					     0, " ", handle, callback, 0, vdp))
+					!= 0 && ret == 0)
+					ret = t_ret;
+#ifdef HAVE_COMPRESSION
+			}
+#endif
 			break;
 		default:
 			/*
@@ -2321,6 +2513,10 @@ err:	if (pgmap != NULL)
 		__os_free(env, ovflbuf);
 	if (repldbt.data != NULL)
 		__os_free(env, repldbt.data);
+#ifdef HAVE_COMPRESSION
+	if (kcpy.data != NULL)
+		__os_free(env, kcpy.data);
+#endif
 
 	/* Mark this page as done. */
 	if ((t_ret = __db_salvage_markdone(vdp, pgno)) != 0 && ret == 0)
@@ -2522,6 +2718,8 @@ __bam_safe_getdata(dbp, ip, h, i, ovflok, dbt, freedbtp)
 {
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
+	DBC *dbc;
+	int ret;
 
 	memset(dbt, 0, sizeof(DBT));
 	*freedbtp = 0;
@@ -2531,12 +2729,14 @@ __bam_safe_getdata(dbp, ip, h, i, ovflok, dbt, freedbtp)
 		if (!ovflok)
 			return (0);
 
+		if ((ret = __db_cursor_int(dbp, ip, NULL, DB_BTREE,
+		    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &dbc)) != 0)
+			return (ret);
 		bo = (BOVERFLOW *)bk;
 		F_SET(dbt, DB_DBT_MALLOC);
 
 		*freedbtp = 1;
-		return (__db_goff(dbp, ip, NULL, dbt,
-		    bo->tlen, bo->pgno, NULL, NULL));
+		return (__db_goff(dbc, dbt, bo->tlen, bo->pgno, NULL, NULL));
 	} else {
 		dbt->data = bk->data;
 		dbt->size = bk->len;

@@ -1,4 +1,4 @@
-# $Id: sequence.m4,v 12.3 2005/11/24 00:49:24 bostic Exp $
+# $Id$
 
 # Try and configure sequence support.
 AC_DEFUN(AM_SEQUENCE_CONFIGURE, [

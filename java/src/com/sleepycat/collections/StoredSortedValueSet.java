@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredSortedValueSet.java,v 12.8 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -32,7 +32,9 @@ import com.sleepycat.db.Database;
  *
  * @author Mark Hayes
  */
-public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
+public class StoredSortedValueSet<E>
+    extends StoredValueSet<E>
+    implements SortedSet<E> {
 
     /*
      * No valueBinding ctor is possible since key cannot be derived.
@@ -56,7 +58,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * com.sleepycat.db.DatabaseException} is thrown.
      */
     public StoredSortedValueSet(Database database,
-                                EntityBinding valueEntityBinding,
+                                EntityBinding<E> valueEntityBinding,
                                 boolean writeAllowed) {
 
         super(new DataView(database, null, null, valueEntityBinding,
@@ -86,7 +88,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      *
      * @return null.
      */
-    public Comparator comparator() {
+    public Comparator<? super E> comparator() {
 
         return null;
     }
@@ -100,7 +102,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object first() {
+    public E first() {
 
         return getFirstOrLast(true);
     }
@@ -114,7 +116,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public Object last() {
+    public E last() {
 
         return getFirstOrLast(false);
     }
@@ -134,7 +136,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toValue) {
+    public SortedSet<E> headSet(E toValue) {
 
         return subSet(null, false, toValue, false);
     }
@@ -156,7 +158,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet headSet(Object toValue, boolean toInclusive) {
+    public SortedSet<E> headSet(E toValue, boolean toInclusive) {
 
         return subSet(null, false, toValue, toInclusive);
     }
@@ -176,7 +178,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromValue) {
+    public SortedSet<E> tailSet(E fromValue) {
 
         return subSet(fromValue, true, null, false);
     }
@@ -198,7 +200,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet tailSet(Object fromValue, boolean fromInclusive) {
+    public SortedSet<E> tailSet(E fromValue, boolean fromInclusive) {
 
         return subSet(fromValue, fromInclusive, null, false);
     }
@@ -220,7 +222,7 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromValue, Object toValue) {
+    public SortedSet<E> subSet(E fromValue, E toValue) {
 
         return subSet(fromValue, true, toValue, false);
     }
@@ -247,13 +249,13 @@ public class StoredSortedValueSet extends StoredValueSet implements SortedSet {
      * @throws RuntimeExceptionWrapper if a {@link
      * com.sleepycat.db.DatabaseException} is thrown.
      */
-    public SortedSet subSet(Object fromValue, boolean fromInclusive,
-                            Object toValue, boolean toInclusive) {
-
+    public SortedSet<E> subSet(E fromValue,
+                               boolean fromInclusive,
+                               E toValue,
+                               boolean toInclusive) {
         try {
-            return new StoredSortedValueSet(
-               view.subView(fromValue, fromInclusive, toValue, toInclusive,
-                            null));
+            return new StoredSortedValueSet<E>(view.subView
+                (fromValue, fromInclusive, toValue, toInclusive, null));
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }

@@ -1,14 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: KeyRangeTest.java,v 12.9 2008/02/07 17:12:31 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -58,9 +59,7 @@ public class KeyRangeTest extends TestCase {
     private DataView view;
     private DataCursor cursor;
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -81,13 +80,12 @@ public class KeyRangeTest extends TestCase {
         super(name);
     }
 
-    public void setUp()
-        throws Exception {
-
+    @Override
+    public void setUp() {
         SharedTestUtils.printTestName(SharedTestUtils.qualifiedTestName(this));
     }
 
-    private void openDb(Comparator comparator)
+    private void openDb(Comparator<byte []> comparator)
         throws Exception {
 
         File dir = SharedTestUtils.getNewDir();
@@ -99,9 +97,9 @@ public class KeyRangeTest extends TestCase {
         DatabaseConfig dbConfig = new DatabaseConfig();
         DbCompat.setTypeBtree(dbConfig);
         dbConfig.setAllowCreate(true);
-	if (comparator != null) {
-	    DbCompat.setBtreeComparator(dbConfig, comparator);
-	}
+        if (comparator != null) {
+            DbCompat.setBtreeComparator(dbConfig, comparator);
+        }
         store = DbCompat.testOpenDatabase
             (env, null, "test.db", null, dbConfig);
         view = new DataView(store, dataBinding, dataBinding, null, true, null);
@@ -116,9 +114,8 @@ public class KeyRangeTest extends TestCase {
         env = null;
     }
 
-    public void tearDown()
-        throws Exception {
-
+    @Override
+    public void tearDown() {
         try {
             if (store != null) {
                 store.close();
@@ -372,8 +369,8 @@ public class KeyRangeTest extends TestCase {
         DatabaseEntry end = new DatabaseEntry();
         DatabaseEntry end2 = new DatabaseEntry();
         KeyRange range = new KeyRange(null);
-        KeyRange range2;
-
+        KeyRange range2 = null;
+        
         /* Base range [1, 2] */
         begin.setData(new byte[] { 1 });
         end.setData(new byte[] { 2 });
@@ -425,10 +422,10 @@ public class KeyRangeTest extends TestCase {
         } catch (KeyRangeException expected) {}
     }
 
-    public static class ReverseComparator implements Comparator {
-        public int compare(Object o1, Object o2) {
-            byte[] d1 = (byte[]) o1;
-            byte[] d2 = (byte[]) o2;
+    @SuppressWarnings("serial")
+    public static class ReverseComparator implements Comparator<byte[]>,
+                                                     Serializable {
+        public int compare(byte[] d1, byte[] d2) {
             int cmp = KeyRange.compareBytes(d1, 0, d1.length,
                                             d2, 0, d2.length);
             if (cmp < 0) {

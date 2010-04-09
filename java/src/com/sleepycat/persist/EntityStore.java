@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EntityStore.java,v 1.1 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist;
@@ -101,16 +101,12 @@ public class EntityStore {
      * information.
      */
     public EntityStore(Environment env, String storeName, StoreConfig config)
-        throws DatabaseException, IncompatibleClassException  {
+        throws StoreExistsException,
+               StoreNotFoundException,
+               IncompatibleClassException,
+               DatabaseException {
 
         store = new Store(env, storeName, config, false /*rawAccess*/);
-    }
-
-    /**
-     * Only public for debugging.
-     */
-    void dumpCatalog() {
-        store.dumpCatalog();
     }
 
     /**
@@ -311,12 +307,13 @@ public class EntityStore {
      * Deletes all instances of this entity class and its (non-entity)
      * subclasses.
      *
-     * <p>The primary database and all secondary databases for the given entity
-     * class will be truncated.  The primary and secondary databases associated
-     * with the entity class must not be open except by this store, since
-     * database truncation is only possible when the database is not open.  The
-     * databases to be truncated will be closed before performing this
-     * operation, if they were previously opened by this store.</p>
+     * <p>The primary database for the given entity class will be truncated and
+     * all secondary databases will be removed.  The primary and secondary
+     * databases associated with the entity class must not be open except by
+     * this store, since database truncation/removal is only possible when the
+     * database is not open.  The databases to be truncated/removed will be
+     * closed before performing this operation, if they were previously opened
+     * by this store.</p>
      *
      * <p>Auto-commit is used implicitly if the store is transactional.</p>
      *
@@ -332,12 +329,13 @@ public class EntityStore {
      * Deletes all instances of this entity class and its (non-entity)
      * subclasses.
      *
-     * <p>The primary database and all secondary databases for the given entity
-     * class will be truncated.  The primary and secondary databases associated
-     * with the entity class must not be open except by this store, since
-     * database truncation is only possible when the database is not open.  The
-     * databases to be truncated will be closed before performing this
-     * operation, if they were previously opened by this store.</p>
+     * <p>The primary database for the given entity class will be truncated and
+     * all secondary databases will be removed.  The primary and secondary
+     * databases associated with the entity class must not be open except by
+     * this store, since database truncation/removal is only possible when the
+     * database is not open.  The databases to be truncated/removed will be
+     * closed before performing this operation, if they were previously opened
+     * by this store.</p>
      *
      * @param txn the transaction used to protect this operation, null to use
      * auto-commit, or null if the store is non-transactional.
@@ -402,8 +400,9 @@ public class EntityStore {
      * <li>The {@link SequenceConfig#setCacheSize CacheSize} is 100.</li>
      * <li>{@link SequenceConfig#setAutoCommitNoSync AutoCommitNoSync} is
      * true.</li>
-     * <li>{@link SequenceConfig#setAllowCreate AllowCreate} is set to true
-     * if the store is not {@link StoreConfig#setReadOnly ReadOnly}.</li>
+     * <li>{@link SequenceConfig#setAllowCreate AllowCreate} is set to the
+     * inverse of the store {@link StoreConfig#setReadOnly ReadOnly}.
+     * setting.</li>
      * </ul>
      *
      * @param name the sequence name, which is normally defined using the
@@ -421,7 +420,12 @@ public class EntityStore {
      * <p>To be compatible with the entity model and the Direct Persistence
      * Layer, the configuration should be retrieved using {@link
      * #getSequenceConfig getSequenceConfig}, modified, and then passed to this
-     * method.</p>
+     * method.  The following configuration properties may not be changed:</p>
+     * <ul>
+     * <li>{@link SequenceConfig#setExclusiveCreate ExclusiveCreate}</li>
+     * </ul>
+     * <p>In addition, {@link SequenceConfig#setAllowCreate AllowCreate} must be
+     * the inverse of {@code ReadOnly}</p>
      *
      * <p>If the range is changed to include the value zero, see {@link
      * PrimaryKey} for restrictions.</p>
@@ -449,8 +453,9 @@ public class EntityStore {
      * <ul>
      * <li>{@link DatabaseConfig#setTransactional Transactional} is set to
      * match {@link StoreConfig#setTransactional StoreConfig}.</li>
-     * <li>{@link DatabaseConfig#setAllowCreate AllowCreate} is set to true
-     * if the store is not {@link StoreConfig#setReadOnly ReadOnly}.</li>
+     * <li>{@link DatabaseConfig#setAllowCreate AllowCreate} is set to the
+     * inverse of the store {@link StoreConfig#setReadOnly ReadOnly}.
+     * setting.</li>
      * <li>{@link DatabaseConfig#setReadOnly ReadOnly} is set to match
      * {@link StoreConfig#setReadOnly StoreConfig}.</li>
      * <li>{@link DatabaseConfig#setBtreeComparator BtreeComparator} is set to
@@ -474,9 +479,12 @@ public class EntityStore {
      * #getPrimaryConfig getPrimaryConfig}, modified, and then passed to this
      * method.  The following configuration properties may not be changed:</p>
      * <ul>
+     * <li>{@link DatabaseConfig#setExclusiveCreate ExclusiveCreate}</li>
      * <li>{@link DatabaseConfig#setSortedDuplicates SortedDuplicates}</li>
      * <li>{@link DatabaseConfig#setBtreeComparator BtreeComparator}</li>
      * </ul>
+     * <p>In addition, {@link DatabaseConfig#setAllowCreate AllowCreate} must be
+     * the inverse of {@code ReadOnly}</p>
      *
      * @param entityClass the entity class identifying the primary database.
      *
@@ -500,9 +508,9 @@ public class EntityStore {
      * <ul>
      * <li>{@link DatabaseConfig#setTransactional Transactional} is set to
      * match the primary database.</li>
-     * <li>{@link DatabaseConfig#setAllowCreate AllowCreate} is set to true
-     * if the primary database is not {@link StoreConfig#setReadOnly
-     * ReadOnly}.</li>
+     * <li>{@link DatabaseConfig#setAllowCreate AllowCreate} is set to the
+     * inverse of the primary database {@link DatabaseConfig#setReadOnly
+     * ReadOnly} setting.</li>
      * <li>{@link DatabaseConfig#setReadOnly ReadOnly} is set to match
      * the primary database.</li>
      * <li>{@link DatabaseConfig#setBtreeComparator BtreeComparator} is set to
@@ -542,6 +550,7 @@ public class EntityStore {
      * this method.  The following configuration properties may not be
      * changed:</p>
      * <ul>
+     * <li>{@link DatabaseConfig#setExclusiveCreate ExclusiveCreate}</li>
      * <li>{@link DatabaseConfig#setSortedDuplicates SortedDuplicates}</li>
      * <li>{@link DatabaseConfig#setBtreeComparator BtreeComparator}</li>
      * <li>{@link DatabaseConfig#setDuplicateComparator
@@ -558,6 +567,8 @@ public class EntityStore {
      * <li>{@link SecondaryConfig#setForeignKeyDatabase
      * ForeignKeyDatabase}</li>
      * </ul>
+     * <p>In addition, {@link DatabaseConfig#setAllowCreate AllowCreate} must be
+     * the inverse of {@code ReadOnly}</p>
      *
      * @param entityClass the entity class containing the given secondary key
      * name.

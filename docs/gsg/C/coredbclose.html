@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Closing Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="DB.html" title="Chapter 2. Databases" />
+    <link rel="prev" href="DB.html" title="Chapter 2. Databases" />
     <link rel="next" href="DBOpenFlags.html" title="Database Open Flags" />
   </head>
   <body>
@@ -32,11 +32,10 @@
             <h2 class="title" style="clear: both"><a id="coredbclose"></a>Closing Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Once you are done using the database, you must close it. You use the
-        <tt class="methodname">DB-&gt;close()</tt>
+        <code class="methodname">DB-&gt;close()</code>
         
         method to do this.
     </p>
@@ -49,7 +48,7 @@
         database accesses have completed before closing your database.
     </p>
       <p>
-        Cursors are described in <a href="Cursors.html">Using Cursors</a> later in this manual.
+        Cursors are described in <a class="xref" href="Cursors.html" title="Chapter 4. Using Cursors">Using Cursors</a> later in this manual.
     </p>
       <p>
         Be aware that when you close the last open handle 
@@ -58,12 +57,12 @@
         been modified in the cache is guaranteed to be written to disk when the
         last handle is closed. You can manually perform this operation using
         the 
-        <tt class="methodname">DB-&gt;sync()</tt>
+        <code class="methodname">DB-&gt;sync()</code>
         
         
         method, but for normal shutdown operations it is not necessary.
         For more information about syncing your cache, see 
-        <a href="usingDbt.html#datapersist">Data Persistence</a>.
+        <a class="xref" href="usingDbt.html#datapersist" title="Data Persistence">Data Persistence</a>.
      </p>
       <p>The following code fragment illustrates a database close:</p>
       <a id="c_db2"></a>

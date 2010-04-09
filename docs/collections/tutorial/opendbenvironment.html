@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Opening and Closing the Database Environment
-	</title>
+    <title>Opening and Closing the Database Environment</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="next" href="openclasscatalog.html" title="&#10;&#9;&#9;Opening and Closing the Class Catalog&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="next" href="openclasscatalog.html" title="Opening and Closing the Class Catalog" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     This section of the tutorial describes how to open and close the
@@ -50,15 +47,15 @@
 	databases.
 </p>
       <p>
-    The <tt class="classname">SampleDatabase</tt> class is used to open and close the
+    The <code class="classname">SampleDatabase</code> class is used to open and close the
 	environment. It will also be used in following sections to open and
 	close the class catalog and other databases. Its constructor is
-	used to open the environment and its <tt class="classname">close()</tt> method is used
+	used to open the environment and its <code class="classname">close()</code> method is used
 	to close the environment. The skeleton for the
-	<tt class="classname">SampleDatabase</tt> class follows.
+	<code class="classname">SampleDatabase</code> class follows.
 </p>
       <a id="cb_java_sampledatabase"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.db.DatabaseException;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 import java.io.File;
@@ -77,7 +74,7 @@ public class SampleDatabase
         throws DatabaseException
     {
     }
-}</tt></b> </pre>
+}</code></strong> </pre>
       <p>
     The first thing to notice is that the Environment class is in
 	the 
@@ -99,7 +96,7 @@ public class SampleDatabase
       <p>
     The following statements create an 
     
-    <a href="../../java/com/sleepycat/db/Environment.html" target="_top">Environment</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/Environment.html" target="_top">Environment</a>
     
 	object.
 </p>
@@ -107,7 +104,7 @@ public class SampleDatabase
       <pre class="programlisting">public SampleDatabase(String homeDirectory)
         throws DatabaseException, FileNotFoundException
     {
-<b class="userinput"><tt>        System.out.println("Opening environment in: " + homeDirectory);
+<strong class="userinput"><code>        System.out.println("Opening environment in: " + homeDirectory);
 
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setTransactional(true);
@@ -115,22 +112,22 @@ public class SampleDatabase
         envConfig.setInitializeCache(true);
         envConfig.setInitializeLocking(true);
 
-        env = new Environment(new File(homeDirectory), envConfig);</tt></b>
+        env = new Environment(new File(homeDirectory), envConfig);</code></strong>
     } </pre>
       <p>
     The 
     
-    <a href="../../java/com/sleepycat/db/EnvironmentConfig.html" target="_top">EnvironmentConfig</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/EnvironmentConfig.html" target="_top">EnvironmentConfig</a>
     
 	class is used to specify environment configuration parameters. The
-	first configuration option specified — <tt class="methodname">setTransactional()</tt> —
+	first configuration option specified — <code class="methodname">setTransactional()</code> —
 	is set to true to create an environment where transactional (and
 	non-transactional) databases may be opened. While non-transactional
 	environments can also be created, the examples in this tutorial use
 	a transactional environment.
 </p>
       <p>
-    <tt class="methodname">setAllowCreate()</tt> is set to true to specify
+    <code class="methodname">setAllowCreate()</code> is set to true to specify
 	that the environment's files will be created if they don't already
 	exist. If this parameter is not specified, an exception will be
 	thrown if the environment does not already exist. A similar
@@ -138,7 +135,7 @@ public class SampleDatabase
 	they don't exist.
 </p>
       <p>
-    When an <tt class="classname">Environment</tt> object is constructed, a home
+    When an <code class="classname">Environment</code> object is constructed, a home
 	directory and the environment configuration object are specified.
 	The home directory is the location of the environment's log files
 	that store all database information.
@@ -155,7 +152,7 @@ public class SampleDatabase
       <pre class="programlisting">    public void close()
         throws DatabaseException
     {
-<b class="userinput"><tt>        env.close();</tt></b>
+<strong class="userinput"><code>        env.close();</code></strong>
     } </pre>
       <p>
     The following getter method returns the environment for use by
@@ -166,10 +163,10 @@ public class SampleDatabase
       <pre class="programlisting">public class SampleDatabase
 {
     ...
-<b class="userinput"><tt>    public final Environment getEnvironment()
+<strong class="userinput"><code>    public final Environment getEnvironment()
     {
         return env;
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
     </div>

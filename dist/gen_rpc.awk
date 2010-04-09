@@ -1,5 +1,5 @@
 #
-# $Id: gen_rpc.awk,v 12.14 2007/11/18 14:15:41 bostic Exp $
+# $Id$
 # Awk script for generating client/server RPC code.
 #
 # This awk script generates most of the RPC routines for DB client/server
@@ -11,7 +11,7 @@
 #
 #	major		-- Major version number
 #	minor		-- Minor version number
-#	xidsize		-- size of GIDs
+#	gidsize		-- size of GIDs
 #	client_file	-- the C source file being created for client code
 #	ctmpl_file	-- the C template file being created for client code
 #	server_file	-- the C source file being created for server code
@@ -20,13 +20,13 @@
 #
 # And stdin must be the input file that defines the RPC setup.
 BEGIN {
-	if (major == "" || minor == "" || xidsize == "" ||
+	if (major == "" || minor == "" || gidsize == "" ||
 	    client_file == "" || ctmpl_file == "" ||
 	    server_file == "" || stmpl_file == "" || xdr_file == "") {
 		print "Usage: gen_rpc.awk requires these variables be set:"
 		print "\tmajor\t-- Major version number"
 		print "\tminor\t-- Minor version number"
-		print "\txidsize\t-- GID size"
+		print "\tgidsize\t-- GID size"
 		print "\tclient_file\t-- the client C source file being created"
 		print "\tctmpl_file\t-- the client template file being created"
 		print "\tserver_file\t-- the server C source file being created"
@@ -252,7 +252,7 @@ END {
 			printf("\tstring %s<>;\n", args[i]) >> XFILE
 		}
 		if (rpc_type[i] == "GID") {
-			printf("\topaque %s[%d];\n", args[i], xidsize) >> XFILE
+			printf("\topaque %s[%d];\n", args[i], gidsize) >> XFILE
 		}
 		if (rpc_type[i] == "INT") {
 			printf("\tunsigned int %s;\n", args[i]) >> XFILE
@@ -755,7 +755,7 @@ END {
 		}
 		if (rpc_type[i] == "GID") {
 			printf("\tmemcpy(msg.%s, %s, %d);\n", \
-			    args[i], args[i], xidsize) >> CFILE
+			    args[i], args[i], gidsize) >> CFILE
 		}
 		if (rpc_type[i] == "INT") {
 			printf("\tmsg.%s = (u_int)%s;\n",
@@ -795,7 +795,7 @@ END {
 			printf("\tmsg.%s.%s_len = (u_int)%si",
 			    args[i], args[i], args[i]) >> CFILE
 			if (list_type[i] == "GID")
-				printf(" * %d;\n", xidsize) >> CFILE
+				printf(" * %d;\n", gidsize) >> CFILE
 			else
 				printf(";\n") >> CFILE
 			printf("\tif ((ret = __os_calloc(") >> CFILE

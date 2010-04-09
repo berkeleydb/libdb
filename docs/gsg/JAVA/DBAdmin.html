@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Administrative Methods</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="previous" href="DBConfig.html" title="Database Properties" />
+    <link rel="prev" href="DBConfig.html" title="Database Properties" />
     <link rel="next" href="dbErrorReporting.html" title="Error Reporting Functions" />
   </head>
   <body>
@@ -32,18 +32,17 @@
             <h2 class="title" style="clear: both"><a id="DBAdmin"></a>Administrative Methods</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-        Both the <tt class="classname">Environment</tt> and
-        <tt class="classname">Database</tt> classes provide methods that are useful
+        Both the <code class="classname">Environment</code> and
+        <code class="classname">Database</code> classes provide methods that are useful
         for manipulating databases. These methods are:
     </p>
       <div class="itemizedlist">
         <ul type="disc">
           <li>
             <p>
-              <tt class="methodname">Database.getDatabaseName()</tt>
+              <code class="methodname">Database.getDatabaseName()</code>
             </p>
             <p>Returns the database's name.</p>
             <a id="je_db3.1"></a>
@@ -51,11 +50,11 @@
           </li>
           <li>
             <p>
-              <tt class="methodname">Database.rename()</tt>
+              <code class="methodname">Database.rename()</code>
             </p>
             <p>
                 Renames the specified database. If no value is given for the 
-				<i class="parameter"><tt>database</tt></i> parameter, then the entire file
+				<em class="parameter"><code>database</code></em> parameter, then the entire file
 				referenced by this method is renamed.
             </p>
             <p>
@@ -79,7 +78,7 @@ try {
           </li>
           <li>
             <p>
-              <tt class="methodname">Environment.truncateDatabase()</tt>
+              <code class="methodname">Environment.truncateDatabase()</code>
             </p>
             <p>
             Deletes every record in the database and optionally returns the

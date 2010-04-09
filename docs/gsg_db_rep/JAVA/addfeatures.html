@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 5. Additional Features</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="previous" href="exampledoloop.html" title="Example Processing Loop" />
+    <link rel="prev" href="exampledoloop.html" title="Example Processing Loop" />
     <link rel="next" href="manageblock.html" title="Managing Blocking Operations" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="addfeatures"></a>Chapter 5. Additional Features</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -88,27 +87,27 @@
         <ol type="1">
           <li>
             <p>
-                            <a href="addfeatures.html#delayedsync">Delayed Synchronization</a>
+                            <a class="xref" href="addfeatures.html#delayedsync" title="Delayed Synchronization">Delayed Synchronization</a>
                     </p>
           </li>
           <li>
             <p>
-                            <a href="manageblock.html">Managing Blocking Operations</a>
+                            <a class="xref" href="manageblock.html" title="Managing Blocking Operations">Managing Blocking Operations</a>
                     </p>
           </li>
           <li>
             <p>
-                            <a href="noautoinit.html">Stop Auto-Initialization</a>
+                            <a class="xref" href="noautoinit.html" title="Stop Auto-Initialization">Stop Auto-Initialization</a>
                     </p>
           </li>
           <li>
             <p>
-                            <a href="c2ctransfer.html">Client to Client Transfer</a>
+                            <a class="xref" href="c2ctransfer.html" title="Client to Client Transfer">Client to Client Transfer</a>
                     </p>
           </li>
           <li>
             <p>
-                            <a href="bulk.html">Bulk Transfers</a>
+                            <a class="xref" href="bulk.html" title="Bulk Transfers">Bulk Transfers</a>
                     </p>
           </li>
         </ol>
@@ -120,7 +119,6 @@
               <h2 class="title" style="clear: both"><a id="delayedsync"></a>Delayed Synchronization</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 When a replication group has a new master, all replicas must
@@ -146,12 +144,12 @@
                 specify 
                     
                     <span>
-                            <tt class="literal">ReplicationConfig.DELAYCLIENT</tt> and
-                            <tt class="literal">true</tt> to
-                        <tt class="methodname">Environment.setReplicationConfig()</tt>.
+                            <code class="literal">ReplicationConfig.DELAYCLIENT</code> and
+                            <code class="literal">true</code> to
+                        <code class="methodname">Environment.setReplicationConfig()</code>.
                         To turn off delayed synchronization, specify 
-                        <tt class="literal">false</tt> for the 
-                        <tt class="literal">ReplicationConfig.DELAYCLIENT</tt> field.
+                        <code class="literal">false</code> for the 
+                        <code class="literal">ReplicationConfig.DELAYCLIENT</code> field.
                     </span>
         </p>
         <p>
@@ -164,7 +162,7 @@
                 You synchronize a delayed replica by calling
                     
                     
-                    <tt class="methodname">Environment.syncReplication()</tt>
+                    <code class="methodname">Environment.syncReplication()</code>
                 on the replica that has been delayed.
         </p>
       </div>
@@ -174,9 +172,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="exampledoloop.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="manageblock.html">Next</a></td>
         </tr>
         <tr>

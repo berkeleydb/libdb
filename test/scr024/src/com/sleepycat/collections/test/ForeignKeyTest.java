@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: ForeignKeyTest.java,v 12.1 2008/02/07 17:12:31 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections.test;
@@ -48,9 +48,7 @@ public class ForeignKeyTest extends TestCase {
         "CASCADE",
     };
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -61,9 +59,7 @@ public class ForeignKeyTest extends TestCase {
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite();
         for (int i = 0; i < TestEnv.ALL.length; i += 1) {
             for (int j = 0; j < ACTIONS.length; j += 1) {
@@ -87,7 +83,7 @@ public class ForeignKeyTest extends TestCase {
     private Map storeMap2;
     private Map indexMap1;
     private Map indexMap2;
-    private ForeignKeyDeleteAction onDelete;
+    private final ForeignKeyDeleteAction onDelete;
 
     public ForeignKeyTest(TestEnv testEnv, ForeignKeyDeleteAction onDelete,
                           String onDeleteLabel) {
@@ -98,6 +94,7 @@ public class ForeignKeyTest extends TestCase {
         this.onDelete = onDelete;
     }
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -107,6 +104,7 @@ public class ForeignKeyTest extends TestCase {
         createDatabase();
     }
 
+    @Override
     public void tearDown() {
 
         try {
@@ -147,6 +145,7 @@ public class ForeignKeyTest extends TestCase {
         }
     }
 
+    @Override
     public void runTest()
         throws Exception {
 
@@ -209,9 +208,7 @@ public class ForeignKeyTest extends TestCase {
             (env, null, file, null, primary, secConfig);
     }
 
-    private void createViews()
-        throws Exception {
-
+    private void createViews() {
         storeMap1 = factory.newMap(store1, String.class,
                                    MarshalledObject.class, true);
         storeMap2 = factory.newMap(store2, String.class,
@@ -263,10 +260,11 @@ public class ForeignKeyTest extends TestCase {
                 fail();
             } catch (RuntimeExceptionWrapper expected) {
                 assertTrue(expected.getCause() instanceof DatabaseException);
-                if (txn != null) {
-                    txn.abortTransaction();
-                    txn.beginTransaction(null);
-                }
+                assertTrue(!DbCompat.NEW_JE_EXCEPTIONS);
+            }
+            if (txn != null) {
+                txn.abortTransaction();
+                txn.beginTransaction(null);
             }
 
             /* Test that we can put a record into store2 with a null foreign
@@ -334,10 +332,11 @@ public class ForeignKeyTest extends TestCase {
             fail();
         } catch (RuntimeExceptionWrapper expected) {
             assertTrue(expected.getCause() instanceof DatabaseException);
+            assertTrue(!DbCompat.NEW_JE_EXCEPTIONS);
         }
 
         if (txn != null) {
-            txn.commitTransaction();
+            txn.abortTransaction();
         }
     }
 }

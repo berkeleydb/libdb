@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 /* File: txn_guide_inmemory.c */
 
 /* We assume an ANSI-compatible compiler */
@@ -12,13 +20,15 @@
 extern int getopt(int, char * const *, const char *);
 extern char *optarg;
 
+/* Wrap Windows thread API to make it look POSIXey. */
 typedef HANDLE thread_t;
 #define	thread_create(thrp, attr, func, arg)                               \
     (((*(thrp) = CreateThread(NULL, 0,                                     \
 	(LPTHREAD_START_ROUTINE)(func), (arg), 0, NULL)) == NULL) ? -1 : 0)
 #define	thread_join(thr, statusp)                                          \
     ((WaitForSingleObject((thr), INFINITE) == WAIT_OBJECT_0) &&            \
-    GetExitCodeThread((thr), (LPDWORD)(statusp)) ? 0 : -1)
+    ((statusp == NULL) ? 0 :						   \
+    (GetExitCodeThread((thr), (LPDWORD)(statusp)) ? 0 : -1)))
 
 typedef HANDLE mutex_t;
 #define	mutex_init(m, attr)                                                \

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000,2008 Oracle.  All rights reserved.
+# Copyright (c) 2000-2009 Oracle.  All rights reserved.
 #
-# $Id: test085.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test085
 # TEST	Test of cursor behavior when a cursor is pointing to a deleted
@@ -40,6 +40,11 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum "085"} args } {
 		puts "Test085: skipping for specific pagesizes"
 		return
 	}
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 	cleanup $testdir $env
 
 	# Keys must sort $prekey < $key < $postkey.
@@ -58,6 +63,11 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum "085"} args } {
 
 	puts -nonewline "Test$tnum $omethod ($args): "
 
+	# Btree with compression does not support unsorted duplicates.
+	if { [is_compressed $args] == 1 } {
+		puts "Test$tnum skipping for btree with compression."
+		return
+	}
 	# Skip for all non-btrees.  (Rbtrees don't count as btrees, for
 	# now, since they don't support dups.)
 	if { [is_btree $method] != 1 } {
@@ -163,7 +173,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum "085"} args } {
 				error_check_good txn [$t commit] 0
 			}
 			error_check_good "db close" [$db close] 0
-			verify_dir $testdir "\t\t"
+			verify_dir $testdir "\t\t" 0 0 $nodump
 
 			# Remove testfile so we can do without truncate flag.
 			# This is okay because we've already done verify and
@@ -276,7 +286,7 @@ proc test085 { method {pagesize 512} {onp 3} {offp 10} {tnum "085"} args } {
 				error_check_good txn [$t commit] 0
 			}
 			error_check_good "db close" [$db close] 0
-			verify_dir $testdir "\t\t"
+			verify_dir $testdir "\t\t" 0 0 $nodump
 
 			# Remove testfile so we can do without truncate flag.
 			# This is okay because we've already done verify and

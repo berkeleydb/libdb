@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: qam_files.c,v 12.37 2008/03/13 15:44:50 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -263,8 +263,8 @@ alloc:			if ((ret = __os_realloc(env,
 			openflags |= DB_RDONLY;
 		if (F_ISSET(env->dbenv, DB_ENV_DIRECT_DB))
 			openflags |= DB_DIRECT;
-		if ((ret = __memp_fopen(
-		    mpf, NULL, buf, openflags, qp->mode, dbp->pgsize)) != 0) {
+		if ((ret = __memp_fopen(mpf, NULL,
+		    buf, NULL, openflags, qp->mode, dbp->pgsize)) != 0) {
 			array->mpfarray[offset].mpf = NULL;
 			(void)__memp_fclose(mpf, 0);
 			goto err;
@@ -742,8 +742,8 @@ __qam_nameop(dbp, txn, newname, op)
 	 * or, in the case of an absolute path: /dir/__dbq.NAME.0
 	 */
 	QAM_EXNAME(qp, 0, buf, sizeof(buf));
-	if ((ret =
-	    __db_appname(env, DB_APP_DATA, buf, 0, NULL, &fullname)) != 0)
+	if ((ret = __db_appname(env,
+	    DB_APP_DATA, buf, &dbp->dirname, &fullname)) != 0)
 		return (ret);
 
 	/* We should always have a path separator here. */
@@ -833,7 +833,7 @@ __qam_nameop(dbp, txn, newname, op)
 			     ndir, PATH_SEPARATOR[0], new, exid);
 			QAM_EXNAME(qp, exid, buf, sizeof(buf));
 			if ((ret = __fop_rename(env,
-			    txn, buf, nbuf, fid, DB_APP_DATA, 1,
+			    txn, buf, nbuf, &dbp->dirname, fid, DB_APP_DATA, 1,
 			    F_ISSET(dbp, DB_AM_NOT_DURABLE) ?
 			    DB_LOG_NOT_DURABLE : 0)) != 0)
 				goto err;
@@ -841,7 +841,8 @@ __qam_nameop(dbp, txn, newname, op)
 
 		case QAM_NAME_REMOVE:
 			QAM_EXNAME(qp, exid, buf, sizeof(buf));
-			if ((ret = __fop_remove(env, txn, fid, buf,
+			if ((ret = __fop_remove(env, txn, fid,
+			    buf, &dbp->dirname,
 			    DB_APP_DATA, F_ISSET(dbp, DB_AM_NOT_DURABLE) ?
 			    DB_LOG_NOT_DURABLE : 0)) != 0)
 				goto err;
@@ -857,5 +858,37 @@ err:	if (fullname != NULL)
 		__os_free(env, namep);
 	if (names != NULL)
 		__os_dirfree(env, names, cnt);
+	return (ret);
+}
+
+/*
+ * __qam_lsn_reset -- reset the lsns for extents.
+ *
+ * PUBLIC: int __qam_lsn_reset __P((DB *, DB_THREAD_INFO *));
+ */
+int
+__qam_lsn_reset(dbp, ip)
+	DB *dbp;
+	DB_THREAD_INFO *ip;
+{
+	QUEUE *qp;
+	QUEUE_FILELIST *filelist, *fp;
+	int ret;
+
+	qp = dbp->q_internal;
+	if (qp->page_ext == 0)
+		return (0);
+
+	if ((ret = __qam_gen_filelist(dbp, ip, &filelist)) != 0)
+		return (ret);
+
+	if (filelist == NULL)
+		return (ret);
+
+	for (fp = filelist; fp->mpf != NULL; fp++)
+		if ((ret = __db_lsn_reset(fp->mpf, ip)) != 0)
+			break;
+
+	__os_free(dbp->env, filelist);
 	return (ret);
 }

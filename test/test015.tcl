@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test015.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test015
 # TEST	Partial put test
@@ -36,6 +36,11 @@ proc test015 { method {nentries 7500} { start 0 } args } {
 	if { $start == 0 } {
 		set start { 1 2 3 4 5 6 }
 	}
+	if  { [is_partitioned $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
 	foreach entry $t_table {
 		set this [lindex $entry 0]
 		if { [lsearch $start $this] == -1 } {
@@ -51,7 +56,8 @@ proc test015 { method {nentries 7500} { start 0 } args } {
 			set testdir [get_home $env]
 		}
 
-		error_check_good verify [verify_dir $testdir "\tTest015.e: "] 0
+		error_check_good verify \
+		     [verify_dir $testdir "\tTest015.e:"  0 0 $nodump] 0
 	}
 	set testdir $orig_tdir
 }
@@ -225,8 +231,8 @@ proc test015_body { method off_low off_hi rcount {nentries 10000} args } {
 
 	puts "\tTest015.c: close, open, and dump file"
 	# Now, reopen the file and run the last test again.
-	open_and_dump_file $testfile $env $t1 \
-	    $checkfunc dump_file_direction "-first" "-next"
+	eval open_and_dump_file $testfile $env $t1 \
+	    $checkfunc dump_file_direction "-first" "-next" $args
 
 	if { [string compare $omethod "-recno"] != 0 } {
 		filesort $t1 $t3
@@ -238,8 +244,8 @@ proc test015_body { method off_low off_hi rcount {nentries 10000} args } {
 	# Now, reopen the file and run the last test again in the
 	# reverse direction.
 	puts "\tTest015.d: close, open, and dump file in reverse direction"
-	open_and_dump_file $testfile $env $t1 \
-	    $checkfunc dump_file_direction "-last" "-prev"
+	eval open_and_dump_file $testfile $env $t1 \
+	    $checkfunc dump_file_direction "-last" "-prev" $args
 
 	if { [string compare $omethod "-recno"] != 0 } {
 		filesort $t1 $t3

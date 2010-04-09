@@ -1,4 +1,4 @@
-# $Id: README,v 1.6 2007/12/21 19:22:01 bostic Exp $
+# $Id$
 
 A simple framework for core Berkeley DB micro-benchmarks, intended for
 two purposes: to certify a port of Berkeley DB to a new platform, and

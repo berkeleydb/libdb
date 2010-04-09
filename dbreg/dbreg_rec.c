@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: dbreg_rec.c,v 12.26 2008/01/08 20:58:19 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -146,8 +146,7 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 			 * set and probably shouldn't, so we need to check
 			 * for that case and possibly retry.
 			 */
-			if (op == DB_TXN_FORWARD_ROLL &&
-			    argp->txnp != 0 &&
+			if (DB_REDO(op) && argp->txnp != 0 &&
 			    dblp->dbentry[argp->fileid].deleted) {
 				dblp->dbentry[argp->fileid].deleted = 0;
 				ret =
@@ -201,15 +200,7 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 			 */
 			dbe = &dblp->dbentry[argp->fileid];
 			if (dbe->dbp == NULL && !dbe->deleted) {
-				/* No valid entry here. */
-				if ((DB_REDO(op) &&
-				    argp->opcode != DBREG_RCLOSE) ||
-				    argp->opcode == DBREG_CHKPNT) {
-					__db_errx(env,
-				    "Warning: Improper file close at %lu/%lu",
-					    (u_long)lsnp->file,
-					    (u_long)lsnp->offset);
-				}
+				/* No valid entry here. Nothing to do. */
 				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 				goto done;
 			}
@@ -334,9 +325,13 @@ __dbreg_open_file(env, txn, argp, info)
 		 * file uid of the current file does not match that of the
 		 * previously opened file, 3) the current file is unnamed, in
 		 * which case it should never be opened during recovery.
+		 * It is also possible that the db open previously failed
+		 * because the file was missing.  Check the DB_AM_OPEN_CALLED
+		 * bit and try to open it again.
 		 */
 		if ((dbp = dbe->dbp) != NULL) {
 			if (argp->opcode == DBREG_REOPEN ||
+			    !F_ISSET(dbp, DB_AM_OPEN_CALLED) ||
 			    dbp->meta_pgno != argp->meta_pgno ||
 			    argp->name.size == 0 ||
 			    memcmp(dbp->fileid, argp->uid.data,

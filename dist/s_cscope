@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_cscope,v 12.3 2007/08/07 13:45:21 bostic Exp $
+#	$Id$
 #
 # Build cscope files.
 

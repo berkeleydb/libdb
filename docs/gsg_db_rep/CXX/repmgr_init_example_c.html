@@ -3,29 +3,27 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Adding the Replication Framework to
-                    
-                    SimpleTxn
-            </title>
+    <title>Adding the Replication Manager to RepMgr</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
-    <link rel="previous" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
+    <link rel="prev" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
     <link rel="next" href="fwrkpermmessage.html" title="Permanent Message Handling" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Adding the Replication Framework to
+          <th colspan="3" align="center">Adding the Replication Manager to
                     
-                    SimpleTxn
+                    <span>RepMgr</span>
+                    
             </th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="repapp.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 3. The DB Replication Framework</th>
+          <th width="60%" align="center">Chapter 3. The DB Replication Manager</th>
           <td width="20%" align="right"> <a accesskey="n" href="fwrkpermmessage.html">Next</a></td>
         </tr>
       </table>
@@ -35,21 +33,22 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="repmgr_init_example_c"></a>Adding the Replication Framework to
+            <h2 class="title" style="clear: both"><a id="repmgr_init_example_c"></a>Adding the Replication Manager to
                     
-                    <span>SimpleTxn</span>
+                    <span>RepMgr</span>
+                    
             </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     We now use the methods described above to add partial
                     support to the 
-                     
-                    <tt class="literal">SimpleTxn</tt> 
+                    
+                    <span>RepMgr</span>
+                    
                     example that we presented in 
-                    <a href="txnapp.html">Transactional Application</a>.
+                    <a class="xref" href="txnapp.html" title="Chapter 2. Transactional Application">Transactional Application</a>.
                     That is, in this section we will:
             </p>
       <div class="itemizedlist">
@@ -64,12 +63,12 @@
           <li>
             <p>
                                     Configure our environment handle to use
-                                    replication and the replication framework.
+                                    replication and the Replication Manager.
                             </p>
           </li>
           <li>
             <p>
-                                    Minimally configure the replication framework.
+                                    Minimally configure the Replication Manager.
                             </p>
           </li>
           <li>
@@ -88,45 +87,45 @@
             </p>
       <p>
                 Also, note that in the following code fragments, additions
-                and changes to the code are marked in <b class="userinput"><tt>bold</tt></b>.
+                and changes to the code are marked in <strong class="userinput"><code>bold</code></strong>.
             </p>
       <p>
                     To begin, we copy the 
-                     
-                    <tt class="literal">SimpleTxn</tt> 
+                    
+                    <span>SimpleTxn</span>
                     code to a new file called
-                    <tt class="literal">RepMgr.cpp</tt>.
+                    <code class="literal">RepMgrGSG.cpp</code>.
 
                     
 
                     <span>
                             Having done that, we must make some significant
                             changes to our 
-                            <tt class="classname">RepConfigInfo</tt>
+                            <code class="classname">RepConfigInfo</code>
                             class because now we will be using it to
                             maintain a lot more information.
                     </span>
             </p>
       <p>
                 First, we create a new structure,
-                <tt class="literal">RepHostInfoObj</tt>, which we use to store
+                <code class="literal">RepHostInfoObj</code>, which we use to store
                 host and port information for all "other" servers
                 identified to the application via the
-                <tt class="literal">-o</tt> command line option. This structure
+                <code class="literal">-o</code> command line option. This structure
                 is chain-able, which makes cleaning up at program shutdown
                 time easier.
             </p>
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
 #include &lt;iostream&gt;
 
-<b class="userinput"><tt>// Chain-able struct used to store host information.
+<strong class="userinput"><code>// Chain-able struct used to store host information.
 typedef struct RepHostInfoObj{
     char* host;
-    int port;
+    u_int16_t port;
     RepHostInfoObj* next; // used for chaining multiple "other" hosts.
-} REP_HOST_INFO; </tt></b></pre>
+} REP_HOST_INFO; </code></strong></pre>
       <p>
-        Next, we update our <tt class="classname">RepConfigInfo</tt> class
+        Next, we update our <code class="classname">RepConfigInfo</code> class
         definition to manage a lot more information and a new method.
 </p>
       <pre class="programlisting">class RepConfigInfo {
@@ -134,37 +133,35 @@ public:
     RepConfigInfo();
     virtual ~RepConfigInfo();
 
-    <b class="userinput"><tt>void addOtherHost(char* host, int port);</tt></b>
+    <strong class="userinput"><code>void addOtherHost(char* host, int port);</code></strong>
 public:
-    <b class="userinput"><tt>u_int32_t start_policy;</tt></b>
+    <strong class="userinput"><code>u_int32_t start_policy;</code></strong>
     char* home;
-    <b class="userinput"><tt>bool got_listen_address;
+    <strong class="userinput"><code>bool got_listen_address;
     REP_HOST_INFO this_host;
     int totalsites;
     int priority;
     // used to store a set of optional other hosts.
-    REP_HOST_INFO *other_hosts;</tt></b>
+    REP_HOST_INFO *other_hosts;</code></strong>
 }; </pre>
       <p>
         Then, we update our constructor to initialize our new variables.
 </p>
       <pre class="programlisting">RepConfigInfo::RepConfigInfo()
 {
-    <b class="userinput"><tt>start_policy = DB_REP_ELECTION;</tt></b>
+    <strong class="userinput"><code>start_policy = DB_REP_ELECTION;</code></strong>
     home = "TESTDIR";
-    <b class="userinput"><tt>got_listen_address = false;
+    <strong class="userinput"><code>got_listen_address = false;
     totalsites = 0;
     priority = 100;
-    other_hosts = NULL;</tt></b>
+    other_hosts = NULL;</code></strong>
 } </pre>
       <p>
-        Next, we implement our new method, <tt class="methodname">RepConfigInfo::addOtherHost</tt>,
-        which is used to create <tt class="literal">RepHostInfoObj</tt> instances and add them to
+        Next, we implement our new method, <code class="methodname">RepConfigInfo::addOtherHost</code>,
+        which is used to create <code class="literal">RepHostInfoObj</code> instances and add them to
         the chain of "other" hosts.
 </p>
-      <pre class="programlisting">
-        <b class="userinput">
-          <tt>RepConfigInfo::addOtherHost(char* host, int port)
+      <pre class="programlisting">RepConfigInfo::addOtherHost(char* host, int port)
 {
     REP_HOST_INFO *newinfo;
     newinfo = (REP_HOST_INFO*)malloc(sizeof(REP_HOST_INFO));
@@ -177,16 +174,14 @@ public:
         newinfo-&gt;next = other_hosts;
         other_hosts = newinfo;
     }
-} </tt>
-        </b>
-      </pre>
+}</pre>
       <p>
-        Having done that, we update our class destructor to release the <tt class="literal">RepHostInfoObj</tt>
+        Having done that, we update our class destructor to release the <code class="literal">RepHostInfoObj</code>
         chain of objects at class destruction time.
 </p>
       <pre class="programlisting">RepConfigInfo::~RepConfigInfo()
 {
-    <b class="userinput"><tt>// release any other_hosts structs.
+    <strong class="userinput"><code>// release any other_hosts structs.
     if (other_hosts != NULL) {
         REP_HOST_INFO *CurItem = other_hosts;
         while (CurItem-&gt;next != NULL)
@@ -197,11 +192,11 @@ public:
         }
         free(CurItem);
     }
-    other_hosts = NULL;</tt></b>
+    other_hosts = NULL;</code></strong>
 } </pre>
       <p>
         Having completed our update to the
-        <tt class="classname">RepConfigInfo</tt> 
+        <code class="classname">RepConfigInfo</code> 
          
         class, we can now start making
         changes to the main portion of our program. We begin by changing
@@ -216,10 +211,10 @@ using std::flush;
 #define CACHESIZE   (10 * 1024 * 1024)
 #define DATABASE    "quote.db"
                 
-<b class="userinput"><tt>const char *progname = "RepMgr";</tt></b> </pre>
+<strong class="userinput"><code>const char *progname = "RepMgrGSG";</code></strong> </pre>
       <p>
         Next we update our usage function. The application will continue to
-        accept the <tt class="literal">-h</tt> parameter so that we can identify
+        accept the <code class="literal">-h</code> parameter so that we can identify
         the environment home directory used by this application. However,
         we also add the 
 </p>
@@ -227,38 +222,38 @@ using std::flush;
         <ul type="disc">
           <li>
             <p>
-                    <tt class="literal">-m</tt> parameter which allows us to
+                    <code class="literal">-l</code> parameter which allows us to
                     identify the host and port used by this application to
                     listen for replication messages.
                 </p>
           </li>
           <li>
             <p>
-                        <tt class="literal">-o</tt> parameter which allows us to
+                        <code class="literal">-r</code> parameter which allows us to
                         specify other replicas.
                 </p>
           </li>
           <li>
             <p>
-                        <tt class="literal">-n</tt> parameter which allows us to
+                        <code class="literal">-n</code> parameter which allows us to
                         identify the number of sites in this replication
                         group.
                 </p>
           </li>
           <li>
             <p>
-                    <tt class="literal">-p</tt> option, which is used to identify
+                    <code class="literal">-p</code> option, which is used to identify
                     this replica's priority (recall that the priority is
                     used as a tie breaker for elections)
                 </p>
           </li>
         </ul>
       </div>
-      <pre class="programlisting">class RepMgr
+      <pre class="programlisting">class RepMgrGSG
 {
 public:
     // Constructor.
-    RepMgr();
+    RepMgrGSG();
     // Initialization method. Creates and opens our environment handle.
     int init(RepConfigInfo* config);
     // The doloop is where all the work is performed.
@@ -268,8 +263,8 @@ public:
 
 private:
     // disable copy constructor.
-    RepMgr(const RepMgr &amp;);
-    void operator = (const RepMgr &amp;);
+    RepMgrGSG(const RepMgrGSG &amp;);
+    void operator = (const RepMgrGSG &amp;);
 
     // internal data members.
     RepConfigInfo   *app_config;
@@ -283,24 +278,24 @@ private:
 static void usage()
 {
     cerr &lt;&lt; "usage: " &lt;&lt; progname &lt;&lt; endl
-         &lt;&lt; "[-h home]<b class="userinput"><tt>[-o host:port][-m host:port]</tt></b>"
-         <b class="userinput"><tt>&lt;&lt; "[-n nsites][-p priority]" &lt;&lt; endl;</tt></b>
+         &lt;&lt; "-h home<strong class="userinput"><code>[-r host:port][-l host:port]</code></strong>"
+         <strong class="userinput"><code>&lt;&lt; "[-n nsites][-p priority]" &lt;&lt; endl;</code></strong>
 
-    cerr <b class="userinput"><tt>&lt;&lt; "\t -m host:port (required; m stands for me)" &lt;&lt; endl
-         &lt;&lt; "\t -o host:port (optional; o stands for other; any "
-         &lt;&lt; "number of these may be specified)" &lt;&lt; endl</tt></b>
+    cerr <strong class="userinput"><code>&lt;&lt; "\t -l host:port (required; l stands for local)" &lt;&lt; endl
+         &lt;&lt; "\t -r host:port (optional; r stands for replica; any "
+         &lt;&lt; "number of these may be specified)" &lt;&lt; endl</code></strong>
          &lt;&lt; "\t -h home directory" &lt;&lt; endl
-         <b class="userinput"><tt>&lt;&lt; "\t -n nsites (optional; number of sites in replication "
+         <strong class="userinput"><code>&lt;&lt; "\t -n nsites (optional; number of sites in replication "
          &lt;&lt; "group; defaults to 0" &lt;&lt; endl
          &lt;&lt; "\t  in which case we try to dynamically compute the "
          &lt;&lt; "number of sites in" &lt;&lt; endl
          &lt;&lt; "\t  the replication group)" &lt;&lt; endl
-         &lt;&lt; "\t -p priority (optional: defaults to 100)" &lt;&lt; endl;</tt></b>
+         &lt;&lt; "\t -p priority (optional: defaults to 100)" &lt;&lt; endl;</code></strong>
 
     exit(EXIT_FAILURE);
 } </pre>
       <p>
-        Now we can begin working on our <tt class="literal">main()</tt> function.
+        Now we can begin working on our <code class="literal">main()</code> function.
         We begin by adding a couple of variables that we will use to
         collect TCP/IP host and port information. 
 
@@ -310,8 +305,8 @@ static void usage()
       <pre class="programlisting">int main(int argc, char **argv)
 {
     RepConfigInfo config;
-    char ch<b class="userinput"><tt>, *portstr, *tmphost;
-    int tmpport;</tt></b>
+    char ch<strong class="userinput"><code>, *portstr, *tmphost;
+    int tmpport;</code></strong>
     int ret; </pre>
       <p>
         Now we collect our command line arguments. As we do so, we will
@@ -319,12 +314,12 @@ static void usage()
         configure the application's election priority if necessary.
 </p>
       <pre class="programlisting">    // Extract the command line parameters
-    while ((ch = getopt(argc, argv, "h:<b class="userinput"><tt>m:n:o:p:</tt></b>")) != EOF) {
+    while ((ch = getopt(argc, argv, "h:<strong class="userinput"><code>l:n:p:r:</code></strong>")) != EOF) {
         switch (ch) {
         case 'h':
             config.home = optarg;
             break;
-        <b class="userinput"><tt>case 'm':
+        <strong class="userinput"><code>case 'l':
             config.this_host.host = strtok(optarg, ":");
             if ((portstr = strtok(NULL, ":")) == NULL) {
                 cerr &lt;&lt; "Bad host specification." &lt;&lt; endl;
@@ -336,7 +331,10 @@ static void usage()
         case 'n':
             config.totalsites = atoi(optarg);
             break;
-        case 'o':
+        case 'p':
+            config.priority = atoi(optarg);
+            break;
+        case 'r':
             tmphost = strtok(optarg, ":");
             if ((portstr = strtok(NULL, ":")) == NULL) {
                 cerr &lt;&lt; "Bad host specification." &lt;&lt; endl;
@@ -344,10 +342,7 @@ static void usage()
             }
             tmpport = (unsigned short)atoi(portstr);
             config.addOtherHost(tmphost, tmpport);
-            break;
-        case 'p':
-            config.priority = atoi(optarg);
-            break;</tt></b>
+            break;</code></strong>
         case '?':
         default:
             usage();
@@ -358,10 +353,10 @@ static void usage()
     if ((!config.got_listen_address) || config.home == NULL)
         usage(); </pre>
       <p>
-        Having done that, the remainder of our <tt class="function">main()</tt>
+        Having done that, the remainder of our <code class="function">main()</code>
         function is left unchanged:
 </p>
-      <pre class="programlisting">    RepMgr runner;
+      <pre class="programlisting">    RepMgrGSG runner;
     try {
         if((ret = runner.init(&amp;config)) != 0)
             goto err;
@@ -377,18 +372,18 @@ err:
 }  </pre>
       <p>
         Now we need to update our 
-            <tt class="methodname">RepMgr::init()</tt>
+            <code class="methodname">RepMgrGSG::init()</code>
             
         method. Our updates are at first related to configuring
         replication. First, we need to update the method so that we can 
         identify the local site to the environment handle (that is, the site identified by the 
-<tt class="literal">-m</tt> command line option):
+<code class="literal">-l</code> command line option):
 </p>
-      <pre class="programlisting">RepMgr::RepMgr() : app_config(0), dbenv(0)
+      <pre class="programlisting">RepMgrGSG::RepMgrGSG() : app_config(0), dbenv(0)
 {
 }
 
-int RepMgr::init(RepConfigInfo *config)
+int RepMgrGSG::init(RepConfigInfo *config)
 {
     int ret = 0;
 
@@ -397,32 +392,32 @@ int RepMgr::init(RepConfigInfo *config)
     dbenv.set_errfile(stderr);
     dbenv.set_errpfx(progname);
 
-    <b class="userinput"><tt>if ((ret = dbenv.repmgr_set_local_site(app_config-&gt;this_host.host,
+    <strong class="userinput"><code>if ((ret = dbenv.repmgr_set_local_site(app_config-&gt;this_host.host,
         app_config-&gt;this_host.port, 0)) != 0) {
         cerr &lt;&lt; "Could not set listen address to host:port "
              &lt;&lt; app_config-&gt;this_host.host &lt;&lt; ":"
              &lt;&lt; app_config-&gt;this_host.port
              &lt;&lt; "error: " &lt;&lt; ret &lt;&lt; endl;
-    }</tt></b> </pre>
+    }</code></strong> </pre>
       <p>
     And we also add code to allow us to identify "other" sites to the environment handle (that is,
-the sites that we identify using the <tt class="literal">-o</tt> command line
+the sites that we identify using the <code class="literal">-o</code> command line
 option). To do this, we iterate over each of the "other" sites provided to
-us using the <tt class="literal">-o</tt> command line option, and we add each one
+us using the <code class="literal">-o</code> command line option, and we add each one
 individually in turn:     
 </p>
-      <pre class="programlisting">    <b class="userinput"><tt>for ( REP_HOST_INFO *cur = app_config-&gt;other_hosts; cur != NULL;
+      <pre class="programlisting">    <strong class="userinput"><code>for ( REP_HOST_INFO *cur = app_config-&gt;other_hosts; cur != NULL;
         cur = cur-&gt;next) {
         if ((ret = dbenv.repmgr_add_remote_site(cur-&gt;host, cur-&gt;port,
-                                                NULL, 0)) != 0) {
+                                                NULL, 0, 0)) != 0) {
                 cerr &lt;&lt; "could not add site." &lt;&lt; endl
         }
-    } </tt></b> </pre>
+    } </code></strong> </pre>
       <p>
     And then we need code to allow us to identify the total number of sites
     in this replication group, and to set the environment's priority.
 </p>
-      <pre class="programlisting">    <b class="userinput"><tt>if (app_config-&gt;totalsites &gt; 0) {
+      <pre class="programlisting">    <strong class="userinput"><code>if (app_config-&gt;totalsites &gt; 0) {
         try {
             if ((ret = dbenv.rep_set_nsites(app_config-&gt;totalsites)) != 0)
                 dbenv.err(ret, "set_nsites");
@@ -430,7 +425,7 @@ individually in turn:
             cerr &lt;&lt; "rep_set_nsites call failed. Continuing." &lt;&lt; endl;
         }
     } 
-    dbenv.rep_set_priority(app_config-&gt;priority); </tt></b> </pre>
+    dbenv.rep_set_priority(app_config-&gt;priority); </code></strong> </pre>
       <p>
             
 
@@ -442,15 +437,15 @@ individually in turn:
             replicated application than they are for a non-replicated
             application. Namely, replication requires the
             <span>
-            <tt class="literal">DB_INIT_REP</tt> flag. 
+            <code class="literal">DB_INIT_REP</code> flag. 
             </span>
 
             
     </p>
       <p>
-            Also, because we are using the replication framework, we must prepare
+            Also, because we are using the Replication Manager, we must prepare
             our environment for threaded usage. For this reason, we also
-            need the <tt class="literal">DB_THREAD</tt> flag.
+            need the <code class="literal">DB_THREAD</code> flag.
     </p>
       <pre class="programlisting">    dbenv.set_cachesize(0, CACHESIZE, 0);
     dbenv.set_flags(DB_TXN_NOSYNC, 1);
@@ -458,18 +453,18 @@ individually in turn:
     try {
         dbenv.open(app_config-&gt;home, 
             DB_CREATE | 
-            DB_RECOVER |
-            <b class="userinput"><tt>DB_THREAD | 
-            DB_INIT_REP |</tt></b>
             DB_INIT_LOCK | 
-            DB_INIT_LOG |
-            DB_INIT_MPOOL | 
-            DB_INIT_TXN, 
+            DB_INIT_LOG | 
+            DB_INIT_MPOOL |
+            <strong class="userinput"><code>DB_INIT_REP |</code></strong>
+            DB_INIT_TXN | 
+            DB_RECOVER <strong class="userinput"><code>|
+            DB_THREAD;</code></strong>
             0);
     } catch(DbException dbe) {
         cerr  &lt;&lt; "Caught an exception during DB environment open." &lt;&lt; endl
-              &lt;&lt; "Ensure that the home directory is created prior to starting"
-              &lt;&lt; " the application." &lt;&lt; endl;
+              &lt;&lt; "Ensure that the home directory is created prior to "
+              &lt;&lt; "starting the application." &lt;&lt; endl;
         ret = ENOENT;
         goto err;
     }</pre>
@@ -477,7 +472,7 @@ individually in turn:
         Finally, we start replication before we exit this method.
         Immediately after exiting this method, our application will go into
         the 
-        <tt class="methodname">RepMgr::doloop()</tt>
+        <code class="methodname">RepMgrGSG::doloop()</code>
         
         method, which is where
        the bulk of our application's work is performed. We update that
@@ -508,7 +503,7 @@ err:
           <td width="40%" align="right"> <a accesskey="n" href="fwrkpermmessage.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Chapter 3. The DB Replication Framework </td>
+          <td width="40%" align="left" valign="top">Chapter 3. The DB Replication Manager </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

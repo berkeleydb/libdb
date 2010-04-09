@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.flags,v 12.4 2007/11/18 20:47:29 bostic Exp $
+# $Id$
 #
 # Check flag name-spaces.
 
@@ -97,8 +97,11 @@ echo 'Checking DB_AM_XXX flags with variables other than "db"'
 grep 'DB_AM_' $t1 |
 sed \
     -e '/(&db,/d' \
+    -e '/(db,/d' \
     -e '/_method.c:.*outflagsp,/d' \
+    -e '/partition.c:.*pdbp,/d' \
     -e '/rep_backup.c:.*->flags,/d' \
+    -e /'rep_backup.c:.*->db_flags,/d' \
     -e '/db.c:.*save_flags,/d' \
     -e '/((*[	 ]*db_rep->rep_db)*,/d' \
     -e '/((*[	 ]*dbc)*->dbp,/d' \
@@ -107,16 +110,18 @@ sed \
     -e '/((*[	 ]*dbp)*->s_primary,/d' \
     -e '/((D),/d' \
     -e '/((sdbp),/d' \
+    -e '/(fdbp,/d' \
     -e '/(file_dbp,/d' \
     -e '/(ldbp,/d' \
+    -e '/(msgfp->db_flags,/d' \
     -e '/(mdbp,/d' \
     -e '/(pdbp,/d' \
     -e '/(pginfo, /d' \
+    -e '/(rfp->db_flags,/d' \
     -e '/(sdbp,/d' \
     -e '/(subdbp,/d' \
     -e '/fop_util.c:.*(t2dbp,/d' \
     -e '/fop_util.c:.*(tmpdbp,/d' \
-    -e '/rep_backup.c.*(rfp,/d' \
     > $t2
 [ -s $t2 ] && {
 	cat $t2
@@ -128,6 +133,7 @@ echo Checking DBC flags...
 cat $t1 |
 grep 'dbc,' |
 sed -e '/DBC_/d' \
+    -e '/db_cam.c:.*tmp_read_locking)/d' 
     > $t2
 [ -s $t2 ] && {
 	cat $t2
@@ -143,7 +149,10 @@ sed -e '/((*dbc)*,/d' \
     -e '/(dbc_orig,/d' \
     -e '/(opd,/d' \
     -e '/(pdbc,/d' \
+    -e '/[(*]put_state[p]*,/d' \
     -e '/(sdbc,/d' \
+    -e '/partition.c:.*_dbc,/d' \
+    -e '/partition.c:.*_cursor,/d'
     > $t2
 [ -s $t2 ] && {
 	cat $t2

@@ -1,7 +1,7 @@
 /*-
  * DO NOT EDIT: automatically built by dist/s_sig.
  *
- * : s_sig,v 12.4 2008/03/25 12:18:09 mjc Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -19,13 +19,11 @@
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
-#ifdef HAVE_MUTEX_SUPPORT
-#include "dbinc/mutex_int.h"
-#endif
+#include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
-#define	__STRUCTURE_COUNT	113
+#define	__STRUCTURE_COUNT	114
 
 /*
  * __env_struct_sig --
@@ -81,7 +79,6 @@ __env_struct_sig()
 	__ADD(__db_qam_stat);
 	__ADD(__db_env);
 	__ADD(__db_distab);
-	__ADD(__db);
 	__ADD(__fn);
 	__ADD(__db_msgbuf);
 	__ADD(__pin_list);
@@ -139,6 +136,8 @@ __env_struct_sig()
 	__ADD(__db_mutex_t);
 #endif
 	__ADD(__fh_t);
+	__ADD(__db_partition);
+	__ADD(__part_internal);
 	__ADD(__qcursor);
 	__ADD(__mpfarray);
 	__ADD(__qmpf);

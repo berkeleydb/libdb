@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TestStore.java,v 12.8 2008/02/07 17:12:31 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections.test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -240,14 +239,14 @@ class TestStore {
     }
 
     Database open(Environment env, String fileName)
-        throws IOException, DatabaseException {
+        throws DatabaseException {
 
         int fixedLen = (isQueueOrRecno() ? 1 : 0);
         return openDb(env, fileName, fixedLen, null);
     }
 
     Database openIndex(Database primary, String fileName)
-        throws IOException, DatabaseException {
+        throws DatabaseException {
 
         int fixedLen = (isQueueOrRecno() ? 4 : 0);
         config.setKeyCreator(isRecNumFormat ? RECNO_EXTRACTOR
@@ -258,7 +257,7 @@ class TestStore {
 
     private Database openDb(Environment env, String fileName, int fixedLen,
                             Database primary)
-        throws IOException, DatabaseException {
+        throws DatabaseException {
 
         if (fixedLen > 0) {
             DbCompat.setRecordLength(config, fixedLen);

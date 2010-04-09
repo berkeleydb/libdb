@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Configuring the Transaction Subsystem</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
-    <link rel="previous" href="txnindices.html" title="Secondary Indices with Transaction Applications" />
+    <link rel="prev" href="txnindices.html" title="Secondary Indices with Transaction Applications" />
     <link rel="next" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
   </head>
   <body>
@@ -32,15 +32,14 @@
             <h2 class="title" style="clear: both"><a id="maxtxns"></a>Configuring the Transaction Subsystem</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             Most of the configuration activities that you need to perform
             for your transactional DB application will involve the
             locking and logging subsystems. See 
-            <a href="txnconcurrency.html">Concurrency</a>
+            <a class="xref" href="txnconcurrency.html" title="Chapter 4. Concurrency">Concurrency</a>
             and
-            <a href="filemanagement.html">Managing DB Files</a>
+            <a class="xref" href="filemanagement.html" title="Chapter 5. Managing DB Files">Managing DB Files</a>
             for details.
         </p>
       <p>
@@ -51,40 +50,47 @@
       <div class="itemizedlist">
         <ul type="disc">
           <li>
-            <p>
-                    Configure the maximum number of simultaneous
+            <span>
+                <p>
+                    
+                    <span>
+                        Configure 
+                    </span>
+                        
+                    the maximum number of simultaneous
                     transactions needed by your application. 
                     In general, you should not need to do this unless you
                     use deeply nested transactions or you have many threads all
                     of which have active transactions. In addition, you may
-                    need to a higher maximum number of transactions if you
+                    need to configure a higher maximum number of transactions if you
                     are using snapshot isolation. See
-                    <a href="isolation.html#sisolation_maxtxn">Snapshot Isolation Transactional Requirements</a>
+                    <a class="xref" href="isolation.html#sisolation_maxtxn" title="Snapshot Isolation Transactional Requirements">Snapshot Isolation Transactional Requirements</a>
                     for details.
                 </p>
-            <p>
+                <p>
                     By default, your application can support 20 active
                     transactions. 
                 </p>
-            <p>
+                <p>
                     You can set the maximum number of simultaneous
                     transactions supported by your application using
                     
                     <span>
-                        <tt class="methodname">EnvironmentConfig.setTxnMaxActive()</tt>.
+                        <code class="methodname">EnvironmentConfig.setTxnMaxActive()</code>.
                     </span>
                 </p>
-            <p>
+                <p>
                     If your application has exceeded this maximum value,
                     then any attempt to begin a new transaction will fail.
                 </p>
-            <p>
+                <p>
                     This value can also be set using the
-                    <tt class="literal">DB_CONFIG</tt> file's
-                    <tt class="literal">set_tx_max</tt> parameter. Remember that
-                    the <tt class="literal">DB_CONFIG</tt> must reside in your
+                    <code class="literal">DB_CONFIG</code> file's
+                    <code class="literal">set_tx_max</code> parameter. Remember that
+                    the <code class="literal">DB_CONFIG</code> must reside in your
                     environment home directory.
                 </p>
+</span>
           </li>
           <li>
             <span>
@@ -98,7 +104,7 @@
                     transaction can be active. Note, however, that
                     transaction timeouts are checked only when DB
                     examines its lock tables for blocked locks
-                    (see <a href="blocking_deadlocks.html">Locks, Blocks, and Deadlocks</a>
+                    (see <a class="xref" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks">Locks, Blocks, and Deadlocks</a>
                     for more information). Therefore, a transaction's timeout can
                     have expired, but the application will not be notified until DB 
                     has a reason to examine its lock tables.
@@ -124,20 +130,20 @@
                     use  the
                             
                             
-                            <span><tt class="methodname">EnvironmentConfig.setTxnTimeout()</tt></span>
+                            <span><code class="methodname">EnvironmentConfig.setTxnTimeout()</code></span>
                         method. This method configures the entire
                         environment; not just the handle used to set the
                         configuration. Further, this value may
                         be set at any time during the application's
                         lifetime. <span>(Use
-                        <tt class="methodname">Environment.setConfig()</tt> to
+                        <code class="methodname">Environment.setConfig()</code> to
                         set this value after the environment has been
                         opened.)</span>
                 </p>
                 <p>
                     This value can also be set using the
-                    <tt class="literal">DB_CONFIG</tt> file's
-                    <tt class="literal">set_txn_timeout</tt> parameter.
+                    <code class="literal">DB_CONFIG</code> file's
+                    <code class="literal">set_txn_timeout</code> parameter.
                 </p> 
                 
 </span>

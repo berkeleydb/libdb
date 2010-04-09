@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: cxx_dbc.cpp,v 12.12 2008/01/08 20:58:09 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -46,6 +46,8 @@ Dbc::~Dbc()
 }
 
 DBC_METHOD(close, (void), (dbc), DB_RETOK_STD)
+DBC_METHOD(cmp, (Dbc *other_cursor, int *result, u_int32_t _flags),
+    (dbc, other_cursor, result, _flags), DB_RETOK_STD)
 DBC_METHOD(count, (db_recno_t *countp, u_int32_t _flags),
     (dbc, countp, _flags), DB_RETOK_STD)
 DBC_METHOD(del, (u_int32_t _flags),

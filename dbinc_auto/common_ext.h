@@ -9,6 +9,11 @@ extern "C" {
 int __crypto_region_init __P((ENV *));
 int __db_isbigendian __P((void));
 int __db_byteorder __P((ENV *, int));
+u_int32_t __db_compress_count_int __P((u_int64_t));
+int __db_compress_int __P((u_int8_t *, u_int64_t));
+u_int32_t __db_decompress_count_int __P((const u_int8_t *));
+int __db_decompress_int __P((const u_int8_t *, u_int64_t *));
+int __db_decompress_int32 __P((const u_int8_t *, u_int32_t *));
 int __db_fchk __P((ENV *, const char *, u_int32_t, u_int32_t));
 int __db_fcchk __P((ENV *, const char *, u_int32_t, u_int32_t, u_int32_t));
 int __db_ferr __P((const ENV *, const char *, int));

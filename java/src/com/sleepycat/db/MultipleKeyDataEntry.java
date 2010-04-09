@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: MultipleKeyDataEntry.java,v 12.8 2008/01/17 05:04:53 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -108,4 +108,71 @@ public class MultipleKeyDataEntry extends MultipleEntry {
 
         return true;
     }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param key
+    an array containing the key to be added.
+    @param koff
+    the position in the <b>key</b> array where the record starts.
+    @param klen
+    the length of the record, in bytes, to be copied from the <b>key</b> array.
+    @param data
+    an array containing the value to be added.
+    @param doff
+    the position in the <b>data</b> array where the record starts.
+    @param dlen
+    the length of the record, in bytes, to be copied from the <b>data</b> array.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final byte[] key, int koff, int klen,
+                          final byte[] data, int doff, int dlen)
+        throws DatabaseException {
+
+        return append_internal(key, koff, klen) &&
+            this.append_internal(data, doff, dlen);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param key
+    the key to be appended, using the offset and size specified in the
+    {@link com.sleepycat.db.DatabaseEntry DatabaseEntry}.
+    @param data
+    the value to be appended, using the offset and size specified in the
+    {@link com.sleepycat.db.DatabaseEntry DatabaseEntry}.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final DatabaseEntry key, final DatabaseEntry data)
+        throws DatabaseException {
+        
+        return append(key.data, key.offset, key.size,
+            data.data, data.offset, data.size);
+    }
+
+    /**
+    Append an entry to the bulk buffer.
+    <p>
+    @param key
+    an array containing the key to be added.
+    @param data
+    an array containing the value to be added.
+    <p>
+    @return
+    indicates whether there was space.  A return of <code>false</code>
+    indicates that the specified entry could not fit in the buffer.
+    */
+    public boolean append(final byte[] key, final byte[] data)
+        throws DatabaseException {
+        return append(key, 0, key.length, data, 0, data.length);
+    }
 }
+

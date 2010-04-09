@@ -3,21 +3,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Appendix A. 
-        API Notes and Details
-    </title>
+    <title>Appendix 1.  API Notes and Details</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
     <link rel="up" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="previous" href="Summary.html" title="Chapter 7. &#10;&#9;&#9;Summary&#10;&#9;" />
-    <link rel="next" href="UsingCollectionsAPI.html" title="&#10;        Using the DB Java Collections API&#10;    " />
+    <link rel="prev" href="Summary.html" title="Chapter 7.  Summary" />
+    <link rel="next" href="UsingCollectionsAPI.html" title="Using the DB Java Collections API" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Appendix A. 
+          <th colspan="3" align="center">Appendix 1. 
         API Notes and Details
     </th>
         </tr>
@@ -33,12 +31,11 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title"><a id="collectionOverview"></a>Appendix A. 
+            <h2 class="title"><a id="collectionOverview"></a>Appendix 1. 
         API Notes and Details
     </h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         This appendix contains information useful to the collections programmer
@@ -49,28 +46,28 @@
         <ul type="disc">
           <li>
             <p>
-                <a href="collectionOverview.html#UsingDataBindings">
+                <a class="xref" href="collectionOverview.html#UsingDataBindings" title="Using Data Bindings">
         Using Data Bindings
     </a>
             </p>
           </li>
           <li>
             <p>
-                <a href="UsingCollectionsAPI.html">
+                <a class="xref" href="UsingCollectionsAPI.html" title="Using the DB Java Collections API">
         Using the DB Java Collections API
     </a>
             </p>
           </li>
           <li>
             <p>
-                <a href="UsingStoredCollections.html">
+                <a class="xref" href="UsingStoredCollections.html" title="Using Stored Collections">
         Using Stored Collections
     </a>
             </p>
           </li>
           <li>
             <p>
-                <a href="SerializedObjectStorage.html">
+                <a class="xref" href="SerializedObjectStorage.html" title="Serialized Object Storage">
         Serialized Object Storage
     </a>
             </p>
@@ -86,7 +83,50 @@
     </h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#SelectingBindingFormats">
+            Selecting Binding Formats
+        </a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#RecordNumberBindings">Record Number Bindings</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#SelectingDataBindings">
+            Selecting Data Bindings
+        </a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#ImplementingBindings">
+            Implementing Bindings
+        </a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#UsingBindings">
+            Using Bindings
+        </a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="collectionOverview.html#SecondaryKeyCreators">
+            Secondary Key Creators
+        </a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
         Data bindings determine how keys and values are represented as
@@ -103,7 +143,7 @@
         collection.
         <span>
             One exception to this rule is described under 
-            <a href="collectionOverview.html#RecordNumberBindings">Record Number Bindings</a>
+            <a class="xref" href="collectionOverview.html#RecordNumberBindings" title="Record Number Bindings">Record Number Bindings</a>
             below.
         </span>
     </p>
@@ -126,7 +166,6 @@
         </h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
         For the key and value of each stored collection, you may select
@@ -149,8 +188,9 @@
               <tbody>
                 <tr>
                   <td>
-                    <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
-                  </td>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+                    
+                </td>
                   <td>No</td>
                   <td>
                     The data is stored using a compact form of Java serialization,
@@ -160,8 +200,9 @@
                 </tr>
                 <tr>
                   <td>
-                    <a href="../../java/com/sleepycat/bind/tuple/TupleBinding.html" target="_top">TupleBinding</a>
-                  </td>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleBinding.html" target="_top">TupleBinding</a>
+                    
+                </td>
                   <td>Yes</td>
                   <td>
                     The data is stored using a series of fixed length primitive
@@ -171,8 +212,9 @@
                 </tr>
                 <tr>
                   <td>
-                    <a href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
-                  </td>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
+                    
+                </td>
                   <td>Yes</td>
                   <td>
                     The data is a 32-bit integer stored in a platform-dependent format.
@@ -195,7 +237,7 @@
         not. This means that when a specific key order is needed, tuples should
         be used instead of serial data. Alternatively, a custom Btree comparator should be
         specified using
-        <tt class="methodname">DatabaseConfig.setBtreeComparator()</tt>. Note that
+        <code class="methodname">DatabaseConfig.setBtreeComparator()</code>. Note that
         a custom Btree comparator will usually execute more slowly than the
         default byte-by-byte comparison. This makes using tuples an attractive
         option, since they provide ordering along with optimal performance.
@@ -222,36 +264,35 @@
                 <h3 class="title"><a id="RecordNumberBindings"></a>Record Number Bindings</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
             Any use of an access method with record number keys, and therefore any
             use of a stored list view, requires using
-                    <a href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
                     
             as the key binding. Since Berkeley DB stores record number keys using
             a platform-dependent byte order, 
-                    <a href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
                     
             is needed to store record numbers properly. See
-                    <span class="html"><a href="../../ref/am_conf/logrec.html" target="_top">logical record numbers</a> in</span>
-                    the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>
+            <span class="html"><a class="ulink" href="../../programmer_reference/am_conf_logrec.html" target="_top">logical record numbers</a> in</span>
+                    the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>
             for more information on storing DB record numbers.
         </p>
           <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
             <h3 class="title">Note</h3>
             <p>
                 You may not use
-                    <a href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
                     
                 except with record number keys, as determined by the access
                 method. Using
-                    <a href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
+                    <a class="ulink" href="../../java/com/sleepycat/bind/RecordNumberBinding.html" target="_top">RecordNumberBinding</a>
                     
                 in other cases will create a database that is not portable
                 between platforms. When constructing the stored collection, 
                 the DB Java Collections API will throw an
-                    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/IllegalArgumentException.html" target="_top">IllegalArgumentException</a>
+                    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/lang/IllegalArgumentException.html" target="_top">IllegalArgumentException</a>
                     
                 in such cases.
             </p>
@@ -266,16 +307,15 @@
         </h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
         There are two types of binding interfaces. Simple entry bindings
         implement the 
-        <a href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
         
         interface and can be used for key or value objects. Entity bindings
         implement the 
-        <a href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
         
         interface and are used for combined key and value objects called
         entities.
@@ -288,12 +328,12 @@
           <p>
         Simple entry bindings are easy to implement and in some cases
         require no coding. For example, a 
-        <a href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/serial/SerialBinding.html" target="_top">SerialBinding</a>
         
         can be used for keys or values without writing any additional
         code. A tuple binding for a single-item tuple can also be used without
         writing any code; see the
-           <a href="../../java/com/sleepycat/bind/tuple/TupleBinding.html#getPrimitiveBinding(java.lang.Class)" target="_top">TupleBinding.getPrimitiveBinding</a> 
+           <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleBinding.html#getPrimitiveBinding(java.lang.Class)" target="_top">TupleBinding.getPrimitiveBinding</a> 
            
         method.
     </p>
@@ -315,7 +355,7 @@
         Note that even when an entity binding is used a key binding is
         also usually needed. For example, a key binding is used to create
         key objects that are passed to the 
-        <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get()</a>
+        <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#get" target="_top">Map.get()</a>
         
         method. A key object is passed to this method even though it may
         return an entity that also contains the key.
@@ -330,24 +370,23 @@
         </h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
         There are two ways to implement bindings. The first way is to
         create a binding class that implements one of the two binding
         interfaces, 
-        <a href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/EntryBinding.html" target="_top">EntryBinding</a>
         
         or 
-        <a href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>.
+        <a class="ulink" href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>.
         For tuple bindings and serial bindings there are a number of
         abstract classes that make this easier. For example, you can extend
-        <a href="../../java/com/sleepycat/bind/tuple/TupleBinding.html" target="_top">TupleBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleBinding.html" target="_top">TupleBinding</a>
         
         to implement a simple binding for a tuple key or value. Abstract
         classes are also provided for entity bindings and are named after
         the format names of the key and value. For example, you can extend
-        <a href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html" target="_top">TupleSerialBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/serial/TupleSerialBinding.html" target="_top">TupleSerialBinding</a>
         
         to implement an entity binding with a tuple key and serial
         value.
@@ -359,10 +398,10 @@
         themselves. With marshalling you use a binding which calls the
         marshalling interface and you implement the marshalling interface
         for each key, value or entity class. For example, you can use
-        <a href="../../java/com/sleepycat/bind/tuple/TupleMarshalledBinding.html" target="_top">TupleMarshalledBinding</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/tuple/TupleMarshalledBinding.html" target="_top">TupleMarshalledBinding</a>
         
         along with key or value classes that implement the 
-        <a href="../../java/com/sleepycat/bind/tuple/MarshalledTupleEntry.html" target="_top">MarshalledTupleEntry</a>
+        <a class="ulink" href="../../java/com/sleepycat/bind/tuple/MarshalledTupleEntry.html" target="_top">MarshalledTupleEntry</a>
         
         interface.
     </p>
@@ -376,7 +415,6 @@
         </h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
         Bindings are specified whenever a stored collection is created.
@@ -409,19 +447,18 @@
         </h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
         Secondary Key Creators are needed whenever database indices are
         used. For each secondary index 
         
         <span>
-            (<a href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>)
+            (<a class="ulink" href="../../java/com/sleepycat/db/SecondaryDatabase.html" target="_top">SecondaryDatabase</a>)
         </span>
         a key creator is used to derive index key data from key/value data.
         Key creators are objects whose classes implement the 
         
-        <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" target="_top">SecondaryKeyCreator</a>
+        <a class="ulink" href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" target="_top">SecondaryKeyCreator</a>
         
         interface.
     </p>
@@ -451,9 +488,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="Summary.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="UsingCollectionsAPI.html">Next</a></td>
         </tr>
         <tr>

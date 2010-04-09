@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: TpcbExample.cpp,v 12.8 2008/01/08 20:58:26 bostic Exp $
+ * $Id$
  */
 
 #include <sys/types.h>
@@ -252,6 +252,7 @@ TpcbExample::TpcbExample(const char *home, int cachesize, int flags)
 
 	set_error_stream(&cerr);
 	set_errpfx("TpcbExample");
+	(void)set_lk_detect(DB_LOCK_DEFAULT);
 	(void)set_cachesize(0, cachesize == 0 ?
 			    4 * 1024 * 1024 : (u_int32_t)cachesize, 0);
 
@@ -581,36 +582,40 @@ TpcbExample::txn(Db *adb, Db *bdb, Db *tdb, Db *hdb,
 	    tdb->cursor(t, &tcurs, 0) != 0)
 		goto err;
 
-	// Account record
-	k_dbt.set_data(&account);
-	if (acurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
-		goto err;
-	rec.balance += 10;
-	if (acurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
-		goto err;
+	try {
+		// Account record
+		k_dbt.set_data(&account);
+		if (acurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
+			goto err;
+		rec.balance += 10;
+		if (acurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
+			goto err;
 
-	// Branch record
-	k_dbt.set_data(&branch);
-	if (bcurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
-		goto err;
-	rec.balance += 10;
-	if (bcurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
-		goto err;
+		// Branch record
+		k_dbt.set_data(&branch);
+		if (bcurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
+			goto err;
+		rec.balance += 10;
+		if (bcurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
+			goto err;
 
-	// Teller record
-	k_dbt.set_data(&teller);
-	if (tcurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
-		goto err;
-	rec.balance += 10;
-	if (tcurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
-		goto err;
+		// Teller record
+		k_dbt.set_data(&teller);
+		if (tcurs->get(&k_dbt, &d_dbt, DB_SET) != 0)
+			goto err;
+		rec.balance += 10;
+		if (tcurs->put(&k_dbt, &d_dbt, DB_CURRENT) != 0)
+			goto err;
 
-	// History record
-	d_histdbt.set_flags(0);
-	d_histdbt.set_data(&hrec);
-	d_histdbt.set_ulen(sizeof(hrec));
-	if (hdb->put(t, &k_histdbt, &d_histdbt, DB_APPEND) != 0)
+		// History record
+		d_histdbt.set_flags(0);
+		d_histdbt.set_data(&hrec);
+		d_histdbt.set_ulen(sizeof(hrec));
+		if (hdb->put(t, &k_histdbt, &d_histdbt, DB_APPEND) != 0)
+			goto err;
+	} catch (DbDeadlockException e) {
 		goto err;
+	}
 
 	if (acurs->close() != 0 || bcurs->close() != 0 || tcurs->close() != 0)
 		goto err;

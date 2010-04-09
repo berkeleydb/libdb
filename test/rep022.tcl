@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep022.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep022
 # TEST	Replication elections - test election generation numbers
@@ -17,6 +17,9 @@ proc rep022 { method args } {
 	}
 	global rand_init
 	global mixed_mode_logging
+	global databases_in_memory
+	global repfiles_in_memory
+
 	set tnum "022"
 
 	# Run for btree only.
@@ -34,12 +37,22 @@ proc rep022 { method args } {
 		return
 	}
 
+	if { $databases_in_memory > 0 } { 
+		puts "Rep$tnum: Skipping for in-memory databases."
+		return
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	set nclients 5
 	set logsets [create_logsets [expr $nclients + 1]]
 	foreach l $logsets {
 		puts "Rep$tnum ($method): Election generation test\
-		    with simulated network partition."
+		    with simulated network partition $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		for { set i 0 } { $i < $nclients } { incr i } {
 			puts "Rep$tnum: Client $i logs are\
@@ -51,12 +64,18 @@ proc rep022 { method args } {
 
 proc rep022_sub { method nclients tnum logset largs } {
 	source ./include.tcl
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -82,7 +101,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 $verbargs \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -93,7 +112,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -errpfx CLIENT.$i -event rep_event \
+		    -errpfx CLIENT.$i -event rep_event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -106,7 +125,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	# Run a modified test001 in the master.
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
@@ -216,7 +235,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	}
 
 	# Have client 4 (currently a master) run an operation.
-	eval rep_test $method $clientenv(4) NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $clientenv(4) NULL $niter 0 0 0 $largs
 
 	# Check that clients 0 and 4 get DUPMASTER messages and
 	# restart them as clients.

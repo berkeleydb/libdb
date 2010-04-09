@@ -1,4 +1,4 @@
-// $Id: config.w32,v 12.1 2007/11/20 21:43:44 gmf Exp $
+// $Id$
 //
 // Windows configuration file for Berkeley DB extension for PHP
 // NOTE: this does not build with mod_db4.  Instructions are for a Release build.

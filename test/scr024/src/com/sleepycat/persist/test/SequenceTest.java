@@ -1,21 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SequenceTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.test;
 
 import java.io.File;
-import java.io.IOException;
 
-import junit.framework.TestCase;
-
-import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.util.DualTestCase;
 import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.PrimaryIndex;
 import com.sleepycat.persist.StoreConfig;
@@ -29,33 +26,27 @@ import com.sleepycat.util.test.TestEnv;
 /**
  * @author Mark Hayes
  */
-public class SequenceTest extends TestCase {
+public class SequenceTest extends DualTestCase {
 
     private File envHome;
     private Environment env;
 
+    @Override
     public void setUp()
-        throws IOException {
+        throws Exception {
+
+        super.setUp();
 
         envHome = new File(System.getProperty(SharedTestUtils.DEST_DIR));
         SharedTestUtils.emptyDir(envHome);
     }
 
+    @Override
     public void tearDown()
-        throws IOException {
+        throws Exception {
 
-        if (env != null) {
-            try {
-                env.close();
-            } catch (DatabaseException e) {
-                System.out.println("During tearDown: " + e);
-            }
-        }
-        try {
-            SharedTestUtils.emptyDir(envHome);
-        } catch (Error e) {
-            System.out.println("During tearDown: " + e);
-        }
+        super.tearDown();
+
         envHome = null;
         env = null;
     }
@@ -82,12 +73,13 @@ public class SequenceTest extends TestCase {
             SequenceEntity_tbyte_composite.class,
         };
 
-        EnvironmentConfig envConfig = TestEnv.BDB.getConfig();
+        EnvironmentConfig envConfig = TestEnv.TXN.getConfig();
         envConfig.setAllowCreate(true);
-        env = new Environment(envHome, envConfig);
+        env = create(envHome, envConfig);
 
         StoreConfig storeConfig = new StoreConfig();
         storeConfig.setAllowCreate(true);
+        storeConfig.setTransactional(true);
         EntityStore store = new EntityStore(env, "foo", storeConfig);
 
         long seq = 0;
@@ -113,7 +105,7 @@ public class SequenceTest extends TestCase {
         }
 
         store.close();
-        env.close();
+        close(env);
         env = null;
     }
 

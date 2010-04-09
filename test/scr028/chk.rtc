@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.rtc,v 12.0 2004/11/17 03:44:56 bostic Exp $
+# $Id$
 #
 # Build a program that calls the run-time API configuration functions.
 
@@ -9,7 +9,10 @@
 	exit 1
 }
 
-if cc -g -Wall -I.. t.c ../libdb.a -o t; then
+CINC=-I..
+[ `uname` = "Linux" ] && CINC="$CINC -pthread" 
+
+if cc -g -Wall $CINC t.c ../libdb.a -o t; then
 	:
 else
 	echo "FAIL: unable to compile test program t.c"

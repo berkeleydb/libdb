@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mp_bh.c,v 12.43 2008/01/08 20:58:42 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -73,11 +73,11 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 			}
 
 			MUTEX_LOCK(env, dbmp->mutex);
-			if (dbmfp->fhp == NULL)
-				ret = __db_appname(env, DB_APP_TMP, NULL,
+			if (dbmfp->fhp == NULL) {
+				ret = __db_tmp_open(env,
 				    F_ISSET(env->dbenv, DB_ENV_DIRECT_DB) ?
-				    DB_OSO_DIRECT : 0, &dbmfp->fhp, NULL);
-			else
+				    DB_OSO_DIRECT : 0, &dbmfp->fhp);
+			} else
 				ret = 0;
 			MUTEX_UNLOCK(env, dbmp->mutex);
 			if (ret != 0) {
@@ -148,8 +148,8 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 	 */
 	if ((ret = __memp_fcreate(env, &dbmfp)) != 0)
 		return (ret);
-	if ((ret = __memp_fopen(dbmfp,
-	    mfp, NULL, DB_DURABLE_UNKNOWN, 0, mfp->stat.st_pagesize)) != 0) {
+	if ((ret = __memp_fopen(dbmfp, mfp,
+	    NULL, NULL, DB_DURABLE_UNKNOWN, 0, mfp->stat.st_pagesize)) != 0) {
 		(void)__memp_fclose(dbmfp, 0);
 
 		/*
@@ -187,12 +187,11 @@ pgwrite:
  * __memp_pgread --
  *	Read a page from a file.
  *
- * PUBLIC: int __memp_pgread __P((DB_MPOOLFILE *, DB_MPOOL_HASH *, BH *, int));
+ * PUBLIC: int __memp_pgread __P((DB_MPOOLFILE *, BH *, int));
  */
 int
-__memp_pgread(dbmfp, hp, bhp, can_create)
+__memp_pgread(dbmfp, bhp, can_create)
 	DB_MPOOLFILE *dbmfp;
-	DB_MPOOL_HASH *hp;
 	BH *bhp;
 	int can_create;
 {
@@ -206,13 +205,13 @@ __memp_pgread(dbmfp, hp, bhp, can_create)
 	mfp = dbmfp->mfp;
 	pagesize = mfp->stat.st_pagesize;
 
-	/* We should never be called with a dirty or a locked buffer. */
-	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY_CREATE | BH_LOCKED));
+	/* We should never be called with a dirty or unlocked buffer. */
+	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY_CREATE | BH_FROZEN));
 	DB_ASSERT(env, can_create || !F_ISSET(bhp, BH_DIRTY));
+	DB_ASSERT(env, F_ISSET(bhp, BH_EXCLUSIVE));
 
-	/* Lock the buffer and unlock the hash bucket. */
-	F_SET(bhp, BH_LOCKED | BH_TRASH);
-	MUTEX_UNLOCK(env, hp->mtx_hash);
+	/* Mark the buffer as in transistion. */
+	F_SET(bhp, BH_TRASH);
 
 	/*
 	 * Temporary files may not yet have been created.  We don't create
@@ -264,28 +263,15 @@ __memp_pgread(dbmfp, hp, bhp, can_create)
 #endif
 
 	/* Call any pgin function. */
-	ret = mfp->ftype == 0 ? 0 : __memp_pg(dbmfp, bhp, 1);
-
-	/* Re-acquire the hash bucket lock. */
-err:	MUTEX_LOCK(env, hp->mtx_hash);
+	ret = mfp->ftype == 0 ? 0 : __memp_pg(dbmfp, bhp->pgno, bhp->buf, 1);
 
 	/*
 	 * If no errors occurred, the data is now valid, clear the BH_TRASH
-	 * flag; regardless, clear the lock bit and let other threads proceed.
+	 * flag.
 	 */
-	F_CLR(bhp, BH_LOCKED);
 	if (ret == 0)
 		F_CLR(bhp, BH_TRASH);
-
-	/*
-	 * If a thread of control is waiting on this buffer, wake it up.
-	 */
-	if (F_ISSET(hp, IO_WAITER)) {
-		F_CLR(hp, IO_WAITER);
-		MUTEX_UNLOCK(env, hp->mtx_io);
-	}
-
-	return (ret);
+err:	return (ret);
 }
 
 /*
@@ -302,21 +288,22 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 	DB_LSN lsn;
 	MPOOLFILE *mfp;
 	size_t nw;
-	int callpgin, ret;
-
-	mfp = dbmfp == NULL ? NULL : dbmfp->mfp;
-	callpgin = ret = 0;
-
-	/* We should never be called with a clean or trash buffer. */
-	DB_ASSERT(env, F_ISSET(bhp, BH_DIRTY));
-	DB_ASSERT(env, !F_ISSET(bhp, BH_TRASH));
+	int ret;
+	void * buf;
 
 	/*
-	 * The sync code has already locked the buffer, but the allocation
-	 * code has not.  Lock the buffer and release the hash bucket mutex.
+	 * Since writing does not require exclusive access, another thread
+	 * could have already written this buffer.
 	 */
-	F_SET(bhp, BH_LOCKED);
-	MUTEX_UNLOCK(env, hp->mtx_hash);
+	if (!F_ISSET(bhp, BH_DIRTY))
+		return (0);
+
+	mfp = dbmfp == NULL ? NULL : dbmfp->mfp;
+	ret = 0;
+	buf = NULL;
+
+	/* We should never be called with a frozen or trashed buffer. */
+	DB_ASSERT(env, !F_ISSET(bhp, BH_FROZEN | BH_TRASH));
 
 	/*
 	 * It's possible that the underlying file doesn't exist, either
@@ -385,20 +372,28 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 #endif
 
 	/*
-	 * Call any pgout function.  We set the callpgin flag so that we flag
-	 * that the contents of the buffer will need to be passed through pgin
-	 * before they are reused.
+	 * Call any pgout function.  If we have the page exclusive then
+	 * we are going to reuse it otherwise make a copy of the page so
+	 * that others can continue looking at the page while we write it.
 	 */
-	if (mfp->ftype != 0 && !F_ISSET(bhp, BH_CALLPGIN)) {
-		callpgin = 1;
-		if ((ret = __memp_pg(dbmfp, bhp, 0)) != 0)
+	buf = bhp->buf;
+	if (mfp->ftype != 0) {
+		if (F_ISSET(bhp, BH_EXCLUSIVE))
+			F_SET(bhp, BH_TRASH);
+		else {
+			if ((ret =
+			    __os_malloc(env, mfp->stat.st_pagesize, &buf)) != 0)
+				goto err;
+			memcpy(buf, bhp->buf, mfp->stat.st_pagesize);
+		}
+		if ((ret = __memp_pg(dbmfp, bhp->pgno, buf, 0)) != 0)
 			goto err;
 	}
 
 	/* Write the page. */
 	if ((ret = __os_io(
 	    env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno, mfp->stat.st_pagesize,
-	    0, mfp->stat.st_pagesize, bhp->buf, &nw)) != 0) {
+	    0, mfp->stat.st_pagesize, buf, &nw)) != 0) {
 		__db_errx(env, "%s: write failed for page %lu",
 		    __memp_fn(dbmfp), (u_long)bhp->pgno);
 		goto err;
@@ -413,42 +408,39 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 
 err:
 file_dead:
+	if (buf != NULL && buf != bhp->buf)
+		__os_free(env, buf);
 	/*
 	 * !!!
 	 * Once we pass this point, dbmfp and mfp may be NULL, we may not have
 	 * a valid file reference.
-	 *
-	 * Re-acquire the hash lock.
 	 */
-	MUTEX_LOCK(env, hp->mtx_hash);
-
-	/*
-	 * If we rewrote the page, it will need processing by the pgin
-	 * routine before reuse.
-	 */
-	if (callpgin)
-		F_SET(bhp, BH_CALLPGIN);
 
 	/*
 	 * Update the hash bucket statistics, reset the flags.  If we were
-	 * successful, the page is no longer dirty.
+	 * successful, the page is no longer dirty.  Someone else may have
+	 * also written the page so we need to latch the hash bucket here
+	 * to get the accounting correct.  Since we have the buffer
+	 * shared it cannot be marked dirty again till we release it.
+	 * This is the only place we update the flags field only holding
+	 * a shared latch.
 	 */
-	if (ret == 0) {
-		DB_ASSERT(env, hp->hash_page_dirty != 0);
-		--hp->hash_page_dirty;
-		F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
-	}
+	if (F_ISSET(bhp, BH_DIRTY | BH_TRASH)) {
+		MUTEX_LOCK(env, hp->mtx_hash);
+		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
+		if (ret == 0 && F_ISSET(bhp, BH_DIRTY)) {
+			F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
+			DB_ASSERT(env, atomic_read(&hp->hash_page_dirty) > 0);
+			atomic_dec(env, &hp->hash_page_dirty);
+		}
 
-	/* Regardless, clear any sync wait-for count and remove our lock. */
-	bhp->ref_sync = 0;
-	F_CLR(bhp, BH_LOCKED);
-
-	/*
-	 * If a thread of control is waiting on this buffer, wake it up.
-	 */
-	if (F_ISSET(hp, IO_WAITER)) {
-		F_CLR(hp, IO_WAITER);
-		MUTEX_UNLOCK(env, hp->mtx_io);
+		/* put the page back if necessary. */
+		if ((ret != 0 || BH_REFCOUNT(bhp) > 1) &&
+		    F_ISSET(bhp, BH_TRASH)) {
+			ret = __memp_pg(dbmfp, bhp->pgno, bhp->buf, 1);
+			F_CLR(bhp, BH_TRASH);
+		}
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 	}
 
 	return (ret);
@@ -458,12 +450,13 @@ file_dead:
  * __memp_pg --
  *	Call the pgin/pgout routine.
  *
- * PUBLIC: int __memp_pg __P((DB_MPOOLFILE *, BH *, int));
+ * PUBLIC: int __memp_pg __P((DB_MPOOLFILE *, db_pgno_t, void *, int));
  */
 int
-__memp_pg(dbmfp, bhp, is_pgin)
+__memp_pg(dbmfp, pgno, buf, is_pgin)
 	DB_MPOOLFILE *dbmfp;
-	BH *bhp;
+	db_pgno_t pgno;
+	void *buf;
 	int is_pgin;
 {
 	DBT dbt, *dbtp;
@@ -499,17 +492,17 @@ __memp_pg(dbmfp, bhp, is_pgin)
 
 	if (is_pgin) {
 		if (mpreg->pgin != NULL && (ret =
-		    mpreg->pgin(env->dbenv, bhp->pgno, bhp->buf, dbtp)) != 0)
+		    mpreg->pgin(env->dbenv, pgno, buf, dbtp)) != 0)
 			goto err;
 	} else
 		if (mpreg->pgout != NULL && (ret =
-		    mpreg->pgout(env->dbenv, bhp->pgno, bhp->buf, dbtp)) != 0)
+		    mpreg->pgout(env->dbenv, pgno, buf, dbtp)) != 0)
 			goto err;
 
 	return (0);
 
 err:	__db_errx(env, "%s: %s failed for page %lu",
-	    __memp_fn(dbmfp), is_pgin ? "pgin" : "pgout", (u_long)bhp->pgno);
+	    __memp_fn(dbmfp), is_pgin ? "pgin" : "pgout", (u_long)pgno);
 	return (ret);
 }
 
@@ -517,13 +510,14 @@ err:	__db_errx(env, "%s: %s failed for page %lu",
  * __memp_bhfree --
  *	Free a bucket header and its referenced data.
  *
- * PUBLIC: int __memp_bhfree
- * PUBLIC:     __P((DB_MPOOL *, REGINFO *, DB_MPOOL_HASH *, BH *, u_int32_t));
+ * PUBLIC: int __memp_bhfree __P((DB_MPOOL *,
+ * PUBLIC:	REGINFO *, MPOOLFILE *, DB_MPOOL_HASH *, BH *, u_int32_t));
  */
 int
-__memp_bhfree(dbmp, infop, hp, bhp, flags)
+__memp_bhfree(dbmp, infop, mfp, hp, bhp, flags)
 	DB_MPOOL *dbmp;
 	REGINFO *infop;
+	MPOOLFILE *mfp;
 	DB_MPOOL_HASH *hp;
 	BH *bhp;
 	u_int32_t flags;
@@ -534,7 +528,6 @@ __memp_bhfree(dbmp, infop, hp, bhp, flags)
 #endif
 	BH *prev_bhp;
 	MPOOL *c_mp;
-	MPOOLFILE *mfp;
 	int ret, t_ret;
 #ifdef DIAG_MVCC
 	size_t pagesize;
@@ -546,26 +539,30 @@ __memp_bhfree(dbmp, infop, hp, bhp, flags)
 	 * Assumes the hash bucket is locked and the MPOOL is not.
 	 */
 	env = dbmp->env;
-	mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 #ifdef DIAG_MVCC
-	pagesize = mfp->stat.st_pagesize;
+	if (mfp != NULL)
+		pagesize = mfp->stat.st_pagesize;
 #endif
 
-	DB_ASSERT(env, bhp->ref == 0 && !F_ISSET(bhp, BH_FROZEN));
 	DB_ASSERT(env, LF_ISSET(BH_FREE_UNLOCKED) ||
-	    SH_CHAIN_SINGLETON(bhp, vc) ||
-	    (SH_CHAIN_HASNEXT(bhp, vc) &&
-	    SH_CHAIN_NEXTP(bhp, vc, __bh)->td_off == bhp->td_off) ||
-	    (SH_CHAIN_HASPREV(bhp, vc) ?
-	    IS_MAX_LSN(*VISIBLE_LSN(env, bhp)) :
-	    BH_OBSOLETE(bhp, hp->old_reader, vlsn)));
+	    (hp != NULL && MUTEX_IS_OWNED(env, hp->mtx_hash)));
+	DB_ASSERT(env, BH_REFCOUNT(bhp) == 1 &&
+	    !F_ISSET(bhp, BH_DIRTY | BH_FROZEN));
+	DB_ASSERT(env, LF_ISSET(BH_FREE_UNLOCKED) ||
+	    SH_CHAIN_SINGLETON(bhp, vc) || (SH_CHAIN_HASNEXT(bhp, vc) &&
+	    (SH_CHAIN_NEXTP(bhp, vc, __bh)->td_off == bhp->td_off ||
+	    bhp->td_off == INVALID_ROFF ||
+	    IS_MAX_LSN(*VISIBLE_LSN(env, bhp)) ||
+	    BH_OBSOLETE(bhp, hp->old_reader, vlsn))));
 
 	/*
 	 * Delete the buffer header from the hash bucket queue or the
 	 * version chain.
 	 */
+	if (hp == NULL)
+		goto no_hp;
 	prev_bhp = SH_CHAIN_PREV(bhp, vc, __bh);
-	if (SH_CHAIN_NEXT(bhp, vc, __bh) == NULL) {
+	if (!SH_CHAIN_HASNEXT(bhp, vc)) {
 		if (prev_bhp != NULL)
 			SH_TAILQ_INSERT_AFTER(&hp->hash_bucket,
 			    bhp, prev_bhp, hq, __bh);
@@ -589,14 +586,7 @@ __memp_bhfree(dbmp, infop, hp, bhp, flags)
 	 * We're going to use the memory for something else -- it had better be
 	 * accessible.
 	 */
-	MVCC_MPROTECT(bhp->buf, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);
-
-	/*
-	 * If we're only removing this header from the chain for reuse, we're
-	 * done.
-	 */
-	if (LF_ISSET(BH_FREE_REUSE))
-		return (0);
+no_hp:	MVCC_MPROTECT(bhp->buf, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);
 
 	/*
 	 * Discard the hash bucket's mutex, it's no longer needed, and
@@ -606,18 +596,33 @@ __memp_bhfree(dbmp, infop, hp, bhp, flags)
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 
 	/*
+	 * If we're only removing this header from the chain for reuse, we're
+	 * done.
+	 */
+	if (LF_ISSET(BH_FREE_REUSE))
+		return (ret);
+
+	/*
 	 * If we're not reusing the buffer immediately, free the buffer for
 	 * real.
 	 */
+	if (!LF_ISSET(BH_FREE_UNLOCKED))
+		MUTEX_UNLOCK(env, bhp->mtx_buf);
 	if (LF_ISSET(BH_FREE_FREEMEM)) {
+		if ((ret = __mutex_free(env, &bhp->mtx_buf)) != 0)
+			return (ret);
 		MPOOL_REGION_LOCK(env, infop);
 
-		__memp_free(infop, mfp, bhp);
+		MVCC_BHUNALIGN(bhp);
+		__memp_free(infop, bhp);
 		c_mp = infop->primary;
 		c_mp->stat.st_pages--;
 
 		MPOOL_REGION_UNLOCK(env, infop);
 	}
+
+	if (mfp == NULL)
+		return (ret);
 
 	/*
 	 * Decrement the reference count of the underlying MPOOLFILE.

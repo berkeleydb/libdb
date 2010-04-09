@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 2. Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="previous" href="gettingit.html" title="Getting and Using DB " />
+    <link rel="prev" href="gettingit.html" title="Getting and Using DB" />
     <link rel="next" href="coredbclose.html" title="Closing Databases" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="DB"></a>Chapter 2. Databases</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -86,11 +85,11 @@
 	as containing a two-column table where column 1 contains a key and column 2
 	contains data.  Both the key and the data are managed using 
 		 
-		<tt class="classname">DBT</tt>
+		<code class="classname">DBT</code>
 		
 		
 		<span>structures</span>
-	(see <a href="DBEntry.html">Database Records</a> for details on this 
+	(see <a class="xref" href="DBEntry.html" title="Chapter 3. Database Records">Database Records</a> for details on this 
 	    
 	    <span>structure</span>).
 	So, fundamentally, using a DB 
@@ -102,7 +101,7 @@
 		<span>contained in </span>
 		
 		 
-		<tt class="classname">DBT</tt>
+		<code class="classname">DBT</code>
 		
 		
 		
@@ -116,19 +115,18 @@
               <h2 class="title" style="clear: both"><a id="DBOpen"></a>Opening Databases</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-		To open a database, you must first use the <tt class="function">db_create()</tt> function to 
-		initialize a <tt class="classname">DB</tt> handle. 
-		Once you have initialized the <tt class="classname">DB</tt>
-        handle, you use its <tt class="methodname">open()</tt> method to open the database.
+		To open a database, you must first use the <code class="function">db_create()</code> function to 
+		initialize a <code class="classname">DB</code> handle. 
+		Once you have initialized the <code class="classname">DB</code>
+        handle, you use its <code class="methodname">open()</code> method to open the database.
 	</p>
         <p>
 		Note that by default, DB does not create databases if they do not already exist. 
 		To override this behavior, specify the 
-		<a href="DBOpenFlags.html" title="Database Open Flags"><tt class="literal">DB_CREATE</tt></a> flag on the
-		<tt class="methodname">open()</tt> method.
+		<a class="link" href="DBOpenFlags.html" title="Database Open Flags"><code class="literal">DB_CREATE</code></a> flag on the
+		<code class="methodname">open()</code> method.
 	</p>
         <p>
         The following code fragment illustrates a database open:
@@ -173,9 +171,7 @@ if (ret != 0) {
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="gettingit.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="coredbclose.html">Next</a></td>
         </tr>
         <tr>

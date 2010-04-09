@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EvolveTest.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.persist.test;
 
@@ -29,6 +29,9 @@ import com.sleepycat.util.test.SharedTestUtils;
  */
 public class EvolveTest extends EvolveTestBase {
 
+    /* Toggle to use listener every other test case. */
+    private static boolean useEvolveListener;
+
     public static Test suite()
         throws Exception {
 
@@ -40,6 +43,11 @@ public class EvolveTest extends EvolveTestBase {
 
     boolean useEvolvedClass() {
         return true;
+    }
+
+    @Override
+    public void tearDown() {
+        try { super.tearDown(); } catch (Throwable e) { }
     }
 
     @Override
@@ -141,14 +149,22 @@ public class EvolveTest extends EvolveTestBase {
         }
 
         EvolveConfig config = new EvolveConfig();
-        config.setEvolveListener(new EvolveListener() {
-            public boolean evolveProgress(EvolveEvent event) {
-                EvolveStats stats = event.getStats();
-                evolveNRead = stats.getNRead();
-                evolveNConverted = stats.getNConverted();
-                return true;
-            }
-        });
+
+        /*
+         * Use listener every other time to ensure that the stats are returned
+         * correctly when no listener is configured. [#17024]
+         */
+        useEvolveListener = !useEvolveListener;
+        if (useEvolveListener) {
+            config.setEvolveListener(new EvolveListener() {
+                public boolean evolveProgress(EvolveEvent event) {
+                    EvolveStats stats = event.getStats();
+                    evolveNRead = stats.getNRead();
+                    evolveNConverted = stats.getNConverted();
+                    return true;
+                }
+            });
+        }
 
         openEnv();
 
@@ -166,11 +182,13 @@ public class EvolveTest extends EvolveTestBase {
         if (nExpected > 0) {
             assertTrue(PersistCatalog.unevolvedFormatsEncountered);
         }
-        assertTrue(evolveNRead == nExpected);
-        assertTrue(evolveNConverted == nExpected);
-        assertTrue(evolveNConverted >= evolveNRead);
-        assertEquals(evolveNRead, stats.getNRead());
-        assertEquals(evolveNConverted, stats.getNConverted());
+        assertTrue(stats.getNRead() == nExpected);
+        assertTrue(stats.getNConverted() == nExpected);
+        assertTrue(stats.getNConverted() >= stats.getNRead());
+        if (useEvolveListener) {
+            assertEquals(evolveNRead, stats.getNRead());
+            assertEquals(evolveNConverted, stats.getNConverted());
+        }
 
         /* Evolve again and expect that no entities are converted. */
         evolveNRead = 0;
@@ -178,10 +196,12 @@ public class EvolveTest extends EvolveTestBase {
         PersistCatalog.unevolvedFormatsEncountered = false;
         stats = store.evolve(config);
         assertTrue(!PersistCatalog.unevolvedFormatsEncountered);
-        assertTrue(evolveNRead == 0);
-        assertTrue(evolveNConverted == 0);
         assertEquals(0, stats.getNRead());
         assertEquals(0, stats.getNConverted());
+        if (useEvolveListener) {
+            assertTrue(evolveNRead == 0);
+            assertTrue(evolveNConverted == 0);
+        }
 
         /* Ensure that we can read all entities without evolution. */
         PersistCatalog.unevolvedFormatsEncountered = false;

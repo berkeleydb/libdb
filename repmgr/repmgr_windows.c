@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: repmgr_windows.c,v 1.32 2008/03/13 17:31:28 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -17,7 +17,7 @@
 typedef struct __ack_waiter {
 	HANDLE event;
 	const DB_LSN *lsnp;
-	struct __ack_waiter *next_free;
+	int next_free;
 } ACK_WAITER;
 
 #define	WAITER_SLOT_IN_USE(w) ((w)->lsnp != NULL)
@@ -36,14 +36,25 @@ struct __ack_waiters_table {
 	struct __ack_waiter *array;
 	int size;
 	int next_avail;
-	struct __ack_waiter *first_free;
+	int first_free;
 };
 
-static int allocate_wait_slot __P((ENV *, ACK_WAITER **));
-static void free_wait_slot __P((ENV *, ACK_WAITER *));
+/*
+ * Aggregated control info needed for preparing for WSAWaitForMultipleEvents()
+ * call.
+ */
+struct io_info {
+	REPMGR_CONNECTION **connections;
+	WSAEVENT *events;
+	DWORD nevents;
+};
+
+static int allocate_wait_slot __P((ENV *, int *));
+static void free_wait_slot __P((ENV *, int));
 static int handle_completion __P((ENV *, REPMGR_CONNECTION *));
 static int finish_connecting __P((ENV *, REPMGR_CONNECTION *,
 				     LPWSANETWORKEVENTS));
+static int prepare_io __P((ENV *, REPMGR_CONNECTION *, void *));
 
 int
 __repmgr_thread_start(env, runnable)
@@ -101,7 +112,7 @@ __repmgr_wake_waiting_senders(env)
 
 	ret = 0;
 	db_rep = env->rep_handle;
-	for (i=0; i<db_rep->waiters->next_avail; i++) {
+	for (i = 0; i < db_rep->waiters->next_avail; i++) {
 		 slot = &db_rep->waiters->array[i];
 		 if (!WAITER_SLOT_IN_USE(slot))
 			 continue;
@@ -121,19 +132,21 @@ __repmgr_await_ack(env, lsnp)
 	ENV *env;
 	const DB_LSN *lsnp;
 {
-	ACK_WAITER *me;
+	ACK_WAITER *waiter;
 	DB_REP *db_rep;
 	DWORD ret, timeout;
+	int i;
 
 	db_rep = env->rep_handle;
 
-	if ((ret = allocate_wait_slot(env, &me)) != 0)
+	if ((ret = allocate_wait_slot(env, &i)) != 0)
 		goto err;
+	waiter = &db_rep->waiters->array[i];
 
 	timeout = db_rep->ack_timeout > 0 ?
 	    DB_TIMEOUT_TO_WINDOWS_TIMEOUT(db_rep->ack_timeout) : INFINITE;
-	me->lsnp = lsnp;
-	if ((ret = SignalObjectAndWait(db_rep->mutex, me->event, timeout,
+	waiter->lsnp = lsnp;
+	if ((ret = SignalObjectAndWait(*db_rep->mutex, waiter->event, timeout,
 	    FALSE)) == WAIT_FAILED) {
 		ret = GetLastError();
 	} else if (ret == WAIT_TIMEOUT)
@@ -142,7 +155,7 @@ __repmgr_await_ack(env, lsnp)
 		DB_ASSERT(env, ret == WAIT_OBJECT_0);
 
 	LOCK_MUTEX(db_rep->mutex);
-	free_wait_slot(env, me);
+	free_wait_slot(env, i);
 
 err:
 	return (ret);
@@ -155,16 +168,16 @@ err:
 static int
 allocate_wait_slot(env, resultp)
 	ENV *env;
-	ACK_WAITER **resultp;
+	int *resultp;
 {
 	ACK_WAITER *w;
 	ACK_WAITERS_TABLE *table;
 	DB_REP *db_rep;
-	int ret;
+	int i, ret;
 
 	db_rep = env->rep_handle;
 	table = db_rep->waiters;
-	if (table->first_free == NULL) {
+	if (table->first_free == -1) {
 		if (table->next_avail >= table->size) {
 			/*
 			 * Grow the array.
@@ -180,7 +193,8 @@ allocate_wait_slot(env, resultp)
 		 * Here if, one way or another, we're good to go for using the
 		 * next slot (for the first time).
 		 */
-		w = &table->array[table->next_avail++];
+		i = table->next_avail++;
+		w = &table->array[i];
 		if ((w->event = CreateEvent(NULL, FALSE, FALSE, NULL)) ==
 		    NULL) {
 			/*
@@ -191,25 +205,28 @@ allocate_wait_slot(env, resultp)
 			return (GetLastError());
 		}
 	} else {
-		w = table->first_free;
+		i = table->first_free;
+		w = &table->array[i];
 		table->first_free = w->next_free;
 	}
-	*resultp = w;
+	*resultp = i;
 	return (0);
 }
 
 static void
-free_wait_slot(env, slot)
+free_wait_slot(env, slot_index)
 	ENV *env;
-	ACK_WAITER *slot;
+	int slot_index;
 {
 	DB_REP *db_rep;
+	ACK_WAITER *slot;
 
 	db_rep = env->rep_handle;
+	slot = &db_rep->waiters->array[slot_index];
 
 	slot->lsnp = NULL;	/* show it's not in use */
 	slot->next_free = db_rep->waiters->first_free;
-	db_rep->waiters->first_free = slot;
+	db_rep->waiters->first_free = slot_index;
 }
 
 /* (See requirements described in repmgr_posix.c.) */
@@ -246,7 +263,7 @@ __repmgr_await_drain(env, conn, timeout)
 		DB_TIMESPEC_TO_TIMEOUT(t, &delta, round_up);
 		duration = DB_TIMEOUT_TO_WINDOWS_TIMEOUT(t);
 
-		ret = SignalObjectAndWait(db_rep->mutex,
+		ret = SignalObjectAndWait(*db_rep->mutex,
 		    conn->drained, duration, FALSE);
 		LOCK_MUTEX(db_rep->mutex);
 		if (ret == WAIT_FAILED)
@@ -290,23 +307,46 @@ __repmgr_free_cond(c)
 	return (GetLastError());
 }
 
-/*
- * Make resource allocation an all-or-nothing affair, outside of this and the
- * close_sync function.  db_rep->waiters should be non-NULL iff all of these
- * resources have been created.
- */
+void
+__repmgr_env_create_pf(db_rep)
+	DB_REP *db_rep;
+{
+	db_rep->waiters = NULL;
+}
+
 int
-__repmgr_init_sync(env, db_rep)
+__repmgr_create_mutex_pf(mutex)
+	mgr_mutex_t *mutex;
+{
+	if ((*mutex = CreateMutex(NULL, FALSE, NULL)) == NULL)
+		return (GetLastError());
+	return (0);
+}
+
+int
+__repmgr_destroy_mutex_pf(mutex)
+	mgr_mutex_t  *mutex;
+{
+	return (CloseHandle(*mutex) ? 0 : GetLastError());
+}
+
+int
+__repmgr_init(env)
      ENV *env;
-     DB_REP *db_rep;
 {
 #define	INITIAL_ALLOCATION 5		/* arbitrary size */
+	DB_REP *db_rep;
 	ACK_WAITERS_TABLE *table;
+	WSADATA wsaData;
 	int ret;
 
-	db_rep->signaler = db_rep->queue_nonempty = db_rep->check_election =
-	    db_rep->mutex = NULL;
+	db_rep = env->rep_handle;
 	table = NULL;
+
+	if ((ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0) {
+		__db_err(env, ret, "unable to initialize Windows networking");
+		return (ret);
+	}
 
 	if ((db_rep->signaler = CreateEvent(NULL, /* security attr */
 	    FALSE,	/* (not) of the manual reset variety  */
@@ -322,9 +362,6 @@ __repmgr_init_sync(env, db_rep)
 	    == NULL)
 		goto geterr;
 
-	if ((db_rep->mutex = CreateMutex(NULL, FALSE, NULL)) == NULL)
-		goto geterr;
-
 	if ((ret = __os_calloc(env, 1, sizeof(ACK_WAITERS_TABLE), &table))
 	    != 0)
 		goto err;
@@ -334,7 +371,7 @@ __repmgr_init_sync(env, db_rep)
 		goto err;
 
 	table->size = INITIAL_ALLOCATION;
-	table->first_free = NULL;
+	table->first_free = -1;
 	table->next_avail = 0;
 
 	/* There's a restaurant joke in there somewhere. */
@@ -350,26 +387,30 @@ err:
 		CloseHandle(db_rep->queue_nonempty);
 	if (db_rep->signaler != NULL)
 		CloseHandle(db_rep->signaler);
-	if (db_rep->mutex != NULL)
-		CloseHandle(db_rep->mutex);
 	if (table != NULL)
 		__os_free(env, table);
+	db_rep->signaler =
+	    db_rep->queue_nonempty = db_rep->check_election = NULL;
 	db_rep->waiters = NULL;
+	(void)WSACleanup();
 	return (ret);
 }
 
 int
-__repmgr_close_sync(env)
+__repmgr_deinit(env)
      ENV *env;
 {
 	DB_REP *db_rep;
 	int i, ret;
 
 	db_rep = env->rep_handle;
-	if (!(REPMGR_SYNC_INITED(db_rep)))
+	if (!(REPMGR_INITED(db_rep)))
 		return (0);
 
 	ret = 0;
+	if (WSACleanup() == SOCKET_ERROR)
+		ret = WSAGetLastError();
+
 	for (i = 0; i < db_rep->waiters->next_avail; i++) {
 		if (!CloseHandle(db_rep->waiters->array[i].event) && ret == 0)
 			ret = GetLastError();
@@ -386,66 +427,8 @@ __repmgr_close_sync(env)
 	if (!CloseHandle(db_rep->signaler) && ret == 0)
 		ret = GetLastError();
 
-	if (!CloseHandle(db_rep->mutex) && ret == 0)
-		ret = GetLastError();
-
 	db_rep->waiters = NULL;
 	return (ret);
-}
-
-/*
- * Performs net-related resource initialization other than memory initialization
- * and allocation.  A valid db_rep->listen_fd acts as the "all-or-nothing"
- * sentinel signifying that these resources are allocated (except that now the
- * new wsa_inited flag may be used to indicate that WSAStartup has already been
- * called).
- */
-int
-__repmgr_net_init(env, db_rep)
-	ENV *env;
-	DB_REP *db_rep;
-{
-	int ret;
-
-	/* Initialize the Windows sockets DLL. */
-	if (!db_rep->wsa_inited && (ret = __repmgr_wsa_init(env)) != 0)
-		goto err;
-
-	if ((ret = __repmgr_listen(env)) == 0)
-		return (0);
-
-	if (WSACleanup() == SOCKET_ERROR) {
-		ret = net_errno;
-		__db_err(env, ret, "WSACleanup");
-	}
-
-err:	db_rep->listen_fd = INVALID_SOCKET;
-	return (ret);
-}
-
-/*
- * __repmgr_wsa_init --
- *	Initialize the Windows sockets DLL.
- *
- * PUBLIC: int __repmgr_wsa_init __P((ENV *));
- */
-int
-__repmgr_wsa_init(env)
-	ENV *env;
-{
-	DB_REP *db_rep;
-	WSADATA wsaData;
-	int ret;
-
-	db_rep = env->rep_handle;
-
-	if ((ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0) {
-		__db_err(env, ret, "unable to initialize Windows networking");
-		return (ret);
-	}
-	db_rep->wsa_inited = TRUE;
-
-	return (0);
 }
 
 int
@@ -522,24 +505,27 @@ __repmgr_select_loop(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
-	DWORD nevents, ret;
+	DWORD ret;
 	DWORD select_timeout;
-	REPMGR_CONNECTION *conn, *next;
 	REPMGR_CONNECTION *connections[WSA_MAXIMUM_WAIT_EVENTS];
 	WSAEVENT events[WSA_MAXIMUM_WAIT_EVENTS];
 	db_timespec timeout;
 	WSAEVENT listen_event;
 	WSANETWORKEVENTS net_events;
-	int flow_control, i;
+	struct io_info io_info;
+	int i;
 
 	db_rep = env->rep_handle;
+	io_info.connections = connections;
+	io_info.events = events;
 
 	if ((listen_event = WSACreateEvent()) == WSA_INVALID_EVENT) {
 		__db_err(
 		    env, net_errno, "can't create event for listen socket");
 		return (net_errno);
 	}
-	if (WSAEventSelect(db_rep->listen_fd, listen_event, FD_ACCEPT) ==
+	if (!IS_SUBORDINATE(db_rep) &&
+	    WSAEventSelect(db_rep->listen_fd, listen_event, FD_ACCEPT) ==
 	    SOCKET_ERROR) {
 		ret = net_errno;
 		__db_err(env, ret, "can't enable event for listener");
@@ -549,47 +535,21 @@ __repmgr_select_loop(env)
 	LOCK_MUTEX(db_rep->mutex);
 	if ((ret = __repmgr_first_try_connections(env)) != 0)
 		goto unlock;
-	flow_control = FALSE;
 	for (;;) {
 		/* Start with the two events that we always wait for. */
-		events[0] = db_rep->signaler;
-		events[1] = listen_event;
-		nevents = 2;
-
-		/*
-		 * Add an event for each surviving socket that we're interested
-		 * in.  (For now [until we implement flow control], that's all
-		 * of them, in one form or another.)  Clean up defunct
-		 * connections; note that this is the only place where elements
-		 * get deleted from this list.
-		 *     Loop just like TAILQ_FOREACH, except that we need to be
-		 * able to unlink a list entry.
-		 */
-		for (conn = TAILQ_FIRST(&db_rep->connections);
-		     conn != NULL;
-		     conn = next) {
-			next = TAILQ_NEXT(conn, entries);
-
-			if (conn->state == CONN_DEFUNCT) {
-				if ((ret = __repmgr_cleanup_connection(env,
-				    conn)) != 0)
-					goto unlock;
-				continue;
-			}
-
-			/*
-			 * Note that even if we're suffering flow control, we
-			 * nevertheless still read if we haven't even yet gotten
-			 * a handshake.  Why?  (1) Handshakes are important; and
-			 * (2) they don't hurt anything flow-control-wise.
-			 */
-			if (conn->state == CONN_CONNECTING ||
-			    !STAILQ_EMPTY(&conn->outbound_queue) ||
-			    (!flow_control || !IS_VALID_EID(conn->eid))) {
-				events[nevents] = conn->event_object;
-				connections[nevents++] = conn;
-			}
+#define	SIGNALER_INDEX	0
+#define	LISTENER_INDEX	1
+		events[SIGNALER_INDEX] = db_rep->signaler;
+		if (IS_SUBORDINATE(db_rep))
+			io_info.nevents = 1;
+		else {
+			events[LISTENER_INDEX] = listen_event;
+			io_info.nevents = 2;
 		}
+
+		if ((ret = __repmgr_each_connection(env,
+		    prepare_io, &io_info, TRUE)) != 0)
+			goto unlock;
 
 		if (__repmgr_compute_timeout(env, &timeout))
 			select_timeout =
@@ -602,7 +562,7 @@ __repmgr_select_loop(env)
 
 		UNLOCK_MUTEX(db_rep->mutex);
 		ret = WSAWaitForMultipleEvents(
-		    nevents, events, FALSE, select_timeout, FALSE);
+		    io_info.nevents, events, FALSE, select_timeout, FALSE);
 		if (db_rep->finished) {
 			ret = 0;
 			goto out;
@@ -615,12 +575,11 @@ __repmgr_select_loop(env)
 		 * WSAWaitForMultipleEvents, above.
 		 */
 		if (ret >= WSA_WAIT_EVENT_0 &&
-		    ret < WSA_WAIT_EVENT_0 + nevents) {
-			switch (i = ret - WSA_WAIT_EVENT_0) {
-			case 0:
+		    ret < WSA_WAIT_EVENT_0 + io_info.nevents) {
+			if ((i = ret - WSA_WAIT_EVENT_0) == SIGNALER_INDEX) {
 				/* Another thread woke us. */
-				break;
-			case 1:
+			} else if (!IS_SUBORDINATE(db_rep) &&
+			    i == LISTENER_INDEX) {
 				if ((ret = WSAEnumNetworkEvents(
 				    db_rep->listen_fd, listen_event,
 				    &net_events)) == SOCKET_ERROR) {
@@ -634,13 +593,11 @@ __repmgr_select_loop(env)
 					goto unlock;
 				if ((ret = __repmgr_accept(env)) != 0)
 					goto unlock;
-				break;
-			default:
+			} else {
 				if (connections[i]->state != CONN_DEFUNCT &&
 				    (ret = handle_completion(env,
 				    connections[i])) != 0)
 					goto unlock;
-				break;
 			}
 		} else if (ret == WSA_WAIT_TIMEOUT) {
 			if ((ret = __repmgr_check_timeouts(env)) != 0)
@@ -657,6 +614,41 @@ out:
 	if (!CloseHandle(listen_event) && ret == 0)
 		ret = GetLastError();
 	return (ret);
+}
+
+static int
+prepare_io(env, conn, info_)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+	void *info_;
+{
+	struct io_info *info;
+
+	if (conn->state == CONN_DEFUNCT)
+		return (__repmgr_cleanup_connection(env, conn));
+
+	/*
+	 * Note that even if we're suffering flow control, we
+	 * nevertheless still read if we haven't even yet gotten
+	 * a handshake.  Why?  (1) Handshakes are important; and
+	 * (2) they don't hurt anything flow-control-wise.
+	 */
+	info = info_;
+
+	/*
+	 * If we ever implemented flow control, we would have some conditions to
+	 * examine here.  But as it is, we always are willing to accept I/O on
+	 * every connection.
+	 *
+	 * We can only handle as many connections as the number of events the
+	 * WSAWaitForMultipleEvents function allows (minus 2, for our overhead:
+	 * the listener and the signaler).
+	 */
+	DB_ASSERT(env, info->nevents < WSA_MAXIMUM_WAIT_EVENTS);
+	info->events[info->nevents] = conn->event_object;
+	info->connections[info->nevents++] = conn;
+
+	return (0);
 }
 
 static int
@@ -731,6 +723,7 @@ finish_connecting(env, conn, events)
 	LPWSANETWORKEVENTS events;
 {
 	DB_REP *db_rep;
+	REPMGR_SITE *site;
 	u_int eid;
 /*	char reason[100]; */
 	int ret/*, t_ret*/;
@@ -739,7 +732,11 @@ finish_connecting(env, conn, events)
 	if (!(events->lNetworkEvents & FD_CONNECT))
 		return (0);
 
-	conn->state = CONN_CONNECTED;
+	db_rep = env->rep_handle;
+
+	DB_ASSERT(env, IS_VALID_EID(conn->eid));
+	eid = (u_int)conn->eid;
+	site = SITE_FROM_EID(eid);
 
 	if ((ret = events->iErrorCode[FD_CONNECT_BIT]) != 0) {
 /*		t_ret = FormatMessage( */
@@ -754,6 +751,9 @@ finish_connecting(env, conn, events)
 		goto err;
 	}
 
+	conn->state = CONN_CONNECTED;
+	__os_gettime(env, &site->last_rcvd_timestamp, 1);
+
 	if (WSAEventSelect(conn->fd, conn->event_object, FD_READ | FD_CLOSE) ==
 	    SOCKET_ERROR) {
 		ret = net_errno;
@@ -764,11 +764,8 @@ finish_connecting(env, conn, events)
 	return (__repmgr_propose_version(env, conn));
 
 err:
-	db_rep = env->rep_handle;
-	eid = conn->eid;
-	DB_ASSERT(env, IS_VALID_EID(eid));
 
-	if (ADDR_LIST_NEXT(&SITE_FROM_EID(eid)->net_addr) == NULL) {
+	if (ADDR_LIST_NEXT(&site->net_addr) == NULL) {
 		STAT(db_rep->region->mstat.st_connect_fail++);
 		return (DB_REP_UNAVAIL);
 	}
@@ -777,7 +774,7 @@ err:
 	 * Since we're immediately trying the next address in the list, simply
 	 * disable the failed connection, without the usual recovery.
 	 */
-	DISABLE_CONNECTION(conn);
+	__repmgr_disable_connection(env, conn);
 
 	ret = __repmgr_connect_site(env, eid);
 	DB_ASSERT(env, ret != DB_REP_UNAVAIL);

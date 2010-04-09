@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: os_rw.c,v 1.14 2008/05/07 01:52:37 david Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -82,8 +82,12 @@ __os_read(env, fhp, addr, len, nrp)
 	if (nr == 0) {
 		IFILE_GetInfo(fhp->ifp, &pInfo);
 		if (pInfo.dwSize != 0) {/* not an empty file */
-	/* if we have not reached the end of the file, we got an error in IFILE_Read */
-			if (IFILE_Seek(fhp->ifp, _SEEK_CURRENT, 0) != pInfo.dwSize) {
+	/*
+	 * If we have not reached the end of the file,
+	 * we got an error in IFILE_Read
+	 */
+			if (IFILE_Seek(
+			    fhp->ifp, _SEEK_CURRENT, 0) != pInfo.dwSize) {
 				ret = __os_get_syserr();
 				__db_syserr(env, ret, "IFILE_Read: %#lx, %lu",
 				    P_TO_ULONG(addr), (u_long)len);

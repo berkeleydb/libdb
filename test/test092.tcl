@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test092.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test092
 # TEST	Test of DB_DIRTY_READ [#3395]
@@ -27,6 +27,8 @@ proc test092 { method {nentries 1000} args } {
 	set encargs ""
 	set args [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	puts "Test092: Dirty Read Test $method $nentries"
 
@@ -40,7 +42,8 @@ proc test092 { method {nentries 1000} args } {
 
 	set lmax [expr $nentries * 2]
 	set lomax [expr $nentries * 2]
-	set env [eval {berkdb_env -create -txn} $encargs -home $testdir \
+	set env [eval \
+	    {berkdb_env -create -txn} $pageargs $encargs -home $testdir \
 	    -lock_max_locks $lmax -lock_max_objects $lomax]
 	error_check_good dbenv [is_valid_env $env] TRUE
 
@@ -88,15 +91,15 @@ proc test092 { method {nentries 1000} args } {
 	set tdr [$env txn -read_uncommitted]
 	error_check_good txnbegin:dr [is_valid_txn $tdr $env] TRUE
 	set dbtxn [eval {berkdb_open -auto_commit -env $env -read_uncommitted \
-	    -mode 0644 $omethod} {$testfile}]
+	    -mode 0644 $omethod} $args {$testfile}]
 	error_check_good dbopen:dbtxn [is_valid_db $dbtxn] TRUE
 
 	set dbcl [eval {berkdb_open -auto_commit -env $env \
-	    -rdonly -mode 0644 $omethod} {$testfile}]
+	    -rdonly -mode 0644 $omethod} $args {$testfile}]
 	error_check_good dbopen:dbcl [is_valid_db $dbcl] TRUE
 
 	set dbdr [eval {berkdb_open -auto_commit -env $env -read_uncommitted \
-	    -rdonly -mode 0644 $omethod} {$testfile}]
+	    -rdonly -mode 0644 $omethod} $args {$testfile}]
 	error_check_good dbopen:dbdr [is_valid_db $dbdr] TRUE
 
 	set dbccl [$dbcl cursor -txn $tdr]

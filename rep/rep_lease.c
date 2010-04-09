@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2007,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2007-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_lease.c,v 12.23 2008/01/11 21:49:26 sue Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -35,7 +35,7 @@ __rep_update_grant(env, ts)
 	__rep_grant_info_args gi;
 	db_timespec mytime;
 	u_int8_t buf[__REP_GRANT_INFO_SIZE];
-	int ret;
+	int master, ret;
 	size_t len;
 
 	db_rep = env->rep_handle;
@@ -61,6 +61,7 @@ __rep_update_grant(env, ts)
 	}
 	if (timespeccmp(&mytime, &rep->grant_expire, >))
 		rep->grant_expire = mytime;
+	F_CLR(rep, REP_F_LEASE_EXPIRED);
 	REP_SYSTEM_UNLOCK(env);
 
 	/*
@@ -74,8 +75,9 @@ __rep_update_grant(env, ts)
 	    __REP_GRANT_INFO_SIZE, &len)) != 0)
 		return (ret);
 	DB_INIT_DBT(lease_dbt, buf, len);
-	(void)__rep_send_message(env, rep->master_id, REP_LEASE_GRANT,
-	    &lp->max_perm_lsn, &lease_dbt, 0, 0);
+	if ((master = rep->master_id) != DB_EID_INVALID)
+		(void)__rep_send_message(env, master, REP_LEASE_GRANT,
+		    &lp->max_perm_lsn, &lease_dbt, 0, 0);
 	return (0);
 }
 
@@ -131,14 +133,23 @@ __rep_lease_table_alloc(env, nsites)
 	infop = env->reginfo;
 	renv = infop->primary;
 	MUTEX_LOCK(env, renv->mtx_regenv);
-	if ((ret = __env_alloc(infop, (size_t)nsites * sizeof(REP_LEASE_ENTRY),
-	    &lease)) == 0) {
-		if (rep->lease_off != INVALID_ROFF)
-			__env_alloc_free(infop,
-			    R_ADDR(infop, rep->lease_off));
-		rep->lease_off = R_OFFSET(infop, lease);
+	/*
+	 * If we have an old table from some other time, free it and
+	 * allocate ourselves a new one that is known to be for
+	 * the right number of sites.
+	 */
+	if (rep->lease_off != INVALID_ROFF) {
+		__env_alloc_free(infop,
+		    R_ADDR(infop, rep->lease_off));
+		rep->lease_off = INVALID_ROFF;
 	}
+	ret = __env_alloc(infop, (size_t)nsites * sizeof(REP_LEASE_ENTRY),
+	    &lease);
 	MUTEX_UNLOCK(env, renv->mtx_regenv);
+	if (ret != 0)
+		return (ret);
+	else
+		rep->lease_off = R_OFFSET(infop, lease);
 	table = R_ADDR(infop, rep->lease_off);
 	for (i = 0; i < nsites; i++) {
 		le = &table[i];
@@ -147,7 +158,7 @@ __rep_lease_table_alloc(env, nsites)
 		timespecclear(&le->end_time);
 		ZERO_LSN(le->lease_lsn);
 	}
-	return (ret);
+	return (0);
 }
 
 /*
@@ -277,8 +288,6 @@ __rep_lease_check(env, refresh)
 
 	infop = env->reginfo;
 	tries = 0;
-retry:
-	ret = 0;
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	dblp = env->lg_handle;
@@ -286,14 +295,19 @@ retry:
 	LOG_SYSTEM_LOCK(env);
 	lease_lsn = lp->max_perm_lsn;
 	LOG_SYSTEM_UNLOCK(env);
+
+retry:
 	REP_SYSTEM_LOCK(env);
 	min_leases = rep->nsites / 2;
-
+	ret = 0;
 	__os_gettime(env, &curtime, 1);
-	RPRINT(env, DB_VERB_REP_LEASE,
-	    (env, "lease_check: min_leases %lu curtime %lu %lu",
+	RPRINT(env, DB_VERB_REP_LEASE, (env,
+	"lease_check: try %d min_leases %lu curtime %lu %lu, maxLSN [%lu][%lu]",
+	    tries,
 	    (u_long)min_leases, (u_long)curtime.tv_sec,
-	    (u_long)curtime.tv_nsec));
+	    (u_long)curtime.tv_nsec,
+	    (u_long)lease_lsn.file,
+	    (u_long)lease_lsn.offset));
 	table = R_ADDR(infop, rep->lease_off);
 	for (i = 0, valid_leases = 0;
 	    i < rep->nsites && valid_leases < min_leases; i++) {
@@ -317,7 +331,7 @@ retry:
 		}
 		if (le->eid != DB_EID_INVALID &&
 		    timespeccmp(&le->end_time, &curtime, >=) &&
-		    LOG_COMPARE(&le->lease_lsn, &lease_lsn) == 0)
+		    LOG_COMPARE(&le->lease_lsn, &lease_lsn) >= 0)
 			valid_leases++;
 	}
 	REP_SYSTEM_UNLOCK(env);
@@ -356,6 +370,10 @@ retry:
 		}
 	}
 
+	if (ret == DB_REP_LEASE_EXPIRED)
+		RPRINT(env, DB_VERB_REP_LEASE, (env,
+		    "lease_check: Expired.  Only %lu valid",
+		    (u_long)valid_leases));
 	return (ret);
 }
 
@@ -363,6 +381,10 @@ retry:
  * __rep_lease_refresh -
  *	Find the last permanent record and send that out so that it
  *	forces clients to grant their leases.
+ *
+ *	If there is no permanent record, this function cannot refresh
+ *	leases.  That should not happen because the master should write
+ *	a checkpoint when it starts, if there is no other perm record.
  *
  * PUBLIC: int __rep_lease_refresh __P((ENV *));
  */
@@ -388,20 +410,20 @@ __rep_lease_refresh(env)
 	/*
 	 * Use __rep_log_backup to find the last PERM record.
 	 */
-	if ((ret = __rep_log_backup(env, rep, logc, &lsn)) != 0)
+	if ((ret = __rep_log_backup(env, rep, logc, &lsn)) != 0) {
+		/*
+		 * If there is no PERM record, then we get DB_NOTFOUND.
+		 */
+		if (ret == DB_NOTFOUND)
+			ret = 0;
 		goto err;
+	}
 
 	if ((ret = __logc_get(logc, &lsn, &rec, DB_CURRENT)) != 0)
 		goto err;
 
-	if ((ret = __rep_send_message(env,
-	    DB_EID_BROADCAST, REP_LOG, &lsn, &rec, REPCTL_PERM, 0)) != 0) {
-		/*
-		 * If we do not get an ack, we expire leases.
-		 */
-		(void)__rep_lease_expire(env, 0);
-		ret = DB_REP_LEASE_EXPIRED;
-	}
+	(void)__rep_send_message(env, DB_EID_BROADCAST, REP_LOG, &lsn,
+	    &rec, REPCTL_PERM, 0);
 
 err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -411,13 +433,13 @@ err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 /*
  * __rep_lease_expire -
  *	Proactively expire all leases granted to us.
+ * Assume the caller holds the REP_SYSTEM (region) mutex.
  *
- * PUBLIC: int __rep_lease_expire __P((ENV *, int));
+ * PUBLIC: int __rep_lease_expire __P((ENV *));
  */
 int
-__rep_lease_expire(env, locked)
+__rep_lease_expire(env)
 	ENV *env;
-	int locked;
 {
 	DB_REP *db_rep;
 	REGINFO *infop;
@@ -431,8 +453,6 @@ __rep_lease_expire(env, locked)
 	rep = db_rep->region;
 	infop = env->reginfo;
 
-	if (!locked)
-		REP_SYSTEM_LOCK(env);
 	if (rep->lease_off != INVALID_ROFF) {
 		table = R_ADDR(infop, rep->lease_off);
 		/*
@@ -445,8 +465,6 @@ __rep_lease_expire(env, locked)
 			le->end_time = le->start_time;
 		}
 	}
-	if (!locked)
-		REP_SYSTEM_UNLOCK(env);
 	return (ret);
 }
 
@@ -474,15 +492,19 @@ __rep_lease_waittime(env)
 	 * If the lease has never been granted, we must wait a full
 	 * lease timeout because we could be freshly rebooted after
 	 * a crash and a lease could be granted from a previous
-	 * incarnation of this client.
+	 * incarnation of this client.  However, if the lease has never
+	 * been granted, and this client has already waited a full
+	 * lease timeout, we know our lease cannot be granted and there
+	 * is no need to wait again.
 	 */
 	RPRINT(env, DB_VERB_REP_LEASE, (env,
     "wait_time: grant_expire %lu %lu lease_to %lu",
 	    (u_long)exptime.tv_sec, (u_long)exptime.tv_nsec,
 	    (u_long)rep->lease_timeout));
-	if (!timespecisset(&exptime))
-		to = rep->lease_timeout;
-	else {
+	if (!timespecisset(&exptime)) {
+		if (!F_ISSET(rep, REP_F_LEASE_EXPIRED))
+			to = rep->lease_timeout;
+	} else {
 		__os_gettime(env, &mytime, 1);
 		RPRINT(env, DB_VERB_REP_LEASE, (env,
     "wait_time: mytime %lu %lu, grant_expire %lu %lu",

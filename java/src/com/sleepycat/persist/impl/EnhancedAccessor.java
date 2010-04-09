@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EnhancedAccessor.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -12,6 +12,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,6 +31,7 @@ public class EnhancedAccessor implements Accessor {
 
     private Enhanced prototype;
     private Format priKeyFormat;
+    private Format[] compositeKeyFormats; 
     private Class type;
 
     /**
@@ -54,10 +56,7 @@ public class EnhancedAccessor implements Accessor {
         return enhanced;
     }
 
-    /**
-     * Creates an accessor.
-     */
-    EnhancedAccessor(Class type) {
+    private EnhancedAccessor(Class type) {
         this.type = type;
         prototype = classRegistry.get(type.getName());
         assert prototype != null || Modifier.isAbstract(type.getModifiers());
@@ -75,22 +74,26 @@ public class EnhancedAccessor implements Accessor {
          */
         ComplexFormat declaringFormat = format;
         while (declaringFormat != null) {
-            String priKeyField = declaringFormat.getPriKeyField();
+            FieldInfo priKeyField = declaringFormat.getPriKeyFieldInfo();
             if (priKeyField != null) {
-                Class declaringType = declaringFormat.getType();
-                Class fieldType;
-                try {
-                    fieldType =
-                        declaringType.getDeclaredField(priKeyField).getType();
-                } catch (NoSuchFieldException e) {
-                    throw new IllegalStateException(e);
-                }
-                priKeyFormat = catalog.getFormat(fieldType);
+                priKeyFormat = catalog.getFormat(priKeyField.getClassName());
                 break;
             } else {
-                Format superFormat = declaringFormat.getSuperFormat();
-                declaringFormat = (ComplexFormat) superFormat;
+                declaringFormat = declaringFormat.getComplexSuper();
             }
+        }
+    }
+
+    /**
+     * Creates an accessor for a composite key type.
+     */
+    EnhancedAccessor(Catalog catalog, Class type, List<FieldInfo> fieldInfos) {
+        this(type);
+        final int nFields = fieldInfos.size();
+        compositeKeyFormats = new Format[nFields];
+        for (int i = 0; i < nFields; i += 1) {
+            compositeKeyFormats[i] =
+                catalog.getFormat(fieldInfos.get(i).getClassName());
         }
     }
 
@@ -158,6 +161,14 @@ public class EnhancedAccessor implements Accessor {
                                  int superLevel) {
         ((Enhanced) o).bdbReadNonKeyFields
             (input, startField, endField, superLevel);
+    }
+
+    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+        ((Enhanced) o).bdbWriteCompositeKeyFields(output, compositeKeyFormats);
+    }
+
+    public void readCompositeKeyFields(Object o, EntityInput input) {
+        ((Enhanced) o).bdbReadCompositeKeyFields(input, compositeKeyFormats);
     }
 
     public Object getField(Object o,

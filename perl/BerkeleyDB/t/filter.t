@@ -7,8 +7,9 @@ use strict ;
 use lib 't' ;
 use BerkeleyDB; 
 use util ;
+use Test::More;
 
-print "1..52\n";
+plan tests => 52;
 
 my $Dfile = "dbhash.tmp";
 unlink $Dfile;
@@ -32,7 +33,7 @@ umask(0) ;
 	   $_ eq 'original' ;
    }
    
-    ok 1, $db = tie %h, 'BerkeleyDB::Hash', 
+    ok $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
 	        -Flags      => DB_CREATE; 
 
@@ -45,17 +46,17 @@ umask(0) ;
 
    $h{"fred"} = "joe" ;
    #                   fk   sk     fv   sv
-   ok 2, checkOutput( "", "fred", "", "joe") ;
+   ok checkOutput( "", "fred", "", "joe") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 3, $h{"fred"} eq "joe";
+   ok $h{"fred"} eq "joe";
    #                   fk    sk     fv    sv
-   ok 4, checkOutput( "", "fred", "joe", "") ;
+   ok checkOutput( "", "fred", "joe", "") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 5, $db->FIRSTKEY() eq "fred" ;
+   ok $db->FIRSTKEY() eq "fred" ;
    #                    fk     sk  fv  sv
-   ok 6, checkOutput( "fred", "", "", "") ;
+   ok checkOutput( "fred", "", "", "") ;
 
    # replace the filters, but remember the previous set
    my ($old_fk) = $db->filter_fetch_key   
@@ -70,18 +71,18 @@ umask(0) ;
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
    $h{"Fred"} = "Joe" ;
    #                   fk   sk     fv    sv
-   ok 7, checkOutput( "", "fred", "", "Jxe") ;
+   ok checkOutput( "", "fred", "", "Jxe") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 8, $h{"Fred"} eq "[Jxe]";
+   ok $h{"Fred"} eq "[Jxe]";
    print "$h{'Fred'}\n";
    #                   fk   sk     fv    sv
-   ok 9, checkOutput( "", "fred", "[Jxe]", "") ;
+   ok checkOutput( "", "fred", "[Jxe]", "") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 10, $db->FIRSTKEY() eq "FRED" ;
+   ok $db->FIRSTKEY() eq "FRED" ;
    #                   fk   sk     fv    sv
-   ok 11, checkOutput( "FRED", "", "", "") ;
+   ok checkOutput( "FRED", "", "", "") ;
 
    # put the original filters back
    $db->filter_fetch_key   ($old_fk);
@@ -91,15 +92,15 @@ umask(0) ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
    $h{"fred"} = "joe" ;
-   ok 12, checkOutput( "", "fred", "", "joe") ;
+   ok checkOutput( "", "fred", "", "joe") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 13, $h{"fred"} eq "joe";
-   ok 14, checkOutput( "", "fred", "joe", "") ;
+   ok $h{"fred"} eq "joe";
+   ok checkOutput( "", "fred", "joe", "") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 15, $db->FIRSTKEY() eq "fred" ;
-   ok 16, checkOutput( "fred", "", "", "") ;
+   ok $db->FIRSTKEY() eq "fred" ;
+   ok checkOutput( "fred", "", "", "") ;
 
    # delete the filters
    $db->filter_fetch_key   (undef);
@@ -109,15 +110,15 @@ umask(0) ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
    $h{"fred"} = "joe" ;
-   ok 17, checkOutput( "", "", "", "") ;
+   ok checkOutput( "", "", "", "") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 18, $h{"fred"} eq "joe";
-   ok 19, checkOutput( "", "", "", "") ;
+   ok $h{"fred"} eq "joe";
+   ok checkOutput( "", "", "", "") ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
-   ok 20, $db->FIRSTKEY() eq "fred" ;
-   ok 21, checkOutput( "", "", "", "") ;
+   ok $db->FIRSTKEY() eq "fred" ;
+   ok checkOutput( "", "", "", "") ;
 
    undef $db ;
    untie %h;
@@ -131,7 +132,7 @@ umask(0) ;
     my (%h, $db) ;
 
     unlink $Dfile;
-    ok 22, $db = tie %h, 'BerkeleyDB::Hash', 
+    ok $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
 	        -Flags      => DB_CREATE; 
 
@@ -157,32 +158,32 @@ umask(0) ;
     $_ = "original" ;
 
     $h{"fred"} = "joe" ;
-    ok 23, $result{"store key"} eq "store key - 1: [fred]" ;
-    ok 24, $result{"store value"} eq "store value - 1: [joe]" ;
-    ok 25, ! defined $result{"fetch key"}  ;
-    ok 26, ! defined $result{"fetch value"}  ;
-    ok 27, $_ eq "original"  ;
+    ok $result{"store key"} eq "store key - 1: [fred]" ;
+    ok $result{"store value"} eq "store value - 1: [joe]" ;
+    ok ! defined $result{"fetch key"}  ;
+    ok ! defined $result{"fetch value"}  ;
+    ok $_ eq "original"  ;
 
-    ok 28, $db->FIRSTKEY() eq "fred"  ;
-    ok 29, $result{"store key"} eq "store key - 1: [fred]" ;
-    ok 30, $result{"store value"} eq "store value - 1: [joe]" ;
-    ok 31, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
-    ok 32, ! defined $result{"fetch value"}  ;
-    ok 33, $_ eq "original"  ;
+    ok $db->FIRSTKEY() eq "fred"  ;
+    ok $result{"store key"} eq "store key - 1: [fred]" ;
+    ok $result{"store value"} eq "store value - 1: [joe]" ;
+    ok $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok ! defined $result{"fetch value"}  ;
+    ok $_ eq "original"  ;
 
     $h{"jim"}  = "john" ;
-    ok 34, $result{"store key"} eq "store key - 2: [fred jim]" ;
-    ok 35, $result{"store value"} eq "store value - 2: [joe john]" ;
-    ok 36, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
-    ok 37, ! defined $result{"fetch value"}  ;
-    ok 38, $_ eq "original"  ;
+    ok $result{"store key"} eq "store key - 2: [fred jim]" ;
+    ok $result{"store value"} eq "store value - 2: [joe john]" ;
+    ok $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok ! defined $result{"fetch value"}  ;
+    ok $_ eq "original"  ;
 
-    ok 39, $h{"fred"} eq "joe" ;
-    ok 40, $result{"store key"} eq "store key - 3: [fred jim fred]" ;
-    ok 41, $result{"store value"} eq "store value - 2: [joe john]" ;
-    ok 42, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
-    ok 43, $result{"fetch value"} eq "fetch value - 1: [joe]" ;
-    ok 44, $_ eq "original" ;
+    ok $h{"fred"} eq "joe" ;
+    ok $result{"store key"} eq "store key - 3: [fred jim fred]" ;
+    ok $result{"store value"} eq "store value - 2: [joe john]" ;
+    ok $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok $result{"fetch value"} eq "fetch value - 1: [joe]" ;
+    ok $_ eq "original" ;
 
     undef $db ;
     untie %h;
@@ -195,14 +196,14 @@ umask(0) ;
    my (%h, $db) ;
    unlink $Dfile;
 
-    ok 45, $db = tie %h, 'BerkeleyDB::Hash', 
+    ok $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
 	        -Flags      => DB_CREATE; 
 
    $db->filter_store_key (sub { $_ = $h{$_} }) ;
 
    eval '$h{1} = 1234' ;
-   ok 46, $@ =~ /^recursion detected in filter_store_key at/ ;
+   ok $@ =~ /^recursion detected in filter_store_key at/ ;
    
    undef $db ;
    untie %h;
@@ -217,7 +218,7 @@ umask(0) ;
    my (%h, $db) ;
    unlink $Dfile;
 
-   ok 47, $db = tie %h, 'BerkeleyDB::Hash', 
+   ok $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
 	        -Flags      => DB_CREATE; 
 
@@ -229,10 +230,10 @@ umask(0) ;
    $_ = "original" ;
 
    $h{"fred"} = "joe" ;
-   ok(48, $h{"fred"} eq "joe");
+   ok($h{"fred"} eq "joe");
 
    eval { grep { $h{$_} } (1, 2, 3) };
-   ok (49, ! $@);
+   ok (! $@);
 
 
    # delete the filters
@@ -243,12 +244,12 @@ umask(0) ;
 
    $h{"fred"} = "joe" ;
 
-   ok(50, $h{"fred"} eq "joe");
+   ok($h{"fred"} eq "joe");
 
-   ok(51, $db->FIRSTKEY() eq "fred") ;
+   ok($db->FIRSTKEY() eq "fred") ;
    
    eval { grep { $h{$_} } (1, 2, 3) };
-   ok (52, ! $@);
+   ok (! $@);
 
    undef $db ;
    untie %h;
@@ -262,7 +263,7 @@ if(0)
     my (%h, $db) ;
 
     unlink $Dfile;
-    ok 53, $db = tie %h, 'BerkeleyDB::Hash', 
+    ok $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
 	        -Flags      => DB_CREATE; 
 
@@ -286,25 +287,25 @@ if(0)
     #$db->filter_store_value (sub { -- $_ }) ;
 
     my ($k, $v) = (0,0);
-    ok 54, ! $db->db_put(3,5);
+    ok ! $db->db_put(3,5);
     exit;
-    ok 55, ! $db->db_get(3, $v);
-    ok 56, $v == 5 ;
+    ok ! $db->db_get(3, $v);
+    ok $v == 5 ;
 
     $h{4} = 7 ;
-    ok 57, $h{4} == 7;
+    ok $h{4} == 7;
 
     $k = 10;
     $v = 30;
     $h{$k} = $v ;
-    ok 58, $k == 10;
-    ok 59, $v == 30;
-    ok 60, $h{$k} == 30;
+    ok $k == 10;
+    ok $v == 30;
+    ok $h{$k} == 30;
 
     $k = 3;
-    ok 61, ! $db->db_get($k, $v, DB_GET_BOTH);
-    ok 62, $k == 3 ;
-    ok 63, $v == 5 ;
+    ok ! $db->db_get($k, $v, DB_GET_BOTH);
+    ok $k == 3 ;
+    ok $v == 5 ;
 
     my $cursor = $db->db_cursor();
 
@@ -314,11 +315,12 @@ if(0)
 	$tmp{$k} = $v;
     }
 
-    ok 64, keys %tmp == 3 ;
-    ok 65, $tmp{3} == 5;
+    ok keys %tmp == 3 ;
+    ok $tmp{3} == 5;
 
     undef $cursor ;
     undef $db ;
     untie %h;
     unlink $Dfile;
 }
+

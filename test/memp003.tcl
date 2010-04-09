@@ -1,13 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: memp003.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	memp003
 # TEST	Test reader-only/writer process combinations; we use the access methods
 # TEST	for testing.
 proc memp003 { } {
+	source ./include.tcl
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	#
@@ -15,6 +16,11 @@ proc memp003 { } {
 	# run memp003_body with -private.
 	#
 	memp003_body ""
+	if { $is_qnx_test } {
+		puts "Skipping remainder of memp003 for\
+		    environments in system memory on QNX"
+		return
+	}
 	memp003_body "-system_mem -shm_key 1"
 }
 

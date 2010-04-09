@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -38,7 +38,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: db_ovfl_vrfy.c,v 12.19 2008/04/11 16:29:02 bschmeck Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -289,15 +289,16 @@ err:	if ((t_ret =
  *	in the context of the salvager.
  *
  * PUBLIC: int __db_safe_goff __P((DB *, VRFY_DBINFO *,
- * PUBLIC:      db_pgno_t,DBT *, void *, u_int32_t));
+ * PUBLIC:      db_pgno_t, DBT *, void *, u_int32_t *, u_int32_t));
  */
 int
-__db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
+__db_safe_goff(dbp, vdp, pgno, dbt, buf, bufsz, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	db_pgno_t pgno;
 	DBT *dbt;
 	void *buf;
+	u_int32_t *bufsz;
 	u_int32_t flags;
 {
 	DB_MPOOLFILE *mpf;
@@ -310,6 +311,8 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 	h = NULL;
 	ret = t_ret = 0;
 	bytesgot = bytes = 0;
+
+    DB_ASSERT(dbp->env, bufsz != NULL);
 
 	/*
 	 * Back up to the start of the overflow chain (if necessary) via the
@@ -365,13 +368,15 @@ __db_safe_goff(dbp, vdp, pgno, dbt, buf, flags)
 		if (bytes + P_OVERHEAD(dbp) > dbp->pgsize)
 			bytes = dbp->pgsize - P_OVERHEAD(dbp);
 
-		/* 
-		 * We need to realloc buf each time, we don't know how large it
-		 * was when passed in.
+		/*
+		 * Realloc if buf is too small
 		 */
-		if ((ret = __os_realloc(dbp->env,
-		    bytesgot + bytes, buf)) != 0)
-			break;
+		if (bytesgot + bytes > *bufsz) {
+			if ((ret =
+			    __os_realloc(dbp->env, bytesgot + bytes, buf)) != 0)
+				break;
+			*bufsz = bytesgot + bytes;
+		}
 
 		dest = *(u_int8_t **)buf + bytesgot;
 		bytesgot += bytes;

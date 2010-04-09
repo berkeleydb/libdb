@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test094.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test094
 # TEST	Test using set_dup_compare.
@@ -23,19 +23,25 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "094"} args} {
 		return
 	}
 
+	# We'll need any encryption args separated from the db args
+	# so we can pass them to dbverify.
+	set encargs ""
+	set dbargs [split_encargs $dbargs encargs]
+
 	set txnenv 0
 	set eindex [lsearch -exact $dbargs "-env"]
-	# Create the database and open the dictionary
 	#
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
 	if { $eindex == -1 } {
 		set testfile $testdir/test$tnum-a.db
 		set env NULL
+		set envargs ""
 	} else {
 		set testfile test$tnum-a.db
 		incr eindex
 		set env [lindex $dbargs $eindex]
+		set envargs " -env $env "
 		set rpcenv [is_rpcenv $env]
 		if { $rpcenv == 1 } {
 			puts "Test$tnum: skipping for RPC"
@@ -56,8 +62,8 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "094"} args} {
 
 	cleanup $testdir $env
 
-	set db [eval {berkdb_open -dupcompare test094_cmp \
-	    -dup -dupsort -create -mode 0644} $omethod $dbargs {$testfile}]
+	set db [eval {berkdb_open -dupcompare test094_cmp -dup -dupsort\
+	     -create -mode 0644} $omethod $encargs $dbargs {$testfile}]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	set did [open $dict]
@@ -108,6 +114,12 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "094"} args} {
 	}
 	error_check_good db_close [$db close] 0
 
+	# Now run verify to check the internal structure and order.
+	if { [catch {eval {berkdb dbverify} -dupcompare test094_cmp\
+	    $envargs $encargs {$testfile}} res] } {
+		puts "FAIL: Verification failed with $res"
+	}
+
 	# Set up second testfile so truncate flag is not needed.
 	# If we are using an env, then testfile should just be the db name.
 	# Otherwise it is the test directory and the name.
@@ -124,9 +136,10 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "094"} args} {
 	#
 	# Test dupcompare with data items big enough to force offpage dups.
 	#
-	puts "\tTest$tnum.c: big key put/get dup loop key=filename data=filecontents"
+	puts "\tTest$tnum.c:\
+	    big key put/get dup loop key=filename data=filecontents"
 	set db [eval {berkdb_open -dupcompare test094_cmp -dup -dupsort \
-	     -create -mode 0644} $omethod $dbargs $testfile]
+	     -create -mode 0644} $omethod $encargs $dbargs $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 
 	# Here is the loop where we put and get each key/data pair
@@ -176,9 +189,14 @@ proc test094 { method {nentries 10000} {ndups 10} {tnum "094"} args} {
 	}
 	error_check_good db_close [$db close] 0
 
-	# Clean up the test directory, since there's currently
-	# no way to specify a dup_compare function to berkdb dbverify
-	# and without one it will fail.
+	# Run verify to check the internal structure and order.
+	if { [catch {eval {berkdb dbverify} -dupcompare test094_cmp\
+	    $envargs $encargs {$testfile}} res] } {
+		puts "FAIL: Verification failed with $res"
+	}
+
+	# Clean up the test directory, otherwise the general verify
+	# (without dupcompare) will fail.
 	cleanup $testdir $env
 }
 

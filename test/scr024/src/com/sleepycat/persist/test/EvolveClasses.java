@@ -1,14 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EvolveClasses.java,v 1.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.persist.test;
 
-import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 import static com.sleepycat.persist.model.Relationship.MANY_TO_ONE;
+import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -53,10 +53,19 @@ class EvolveClasses {
     private static final String PREFIX = EvolveClasses.class.getName() + '$';
     private static final String CASECLS = EvolveCase.class.getName();
 
+    private static RawObject readRaw(RawStore store,
+                                     Object key,
+                                     Object... classVersionPairs)
+        throws DatabaseException {
+
+        return readRaw(store, null, key, classVersionPairs);
+    }
+
     /**
      * Reads a raw object and checks its superclass names and versions.
      */
     private static RawObject readRaw(RawStore store,
+                                     String entityClsName,
                                      Object key,
                                      Object... classVersionPairs)
         throws DatabaseException {
@@ -64,7 +73,9 @@ class EvolveClasses {
         TestCase.assertNotNull(store);
         TestCase.assertNotNull(key);
 
-        String entityClsName = (String) classVersionPairs[0];
+        if (entityClsName == null) {
+            entityClsName = (String) classVersionPairs[0];
+        }
         PrimaryIndex<Object,RawObject> index =
             store.getPrimaryIndex(entityClsName);
         TestCase.assertNotNull(index);
@@ -278,9 +289,7 @@ class EvolveClasses {
         }
 
         @Override
-        void readObjects(EntityStore store, boolean doUpdate)
-            throws DatabaseException {
-
+        void readObjects(EntityStore store, boolean doUpdate) {
             try {
                 store.getPrimaryIndex
                     (Integer.class,
@@ -495,7 +504,7 @@ class EvolveClasses {
     /**
      * Allow removing a Persistent class when a Deleter mutation is
      * specified, and the Entity class that embedded the Persistent class
-     * is also be deleted properly (by removing the Entity annotation in this
+     * is also deleted properly (by removing the Entity annotation in this
      * case).
      */
     static class DeletedPersist2_ClassRemoved_WithDeleter extends EvolveCase {
@@ -531,9 +540,7 @@ class EvolveClasses {
         }
 
         @Override
-        void readObjects(EntityStore store, boolean doUpdate)
-            throws DatabaseException {
-
+        void readObjects(EntityStore store, boolean doUpdate) {
             try {
                 store.getPrimaryIndex
                     (Integer.class,
@@ -669,9 +676,7 @@ class EvolveClasses {
         }
 
         @Override
-        void readObjects(EntityStore store, boolean doUpdate)
-            throws DatabaseException {
-
+        void readObjects(EntityStore store, boolean doUpdate) {
             try {
                 store.getPrimaryIndex
                     (Integer.class,
@@ -1121,6 +1126,7 @@ class EvolveClasses {
             return m;
         }
 
+        @SuppressWarnings("serial")
         static class MyConversion implements Conversion {
 
             transient RawType newType;
@@ -2044,7 +2050,7 @@ class EvolveClasses {
                 TestCase.fail();
             }
             RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", 99, "ff", (int) 88);
+            checkRawFields(obj, "key", 99, "ff", 88);
         }
     }
 
@@ -2303,7 +2309,7 @@ class EvolveClasses {
                 TestCase.fail();
             }
             RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", 99, "ff", (int) 88);
+            checkRawFields(obj, "key", 99, "ff", 88);
         }
     }
 
@@ -2640,7 +2646,7 @@ class EvolveClasses {
                 TestCase.fail();
             }
             RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", 99, "ff", (int) 88);
+            checkRawFields(obj, "key", 99, "ff", 88);
         }
     }
 
@@ -2868,7 +2874,7 @@ class EvolveClasses {
                 TestCase.fail();
             }
             RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", 99, "ff", (int) 88);
+            checkRawFields(obj, "key", 99, "ff", 88);
         }
     }
 
@@ -3123,8 +3129,8 @@ class EvolveClasses {
             if (expectEvolved) {
                 TestCase.fail();
             }
-            RawObject obj = readRaw(store, (int) 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", (int) 99);
+            RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 99);
         }
     }
 
@@ -3333,8 +3339,8 @@ class EvolveClasses {
             if (expectEvolved) {
                 TestCase.fail();
             }
-            RawObject obj = readRaw(store, (int) 99, NAME, 0, CASECLS, 0);
-            checkRawFields(obj, "key", (int) 99);
+            RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 99);
         }
     }
 
@@ -3493,7 +3499,7 @@ class EvolveClasses {
             RawType rawKeyType = store.getModel().getRawType(NAME2);
             RawObject rawKey = new RawObject
                 (rawKeyType,
-                 makeValues("f1", (int) 1, "f2", (byte) 2, "f3", "3"),
+                 makeValues("f1", 1, "f2", (byte) 2, "f3", "3"),
                  null);
 
             RawObject obj = readRaw(store, rawKey, NAME, 0, CASECLS, 0);
@@ -3866,6 +3872,7 @@ class EvolveClasses {
             return m;
         }
 
+        @SuppressWarnings("serial")
         static class MyConversion1 implements Conversion {
 
             public void initialize(EntityModel model) {}
@@ -3878,6 +3885,7 @@ class EvolveClasses {
             public boolean equals(Object other) { return true; }
         }
 
+        @SuppressWarnings("serial")
         static class MyConversion2 implements Conversion {
 
             public void initialize(EntityModel model) {}
@@ -3914,7 +3922,7 @@ class EvolveClasses {
             PrimaryIndex<Integer,AllowFieldTypeChanges>
                 index = store.getPrimaryIndex
                     (Integer.class, AllowFieldTypeChanges.class);
-            AllowFieldTypeChanges obj = index.get((int) 99);
+            AllowFieldTypeChanges obj = index.get(99);
             checkValues(obj);
             checkSecondaries(store, index);
 
@@ -3949,7 +3957,7 @@ class EvolveClasses {
             checkValues(store.getSecondaryIndex
                 (index, Short.class, "kShort").get((short) 66));
             checkValues(store.getSecondaryIndex
-                (index, Integer.class, "kInteger").get((int) 55));
+                (index, Integer.class, "kInteger").get(55));
             checkValues(store.getSecondaryIndex
                 (index, Long.class, "kLong").get((long) 44));
             checkValues(store.getSecondaryIndex
@@ -3995,16 +4003,16 @@ class EvolveClasses {
             TestCase.assertEquals(embed.f16, Character.valueOf((char) 16));
 
             TestCase.assertEquals(obj.f01, (short) 1);
-            TestCase.assertEquals(obj.f02, (int) 2);
-            TestCase.assertEquals(obj.f03, (long) 3);
+            TestCase.assertEquals(obj.f02, 2);
+            TestCase.assertEquals(obj.f03, 3);
             TestCase.assertEquals(obj.f04, (float) 4);
             TestCase.assertEquals(obj.f06, (double) 6);
-            TestCase.assertEquals(obj.f07, (int) 7);
-            TestCase.assertEquals(obj.f08, (long) 8);
+            TestCase.assertEquals(obj.f07, 7);
+            TestCase.assertEquals(obj.f08, 8);
             TestCase.assertEquals(obj.f09, (float) 9);
             TestCase.assertEquals(obj.f10, (double) 10);
-            TestCase.assertEquals(obj.f11, (int) 11);
-            TestCase.assertEquals(obj.f12, (long) 12);
+            TestCase.assertEquals(obj.f11, 11);
+            TestCase.assertEquals(obj.f12, 12);
             TestCase.assertEquals(obj.f13, (float) 13);
             TestCase.assertEquals(obj.f14, (double) 14);
             TestCase.assertEquals(obj.f15, 15L);
@@ -4030,9 +4038,9 @@ class EvolveClasses {
             TestCase.assertEquals(obj.f35, Long.valueOf(35));
             TestCase.assertEquals(obj.f36, Float.valueOf(36));
             TestCase.assertEquals(obj.f37, Double.valueOf(37));
-            TestCase.assertEquals(obj.f38, Float.valueOf((long) 38));
-            TestCase.assertEquals(obj.f39, Double.valueOf((long) 39));
-            TestCase.assertEquals(obj.f40, Double.valueOf((float) 40));
+            TestCase.assertEquals(obj.f38, Float.valueOf(38));
+            TestCase.assertEquals(obj.f39, Double.valueOf(39));
+            TestCase.assertEquals(obj.f40, Double.valueOf(40));
 
             TestCase.assertEquals(obj.f41, Short.valueOf((byte) 41));
             TestCase.assertEquals(obj.f42, Integer.valueOf((byte) 42));
@@ -4050,9 +4058,9 @@ class EvolveClasses {
             TestCase.assertEquals(obj.f55, Long.valueOf(55));
             TestCase.assertEquals(obj.f56, Float.valueOf(56));
             TestCase.assertEquals(obj.f57, Double.valueOf(57));
-            TestCase.assertEquals(obj.f58, Float.valueOf((long) 58));
-            TestCase.assertEquals(obj.f59, Double.valueOf((long) 59));
-            TestCase.assertEquals(obj.f60, Double.valueOf((float) 60));
+            TestCase.assertEquals(obj.f58, Float.valueOf(58));
+            TestCase.assertEquals(obj.f59, Double.valueOf(59));
+            TestCase.assertEquals(obj.f60, Double.valueOf(60));
 
             TestCase.assertEquals(obj.f70, BigInteger.valueOf(70));
             TestCase.assertEquals(obj.f71, BigInteger.valueOf(71));
@@ -4102,26 +4110,26 @@ class EvolveClasses {
             RawObject obj;
             if (expectEvolved) {
                 obj = readRaw(store, 99, NAME, 1, NAME2, 1, CASECLS, 0);
-                checkRawFields(obj, "pkeyInteger", (int) 99,
+                checkRawFields(obj, "pkeyInteger", 99,
                                "kBoolean", true,
                                "kByte", (byte) 77,
                                "kShort", (short) 66,
-                               "kInteger", (int) 55,
+                               "kInteger", 55,
                                "kLong", (long) 44,
                                "kFloat", (float) 33,
                                "kDouble", (double) 22,
                                "kCharacter", (char) 11,
 
                                "f01", (short) 1,
-                               "f02", (int) 2,
+                               "f02", 2,
                                "f03", (long) 3,
                                "f04", (float) 4,
                                "f06", (double) 6,
-                               "f07", (int) 7,
+                               "f07", 7,
                                "f08", (long) 8,
                                "f09", (float) 9,
                                "f10", (double) 10,
-                               "f11", (int) 11,
+                               "f11", 11,
                                "f12", (long) 12,
                                "f13", (float) 13,
                                "f14", (double) 14,
@@ -4133,15 +4141,15 @@ class EvolveClasses {
                                "f20", (double) 20,
 
                                "f21", (short) 21,
-                               "f22", (int) 22,
+                               "f22", 22,
                                "f23", (long) 23,
                                "f24", (float) 24,
                                "f26", (double) 26,
-                               "f27", (int) 27,
+                               "f27", 27,
                                "f28", (long) 28,
                                "f29", (float) 29,
                                "f30", (double) 30,
-                               "f31", (int) 31,
+                               "f31", 31,
                                "f32", (long) 32,
                                "f33", (float) 33,
                                "f34", (double) 34,
@@ -4153,15 +4161,15 @@ class EvolveClasses {
                                "f40", (double) 40,
 
                                "f41", (short) 41,
-                               "f42", (int) 42,
+                               "f42", 42,
                                "f43", (long) 43,
                                "f44", (float) 44,
                                "f46", (double) 46,
-                               "f47", (int) 47,
+                               "f47", 47,
                                "f48", (long) 48,
                                "f49", (float) 49,
                                "f50", (double) 50,
-                               "f51", (int) 51,
+                               "f51", 51,
                                "f52", (long) 52,
                                "f53", (float) 53,
                                "f54", (double) 54,
@@ -4191,11 +4199,11 @@ class EvolveClasses {
                                "f_String2Long", 222L);
             } else {
                 obj = readRaw(store, 99, NAME, 0, NAME2, 0, CASECLS, 0);
-                checkRawFields(obj, "pkeyint", (int) 99,
+                checkRawFields(obj, "pkeyint", 99,
                                "kboolean", true,
                                "kbyte", (byte) 77,
                                "kshort", (short) 66,
-                               "kint", (int) 55,
+                               "kint", 55,
                                "klong", (long) 44,
                                "kfloat", (float) 33,
                                "kdouble", (double) 22,
@@ -4304,6 +4312,114 @@ class EvolveClasses {
         }
     }
 
+    @SuppressWarnings("serial")
+    static class ConvertFieldContent_Conversion implements Conversion {
+
+        public void initialize(EntityModel model) {
+        }
+
+        public Object convert(Object fromValue) {
+            String s1 = (String) fromValue;
+            return (new StringBuilder(s1)).reverse().toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof ConvertFieldContent_Conversion;
+        }
+    }
+
+    @Entity(version=1)
+    static class ConvertFieldContent_Entity
+        extends EvolveCase {
+
+        private static final String NAME =
+            ConvertFieldContent_Entity.class.getName();
+
+        @PrimaryKey
+        int key = 99;
+
+        String f1;
+        String f2;
+
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = new Converter
+                (ConvertFieldContent_Entity.class.getName(), 0,
+                 "f1", new ConvertFieldContent_Conversion());
+            m.addConverter(converter);
+            converter = new Converter
+                (ConvertFieldContent_Entity.class.getName(), 0,
+                 "f2", new ConvertFieldContent_Conversion());
+            m.addConverter(converter);
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertFieldContent_Entity>
+                index = store.getPrimaryIndex
+                    (Integer.class,
+                     ConvertFieldContent_Entity.class);
+            ConvertFieldContent_Entity obj = index.get(99);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(99, obj.key);
+            TestCase.assertEquals("43210", obj.f1);
+            TestCase.assertEquals("98765", obj.f2);
+
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertFieldContent_Entity>
+                index = newStore.getPrimaryIndex
+                    (Integer.class,
+                     ConvertFieldContent_Entity.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(99);
+            index.put((ConvertFieldContent_Entity)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj =
+                readRaw(store, 99, NAME, expectEvolved ? 1 : 0, CASECLS, 0);
+            if (expectEvolved) {
+                checkRawFields(obj, "key", 99,
+                                    "f1", "43210",
+                                    "f2", "98765");
+            } else {
+                checkRawFields(obj, "key", 99,
+                                    "f1", "01234",
+                                    "f2", "56789");
+            }
+        }
+    }
+
     @Persistent(version=1)
     static class ConvertExample1_Address {
         String street;
@@ -4312,6 +4428,7 @@ class EvolveClasses {
         int zipCode;
     }
 
+    @SuppressWarnings("serial")
     static class ConvertExample1_Conversion implements Conversion {
 
         public void initialize(EntityModel model) {
@@ -4534,6 +4651,7 @@ class EvolveClasses {
         }
     }
 
+    @SuppressWarnings("serial")
     static class ConvertExample2_Conversion implements Conversion {
         private transient RawType addressType;
 
@@ -4578,6 +4696,7 @@ class EvolveClasses {
         int zipCode;
     }
 
+    @SuppressWarnings("serial")
     static class ConvertExample3_Conversion implements Conversion {
         private transient RawType newPersonType;
         private transient RawType addressType;
@@ -4713,6 +4832,140 @@ class EvolveClasses {
         }
     }
 
+    @SuppressWarnings("serial")
+    static class ConvertExample3Reverse_Conversion implements Conversion {
+        private transient RawType newPersonType;
+
+        public void initialize(EntityModel model) {
+            newPersonType = model.getRawType
+                (ConvertExample3Reverse_Person.class.getName());
+        }
+
+        public Object convert(Object fromValue) {
+
+            RawObject person = (RawObject) fromValue;
+            Map<String,Object> personValues = person.getValues();
+            RawObject address = (RawObject) personValues.remove("address");
+            Map<String,Object> addressValues = address.getValues();
+
+            personValues.put("street", addressValues.remove("street"));
+            personValues.put("city", addressValues.remove("city"));
+            personValues.put("state", addressValues.remove("state"));
+            personValues.put("zipCode", addressValues.remove("zipCode"));
+
+            return new RawObject
+                (newPersonType, personValues, person.getSuper());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof ConvertExample3Reverse_Conversion;
+        }
+    }
+
+    @Entity(version=1)
+    static class ConvertExample3Reverse_Person
+        extends EvolveCase {
+
+        private static final String NAME =
+            ConvertExample3Reverse_Person.class.getName();
+        private static final String NAME2 =
+            PREFIX + "ConvertExample3Reverse_Address";
+
+        @PrimaryKey
+        int key;
+
+        String street;
+        String city;
+        String state;
+        int zipCode;
+
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = new Converter
+                (ConvertExample3Reverse_Person.class.getName(), 0,
+                 new ConvertExample3Reverse_Conversion());
+            m.addConverter(converter);
+            m.addDeleter(new Deleter(NAME2, 0));
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+                checkVersions(model, NAME2, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertExample3Reverse_Person>
+                index = store.getPrimaryIndex
+                    (Integer.class,
+                     ConvertExample3Reverse_Person.class);
+            ConvertExample3Reverse_Person obj = index.get(99);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(99, obj.key);
+            TestCase.assertEquals("street", obj.street);
+            TestCase.assertEquals("city", obj.city);
+            TestCase.assertEquals("state", obj.state);
+            TestCase.assertEquals(12345, obj.zipCode);
+
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,ConvertExample3Reverse_Person>
+                index = newStore.getPrimaryIndex
+                    (Integer.class,
+                     ConvertExample3Reverse_Person.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(99);
+            index.put((ConvertExample3Reverse_Person)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj = readRaw
+                (store, 99, NAME, expectEvolved ? 1 : 0, CASECLS, 0);
+            if (expectEvolved) {
+                checkRawFields(obj, "key", 99,
+                                    "street", "street",
+                                    "city", "city",
+                                    "state", "state",
+                                    "zipCode", 12345);
+            } else {
+                RawType embedType = store.getModel().getRawType(NAME2);
+                Object embed = new RawObject
+                    (embedType,
+                     makeValues("street", "street",
+                                "city", "city",
+                                "state", "state",
+                                "zipCode", 12345),
+                     null);
+                checkRawFields(obj, "key", 99, "address", embed);
+            }
+        }
+    }
+
     @Persistent(version=1)
     static class ConvertExample4_A extends ConvertExample4_B {
     }
@@ -4722,6 +4975,7 @@ class EvolveClasses {
         String name;
     }
 
+    @SuppressWarnings("serial")
     static class Example4_Conversion implements Conversion {
         private transient RawType newAType;
         private transient RawType newBType;
@@ -4861,6 +5115,7 @@ class EvolveClasses {
         double barkVolume;
     }
 
+    @SuppressWarnings("serial")
     static class ConvertExample5_Conversion implements Conversion {
         private transient RawType newPetType;
         private transient RawType dogType;
@@ -5017,26 +5272,26 @@ class EvolveClasses {
 
     @Persistent(version=1)
     static class AllowFieldAddDelete_Embed {
-        private String f0 = "0";
+        private final String f0 = "0";
         private String f2;
-        private int f3 = 3;
+        private final int f3 = 3;
         private String f4;
-        private int f5 = 5;
-        private String f8 = "8";
-        private int f9 = 9;
+        private final int f5 = 5;
+        private final String f8 = "8";
+        private final int f9 = 9;
     }
 
     @Persistent(version=1)
     static class AllowFieldAddDelete_Base
         extends EvolveCase {
 
-        private String f0 = "0";
+        private final String f0 = "0";
         private String f2;
-        private int f3 = 3;
+        private final int f3 = 3;
         private String f4;
-        private int f5 = 5;
-        private String f8 = "8";
-        private int f9 = 9;
+        private final int f5 = 5;
+        private final String f8 = "8";
+        private final int f9 = 9;
     }
 
     @Entity(version=1)
@@ -5055,13 +5310,13 @@ class EvolveClasses {
 
         AllowFieldAddDelete_Embed embed;
 
-        private String f0 = "0";
+        private final String f0 = "0";
         private String f2;
-        private int f3 = 3;
+        private final int f3 = 3;
         private String f4;
-        private int f5 = 5;
-        private String f8 = "8";
-        private int f9 = 9;
+        private final int f5 = 5;
+        private final String f8 = "8";
+        private final int f9 = 9;
 
         @Override
         Mutations getMutations() {
@@ -5114,7 +5369,7 @@ class EvolveClasses {
                 TestCase.assertEquals(9, o.f9);
             }
             {
-                AllowFieldAddDelete_Base o = (AllowFieldAddDelete_Base) obj;
+                AllowFieldAddDelete_Base o = obj;
 
                 TestCase.assertNotNull(o);
                 TestCase.assertEquals("0", o.f0);
@@ -5582,22 +5837,156 @@ class EvolveClasses {
         }
     }
 
+    enum InsertEnumConstant_Enum {
+        X, A, Y, B, Z;
+    }
+
+    @Persistent
+    static class InsertEnumConstant_KeyClass
+        implements Comparable<InsertEnumConstant_KeyClass > {
+
+        @KeyField(1)
+        InsertEnumConstant_Enum key;
+
+        private InsertEnumConstant_KeyClass() {}
+
+        InsertEnumConstant_KeyClass(InsertEnumConstant_Enum key) {
+            this.key = key;
+        }
+
+        public int compareTo(InsertEnumConstant_KeyClass o) {
+            /* Use the natural order, in spite of insertions. */
+            return key.compareTo(o.key);
+        }
+    }
+
+    @Entity(version=1)
+    static class InsertEnumConstant_Entity
+        extends EvolveCase {
+
+        private static final String NAME =
+            InsertEnumConstant_Entity.class.getName();
+        private static final String NAME2 =
+            InsertEnumConstant_Enum.class.getName();
+        private static final String NAME3 =
+            InsertEnumConstant_KeyClass.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        InsertEnumConstant_KeyClass secKey;
+
+        InsertEnumConstant_Enum e1;
+        InsertEnumConstant_Enum e2;
+        InsertEnumConstant_Enum e3 = InsertEnumConstant_Enum.X;
+        InsertEnumConstant_Enum e4 = InsertEnumConstant_Enum.Y;
+        InsertEnumConstant_Enum e5 = InsertEnumConstant_Enum.Z;
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+                checkVersions(model, NAME2, 0, NAME2, 0);
+                checkVersions(model, NAME3, 0, NAME3, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+                checkVersions(model, NAME2, 0);
+                checkVersions(model, NAME3, 0);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,InsertEnumConstant_Entity>
+                index = store.getPrimaryIndex
+                    (Integer.class,
+                     InsertEnumConstant_Entity.class);
+            InsertEnumConstant_Entity obj = index.get(99);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(99, obj.key);
+            if (updated) {
+                TestCase.assertSame(InsertEnumConstant_Enum.X, obj.secKey.key);
+            } else {
+                TestCase.assertSame(InsertEnumConstant_Enum.A, obj.secKey.key);
+            }
+            TestCase.assertSame(InsertEnumConstant_Enum.A, obj.e1);
+            TestCase.assertSame(InsertEnumConstant_Enum.B, obj.e2);
+            TestCase.assertSame(InsertEnumConstant_Enum.X, obj.e3);
+            TestCase.assertSame(InsertEnumConstant_Enum.Y, obj.e4);
+            TestCase.assertSame(InsertEnumConstant_Enum.Z, obj.e5);
+
+            if (doUpdate) {
+                obj.secKey =
+                    new InsertEnumConstant_KeyClass(InsertEnumConstant_Enum.X);
+                index.put(obj);
+                updated = true;
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,InsertEnumConstant_Entity>
+                index = newStore.getPrimaryIndex
+                    (Integer.class,
+                     InsertEnumConstant_Entity.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(99);
+            index.put((InsertEnumConstant_Entity)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj = readRaw
+                (store, 99, NAME, expectEvolved ? 1 : 0, CASECLS, 0);
+            RawType enumType = store.getModel().getRawType(NAME2);
+
+            Map<String, Object> secKeyFields = new HashMap<String, Object>();
+            RawType secKeyType = store.getModel().getRawType(NAME3);
+            RawObject secKeyObject =
+                new RawObject(secKeyType, secKeyFields, null /*superObject*/);
+
+            if (expectUpdated) {
+                secKeyFields.put("key", new RawObject(enumType, "X"));
+                checkRawFields(obj, "key", 99,
+                               "secKey", secKeyObject,
+                               "e1", new RawObject(enumType, "A"),
+                               "e2", new RawObject(enumType, "B"),
+                               "e3", new RawObject(enumType, "X"),
+                               "e4", new RawObject(enumType, "Y"),
+                               "e5", new RawObject(enumType, "Z"));
+            } else {
+                secKeyFields.put("key", new RawObject(enumType, "A"));
+                checkRawFields(obj, "key", 99,
+                               "secKey", secKeyObject,
+                               "e1", new RawObject(enumType, "A"),
+                               "e2", new RawObject(enumType, "B"));
+            }
+        }
+    }
+
     enum DeleteEnumConstant_Enum {
         A, C;
     }
 
     /**
-     * For now we don't allow deleting enum values.  This test case has code
-     * for testing conversions, for when we add versioning to enums.
+     * Don't allow deleting (or renaming, which appears as a deletion) enum
+     * values without mutations.
      */
     @Entity
     static class DeleteEnumConstant_NoMutation
         extends EvolveCase {
-
-        private static final String NAME =
-            DeleteEnumConstant_NoMutation.class.getName();
-        private static final String NAME2 =
-            DeleteEnumConstant_Enum.class.getName();
 
         @PrimaryKey
         int key;
@@ -5610,21 +5999,130 @@ class EvolveClasses {
         public String getStoreOpenException() {
             return "com.sleepycat.persist.evolve.IncompatibleClassException: Incompatible enum type changed detected when evolving class: com.sleepycat.persist.test.EvolveClasses$DeleteEnumConstant_Enum version: 0 to class: com.sleepycat.persist.test.EvolveClasses$DeleteEnumConstant_Enum version: 0 Error: Enum values may not be removed: [B]";
         }
+    }
 
-            /*
-            Mutation is missing to evolve class: com.sleepycat.persist.test.EvolveClasses$DeleteEnumConstant_Enum version: 0 to class: com.sleepycat.persist.test.EvolveClasses$DeleteEnumConstant_Enum version: 0 Error: Converter is required when a value is removed from an enum: [B]
-            */
+    /**
+     * With a Deleter, deleted enum values are null.  Note that version is not
+     * bumped.
+     */
+    /* Disabled until support for enum deletion is added.
+    @Entity
+    static class DeleteEnumConstant_WithDeleter
+        extends EvolveCase {
 
-        /*
+        private static final String NAME =
+            DeleteEnumConstant_WithDeleter.class.getName();
+        private static final String NAME2 =
+            DeleteEnumConstant_Enum.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        DeleteEnumConstant_Enum e1;
+        DeleteEnumConstant_Enum e2;
+        DeleteEnumConstant_Enum e3;
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 0, null);
+            checkVersions(model, NAME, 0);
+            if (oldTypesExist) {
+                checkVersions(model, NAME2, 0, NAME2, 0);
+            } else {
+                checkVersions(model, NAME2, 0);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,DeleteEnumConstant_WithDeleter>
+                index = store.getPrimaryIndex
+                    (Integer.class,
+                     DeleteEnumConstant_WithDeleter.class);
+            DeleteEnumConstant_WithDeleter obj = index.get(99);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(99, obj.key);
+            TestCase.assertSame(DeleteEnumConstant_Enum.A, obj.e1);
+            TestCase.assertSame(null, obj.e2);
+            TestCase.assertSame(DeleteEnumConstant_Enum.C, obj.e3);
+
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,DeleteEnumConstant_WithDeleter>
+                index = newStore.getPrimaryIndex
+                    (Integer.class,
+                     DeleteEnumConstant_WithDeleter.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(99);
+            index.put((DeleteEnumConstant_WithDeleter)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
+            RawType enumType = store.getModel().getRawType(NAME2);
+            if (expectUpdated) {
+                checkRawFields(obj, "key", 99,
+                               "e1", new RawObject(enumType, "A"),
+                               "e2", null,
+                               "e3", new RawObject(enumType, "C"));
+            } else {
+                checkRawFields(obj, "key", 99,
+                               "e1", new RawObject(enumType, "A"),
+                               "e2", new RawObject(enumType, "B"),
+                               "e3", new RawObject(enumType, "C"));
+            }
+        }
+    }
+    */
+
+    /**
+     * A field converter can assign deleted enum values.  Version must be 
+     * bumped when a converter is added.
+     */
+    /* Disabled until support for enum deletion is added.
+    @Entity(version=1)
+    static class DeleteEnumConstant_WithConverter
+        extends EvolveCase {
+
+        private static final String NAME =
+            DeleteEnumConstant_WithConverter.class.getName();
+        private static final String NAME2 =
+            DeleteEnumConstant_Enum.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        DeleteEnumConstant_Enum e1;
+        DeleteEnumConstant_Enum e2;
+        DeleteEnumConstant_Enum e3;
+
         @Override
         Mutations getMutations() {
             Mutations m = new Mutations();
-            Converter converter = new Converter(NAME2, 0, new MyConversion());
-            m.addConverter(converter);
+            Conversion c = new MyConversion();
+            m.addConverter(new Converter(NAME, 0, "e1", c));
+            m.addConverter(new Converter(NAME, 0, "e2", c));
+            m.addConverter(new Converter(NAME, 0, "e3", c));
             return m;
         }
-        */
 
+        @SuppressWarnings("serial")
         static class MyConversion implements Conversion {
 
             transient RawType newType;
@@ -5655,11 +6153,12 @@ class EvolveClasses {
         void checkEvolvedModel(EntityModel model,
                                Environment env,
                                boolean oldTypesExist) {
-            checkEntity(true, model, env, NAME, 0, null);
-            checkVersions(model, NAME, 0);
+            checkEntity(true, model, env, NAME, 1, null);
             if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
                 checkVersions(model, NAME2, 0, NAME2, 0);
             } else {
+                checkVersions(model, NAME, 1);
                 checkVersions(model, NAME2, 0);
             }
         }
@@ -5668,11 +6167,11 @@ class EvolveClasses {
         void readObjects(EntityStore store, boolean doUpdate)
             throws DatabaseException {
 
-            PrimaryIndex<Integer,DeleteEnumConstant_NoMutation>
+            PrimaryIndex<Integer,DeleteEnumConstant_WithConverter>
                 index = store.getPrimaryIndex
                     (Integer.class,
-                     DeleteEnumConstant_NoMutation.class);
-            DeleteEnumConstant_NoMutation obj = index.get(99);
+                     DeleteEnumConstant_WithConverter.class);
+            DeleteEnumConstant_WithConverter obj = index.get(99);
             TestCase.assertNotNull(obj);
             TestCase.assertEquals(99, obj.key);
             TestCase.assertSame(DeleteEnumConstant_Enum.A, obj.e1);
@@ -5688,12 +6187,12 @@ class EvolveClasses {
         void copyRawObjects(RawStore rawStore, EntityStore newStore)
             throws DatabaseException {
 
-            PrimaryIndex<Integer,DeleteEnumConstant_NoMutation>
+            PrimaryIndex<Integer,DeleteEnumConstant_WithConverter>
                 index = newStore.getPrimaryIndex
                     (Integer.class,
-                     DeleteEnumConstant_NoMutation.class);
+                     DeleteEnumConstant_WithConverter.class);
             RawObject raw = rawStore.getPrimaryIndex(NAME).get(99);
-            index.put((DeleteEnumConstant_NoMutation)
+            index.put((DeleteEnumConstant_WithConverter)
                       newStore.getModel().convertRawObject(raw));
         }
 
@@ -5703,7 +6202,8 @@ class EvolveClasses {
                             boolean expectUpdated)
             throws DatabaseException {
 
-            RawObject obj = readRaw(store, 99, NAME, 0, CASECLS, 0);
+            RawObject obj = readRaw(store, 99, NAME, expectEvolved ? 1 : 0,
+                                    CASECLS, 0);
             RawType enumType = store.getModel().getRawType(NAME2);
             if (expectEvolved) {
                 checkRawFields(obj, "key", 99,
@@ -5718,6 +6218,7 @@ class EvolveClasses {
             }
         }
     }
+    */
 
     @Entity
     static class DisallowChangeKeyRelate
@@ -5754,6 +6255,7 @@ class EvolveClasses {
          *  dropField = 77;
          *  dropAnnotation = 66;
          *  addField = 55;
+         *  renamedField = 44; // was toBeRenamedField
          *  aa = 33;
          *  ff = 22;
          */
@@ -5768,12 +6270,17 @@ class EvolveClasses {
         @SecondaryKey(relate=ONE_TO_ONE)
         Integer addField;
 
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int renamedField;
+
         int ff;
 
         @Override
         Mutations getMutations() {
             Mutations m = new Mutations();
             m.addDeleter(new Deleter(NAME, 0, "dropField"));
+            m.addRenamer(new Renamer(NAME, 0, "toBeRenamedField",
+                                              "renamedField"));
             return m;
         }
 
@@ -5802,6 +6309,8 @@ class EvolveClasses {
 
             checkValues(store.getSecondaryIndex
                 (index, Integer.class, "addAnnotation").get(88));
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "renamedField").get(44));
             if (updated) {
                 checkValues(store.getSecondaryIndex
                     (index, Integer.class, "addField").get(55));
@@ -5839,6 +6348,7 @@ class EvolveClasses {
             TestCase.assertEquals(99, obj.key);
             TestCase.assertEquals(88, obj.addAnnotation);
             TestCase.assertEquals(66, obj.dropAnnotation);
+            TestCase.assertEquals(44, obj.renamedField);
             TestCase.assertEquals(33, obj.aa);
             TestCase.assertEquals(22, obj.ff);
             if (updated) {
@@ -5861,12 +6371,14 @@ class EvolveClasses {
                                "addAnnotation", 88,
                                "dropAnnotation", 66,
                                "addField", 55,
+                               "renamedField", 44,
                                "aa", 33,
                                "ff", 22);
             } else if (expectEvolved) {
                 checkRawFields(obj, "key", 99,
                                "addAnnotation", 88,
                                "dropAnnotation", 66,
+                               "renamedField", 44,
                                "aa", 33,
                                "ff", 22);
             } else {
@@ -5874,18 +6386,208 @@ class EvolveClasses {
                                "addAnnotation", 88,
                                "dropField", 77,
                                "dropAnnotation", 66,
+                               "toBeRenamedField", 44,
                                "aa", 33,
                                "ff", 22);
             }
             Environment env = store.getEnvironment();
             assertDbExists(expectEvolved, env, NAME, "addAnnotation");
             assertDbExists(expectEvolved, env, NAME, "addField");
+            assertDbExists(expectEvolved, env, NAME, "renamedField");
+            assertDbExists(!expectEvolved, env, NAME, "toBeRenamedField");
             assertDbExists(!expectEvolved, env, NAME, "dropField");
             assertDbExists(!expectEvolved, env, NAME, "dropAnnotation");
         }
     }
 
-    /** [#15524] */
+    /**
+     * Same test as AllowChangeKeyMetadata but with the secondary keys in an
+     * entity subclass.  [#16253]
+     */
+    @Persistent(version=1)
+    static class AllowChangeKeyMetadataInSubclass
+        extends AllowChangeKeyMetadataEntity {
+
+        private static final String NAME =
+            AllowChangeKeyMetadataInSubclass.class.getName();
+        private static final String NAME2 =
+            AllowChangeKeyMetadataEntity.class.getName();
+
+        /*
+         * Combined fields from version 0 and 1:
+         *  addAnnotation = 88;
+         *  dropField = 77;
+         *  dropAnnotation = 66;
+         *  addField = 55;
+         *  renamedField = 44; // was toBeRenamedField
+         *  aa = 33;
+         *  ff = 22;
+         */
+
+        int aa;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int addAnnotation;
+
+        int dropAnnotation;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        Integer addField;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int renamedField;
+
+        int ff;
+
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(AllowChangeKeyMetadataInSubclass.class);
+        }
+
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            m.addDeleter(new Deleter(NAME, 0, "dropField"));
+            m.addRenamer(new Renamer(NAME, 0, "toBeRenamedField",
+                                              "renamedField"));
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkNonEntity(true, model, env, NAME, 1);
+            checkEntity(true, model, env, NAME2, 0, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+                checkVersions(model, NAME2, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+                checkVersions(model, NAME2, 0);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,AllowChangeKeyMetadataEntity>
+                index = store.getPrimaryIndex
+                    (Integer.class,
+                     AllowChangeKeyMetadataEntity.class);
+            AllowChangeKeyMetadataEntity obj = index.get(99);
+            checkValues(obj);
+
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "addAnnotation").get(88));
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "renamedField").get(44));
+            if (updated) {
+                checkValues(store.getSecondaryIndex
+                    (index, Integer.class, "addField").get(55));
+            } else {
+                TestCase.assertNull(store.getSecondaryIndex
+                    (index, Integer.class, "addField").get(55));
+            }
+
+            if (doUpdate) {
+                ((AllowChangeKeyMetadataInSubclass) obj).addField = 55;
+                index.put(obj);
+                updated = true;
+                checkValues(store.getSecondaryIndex
+                    (index, Integer.class, "addAnnotation").get(88));
+                checkValues(store.getSecondaryIndex
+                    (index, Integer.class, "addField").get(55));
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,AllowChangeKeyMetadataEntity>
+                index = newStore.getPrimaryIndex
+                    (Integer.class,
+                     AllowChangeKeyMetadataEntity.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME2).get(99);
+            index.put((AllowChangeKeyMetadataInSubclass)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        private void checkValues(AllowChangeKeyMetadataEntity objParam) {
+            AllowChangeKeyMetadataInSubclass obj =
+                (AllowChangeKeyMetadataInSubclass) objParam;
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(99, obj.key);
+            TestCase.assertEquals(88, obj.addAnnotation);
+            TestCase.assertEquals(66, obj.dropAnnotation);
+            TestCase.assertEquals(44, obj.renamedField);
+            TestCase.assertEquals(33, obj.aa);
+            TestCase.assertEquals(22, obj.ff);
+            if (updated) {
+                TestCase.assertEquals(Integer.valueOf(55), obj.addField);
+            } else {
+                TestCase.assertNull(obj.addField);
+            }
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj = readRaw
+                (store, NAME2, 99, NAME, expectEvolved ? 1 : 0,
+                 NAME2, 0, CASECLS, 0);
+            checkRawFields(obj.getSuper(), "key", 99);
+            if (expectUpdated) {
+                checkRawFields(obj,
+                               "addAnnotation", 88,
+                               "dropAnnotation", 66,
+                               "addField", 55,
+                               "renamedField", 44,
+                               "aa", 33,
+                               "ff", 22);
+            } else if (expectEvolved) {
+                checkRawFields(obj,
+                               "addAnnotation", 88,
+                               "dropAnnotation", 66,
+                               "renamedField", 44,
+                               "aa", 33,
+                               "ff", 22);
+            } else {
+                checkRawFields(obj,
+                               "addAnnotation", 88,
+                               "dropField", 77,
+                               "dropAnnotation", 66,
+                               "toBeRenamedField", 44,
+                               "aa", 33,
+                               "ff", 22);
+            }
+            Environment env = store.getEnvironment();
+            assertDbExists(expectEvolved, env, NAME2, "addAnnotation");
+            assertDbExists(expectEvolved, env, NAME2, "addField");
+            assertDbExists(expectEvolved, env, NAME2, "renamedField");
+            assertDbExists(!expectEvolved, env, NAME2, "toBeRenamedField");
+            assertDbExists(!expectEvolved, env, NAME2, "dropField");
+            assertDbExists(!expectEvolved, env, NAME2, "dropAnnotation");
+        }
+    }
+
+    @Entity
+    static class AllowChangeKeyMetadataEntity
+        extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+    }
+
+    /**
+     * Special case of adding secondaries that caused
+     * IndexOutOfBoundsException. [#15524]
+     */
     @Entity(version=1)
     static class AllowAddSecondary
         extends EvolveCase {
@@ -6007,11 +6709,11 @@ class EvolveClasses {
         @PrimaryKey
         int key;
 
-        private String f0 = "0"; // new field
-        private String f1 = "1"; // converted field
-        private String f2 = "2"; // new field
-        private String f3 = "3"; // converted field
-        private String f4 = "4"; // new field
+        private final String f0 = "0"; // new field
+        private final String f1 = "1"; // converted field
+        private final String f2 = "2"; // new field
+        private final String f3 = "3"; // converted field
+        private final String f4 = "4"; // new field
 
         @Override
         Mutations getMutations() {
@@ -6021,6 +6723,7 @@ class EvolveClasses {
             return m;
         }
 
+        @SuppressWarnings("serial")
         private static class IntToString implements Conversion {
 
             public void initialize(EntityModel model) {
@@ -6093,7 +6796,7 @@ class EvolveClasses {
                 (store, 99, NAME, expectEvolved ? 1 : 0, CASECLS, 0);
             if (expectUpdated) {
                 checkRawFields(obj,
-                               "key", 99, 
+                               "key", 99,
                                "f0", "0",
                                "f1", "1",
                                "f2", "2",
@@ -6101,12 +6804,12 @@ class EvolveClasses {
                                "f4", "4");
             } else if (expectEvolved) {
                 checkRawFields(obj,
-                               "key", 99, 
+                               "key", 99,
                                "f1", "1",
                                "f3", "3");
             } else {
                 checkRawFields(obj,
-                               "key", 99, 
+                               "key", 99,
                                "f1", 1,
                                "f3", 3);
             }

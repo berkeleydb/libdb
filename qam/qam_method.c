@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
- * $Id: qam_method.c,v 12.19 2008/01/08 20:58:47 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -16,7 +16,7 @@
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
-static int __qam_rr __P((DB *, DB_TXN *,
+static int __qam_rr __P((DB *, DB_THREAD_INFO *, DB_TXN *,
 	       const char *, const char *, const char *, qam_name_op));
 static int __qam_set_extentsize __P((DB *, u_int32_t));
 
@@ -261,31 +261,36 @@ err:
  * __qam_remove --
  *	Remove method for a Queue.
  *
- * PUBLIC: int __qam_remove __P((DB *, DB_TXN *, const char *, const char *));
+ * PUBLIC: int __qam_remove __P((DB *, DB_THREAD_INFO *, DB_TXN *,
+ * PUBLIC:    const char *, const char *, u_int32_t));
  */
 int
-__qam_remove(dbp, txn, name, subdb)
+__qam_remove(dbp, ip, txn, name, subdb, flags)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb;
+	u_int32_t flags;
 {
-	return (__qam_rr(dbp, txn, name, subdb, NULL, QAM_NAME_REMOVE));
+	COMPQUIET(flags, 0);
+	return (__qam_rr(dbp, ip, txn, name, subdb, NULL, QAM_NAME_REMOVE));
 }
 
 /*
  * __qam_rename --
  *	Rename method for a Queue.
  *
- * PUBLIC: int __qam_rename __P((DB *,
- * PUBLIC:         DB_TXN *, const char *, const char *, const char *));
+ * PUBLIC: int __qam_rename __P((DB *, DB_THREAD_INFO *, DB_TXN *,
+ * PUBLIC:         const char *, const char *, const char *));
  */
 int
-__qam_rename(dbp, txn, name, subdb, newname)
+__qam_rename(dbp, ip, txn, name, subdb, newname)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
 {
-	return (__qam_rr(dbp, txn, name, subdb, newname, QAM_NAME_RENAME));
+	return (__qam_rr(dbp, ip, txn, name, subdb, newname, QAM_NAME_RENAME));
 }
 
 /*
@@ -293,14 +298,14 @@ __qam_rename(dbp, txn, name, subdb, newname)
  *	Remove/Rename method for a Queue.
  */
 static int
-__qam_rr(dbp, txn, name, subdb, newname, op)
+__qam_rr(dbp, ip, txn, name, subdb, newname, op)
 	DB *dbp;
+	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
 	qam_name_op op;
 {
 	DB *tmpdbp;
-	DB_THREAD_INFO *ip;
 	ENV *env;
 	QUEUE *qp;
 	int ret, t_ret;
@@ -313,7 +318,6 @@ __qam_rr(dbp, txn, name, subdb, newname, op)
 		    "Queue does not support multiple databases per file");
 		return (EINVAL);
 	}
-	ENV_GET_THREAD_INFO(env, ip);
 
 	/*
 	 * Since regular rename no longer opens the database, we may have
@@ -351,15 +355,9 @@ err:		/*
 			__txn_remlock(env,
 			    txn, &tmpdbp->handle_lock, DB_LOCK_INVALIDID);
 
-		if (txn == NULL ) {
-			if ((t_ret = __db_close(tmpdbp,
-			    txn, DB_NOSYNC)) != 0 && ret == 0)
-				ret = t_ret;
-		} else {
-			if ((t_ret = __txn_closeevent(env,
-			    txn, tmpdbp)) != 0 && ret == 0)
-				ret = t_ret;
-		}
+		if ((t_ret = __db_close(tmpdbp,
+		    txn, DB_NOSYNC)) != 0 && ret == 0)
+			ret = t_ret;
 	}
 	return (ret);
 }

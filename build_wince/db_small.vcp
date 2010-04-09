@@ -51,8 +51,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "NDEBUG" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192 /D "HAVE_SMALLBUILD" /GF /O2 /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_EMU/libdb_small47s.lib"
-# ADD LIB32 /nologo /out:"Release_EMU/libdb_small47s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_EMU/libdb_small48s.lib"
+# ADD LIB32 /nologo /out:"Release_EMU/libdb_small48s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -78,8 +78,8 @@ CPP=cl.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "_i386_" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_X86_" /D "x86" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /Gs8192 /D "HAVE_SMALLBUILD" /GF /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_EMU/libdb_small47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_EMU/libdb_small47sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_EMU/libdb_small48sd.lib"
+# ADD LIB32 /nologo /out:"Debug_EMU/libdb_small48sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -105,8 +105,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "NDEBUG" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /O2 /M$(CECrtMT) /D "HAVE_SMALLBUILD" /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Release_ARMV4/libdb_small47s.lib"
-# ADD LIB32 /nologo /out:"Release_ARMV4/libdb_small47s.lib"
+# ADD BASE LIB32 /nologo /out:"Release_ARMV4/libdb_small48s.lib"
+# ADD LIB32 /nologo /out:"Release_ARMV4/libdb_small48s.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -132,8 +132,8 @@ CPP=clarm.exe
 # ADD CPP /nologo /W3 /I "." /I ".." /D "DB_WIN32" /D "DB_WINCE" /Zi /Od /D "DEBUG" /D _WIN32_WCE=$(CEVersion) /D "$(CePlatform)" /D "ARM" /D "_ARM_" /D "ARMV4" /D UNDER_CE=$(CEVersion) /D "UNICODE" /D "_UNICODE" /D "_LIB" /D "__NO_SYSTEM_INCLUDES" /Yu"stdafx.h" /M$(CECrtMTDebug) /D "HAVE_SMALLBUILD" /c
 # SUBTRACT CPP /YX /Yc /Yu
 LIB32=link.exe -lib
-# ADD BASE LIB32 /nologo /out:"Debug_ARMV4/libdb_small47sd.lib"
-# ADD LIB32 /nologo /out:"Debug_ARMV4/libdb_small47sd.lib"
+# ADD BASE LIB32 /nologo /out:"Debug_ARMV4/libdb_small48sd.lib"
+# ADD LIB32 /nologo /out:"Debug_ARMV4/libdb_small48sd.lib"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
@@ -153,6 +153,10 @@ SOURCE=..\btree\bt_compact.c
 # Begin Source File
 
 SOURCE=..\btree\bt_compare.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\btree\bt_compress.c
 # End Source File
 # Begin Source File
 
@@ -245,6 +249,10 @@ SOURCE=..\common\crypto_stub.c
 # Begin Source File
 
 SOURCE=..\common\db_byteorder.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\common\db_compint.c
 # End Source File
 # Begin Source File
 
@@ -384,6 +392,10 @@ SOURCE=..\db\db_setlsn.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\db\db_sort_multiple.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\db\db_stati.c
 # End Source File
 # Begin Source File
@@ -401,6 +413,10 @@ SOURCE=..\db\db_upg_opd.c
 # Begin Source File
 
 SOURCE=..\db\db_vrfy_stub.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\db\partition.c
 # End Source File
 # Begin Source File
 
@@ -841,18 +857,6 @@ SOURCE=..\txn\txn_stat.c
 # Begin Source File
 
 SOURCE=..\txn\txn_util.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa_db.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\xa\xa_map.c
 # End Source File
 # End Target
 # End Project

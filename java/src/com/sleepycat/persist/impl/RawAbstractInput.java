@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: RawAbstractInput.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -128,7 +128,8 @@ abstract class RawAbstractInput extends AbstractInput {
         if (o instanceof RawObject) {
             format = (Format) ((RawObject) o).getType();
         } else {
-            format = catalog.getFormat(o.getClass());
+            format = catalog.getFormat(o.getClass(),
+                                       false /*checkEntitySubclassIndexes*/);
             if (!format.isSimple() || format.isEnum()) {
                 throw new IllegalArgumentException
                     ("Not a RawObject or a non-enum simple type: " +

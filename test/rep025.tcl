@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep025.tcl,v 12.20 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep025
 # TEST  Test of DB_REP_JOIN_FAILURE.
@@ -17,6 +17,8 @@
 #
 proc rep025 { method { niter 200 } { tnum "025" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	# Run for all access methods.
 	if { $checking_valid_methods } {
@@ -34,6 +36,22 @@ proc rep025 { method { niter 200 } { tnum "025" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.  Skip recovery with in-memory
 	# logging - it doesn't make sense.
@@ -45,8 +63,8 @@ proc rep025 { method { niter 200 } { tnum "025" } args } {
 				    with in-memory logs."
 				continue
 			}
-			puts "Rep$tnum ($method $r):\
-			    Test of manual initialization and join failure."
+			puts "Rep$tnum ($method $r): Test of manual\
+			    initialization and join failure $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep025_sub $method $niter $tnum $l $r $args
@@ -57,12 +75,19 @@ proc rep025 { method { niter 200 } { tnum "025" } args } {
 proc rep025_sub { method niter tnum logset recargs largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -93,14 +118,14 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $repmemargs \
 	    $m_logargs -log_max $log_max $verbargs -errpfx MASTER \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $repmemargs \
 	    $c_logargs -log_max $log_max $verbargs -errpfx CLIENT \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -118,7 +143,7 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 	# Run a modified test001 in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -136,7 +161,7 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 	 	eval rep_test \
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv NULL $niter $start $start 0 $largs
 		incr start $niter
 		replclear 2
 
@@ -164,17 +189,24 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 
 	# Add records to the master and update client.
 	puts "\tRep$tnum.f: Update master; client should return error."
+	#
+	# Force a log record to create a gap to force rerequest.
+	#
+	$masterenv txn_checkpoint -force
+	process_msgs $envlist 0 NONE err
+	tclsleep 1
 	set entries 100
-	eval rep_test $method $masterenv NULL $entries $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $entries $start $start 0 $largs
 	incr start $entries
 	process_msgs $envlist 0 NONE err
 	error_check_good error_on_right_env [lindex $err 0] $clientenv
 	error_check_good right_error [is_substr $err DB_REP_JOIN_FAILURE] 1
 
-	# If the master logs are on-disk, copy from master to client and restart
-	# with recovery.  If the logs are in-memory, we'll have to re-enable
-	# internal initialization and restart the client.
-	if { $m_logtype == "on-disk" } {
+	# If the master logs and the databases are on-disk, copy from master 
+	# to client and restart with recovery.  If the logs or databases are 
+	# in-memory, we'll have to re-enable internal initialization and 
+	# restart the client.
+	if { $m_logtype == "on-disk" && $databases_in_memory == 0 } {
 		puts "\tRep$tnum.g: Hot failover and catastrophic recovery."
 		error_check_good client_close [$clientenv close] 0
 		env_cleanup $clientdir
@@ -195,7 +227,7 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 	error_check_good no_errors1 $err 0
 
 	# Adding another entry should not flush out an error.
-	eval rep_test $method $masterenv NULL $entries $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $entries $start $start 0 $largs
 	process_msgs $envlist 0 NONE err
 	error_check_good no_errors2 $err 0
 

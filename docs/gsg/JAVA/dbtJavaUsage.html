@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Usage Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DBEntry.html" title="Chapter 8. Database Records" />
-    <link rel="previous" href="bindAPI.html" title="Using the BIND APIs" />
+    <link rel="prev" href="bindAPI.html" title="Using the BIND APIs" />
     <link rel="next" href="Cursors.html" title="Chapter 9. Using Cursors" />
   </head>
   <body>
@@ -32,10 +32,9 @@
             <h2 class="title" style="clear: both"><a id="dbtJavaUsage"></a>Database Usage Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
-        In <a href="CoreJavaUsage.html#MyDb">MyDbs Class</a> we created 
+        In <a class="xref" href="CoreJavaUsage.html#MyDb" title="Example 7.1 MyDbs Class">MyDbs Class</a> we created 
         a class that opens and closes databases for us.
         We now make use of that class to load inventory data into
         two databases that we will use for our inventory system.
@@ -46,7 +45,7 @@
     </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/db/GettingStarted</pre>
       <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.
     </p>
       <p>Note that in this example, we are going to save two types of
@@ -65,20 +64,21 @@
         <p class="title">
           <b>Example 8.1 Inventory.java</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
       All Inventory data is encapsulated in an instance of the following
       class. Note that because this class is not serializable, we need a
-      custom tuple binding in order to place it on a <tt class="classname">DatabaseEntry</tt>
-      object. Because the <tt class="classname">TupleInput</tt> and
-      <tt class="classname">TupleOutput</tt> classes used by custom tuple bindings
+      custom tuple binding in order to place it on a <code class="classname">DatabaseEntry</code>
+      object. Because the <code class="classname">TupleInput</code> and
+      <code class="classname">TupleOutput</code> classes used by custom tuple bindings
       support Java numerical types and not Java numerical classes, we use
-      <tt class="literal">int</tt> and <tt class="literal">float</tt> here instead of the
-      corresponding <tt class="classname">Integer</tt> and <tt class="classname">Float</tt>
+      <code class="literal">int</code> and <code class="literal">float</code> here instead of the
+      corresponding <code class="classname">Integer</code> and <code class="classname">Float</code>
       classes.
       
       </p>
-        <a id="java_dbt16"></a>
-        <pre class="programlisting">// File Inventory.java
+          <a id="java_dbt16"></a>
+          <pre class="programlisting">// File Inventory.java
 package db.GettingStarted;
 
 public class Inventory {
@@ -122,19 +122,22 @@ public class Inventory {
     public float getVendorPrice() { return vendorPrice; }
 
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <div class="example">
         <a id="vendorjava"></a>
         <p class="title">
           <b>Example 8.2 Vendor.java</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
         The data for vendor records are stored in instances of the following
         class.  Notice that we are using serialization with this class for no
         other reason than to demonstrate serializing a class instance.
       </p>
-        <a id="java_dbt17"></a>
-        <pre class="programlisting">// File Vendor.java
+          <a id="java_dbt17"></a>
+          <pre class="programlisting">// File Vendor.java
 package db.GettingStarted;
 
 import java.io.Serializable;
@@ -188,10 +191,12 @@ public class Vendor implements Serializable {
     // for a complete implementation of this class.
 
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <p>
         Because we will not be using serialization to convert our
-        <tt class="classname">Inventory</tt> objects to a <tt class="classname">DatabaseEntry</tt>
+        <code class="classname">Inventory</code> objects to a <code class="classname">DatabaseEntry</code>
         object, we need a custom tuple binding:
     </p>
       <div class="example">
@@ -199,8 +204,9 @@ public class Vendor implements Serializable {
         <p class="title">
           <b>Example 8.3 InventoryBinding.java</b>
         </p>
-        <a id="java_dbt18"></a>
-        <pre class="programlisting">// File InventoryBinding.java
+        <div class="example-contents">
+          <a id="java_dbt18"></a>
+          <pre class="programlisting">// File InventoryBinding.java
 package db.GettingStarted;
 
 import com.sleepycat.bind.tuple.TupleBinding;
@@ -245,18 +251,20 @@ public class InventoryBinding extends TupleBinding {
         to.writeFloat(inventory.getVendorPrice());
     }
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <p>
         In order to store the data identified above, we write the
-        <tt class="classname">ExampleDatabaseLoad</tt> application. This application
+        <code class="classname">ExampleDatabaseLoad</code> application. This application
         loads the inventory and vendor databases for you.
     </p>
       <p>
-        Inventory information is stored in a <tt class="classname">Database</tt>
+        Inventory information is stored in a <code class="classname">Database</code>
         dedicated for that purpose. The key for each such record is a product
         SKU.  The inventory data stored in this database are objects of the
-        <tt class="classname">Inventory</tt> class (see <a href="dbtJavaUsage.html#inventoryjava">Inventory.java</a> for more information).
-        <tt class="classname">ExampleDatabaseLoad</tt> loads the inventory database
+        <code class="classname">Inventory</code> class (see <a class="xref" href="dbtJavaUsage.html#inventoryjava" title="Example 8.1 Inventory.java">Inventory.java</a> for more information).
+        <code class="classname">ExampleDatabaseLoad</code> loads the inventory database
         as follows:
     </p>
       <div class="orderedlist">
@@ -269,14 +277,14 @@ public class InventoryBinding extends TupleBinding {
           </li>
           <li>
             <p>
-            Uses <tt class="classname">java.lang.String</tt> to create a key based
+            Uses <code class="classname">java.lang.String</code> to create a key based
             on the item's SKU.
         </p>
           </li>
           <li>
-            <p>Uses an <tt class="classname">Inventory</tt> class instance for the
-        record data. This object is stored on a <tt class="classname">DatabaseEntry</tt>
-        object using <tt class="classname">InventoryBinding</tt>, a custom tuple
+            <p>Uses an <code class="classname">Inventory</code> class instance for the
+        record data. This object is stored on a <code class="classname">DatabaseEntry</code>
+        object using <code class="classname">InventoryBinding</code>, a custom tuple
         binding that we implemented above.</p>
           </li>
           <li>
@@ -284,10 +292,10 @@ public class InventoryBinding extends TupleBinding {
           </li>
         </ol>
       </div>
-      <p>Vendor information is also stored in a <tt class="classname">Database</tt>
+      <p>Vendor information is also stored in a <code class="classname">Database</code>
     dedicated for that purpose.  The vendor data stored in this database are objects of the
-    <tt class="classname">Vendor</tt> class (see <a href="dbtJavaUsage.html#vendorjava">Vendor.java</a> for more information). To load this
-    <tt class="classname">Database</tt>, <tt class="classname">ExampleDatabaseLoad</tt>
+    <code class="classname">Vendor</code> class (see <a class="xref" href="dbtJavaUsage.html#vendorjava" title="Example 8.2 Vendor.java">Vendor.java</a> for more information). To load this
+    <code class="classname">Database</code>, <code class="classname">ExampleDatabaseLoad</code>
     does the following:</p>
       <div class="orderedlist">
         <ol type="1">
@@ -299,9 +307,9 @@ public class InventoryBinding extends TupleBinding {
             <p>Uses the vendor's name as the record's key.</p>
           </li>
           <li>
-            <p>Uses a <tt class="classname">Vendor</tt> class instance for the
-        record data. This object is stored on a <tt class="classname">DatabaseEntry</tt>
-        object using <tt class="classname">com.sleepycat.bind.serial.SerialBinding</tt>.</p>
+            <p>Uses a <code class="classname">Vendor</code> class instance for the
+        record data. This object is stored on a <code class="classname">DatabaseEntry</code>
+        object using <code class="classname">com.sleepycat.bind.serial.SerialBinding</code>.</p>
           </li>
         </ol>
       </div>
@@ -310,18 +318,19 @@ public class InventoryBinding extends TupleBinding {
         <p class="title">
           <b>Example 8.4 Stored Class Catalog Management with MyDbs</b>
         </p>
-        <p>
-            Before we can write <tt class="classname">ExampleDatabaseLoad</tt>, we need to update 
-            <tt class="filename">MyDbs.java</tt> to support the class catalogs that we need for this application.
+        <div class="example-contents">
+          <p>
+            Before we can write <code class="classname">ExampleDatabaseLoad</code>, we need to update 
+            <code class="filename">MyDbs.java</code> to support the class catalogs that we need for this application.
         </p>
-        <p>
+          <p>
             To do this, we start by importing an additional class to support stored class catalogs:
         </p>
-        <a id="java_dbt19"></a>
-        <pre class="programlisting">// File: MyDbs.java
+          <a id="java_dbt19"></a>
+          <pre class="programlisting">// File: MyDbs.java
 package db.GettingStarted;
                                                                                                                                   
-<b class="userinput"><tt>import com.sleepycat.bind.serial.StoredClassCatalog;</tt></b>
+<strong class="userinput"><code>import com.sleepycat.bind.serial.StoredClassCatalog;</code></strong>
 
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
@@ -329,34 +338,34 @@ import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.DatabaseType;
 
 import java.io.FileNotFoundException; </pre>
-        <p>
+          <p>
     We also need to add two additional private data members to this class. One
     supports the database used for the class catalog, and the other is used as a
     handle for the class catalog itself.
 </p>
-        <a id="java_dbt20"></a>
-        <pre class="programlisting">public class MyDbs {
+          <a id="java_dbt20"></a>
+          <pre class="programlisting">public class MyDbs {
 
     // The databases that our application uses
     private Database vendorDb = null;
     private Database inventoryDb = null;
-    <b class="userinput"><tt>private Database classCatalogDb = null;
+    <strong class="userinput"><code>private Database classCatalogDb = null;
 
     // Needed for object serialization
-    private StoredClassCatalog classCatalog;</tt></b>
+    private StoredClassCatalog classCatalog;</code></strong>
 
     private String vendordb = "VendorDB.db";
     private String inventorydb = "InventoryDB.db";
-    <b class="userinput"><tt>private String classcatalogdb = "ClassCatalogDB.db";</tt></b>
+    <strong class="userinput"><code>private String classcatalogdb = "ClassCatalogDB.db";</code></strong>
 
     // Our constructor does nothing
     public MyDbs() {} </pre>
-        <p>
-        Next we need to update the <tt class="methodname">MyDbs.setup()</tt> method 
+          <p>
+        Next we need to update the <code class="methodname">MyDbs.setup()</code> method 
         to open the class catalog database and create the class catalog.
     </p>
-        <a id="java_dbt21"></a>
-        <pre class="programlisting">    // The setup() method opens all our databases
+          <a id="java_dbt21"></a>
+          <pre class="programlisting">    // The setup() method opens all our databases
     // for us.
     public void setup(String databasesHome)
         throws DatabaseException {
@@ -380,27 +389,27 @@ import java.io.FileNotFoundException; </pre>
                                         null,
                                         myDbConfig);
 
-            <b class="userinput"><tt>// Open the class catalog db. This is used to
+            <strong class="userinput"><code>// Open the class catalog db. This is used to
             // optimize class serialization.
             classcatalogdb = databasesHome + "/" + classcatalogdb;
             classCatalogDb = new Database(classcatalogdb,
                                           null,
-                                          myDbConfig); </tt></b>
+                                          myDbConfig); </code></strong>
 
         } catch(FileNotFoundException fnfe) {
             System.err.println("MyDbs: " + fnfe.toString());
             System.exit(-1);
         }
     } </pre>
-        <p>
+          <p>
         Finally we need a getter method to return the class catalog. Note that we do not provide a getter for
         the catalog database itself – our application has no need for that.
     </p>
-        <p>
-        We also update our <tt class="methodname">close()</tt> to close our class catalog.
+          <p>
+        We also update our <code class="methodname">close()</code> to close our class catalog.
     </p>
-        <a id="java_dbt22"></a>
-        <pre class="programlisting">   // getter methods
+          <a id="java_dbt22"></a>
+          <pre class="programlisting">   // getter methods
     public Database getVendorDB() {
         return vendorDb;
     }
@@ -409,15 +418,15 @@ import java.io.FileNotFoundException; </pre>
         return inventoryDb;
     }
 
-    <b class="userinput"><tt>public StoredClassCatalog getClassCatalog() {
+    <strong class="userinput"><code>public StoredClassCatalog getClassCatalog() {
         return classCatalog;
-    }</tt></b>
+    }</code></strong>
 </pre>
-        <p>
-    Finally, we need our <tt class="methodname">close()</tt> method:
+          <p>
+    Finally, we need our <code class="methodname">close()</code> method:
 </p>
-        <a id="java_dbt23"></a>
-        <pre class="programlisting">
+          <a id="java_dbt23"></a>
+          <pre class="programlisting">
 
     // Close the databases
     public void close() {
@@ -430,9 +439,9 @@ import java.io.FileNotFoundException; </pre>
                 inventoryDb.close();
             }
 
-            <b class="userinput"><tt>if (classCatalogDb != null) {
+            <strong class="userinput"><code>if (classCatalogDb != null) {
                 classCatalogDb.close();
-            }</tt></b>
+            }</code></strong>
         } catch(DatabaseException dbe) {
             System.err.println("Error closing MyDbs: " +
                                 dbe.toString());
@@ -440,13 +449,15 @@ import java.io.FileNotFoundException; </pre>
         }
     }
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <p>
         So far we have identified the data that we want to store in our
         databases and how we will convert that data in and out of
-        <tt class="classname">DatabaseEntry</tt> objects for database storage. We
-        have also updated <tt class="classname">MyDbs</tt> to manage our databases
-        for us. Now we write <tt class="classname">ExampleDatabaseLoad</tt> to
+        <code class="classname">DatabaseEntry</code> objects for database storage. We
+        have also updated <code class="classname">MyDbs</code> to manage our databases
+        for us. Now we write <code class="classname">ExampleDatabaseLoad</code> to
         actually put the inventory and vendor data into their respective
         databases. Because of the work that we have done so far, this
         application is actually fairly simple to write.
@@ -456,9 +467,10 @@ import java.io.FileNotFoundException; </pre>
         <p class="title">
           <b>Example 8.5 ExampleDatabaseLoad.java</b>
         </p>
-        <p>First we need the usual series of import statements:</p>
-        <a id="java_dbt24"></a>
-        <pre class="programlisting">// File: ExampleDatabaseLoad.java
+        <div class="example-contents">
+          <p>First we need the usual series of import statements:</p>
+          <a id="java_dbt24"></a>
+          <pre class="programlisting">// File: ExampleDatabaseLoad.java
 package db.GettingStarted;
                                                                                                                                        
 import java.io.BufferedReader;
@@ -475,21 +487,21 @@ import com.sleepycat.bind.serial.SerialBinding;
 import com.sleepycat.bind.tuple.TupleBinding;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException; </pre>
-        <p>Next comes the class declaration and the private data members that
+          <p>Next comes the class declaration and the private data members that
       we need for this class. Most of these are setting up default values for
       the program.</p>
-        <p>Note that two <tt class="classname">DatabaseEntry</tt> objects are
+          <p>Note that two <code class="classname">DatabaseEntry</code> objects are
       instantiated here. We will reuse these for every database operation that
-      this program performs. Also a <tt class="classname">MyDbEnv</tt> object is
+      this program performs. Also a <code class="classname">MyDbEnv</code> object is
       instantiated here. We can do this because its constructor never throws
-      an exception. See <a href="dbtJavaUsage.html#dbsStoredClass">Stored Class Catalog Management with MyDbs</a> for
+      an exception. See <a class="xref" href="dbtJavaUsage.html#dbsStoredClass" title="Example 8.4 Stored Class Catalog Management with MyDbs">Stored Class Catalog Management with MyDbs</a> for
       its implementation details.</p>
-        <p>Finally, the <tt class="filename">inventory.txt</tt> and
-      <tt class="filename">vendors.txt</tt> file can be found in the GettingStarted
+          <p>Finally, the <code class="filename">inventory.txt</code> and
+      <code class="filename">vendors.txt</code> file can be found in the GettingStarted
       examples directory along with the classes described in this extended
       example.</p>
-        <a id="java_dbt25"></a>
-        <pre class="programlisting">public class ExampleDatabaseLoad {
+          <a id="java_dbt25"></a>
+          <pre class="programlisting">public class ExampleDatabaseLoad {
 
     private static String myDbsPath = "./";
     private static File inventoryFile = new File("./inventory.txt");
@@ -501,22 +513,22 @@ import com.sleepycat.db.DatabaseException; </pre>
 
     // Encapsulates the databases.
     private static MyDbs myDbs = new MyDbs(); </pre>
-        <p>
-            Next comes the <tt class="methodname">usage()</tt> and
-            <tt class="methodname">main()</tt> methods. Notice the exception handling
-            in the <tt class="methodname">main()</tt> method. This is the only place in the application where we
+          <p>
+            Next comes the <code class="methodname">usage()</code> and
+            <code class="methodname">main()</code> methods. Notice the exception handling
+            in the <code class="methodname">main()</code> method. This is the only place in the application where we
             catch exceptions. For this reason, we must catch
-            <tt class="classname">DatabaseException</tt> which is thrown by the
-            <tt class="literal">com.sleepycat.db.*</tt> classes.
+            <code class="classname">DatabaseException</code> which is thrown by the
+            <code class="literal">com.sleepycat.db.*</code> classes.
       </p>
-        <p>Also notice the call to <tt class="methodname">MyDbs.close()</tt>
-      in the <tt class="literal">finally</tt> block. This is the only place in the
-      application where <tt class="methodname">MyDbs.close()</tt> is called.
-      <tt class="methodname">MyDbs.close()</tt> is responsible for closing
-      all open <tt class="classname">Database</tt>
+          <p>Also notice the call to <code class="methodname">MyDbs.close()</code>
+      in the <code class="literal">finally</code> block. This is the only place in the
+      application where <code class="methodname">MyDbs.close()</code> is called.
+      <code class="methodname">MyDbs.close()</code> is responsible for closing
+      all open <code class="classname">Database</code>
       handles for you.</p>
-        <a id="java_dbt26"></a>
-        <pre class="programlisting">    private static void usage() {
+          <a id="java_dbt26"></a>
+          <pre class="programlisting">    private static void usage() {
         System.out.println("ExampleDatabaseLoad [-h &lt;database home&gt;]");
         System.out.println("      [-s &lt;selections file&gt;] [-v &lt;vendors file&gt;]");
         System.exit(-1);
@@ -537,15 +549,15 @@ import com.sleepycat.db.DatabaseException; </pre>
         }
         System.out.println("All done.");
     } </pre>
-        <p>Next we write the <tt class="methodname">ExampleDatabaseLoad.run()</tt>
+          <p>Next we write the <code class="methodname">ExampleDatabaseLoad.run()</code>
       method. This method is responsible for initializing all objects. 
       Because our environment and databases are all opened using the 
-      <tt class="methodname">MyDbs.setup()</tt> method, <tt class="methodname">ExampleDatabaseLoad.run()</tt>
-      method is only responsible for calling <tt class="methodname">MyDbs.setup()</tt> and then calling 
-      the <tt class="classname">ExampleDatabaseLoad</tt> methods that actually load the databases. 
+      <code class="methodname">MyDbs.setup()</code> method, <code class="methodname">ExampleDatabaseLoad.run()</code>
+      method is only responsible for calling <code class="methodname">MyDbs.setup()</code> and then calling 
+      the <code class="classname">ExampleDatabaseLoad</code> methods that actually load the databases. 
       </p>
-        <a id="java_dbt27"></a>
-        <pre class="programlisting">    private void run(String args[]) throws DatabaseException {
+          <a id="java_dbt27"></a>
+          <pre class="programlisting">    private void run(String args[]) throws DatabaseException {
         // Parse the arguments list
         parseArgs(args);
 
@@ -556,11 +568,11 @@ import com.sleepycat.db.DatabaseException; </pre>
         System.out.println("loading inventory db.");
         loadInventoryDb();
     } </pre>
-        <p>This next method loads the vendor database. This method
-      uses serialization to convert the <tt class="classname">Vendor</tt> object
-      to a <tt class="classname">DatabaseEntry</tt> object.</p>
-        <a id="java_dbt28"></a>
-        <pre class="programlisting">   private void loadVendorsDb() 
+          <p>This next method loads the vendor database. This method
+      uses serialization to convert the <code class="classname">Vendor</code> object
+      to a <code class="classname">DatabaseEntry</code> object.</p>
+          <a id="java_dbt28"></a>
+          <pre class="programlisting">   private void loadVendorsDb() 
             throws DatabaseException {
 
         // loadFile opens a flat-text file that contains our data
@@ -603,11 +615,11 @@ import com.sleepycat.db.DatabaseException; </pre>
             myDbs.getVendorDB().put(null, theKey, theData);
         }
     } </pre>
-        <p>Now load the inventory database. This method uses our
-      custom tuple binding (see <a href="dbtJavaUsage.html#InventoryJavaBinding">InventoryBinding.java</a>) to convert the <tt class="classname">Inventory</tt>
-      object to a <tt class="classname">DatabaseEntry</tt> object.</p>
-        <a id="java_dbt29"></a>
-        <pre class="programlisting">    private void loadInventoryDb() 
+          <p>Now load the inventory database. This method uses our
+      custom tuple binding (see <a class="xref" href="dbtJavaUsage.html#InventoryJavaBinding" title="Example 8.3 InventoryBinding.java">InventoryBinding.java</a>) to convert the <code class="classname">Inventory</code>
+      object to a <code class="classname">DatabaseEntry</code> object.</p>
+          <a id="java_dbt29"></a>
+          <pre class="programlisting">    private void loadInventoryDb() 
         throws DatabaseException {
 
         // loadFile opens a flat-text file that contains our data
@@ -649,13 +661,13 @@ import com.sleepycat.db.DatabaseException; </pre>
             myDbs.getInventoryDB().put(null, theKey, theData);
         }
     }</pre>
-        <p>
+          <p>
         The remainder of this application provides utility methods to 
         read a flat text file into an array of strings and parse the
         command line options: 
       </p>
-        <a id="java_dbt30"></a>
-        <pre class="programlisting">    private static void parseArgs(String args[]) {
+          <a id="java_dbt30"></a>
+          <pre class="programlisting">    private static void parseArgs(String args[]) {
         // Implementation omitted for brevity.
     }
 
@@ -667,18 +679,20 @@ import com.sleepycat.db.DatabaseException; </pre>
 
     protected ExampleDatabaseLoad() {}
 } </pre>
-        <p>
+          <p>
         From the perspective of this document, these
         things are relatively uninteresting. You can see how they are
-        implemented by looking at <tt class="filename">ExampleDatabaseLoad.java</tt>
+        implemented by looking at <code class="filename">ExampleDatabaseLoad.java</code>
         in:
       </p>
-        <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/db/GettingStarted</pre>
-        <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+          <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_java/db/GettingStarted</pre>
+          <p>
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.
     </p>
+        </div>
       </div>
+      <br class="example-break" />
     </div>
     <div class="navfooter">
       <hr />

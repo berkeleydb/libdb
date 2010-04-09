@@ -1,7 +1,7 @@
-<!--$Id: index_db.html,v 1.103 2008/05/05 17:45:55 carol Exp $-->
+<!--$Id$-->
 <html>
 <head>
-<title>Berkeley DB (Version: 4.7.25)</title>
+<title>Berkeley DB (Version: 4.8.30)</title>
 <style type="text/css">
     body {width: 75%;}
     p {Color:#000000;Font-Family:Arial, Helvetica;Font-Size:9pt; }
@@ -20,7 +20,7 @@
 <center>
 <h2>Oracle Berkeley DB</h2>
 <b>
-Version 4.7.25, May 15, 2008
+Version 4.8.30, April 12, 2010
 </b>
 </center>
 
@@ -150,11 +150,20 @@ Berkeley DB Porting Guide
 </ul>
 <p>
 <b>References</b><br>
+<p>
 The programmatic reference guide provides detailed information to help
 you during application design and implementation. This definitive
 reference document is organized by concept, rather than by API.
+</p>
+
+<p>Reference Guide for Berkeley DB</p>
 <ul>
-<li><a href="ref/toc.html">Reference Guide for Berkeley DB</a>
+<table>
+    <tr>
+        <td>&nbsp;</td>
+        <td><a href="programmer_reference/BDB_Prog_Reference.pdf">PDF</a>&nbsp;|&nbsp;<a href="programmer_reference/index.html">HTML</a></td>
+    </tr>
+</table>
 </ul>
 
 <p>
@@ -162,11 +171,34 @@ reference document is organized by concept, rather than by API.
 These fully-detailed references cover every public interface for
 Berkeley DB. For each interface, the documentation lists arguments and
 return values, and covers pre- and post-conditions.
+
 <ul>
-<li><a href="api_c/frame.html">C</a></li>
-<li><a href="api_cxx/frame.html">C++</a></li>
-<li><a href="java/index.html">Javadoc</a></li>
-<li><a href="api_tcl/api_tcl.html">Tcl</a></li>
+<table>
+    <tr>
+        <td><li>C</li></td>
+        <td><a href="api_reference/C/BDB-C_APIReference.pdf">PDF</a>&nbsp;|&nbsp;<a href="api_reference/C/frame_main.html">HTML</a></td>
+    </tr>
+    <tr>
+        <td><li>C++</li></td>
+        <td><a href="api_reference/CXX/BDB-CXX_APIReference.pdf">PDF</a>&nbsp;|&nbsp;<a href="api_reference/CXX/frame_main.html">HTML</a></td>
+    </tr>
+    <tr>
+        <td><li>C#</li></td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="csharp/Index.html">HTML</a></td>
+    </tr>
+    <tr>
+        <td><li>STL</li></td>
+        <td><a href="api_reference/STL/BDB-STL_APIReference.pdf">PDF</a>&nbsp;|&nbsp;<a href="api_reference/STL/frame_main.html">HTML</a></td>
+    </tr>
+    <tr>
+        <td><li>Javadoc</li></td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="java/index.html">HTML</a></td>
+    </tr>
+    <tr>
+        <td><li>TCL</li></td>
+        <td><a href="api_reference/TCL/BDB-TCL_APIReference.pdf">PDF</a>&nbsp;|&nbsp;<a href="api_reference/TCL/frame_main.html">HTML</a></td>
+    </tr>
+</table>
 </ul>
 
 <p>
@@ -175,15 +207,13 @@ These guides contain helpful hints, step-by-step instructions, and
 information on platform-specific details of the build, installation, and
 upgrade processes.
 <ul>
-<li><a href="ref/build_brew/intro.html">BREW</a></li>
-<li><a href="ref/build_s60/intro.html">S60</a></li>
-<li><a href="ref/build_unix/intro.html">UNIX/POSIX</a></li>
-<li><a href="ref/build_vxworks/intro6x.html">VxWorks</a></li>
-<li><a href="ref/build_win/intro.html">Windows</a></li>
-<li><a href="ref/build_wince/intro.html">Windows CE</a></li>
+<li><a href="programmer_reference/build_unix.html">UNIX/POSIX</a></li>
+<li><a href="programmer_reference/build_vxworks_intro6x.html">VxWorks</a></li>
+<li><a href="programmer_reference/build_win.html">Windows</a></li>
+<li><a href="programmer_reference/build_wince.html">Windows CE</a></li>
 <p>
-<li><a href="ref/changelog/4.7.html">Berkeley DB 4.7 Change Log</a></li>
-<li><a href="ref/upgrade.4.7/toc.html">Upgrading Applications to the 4.7 release</a></li>
+<li><a href="programmer_reference/changelog_4_8.html">Berkeley DB 4.8 Change Log</a></li>
+<li><a href="programmer_reference/upgrade_4_8_toc.html">Upgrading Applications to the 4.8 release</a></li>
 <p>
 <li><a href="http://www.oracle.com/technology/software/products/berkeley-db/db/index.html">Berkeley DB Release History and Patches</a></li>
 </ul>
@@ -206,7 +236,7 @@ upgrade processes.
 <p>
 <b>Additional Information</b><br>
 <ul>
-<li><a href="utility/index.html">Standalone utilities</a></li>
+<li><a href="api_reference/C/utilities.html">Standalone utilities</a></li>
 <li><a href="http://www.oracle.com/technology/products/berkeley-db/faq/db_faq.html">Berkeley DB FAQ</a></li>
 <p>
 <li><a href="http://forums.oracle.com/forums/forum.jspa?forumID=271">Oracle Technology Support Forums -- Berkeley DB</a></li>
@@ -232,7 +262,7 @@ cryptography to your country or re-distribute source code from
 it in any way.
 
 <p>
-Copyright (c) 1997,2008 Oracle.  All rights reserved.
+Copyright (c) 1997-2010 Oracle.  All rights reserved.
 
 </body>
 </html>

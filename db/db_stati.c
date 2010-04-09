@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_stati.c,v 12.37 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -16,6 +16,7 @@
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
+#include "dbinc/partition.h"
 
 #ifdef HAVE_STATISTICS
 static int __db_print_all __P((DB *, u_int32_t));
@@ -53,7 +54,8 @@ __db_stat_pp(dbp, txn, spp, flags)
 
 	/* Check for replication block. */
 	handle_check = IS_ENV_REPLICATED(env);
-	if (handle_check && (ret = __db_rep_enter(dbp, 1, 0, 0)) != 0) {
+	if (handle_check && (ret = __db_rep_enter(dbp, 1, 0,
+	    txn != NULL)) != 0) {
 		handle_check = 0;
 		goto err;
 	}
@@ -94,7 +96,11 @@ __db_stat(dbp, ip, txn, spp, flags)
 
 	DEBUG_LWRITE(dbc, NULL, "DB->stat", NULL, NULL, flags);
 	LF_CLR(DB_READ_COMMITTED | DB_READ_UNCOMMITTED);
-
+#ifdef HAVE_PARTITION
+	if (DB_IS_PARTITIONED(dbp))
+		ret = __partition_stat(dbc, spp, flags);
+	else
+#endif
 	switch (dbp->type) {
 	case DB_BTREE:
 	case DB_RECNO:
@@ -348,7 +354,6 @@ __db_print_all(dbp, flags)
 	STAT_ISSET("Btree/Recno internal", dbp->bt_internal);
 	STAT_ISSET("Hash internal", dbp->h_internal);
 	STAT_ISSET("Queue internal", dbp->q_internal);
-	STAT_ISSET("XA internal", dbp->xa_internal);
 
 	__db_prflags(env, NULL, dbp->flags, fn, NULL, "\tFlags");
 
@@ -414,6 +419,7 @@ __db_print_citem(dbc)
 		{ DBC_RECOVER,		"DBC_RECOVER" },
 		{ DBC_RMW,		"DBC_RMW" },
 		{ DBC_TRANSIENT,	"DBC_TRANSIENT" },
+		{ DBC_WAS_READ_COMMITTED,"DBC_WAS_READ_COMMITTED" },
 		{ DBC_WRITECURSOR,	"DBC_WRITECURSOR" },
 		{ DBC_WRITER,		"DBC_WRITER" },
 		{ 0,			NULL }

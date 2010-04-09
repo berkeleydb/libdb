@@ -1,4 +1,4 @@
-# $Id: mutex.m4,v 12.27 2007/08/20 18:45:39 bostic Exp $
+# $Id$
 
 # POSIX pthreads tests: inter-process safe and intra-process only.
 AC_DEFUN(AM_PTHREADS_SHARED, [
@@ -119,36 +119,15 @@ if test "$db_cv_mutex" = no; then
 	# mutexes don't support inter-process locking, but the application
 	# wants to use them anyway (for example, some Linux and *BSD systems).
 	#
-	# Test for LWP threads before testing for UI/POSIX threads, we prefer
-	# them on Solaris, for two reasons: a bug in SunOS 5.7 causes
-	# applications to get pwrite, not pwrite64, if they load the C library
-	# before the appropriate threads library, e.g., tclsh using dlopen to
-	# load the DB library.  Second, LWP mutexes are faster than POSIX
-	# pthread mutexes by some amount.
-	#
-	# Otherwise, test for POSIX threads before UI threads.  There are Linux
-	# systems that support a UI compatibility mode, and applications are
-	# more likely to be written for POSIX threads than UI threads.
-
+	# Test for POSIX threads before testing for UI/LWP threads, they are
+	# the Sun-recommended choice on Solaris.  Also, there are Linux systems
+	# that support a UI compatibility mode, and applications are more
+	# likely to be written for POSIX threads than UI threads.
 	if test "$db_cv_posixmutexes" = yes; then
 		db_cv_mutex=posix_only;
 	fi
 	if test "$db_cv_uimutexes" = yes; then
 		db_cv_mutex=ui_only;
-	fi
-
-	# LWP threads: _lwp_XXX
-	if test "$db_cv_mutex" = no; then
-	AC_TRY_LINK([
-	#include <synch.h>],[
-		static lwp_mutex_t mi = SHAREDMUTEX;
-		static lwp_cond_t ci = SHAREDCV;
-		lwp_mutex_t mutex = mi;
-		lwp_cond_t cond = ci;
-		exit (
-		_lwp_mutex_lock(&mutex) ||
-		_lwp_mutex_unlock(&mutex));
-	], [db_cv_mutex=Solaris/lwp])
 	fi
 
 	# POSIX.1 pthreads: pthread_XXX
@@ -174,6 +153,20 @@ if test "$db_cv_mutex" = no; then
 	fi
 	if test "$db_cv_mutex" = posix_only; then
 		AC_MSG_ERROR([unable to find POSIX 1003.1 mutex interfaces])
+	fi
+
+	# LWP threads: _lwp_XXX
+	if test "$db_cv_mutex" = no; then
+	AC_TRY_LINK([
+	#include <synch.h>],[
+		static lwp_mutex_t mi = SHAREDMUTEX;
+		static lwp_cond_t ci = SHAREDCV;
+		lwp_mutex_t mutex = mi;
+		lwp_cond_t cond = ci;
+		exit (
+		_lwp_mutex_lock(&mutex) ||
+		_lwp_mutex_unlock(&mutex));
+	], [db_cv_mutex=Solaris/lwp])
 	fi
 
 	# UI threads: thr_XXX
@@ -248,9 +241,10 @@ if test "$db_cv_mutex" = no; then
 		membar_enter();
 	], [db_cv_mutex="$db_cv_mutex/Solaris/_lock_try/membar"])
 
-	# Sparc/gcc: SunOS, Solaris
+	# Sparc/gcc: SunOS, Solaris, ultrasparc assembler support
 	AC_TRY_COMPILE(,[
 	#if defined(__sparc__) && defined(__GNUC__)
+		asm volatile ("membar #StoreStore|#StoreLoad|#LoadStore");
 		exit(0);
 	#else
 		FAIL TO COMPILE/LINK
@@ -507,6 +501,10 @@ AC_TRY_COMPILE(,[
 fi
 
 # UNIX fcntl system call mutexes.
+# Note that fcntl mutexes are no longer supported in 4.8.  This code has been
+# left in place in case there is some system that we are not aware of that uses
+# fcntl mutexes, in which case additional work will be required for DB 4.8 in
+# order to support shared latches.
 if test "$db_cv_mutex" = no; then
 	db_cv_mutex=UNIX/fcntl
 AC_TRY_LINK([
@@ -662,7 +660,7 @@ esac
 # Configure the remaining special cases.
 case "$db_cv_mutex" in
 UNIX/fcntl)		AC_MSG_WARN(
-			    [NO FAST MUTEXES FOUND FOR THIS COMPILER/ARCHITECTURE.])
+			    [NO SHARED LATCH IMPLEMENTATION FOUND FOR THIS PLATFORM.])
 			ADDITIONAL_OBJS="mut_fcntl${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_FCNTL)
 			AH_TEMPLATE(HAVE_MUTEX_FCNTL,
@@ -683,10 +681,17 @@ disabled)
 	# Test to see if mutexes have been found by checking the list of
 	# additional objects for a mutex implementation.
 	case "$ADDITIONAL_OBJS" in
-	*mut_fcntl*|*mut_pthread*|*mut_tas*|*mut_win32*)
+	*mut_pthread*|*mut_tas*|*mut_win32*)
 		AC_DEFINE(HAVE_MUTEX_SUPPORT)
 		AH_TEMPLATE(HAVE_MUTEX_SUPPORT,
-	    [Define to 1 if the Berkeley DB library should support mutexes.]);;
+	    [Define to 1 if the Berkeley DB library should support mutexes.])
+
+		# Shared latches are required in 4.8, and are implemented using
+		# mutexes if we don't have a native implementation.
+		# This macro may be removed in a future release.
+		AH_TEMPLATE(HAVE_SHARED_LATCHES,
+	    [Define to 1 to configure Berkeley DB to use read/write latches.])
+		AC_DEFINE(HAVE_SHARED_LATCHES);;
 	*)
 		AC_MSG_ERROR([Unable to find a mutex implementation]);;
 	esac
@@ -725,20 +730,17 @@ AC_SUBST(db_threadid_t_decl)
 db_threadid_t_decl=notset
 
 case "$db_cv_mutex" in
-POSIX/pthread*|Solaris/lwp*)
-	thread_h_decl="#include <pthread.h>"
-	db_threadid_t_decl="typedef pthread_t db_threadid_t;"
-	AC_HAVE_LIBRARY(pthread, LIBSO_LIBS="$LIBSO_LIBS -lpthread");;
 UI/threads*)
 	thread_h_decl="#include <thread.h>"
 	db_threadid_t_decl="typedef thread_t db_threadid_t;"
 	AC_HAVE_LIBRARY(thread, LIBSO_LIBS="$LIBSO_LIBS -lthread");;
 *)
-	if test "$db_cv_pthread_api" = yes; then
+	AC_CHECK_HEADER(pthread.h, [ac_cv_header_pthread_h=yes])
+	if test "$ac_cv_header_pthread_h" = "yes" ; then
 		thread_h_decl="#include <pthread.h>"
 		db_threadid_t_decl="typedef pthread_t db_threadid_t;"
-		AC_HAVE_LIBRARY(pthread, LIBSO_LIBS="$LIBSO_LIBS -lpthread")
-	fi;;
+	fi
+	AC_HAVE_LIBRARY(pthread, LIBSO_LIBS="$LIBSO_LIBS -lpthread");;
 esac
 
 # We need to know if the thread ID type will fit into an integral type and we
@@ -758,35 +760,6 @@ else
 	db_threadid_t a;
 	a = 0;
 	], AC_DEFINE(HAVE_SIMPLE_THREAD_TYPE))
-fi
-
-# If we're building replication and configured with POSIX pthreads or were
-# told to build using the POSIX API, build the replication manager framework.
-db_cv_build_replication_mgr=no
-if test "$db_cv_build_replication" = yes; then
-	AH_TEMPLATE(HAVE_REPLICATION_THREADS,
-	    [Define to 1 if building the Berkeley DB replication framework.])
-	case "$db_cv_mutex" in
-	POSIX/pthread*|Solaris/lwp)
-		db_cv_build_replication_mgr=yes;;
-	esac
-	if test "$db_cv_pthread_api" = yes; then
-		db_cv_build_replication_mgr=yes
-	fi
-
-	if test "$db_cv_build_replication_mgr" = yes; then
-		AC_DEFINE(HAVE_REPLICATION_THREADS)
-
-		# Solaris requires the socket and nsl libraries to build the
-		# replication manager.  Don't add nsl regardless of the OS,
-		# it causes RPC to fail on AIX 4.3.3.
-		case "$host_os" in
-		solaris*)
-			AC_HAVE_LIBRARY(nsl, LIBSO_LIBS="$LIBSO_LIBS -lnsl")
-			AC_HAVE_LIBRARY(socket,
-			    LIBSO_LIBS="$LIBSO_LIBS -lsocket");;
-		esac
-	fi
 fi
 
 # There are 3 classes of mutexes:
@@ -813,3 +786,66 @@ case "$host_os$db_cv_mutex" in
 *qnx*POSIX/pthread*|openedition*POSIX/pthread*)
 	AC_DEFINE(HAVE_MUTEX_SYSTEM_RESOURCES);;
 esac])
+
+AC_DEFUN(AM_DEFINE_ATOMIC, [
+# Probe for native atomic operations
+#	gcc/x86{,_64} inline asm
+#	solaris atomic_* library calls
+
+AH_TEMPLATE(HAVE_ATOMIC_SUPPORT,
+    [Define to 1 to use native atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_X86_GCC_ASSEMBLY,
+    [Define to 1 to use GCC and x86 or x86_64 assemlby language atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_SOLARIS,
+    [Define to 1 to use Solaris library routes for atomic operations.])
+
+AC_CACHE_CHECK([for atomic operations], db_cv_atomic, [
+db_cv_atomic=no
+# atomic operations can be disabled via --disable-atomicsupport
+if test "$db_cv_build_atomicsupport" = no; then
+	db_cv_atomic=disabled
+fi
+
+# The MinGW build uses the Windows API for atomic operations
+if test "$db_cv_mingw" = yes; then
+	db_cv_atomic=mingw
+fi
+
+if test "$db_cv_atomic" = no; then
+	AC_TRY_COMPILE(,[
+	#if ((defined(i386) || defined(__i386__)) && defined(__GNUC__))
+		exit(0);
+	#elif ((defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__))
+		exit(0);
+	#else
+		FAIL TO COMPILE/LINK
+	#endif
+	], [db_cv_atomic="x86/gcc-assembly"])
+fi
+
+if test "$db_cv_atomic" = no; then
+AC_TRY_LINK([
+#include <sys/atomic.h>],[
+	volatile unsigned val = 1;
+	exit (atomic_inc_uint_nv(&val) != 2 ||
+	      atomic_dec_uint_nv(&val) != 1 ||
+	      atomic_cas_32(&val, 1, 3) != 3);
+], [db_cv_atomic="solaris/atomic"])
+fi
+])
+
+case "$db_cv_atomic" in
+	x86/gcc-assembly)
+		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+		AC_DEFINE(HAVE_ATOMIC_X86_GCC_ASSEMBLY)
+		;;
+
+	solaris/atomic)
+		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+		AC_DEFINE(HAVE_ATOMIC_SOLARIS)
+		;;
+	mingw)
+		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+		;;
+esac
+])

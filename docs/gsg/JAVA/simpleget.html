@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Retrieving Objects from an Entity Store</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="persist_access.html" title="Chapter 5. Saving and Retrieving Objects" />
-    <link rel="previous" href="simpleput.html" title="Placing Objects in an Entity Store" />
+    <link rel="prev" href="simpleput.html" title="Placing Objects in an Entity Store" />
     <link rel="next" href="getmultiple.html" title="Retrieving Multiple Objects" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="simpleget"></a>Retrieving Objects from an Entity Store</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                     You retrieve objects placed in an entity store by using
@@ -101,7 +100,7 @@ public class SimpleStoreGet {
     } </pre>
       <p>
             Now we retrieve a few objects. To do this, we instantiate a
-            <tt class="classname">SimpleDA</tt> (see <a href="simpleda.html">SimpleDA.class</a>) class that we use to access
+            <code class="classname">SimpleDA</code> (see <a class="xref" href="simpleda.html" title="SimpleDA.class">SimpleDA.class</a>) class that we use to access
             our primary and secondary indexes. Then we retrieve objects
             based on a primary or secondary index value. And finally, we
             display the retrieved objects.
@@ -122,17 +121,17 @@ public class SimpleStoreGet {
 
         SimpleEntityClass sec4 = sda.sIdx.get("skeythree");
 
-        System.out.println("sec1: " + sec1.getpKey());
-        System.out.println("sec2: " + sec2.getpKey());
-        System.out.println("sec4: " + sec4.getpKey());
+        System.out.println("sec1: " + sec1.getPKey());
+        System.out.println("sec2: " + sec2.getPKey());
+        System.out.println("sec4: " + sec4.getPKey());
 
 
         shutdown();
     } </pre>
       <p>
             Finally, to complete our class, we need a
-            <tt class="methodname">main()</tt> method, which simply calls our
-            <tt class="methodname">run()</tt> method.
+            <code class="methodname">main()</code> method, which simply calls our
+            <code class="methodname">run()</code> method.
     </p>
       <pre class="programlisting">    // main
     public static void main(String args[]) {

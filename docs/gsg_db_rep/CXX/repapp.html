@@ -3,19 +3,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 3. The DB Replication Framework</title>
+    <title>Chapter 3. The DB Replication Manager</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="previous" href="simpleprogramlisting.html" title="Program Listing" />
-    <link rel="next" href="repmgr_init_example_c.html" title="Adding the Replication Framework to&#10;                    &#10;                    SimpleTxn&#10;            " />
+    <link rel="prev" href="simpleprogramlisting.html" title="Program Listing" />
+    <link rel="next" href="repmgr_init_example_c.html" title="Adding the Replication Manager to RepMgr" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Chapter 3. The DB Replication Framework</th>
+          <th colspan="3" align="center">Chapter 3. The DB Replication Manager</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="simpleprogramlisting.html">Prev</a> </td>
@@ -29,10 +29,9 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title"><a id="repapp"></a>Chapter 3. The DB Replication Framework</h2>
+            <h2 class="title"><a id="repapp"></a>Chapter 3. The DB Replication Manager</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -62,9 +61,10 @@
           </dd>
           <dt>
             <span class="sect1">
-              <a href="repmgr_init_example_c.html">Adding the Replication Framework to
+              <a href="repmgr_init_example_c.html">Adding the Replication Manager to
                     
-                    SimpleTxn
+                    <span>RepMgr</span>
+                    
             </a>
             </span>
           </dt>
@@ -89,7 +89,7 @@
                 <span class="sect2">
                   <a href="fwrkpermmessage.html#perm2fmwrkexample">Adding a Permanent Message Policy to 
                             
-                            RepMgr
+                            <span>RepMgrGSG</span>
                             
                     </a>
                 </span>
@@ -129,15 +129,15 @@
       </div>
       <p>
         The easiest way to add replication to your transactional
-        application is to use the replication framework. The replication framework provides a comprehensive 
+        application is to use the Replication Manager. The Replication Manager provides a comprehensive 
         communications layer that enables replication. For a brief listing
-        of the replication framework's feature set, see 
-        <a href="apioverview.html#repframeworkoverview">Replication Framework Overview</a>.
+        of the Replication Manager's feature set, see 
+        <a class="xref" href="apioverview.html#repframeworkoverview" title="Replication Manager Overview">Replication Manager Overview</a>.
     </p>
       <p>
-        To use the replication framework, you make use of special methods off the
+        To use the Replication Manager, you make use of special methods off the
         
-        <span><tt class="classname">DbEnv</tt> class.</span>
+        <span><code class="classname">DbEnv</code> class.</span>
         That is: 
     </p>
       <div class="orderedlist">
@@ -156,17 +156,16 @@
           </li>
           <li>
             <p>
-                                    Use the replication framework replication methods to
-                                    configure the replication framework. Using these
+                                    Use the Replication Manager replication methods to
+                                    configure the Replication Manager. Using these
                                     methods causes DB to know that you
-                                    are using the replication framework.
+                                    are using the Replication Manager.
                             </p>
             <p>
-                                    Configuring the replication framework 
-                                    entails setting its replication
-                                    priority, setting the TCP/IP address
+                                    Configuring the Replication Manager entails setting the replication
+                                    environment's priority, setting the TCP/IP address
                                     that this replication environment will use for
-                                    incoming replication messages, identify
+                                    incoming replication messages, identifying
                                     TCP/IP addresses of other replication
                                     environments, setting the number of
                                     replication environments in the
@@ -180,8 +179,8 @@
                                     Open your environment handle. When you
                                     do this, be sure to specify 
 
-                                    <span><tt class="literal">DB_INIT_REP</tt> and
-                                    <tt class="literal">DB_THREAD</tt> to your
+                                    <span><code class="literal">DB_INIT_REP</code> and
+                                    <code class="literal">DB_THREAD</code> to your
                                     open flags. (This is in addition to the
                                     flags that you normally use for a
                                     single-threaded transactional
@@ -190,7 +189,7 @@
                                     application. The second causes your
                                     environment handle to be free-threaded
                                     (thread safe). Both flags are required
-                                    for replication framework usage.
+                                    for Replication Manager usage.
                                     </span>
                                     
                                     
@@ -200,7 +199,7 @@
             <p>
                                     Start replication by calling
                                     
-                                    <span><tt class="methodname">DbEnv::repmgr_start()</tt>.</span>
+                                    <span><code class="methodname">DbEnv::repmgr_start()</code>.</span>
                                     
                             </p>
           </li>
@@ -221,7 +220,7 @@
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
-                            The replication framework allows you to only use one
+                            The Replication Manager allows you to only use one
                             environment handle per process.
                     </p>
       </div>
@@ -246,13 +245,13 @@
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
-                            Before you can use the replication framework, you may have to
+                            Before you can use the Replication Manager, you may have to
                             enable it in your DB library. This is
                             <span class="emphasis"><em>not</em></span> a requirement for
                             Microsoft Windows systems, or Unix systems that
                             use pthread mutexes by default. Other systems,
                             notably BSD and BSD-derived systems (such as
-                            Mac OS X), must enable the replication framework when you
+                            Mac OS X), must enable the Replication Manager when you
                             configure the DB build.
                     </p>
         <p>
@@ -263,7 +262,7 @@
                             build (it is by default), and POSIX thread
                             support must be enabled if it is not already by
                             default.  To do this, use the
-                            <tt class="literal">--enable-pthread_api</tt> switch
+                            <code class="literal">--enable-pthread_api</code> switch
                             on the configure script.
                     </p>
         <p>
@@ -280,7 +279,20 @@
             </h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="repapp.html#election_flags">Managing Election Policies</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="repapp.html#thread_count">Selecting the Number of Threads</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
                     As described above, you introduce replication to an
@@ -288,12 +300,12 @@
                     application, performing some basic replication
                     configuration, and then starting replication using 
                     
-                    <span><tt class="methodname">DbEnv::repmgr_start()</tt>.</span>
+                    <span><code class="methodname">DbEnv::repmgr_start()</code>.</span>
                     
             </p>
         <p>
                     You stop replication by closing your environment
-                    cleanly, as is normal for an DB application.
+                    cleanly in the same way you would for any DB application.
             </p>
         <p>
                 For example, the following code fragment initializes, then
@@ -339,14 +351,16 @@
 
         /*
          * Configure the local address. This is the local hostname and 
-         * port that this replication participant will use to receive 
-         * incoming replication messages. Note that this can be performed 
-         * only once for the application. It is required.
+         * port that this replication environment will use to receive 
+         * incoming replication messages. Note that this can be 
+         * performed only once for the replication environment. 
+         * It is required.
          */
        dbenv-&gt;repmgr_set_local_site(listen_host, listen_port, 0);
 
        /*
-        * Set this application's priority. This is used for elections.
+        * Set this replication environment's priority. This is used 
+        * for elections.
         *
         * Set this number to a positive integer, or 0 if you do not want
         * this site to be able to become a master.
@@ -362,10 +376,10 @@
 
         /*
          * Identify the number of sites in the replication group. This is
-         * necessary so that elections and permanent message handling can 
-         * be performed correctly.
+         * necessary so that elections and permanent message handling 
+         * can be performed correctly.
          */
-         dbenv-&gt;repmgr_set_nsites(dbenv, 2);
+         dbenv-&gt;rep_set_nsites(2);
 
         /* Open the environment handle. Note that we add DB_THREAD and
          * DB_INIT_REP to the list of flags. These are required.
@@ -376,7 +390,10 @@
                            DB_THREAD | DB_INIT_REP,
                            0);
 
-        /* Start the replication framework such that it uses 3 threads. */
+       /* 
+        * Start the replication manager such that it uses 3 
+        * threads. 
+        */
          dbenv-&gt;repmgr_start(3, DB_REP_ELECTION);
 
        /* Sleep to give ourselves time to find a master */
@@ -417,7 +434,6 @@
                 <h3 class="title"><a id="election_flags"></a>Managing Election Policies</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 Before continuing, it is worth taking a look at the
@@ -425,7 +441,7 @@
                 <span>
                 startup election flags accepted by 
                 
-                <span><tt class="methodname">DbEnv::repgmr_start()</tt>.</span>
+                <span><code class="methodname">DbEnv::repgmr_start()</code>.</span>
                 These flags control how your replication application will
                 behave when it first starts up.
                 </span>
@@ -434,7 +450,7 @@
             </p>
           <p>
                     In the previous example, we specified 
-                        <tt class="literal">DB_REP_ELECTION</tt>
+                        <code class="literal">DB_REP_ELECTION</code>
                         
                     when we started replication. This causes the
                     application to try to find a master upon startup. If it
@@ -473,18 +489,18 @@
                                     majority is based on the value set for
 
                                     
-                                    <span><tt class="methodname">DbEnv::rep_set_nsites()</tt>.</span>
+                                    <span><code class="methodname">DbEnv::rep_set_nsites()</code>.</span>
                                     
                                     
                                     
-                                    This is always true of elections held using the replication framework.
+                                    This is always true of elections held using the Replication Manager.
                             </p>
               </li>
               <li>
                 <p>
                                     As always, the environment participating in the election with the most
                                     up-to-date log files is selected as
-                                    master. If an environment with better log files
+                                    master. If an environment with more recent log files
                                     has not yet joined the replication
                                     group, it may not become the master.
                             </p>
@@ -496,7 +512,7 @@
                     less-than-optimum environment to be selected as master.
                     Therefore, to give you a better degree of control over
                     which environment becomes a master at application startup,
-                    the replication framework offers the following start-up
+                    the Replication Manager offers the following start-up
                                     <span>flags:</span> 
                                      
             </p>
@@ -515,22 +531,22 @@
               <tbody>
                 <tr>
                   <td>
-                    <tt class="literal">DB_REP_MASTER</tt>
+                    <code class="literal">DB_REP_MASTER</code>
                   </td>
                   <td>
-                    <p>
-                   The application starts up and declares itself to be a master
+                   <p>
+                   The application starts up and declares the environment to be a master
                    without calling for an election. It is an error for more
                    than one environment to start up using this flag, or for
                    an environment
                    to use this flag when a master already exists. 
                    </p>
-                    <p>
+                   <p>
                            Note that no replication group should
                            <span class="emphasis"><em>ever</em></span> operate with more than
                            one master.
                    </p>
-                    <p>
+                   <p>
                            In the event that a environment attempts to become a
                            master when a master already exists, the
                            replication code will resolve the problem by
@@ -541,54 +557,34 @@
                            have to roll back any transactions committed
                            until it is in sync with the "real" master.
                    </p>
+
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <tt class="literal">DB_REP_CLIENT</tt>
+                    <code class="literal">DB_REP_CLIENT</code>
                   </td>
                   <td>
-                    <p>
+                          <p>
                                   The application starts up and declares
-                                  itself to be a replica without calling for
-                                  an election. Note that the application
+                                  the environment to be a replica without calling for
+                                  an election. Note that the environment
                                   can still become a master if a subsequent
                                   application starts up, calls for an
-                                  election, and this application is elected
+                                  election, and this environment is elected
                                   master.
                           </p>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <tt class="literal">DB_REP_ELECTION</tt>
+                    <code class="literal">DB_REP_ELECTION</code>
                   </td>
                   <td>
-                    <p>
+                          <p>
                           As described above, the application starts up,
                           looks for a master, and if one is not found calls
                           for an election.
-                          </p>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <tt class="literal">DB_REP_FULL_ELECTION</tt>
-                  </td>
-                  <td>
-                    <p>
-                                  Identical to
-                                  <tt class="literal">DB_REP_ELECTION</tt>
-                                  
-                                  except that the election requires all
-                                  known members of the replication group to
-                                  participate. If a given environment has not yet
-                                  started but it is included in the
-                                  replication group count (using
-                                  
-                                  <span><tt class="methodname">DbEnv::rep_set_nsites()</tt>)</span>
-                                  
-                                  then a master can not be elected.
                           </p>
                   </td>
                 </tr>
@@ -603,12 +599,11 @@
                 <h3 class="title"><a id="thread_count"></a>Selecting the Number of Threads</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
-                    Under the hood, the replication framework is threaded and you can
+                    Under the hood, the Replication Manager is threaded and you can
                     control the number of threads used to process messages received from
-                    other replicas. The threads that the replication framework uses are:
+                    other replicas. The threads that the Replication Manager uses are:
             </p>
           <div class="itemizedlist">
             <ul type="disc">
@@ -624,12 +619,12 @@
               <li>
                 <p>
                                     Outgoing message thread. Outgoing
-                                    are performed in whatever thread
+                                    messages are sent from whatever thread
                                     performed a write to the database(s).
                                     That is, the thread that called, for
                                     example, 
                                     
-                                    <tt class="methodname">Db::put()</tt>
+                                    <code class="methodname">Db::put()</code>
                                     
                                     is the thread that writes replication messages
                                     about that fact to the socket. 
@@ -637,7 +632,7 @@
                 <p>
                                     Note that if this write activity would
                                     cause the thread to be blocked due to
-                                    some condition on the socket, the replication framework
+                                    some condition on the socket, the Replication Manager
                                     will hand the outgoing message to the
                                     incoming message thread, and it will
                                     then write the message to the socket.
@@ -682,9 +677,7 @@
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="simpleprogramlisting.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="repmgr_init_example_c.html">Next</a></td>
         </tr>
         <tr>
@@ -692,9 +685,10 @@
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Adding the Replication Framework to
+          <td width="40%" align="right" valign="top"> Adding the Replication Manager to
                     
-                    SimpleTxn
+                    <span>RepMgr</span>
+                    
             </td>
         </tr>
       </table>

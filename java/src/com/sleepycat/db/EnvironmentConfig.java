@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EnvironmentConfig.java,v 12.42 2008/05/14 20:58:42 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -93,6 +93,7 @@ public class EnvironmentConfig implements Cloneable {
     private int cacheCount = 0;
     private long cacheSize = 0L;
     private long cacheMax = 0L;
+    private java.io.File createDir = null;
     private java.util.Vector dataDirs = new java.util.Vector();
     private int envid = 0;
     private String errorPrefix = null;
@@ -116,6 +117,9 @@ public class EnvironmentConfig implements Cloneable {
     private int mutexIncrement = 0;
     private int mutexTestAndSetSpins = 0;
     private long mmapSize = 0L;
+    private int mpPageSize = 0;
+    private int mpTableSize = 0;
+    private int partitionLocks = 0;
     private String password = null;
     private int replicationClockskewFast = 0;
     private int replicationClockskewSlow = 0;
@@ -186,6 +190,14 @@ public class EnvironmentConfig implements Cloneable {
     private boolean verboseRecovery = false;
     private boolean verboseRegister = false;
     private boolean verboseReplication = false;
+    private boolean verboseReplicationElection = false;
+    private boolean verboseReplicationLease = false;
+    private boolean verboseReplicationMisc = false;
+    private boolean verboseReplicationMsgs = false;
+    private boolean verboseReplicationSync = false;
+    private boolean verboseReplicationTest = false;
+    private boolean verboseRepmgrConnfail = false;
+    private boolean verboseRepmgrMisc = false;
     private boolean verboseWaitsFor = false;
 
     /* Callbacks */
@@ -402,6 +414,26 @@ True if the Concurrent Data Store applications are configured to
     */
     public boolean getCDBLockAllDatabases() {
         return cdbLockAllDatabases;
+    }
+
+    /**
+    Sets the path of a directory to be used as the location to create the
+access method database files. When the open function is used to create a file
+it will be created relative to this path.
+    */
+    public void setCreateDir(java.io.File dir) {
+        createDir = dir;
+    }
+
+    /**
+    Returns the path of a directory to be used as the location to create the
+access method database files.
+@return
+The path of a directory to be used as the location to create the access method 
+database files.
+    */
+    public java.io.File getCreateDir() {
+        return createDir;
     }
 
     /**
@@ -1395,9 +1427,23 @@ The handler for application-specific log records.
     */
     public void replicationManagerAddRemoteSite(
         final ReplicationHostAddress repmgrRemoteAddr, boolean isPeer) 
-	throws DatabaseException
+        throws DatabaseException
     {
         this.repmgrRemoteSites.put(repmgrRemoteAddr, new Boolean(isPeer));
+    }
+
+    /**
+    Set the number of lock table partitions in the Berkeley DB environment.
+    */
+    public void setLockPartitions(final int partitions) {
+        this.partitionLocks = partitions;
+    }
+
+    /**
+    Returns the number of lock table partitions in the Berkeley DB environment.
+    */
+    public int getLockPartitions() {
+        return this.partitionLocks;
     }
 
     /**
@@ -1922,6 +1968,20 @@ The an OutputStream for displaying informational messages.
         return mmapSize;
     }
 
+    public void setCachePageSize(final int mpPageSize) {
+        this.mpPageSize = mpPageSize;
+    }
+    public int getCachePageSize() {
+        return mpPageSize;
+    }
+
+    public void setCacheTableSize(final int mpTableSize) {
+        this.mpTableSize = mpTableSize;
+    }
+    public int getCacheTableSize() {
+        return mpTableSize;
+    }
+
     /**
     Configure the database environment to use a specific mode when
     creating underlying files and shared memory segments.
@@ -2220,9 +2280,9 @@ True if the database environment is configured to only be accessed
     {@link Environment#setReplicationTimeout} method and the number of sites in
     the replication group via the (@link #setReplicationNumSites} method.  These
     methods may be called in any order.  For a description of the clock skew
-    values, see <a href="{@docRoot}/../ref/rep/clock_skew.html">Clock skew</a>.
+    values, see <a href="{@docRoot}/../programmer_reference/rep_clock_skew.html">Clock skew</a>.
     For a description of master leases, see
-    <a href="{@docRoot}/../ref/rep/lease.html">Master leases</a>.
+    <a href="{@docRoot}/../programmer_reference/rep_lease.html">Master leases</a>.
     <p>
     These arguments can be used to express either raw measurements of a clock
     timing experiment or a percentage across machines.  For instance a group of
@@ -2232,12 +2292,12 @@ True if the database environment is configured to only be accessed
     <p>
     The database environment's replication subsystem may also be configured using
     the environment's
-    <a href="{@docRoot}/../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file.
+    <a href="{@docRoot}/../programmer_reference/env_db_config.html#DB_CONFIG">DB_CONFIG</a> file.
     The syntax of the entry in that file is a single line with the string
     "rep_set_clockskew", one or more whitespace characters, and the clockskew
     specified in two parts: the replicationClockskewFast and the replicationClockskewSlow.  For example,
     "rep_set_clockskew 102 100".  Because the
-    <a href="{@docRoot}/../ref/env/db_config.html#DB_CONFIG">DB_CONFIG</a> file is
+    <a href="{@docRoot}/../programmer_reference/env_db_config.html#DB_CONFIG">DB_CONFIG</a> file is
     read when the database environment is opened, it will silently overrule
     configuration done before that time.
     <p>
@@ -2289,7 +2349,7 @@ True if the database environment is configured to only be accessed
 of control accessing the database environment, not only the operations
 performed using a specified {@link com.sleepycat.db.Environment Environment} handle.
     <p>
-    This method may not be called before the database environment is opened.
+    This method may be called at any time during the life of the application.
     <p>
     @param replicationLimit
     The maximum number of bytes that will be sent in a single call to
@@ -2443,7 +2503,7 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     recovery flag is specified, a {@link RunRecoveryException} will be thrown.
     If recovery does not need to be run, the recovery flags will be ignored.
     See
-    <a href="{@docRoot}/../ref/transapp/app.html" target="_top">Architecting
+    <a href="{@docRoot}/../programmer_reference/transapp_app.html" target="_top">Architecting
     Transactional Data Store applications</a>) for more information.
     <p>
     @param register
@@ -3497,6 +3557,30 @@ True if the database environment is configured to accept information
         case DbConstants.DB_VERB_REPLICATION:
             verboseReplication = enable;
             break;
+        case DbConstants.DB_VERB_REPMGR_CONNFAIL:
+            verboseRepmgrConnfail = enable;
+            break;
+        case DbConstants.DB_VERB_REPMGR_MISC:
+            verboseRepmgrMisc = enable;
+            break;
+        case DbConstants.DB_VERB_REP_ELECT:
+            verboseReplicationElection = enable;
+            break;
+        case DbConstants.DB_VERB_REP_LEASE:
+            verboseReplicationLease = enable;
+            break;
+        case DbConstants.DB_VERB_REP_MISC:
+            verboseReplicationMisc = enable;
+            break;
+        case DbConstants.DB_VERB_REP_MSGS:
+            verboseReplicationMsgs = enable;
+            break;
+        case DbConstants.DB_VERB_REP_SYNC:
+            verboseReplicationSync = enable;
+            break;
+        case DbConstants.DB_VERB_REP_TEST:
+            verboseReplicationTest = enable;
+            break;
         case DbConstants.DB_VERB_WAITSFOR:
             verboseWaitsFor = enable;
             break;
@@ -3534,6 +3618,22 @@ True if the database environment is configured to accept information
             return verboseRegister;
         case DbConstants.DB_VERB_REPLICATION:
             return verboseReplication;
+        case DbConstants.DB_VERB_REPMGR_CONNFAIL:
+            return verboseRepmgrConnfail;
+        case DbConstants.DB_VERB_REPMGR_MISC:
+            return verboseRepmgrMisc;
+        case DbConstants.DB_VERB_REP_ELECT:
+            return verboseReplicationElection;
+        case DbConstants.DB_VERB_REP_LEASE:
+            return verboseReplicationLease;
+        case DbConstants.DB_VERB_REP_MISC:
+            return verboseReplicationMisc;
+        case DbConstants.DB_VERB_REP_MSGS:
+            return verboseReplicationMsgs;
+        case DbConstants.DB_VERB_REP_SYNC:
+            return verboseReplicationSync;
+        case DbConstants.DB_VERB_REP_TEST:
+            return verboseReplicationTest;
         case DbConstants.DB_VERB_WAITSFOR:
             return verboseWaitsFor;
         default:
@@ -3917,7 +4017,7 @@ True if the system has been configured to yield the processor
         if (offFlags != 0)
             dbenv.set_flags(offFlags, false);
 
-	/* Log flags */
+        /* Log flags */
         if (directLogIO != oldConfig.directLogIO)
             dbenv.log_set_config(DbConstants.DB_LOG_DIRECT, directLogIO);
 
@@ -3964,6 +4064,46 @@ True if the system has been configured to yield the processor
         if (!verboseReplication && oldConfig.verboseReplication)
             dbenv.set_verbose(DbConstants.DB_VERB_REPLICATION, false);
 
+        if (verboseReplicationElection && !oldConfig.verboseReplicationElection)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_ELECT, true);
+        if (!verboseReplicationElection && oldConfig.verboseReplicationElection)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_ELECT, false);
+
+        if (verboseReplicationLease && !oldConfig.verboseReplicationLease)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_LEASE, true);
+        if (!verboseReplicationLease && oldConfig.verboseReplicationLease)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_LEASE, false);
+
+        if (verboseReplicationMisc && !oldConfig.verboseReplicationMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MISC, true);
+        if (!verboseReplicationMisc && oldConfig.verboseReplicationMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MISC, false);
+
+        if (verboseReplicationMsgs && !oldConfig.verboseReplicationMsgs)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MSGS, true);
+        if (!verboseReplicationMsgs && oldConfig.verboseReplicationMsgs)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MSGS, false);
+
+        if (verboseReplicationSync && !oldConfig.verboseReplicationSync)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYNC, true);
+        if (!verboseReplicationSync && oldConfig.verboseReplicationSync)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYNC, false);
+
+        if (verboseReplicationTest && !oldConfig.verboseReplicationTest)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_TEST, true);
+        if (!verboseReplicationTest && oldConfig.verboseReplicationTest)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_TEST, false);
+
+        if (verboseRepmgrConnfail && !oldConfig.verboseRepmgrConnfail)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL, true);
+        if (!verboseRepmgrConnfail && oldConfig.verboseRepmgrConnfail)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL, false);
+
+        if (verboseRepmgrMisc && !oldConfig.verboseRepmgrMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_MISC, true);
+        if (!verboseRepmgrMisc && oldConfig.verboseRepmgrMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_MISC, false);
+
         if (verboseWaitsFor && !oldConfig.verboseWaitsFor)
             dbenv.set_verbose(DbConstants.DB_VERB_WAITSFOR, true);
         if (!verboseWaitsFor && oldConfig.verboseWaitsFor)
@@ -3989,6 +4129,9 @@ True if the system has been configured to yield the processor
             dbenv.set_cachesize(cacheSize, cacheCount);
         if (cacheMax != oldConfig.cacheMax)
             dbenv.set_cache_max(cacheMax);
+        if (createDir != oldConfig.createDir)
+            dbenv.set_create_dir(createDir.toString());
+
         for (final java.util.Enumeration e = dataDirs.elements();
             e.hasMoreElements();) {
             final java.io.File dir = (java.io.File)e.nextElement();
@@ -4005,6 +4148,8 @@ True if the system has been configured to yield the processor
             dbenv.set_lk_max_lockers(maxLockers);
         if (maxLockObjects != oldConfig.maxLockObjects)
             dbenv.set_lk_max_objects(maxLockObjects);
+        if (partitionLocks != oldConfig.partitionLocks)
+            dbenv.set_lk_partitions(partitionLocks);
         if (maxLogFileSize != oldConfig.maxLogFileSize)
             dbenv.set_lg_max(maxLogFileSize);
         if (logBufferSize != oldConfig.logBufferSize)
@@ -4025,6 +4170,10 @@ True if the system has been configured to yield the processor
             dbenv.set_message_stream(messageStream);
         if (mmapSize != oldConfig.mmapSize)
             dbenv.set_mp_mmapsize(mmapSize);
+        if (mpPageSize != oldConfig.mpPageSize)
+            dbenv.set_mp_pagesize(mpPageSize);
+        if (mpTableSize != oldConfig.mpTableSize)
+            dbenv.set_mp_tablesize(mpTableSize);
         if (password != null)
             dbenv.set_encrypt(password, DbConstants.DB_ENCRYPT_AES);
         if (replicationClockskewFast != oldConfig.replicationClockskewFast ||
@@ -4068,12 +4217,12 @@ True if the system has been configured to yield the processor
             dbenv.repmgr_set_local_site(
                 repmgrLocalSiteAddr.host, repmgrLocalSiteAddr.port, 0);
         }
-	java.util.Iterator elems = repmgrRemoteSites.entrySet().iterator();
-	while (elems.hasNext()){
-	    java.util.Map.Entry ent = (java.util.Map.Entry)elems.next();
-	    ReplicationHostAddress nextAddr = 
-		(ReplicationHostAddress)ent.getKey();
-	    Boolean isPeer = (Boolean)ent.getValue();
+        java.util.Iterator elems = repmgrRemoteSites.entrySet().iterator();
+        while (elems.hasNext()){
+            java.util.Map.Entry ent = (java.util.Map.Entry)elems.next();
+            ReplicationHostAddress nextAddr = 
+                (ReplicationHostAddress)ent.getKey();
+            Boolean isPeer = (Boolean)ent.getValue();
             dbenv.repmgr_add_remote_site(nextAddr.host, nextAddr.port,
                 isPeer ? DbConstants.DB_REPMGR_PEER : 0);
         }
@@ -4122,7 +4271,7 @@ True if the system has been configured to yield the processor
         txnWriteNoSync = ((envFlags & DbConstants.DB_TXN_WRITE_NOSYNC) != 0);
         yieldCPU = ((envFlags & DbConstants.DB_YIELDCPU) != 0);
 
-	/* Log flags */
+        /* Log flags */
         if (initializeLogging) {
             directLogIO = dbenv.log_get_config(DbConstants.DB_LOG_DIRECT);
             dsyncLog = dbenv.log_get_config(DbConstants.DB_LOG_DSYNC);
@@ -4138,6 +4287,14 @@ True if the system has been configured to yield the processor
         verboseRecovery = dbenv.get_verbose(DbConstants.DB_VERB_RECOVERY);
         verboseRegister = dbenv.get_verbose(DbConstants.DB_VERB_REGISTER);
         verboseReplication = dbenv.get_verbose(DbConstants.DB_VERB_REPLICATION);
+        verboseReplicationElection = dbenv.get_verbose(DbConstants.DB_VERB_REP_ELECT);
+        verboseReplicationLease = dbenv.get_verbose(DbConstants.DB_VERB_REP_LEASE);
+        verboseReplicationMisc = dbenv.get_verbose(DbConstants.DB_VERB_REP_MISC);
+        verboseReplicationMsgs = dbenv.get_verbose(DbConstants.DB_VERB_REP_MSGS);
+        verboseReplicationSync = dbenv.get_verbose(DbConstants.DB_VERB_REP_SYNC);
+        verboseReplicationTest = dbenv.get_verbose(DbConstants.DB_VERB_REP_TEST);
+        verboseRepmgrConnfail = dbenv.get_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL);
+        verboseRepmgrMisc = dbenv.get_verbose(DbConstants.DB_VERB_REPMGR_MISC);
         verboseWaitsFor = dbenv.get_verbose(DbConstants.DB_VERB_WAITSFOR);
 
         /* Callbacks */
@@ -4158,8 +4315,13 @@ True if the system has been configured to yield the processor
             maxOpenFiles = dbenv.get_mp_max_openfd();
             maxWrite = dbenv.get_mp_max_write();
             maxWriteSleep = dbenv.get_mp_max_write_sleep();
+            mpPageSize = dbenv.get_mp_pagesize();
+            mpTableSize = dbenv.get_mp_tablesize();
         }
 
+        String createDirStr = dbenv.get_create_dir();
+        if (createDirStr != null)
+            createDir = new java.io.File(createDirStr);
         String[] dataDirArray = dbenv.get_data_dirs();
         if (dataDirArray == null)
             dataDirArray = new String[0];
@@ -4178,6 +4340,7 @@ True if the system has been configured to yield the processor
             maxLocks = dbenv.get_lk_max_locks();
             maxLockers = dbenv.get_lk_max_lockers();
             maxLockObjects = dbenv.get_lk_max_objects();
+            partitionLocks = dbenv.get_lk_partitions();
             txnTimeout = dbenv.get_timeout(DbConstants.DB_SET_TXN_TIMEOUT);
         } else {
             lockConflicts = null;
@@ -4207,17 +4370,21 @@ True if the system has been configured to yield the processor
         password = (dbenv.get_encrypt_flags() == 0) ? null : "";
 
         if (initializeReplication) {
+            replicationClockskewFast = dbenv.rep_get_clockskew_fast();
+            replicationClockskewSlow = dbenv.rep_get_clockskew_slow();
             replicationLimit = dbenv.rep_get_limit();
-	    replicationRequestMin = dbenv.rep_get_request_min();
-	    replicationRequestMax = dbenv.rep_get_request_max();
-	    repmgrRemoteSites = new java.util.HashMap();
-	    java.util.Iterator sites = 
-		java.util.Arrays.asList(dbenv.repmgr_site_list()).listIterator();
-	    while (sites.hasNext()){
-		ReplicationManagerSiteInfo site = 
-		    (ReplicationManagerSiteInfo)sites.next();
-		repmgrRemoteSites.put(site.addr, Boolean.FALSE);
-	    }
+            replicationNumSites = dbenv.rep_get_nsites();
+            replicationPriority = dbenv.rep_get_priority();
+            replicationRequestMin = dbenv.rep_get_request_min();
+            replicationRequestMax = dbenv.rep_get_request_max();
+            repmgrRemoteSites = new java.util.HashMap();
+            java.util.Iterator sites = 
+                java.util.Arrays.asList(dbenv.repmgr_site_list()).listIterator();
+            while (sites.hasNext()){
+                ReplicationManagerSiteInfo site = 
+                    (ReplicationManagerSiteInfo)sites.next();
+                repmgrRemoteSites.put(site.addr, Boolean.FALSE);
+            }
         } else {
             replicationLimit = 0L;
             replicationRequestMin = 0;
@@ -4234,10 +4401,6 @@ True if the system has been configured to yield the processor
         mutexIncrement = dbenv.mutex_get_increment();
         maxMutexes = dbenv.mutex_get_max();
         mutexTestAndSetSpins = dbenv.mutex_get_tas_spins();
-        replicationNumSites = dbenv.rep_get_nsites();
-        replicationPriority = dbenv.rep_get_priority();
-        replicationClockskewFast = dbenv.rep_get_clockskew_fast();
-        replicationClockskewSlow = dbenv.rep_get_clockskew_slow();
         if (transactional) {
             txnMaxActive = dbenv.get_tx_max();
             final long txnTimestampSeconds = dbenv.get_tx_timestamp();

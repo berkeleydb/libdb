@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SecondaryConfig.java,v 12.12 2008/03/10 13:22:16 mjc Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;

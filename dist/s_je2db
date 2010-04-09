@@ -51,13 +51,18 @@ fi
 
 E1='s/com\.sleepycat\.je/com.sleepycat.db/g'
 E2='/<!-- begin JE only -->/,/<!-- end JE only -->/d'
-EXCLUDESRC="ClassEnhancerTask"
-EXCLUDETESTS="\(\(ConvertAndAddTest\)\|\(TestVersionCompatibility\)\|\(XACollectionTest\)\)"
+E3='s/LockConflictException/DeadlockException/g'
+E4='s/$Id:.*\$/$Id$/'
+E5='s/TransactionGettingStarted/gsg_txn\/JAVA/'
+EXCLUDESRC="\(\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
+#EXCLUDESRC="\(\(ClassEnhancerTask\)\|\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
+EXCLUDETESTS="\(\(ConvertAndAddTest\)\|\(DevolutionTest\)\|\(TestVersionCompatibility\)\|\(XACollectionTest\)\)"
 
 cd "$JESRC"
 for f in `find . -name '*.java' -o -name "package.html" | grep $DIRMATCH | grep -v $EXCLUDESRC` ; do
     #echo $DBSRC/$f
-    sed -e "$E1" -e "$E2" < $f > $DBSRC/$f.sed.out
+    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+        > $DBSRC/$f.sed.out
     diff -q -I "\$\Id:" $DBSRC/$f $DBSRC/$f.sed.out || \
         mv -f $DBSRC/$f.sed.out $DBSRC/$f
     rm -f $DBSRC/$f.sed.out
@@ -67,7 +72,8 @@ cd "$JETEST"
 for f in `find . -name '*.java' -o -name "*.java.original" | grep $DIRMATCH | grep -v $EXCLUDETESTS` \
         ; do
     #echo $DBTEST/$f
-    sed -e "$E1" -e "$E2" < $f > $DBTEST/$f.sed.out
+    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+        > $DBTEST/$f.sed.out
     diff -q -I "\$\Id:" $DBTEST/$f $DBTEST/$f.sed.out || \
         mv -f $DBTEST/$f.sed.out $DBTEST/$f
     rm -f $DBTEST/$f.sed.out
@@ -77,7 +83,8 @@ if [ $COPY_EXAMPLES -eq 1 ] ; then
     cd "$JEEXAMPLES"
     for f in `find . -name '*.java' | grep $EXAMPLESMATCH` ; do
         #echo $DBEXAMPLES/$f
-        sed -e "$E1" -e "$E2" < $f > $DBEXAMPLES/$f.sed.out
+        sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+            > $DBEXAMPLES/$f.sed.out
         diff -q -I "\$\Id:" $DBEXAMPLES/$f $DBEXAMPLES/$f.sed.out || \
             mv -f $DBEXAMPLES/$f.sed.out $DBEXAMPLES/$f
         rm -f $DBEXAMPLES/$f.sed.out

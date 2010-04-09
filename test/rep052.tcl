@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep052.tcl,v 12.18 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep052
 # TEST	Test of replication with NOWAIT.
@@ -21,6 +21,9 @@
 proc rep052 { method { niter 200 } { tnum "052" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -44,6 +47,22 @@ proc rep052 { method { niter 200 } { tnum "052" } args } {
 	set logsets [create_logsets 2]
 	set saved_args $args
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery.  Skip
 	# recovery with in-memory logging - it doesn't make sense.
 	foreach r $test_recopts {
@@ -57,7 +76,7 @@ proc rep052 { method { niter 200 } { tnum "052" } args } {
 			set envargs ""
 			set args $saved_args
 			puts "Rep$tnum ($method $envargs $r $args):\
-			    Test lockouts with REP_NOWAIT."
+			    Test lockouts with REP_NOWAIT $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep052_sub $method $niter $tnum $envargs \
@@ -69,12 +88,19 @@ proc rep052 { method { niter 200 } { tnum "052" } args } {
 proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -106,6 +132,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $verbargs \
+	    $repmemargs \
 	    $m_logargs -log_max $log_max $envargs -errpfx MASTER \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -114,6 +141,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	# Open a client
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $verbargs \
+	    $repmemargs \
 	    $c_logargs -log_max $log_max $envargs -errpfx CLIENT \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -132,7 +160,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -151,7 +179,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 		eval rep_test \
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv NULL $niter $start $start 0 $largs
 		incr start $niter
 		replclear 2
 
@@ -216,7 +244,7 @@ proc rep052_sub { method niter tnum envargs logset recargs largs } {
 	}
 
 	puts "\tRep$tnum.h: Verify logs and databases"
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
 
 	error_check_good masterenv_close [$masterenv close] 0
 	error_check_good clientenv_close [$clientenv close] 0

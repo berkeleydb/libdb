@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Handling Exceptions
-	</title>
+    <title>Handling Exceptions</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="retrievingdatabaseitems.html" title="&#10;&#9;&#9;Retrieving Database Items&#10;&#9;" />
-    <link rel="next" href="UsingSecondaries.html" title="Chapter 3. &#10;&#9;&#9;Using Secondary Indices&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="retrievingdatabaseitems.html" title="Retrieving Database Items" />
+    <link rel="next" href="UsingSecondaries.html" title="Chapter 3.  Using Secondary Indices" />
   </head>
   <body>
     <div class="navheader">
@@ -40,15 +38,14 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     Exception handling was illustrated previously in
-            <a href="implementingmain.html">
+            <a class="xref" href="implementingmain.html" title="Implementing the Main Program">
 		Implementing the Main Program
 	</a>
 	and 
-            <a href="usingtransactions.html">
+            <a class="xref" href="usingtransactions.html" title="Using Transactions">
 		Using Transactions
 	</a>
 	exception handling in a DB Java Collections API application in
@@ -57,17 +54,17 @@
       <p>
     There are two exceptions that must be treated specially:
 	
-	<a href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
+	<a class="ulink" href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
 	
 	and 
     
     <span>
-        <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
+        <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
     </span>
 </p>
       <p>
     
-    <a href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
     
 	is thrown when the only solution is to shut down the application
 	and run recovery. All applications must catch this exception and
@@ -76,7 +73,7 @@
       <p>
     When 
     
-    <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
     
 	is thrown, the application should normally retry the operation. If
 	a deadlock continues to occur for some maximum number of retries,
@@ -89,11 +86,11 @@
           <li>
             <p>
             When using the 
-            <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/CurrentTransaction.html" target="_top">CurrentTransaction</a>
             
             class directly, the application must catch 
             
-            <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
+            <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>
             
             and follow the procedure described previously.
         </p>
@@ -101,17 +98,17 @@
           <li>
             <p>
             When using the 
-            <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
             
             class, retries are performed automatically and the application need
             only handle the case where the maximum number of retries has been
             reached. In that case, 
-            <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>
             
             will throw 
             
             <span>
-                <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
+                <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
             </span>
         </p>
           </li>
@@ -119,7 +116,7 @@
       </div>
       <p>
     When using the 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
     
 	class there are two other considerations.
 </p>
@@ -128,7 +125,7 @@
           <li>
             <p>
             First, if the application-defined
-            <a href="../../java/com/sleepycat/collections/TransactionWorker.html#doWork()" target="_top">TransactionWorker.doWork</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionWorker.html#doWork()" target="_top">TransactionWorker.doWork</a>
             
             method throws an exception the
             transaction will automatically be aborted, and otherwise the
@@ -139,17 +136,17 @@
           <li>
             <p>
             Second, please be aware that 
-            <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>
+            <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>
             
             unwraps exceptions in order to discover whether a nested exception is a 
             
             <span>
-                <a href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
+                <a class="ulink" href="../../java/com/sleepycat/db/DeadlockException.html" target="_top">DeadlockException</a>.
             </span>
             This is particularly important since all Berkeley DB exceptions
             that occur while calling a stored collection method are wrapped
             with a 
-            <a href="../../java/com/sleepycat/util/RuntimeExceptionWrapper.html" target="_top">RuntimeExceptionWrapper</a>.
+            <a class="ulink" href="../../java/com/sleepycat/util/RuntimeExceptionWrapper.html" target="_top">RuntimeExceptionWrapper</a>.
             This wrapping is necessary because Berkeley DB exceptions are
             checked exceptions, and the Java collections API does not allow
             such exceptions to be thrown.
@@ -159,24 +156,24 @@
       </div>
       <p>
     When calling 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>,
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" target="_top">TransactionRunner.run</a>,
 	the unwrapped (nested) exception will be unwrapped and thrown
 	automatically. If you are not using 
-    <a href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/TransactionRunner.html" target="_top">TransactionRunner</a>
     
 	or if you are handling exceptions directly for some other reason,
 	use the 
-    <a href="../../java/com/sleepycat/util/ExceptionUnwrapper.html#unwrap(java.lang.Exception)" target="_top">ExceptionUnwrapper.unwrap</a>
+    <a class="ulink" href="../../java/com/sleepycat/util/ExceptionUnwrapper.html#unwrap(java.lang.Exception)" target="_top">ExceptionUnwrapper.unwrap</a>
     
 	method to get the nested exception. For example, this can be used
 	to discover that an exception is a 
     
-    <a href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
+    <a class="ulink" href="../../java/com/sleepycat/db/RunRecoveryException.html" target="_top">RunRecoveryException</a>
     
 	as shown below.
 </p>
       <a id="cb_java_manageexceptions"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.db.RunRecoveryException;
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.db.RunRecoveryException;
 import com.sleepycat.util.ExceptionUnwrapper;
 ...
     catch (Exception e)
@@ -186,7 +183,7 @@ import com.sleepycat.util.ExceptionUnwrapper;
         {
             // follow recovery procedure
         }
-    }</tt></b> </pre>
+    }</code></strong> </pre>
     </div>
     <div class="navfooter">
       <hr />

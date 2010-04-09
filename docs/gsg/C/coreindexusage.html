@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Secondary Database Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="joins.html" title="Database Joins" />
+    <link rel="prev" href="joins.html" title="Database Joins" />
     <link rel="next" href="dbconfig.html" title="Chapter 6. Database Configuration" />
   </head>
   <body>
@@ -32,7 +32,20 @@
             <h2 class="title" style="clear: both"><a id="coreindexusage"></a>Secondary Database Example</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="coreindexusage.html#edlWIndexes">Secondary Databases with example_database_load</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="coreindexusage.html#edrWIndexes">Secondary Databases with example_database_read</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         In previous chapters in this book, we built applications that load
@@ -44,23 +57,23 @@
           <li>
             <p>
             In 
-                <a href="DbUsage.html">Database Usage Example</a> 
+                <a class="xref" href="DbUsage.html" title="Database Usage Example">Database Usage Example</a> 
                  
             we built an application that can open and load data into several databases.
-            In <a href="coreindexusage.html#edlWIndexes">Secondary Databases with example_database_load</a> we will extend
+            In <a class="xref" href="coreindexusage.html#edlWIndexes" title="Secondary Databases with example_database_load">Secondary Databases with example_database_load</a> we will extend
             that application to also open a secondary database for the purpose
             of indexing inventory item names.
         </p>
           </li>
           <li>
             <p>
-            In <a href="CoreCursorUsage.html">Cursor Example</a> we
+            In <a class="xref" href="CoreCursorUsage.html" title="Cursor Example">Cursor Example</a> we
             built an application to display our inventory database (and related
             vendor information). In 
-            <a href="coreindexusage.html#edrWIndexes">Secondary Databases with example_database_read</a>
+            <a class="xref" href="coreindexusage.html#edrWIndexes" title="Secondary Databases with example_database_read">Secondary Databases with example_database_read</a>
             we will extend that application to
             show inventory records based on the index we cause to be loaded using
-            <tt class="function">example_database_load</tt>.
+            <code class="function">example_database_load</code>.
         </p>
           </li>
         </ul>
@@ -72,12 +85,11 @@
               <h3 class="title"><a id="edlWIndexes"></a>Secondary Databases with example_database_load</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-            <tt class="function">example_database_load</tt> uses several utility
+            <code class="function">example_database_load</code> uses several utility
             functions to open and close its databases. In order to cause 
-            <tt class="function">example_database_load</tt> to maintain an index of
+            <code class="function">example_database_load</code> to maintain an index of
             inventory item names, all we really need to do is update the utility
             functions to:
         </p>
@@ -107,11 +119,11 @@
         </p>
         <p>
             Because DB maintains secondary databases for us; once this work
-            is done we need not make any other changes to <tt class="function">example_database_load</tt>. 
+            is done we need not make any other changes to <code class="function">example_database_load</code>. 
 
             <span>Therefore, we can limit
-            all our work to the code found in <tt class="filename">gettingstarted_common.h</tt>
-            and <tt class="filename">gettingstarted_common.c</tt>.
+            all our work to the code found in <code class="filename">gettingstarted_common.h</code>
+            and <code class="filename">gettingstarted_common.c</code>.
             </span>
         </p>
         <p>
@@ -120,17 +132,17 @@
         </p>
         <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_c/getting_started</pre>
         <p>
-            where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+            where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
             placed your DB distribution.
         </p>
         <p>
-            To begin, we need to update the <tt class="literal">stock_dbs</tt>
+            To begin, we need to update the <code class="literal">stock_dbs</code>
             structure to accommodate the additional database. We defined this
-            structure in <tt class="filename">gettingstarted_common.h</tt>. We can
+            structure in <code class="filename">gettingstarted_common.h</code>. We can
             limit our update to this file to just that structure definition:
         </p>
         <p>
-            Remember that new code is in <b class="userinput"><tt>bold</tt></b>.
+            Remember that new code is in <strong class="userinput"><code>bold</code></strong>.
         </p>
         <a id="c_index10"></a>
         <pre class="programlisting">/* file: gettingstarted_common.h */
@@ -139,10 +151,10 @@
 typedef struct stock_dbs {
     DB *inventory_dbp; /* Database containing inventory information */
     DB *vendor_dbp;    /* Database containing vendor information */
-    <b class="userinput"><tt>DB *itemname_sdbp; /* Index based on the item name index */</tt></b>
+    <strong class="userinput"><code>DB *itemname_sdbp; /* Index based on the item name index */</code></strong>
                                                                                                                                 
     char *db_home_dir;       /* Directory containing the database files */
-    <b class="userinput"><tt>char *itemname_db_name;  /* Itemname secondary database */</tt></b>
+    <strong class="userinput"><code>char *itemname_db_name;  /* Itemname secondary database */</code></strong>
     char *inventory_db_name; /* Name of the inventory database */
     char *vendor_db_name;    /* Name of the vendor database */
 } STOCK_DBS;
@@ -151,33 +163,33 @@ typedef struct stock_dbs {
 int databases_setup(STOCK_DBS *, const char *, FILE *);
 int databases_close(STOCK_DBS *);
 void initialize_stockdbs(STOCK_DBS *);
-int open_database(DB **, const char *, const char *, FILE *, <b class="userinput"><tt>int</tt></b>);
+int open_database(DB **, const char *, const char *, FILE *, <strong class="userinput"><code>int</code></strong>);
 void set_db_filenames(STOCK_DBS *my_stock);
 
 </pre>
         <p>
             Because we updated our stock_dbs structure, we need to update our
             stock_dbs utility functions 
-            (<a href="CoreDbUsage.html#stock-db-functions">The stock_db Utility Functions</a>)
+            (<a class="xref" href="CoreDbUsage.html#stock-db-functions" title="Example 2.2 The stock_db Utility Functions">The stock_db Utility Functions</a>)
             accordingly. The updates are trivial and so we won't show them here
             in the interest of space. You can find their complete implementation
-            in the <tt class="filename">gettingstarted_common.c</tt> file
+            in the <code class="filename">gettingstarted_common.c</code> file
             accompanying this example in your DB distribution.
         </p>
         <p>
             More importantly, however, we need to go to 
-            <tt class="filename">gettingstarted_common.c</tt>
+            <code class="filename">gettingstarted_common.c</code>
             and create our secondary key extractor function. When we
             store our inventory items, we place the item name in the buffer
-            immediately after a <tt class="literal">float</tt> and an
-            <tt class="literal">int</tt>, so retrieving the string from the buffer is
+            immediately after a <code class="literal">float</code> and an
+            <code class="literal">int</code>, so retrieving the string from the buffer is
             fairly easy to do:
         </p>
         <a id="c_index11"></a>
         <pre class="programlisting">/* file: gettingstarted_common.c */
 #include "gettingstarted_common.h"
                                                                                                                                   
-<b class="userinput"><tt>/*
+<strong class="userinput"><code>/*
  * Used to extract an inventory item's name from an
  * inventory database record. This function is used to create
  * keys for secondary database records.
@@ -211,14 +223,14 @@ get_item_name(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
     skey-&gt;size = strlen(skey-&gt;data) + 1;
                                                                                                                                   
     return (0);
-}</tt></b> </pre>
+}</code></strong> </pre>
         <p>
         Having completed that function, we need to update 
-        <tt class="function">set_db_filenames()</tt> and 
-        <tt class="function">initialize_stockdbs()</tt> to handle the
+        <code class="function">set_db_filenames()</code> and 
+        <code class="function">initialize_stockdbs()</code> to handle the
         new secondary databases that our application will now use.
         These functions were originally introduced in 
-        <a href="CoreDbUsage.html#stock-db-functions">The stock_db Utility Functions</a>.
+        <a class="xref" href="CoreDbUsage.html#stock-db-functions" title="Example 2.2 The stock_db Utility Functions">The stock_db Utility Functions</a>.
     </p>
         <a id="c_index11.1"></a>
         <pre class="programlisting">
@@ -229,11 +241,11 @@ initialize_stockdbs(STOCK_DBS *my_stock)
     my_stock-&gt;db_home_dir = DEFAULT_HOMEDIR;
     my_stock-&gt;inventory_dbp = NULL;
     my_stock-&gt;vendor_dbp = NULL;
-    <b class="userinput"><tt>my_stock-&gt;itemname_sdbp = NULL;</tt></b>
+    <strong class="userinput"><code>my_stock-&gt;itemname_sdbp = NULL;</code></strong>
 
     my_stock-&gt;inventory_db_name = NULL;
     my_stock-&gt;vendor_db_name = NULL;
-    <b class="userinput"><tt>my_stock-&gt;itemname_db_name = NULL;</tt></b>
+    <strong class="userinput"><code>my_stock-&gt;itemname_db_name = NULL;</code></strong>
 }
 
 /* Identify all the files that will hold our databases. */
@@ -254,16 +266,16 @@ set_db_filenames(STOCK_DBS *my_stock)
     snprintf(my_stock-&gt;vendor_db_name, size, "%s%s",
       my_stock-&gt;db_home_dir, VENDORDB);
 
-    <b class="userinput"><tt>/* Create the itemname DB file name */
+    <strong class="userinput"><code>/* Create the itemname DB file name */
     size = strlen(my_stock-&gt;db_home_dir) + strlen(ITEMNAMEDB) + 1;
     my_stock-&gt;itemname_db_name = malloc(size);
     snprintf(my_stock-&gt;itemname_db_name, size, "%s%s",
-      my_stock-&gt;db_home_dir, ITEMNAMEDB);</tt></b>
+      my_stock-&gt;db_home_dir, ITEMNAMEDB);</code></strong>
 } </pre>
         <p>
         We also need to update the
-        <tt class="function">open_database()</tt> (as described in
-        <a href="CoreDbUsage.html#open-db">open_database() Function</a>)
+        <code class="function">open_database()</code> (as described in
+        <a class="xref" href="CoreDbUsage.html#open-db" title="Example 2.3 open_database() Function">open_database() Function</a>)
         to take special actions if we are
         opening a secondary database. Unlike our primary databases, we want to
         support sorted duplicates for our secondary database. This is because we
@@ -288,7 +300,7 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
     const char *program_name,  /* Name of the program calling this
                                 * function */
     FILE *error_file_pointer,
-    <b class="userinput"><tt>int is_secondary</tt></b>)
+    <strong class="userinput"><code>int is_secondary</code></strong>)
 {
     DB *dbp;    /* For convenience */
     u_int32_t open_flags;
@@ -309,7 +321,7 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
     dbp-&gt;set_errfile(dbp, error_file_pointer);
     dbp-&gt;set_errpfx(dbp, program_name);
 
-    <b class="userinput"><tt>/*
+    <strong class="userinput"><code>/*
      * If this is a secondary database, then we want to allow
      * sorted duplicates.
      */
@@ -320,7 +332,7 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
               file_name);
             return (ret);
         }
-    }</tt></b>
+    }</code></strong>
 
     /* Set the open flags */
     open_flags = DB_CREATE;
@@ -341,19 +353,19 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
     return (ret);
 }   </pre>
         <p>
-        That done, we can now update <tt class="function">databases_setup()</tt> 
-        (see <a href="CoreDbUsage.html#databasesetup">The databases_setup() Function</a>) to create
+        That done, we can now update <code class="function">databases_setup()</code> 
+        (see <a class="xref" href="CoreDbUsage.html#databasesetup" title="Example 2.4 The databases_setup() Function">The databases_setup() Function</a>) to create
         and open our secondary database. To do this, we have to add a flag to
-        each call to <tt class="function">open_database()</tt> that indicates whether
+        each call to <code class="function">open_database()</code> that indicates whether
         the database is a secondary. We also have to associate our secondary
         database with the inventory database (the primary). 
     </p>
         <p>
         Note that we do not anywhere in this example show the definition of
-        <tt class="literal">PRIMARY_DB</tt> and <tt class="literal">SECONDARY_DB</tt>. See
-        <tt class="filename">gettingstarted_common.h</tt> in your DB examples
-        directory for those definitions (they are just <tt class="literal">0</tt> and
-        <tt class="literal">1</tt>, respectively).
+        <code class="literal">PRIMARY_DB</code> and <code class="literal">SECONDARY_DB</code>. See
+        <code class="filename">gettingstarted_common.h</code> in your DB examples
+        directory for those definitions (they are just <code class="literal">0</code> and
+        <code class="literal">1</code>, respectively).
     </p>
         <a id="c_index13"></a>
         <pre class="programlisting">/* opens all databases */
@@ -367,7 +379,7 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
     ret = open_database(&amp;(my_stock-&gt;vendor_dbp),
       my_stock-&gt;vendor_db_name,
       program_name, error_file_pointer,
-      <b class="userinput"><tt>PRIMARY_DB</tt></b>);
+      <strong class="userinput"><code>PRIMARY_DB</code></strong>);
     if (ret != 0)
         /*
          * Error reporting is handled in open_database() so just return
@@ -379,7 +391,7 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
     ret = open_database(&amp;(my_stock-&gt;inventory_dbp),
       my_stock-&gt;inventory_db_name,
       program_name, error_file_pointer,
-      <b class="userinput"><tt>PRIMARY_DB</tt></b>);
+      <strong class="userinput"><code>PRIMARY_DB</code></strong>);
     if (ret != 0)
         /*
          * Error reporting is handled in open_database() so just return
@@ -387,7 +399,7 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
          */
         return (ret);
 
-    <b class="userinput"><tt>/*
+    <strong class="userinput"><code>/*
      * Open the itemname secondary database. This is used to
      * index the product names found in the inventory
      * database.
@@ -413,14 +425,14 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
        my_stock-&gt;itemname_sdbp,    /* Secondary db */
        get_item_name,              /* Secondary key extractor */
        0);                         /* Flags */
-     </tt></b>
+     </code></strong>
 
     printf("databases opened successfully\n");
     return (0);
 }</pre>
         <p>
-        Finally, we need to update <tt class="function">databases_close()</tt> 
-        (<a href="CoreDbUsage.html#database_close">The databases_close() Function</a>)
+        Finally, we need to update <code class="function">databases_close()</code> 
+        (<a class="xref" href="CoreDbUsage.html#database_close" title="Example 2.5 The databases_close() Function">The databases_close() Function</a>)
         to close our
         new secondary database. Note that we are careful to close the secondary
         before the primary, even though the database close routine is single
@@ -437,12 +449,12 @@ databases_close(STOCK_DBS *my_stock)
      * to disk, so no sync is required here.
      */
 
-    <b class="userinput"><tt>if (my_stock-&gt;itemname_sdbp != NULL) {
+    <strong class="userinput"><code>if (my_stock-&gt;itemname_sdbp != NULL) {
         ret = my_stock-&gt;itemname_sdbp-&gt;close(my_stock-&gt;itemname_sdbp, 0);
         if (ret != 0)
             fprintf(stderr, "Itemname database close failed: %s\n",
               db_strerror(ret));
-    }</tt></b>
+    }</code></strong>
 
     if (my_stock-&gt;inventory_dbp != NULL) {
         ret = my_stock-&gt;inventory_dbp-&gt;close(my_stock-&gt;inventory_dbp, 0);
@@ -467,7 +479,7 @@ databases_close(STOCK_DBS *my_stock)
         code actually changes:
     </p>
         <p>
-        That completes our update to <tt class="function">example_database_load</tt>.
+        That completes our update to <code class="function">example_database_load</code>.
         Now when this program is called, it will automatically index inventory
         items based on their names. We can then query for those items using the
         new index. We show how to do that in the next section.
@@ -480,22 +492,21 @@ databases_close(STOCK_DBS *my_stock)
               <h3 class="title"><a id="edrWIndexes"></a>Secondary Databases with example_database_read</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-            In <a href="CoreCursorUsage.html">Cursor Example</a> we
+            In <a class="xref" href="CoreCursorUsage.html" title="Cursor Example">Cursor Example</a> we
             wrote an application that displays every inventory item in the
             Inventory database. In this section, we will update that example to
             allow us to search for and display an inventory item given a
             specific name. To do this, we will make use of the secondary
-            database that <tt class="function">example_database_load</tt> now
+            database that <code class="function">example_database_load</code> now
             creates.
         </p>
         <p>
             Because we manage all our database open and close activities in
-            <tt class="function">databases_setup()</tt> and
-            <tt class="function">databases_close()</tt>,
-            the update to <tt class="function">example_database_read</tt> is
+            <code class="function">databases_setup()</code> and
+            <code class="function">databases_close()</code>,
+            the update to <code class="function">example_database_read</code> is
             relatively modest. We need only add a command line parameter on
             which we can specify the item name, and we will need a new function
             in which we will perform the query and display the results.
@@ -512,38 +523,38 @@ databases_close(STOCK_DBS *my_stock)
 /* Forward declarations */
 char * show_inventory_item(void *);
 int show_all_records(STOCK_DBS *);
-<b class="userinput"><tt>int show_records(STOCK_DBS *, char *);</tt></b>
+<strong class="userinput"><code>int show_records(STOCK_DBS *, char *);</code></strong>
 int show_vendor_record(char *, DB *); </pre>
         <p>
-        Next, we update <tt class="function">main()</tt> to 
+        Next, we update <code class="function">main()</code> to 
         
         accept the new command line switch.
         We also need a new variable to contain the item's name.        
     </p>
         <a id="c_index16"></a>
         <pre class="programlisting">/*
-<b class="userinput"><tt> * Searches for a inventory item based on that item's name. The search is
+<strong class="userinput"><code> * Searches for a inventory item based on that item's name. The search is
  * performed using the item name secondary database. Displays all
  * inventory items that use the specified name, as well as the vendor
  * associated with that inventory item.
  *
- * If no item name is provided, then all inventory items are displayed.</tt></b>
+ * If no item name is provided, then all inventory items are displayed.</code></strong>
  */
 int
 main(int argc, char *argv[])
 {
     STOCK_DBS my_stock;
     int ret;
-    <b class="userinput"><tt>char *itemname</tt></b>;
+    <strong class="userinput"><code>char *itemname</code></strong>;
                                                                                                                                          
     /* Initialize the STOCK_DBS struct */
     initialize_stockdbs(&amp;my_stock);
                                                                                                                                          
-    <b class="userinput"><tt>itemname = NULL;</tt></b>
+    <strong class="userinput"><code>itemname = NULL;</code></strong>
     /*
      * Parse the command line arguments here and determine
-     * the location of the database files <b class="userinput"><tt>as well as the
-     * inventory item we want displayed, if any.</tt></b> This step is
+     * the location of the database files <strong class="userinput"><code>as well as the
+     * inventory item we want displayed, if any.</code></strong> This step is
      * omitted for brevity.
      */
                                                                                                                                          
@@ -563,20 +574,20 @@ main(int argc, char *argv[])
         return (ret);
     }</pre>
         <p>
-        The final update to the <tt class="function">main()</tt> entails a little bit
+        The final update to the <code class="function">main()</code> entails a little bit
         of logic to determine whether we want to display all available inventory
         items, or just the ones that match a name provided on the
-        <tt class="literal">-i</tt> command line parameter.
+        <code class="literal">-i</code> command line parameter.
     </p>
         <a id="c_index17"></a>
         <pre class="programlisting">    /* 
      * Show either a single item or all items, depending
      * on whether itemname is set to a value.
      */
-    <b class="userinput"><tt>if (itemname == NULL)
+    <strong class="userinput"><code>if (itemname == NULL)
         ret = show_all_records(&amp;my_stock);
     else
-        ret = show_records(&amp;my_stock, itemname);</tt></b>
+        ret = show_records(&amp;my_stock, itemname);</code></strong>
                                                                                                                                   
     /* Close our databases */
     databases_close(&amp;my_stock);
@@ -585,7 +596,7 @@ main(int argc, char *argv[])
         <p>
         The only other thing that we need to add to the application is the
         implementation of the 
-            <tt class="function">show_records()</tt> 
+            <code class="function">show_records()</code> 
              
         function.
     </p>
@@ -594,14 +605,14 @@ main(int argc, char *argv[])
           <p>
             In the interest of space, we refrain from showing the other
             functions used by this application. For their implementation, please
-            see <a href="CoreCursorUsage.html">Cursor Example</a>.
+            see <a class="xref" href="CoreCursorUsage.html" title="Cursor Example">Cursor Example</a>.
             Alternatively, you can see the entire implementation of this
             application
             in:
         </p>
           <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_c/getting_started</pre>
           <p>
-            where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+            where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
             placed your DB distribution.
         </p>
         </div>
@@ -670,7 +681,7 @@ show_records(STOCK_DBS *my_stock, char *itemname)
 } </pre>
         <p>
         This completes our update to
-        <tt class="classname">example_inventory_read</tt>. Using this update, you
+        <code class="classname">example_inventory_read</code>. Using this update, you
         can now search for and show all inventory items that match a particular
         name. For example:
     </p>

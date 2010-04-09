@@ -10,8 +10,10 @@
 
 SVnull*         T_SV_NULL
 void *			T_PV
+db_seq_t 		T_PV_64
 u_int			T_U_INT
 u_int32_t		T_U_INT
+int32_t		    T_U_INT
 db_timeout_t	T_U_INT
 const char * 		T_PV_NULL
 PV_or_NULL		T_PV_NULL
@@ -31,6 +33,7 @@ BerkeleyDB::Txn		T_PTROBJ_AV
 BerkeleyDB::Log		T_PTROBJ_AV
 BerkeleyDB::Lock	T_PTROBJ_AV
 BerkeleyDB::Env		T_PTROBJ_AV
+BerkeleyDB::Sequence		T_PTROBJ_NULL
 
 BerkeleyDB::Raw		T_RAW
 BerkeleyDB::Common::Raw	T_RAW
@@ -57,6 +60,7 @@ DBTKEY			T_dbtkeydatum
 DBTKEY_B		T_dbtkeydatum_btree
 DBTKEY_Br		T_dbtkeydatum_btree_r
 DBTKEY_Bpr		T_dbtkeydatum_btree_pr
+DBTKEY_seq		T_dbtkeydatum_seq
 DBTYPE			T_U_INT
 DualType		T_DUAL
 BerkeleyDB_type *	T_IV
@@ -81,6 +85,9 @@ T_RAW
 
 T_U_INT
         $var = SvUV($arg)
+
+T_INT
+        $var = SvIV($arg)
 
 T_SV_REF_NULL
 	if ($arg == &PL_sv_undef)
@@ -148,6 +155,16 @@ T_PV_NULL
 		$var = NULL ;
 	}
 
+T_PV_64
+	if ($arg == &PL_sv_undef)
+	    $var = 0 ;
+	else {
+        STRLEN len;
+            $var = ($type)SvPV($arg,len) ;
+	    if (len == 0)
+		$var = NULL ;
+	}
+
 T_IO_NULL
 	if ($arg == &PL_sv_undef)
 	    $var = NULL ; 
@@ -201,6 +218,10 @@ T_dbtkeydatum
 	        $var.size = (int)len;
 	    }
 	}
+
+T_dbtkeydatum_seq
+    InputKey_seq($arg, $var)
+
 
 T_dbtkeydatum_btree
 	{
@@ -328,8 +349,14 @@ T_DUAL
 T_U_INT
         sv_setuv($arg, (UV)$var);
 
+T_INT
+        sv_setiv($arg, (UV)$var);
+
 T_PV_NULL
         sv_setpv((SV*)$arg, $var);
+
+T_PV_64
+        sv_setpvn((SV*)$arg, (char*)&$var, sizeof(db_seq_t));
 
 T_dbtkeydatum_btree
 	OutputKey_B($arg, $var)
@@ -337,6 +364,8 @@ T_dbtkeydatum_btree_r
 	OutputKey_Br($arg, $var)
 T_dbtkeydatum_btree_pr
 	OutputKey_Bpr($arg, $var)
+T_dbtkeydatum_seq
+	OutputKey_seq($arg, $var)
 T_dbtkeydatum
 	OutputKey($arg, $var)
 T_dbtdatum

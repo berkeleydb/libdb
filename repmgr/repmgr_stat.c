@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: repmgr_stat.c,v 1.40 2008/01/08 20:58:48 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -157,6 +157,7 @@ __repmgr_print_sites(env)
 	ENV *env;
 {
 	DB_REPMGR_SITE *list;
+	DB_MSGBUF mb;
 	u_int count, i;
 	int ret;
 
@@ -169,10 +170,15 @@ __repmgr_print_sites(env)
 	__db_msg(env, "%s", DB_GLOBAL(db_line));
 	__db_msg(env, "DB_REPMGR site information:");
 
+	DB_MSGBUF_INIT(&mb);
 	for (i = 0; i < count; ++i) {
-		__db_msg(env, "%s (eid: %d, port: %u, %sconnected)",
-		    list[i].host, list[i].eid, list[i].port,
-		    list[i].status == DB_REPMGR_CONNECTED ? "" : "dis");
+		__db_msgadd(env, &mb, "%s (eid: %d, port: %u",
+		    list[i].host, list[i].eid, list[i].port);
+		if (list[i].status != 0)
+			__db_msgadd(env, &mb, ", %sconnected",
+			    list[i].status == DB_REPMGR_CONNECTED ? "" : "dis");
+		__db_msgadd(env, &mb, ")");
+		DB_MSGBUF_FLUSH(env, &mb);
 	}
 
 	__os_ufree(env, list);
@@ -229,8 +235,10 @@ __repmgr_site_list(dbenv, countp, listp)
 	DB_REPMGR_SITE **listp;
 {
 	DB_REP *db_rep;
+	REP *rep;
 	DB_REPMGR_SITE *status;
 	ENV *env;
+	DB_THREAD_INFO *ip;
 	REPMGR_SITE *site;
 	size_t array_size, total_size;
 	u_int count, i;
@@ -239,14 +247,26 @@ __repmgr_site_list(dbenv, countp, listp)
 
 	env = dbenv->env;
 	db_rep = env->rep_handle;
-	if (REPMGR_SYNC_INITED(db_rep)) {
+	ret = 0;
+
+	ENV_NOT_CONFIGURED(
+	    env, db_rep->region, "DB_ENV->repmgr_site_list", DB_INIT_REP);
+
+	if (REP_ON(env)) {
+		rep = db_rep->region;
 		LOCK_MUTEX(db_rep->mutex);
 		locked = TRUE;
+
+		ENV_ENTER(env, ip);
+		if (rep->siteaddr_seq > db_rep->siteaddr_seq)
+			ret = __repmgr_sync_siteaddr(env);
+		ENV_LEAVE(env, ip);
+		if (ret != 0)
+			goto err;
 	} else
 		locked = FALSE;
 
 	/* Initialize for empty list or error return. */
-	ret = 0;
 	*countp = 0;
 	*listp = NULL;
 
@@ -281,8 +301,19 @@ __repmgr_site_list(dbenv, countp, listp)
 		name += strlen(name) + 1;
 
 		status[i].port = site->net_addr.port;
-		status[i].status = site->state == SITE_CONNECTED ?
-		    DB_REPMGR_CONNECTED : DB_REPMGR_DISCONNECTED;
+
+		/*
+		 * If we haven't started a communications thread, connection
+		 * status is kind of meaningless.  This distinction is useful
+		 * for calls from the db_stat utility: it could be useful for
+		 * db_stat to display known sites with EID; but would be
+		 * confusing for it to display "disconnected" if another process
+		 * does indeed have a connection established (db_stat can't know
+		 * that).
+		 */
+		status[i].status = db_rep->selector == NULL ? 0 :
+		    (site->state == SITE_CONNECTED ?
+		    DB_REPMGR_CONNECTED : DB_REPMGR_DISCONNECTED);
 	}
 
 	*countp = count;

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: RawAccessor.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
@@ -170,6 +170,18 @@ class RawAccessor implements Accessor {
                  i += 1) {
                 readField(o, nonKeyFields.get(i), input);
             }
+        }
+    }
+
+    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+        for (int i = 0; i < nonKeyFields.size(); i += 1) {
+            writeField(o, nonKeyFields.get(i), output);
+        }
+    }
+
+    public void readCompositeKeyFields(Object o, EntityInput input) {
+        for (int i = 0; i < nonKeyFields.size(); i += 1) {
+            readField(o, nonKeyFields.get(i), input);
         }
     }
 

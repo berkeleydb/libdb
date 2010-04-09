@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: test107.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test107
 # TEST	Test of read-committed (degree 2 isolation). [#8689]
@@ -22,6 +22,8 @@ proc test107 { method args } {
 	global passwd
 	set tnum "107"
 
+	set pageargs ""
+	split_pageargs $args pageargs
 	# If we are using an env, then skip this test.  It needs its own.
 	set eindex [lsearch -exact $args "-env"]
 	if { $eindex != -1 } {
@@ -55,7 +57,7 @@ proc test107 { method args } {
 	set timeout 10
 	set env [eval {berkdb_env -create -mode 0644 -lock \
 	    -cachesize { 0 1048576 1 } \
-	    -lock_timeout $timeout -txn} $encargs -home $testdir]
+	    -lock_timeout $timeout -txn} $pageargs $encargs -home $testdir]
 	error_check_good env_open [is_valid_env $env] TRUE
 
 	# Create the database.

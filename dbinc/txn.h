@@ -1,15 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: txn.h,v 12.20 2008/01/08 20:58:18 bostic Exp $
+ * $Id$
  */
 
 #ifndef	_DB_TXN_H_
 #define	_DB_TXN_H_
-
-#include "dbinc/xa.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -71,21 +69,12 @@ typedef struct __txn_detail {
 #define	TXN_DTL_COLLECTED	0x1	/* collected during txn_recover */
 #define	TXN_DTL_RESTORED	0x2	/* prepared txn restored */
 #define	TXN_DTL_INMEMORY	0x4	/* uses in memory logs */
+#define	TXN_DTL_SNAPSHOT	0x8	/* On the list of snapshot txns. */
 	u_int32_t flags;
 
-	/* TXN_XA_{ABORTED, DEADLOCKED, ENDED, PREPARED, STARTED, SUSPENDED} */
 	SH_TAILQ_ENTRY	links;		/* active/free/snapshot list */
 
-	u_int32_t xa_status;		/* XA status */
-
-	/*
-	 * XID (xid_t) structure: because these fields are logged, the
-	 * sizes have to be explicit.
-	 */
-	u_int8_t xid[XIDDATASIZE];	/* XA global transaction id */
-	u_int32_t bqual;		/* bqual_length from XID */
-	u_int32_t gtrid;		/* gtrid_length from XID */
-	int32_t format;			/* XA format */
+	u_int8_t gid[DB_GID_SIZE];	/* global transaction id */
 	roff_t slots[TXN_NSLOTS];	/* Initial DB slot allocation. */
 } TXN_DETAIL;
 
@@ -235,5 +224,4 @@ struct __txn_logrec {
 
 #include "dbinc_auto/txn_auto.h"
 #include "dbinc_auto/txn_ext.h"
-#include "dbinc_auto/xa_ext.h"
 #endif /* !_DB_TXN_H_ */

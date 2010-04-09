@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: Evolver.java,v 1.2 2008/02/08 20:12:37 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
@@ -210,7 +209,7 @@ class Evolver {
      * Called by PersistCatalog after calling evolveFormat or
      * addNonEntityFormat for all old formats.
      *
-     * We do not require deletion of an unreferenced class for three
+     * We do not require deletion of an unreferenced class for two
      * reasons: 1) built-in proxy classes may not be referenced, 2) the
      * user may wish to declare persistent classes that are not yet used.
      */
@@ -218,12 +217,7 @@ class Evolver {
         /* Process unreferenced classes. */
         for (Format oldFormat : unprocessedFormats) {
             oldFormat.setUnused(true);
-            Integer oldFormatId = oldFormat.getId();
-            if (!evolvedFormats.containsKey(oldFormatId)) {
-                evolvedFormats.put(oldFormatId, true);
-                boolean result = evolveFormatInternal(oldFormat);
-                evolvedFormats.put(oldFormatId, result);
-            }
+            evolveFormat(oldFormat);
         }
     }
 
@@ -232,9 +226,12 @@ class Evolver {
      * methods for all potentially referenced non-entity formats.
      */
     boolean evolveFormat(Format oldFormat) {
+        if (oldFormat.isNew()) {
+            return true;
+        }
         boolean result;
-        boolean trackEntityChanges =
-            oldFormat.getLatestVersion().getEntityFormat() != null;
+        Format oldEntityFormat = oldFormat.getEntityFormat();
+        boolean trackEntityChanges = oldEntityFormat != null;
         boolean saveNestedFormatsChanged = nestedFormatsChanged;
         if (trackEntityChanges) {
             nestedFormatsChanged = false;
@@ -252,7 +249,7 @@ class Evolver {
         }
         if (trackEntityChanges) {
             if (nestedFormatsChanged) {
-                Format latest = oldFormat.getLatestVersion().getEntityFormat();
+                Format latest = oldEntityFormat.getLatestVersion();
                 if (latest != null) {
                     latest.setEvolveNeeded(true);
                 }
@@ -351,9 +348,11 @@ class Evolver {
                 newFormat.getPreviousVersion() == null) {
                 assert newFormats.containsValue(newFormat);
                 Format oldLatestFormat = oldFormat.getLatestVersion();
-                evolveFormat(oldLatestFormat);
+                if (!evolveFormat(oldLatestFormat)) {
+                    return false;
+                }
                 if (oldLatestFormat == oldLatestFormat.getLatestVersion()) {
-                    assert !newFormats.containsValue(newFormat);
+                    assert !newFormats.containsValue(newFormat) : newFormat;
                     /* newFormat equals oldLatestFormat and was discarded. */
                     newFormat = oldLatestFormat;
                 }
@@ -377,7 +376,7 @@ class Evolver {
 
         /* Apply class Renamer and continue if successful. */
         if (renamer != null) {
-            if (!applyRenamer(renamer, oldFormat, newFormat)) {
+            if (!applyClassRenamer(renamer, oldFormat, newFormat)) {
                 return false;
             }
         }
@@ -412,7 +411,7 @@ class Evolver {
                      "@Entity or @Persistent annotation is still present");
                 return false;
             }
-            return applyDeleter(deleter, oldFormat, newFormat);
+            return applyClassDeleter(deleter, oldFormat, newFormat);
         } else {
             if (needDeleter) {
                 if (newFormat == null) {
@@ -453,8 +452,23 @@ class Evolver {
             assert renamedFormat == newFormat;
             useEvolvedFormat(oldFormat, renamedFormat, renamedFormat);
         } else if (newFormat != null &&
-                   oldFormat.getVersion() != newFormat.getVersion()) {
-            /* The user wants a new version number, but no other changes. */
+                   (oldFormat.getVersion() != newFormat.getVersion() ||
+                    !oldFormat.isCurrentVersion())) {
+
+            /*
+             * If the user wants a new version number, but ther are no other
+             * changes, we will oblige.  Or, if an attempt is being made to
+             * use an old version, then the following events happened and we
+             * must evolve the old format:
+             * 1) The (previously) latest version of the format was evolved
+             * because it is not equal to the live class version.  Note that
+             * evolveFormatInternal always evolves the latest version first.
+             * 2) We are now attempting to evolve an older version of the same
+             * format, and it happens to be equal to the live class version.
+             * However, we're already committed to the new format, and we must
+             * evolve all versions.
+             * [#16467]
+             */
             useEvolvedFormat(oldFormat, newFormat, newFormat);
         } else {
             /* The new format is discarded. */
@@ -479,9 +493,9 @@ class Evolver {
         setFormatsChanged(oldFormat);
     }
 
-    private boolean applyRenamer(Renamer renamer,
-                                 Format oldFormat,
-                                 Format newFormat) {
+    private boolean applyClassRenamer(Renamer renamer,
+                                      Format oldFormat,
+                                      Format newFormat) {
         if (!checkUpdatedVersion(renamer, oldFormat, newFormat)) {
             return false;
         }
@@ -514,20 +528,18 @@ class Evolver {
     /**
      * Called by ComplexFormat when a secondary key name is changed.
      */
-    void renameSecondaryDatabase(Format oldFormat,
-                                 Format newFormat,
+    void renameSecondaryDatabase(String oldEntityClass,
+                                 String newEntityClass,
                                  String oldKeyName,
                                  String newKeyName) {
         renameDbs.put
-            (Store.makeSecDbName
-                (storePrefix, oldFormat.getClassName(), oldKeyName),
-             Store.makeSecDbName
-                (storePrefix, newFormat.getClassName(), newKeyName));
+            (Store.makeSecDbName(storePrefix, oldEntityClass, oldKeyName),
+             Store.makeSecDbName(storePrefix, newEntityClass, newKeyName));
     }
 
-    private boolean applyDeleter(Deleter deleter,
-                                 Format oldFormat,
-                                 Format newFormat) {
+    private boolean applyClassDeleter(Deleter deleter,
+                                      Format oldFormat,
+                                      Format newFormat) {
         if (!checkUpdatedVersion(deleter, oldFormat, newFormat)) {
             return false;
         }
@@ -543,7 +555,7 @@ class Evolver {
         }
 
         /*
-         * Set the format to deleted last,  so that the above test using
+         * Set the format to deleted last, so that the above test using
          * isCurrentVersion works properly.
          */
         oldFormat.setDeleted(true);
@@ -558,9 +570,9 @@ class Evolver {
     /**
      * Called by ComplexFormat when a secondary key is dropped.
      */
-    void deleteSecondaryDatabase(Format oldFormat, String keyName) {
+    void deleteSecondaryDatabase(String oldEntityClass, String keyName) {
         deleteDbs.add(Store.makeSecDbName
-            (storePrefix, oldFormat.getClassName(), keyName));
+            (storePrefix, oldEntityClass, keyName));
     }
 
     private boolean applyConverter(Converter converter,
@@ -612,26 +624,22 @@ class Evolver {
         throws DatabaseException {
 
         for (String dbName : deleteDbs) {
-            try {
-                String[] fileAndDbNames = store.parseDbName(dbName);
-                DbCompat.removeDatabase
-                    (store.getEnvironment(), txn,
-                     fileAndDbNames[0], fileAndDbNames[1]);
-            } catch (FileNotFoundException ignored) {
-            }
+            String[] fileAndDbNames = store.parseDbName(dbName);
+            /* Do nothing if database does not exist. */
+            DbCompat.removeDatabase
+                (store.getEnvironment(), txn,
+                 fileAndDbNames[0], fileAndDbNames[1]);
         }
         for (Map.Entry<String,String> entry : renameDbs.entrySet()) {
             String oldName = entry.getKey();
             String newName = entry.getValue();
-            try {
-                String[] oldFileAndDbNames = store.parseDbName(oldName);
-                String[] newFileAndDbNames = store.parseDbName(newName);
-                DbCompat.renameDatabase
-                    (store.getEnvironment(), txn,
-                     oldFileAndDbNames[0], oldFileAndDbNames[1],
-                     newFileAndDbNames[0], newFileAndDbNames[1]);
-            } catch (FileNotFoundException ignored) {
-            }
+            String[] oldFileAndDbNames = store.parseDbName(oldName);
+            String[] newFileAndDbNames = store.parseDbName(newName);
+            /* Do nothing if database does not exist. */
+            DbCompat.renameDatabase
+                (store.getEnvironment(), txn,
+                 oldFileAndDbNames[0], oldFileAndDbNames[1],
+                 newFileAndDbNames[0], newFileAndDbNames[1]);
         }
     }
 
@@ -703,6 +711,9 @@ class Evolver {
             return EVOLVE_FAILURE;
         }
         Format oldLatestFormat = oldFieldFormat.getLatestVersion();
+        if (oldFieldFormat != oldLatestFormat) {
+            result = EVOLVE_NEEDED;
+        }
         Format newFieldFormat = newField.getType();
 
         if (oldLatestFormat.getClassName().equals

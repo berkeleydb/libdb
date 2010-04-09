@@ -8,16 +8,14 @@ use lib 't';
 use BerkeleyDB; 
 use util ;
 
-BEGIN
-{
-    if ($BerkeleyDB::db_version < 3) {
-        print "1..0 # Skip: this needs Berkeley DB 3.x or better\n" ;
-        exit 0 ;
-    }
-}        
+use Test::More ;
 
-print "1..14\n";
+BEGIN {
+    plan(skip_all => "this needs BerkeleyDB 3.x or better" )
+        if $BerkeleyDB::db_version < 3;
 
+    plan tests => 14;    
+}
 
 my $Dfile = "dbhash.tmp";
 
@@ -27,10 +25,10 @@ umask(0);
     # set_mutexlocks
 
     my $home = "./fred" ;
-    ok 1, my $lexD = new LexDir($home) ;
+    ok my $lexD = new LexDir($home) ;
     chdir "./fred" ;
-    ok 2, my $env = new BerkeleyDB::Env -Flags => DB_CREATE, @StdErrFile ;
-    ok 3, $env->set_mutexlocks(0) == 0 ;
+    ok my $env = new BerkeleyDB::Env -Flags => DB_CREATE, @StdErrFile ;
+    ok $env->set_mutexlocks(0) == 0 ;
     chdir ".." ;
     undef $env ;
 }
@@ -42,7 +40,7 @@ umask(0);
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my ($k, $v) ;
-    ok 4, my $db = new BerkeleyDB::Hash -Filename => $Dfile, 
+    ok my $db = new BerkeleyDB::Hash -Filename => $Dfile, 
 				     -Flags    => DB_CREATE ;
 
     # create some data
@@ -59,29 +57,29 @@ umask(0);
 	my $v = shift @data ;
         $ret += $db->db_put($k, $v) ;
     }
-    ok 5, $ret == 0 ;
+    ok $ret == 0 ;
 
     # create a cursor
-    ok 6, my $cursor = $db->db_cursor() ;
+    ok my $cursor = $db->db_cursor() ;
 
     # point to a specific k/v pair
     $k = "green" ;
-    ok 7, $cursor->c_get($k, $v, DB_SET) == 0 ;
-    ok 8, $v eq "house" ;
+    ok $cursor->c_get($k, $v, DB_SET) == 0 ;
+    ok $v eq "house" ;
 
     # duplicate the cursor
     my $dup_cursor = $cursor->c_dup(DB_POSITION);
-    ok 9, $dup_cursor ;
+    ok $dup_cursor ;
 
     # move original cursor off green/house
     my $s = $cursor->c_get($k, $v, DB_NEXT) ;
-    ok 10, $k ne "green" ;
-    ok 11, $v ne "house" ;
+    ok $k ne "green" ;
+    ok $v ne "house" ;
 
     # duplicate cursor should still be on green/house
-    ok 12, $dup_cursor->c_get($k, $v, DB_CURRENT) == 0;
-    ok 13, $k eq "green" ;
-    ok 14, $v eq "house" ;
+    ok $dup_cursor->c_get($k, $v, DB_CURRENT) == 0;
+    ok $k eq "green" ;
+    ok $v eq "house" ;
     
 }
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2005-2009 Oracle.  All rights reserved.
  *
- * $Id: clock.h,v 12.9 2008/01/08 20:58:17 bostic Exp $
+ * $Id$
  */
 /*
  * Copyright (c) 1982, 1986, 1993
@@ -70,7 +70,7 @@ typedef struct {
 #undef timespecadd
 /*
  * Note that using timespecadd to add to yourself (i.e. doubling)
- * must be supported.  
+ * must be supported.
  */
 #define	timespecadd(vvp, uvp)						\
 	do {								\
@@ -114,7 +114,7 @@ typedef struct {
 			t++;						\
 	} while (0)
 
-#define TIMESPEC_ADD_DB_TIMEOUT(vvp, t) 			        \
+#define	TIMESPEC_ADD_DB_TIMEOUT(vvp, t)			        \
 	do {							        \
 		db_timespec __tmp;				        \
 		DB_TIMEOUT_TO_TIMESPEC(t, &__tmp);		        \

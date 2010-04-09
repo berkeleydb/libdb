@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.mtx,v 1.1 2007/08/09 13:35:40 bostic Exp $
+# $Id$
 #
 # Check to make sure __mutex_print_id knows about all of the mutex types.
 

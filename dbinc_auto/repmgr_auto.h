@@ -8,11 +8,18 @@
  * counting variable size parts, when DBTs are present),
  * and may be different from struct sizes due to padding.
  */
-#define	__REPMGR_HANDSHAKE_SIZE	6
+#define	__REPMGR_HANDSHAKE_SIZE	10
 typedef struct ___repmgr_handshake_args {
 	u_int16_t	port;
 	u_int32_t	priority;
+	u_int32_t	flags;
 } __repmgr_handshake_args;
+
+#define	__REPMGR_V2HANDSHAKE_SIZE	6
+typedef struct ___repmgr_v2handshake_args {
+	u_int16_t	port;
+	u_int32_t	priority;
+} __repmgr_v2handshake_args;
 
 #define	__REPMGR_ACK_SIZE	12
 typedef struct ___repmgr_ack_args {

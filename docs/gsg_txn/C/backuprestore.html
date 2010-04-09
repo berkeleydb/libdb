@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Backup Procedures</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
+    <link rel="prev" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
     <link rel="next" href="recovery.html" title="Recovery Procedures" />
   </head>
   <body>
@@ -32,7 +32,30 @@
             <h2 class="title" style="clear: both"><a id="backuprestore"></a>Backup Procedures</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="backuprestore.html#copyutilities">About Unix Copy Utilities</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="backuprestore.html#standardbackup">Offline Backups</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="backuprestore.html#hotbackup">Hot Backup</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="backuprestore.html#incrementalbackups">Incremental Backups</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             <span class="emphasis"><em>Durability</em></span> is an important part of your
@@ -91,12 +114,12 @@
             Once you have performed a backup, you can
             perform <span class="emphasis"><em>catastrophic recovery</em></span> to restore
             your databases from the backup. See
-            <a href="recovery.html#catastrophicrecovery">Catastrophic Recovery</a>
+            <a class="xref" href="recovery.html#catastrophicrecovery" title="Catastrophic Recovery">Catastrophic Recovery</a>
             for more information.
         </p>
       <p>
             Note that you can also maintain a hot failover. See
-            <a href="hotfailover.html">Using Hot Failovers</a>
+            <a class="xref" href="hotfailover.html" title="Using Hot Failovers">Using Hot Failovers</a>
             for more information.
         </p>
       <div class="sect2" lang="en" xml:lang="en">
@@ -106,7 +129,6 @@
               <h3 class="title"><a id="copyutilities"></a>About Unix Copy Utilities</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
 
@@ -121,25 +143,25 @@
                largest possible Berkeley DB database page size. 
             </p>
         <p>
-                On some platforms (most notably, some releases of Solaris), the copy utility (<tt class="literal">cp</tt>) was
-                implemented using the <tt class="function">mmap()</tt> system call rather than the
-                <tt class="function">read()</tt> system call. Because <tt class="function">mmap()</tt> did not make the same
-                guarantee of read atomicity as did <tt class="function">read()</tt>, the <tt class="literal">cp</tt> utility
+                On some platforms (most notably, some releases of Solaris), the copy utility (<code class="literal">cp</code>) was
+                implemented using the <code class="function">mmap()</code> system call rather than the
+                <code class="function">read()</code> system call. Because <code class="function">mmap()</code> did not make the same
+                guarantee of read atomicity as did <code class="function">read()</code>, the <code class="literal">cp</code> utility
                 could create corrupted copies of the databases. 
             </p>
         <p>
-                Also, some platforms have implementations of the <tt class="literal">tar</tt> utility that performs 10KB block
+                Also, some platforms have implementations of the <code class="literal">tar</code> utility that performs 10KB block
                 reads by default. Even when an output block size is specified, the utility will still not read the
                 underlying databases in multiples of the specified block size. Again, the result can be a corrupted backup.
             </p>
         <p>
-                To fix these problems, use the <tt class="literal">dd</tt> utility instead of <tt class="literal">cp</tt> or
-                <tt class="literal">tar</tt>. When you use <tt class="literal">dd</tt>, make sure you specify a block size that is
+                To fix these problems, use the <code class="literal">dd</code> utility instead of <code class="literal">cp</code> or
+                <code class="literal">tar</code>. When you use <code class="literal">dd</code>, make sure you specify a block size that is
                 equal to, or an even multiple of, your database page size. Finally, if you plan to use a system
                 utility to copy database files, you may want to use a system call trace utility (for example, 
-                <tt class="literal">ktrace</tt> or <tt class="literal">truss</tt>) to make sure you are not using a I/O size that is
+                <code class="literal">ktrace</code> or <code class="literal">truss</code>) to make sure you are not using a I/O size that is
                 smaller than your database page size. You can also use these utilities to make sure the system utility is
-                not using a system call other than <tt class="function">read()</tt>.
+                not using a system call other than <code class="function">read()</code>.
             </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -149,7 +171,6 @@
               <h3 class="title"><a id="standardbackup"></a>Offline Backups</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 To create an offline backup:
@@ -169,7 +190,7 @@
             <li>
               <p>
                         Force a checkpoint. See 
-                            <a href="filemanagement.html#checkpoints">Checkpoints</a>
+                            <a class="xref" href="filemanagement.html#checkpoints" title="Checkpoints">Checkpoints</a>
                         for details.
                     </p>
             </li>
@@ -182,22 +203,22 @@
                             have been written during the lifetime of the current
                             logs. To do this, use either the
                                 <span>
-                                    <tt class="methodname">DB_ENV-&gt;log_archive()</tt>
+                                    <code class="methodname">DB_ENV-&gt;log_archive()</code>
                                     
-                                    method with the <tt class="literal">DB_ARCH_DATA</tt>
+                                    method with the <code class="literal">DB_ARCH_DATA</code>
                                     option, 
                                 </span>
                                 
 
-                                or use the <span><b class="command">db_archive</b></span>
-                                command with the <tt class="literal">-s</tt> option. 
+                                or use the <span class="command"><strong>db_archive</strong></span>
+                                command with the <code class="literal">-s</code> option. 
                         </span>
                     </p>
               <p>
                         However, be aware that backing up just the modified databases only works if you have all of your
                         log files. If you have been removing log files for any reason then using
                                 <span>
-                                    <tt class="methodname">log_archive()</tt>
+                                    <code class="methodname">log_archive()</code>
                                 </span>
                                 
 
@@ -209,7 +230,7 @@
               <p>
                         Copy the <span class="emphasis"><em>last</em></span> log file to your backup location.
                         Your log files are named
-                        <tt class="literal">log.<span class="emphasis"><em>xxxxxxxxxx</em></span></tt>,
+                        <code class="literal">log.<span class="emphasis"><em>xxxxxxxxxx</em></span></code>,
                         where <span class="emphasis"><em>xxxxxxxxxx</em></span> is a
                         sequential number. The last log file is the file
                         with the highest number.
@@ -225,7 +246,6 @@
               <h3 class="title"><a id="hotbackup"></a>Hot Backup</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 To create a hot backup, you do not have to stop database
@@ -235,7 +255,7 @@
                 at the time of the backup.
             </p>
         <p>
-                You can use the <span><b class="command">db_hotbackup</b></span> command line utility to create a hot backup for you. This
+                You can use the <span class="command"><strong>db_hotbackup</strong></span> command line utility to create a hot backup for you. This
                 utility will (optionally) run a checkpoint and the copy all necessary files to a target directory.
             </p>
         <p>
@@ -252,15 +272,15 @@
                             have been written during the lifetime of the current
                             logs. To do this, use either the
                                 <span>
-                                    <tt class="methodname">DB_ENV-&gt;log_archive()</tt>
+                                    <code class="methodname">DB_ENV-&gt;log_archive()</code>
                                     
-                                    with the <tt class="literal">DB_ARCH_DATA</tt>
+                                    with the <code class="literal">DB_ARCH_DATA</code>
                                     option, 
                                 </span>
                                 
 
-                                or use the <span><b class="command">db_archive</b></span>
-                                command with the <tt class="literal">-s</tt> option. 
+                                or use the <span class="command"><strong>db_archive</strong></span>
+                                command with the <code class="literal">-s</code> option. 
                         </span>
                     </p>
             </li>
@@ -288,7 +308,6 @@
               <h3 class="title"><a id="incrementalbackups"></a>Incremental Backups</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Once you have created a full backup (that is, either a

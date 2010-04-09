@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Databases in Environments</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="dbErrorReporting.html" title="Error Reporting Functions" />
+    <link rel="prev" href="dbErrorReporting.html" title="Error Reporting Functions" />
     <link rel="next" href="CoreDbCXXUsage.html" title="Database Example" />
   </head>
   <body>
@@ -32,12 +32,11 @@
             <h2 class="title" style="clear: both"><a id="CoreEnvUsage"></a>Managing Databases in Environments</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             In 
             <span>
-            <a href="environments.html">Environments</a>, 
+            <a class="xref" href="environments.html" title="Environments">Environments</a>, 
             </span>
             
             
@@ -98,21 +97,21 @@ u_int32_t env_flags = DB_CREATE |  // If the environment does not
                       DB_INIT_MPOOL; // Initialize the in-memory cache.
 std::string envHome("/export1/testEnv");
                     
-<b class="userinput"><tt>u_int32_t db_flags = DB_CREATE;   // If the database does not
-                                  // exist, create it.</tt></b>
-<b class="userinput"><tt>std::string dbName("mydb.db");</tt></b>
+<strong class="userinput"><code>u_int32_t db_flags = DB_CREATE;   // If the database does not
+                                  // exist, create it.</code></strong>
+<strong class="userinput"><code>std::string dbName("mydb.db");</code></strong>
 DbEnv myEnv(0);
-<b class="userinput"><tt>Db *myDb;</tt></b>
+<strong class="userinput"><code>Db *myDb;</code></strong>
 
 try {
     myEnv.open(envHome.c_str(), env_flags, 0);
-    <b class="userinput"><tt>myDb = new Db(&amp;myEnv, 0);
+    <strong class="userinput"><code>myDb = new Db(&amp;myEnv, 0);
     myDb-&gt;open(NULL,
                dbName.c_str(),
                NULL,
                DB_BTREE,
                db_flags,
-               0);</tt></b>
+               0);</code></strong>
 } catch(DbException &amp;e) {
     std::cerr &lt;&lt; "Error opening database environment: "
               &lt;&lt; envHome 

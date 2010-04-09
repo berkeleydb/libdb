@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: LockExample.java,v 12.8 2008/01/08 20:58:32 bostic Exp $
+ * $Id$
  */
 
 package db;
@@ -44,17 +44,23 @@ class LockExample {
         dbenv.close();
     }
 
-    // Prompts for a line, and keeps prompting until a non blank
-    // line is returned.  Returns null on error.
+    // Prompts for a line, returning the default answer if a blank
+    // line is entered.
     //
     public static String askForLine(InputStreamReader reader,
-                                    PrintStream out, String prompt) {
-        String result = "";
-        while (result != null && result.length() == 0) {
-            out.print(prompt);
+                                    PrintStream out, String prompt,
+                                    String defaultAnswer) {
+        String result;
+        do {
+            if (defaultAnswer != null)
+                out.print(prompt + " [" + defaultAnswer + "] >");
+            else
+                out.print(prompt);
             out.flush();
             result = getLine(reader);
-        }
+            if (result == null || result.length() == 0)
+                result = defaultAnswer;
+        } while (result == null);
         return result;
     }
 
@@ -95,22 +101,22 @@ class LockExample {
         locker = dbenv.createLockerID();
         for (held = 0;;) {
             String opbuf = askForLine(in, System.out,
-                                      "Operation get/release [get]> ");
+                                      "Operation get/release", "get");
             if (opbuf == null)
                 break;
 
             try {
-                if (opbuf.equals("get")) {
+                if (opbuf.equals("get") || opbuf.equals("vget")) {
                     // Acquire a lock.
                     String objbuf = askForLine(in, System.out,
-                           "input object (text string) to lock> ");
+                           "input object (text string) to lock> ", null);
                     if (objbuf == null)
                         break;
 
                     String lockbuf;
                     do {
                         lockbuf = askForLine(in, System.out,
-                                             "lock type read/write [read]> ");
+                                             "lock type read/write", "read");
                         if (lockbuf == null)
                             break;
                         len = lockbuf.length();
@@ -127,15 +133,24 @@ class LockExample {
                     DatabaseEntry entry = new DatabaseEntry(objbuf.getBytes());
 
                     Lock lock;
-                    did_get = true;
-                    lock = dbenv.getLock(locker, true, entry, lock_type);
+                    if (opbuf.equals("get")) {
+                        did_get = true;
+                        lock = dbenv.getLock(locker, true, entry, lock_type);
+                    } else {
+                        LockRequest req = new LockRequest(
+                            LockOperation.GET, lock_type, entry, null);
+                        LockRequest[] reqs = { req };
+                        dbenv.lockVector(locker, true, reqs);
+                        lock = req.getLock();
+                        System.out.println("Got lock: " + lock);
+                    }
                     lockid = locks.size();
                     locks.addElement(lock);
                 } else {
                     // Release a lock.
                     String objbuf;
                     objbuf = askForLine(in, System.out,
-                                        "input lock to release> ");
+                                        "input lock to release> ", null);
                     if (objbuf == null)
                         break;
 

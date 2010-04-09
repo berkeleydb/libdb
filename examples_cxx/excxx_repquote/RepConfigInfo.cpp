@@ -1,22 +1,27 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: RepConfigInfo.cpp,v 1.7 2008/01/08 20:58:27 bostic Exp $
+ * $Id$
  */
+
+#include <cstdlib>
+#include <cstring>
 
 #include "RepConfigInfo.h"
 
 RepConfigInfo::RepConfigInfo()
 {
 	start_policy = DB_REP_ELECTION;
-	home = "TESTDIR";
+	home = NULL;
 	got_listen_address = false;
 	totalsites = 0;
 	priority = 100;
 	verbose = false;
 	other_hosts = NULL;
+	ack_policy = DB_REPMGR_ACKS_QUORUM;
+	bulk = false;
 }
 
 RepConfigInfo::~RepConfigInfo()
@@ -24,9 +29,8 @@ RepConfigInfo::~RepConfigInfo()
 	// release any other_hosts structs.
 	if (other_hosts != NULL) {
 		REP_HOST_INFO *CurItem = other_hosts;
-		while (CurItem->next != NULL)
-		{
-			REP_HOST_INFO *TmpItem = CurItem;
+		while (CurItem->next != NULL) {
+			REP_HOST_INFO *TmpItem = CurItem->next;
 			free(CurItem);
 			CurItem = TmpItem;
 		}

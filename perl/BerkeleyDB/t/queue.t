@@ -7,7 +7,7 @@ use strict ;
 use lib 't' ;
 use BerkeleyDB; 
 use Test::More;
-use util(1) ;
+use util;
 
 plan(skip_all => "Queue needs Berkeley DB 3.3.x or better\n" )
     if $BerkeleyDB::db_version < 3.3;
@@ -646,9 +646,10 @@ EOM
 
     close FILE ;
 
+    use Test::More;
     BEGIN { push @INC, '.'; }    
     eval 'use SubDB ; ';
-    main::ok $@ eq "" ;
+    ok $@ eq "" ;
     my @h ;
     my $X ;
     my $rec_len = 34 ;
@@ -661,24 +662,24 @@ EOM
 			);		   
 	' ;
 
-    main::ok $@ eq "" ;
+    ok $@ eq "" ;
 
     my $ret = eval '$h[1] = 3 ; return $h[1] ' ;
-    main::ok $@ eq "" ;
-    main::ok $ret == 7 ;
+    ok $@ eq "" ;
+    ok $ret == 7 ;
 
     my $value = 0;
     $ret = eval '$X->db_put(1, 4) ; $X->db_get(1, $value) ; return $value' ;
-    main::ok $@ eq "" ;
-    main::ok $ret == 10 ;
+    ok $@ eq "" ;
+    ok $ret == 10 ;
 
     $ret = eval ' DB_NEXT eq main::DB_NEXT ' ;
-    main::ok $@ eq ""  ;
-    main::ok $ret == 1 ;
+    ok $@ eq ""  ;
+    ok $ret == 1 ;
 
     $ret = eval '$X->A_new_method(1) ' ;
-    main::ok $@ eq "" ;
-    main::ok $ret eq "[[10]]" ;
+    ok $@ eq "" ;
+    ok $ret eq "[[10]]" ;
 
     undef $X ;
     untie @h ;

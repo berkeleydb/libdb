@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ReplicationConfig.java,v 12.13 2008/04/23 17:20:53 bschmeck Exp $
+ * $Id$
  */
 
 package com.sleepycat.db;
@@ -32,6 +32,13 @@ public final class ReplicationConfig implements Cloneable {
       new ReplicationConfig("DELAYCLIENT", DbConstants.DB_REP_CONF_DELAYCLIENT);
 
     /**
+    The client should keep all replication related information in memory
+    (defaults to off).
+    **/
+    public static final ReplicationConfig INMEM =
+      new ReplicationConfig("INMEM", DbConstants.DB_REP_CONF_INMEM);
+
+    /**
     The replication master should not automatically re-initialize outdated
     clients.
     **/
@@ -50,7 +57,7 @@ public final class ReplicationConfig implements Cloneable {
     elections, even in a group with only 2 sites.  This means the client in a
     2-site group will be unable to take over as master if the original master
     fails or becomes disconnected.  (See the
-    <a href="{@docRoot}/../ref/rep/elect.html" target="_top">Elections</a>
+    <a href="{@docRoot}/../programmer_reference/rep_elect.html" target="_top">Elections</a>
     section in the Berkeley DB Reference Guide for more information.)  Both sites
     in the replication group should have the same value for this parameter.
     **/
@@ -78,6 +85,8 @@ public final class ReplicationConfig implements Cloneable {
             return BULK;
         case DbConstants.DB_REP_CONF_DELAYCLIENT:
             return DELAYCLIENT;
+        case DbConstants.DB_REP_CONF_INMEM:
+            return INMEM;
         case DbConstants.DB_REP_CONF_NOAUTOINIT:
             return NOAUTOINIT;
         case DbConstants.DB_REP_CONF_NOWAIT:

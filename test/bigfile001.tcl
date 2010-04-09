@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: bigfile001.tcl,v 12.8 2008/04/22 09:39:29 winter Exp $
+# $Id$
 #
 # TEST	bigfile001
 # TEST	Create a database greater than 4 GB in size.  Close, verify.

@@ -3,15 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Implementing Key 
-        
-        Extractors
-        </title>
+    <title>Implementing Key Extractors</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="indexes.html" title="Chapter 5. Secondary Databases" />
-    <link rel="previous" href="indexes.html" title="Chapter 5. Secondary Databases" />
+    <link rel="prev" href="indexes.html" title="Chapter 5. Secondary Databases" />
     <link rel="next" href="readSecondary.html" title="Reading Secondary Databases" />
   </head>
   <body>
@@ -20,7 +17,7 @@
         <tr>
           <th colspan="3" align="center">Implementing Key 
         
-        Extractors
+        <span>Extractors</span>
         </th>
         </tr>
         <tr>
@@ -41,7 +38,15 @@
         </h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="keyCreator.html#multikeys">Working with Multiple Keys</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         You must provide every secondary database with a 
@@ -67,7 +72,7 @@
         You implement a key extractor by writing a function that extracts
         the necessary information from a primary record's key or data.
         This function must conform to a specific prototype, and it must be
-        provided as a callback to the <tt class="methodname">associate()</tt>
+        provided as a callback to the <code class="methodname">associate()</code>
         method.
     </p>
       <p>
@@ -115,7 +120,7 @@ get_sales_rep(Db *sdbp,          // secondary db handle
 } </pre>
       <p>
         In order to use this function, you provide it on the
-        <tt class="methodname">associate()</tt> method after the primary and
+        <code class="methodname">associate()</code> method after the primary and
         secondary databases have been created and opened:
     </p>
       <a id="cxx_index5"></a>
@@ -130,7 +135,6 @@ get_sales_rep(Db *sdbp,          // secondary db handle
               <h3 class="title"><a id="multikeys"></a>Working with Multiple Keys</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                     Until now we have only discussed indexes as if there is
@@ -152,7 +156,7 @@ get_sales_rep(Db *sdbp,          // secondary db handle
                     To do this, you write a key extractor that returns a
                                 
                                 <span>Dbt</span>
-                        whose <tt class="literal">data</tt> member points to an array of
+                        whose <code class="literal">data</code> member points to an array of
                                 
                                 <span>Dbts.</span>
                         Each such member of this array contains a single secondary key.
@@ -167,7 +171,7 @@ get_sales_rep(Db *sdbp,          // secondary db handle
                                 
                                 <span>Dbt</span>
                         returned by the callback must include 
-                        <tt class="literal">DB_DBT_MULTIPLE</tt>. For example:
+                        <code class="literal">DB_DBT_MULTIPLE</code>. For example:
              </p>
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>

@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: BytecodeEnhancer.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
 
+import static com.sleepycat.asm.Opcodes.AALOAD;
 import static com.sleepycat.asm.Opcodes.ACC_ABSTRACT;
 import static com.sleepycat.asm.Opcodes.ACC_PRIVATE;
 import static com.sleepycat.asm.Opcodes.ACC_PUBLIC;
@@ -89,6 +90,7 @@ import com.sleepycat.asm.Type;
 class BytecodeEnhancer extends ClassAdapter {
 
     /** Thrown when we determine that a class is not persistent. */
+    @SuppressWarnings("serial")
     static class NotPersistentException extends RuntimeException {}
 
     /** A static instance is used to avoid fillInStaceTrace overhead. */
@@ -170,8 +172,9 @@ class BytecodeEnhancer extends ClassAdapter {
             throw abort();
         }
         FieldVisitor ret = super.visitField(access, name, desc, sig, value);
-        if ((access & (ACC_STATIC | ACC_TRANSIENT)) == 0) {
-            FieldInfo info = new FieldInfo(ret, name, desc);
+        if ((access & ACC_STATIC) == 0) {
+            FieldInfo info = new FieldInfo(ret, name, desc,
+                                           (access & ACC_TRANSIENT) != 0);
             nonKeyFields.add(info);
             ret = info;
         }
@@ -218,6 +221,8 @@ class BytecodeEnhancer extends ClassAdapter {
         genBdbReadSecKeyFields();
         genBdbWriteNonKeyFields();
         genBdbReadNonKeyFields();
+        genBdbWriteCompositeKeyFields();
+        genBdbReadCompositeKeyFields();
         genBdbGetField();
         genBdbSetField();
         genStaticBlock();
@@ -246,7 +251,9 @@ class BytecodeEnhancer extends ClassAdapter {
         } else {
             for (int i = 0; i < nonKeyFields.size();) {
                 FieldInfo field = nonKeyFields.get(i);
-                if (field.isPriKey) {
+                if (field.isTransient) {
+                    nonKeyFields.remove(i);
+                } else if (field.isPriKey) {
                     if (priKeyField == null) {
                         priKeyField = field;
                         nonKeyFields.remove(i);
@@ -582,10 +589,7 @@ class BytecodeEnhancer extends ClassAdapter {
 
     /**
      *  public void bdbWriteNonKeyFields(EntityOutput output) {
-     *      super.bdbWriteNonKeyFields(output); // if has super
-     *      output.writeInt(nonKeyField1);
-     *      output.writeObject(nonKeyField2, null);
-     *      // etc
+     *      // like bdbWriteSecKeyFields but does not call registerPriKeyObject
      *  }
      */
     private void genBdbWriteNonKeyFields() {
@@ -593,19 +597,14 @@ class BytecodeEnhancer extends ClassAdapter {
             (ACC_PUBLIC, "bdbWriteNonKeyFields",
              "(Lcom/sleepycat/persist/impl/EntityOutput;)V", null, null);
         mv.visitCode();
-        if (hasPersistentSuperclass) {
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ALOAD, 1);
-            mv.visitMethodInsn
-                (INVOKESPECIAL, superclassName, "bdbWriteNonKeyFields",
-                 "(Lcom/sleepycat/persist/impl/EntityOutput;)V");
-        }
-        if (isCompositeKey) {
-            for (FieldInfo field : nonKeyFields) {
-                genWriteSimpleKeyField(mv, field);
-                /* Ignore non-simple (illegal) types for composite key. */
+        if (!isCompositeKey) {
+            if (hasPersistentSuperclass) {
+                mv.visitVarInsn(ALOAD, 0);
+                mv.visitVarInsn(ALOAD, 1);
+                mv.visitMethodInsn
+                    (INVOKESPECIAL, superclassName, "bdbWriteNonKeyFields",
+                     "(Lcom/sleepycat/persist/impl/EntityOutput;)V");
             }
-        } else {
             for (FieldInfo field : nonKeyFields) {
                 genWriteField(mv, field);
             }
@@ -620,14 +619,7 @@ class BytecodeEnhancer extends ClassAdapter {
      *                                  int startField,
      *                                  int endField,
      *                                  int superLevel) {
-     *      // if has super:
-     *      if (superLevel != 0) {
-     *          super.bdbReadNonKeyFields(..., superLevel - 1);
-     *      }
-     *      nonKeyField1 = input.readInt();
-     *      nonKeyField2 = (String) input.readObject();
-     *      // etc
-     *      // or like bdbReadSecKeyFields if not a composite key class
+     *      // like bdbReadSecKeyFields but does not call registerPriKeyObject
      *  }
      */
     private void genBdbReadNonKeyFields() {
@@ -635,14 +627,102 @@ class BytecodeEnhancer extends ClassAdapter {
             (ACC_PUBLIC, "bdbReadNonKeyFields",
              "(Lcom/sleepycat/persist/impl/EntityInput;III)V", null, null);
         mv.visitCode();
-        if (isCompositeKey) {
-            for (FieldInfo field : nonKeyFields) {
-                genReadSimpleKeyField(mv, field);
-                /* Ignore non-simple (illegal) types for composite key. */
-            }
-        } else {
+        if (!isCompositeKey) {
             genReadSuperKeyFields(mv, false);
             genReadFieldSwitch(mv, nonKeyFields);
+        }
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(5, 5);
+        mv.visitEnd();
+    }
+
+    /**
+     *  public void bdbWriteCompositeKeyFields(EntityOutput output,
+     *                                         Format[] formats) {
+     *      output.writeInt(compositeKeyField1);
+     *      output.writeKeyObject(compositeKeyField2, formats[1]);
+     *      // etc
+     *  }
+     */
+    private void genBdbWriteCompositeKeyFields() {
+        MethodVisitor mv = cv.visitMethod
+            (ACC_PUBLIC, "bdbWriteCompositeKeyFields",
+             "(Lcom/sleepycat/persist/impl/EntityOutput;" +
+             "[Lcom/sleepycat/persist/impl/Format;)V",
+             null, null);
+        mv.visitCode();
+        if (isCompositeKey) {
+            for (int i = 0; i < nonKeyFields.size(); i += 1) {
+                FieldInfo field = nonKeyFields.get(i);
+                if (!genWriteSimpleKeyField(mv, field)) {
+                    /* For a non-simple type, call writeKeyObject. */
+                    mv.visitVarInsn(ALOAD, 1);
+                    mv.visitVarInsn(ALOAD, 0);
+                    mv.visitFieldInsn
+                        (GETFIELD, className, field.name,
+                         field.type.getDescriptor());
+                    mv.visitVarInsn(ALOAD, 2);
+                    if (i <= Byte.MAX_VALUE) {
+                        mv.visitIntInsn(BIPUSH, i);
+                    } else {
+                        mv.visitLdcInsn(new Integer(i));
+                    }
+                    mv.visitInsn(AALOAD);
+                    mv.visitMethodInsn
+                        (INVOKEINTERFACE,
+                         "com/sleepycat/persist/impl/EntityOutput",
+                         "writeKeyObject",
+                         "(Ljava/lang/Object;" +
+                          "Lcom/sleepycat/persist/impl/Format;)V");
+                }
+            }
+        }
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(3, 3);
+        mv.visitEnd();
+    }
+
+    /**
+     *  public void bdbReadCompositeKeyFields(EntityInput input,
+     *                                        Format[] formats) {
+     *      compositeKeyField1 = input.readInt();
+     *      compositeKeyField2 = input.readKeyObject(formats[1]);
+     *  }
+     */
+    private void genBdbReadCompositeKeyFields() {
+        MethodVisitor mv = cv.visitMethod
+            (ACC_PUBLIC, "bdbReadCompositeKeyFields",
+             "(Lcom/sleepycat/persist/impl/EntityInput;" +
+             "[Lcom/sleepycat/persist/impl/Format;)V",
+             null, null);
+        mv.visitCode();
+        if (isCompositeKey) {
+            for (int i = 0; i < nonKeyFields.size(); i += 1) {
+                FieldInfo field = nonKeyFields.get(i);
+                /* Ignore non-simple (illegal) types for composite key. */
+                if (!genReadSimpleKeyField(mv, field)) {
+                    /* For a non-simple type, call readKeyObject. */
+                    mv.visitVarInsn(ALOAD, 0);
+                    mv.visitVarInsn(ALOAD, 1);
+                    mv.visitVarInsn(ALOAD, 2);
+                    if (i <= Byte.MAX_VALUE) {
+                        mv.visitIntInsn(BIPUSH, i);
+                    } else {
+                        mv.visitLdcInsn(new Integer(i));
+                    }
+                    mv.visitInsn(AALOAD);
+                    mv.visitMethodInsn
+                        (INVOKEINTERFACE,
+                         "com/sleepycat/persist/impl/EntityInput",
+                         "readKeyObject",
+                         "(Lcom/sleepycat/persist/impl/Format;)" +
+                         "Ljava/lang/Object;");
+                    mv.visitTypeInsn(CHECKCAST, getTypeInstName(field.type));
+                    mv.visitFieldInsn
+                        (PUTFIELD, className, field.name,
+                         field.type.getDescriptor());
+                }
+            }
         }
         mv.visitInsn(RETURN);
         mv.visitMaxs(5, 5);
@@ -1452,10 +1532,15 @@ class BytecodeEnhancer extends ClassAdapter {
         OrderInfo order;
         boolean isPriKey;
         boolean isSecKey;
+        boolean isTransient;
 
-        FieldInfo(FieldVisitor parent, String name, String desc) {
+        FieldInfo(FieldVisitor parent,
+                  String name,
+                  String desc,
+                  boolean isTransient) {
             this.parent = parent;
             this.name = name;
+            this.isTransient = isTransient;
             type = Type.getType(desc);
         }
 
@@ -1472,6 +1557,12 @@ class BytecodeEnhancer extends ClassAdapter {
             } else if (desc.equals
                     ("Lcom/sleepycat/persist/model/SecondaryKey;")) {
                 isSecKey = true;
+            } else if (desc.equals
+                    ("Lcom/sleepycat/persist/model/NotPersistent;")) {
+                isTransient = true;
+            } else if (desc.equals
+                    ("Lcom/sleepycat/persist/model/NotTransient;")) {
+                isTransient = false;
             }
             return ret;
         }

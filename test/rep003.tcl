@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002,2008 Oracle.  All rights reserved.
+# Copyright (c) 2002-2009 Oracle.  All rights reserved.
 #
-# $Id: rep003.tcl,v 12.14 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  	rep003
 # TEST	Repeated shutdown/restart replication test
@@ -15,6 +15,7 @@
 proc rep003 { method { tnum "003" } args } {
 	source ./include.tcl
 	global rep003_dbname rep003_omethod rep003_oargs
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
@@ -36,6 +37,11 @@ proc rep003 { method { tnum "003" } args } {
 		return
 	}
 
+	set msg2 "with on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "with in-memory replication files"
+	}
+
 	set rep003_dbname rep003.db
 	set rep003_omethod [convert_method $method]
 	set rep003_oargs [convert_args $method $args]
@@ -54,7 +60,7 @@ proc rep003 { method { tnum "003" } args } {
 				continue
 			}
 			puts "Rep$tnum ($method $recopt):\
-			    Replication repeated-startup test."
+			    Replication repeated-startup test $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep003_sub $method $tnum $l $recopt $args
@@ -64,12 +70,18 @@ proc rep003 { method { tnum "003" } args } {
 
 proc rep003_sub { method tnum logset recargs largs } {
 	source ./include.tcl
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -94,7 +106,7 @@ proc rep003_sub { method tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -errpfx MASTER $verbargs \
+	    -errpfx MASTER $verbargs $repmemargs \
 	    -home $masterdir -txn $m_logargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -108,7 +120,7 @@ proc rep003_sub { method tnum logset recargs largs } {
 	# Open a client.
 	repladd 2
 	set env_cmd(C) "berkdb_env_noerr -create -private -home $clientdir \
-	    -txn $c_logargs -errpfx CLIENT $verbargs \
+	    -txn $c_logargs -errpfx CLIENT $verbargs $repmemargs \
 	    -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C) $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE

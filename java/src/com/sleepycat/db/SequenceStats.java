@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -16,76 +16,56 @@ public class SequenceStats {
     // no public constructor
     /* package */ SequenceStats() {}
 
-    private int st_wait;
-    /**
-    The number of times a thread of control was forced to wait on the
-    handle mutex.
-    */
-    public int getWait() {
+    private long st_wait;
+    /** TODO */
+    public long getWait() {
         return st_wait;
     }
 
-    private int st_nowait;
-    /**
-    The number of times that a thread of control was able to obtain handle
-    mutex without waiting.
-    */
-    public int getNowait() {
+    private long st_nowait;
+    /** TODO */
+    public long getNowait() {
         return st_nowait;
     }
 
     private long st_current;
-    /**
-    The current value of the sequence in the database.
-    */
+    /** TODO */
     public long getCurrent() {
         return st_current;
     }
 
     private long st_value;
-    /**
-    The current cached value of the sequence.
-    */
+    /** TODO */
     public long getValue() {
         return st_value;
     }
 
     private long st_last_value;
-    /**
-    The last cached value of the sequence.
-    */
+    /** TODO */
     public long getLastValue() {
         return st_last_value;
     }
 
     private long st_min;
-    /**
-    The minimum permitted value of the sequence.
-    */
+    /** TODO */
     public long getMin() {
         return st_min;
     }
 
     private long st_max;
-    /**
-    The maximum permitted value of the sequence.
-    */
+    /** TODO */
     public long getMax() {
         return st_max;
     }
 
     private int st_cache_size;
-    /**
-    The number of values that will be cached in this handle.
-    */
+    /** TODO */
     public int getCacheSize() {
         return st_cache_size;
     }
 
     private int st_flags;
-    /**
-    The flags value for the sequence.
-    */
+    /** TODO */
     public int getFlags() {
         return st_flags;
     }

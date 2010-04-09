@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: bt_curadj.c,v 12.17 2008/01/08 20:57:59 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -82,10 +82,34 @@ __bam_ca_delete(dbp, pgno, indx, delete, countp)
 				DB_ASSERT(env, !STD_LOCKING(dbc) ||
 				    cp->lock_mode != DB_LOCK_NG);
 				 */
-				if (delete)
+				if (delete) {
 					F_SET(cp, C_DELETED);
-				else
+					/*
+					 * If we're deleting the item, we can't
+					 * keep a streaming offset cached.
+					 */
+					cp->stream_start_pgno = PGNO_INVALID;
+				} else
 					F_CLR(cp, C_DELETED);
+
+#ifdef HAVE_COMPRESSION
+				/*
+				 * We also set the C_COMPRESS_MODIFIED flag,
+				 * which prompts the compression code to look
+				 * for it's current entry again if it needs to.
+				 *
+				 * The flag isn't cleared, because the
+				 * compression code still needs to do that even
+				 * for an entry that becomes undeleted.
+				 *
+				 * This flag also needs to be set if an entry is
+				 * updated, but since the compression code
+				 * always deletes before an update, setting it
+				 * here is sufficient.
+				 */
+				F_SET(cp, C_COMPRESS_MODIFIED);
+#endif
+
 				++count;
 			}
 		}

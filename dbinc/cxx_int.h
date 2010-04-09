@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2009 Oracle.  All rights reserved.
  *
- * $Id: cxx_int.h,v 12.8 2008/01/08 20:58:17 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_CXX_INT_H_

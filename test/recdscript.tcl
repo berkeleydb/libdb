@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: recdscript.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Recovery txn prepare script
 # Usage: recdscript op dir envcmd dbfile cmd
@@ -19,7 +19,7 @@ source $test_path/test.tcl
 set usage "recdscript op dir envcmd dbfile gidfile cmd"
 
 # Verify usage
-if { $argc != 6 } {
+if { $argc < 6 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
@@ -31,6 +31,7 @@ set envcmd [ lindex $argv 2 ]
 set dbfile [ lindex $argv 3 ]
 set gidfile [ lindex $argv 4 ]
 set cmd [ lindex $argv 5 ]
+set args [ lindex $argv 6 ]
 
-op_recover_prep $op $dir $envcmd $dbfile $gidfile $cmd
+eval {op_recover_prep $op $dir $envcmd $dbfile $gidfile $cmd} $args
 flush stdout

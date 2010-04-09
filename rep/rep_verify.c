@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
- * $Id: rep_verify.c,v 12.69 2008/03/13 16:21:05 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -14,7 +14,7 @@
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
 
-static int __rep_dorecovery __P((ENV *, DB_LSN *, DB_LSN *));
+static int __rep_internal_init __P((ENV *, u_int32_t));
 
 /*
  * __rep_verify --
@@ -34,12 +34,13 @@ __rep_verify(env, rp, rec, eid, savetime)
 	DBT mylog;
 	DB_LOG *dblp;
 	DB_LOGC *logc;
-	DB_LSN lsn;
+	DB_LSN lsn, prev_ckp;
 	DB_REP *db_rep;
 	LOG *lp;
 	REP *rep;
-	u_int32_t rectype, logflag;
-	int match, ret, t_ret;
+	__txn_ckp_args *ckp_args;
+	u_int32_t logflag, rectype;
+	int master, match, ret, t_ret;
 
 	ret = 0;
 	db_rep = env->rep_handle;
@@ -68,11 +69,11 @@ __rep_verify(env, rp, rec, eid, savetime)
 	/* If verify_lsn of ZERO is passed in, get last log. */
 	MUTEX_LOCK(env, rep->mtx_clientdb);
 	logflag = IS_ZERO_LSN(lp->verify_lsn) ? DB_LAST : DB_SET;
+	prev_ckp = lp->prev_ckp;
 	MUTEX_UNLOCK(env, rep->mtx_clientdb);
 	if ((ret = __logc_get(logc, &rp->lsn, &mylog, logflag)) != 0)
-		goto err;
+		goto out;
 	match = 0;
-	LOGCOPY_32(env, &rectype, mylog.data);
 	if (mylog.size == rec->size &&
 	    memcmp(mylog.data, rec->data, rec->size) == 0)
 		match = 1;
@@ -81,13 +82,52 @@ __rep_verify(env, rp, rec, eid, savetime)
 	 * identification record and try again.
 	 */
 	if (match == 0) {
-		ZERO_LSN(lsn);
+		master = rep->master_id;
+		/*
+		 * We will eventually roll back over this log record (unless we
+		 * ultimately have to give up and do an internal init).  So, if
+		 * it was a checkpoint, make sure we don't end up without any
+		 * checkpoints left in the entire log.
+		 */
+		LOGCOPY_32(env, &rectype, mylog.data);
+		DB_ASSERT(env, ret == 0);
+		if (!lp->db_log_inmemory && rectype == DB___txn_ckp) {
+			if ((ret = __txn_ckp_read(env,
+			    mylog.data, &ckp_args)) != 0)
+				goto out;
+			lsn = ckp_args->last_ckp;
+			__os_free(env, ckp_args);
+			MUTEX_LOCK(env, rep->mtx_clientdb);
+			lp->prev_ckp =	lsn;
+			MUTEX_UNLOCK(env, rep->mtx_clientdb);
+			if (IS_ZERO_LSN(lsn)) {
+				/*
+				 * No previous checkpoints?  The only way this
+				 * is OK is if we have the entire log, all the
+				 * way back to file #1.
+				 */
+				if ((ret = __logc_get(logc,
+				    &lsn, &mylog, DB_FIRST)) != 0)
+					goto out;
+				if (lsn.file != 1) {
+					ret = __rep_internal_init(env, 0);
+					goto out;
+				}
+
+				/* Restore position of log cursor. */
+				if ((ret = __logc_get(logc,
+				    &rp->lsn, &mylog, DB_SET)) != 0)
+					goto out;
+			}
+		}
 		if ((ret = __rep_log_backup(env, rep, logc, &lsn)) == 0) {
 			MUTEX_LOCK(env, rep->mtx_clientdb);
 			lp->verify_lsn = lsn;
 			__os_gettime(env, &lp->rcvd_ts, 1);
 			lp->wait_ts = rep->request_gap;
 			MUTEX_UNLOCK(env, rep->mtx_clientdb);
+			if (master != DB_EID_INVALID)
+				eid = master;
 			(void)__rep_send_message(env, eid, REP_VERIFY_REQ,
 			    &lsn, NULL, 0, DB_REP_ANYWHERE);
 		} else if (ret == DB_NOTFOUND) {
@@ -96,28 +136,106 @@ __rep_verify(env, rp, rec, eid, savetime)
 			 * logs have been removed or we've rolled back
 			 * all the way to the beginning.
 			 */
-			STAT(rep->stat.st_outdated++);
-			REP_SYSTEM_LOCK(env);
-			if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT))
-				ret = DB_REP_JOIN_FAILURE;
-			else {
-				F_CLR(rep, REP_F_RECOVER_VERIFY);
-				F_SET(rep, REP_F_RECOVER_UPDATE);
-				ZERO_LSN(rep->first_lsn);
-				ZERO_LSN(rep->ckp_lsn);
-				ret = 0;
-			}
-			REP_SYSTEM_UNLOCK(env);
-			if (ret == 0)
-				(void)__rep_send_message(env,
-				    eid, REP_UPDATE_REQ, NULL,
-				    NULL, 0, 0);
+			ret = __rep_internal_init(env, 0);
 		}
-	} else
-		ret = __rep_verify_match(env, &rp->lsn, savetime);
+	} else {
+		/*
+		 * We have a match, so we can probably do a simple sync, without
+		 * needing internal init.  But first, check for a couple of
+		 * special cases.
+		 */
 
-err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
+		if (!lp->db_log_inmemory && !IS_ZERO_LSN(prev_ckp)) {
+			/*
+			 * We previously saw a checkpoint, which means we may
+			 * now be about to roll back over it and lose it.  Make
+			 * sure we'll end up still having at least one other
+			 * checkpoint.  (Note that if the current record -- the
+			 * one we've just matched -- happens to be a checkpoint,
+			 * then it must be the same as the prev_ckp we're now
+			 * about to try reading.  Which means we wouldn't really
+			 * have to read it.  But checking for that special case
+			 * doesn't seem worth the trouble.)
+			 */
+			if ((ret = __logc_get(logc,
+			    &prev_ckp, &mylog, DB_SET)) != 0) {
+				if (ret == DB_NOTFOUND)
+					ret = __rep_internal_init(env, 0);
+				goto out;
+			}
+			/*
+			 * We succeeded reading for the prev_ckp, so it's safe
+			 * to fall through to the verify_match.
+			 */
+		}
+		/*
+		 * Mixed version internal init doesn't work with 4.4, so we
+		 * can't load NIMDBs from a very old-version master.  So, fib to
+		 * ourselves that they're already loaded, so that we don't try.
+		 */
+		if (rep->version == DB_REPVERSION_44)
+			F_SET(rep, REP_F_NIMDBS_LOADED);
+		if (F_ISSET(rep, REP_F_NIMDBS_LOADED))
+			ret = __rep_verify_match(env, &rp->lsn, savetime);
+		else {
+			/*
+			 * Even though we found a match, we haven't yet loaded
+			 * any NIMDBs, so we have to do an abbreviated internal
+			 * init.  We leave lp->verify_lsn set to the matching
+			 * sync point, in case upon eventual examination of the
+			 * UPDATE message it turns out there are no NIMDBs
+			 * (since we can then skip back to a verify_match
+			 * outcome).
+			 */
+			ret = __rep_internal_init(env, REP_F_ABBREVIATED);
+		}
+	}
+
+out:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
+	return (ret);
+}
+
+static int
+__rep_internal_init(env, abbrev)
+	ENV *env;
+	u_int32_t abbrev;
+{
+	REP *rep;
+	int master, ret;
+
+	rep = env->rep_handle->region;
+	REP_SYSTEM_LOCK(env);
+#ifdef HAVE_STATISTICS
+	if (!abbrev)
+		rep->stat.st_outdated++;
+#endif
+
+	/*
+	 * What we call "abbreviated internal init" is really just NIMDB
+	 * materialization, and we always do that even if NOAUTOINIT has been
+	 * configured.
+	 */
+	if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT) && !abbrev)
+		ret = DB_REP_JOIN_FAILURE;
+	else {
+		F_CLR(rep, REP_F_RECOVER_VERIFY);
+		F_SET(rep, REP_F_RECOVER_UPDATE);
+		if (abbrev) {
+			RPRINT(env, DB_VERB_REP_SYNC, (env,
+			 "send UPDATE_REQ, merely to check for NIMDB refresh"));
+			F_SET(rep, REP_F_ABBREVIATED);
+		} else
+			F_CLR(rep, REP_F_ABBREVIATED);
+		ZERO_LSN(rep->first_lsn);
+		ZERO_LSN(rep->ckp_lsn);
+		ret = 0;
+	}
+	master = rep->master_id;
+	REP_SYSTEM_UNLOCK(env);
+	if (ret == 0 && master != DB_EID_INVALID)
+		(void)__rep_send_message(env,
+		    master, REP_UPDATE_REQ, NULL, NULL, 0, 0);
 	return (ret);
 }
 
@@ -125,21 +243,20 @@ err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
  * __rep_verify_fail --
  *	Handle a REP_VERIFY_FAIL message.
  *
- * PUBLIC: int __rep_verify_fail __P((ENV *, __rep_control_args *, int));
+ * PUBLIC: int __rep_verify_fail __P((ENV *, __rep_control_args *));
  */
 int
-__rep_verify_fail(env, rp, eid)
+__rep_verify_fail(env, rp)
 	ENV *env;
 	__rep_control_args *rp;
-	int eid;
 {
 	DB_LOG *dblp;
 	DB_REP *db_rep;
 	LOG *lp;
 	REP *rep;
-	int lockout, ret;
+	int clnt_lock_held, lockout, master, ret;
 
-	lockout = 0;
+	clnt_lock_held = lockout = 0;
 	ret = 0;
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -154,7 +271,6 @@ __rep_verify_fail(env, rp, eid)
 	if (F_ISSET(rep, REP_F_RECOVER_MASK) &&
 	    !F_ISSET(rep, REP_F_RECOVER_LOG | REP_F_RECOVER_VERIFY))
 		return (0);
-	MUTEX_LOCK(env, rep->mtx_clientdb);
 	REP_SYSTEM_LOCK(env);
 	/*
 	 * We should not ever be in internal init with a lease granted.
@@ -163,30 +279,24 @@ __rep_verify_fail(env, rp, eid)
 	    !IS_USING_LEASES(env) || __rep_islease_granted(env) == 0);
 
 	/*
-	 * Update stats.
-	 */
-	STAT(rep->stat.st_outdated++);
-
-	/*
 	 * Clean up old internal init in progress if:
 	 * REP_C_NOAUTOINIT is not configured and
 	 * we are recovering LOG and this LSN is in the range we need.
 	 */
-	if (!FLD_ISSET(rep->config, REP_C_NOAUTOINIT) &&
-	    (F_ISSET(rep, REP_F_RECOVER_LOG) &&
+	if (F_ISSET(rep, REP_F_RECOVER_LOG) &&
 	    LOG_COMPARE(&rep->first_lsn, &rp->lsn) <= 0 &&
-	    LOG_COMPARE(&rep->last_lsn, &rp->lsn) >= 0)) {
+	    LOG_COMPARE(&rep->last_lsn, &rp->lsn) >= 0) {
 		/*
 		 * Already locking out messages, give up.
 		 */
 		if (F_ISSET(rep, REP_F_READY_MSG))
-		    goto unlock;
+			goto unlock;
 
 		/*
 		 * Lock out other messages to prevent race conditions.
 		 */
 		if ((ret = __rep_lockout_msg(env, rep, 1)) != 0)
-		    goto unlock;
+			goto unlock;
 		lockout = 1;
 
 		/*
@@ -207,6 +317,10 @@ __rep_verify_fail(env, rp, eid)
 		lockout = 0;
 	}
 
+	REP_SYSTEM_UNLOCK(env);
+	MUTEX_LOCK(env, rep->mtx_clientdb);
+	clnt_lock_held = 1;
+	REP_SYSTEM_LOCK(env);
 	/*
 	 * Commence an internal init if:
 	 * We are in VERIFY state and the failing LSN is the one we
@@ -214,6 +328,9 @@ __rep_verify_fail(env, rp, eid)
 	 * we're recovering LOG and this LSN is in the range we need or
 	 * we are in normal state (no recovery flags set) and
 	 * the failing LSN is the one we're ready for.
+	 *
+	 * We don't want an old or delayed VERIFY_FAIL message to throw us
+	 * into internal initialization when we shouldn't be.
 	 */
 	if (((F_ISSET(rep, REP_F_RECOVER_VERIFY)) &&
 	    LOG_COMPARE(&rp->lsn, &lp->verify_lsn) == 0) ||
@@ -223,10 +340,13 @@ __rep_verify_fail(env, rp, eid)
 	    (F_ISSET(rep, REP_F_RECOVER_MASK) == 0 &&
 	    LOG_COMPARE(&rp->lsn, &lp->ready_lsn) >= 0)) {
 		/*
-		 * We don't want an old or delayed VERIFY_FAIL
-		 * message to throw us into internal initialization
-		 * when we shouldn't be. If REP_C_NOAUTOINIT is configured,
-		 * return DB_REP_JOIN_FAILURE instead of doing internal init.
+		 * Update stats.
+		 */
+		STAT(rep->stat.st_outdated++);
+
+		/*
+		 * If REP_C_NOAUTOINIT is configured, return
+		 * DB_REP_JOIN_FAILURE instead of doing internal init.
 		 */
 		if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT)) {
 			ret = DB_REP_JOIN_FAILURE;
@@ -241,18 +361,21 @@ __rep_verify_fail(env, rp, eid)
 		ZERO_LSN(rep->first_lsn);
 		ZERO_LSN(rep->ckp_lsn);
 		lp->wait_ts = rep->request_gap;
+		master = rep->master_id;
 		REP_SYSTEM_UNLOCK(env);
 		MUTEX_UNLOCK(env, rep->mtx_clientdb);
-		(void)__rep_send_message(env,
-		    eid, REP_UPDATE_REQ, NULL, NULL, 0, 0);
+		if (master != DB_EID_INVALID)
+			(void)__rep_send_message(env,
+			    master, REP_UPDATE_REQ, NULL, NULL, 0, 0);
 	} else {
 		/*
 		 * Otherwise ignore this message.
 		 */
 msglck:		if (lockout)
-		    F_CLR(rep, REP_F_READY_MSG);
+			F_CLR(rep, REP_F_READY_MSG);
 unlock:		REP_SYSTEM_UNLOCK(env);
-		MUTEX_UNLOCK(env, rep->mtx_clientdb);
+		if (clnt_lock_held)
+			MUTEX_UNLOCK(env, rep->mtx_clientdb);
 	}
 	return (ret);
 }
@@ -316,7 +439,10 @@ __rep_verify_req(env, rp, eid)
 	return (__logc_close(logc));
 }
 
-static int
+/*
+ * PUBLIC: int __rep_dorecovery __P((ENV *, DB_LSN *, DB_LSN *));
+ */
+int
 __rep_dorecovery(env, lsnp, trunclsnp)
 	ENV *env;
 	DB_LSN *lsnp, *trunclsnp;
@@ -534,6 +660,7 @@ __rep_verify_match(env, reclsnp, savetime)
 	lp->wait_ts = rep->request_gap;
 	__os_gettime(env, &lp->rcvd_ts, 1);
 	ZERO_LSN(lp->verify_lsn);
+	ZERO_LSN(lp->prev_ckp);
 
 	/*
 	 * Discard any log records we have queued;  we're about to re-request

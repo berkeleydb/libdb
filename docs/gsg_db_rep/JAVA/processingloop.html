@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Processing Loop</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="fwrkmasterreplica.html" title="Chapter 4. Replica versus Master Processes" />
-    <link rel="previous" href="fwrkmasterreplica.html" title="Chapter 4. Replica versus Master Processes" />
+    <link rel="prev" href="fwrkmasterreplica.html" title="Chapter 4. Replica versus Master Processes" />
     <link rel="next" href="exampledoloop.html" title="Example Processing Loop" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="processingloop"></a>Processing Loop</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                         Typically the central part of any replication application
@@ -69,7 +68,7 @@
                                           could check for a
                                           
                                           <span>
-                                                  <tt class="classname">ReplicationHandleDeadException</tt>
+                                                  <code class="classname">ReplicationHandleDeadException</code>
                                             exception
                                           </span>
 
@@ -99,7 +98,7 @@
                                           <span class="emphasis"><em>can</em></span> open
                                           replicas with read-only
                                           databases, so long as you are
-                                          prepared to closed and the reopen
+                                          prepared to close and then reopen
                                           the handle in the event the
                                           client becomes a master.
                                   </p>

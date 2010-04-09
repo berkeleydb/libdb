@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Opening and Closing Databases
-	</title>
+    <title>Opening and Closing Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="BasicProgram.html" title="Chapter 2. &#10;&#9;&#9;The Basic Program&#10;&#9;" />
-    <link rel="previous" href="openclasscatalog.html" title="&#10;&#9;&#9;Opening and Closing the Class Catalog&#10;&#9;" />
-    <link rel="next" href="createbindingscollections.html" title="&#10;&#9;&#9;Creating Bindings and Collections&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="BasicProgram.html" title="Chapter 2.  The Basic Program" />
+    <link rel="prev" href="openclasscatalog.html" title="Opening and Closing the Class Catalog" />
+    <link rel="next" href="createbindingscollections.html" title="Creating Bindings and Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -40,7 +38,6 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     This section describes how to open and close the Part, Supplier
@@ -52,7 +49,7 @@
 	format and all values have the same format.
 </p>
       <p>
-    The <tt class="classname">SampleDatabase</tt> class is extended to open and close
+    The <code class="classname">SampleDatabase</code> class is extended to open and close
 	the three databases. The following additional class members are
 	needed.
 </p>
@@ -60,18 +57,18 @@
       <pre class="programlisting">public class SampleDatabase
 {
     ...
-<b class="userinput"><tt>    private static final String SUPPLIER_STORE = "supplier_store";
+<strong class="userinput"><code>    private static final String SUPPLIER_STORE = "supplier_store";
     private static final String PART_STORE = "part_store";
-    private static final String SHIPMENT_STORE = "shipment_store";</tt></b>
+    private static final String SHIPMENT_STORE = "shipment_store";</code></strong>
     ...
-<b class="userinput"><tt>    private Database supplierDb;
+<strong class="userinput"><code>    private Database supplierDb;
     private Database partDb;
-    private Database shipmentDb;</tt></b>
+    private Database shipmentDb;</code></strong>
     ...
 } </pre>
       <p>
     For each database there is a database name constant and a
-	<tt class="classname">Database</tt> object.
+	<code class="classname">Database</code> object.
 </p>
       <p>
     The following statements open the three databases by
@@ -87,16 +84,16 @@
         dbConfig.setAllowCreate(true);
         dbConfig.setType(DatabaseType.BTREE);
         ...
-<b class="userinput"><tt>        partDb = env.openDatabase(null, PART_STORE, null, dbConfig);
+<strong class="userinput"><code>        partDb = env.openDatabase(null, PART_STORE, null, dbConfig);
         supplierDb = env.openDatabase(null, SUPPLIER_STORE, null, dbConfig);
-        shipmentDb = env.openDatabase(null, SHIPMENT_STORE, null, dbConfig);</tt></b>
+        shipmentDb = env.openDatabase(null, SHIPMENT_STORE, null, dbConfig);</code></strong>
         ...
     } </pre>
       <p>
     The database configuration object that was used previously for
 	opening the catalog database is reused for opening the three
 	databases above. The databases are created if they don't already
-	exist. The parameters of the <tt class="methodname">openDatabase()</tt> method were
+	exist. The parameters of the <code class="methodname">openDatabase()</code> method were
 	described earlier when the class catalog database was opened.
 </p>
       <p>
@@ -106,9 +103,9 @@
       <pre class="programlisting">    public void close()
         throws DatabaseException
     {
-<b class="userinput"><tt>        partDb.close();
+<strong class="userinput"><code>        partDb.close();
         supplierDb.close();
-        shipmentDb.close();</tt></b>
+        shipmentDb.close();</code></strong>
         javaCatalog.close();
         env.close();
     } </pre>
@@ -124,7 +121,7 @@
       <pre class="programlisting">public class SampleDatabase
 {
     ...
-<b class="userinput"><tt>    public final Database getPartDatabase()
+<strong class="userinput"><code>    public final Database getPartDatabase()
     {
         return partDb;
     }
@@ -137,7 +134,7 @@
     public final Database getShipmentDatabase()
     {
         return shipmentDb;
-    }</tt></b>
+    }</code></strong>
     ...
 }</pre>
     </div>

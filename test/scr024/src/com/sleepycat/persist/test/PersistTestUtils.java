@@ -1,19 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: PersistTestUtils.java,v 1.3 2008/02/18 14:48:11 mark Exp $
+ * $Id$
  */
 package com.sleepycat.persist.test;
-
-import java.io.FileNotFoundException;
 
 import junit.framework.TestCase;
 
 import com.sleepycat.compat.DbCompat;
-import com.sleepycat.db.Database;
-import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.Environment;
 
 class PersistTestUtils {
@@ -43,20 +39,7 @@ class PersistTestUtils {
                 dbName += "#" + keyName;
             }
         }
-        boolean exists;
-        try {
-            DatabaseConfig config = new DatabaseConfig();
-            config.setReadOnly(true);
-            Database db = DbCompat.openDatabase
-                (env, null/*txn*/, fileName, dbName, config);
-            db.close();
-            exists = true;
-        } catch (FileNotFoundException e) {
-            exists = false;
-        } catch (Exception e) {
-            /* Any other exception means the DB does exist. */
-            exists = true;
-        }
+        boolean exists = DbCompat.databaseExists(env, fileName, dbName);
         if (expectExists != exists) {
             TestCase.fail
                 ((expectExists ? "Does not exist: " : "Does exist: ") +

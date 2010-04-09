@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_internal.c,v 12.28 2008/01/08 20:58:52 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -158,6 +158,9 @@ _DeleteInfo(p)
 	}
 	if (p->i_hashproc != NULL) {
 		Tcl_DecrRefCount(p->i_hashproc);
+	}
+	if (p->i_part_callback != NULL) {
+		Tcl_DecrRefCount(p->i_part_callback);
 	}
 	if (p->i_second_call != NULL) {
 		Tcl_DecrRefCount(p->i_second_call);

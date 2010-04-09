@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test028.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test028
 # TEST	Cursor delete test
@@ -24,9 +24,11 @@ proc test028 { method args } {
 	}
 	if { [is_record_based $method] == 1 } {
 		set key 10
-	} else {
-		append args " -dup"
+	} else { 
 		set key "put_after_cursor_del"
+		if { [is_compressed $args] == 0 } {
+			append args " -dup"
+		}
 	}
 
 	# Create the database and open the dictionary
@@ -134,7 +136,8 @@ proc test028 { method args } {
 
 			# Now repeat the above set of tests with
 			# duplicates (if not RECNO).
-			if { [is_record_based $method] == 1 } {
+			if { [is_record_based $method] == 1 ||\
+			    [is_compressed $args] == 1 } {
 				continue;
 			}
 

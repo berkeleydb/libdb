@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: TestSR15721.java,v 12.2 2008/02/08 20:12:37 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections.test;
@@ -25,9 +25,7 @@ public class TestSR15721 extends TestCase {
      * Runs a command line collection test.
      * @see #usage
      */
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         if (args.length == 1 &&
             (args[0].equals("-h") || args[0].equals("-help"))) {
             usage();
@@ -51,9 +49,7 @@ public class TestSR15721 extends TestCase {
         System.exit(2);
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite(TestSR15721.class);
         return suite;
     }
@@ -61,6 +57,7 @@ public class TestSR15721 extends TestCase {
     private Environment env;
     private CurrentTransaction currentTxn;
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -68,6 +65,7 @@ public class TestSR15721 extends TestCase {
         currentTxn = CurrentTransaction.getInstance(env);
     }
 
+    @Override
     public void tearDown() {
         try {
             if (env != null) {

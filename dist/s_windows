@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_windows,v 12.27 2008/01/17 13:59:12 bostic Exp $
+#	$Id$
 #
 # Build Windows include files.
 
@@ -55,7 +55,15 @@ typedef int32_t ssize_t;\\
 	d
 }
 /@time_t_decl@/d
-s/@uintmax_t_decl@/typedef u_int64_t uintmax_t;/
+/@uintmax_t_decl@/{
+	i\\
+#if defined(_MSC_VER) && _MSC_VER < 1300\\
+typedef u_int32_t uintmax_t;\\
+#else\\
+typedef u_int64_t uintmax_t;\\
+#endif
+	d
+}
 /@uintptr_t_decl@/{
 	i\\
 #ifdef _WIN64\\
@@ -229,6 +237,17 @@ f=../build_windows/clib_port.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 f=../build_wince/clib_port.h
+cmp $t $f > /dev/null 2>&1 ||
+    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+
+# Build the Windows dbstl_common.h.
+cat <<ENDOFSEDTEXT > $s
+s/@WSTRING_decl@/#define	HAVE_WSTRING	1/
+s/@TLS_decl@/#define	TLS_DECL_MODIFIER	__declspec(thread)/
+s/@TLS_defn@/#define	TLS_DEFN_MODIFIER	__declspec(thread)/
+ENDOFSEDTEXT
+sed -f $s ../stl/dbstl_common.in > $t
+f=../build_windows/dbstl_common.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
 

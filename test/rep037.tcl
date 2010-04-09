@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep037.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep037
 # TEST	Test of internal initialization and page throttling.
@@ -17,6 +17,9 @@
 proc rep037 { method { niter 1500 } { tnum "037" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -39,6 +42,22 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	# Run the body of the test with and without recovery,
 	# and with and without cleaning.
 	set cleanopts { bulk clean noclean }
@@ -52,8 +71,8 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 					continue
 				}
 				set args $saved_args
-				puts "Rep$tnum ($method $c $r $args):\
-				    Test of internal init with page throttling."
+				puts "Rep$tnum ($method $c $r $args): Test of\
+				    internal init with page throttling $msg $msg2."
 				puts "Rep$tnum: Master logs are [lindex $l 0]"
 				puts "Rep$tnum: Client logs are [lindex $l 1]"
 				rep037_sub $method $niter $tnum $l $r $c $args
@@ -65,12 +84,19 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 proc rep037_sub { method niter tnum logset recargs clean largs } {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -111,7 +137,7 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 	}
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create $m_txnargs \
+	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $repmemargs \
 	    $m_logargs -log_max $log_max -errpfx MASTER $verbargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
@@ -119,7 +145,7 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $c_txnargs \
+	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $repmemargs \
 	    $c_logargs -log_max $log_max -errpfx CLIENT $verbargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
@@ -142,7 +168,7 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
-	eval rep_test $method $masterenv NULL $niter $start $start 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $start $start 0 $largs
 	incr start $niter
 	process_msgs $envlist
 
@@ -158,7 +184,7 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 		# Run rep_test in the master (don't update client).
 		puts "\tRep$tnum.c: Running rep_test in replicated env."
 	 	eval rep_test \
-		    $method $masterenv NULL $niter $start $start 0 0 $largs
+		    $method $masterenv NULL $niter $start $start 0 $largs
 		incr start $niter
 		replclear 2
 
@@ -192,13 +218,17 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 		# logs and that will trigger it.
 		#
 		set entries 10
-		eval rep_test $method \
-		    $masterenv NULL $entries $niter $start $start 0 $largs
+		eval rep_test \
+		    $method $masterenv NULL $entries $start $start 0 $largs
+		incr start $entries
 		process_msgs $envlist 0 NONE err
 	}
 
 	puts "\tRep$tnum.f: Verify logs and databases"
-	rep_verify $masterdir $masterenv $clientdir $clientenv 1
+	set verify_subset \
+	    [expr { $m_logtype == "in-memory" || $c_logtype == "in-memory" }]
+	rep_verify $masterdir $masterenv\
+	     $clientdir $clientenv $verify_subset 1 1
 
 	puts "\tRep$tnum.g: Verify throttling."
 	if { $niter > 1000 } {

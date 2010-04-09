@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: SubIndexCursor.java,v 1.1 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist;
@@ -26,32 +26,33 @@ class SubIndexCursor<V> extends BasicCursor<V> {
         super(cursor, adapter, false/*updateAllowed*/);
     }
 
+    @Override
     public EntityCursor<V> dup()
         throws DatabaseException {
 
         return new SubIndexCursor<V>(cursor.dup(true), adapter);
     }
 
-    public V nextDup(LockMode lockMode)
-        throws DatabaseException {
-
+    @Override
+    public V nextDup(LockMode lockMode) {
         checkInitialized();
         return null;
     }
 
+    @Override
     public V nextNoDup(LockMode lockMode)
         throws DatabaseException {
 
         return returnValue(cursor.getNext(key, pkey, data, lockMode));
     }
 
-    public V prevDup(LockMode lockMode)
-        throws DatabaseException {
-
+    @Override
+    public V prevDup(LockMode lockMode) {
         checkInitialized();
         return null;
     }
 
+    @Override
     public V prevNoDup(LockMode lockMode)
         throws DatabaseException {
 

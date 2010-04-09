@@ -1,4 +1,4 @@
-# $Id: report.awk,v 1.3 2008/01/02 15:54:03 bostic Exp $
+# $Id$
 
 /^[^#]/ {
 	total[$1] += $2

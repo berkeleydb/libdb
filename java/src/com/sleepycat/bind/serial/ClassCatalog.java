@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: ClassCatalog.java,v 12.6 2008/01/08 20:58:35 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.serial;
@@ -28,6 +28,8 @@ import com.sleepycat.db.DatabaseException;
  * of the full class information.  When used with {@link SerialInput} and
  * {@link SerialOutput} or any of the serial bindings, the use of the catalog
  * is transparent to the application.</p>
+ *
+ * @see <a href="SerialBinding.html#evolution">Class Evolution</a>
  *
  * @author Mark Hayes
  */

@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007,2008 Oracle.  All rights reserved.
+# Copyright (c) 2007-2009 Oracle.  All rights reserved.
 #
-# $Id: rep072.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	rep072
 # TEST  Verify that internal init does not leak resources from
@@ -10,6 +10,8 @@
 
 proc rep072 { method { niter 200 } { tnum "072" } args } {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
@@ -38,9 +40,25 @@ proc rep072 { method { niter 200 } { tnum "072" } args } {
 
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
-		puts "Rep$tnum ($method): Confirm internal init does not \
-		    leak locks."
+		puts "Rep$tnum ($method): Confirm internal init does not\
+		    leak locks $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client logs are [lindex $l 1]"
 		rep072_sub $method $niter $tnum $l $limit $check $args
@@ -48,15 +66,22 @@ proc rep072 { method { niter 200 } { tnum "072" } args } {
 }
 
 proc rep072_sub {method {niter 200} {tnum 072} logset \
-		{limit 3} {check true} largs} {
+    {limit 3} {check true} largs} {
 	global testdir
 	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -89,7 +114,7 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 
 	# Open a master.
 	repladd 1
-	set ma_envcmd "berkdb_env_noerr -create $verbargs \
+	set ma_envcmd "berkdb_env_noerr -create $verbargs $repmemargs \
 	    $m_logargs $m_txnargs -log_max $log_max -errpfx MASTER \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd -rep_master]
@@ -97,7 +122,7 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 
 	# Open a client
 	repladd 2
-	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	set cl_envcmd "berkdb_env_noerr -create $verbargs $repmemargs \
 	    $c_logargs $c_txnargs -log_max $log_max -errpfx CLIENT \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd -rep_client]
@@ -119,7 +144,7 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 
 		# Run rep_test in the master.
 		puts "\tRep$tnum.b: Running rep_test in replicated env."
-		eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+		eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 		process_msgs $envlist
 
 		puts "\tRep$tnum.c: Leave client alive, but isolated."
@@ -134,7 +159,7 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 			# Run rep_test in the master (don't update client).
 			puts "\tRep$tnum.d: Running rep_test in replicated env."
 			eval rep_test \
-			    $method $masterenv NULL $niter 0 0 0 0 $largs
+			    $method $masterenv NULL $niter 0 0 0 $largs
 			#
 			# Clear messages for client.  We want that site
 			# to get far behind.
@@ -160,7 +185,7 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 		puts "\tRep$tnum.f: Running rep_test in replicated env."
 		set entries 10
 		eval rep_test $method \
-		    $masterenv NULL $entries $niter 0 0 0 $largs
+		    $masterenv NULL $entries $niter 0 0 $largs
 		process_msgs $envlist
 
 		set n_lockers [stat_field \

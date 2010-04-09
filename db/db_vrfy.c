@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: db_vrfy.c,v 12.53 2008/03/12 20:34:13 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -30,15 +30,14 @@ static u_int __db_guesspgsize __P((ENV *, DB_FH *));
 static int   __db_is_valid_magicno __P((u_int32_t, DBTYPE *));
 static int   __db_meta2pgset
 		__P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t, DB *));
+static int   __db_salvage __P((DB *, VRFY_DBINFO *,
+		db_pgno_t, void *, int (*)(void *, const void *), u_int32_t));
 static int   __db_salvage_subdbpg __P((DB *, VRFY_DBINFO *,
 		PAGE *, void *, int (*)(void *, const void *), u_int32_t));
-static int   __db_salvage_subdbs __P((DB *, VRFY_DBINFO *, void *,
+static int   __db_salvage_all __P((DB *, VRFY_DBINFO *, void *,
 		int(*)(void *, const void *), u_int32_t, int *));
 static int   __db_salvage_unknowns __P((DB *, VRFY_DBINFO *, void *,
 		int (*)(void *, const void *), u_int32_t));
-static int   __db_verify __P((DB *, DB_THREAD_INFO *, const char *,
-		const char *, void *, int (*)(void *, const void *),
-		u_int32_t));
 static int   __db_verify_arg __P((DB *, const char *, void *, u_int32_t));
 static int   __db_vrfy_freelist
 		__P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t));
@@ -49,8 +48,8 @@ static int   __db_vrfy_orderchkonly __P((DB *,
 static int   __db_vrfy_pagezero __P((DB *, VRFY_DBINFO *, DB_FH *, u_int32_t));
 static int   __db_vrfy_subdbs
 		__P((DB *, VRFY_DBINFO *, const char *, u_int32_t));
-static int   __db_vrfy_structure
-		__P((DB *, VRFY_DBINFO *, const char *, db_pgno_t, u_int32_t));
+static int   __db_vrfy_structure __P((DB *, VRFY_DBINFO *,
+		const char *, db_pgno_t, void *, void *, u_int32_t));
 static int   __db_vrfy_walkpages __P((DB *, VRFY_DBINFO *,
 		void *, int (*)(void *, const void *), u_int32_t));
 
@@ -111,7 +110,7 @@ __db_verify_internal(dbp, fname, dname, handle, callback, flags)
 
 	if ((ret = __db_verify_arg(dbp, dname, handle, flags)) == 0)
 		ret = __db_verify(dbp, ip,
-		     fname, dname, handle, callback, flags);
+		     fname, dname, handle, callback, NULL, NULL, flags);
 
 	/* Db.verify is a DB handle destructor. */
 	if ((t_ret = __db_close(dbp, NULL, 0)) != 0 && ret == 0)
@@ -187,19 +186,24 @@ __db_verify_arg(dbp, dname, handle, flags)
  *
  *	flags may be 0, DB_NOORDERCHK, DB_ORDERCHKONLY, or DB_SALVAGE
  *	(and optionally DB_AGGRESSIVE).
+ * PUBLIC: int   __db_verify __P((DB *, DB_THREAD_INFO *, const char *,
+ * PUBLIC:		const char *, void *, int (*)(void *, const void *),
+ * PUBLIC:		void *, void *, u_int32_t));
  */
-static int
-__db_verify(dbp, ip, name, subdb, handle, callback, flags)
+int
+__db_verify(dbp, ip, name, subdb, handle, callback, lp, rp, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	const char *name, *subdb;
 	void *handle;
 	int (*callback) __P((void *, const void *));
+	void *lp, *rp;
 	u_int32_t flags;
 {
 	DB_FH *fhp;
 	ENV *env;
 	VRFY_DBINFO *vdp;
+	u_int32_t sflags;
 	int has_subdbs, isbad, ret, t_ret;
 	char *real_name;
 
@@ -207,7 +211,7 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 	fhp = NULL;
 	vdp = NULL;
 	real_name = NULL;
-	has_subdbs = isbad = ret = 0;
+	has_subdbs = isbad = ret = t_ret = 0;
 
 	F_SET(dbp, DB_AM_VERIFYING);
 
@@ -237,7 +241,7 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 
 	/* Find the real name of the file. */
 	if ((ret = __db_appname(env,
-	    DB_APP_DATA, name, 0, NULL, &real_name)) != 0)
+	    DB_APP_DATA, name, &dbp->dirname, &real_name)) != 0)
 		goto err;
 
 	/*
@@ -307,6 +311,10 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 		goto done;
 	}
 
+	sflags = flags;
+	if (dbp->p_internal != NULL)
+		LF_CLR(DB_SALVAGE);
+
 	/*
 	 * When salvaging, we use a db to keep track of whether we've seen a
 	 * given overflow or dup page in the course of traversing normal data.
@@ -318,13 +326,11 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 			goto err;
 
 		/*
-		 * If we're not being aggressive, attempt to crack subdatabases.
-		 * "has_subdbs" will indicate whether the attempt has succeeded
-		 * (even in part), meaning that we have some semblance of
-		 * subdatabases; on the walkpages pass, we print out whichever
-		 * data pages we have not seen.
+		 * If we're not being aggressive, salvage by walking the tree
+		 * and only printing the leaves we find.  "has_subdbs" will
+		 * indicate whether we found subdatabases.
 		 */
-		if (!LF_ISSET(DB_AGGRESSIVE) && __db_salvage_subdbs(
+		if (!LF_ISSET(DB_AGGRESSIVE) && __db_salvage_all(
 		    dbp, vdp, handle, callback, flags, &has_subdbs) != 0)
 			isbad = 1;
 
@@ -333,23 +339,26 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 		 * don't belong to a subdatabase -- they'll need to have an
 		 * "__OTHER__" subdatabase header printed first.
 		 */
-		if (has_subdbs)
+		if (has_subdbs) {
 			F_SET(vdp, SALVAGE_PRINTHEADER);
+			F_SET(vdp, SALVAGE_HASSUBDBS);
+		}
 	}
 
+	/* Walk all the pages, if a page cannot be read, verify structure. */
 	if ((ret =
 	    __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
-		else
+		else if (ret != DB_PAGE_NOTFOUND)
 			goto err;
 	}
 
 	/* If we're verifying, verify inter-page structure. */
 	if (!LF_ISSET(DB_SALVAGE) && isbad == 0)
-		if ((ret =
-		    __db_vrfy_structure(dbp, vdp, name, 0, flags)) != 0) {
-			if (ret == DB_VERIFY_BAD)
+		if ((t_ret = __db_vrfy_structure(dbp,
+		    vdp, name, 0, lp, rp, flags)) != 0) {
+			if (t_ret == DB_VERIFY_BAD)
 				isbad = 1;
 			else
 				goto err;
@@ -364,12 +373,20 @@ __db_verify(dbp, ip, name, subdb, handle, callback, flags)
 		if ((ret = __db_salvage_unknowns(dbp,
 		    vdp, handle, callback, flags)) != 0)
 			isbad = 1;
-		/* No return value, since there's little we can do. */
-		__db_salvage_destroy(vdp);
 	}
 
+	flags = sflags;
+
+#ifdef HAVE_PARTITION
+	if (t_ret == 0 && dbp->p_internal != NULL)
+		t_ret = __part_verify(dbp, vdp, name, handle, callback, flags);
+#endif
+
+	if (ret == 0)
+		ret = t_ret;
+
 	/* Don't display a footer for a database holding other databases. */
-	if (LF_ISSET(DB_SALVAGE) &&
+	if (LF_ISSET(DB_SALVAGE | DB_VERIFY_PARTITION) == DB_SALVAGE &&
 	    (!has_subdbs || F_ISSET(vdp, SALVAGE_PRINTFOOTER)))
 		(void)__db_prfooter(handle, callback);
 
@@ -378,6 +395,9 @@ done: err:
 	if (!LF_ISSET(DB_SALVAGE) && dbp->db_feedback != NULL)
 		dbp->db_feedback(dbp, DB_VERIFY, 100);
 
+	if (LF_ISSET(DB_SALVAGE) &&
+	    (t_ret = __db_salvage_destroy(vdp)) != 0 && ret == 0)
+		ret = t_ret;
 	if (fhp != NULL &&
 	    (t_ret = __os_closehandle(env, fhp)) != 0 && ret == 0)
 		ret = t_ret;
@@ -557,14 +577,24 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	 * 26: Meta-flags.
 	 */
 	if (meta->metaflags != 0) {
-		if (meta->metaflags == DBMETA_CHKSUM)
-			F_SET(pip, VRFY_HAS_CHKSUM);
-		else {
+		if (FLD_ISSET(meta->metaflags,
+		    ~(DBMETA_CHKSUM|DBMETA_PART_RANGE|DBMETA_PART_CALLBACK))) {
 			isbad = 1;
 			EPRINT((env,
 			    "Page %lu: bad meta-data flags value %#lx",
 			    (u_long)PGNO_BASE_MD, (u_long)meta->metaflags));
 		}
+		if (FLD_ISSET(meta->metaflags, DBMETA_CHKSUM))
+			F_SET(pip, VRFY_HAS_CHKSUM);
+		if (FLD_ISSET(meta->metaflags, DBMETA_PART_RANGE))
+			F_SET(pip, VRFY_HAS_PART_RANGE);
+		if (FLD_ISSET(meta->metaflags, DBMETA_PART_CALLBACK))
+			F_SET(pip, VRFY_HAS_PART_CALLBACK);
+
+		if (FLD_ISSET(meta->metaflags,
+		    DBMETA_PART_RANGE | DBMETA_PART_CALLBACK) &&
+		    (ret = __partition_init(dbp, meta->metaflags)) != 0)
+			return (ret);
 	}
 
 	/*
@@ -662,6 +692,14 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 					goto err1;
 				continue;
 			}
+			if (t_ret == DB_PAGE_NOTFOUND) {
+				EPRINT((env,
+    "Page %lu: beyond the end of the file, metadata page has last page as %lu",
+				    (u_long)i, (u_long)vdp->last_pgno));
+				if (ret == 0)
+					return (t_ret);
+			}
+
 err1:			if (ret == 0)
 				ret = t_ret;
 			if (LF_ISSET(DB_SALVAGE))
@@ -675,7 +713,7 @@ err1:			if (ret == 0)
 			 * bomb hits.  May as well return that something
 			 * was screwy, however.
 			 */
-			if ((t_ret = __db_salvage(dbp,
+			if ((t_ret = __db_salvage_pg(dbp,
 			    vdp, i, h, handle, callback, flags)) != 0) {
 				if (ret == 0)
 					ret = t_ret;
@@ -815,11 +853,12 @@ err:		if (h != NULL && (t_ret = __memp_fput(mpf,
  *	i.e. if DB_SALVAGE is not set.
  */
 static int
-__db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
+__db_vrfy_structure(dbp, vdp, dbname, meta_pgno, lp, rp, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	const char *dbname;
 	db_pgno_t meta_pgno;
+	void *lp, *rp;
 	u_int32_t flags;
 {
 	DB *pgset;
@@ -856,7 +895,8 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, flags)
 	switch (dbp->type) {
 	case DB_BTREE:
 	case DB_RECNO:
-		if ((ret = __bam_vrfy_structure(dbp, vdp, 0, flags)) != 0) {
+		if ((ret =
+		    __bam_vrfy_structure(dbp, vdp, 0, lp, rp, flags)) != 0) {
 			if (ret == DB_VERIFY_BAD)
 				isbad = 1;
 			else
@@ -1348,14 +1388,19 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 
 	/* Flags */
 	if (meta->metaflags != 0) {
-		if (meta->metaflags == DBMETA_CHKSUM)
-			F_SET(pip, VRFY_HAS_CHKSUM);
-		else {
+		if (FLD_ISSET(meta->metaflags,
+		    ~(DBMETA_CHKSUM|DBMETA_PART_RANGE|DBMETA_PART_CALLBACK))) {
 			isbad = 1;
 			EPRINT((env,
 			    "Page %lu: bad meta-data flags value %#lx",
 			    (u_long)PGNO_BASE_MD, (u_long)meta->metaflags));
 		}
+		if (FLD_ISSET(meta->metaflags, DBMETA_CHKSUM))
+			F_SET(pip, VRFY_HAS_CHKSUM);
+		if (FLD_ISSET(meta->metaflags, DBMETA_PART_RANGE))
+			F_SET(pip, VRFY_HAS_PART_RANGE);
+		if (FLD_ISSET(meta->metaflags, DBMETA_PART_CALLBACK))
+			F_SET(pip, VRFY_HAS_PART_CALLBACK);
 	}
 
 	/*
@@ -1542,7 +1587,7 @@ __db_vrfy_subdbs(dbp, vdp, dbname, flags)
 		switch (type) {
 		case P_BTREEMETA:
 			if ((ret = __bam_vrfy_structure(
-			    dbp, vdp, meta_pgno, flags)) != 0) {
+			    dbp, vdp, meta_pgno, NULL, NULL, flags)) != 0) {
 				if (ret == DB_VERIFY_BAD)
 					isbad = 1;
 				else
@@ -1738,13 +1783,16 @@ __db_vrfy_orderchkonly(dbp, vdp, name, subdb, flags)
 		 * Foreach bucket, verify hashing on each page in the
 		 * corresponding chain of pages.
 		 */
+		if ((ret = __db_cursor_int(dbp, NULL, NULL, dbp->type,
+		    PGNO_INVALID, 0, DB_LOCK_INVALIDID, &pgsc)) != 0)
+			goto err;
 		for (bucket = 0; bucket <= hmeta->max_bucket; bucket++) {
 			pgno = BS_TO_PAGE(bucket, hmeta->spares);
 			while (pgno != PGNO_INVALID) {
 				if ((ret = __memp_fget(mpf, &pgno,
 				    vdp->thread_info, NULL, 0, &currpg)) != 0)
 					goto err;
-				if ((ret = __ham_vrfy_hashing(dbp,
+				if ((ret = __ham_vrfy_hashing(pgsc,
 				    NUM_ENT(currpg), hmeta, bucket, pgno,
 				    flags, h_internal->h_hash)) != 0)
 					goto err;
@@ -1781,15 +1829,15 @@ err:	if (pgsc != NULL && (t_ret = __dbc_close(pgsc)) != 0 && ret == 0)
 }
 
 /*
- * __db_salvage --
+ * __db_salvage_pg --
  *	Walk through a page, salvaging all likely or plausible (w/
  *	DB_AGGRESSIVE) key/data pairs and marking seen pages in vdp.
  *
- * PUBLIC: int __db_salvage __P((DB *, VRFY_DBINFO *, db_pgno_t,
+ * PUBLIC: int __db_salvage_pg __P((DB *, VRFY_DBINFO *, db_pgno_t,
  * PUBLIC:     PAGE *, void *, int (*)(void *, const void *), u_int32_t));
  */
 int
-__db_salvage(dbp, vdp, pgno, h, handle, callback, flags)
+__db_salvage_pg(dbp, vdp, pgno, h, handle, callback, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	db_pgno_t pgno;
@@ -1819,44 +1867,18 @@ __db_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 		return (0);
 
 	switch (TYPE(h)) {
-	case P_HASHMETA:
-		ret = __ham_vrfy_meta(dbp, vdp, (HMETA *)h, pgno, flags);
-		break;
 	case P_BTREEMETA:
 		ret = __bam_vrfy_meta(dbp, vdp, (BTMETA *)h, pgno, flags);
 		break;
-	case P_QAMMETA:
-		keyflag = 1;
-		ret = __qam_vrfy_meta(dbp, vdp, (QMETA *)h, pgno, flags);
-		break;
-	case P_HASH_UNSORTED:
 	case P_HASH:
-		return (__ham_salvage(dbp, vdp,
-		    pgno, h, handle, callback, flags));
+	case P_HASH_UNSORTED:
 	case P_LBTREE:
-		return (__bam_salvage(dbp, vdp,
-		    pgno, P_LBTREE, h, handle, callback, NULL, flags));
-	case P_LDUP:
-		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_LDUP));
-	case P_OVERFLOW:
-		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_OVERFLOW));
-	case P_LRECNO:
-		/*
-		 * Recnos are tricky -- they may represent dup pages, or
-		 * they may be subdatabase/regular database pages in their
-		 * own right.  If the former, they need to be printed with a
-		 * key, preferably when we hit the corresponding datum in
-		 * a btree/hash page.  If the latter, there is no key.
-		 *
-		 * If a database is sufficiently frotzed, we're not going
-		 * to be able to get this right, so we best-guess:  just
-		 * mark it needed now, and if we're really a normal recno
-		 * database page, the "unknowns" pass will pick us up.
-		 */
-		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_LRECNO));
 	case P_QAMDATA:
-		return (__qam_salvage(dbp, vdp,
-		    pgno, h, handle, callback, flags));
+		return (__db_salvage_leaf(dbp,
+		    vdp, pgno, h, handle, callback, flags));
+	case P_HASHMETA:
+		ret = __ham_vrfy_meta(dbp, vdp, (HMETA *)h, pgno, flags);
+		break;
 	case P_IBTREE:
 		/*
 		 * We need to mark any overflow keys on internal pages as seen,
@@ -1868,6 +1890,42 @@ __db_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 		 * deal with it at the end.
 		 */
 		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_IBTREE));
+	case P_LDUP:
+		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_LDUP));
+	case P_LRECNO:
+		/*
+		 * Recno leaves are tough, because the leaf could be (1) a dup
+		 * page, or it could be (2) a regular database leaf page.
+		 * Fortunately, RECNO databases are not allowed to have
+		 * duplicates.
+		 *
+		 * If there are no subdatabases, dump the page immediately if
+		 * it's a leaf in a RECNO database, otherwise wait and hopefully
+		 * it will be dumped by the leaf page that refers to it,
+		 * otherwise we'll get it with the unknowns.
+		 *
+		 * If there are subdatabases, there might be mixed types and
+		 * dbp->type can't be trusted.  We'll only get here after
+		 * salvaging each database, though, so salvaging this page
+		 * immediately isn't important.  If this page is a dup, it might
+		 * get salvaged later on, otherwise the unknowns pass will pick
+		 * it up.  Note that SALVAGE_HASSUBDBS won't get set if we're
+		 * salvaging aggressively.
+		 *
+		 * If we're salvaging aggressively, we don't know whether or not
+		 * there's subdatabases, so we wait on all recno pages.
+		 */
+		if (!LF_ISSET(DB_AGGRESSIVE) &&
+		    !F_ISSET(vdp, SALVAGE_HASSUBDBS) && dbp->type == DB_RECNO)
+			return (__db_salvage_leaf(dbp,
+			    vdp, pgno, h, handle, callback, flags));
+		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_LRECNODUP));
+	case P_OVERFLOW:
+		return (__db_salvage_markneeded(vdp, pgno, SALVAGE_OVERFLOW));
+	case P_QAMMETA:
+		keyflag = 1;
+		ret = __qam_vrfy_meta(dbp, vdp, (QMETA *)h, pgno, flags);
+		break;
 	case P_INVALID:
 	case P_IRECNO:
 	case __P_DUPLICATE:
@@ -1890,12 +1948,60 @@ __db_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 	 */
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
 		return (ret);
-	if (!F_ISSET(pip, VRFY_HAS_SUBDBS))
+	if (!F_ISSET(pip, VRFY_HAS_SUBDBS) && !LF_ISSET(DB_VERIFY_PARTITION))
 		ret = __db_prheader(
 		    dbp, NULL, 0, keyflag, handle, callback, vdp, pgno);
 	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
+}
+
+/*
+ * __db_salvage_leaf --
+ *	Walk through a leaf, salvaging all likely key/data pairs and marking
+ *	seen pages in vdp.
+ *
+ * PUBLIC: int __db_salvage_leaf __P((DB *, VRFY_DBINFO *, db_pgno_t,
+ * PUBLIC:     PAGE *, void *, int (*)(void *, const void *), u_int32_t));
+ */
+int
+__db_salvage_leaf(dbp, vdp, pgno, h, handle, callback, flags)
+	DB *dbp;
+	VRFY_DBINFO *vdp;
+	db_pgno_t pgno;
+	PAGE *h;
+	void *handle;
+	int (*callback) __P((void *, const void *));
+	u_int32_t flags;
+{
+	ENV *env;
+
+	env = dbp->env;
+	DB_ASSERT(env, LF_ISSET(DB_SALVAGE));
+
+	/* If we got this page in the subdb pass, we can safely skip it. */
+	if (__db_salvage_isdone(vdp, pgno))
+		return (0);
+
+	switch (TYPE(h)) {
+	case P_HASH_UNSORTED:
+	case P_HASH:
+		return (__ham_salvage(dbp, vdp,
+		    pgno, h, handle, callback, flags));
+	case P_LBTREE:
+	case P_LRECNO:
+		return (__bam_salvage(dbp, vdp,
+		    pgno, TYPE(h), h, handle, callback, NULL, flags));
+	case P_QAMDATA:
+		return (__qam_salvage(dbp, vdp,
+		    pgno, h, handle, callback, flags));
+	default:
+		/*
+		 * There's no need to display an error, the page type was
+		 * already checked and reported on.
+		 */
+		return (0);
+	}
 }
 
 /*
@@ -1917,7 +2023,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 	ENV *env;
 	PAGE *h;
 	db_pgno_t pgno;
-	u_int32_t pgtype;
+	u_int32_t pgtype, ovfl_bufsz, tmp_flags;
 	int ret, t_ret;
 	void *ovflbuf;
 
@@ -1929,6 +2035,7 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 
 	if ((ret = __os_malloc(env, dbp->pgsize, &ovflbuf)) != 0)
 		return (ret);
+	ovfl_bufsz = dbp->pgsize;
 
 	/*
 	 * We make two passes -- in the first pass, skip SALVAGE_OVERFLOW
@@ -1945,16 +2052,19 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 		}
 
 		dbt = NULL;
+		tmp_flags = 0;
 		switch (pgtype) {
 		case SALVAGE_LDUP:
 		case SALVAGE_LRECNODUP:
 			dbt = &unkdbt;
+			tmp_flags = DB_SA_UNKNOWNKEY;
 			/* FALLTHROUGH */
 		case SALVAGE_IBTREE:
 		case SALVAGE_LBTREE:
 		case SALVAGE_LRECNO:
-			if ((t_ret = __bam_salvage(dbp, vdp, pgno, pgtype,
-			    h, handle, callback, dbt, flags)) != 0 && ret == 0)
+			if ((t_ret = __bam_salvage(
+			    dbp, vdp, pgno, pgtype, h, handle,
+			    callback, dbt, tmp_flags | flags)) != 0 && ret == 0)
 				ret = t_ret;
 			break;
 		case SALVAGE_OVERFLOW:
@@ -2008,8 +2118,8 @@ __db_salvage_unknowns(dbp, vdp, handle, callback, flags)
 			 * This may generate multiple "UNKNOWN" keys in
 			 * a database with no dups.  What to do?
 			 */
-			if ((t_ret = __db_safe_goff(dbp,
-			    vdp, pgno, &key, &ovflbuf, flags)) != 0 ||
+			if ((t_ret = __db_safe_goff(dbp, vdp,
+			    pgno, &key, &ovflbuf, &ovfl_bufsz, flags)) != 0 ||
 			    ((vdp->type == DB_BTREE || vdp->type == DB_HASH) &&
 			    (t_ret = __db_vrfy_prdbt(&unkdbt,
 			    0, " ", handle, callback, 0, vdp)) != 0) ||
@@ -2098,7 +2208,7 @@ __db_vrfy_inpitem(dbp, h, pgno, i, is_btree, flags, himarkp, offsetp)
 	 * Check that the item offset is reasonable:  it points somewhere
 	 * after the inp array and before the end of the page.
 	 */
-	if (offset <= INP_OFFSET(dbp, h, i) || offset > dbp->pgsize) {
+	if (offset <= INP_OFFSET(dbp, h, i) || offset >= dbp->pgsize) {
 		EPRINT((env, "Page %lu: bad offset %lu at page index %lu",
 		    (u_long)pgno, (u_long)offset, (u_long)i));
 		return (DB_VERIFY_BAD);
@@ -2306,12 +2416,12 @@ err:	if ((t_ret = __memp_fput(mpf,
 }
 
 /*
- * __db_salvage_subdbs --
- *	Check and see if this database has subdbs;  if so, try to salvage
- *	them independently.
+ * __db_salvage_all --
+ *	Salvage only the leaves we find by walking the tree.  If we have subdbs,
+ *	salvage each of them individually.
  */
 static int
-__db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
+__db_salvage_all(dbp, vdp, handle, callback, flags, hassubsp)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	void *handle;
@@ -2346,8 +2456,8 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 	if ((t_ret = __memp_fget(mpf,
 	    &meta_pgno, vdp->thread_info, NULL, 0, &h)) == 0 &&
 	    (t_ret = __db_vrfy_common(dbp, vdp, h, PGNO_BASE_MD, flags)) == 0 &&
-	    (t_ret = __db_salvage(
-	    dbp, vdp, PGNO_BASE_MD, h, handle, callback, flags)) == 0 &&
+	    (t_ret = __db_salvage_pg(
+		dbp, vdp, PGNO_BASE_MD, h, handle, callback, flags)) == 0 &&
 	    (t_ret = __db_vrfy_getpageinfo(vdp, 0, &pip)) == 0)
 		if (F_ISSET(pip, VRFY_HAS_SUBDBS))
 			*hassubsp = 1;
@@ -2360,8 +2470,13 @@ __db_salvage_subdbs(dbp, vdp, handle, callback, flags, hassubsp)
 			ret = t_ret;
 		h = NULL;
 	}
-	if (ret != 0 || *hassubsp == 0)
+	if (ret != 0)
 		return (ret);
+
+	/* Without subdatabases, we can just dump from the meta pgno. */
+	if (*hassubsp == 0)
+		return (__db_salvage(dbp,
+		    vdp, PGNO_BASE_MD, handle, callback, flags));
 
 	/*
 	 * We have subdbs.  Try to crack them.
@@ -2433,18 +2548,18 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 	ENV *env;
 	PAGE *subpg;
 	db_indx_t i;
-	db_pgno_t meta_pgno, p;
+	db_pgno_t meta_pgno;
 	int ret, err_ret, t_ret;
 	char *subdbname;
+	u_int32_t ovfl_bufsz;
 
 	env = dbp->env;
 	mpf = dbp->mpf;
 	ret = err_ret = 0;
 	subdbname = NULL;
-
-	if ((ret = __db_vrfy_pgset(env,
-	     vdp->thread_info, dbp->pgsize, &pgset)) != 0)
-		return (ret);
+	pgsc = NULL;
+	pgset = NULL;
+	ovfl_bufsz = 0;
 
 	/*
 	 * For each entry, get and salvage the set of pages
@@ -2461,21 +2576,28 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 			 * name so long it overflows.  Ick.
 			 */
 			bo = (BOVERFLOW *)bkkey;
-			if ((ret = __db_safe_goff(dbp, vdp,
-			    bo->pgno, &key, &subdbname, flags)) != 0) {
+			if ((ret = __db_safe_goff(dbp, vdp, bo->pgno,
+			    &key, &subdbname, &ovfl_bufsz, flags)) != 0) {
 				err_ret = DB_VERIFY_BAD;
 				continue;
 			}
 
 			/* Nul-terminate it. */
-			if ((ret = __os_realloc(env,
-			    key.size + 1, &subdbname)) != 0)
-				goto err;
+			if (ovfl_bufsz < key.size + 1) {
+				if ((ret = __os_realloc(env,
+				    key.size + 1, &subdbname)) != 0)
+					goto err;
+				ovfl_bufsz = key.size + 1;
+			}
 			subdbname[key.size] = '\0';
 		} else if (B_TYPE(bkkey->type) == B_KEYDATA) {
-			if ((ret = __os_realloc(env,
-			    bkkey->len + 1, &subdbname)) != 0)
-				goto err;
+			if (ovfl_bufsz < (u_int32_t)bkkey->len + 1) {
+				if ((ret = __os_realloc(env,
+				    bkkey->len + 1, &subdbname)) != 0)
+					goto err;
+				ovfl_bufsz = bkkey->len + 1;
+			}
+			DB_ASSERT(env, subdbname != NULL);
 			memcpy(subdbname, bkkey->data, bkkey->len);
 			subdbname[bkkey->len] = '\0';
 		}
@@ -2552,45 +2674,129 @@ __db_salvage_subdbpg(dbp, vdp, master, handle, callback, flags)
 		    subdbname, 0, 0, handle, callback, vdp, meta_pgno)) != 0)
 			goto err;
 
-		if ((ret = __db_meta2pgset(dbp, vdp, meta_pgno,
-		    flags, pgset)) != 0) {
+		/* Salvage meta_pgno's tree. */
+		if ((ret = __db_salvage(dbp,
+		    vdp, meta_pgno, handle, callback, flags)) != 0)
 			err_ret = ret;
-			continue;
-		}
 
-		if ((ret = __db_cursor(pgset,
-		    vdp->thread_info, NULL, &pgsc, 0)) != 0)
-			goto err;
-		while ((ret = __db_vrfy_pgset_next(pgsc, &p)) == 0) {
-			if ((ret = __memp_fget(mpf,
-			    &p, vdp->thread_info, NULL, 0, &subpg)) != 0) {
-				err_ret = ret;
-				continue;
-			}
-			if ((ret = __db_salvage(dbp, vdp, p, subpg,
-			    handle, callback, flags)) != 0)
-				err_ret = ret;
-			if ((ret = __memp_fput(mpf,
-			    vdp->thread_info, subpg, dbp->priority)) != 0)
-				err_ret = ret;
-		}
-
-		if (ret != DB_NOTFOUND)
-			goto err;
-
-		if ((ret = __dbc_close(pgsc)) != 0)
-			goto err;
+		/* Print a subdatabase footer. */
 		if ((ret = __db_prfooter(handle, callback)) != 0)
 			goto err;
 	}
+
 err:	if (subdbname)
 		__os_free(env, subdbname);
 
-	if ((t_ret = __db_close(pgset, NULL, 0)) != 0)
+	if (pgsc != NULL && (t_ret = __dbc_close(pgsc)) != 0)
+		ret = t_ret;
+
+	if (pgset != NULL && (t_ret = __db_close(pgset, NULL, 0)) != 0)
 		ret = t_ret;
 
 	if ((t_ret = __db_salvage_markdone(vdp, PGNO(master))) != 0)
 		return (t_ret);
+
+	return ((err_ret != 0) ? err_ret : ret);
+}
+
+/*
+ * __db_salvage --
+ *      Given a meta page number, salvage all data from leaf pages found by
+ *      walking the meta page's tree.
+ */
+static int
+__db_salvage(dbp, vdp, meta_pgno, handle, callback, flags)
+     DB *dbp;
+     VRFY_DBINFO *vdp;
+     db_pgno_t meta_pgno;
+     void *handle;
+     int (*callback) __P((void *, const void *));
+     u_int32_t flags;
+
+{
+	DB *pgset;
+	DBC *dbc, *pgsc;
+	DB_MPOOLFILE *mpf;
+	ENV *env;
+	PAGE *subpg;
+	db_pgno_t p;
+	int err_ret, ret, t_ret;
+
+	env = dbp->env;
+	mpf = dbp->mpf;
+	err_ret = ret = t_ret = 0;
+	pgsc = NULL;
+	pgset = NULL;
+	dbc = NULL;
+
+	if ((ret = __db_vrfy_pgset(env,
+	    vdp->thread_info, dbp->pgsize, &pgset)) != 0)
+		goto err;
+
+	/* Get all page numbers referenced from this meta page. */
+	if ((ret = __db_meta2pgset(dbp, vdp, meta_pgno,
+	    flags, pgset)) != 0) {
+		err_ret = ret;
+		goto err;
+	}
+
+	if ((ret = __db_cursor(pgset,
+	    vdp->thread_info, NULL, &pgsc, 0)) != 0)
+		goto err;
+
+	if (dbp->type == DB_QUEUE &&
+	    (ret = __db_cursor(dbp, vdp->thread_info, NULL, &dbc, 0)) != 0)
+		goto err;
+
+	/* Salvage every page in pgset. */
+	while ((ret = __db_vrfy_pgset_next(pgsc, &p)) == 0) {
+		if (dbp->type == DB_QUEUE) {
+#ifdef HAVE_QUEUE
+			ret = __qam_fget(dbc, &p, 0, &subpg);
+#else
+			ret = __db_no_queue_am(env);
+#endif
+			/* Don't report an error for pages not found in a queue.
+			 * The pgset is a best guess, it doesn't know about
+			 * deleted extents which leads to this error.
+			 */
+			if (ret == ENOENT || ret == DB_PAGE_NOTFOUND)
+				continue;
+		} else
+			ret = __memp_fget(mpf,
+			    &p, vdp->thread_info, NULL, 0, &subpg);
+		if (ret != 0) {
+			err_ret = ret;
+			continue;
+		}
+
+		if ((ret = __db_salvage_pg(dbp, vdp, p, subpg,
+		    handle, callback, flags)) != 0)
+			err_ret = ret;
+
+		if (dbp->type == DB_QUEUE)
+#ifdef HAVE_QUEUE
+			ret = __qam_fput(dbc, p, subpg, dbp->priority);
+#else
+			ret = __db_no_queue_am(env);
+#endif
+		else
+			ret = __memp_fput(mpf,
+			    vdp->thread_info, subpg, dbp->priority);
+		if (ret != 0)
+			err_ret = ret;
+	}
+
+	if (ret == DB_NOTFOUND)
+		ret = 0;
+
+err:
+	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0)
+		ret = t_ret;
+	if (pgsc != NULL && (t_ret = __dbc_close(pgsc)) != 0)
+		ret = t_ret;
+	if (pgset != NULL && (t_ret = __db_close(pgset, NULL, 0)) != 0)
+		ret = t_ret;
 
 	return ((err_ret != 0) ? err_ret : ret);
 }
@@ -2625,6 +2831,11 @@ __db_meta2pgset(dbp, vdp, pgno, flags, pgset)
 	case P_HASHMETA:
 		ret = __ham_meta2pgset(dbp, vdp, (HMETA *)h, flags, pgset);
 		break;
+	case P_QAMMETA:
+#ifdef HAVE_QUEUE
+		ret = __qam_meta2pgset(dbp, vdp, pgset);
+		break;
+#endif
 	default:
 		ret = DB_VERIFY_BAD;
 		break;

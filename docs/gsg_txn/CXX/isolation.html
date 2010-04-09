@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Isolation</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
-    <link rel="previous" href="lockingsubsystem.html" title="The Locking Subsystem" />
+    <link rel="prev" href="lockingsubsystem.html" title="The Locking Subsystem" />
     <link rel="next" href="txn_ccursor.html" title="Transactional Cursors and Concurrent Applications" />
   </head>
   <body>
@@ -32,7 +32,30 @@
             <h2 class="title" style="clear: both"><a id="isolation"></a>Isolation</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="isolation.html#degreesofisolation">Supported Degrees of Isolation</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="isolation.html#dirtyreads">Reading Uncommitted Data</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="isolation.html#readcommitted">Committed Reads</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="isolation.html#snapshot_isolation">Using Snapshot Isolation</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
             Isolation guarantees are an important aspect of transactional
@@ -58,7 +81,6 @@
               <h3 class="title"><a id="degreesofisolation"></a>Supported Degrees of Isolation</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 DB supports the following levels of isolation:
@@ -98,10 +120,10 @@
                 <td>2</td>
                 <td>READ COMMITTED</td>
                 <td>
-                  <p>
+                    <p>
                     Committed read isolation means that degree 1 is observed, except that dirty data is never read. 
                     </p>
-                  <p>
+                    <p>
                     In addition, this isolation level guarantees that data will never change so long as
                     it is addressed by the cursor, but the data may change before the reading cursor is closed.
                     In the case of a transaction, data at the current
@@ -119,13 +141,13 @@
                 <td>3</td>
                 <td>SERIALIZABLE</td>
                 <td>
-                  <p>
+                    <p>
                     Committed read is observed, plus the data read by a transaction, T,  
                     will never be dirtied by another transaction before T completes.
                     This means that both read and write locks are not
                     released until the transaction completes.
                     </p>
-                  <p>
+                    <p>
                         <span>
                         In addition, 
                         </span>
@@ -137,7 +159,7 @@
                         the same transaction when the identical
                         search criteria was previously used.
                     </p>
-                  <p>
+                    <p>
                         This is DB's default isolation guarantee.
                     </p>
                 </td>
@@ -155,11 +177,11 @@
     
     You can optionally reduce your isolation level by configuring DB to use
     uncommitted read isolation. See 
-        <a href="isolation.html#dirtyreads">Reading Uncommitted Data</a> 
+        <a class="xref" href="isolation.html#dirtyreads" title="Reading Uncommitted Data">Reading Uncommitted Data</a> 
      for more information.
 
         You can also configure DB to use committed read isolation. See
-            <a href="isolation.html#readcommitted">Committed Reads</a>
+            <a class="xref" href="isolation.html#readcommitted" title="Committed Reads">Committed Reads</a>
         for more information.
         
   </p>
@@ -167,7 +189,7 @@
           Finally, in addition to DB's normal degrees of isolation, you
           can also use <span class="emphasis"><em>snapshot isolation</em></span>. This allows
           you to avoid the read locks that serializable isolation requires. See
-          <a href="isolation.html#snapshot_isolation">Using Snapshot Isolation</a>
+          <a class="xref" href="isolation.html#snapshot_isolation" title="Using Snapshot Isolation">Using Snapshot Isolation</a>
           for details.
   </p>
       </div>
@@ -178,10 +200,9 @@
               <h3 class="title"><a id="dirtyreads"></a>Reading Uncommitted Data</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
-                You can configure your application to read data that has been modified but not yet
+                Berkeley DB allows you to configure your application to read data that has been modified but not yet
                 committed by another transaction; that is, dirty data.  When you do this, you 
                 may see a performance benefit by allowing your
                 application to not have to block waiting for write locks. On the other hand, the data that your
@@ -209,7 +230,7 @@
               <p>
                         Open your database such that it will allow uncommitted reads. You do this by
                             <span>
-                                specifying <tt class="literal">DB_READ_UNCOMMITTED</tt> when you open your database.
+                                specifying <code class="literal">DB_READ_UNCOMMITTED</code> when you open your database.
                             </span>
                             
                     </p>
@@ -217,12 +238,9 @@
             <li>
               <p>
                             <span>
-                                Specify <tt class="literal">DB_READ_UNCOMMITTED</tt>
+                                Specify <code class="literal">DB_READ_UNCOMMITTED</code>
                                 when you create the transaction, 
-                                    <span>
-                                        open the cursor, or read a record from the database.
-                                    </span>
-                                    
+                                open the cursor, or read a record from the database.
                             </span>
                             
 
@@ -290,7 +308,6 @@ int main(void)
               <h3 class="title"><a id="readcommitted"></a>Committed Reads</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 You can configure your transaction so that the data being
@@ -312,12 +329,12 @@ int main(void)
               </p>
         <p>
                 For example,
-                suppose you have two transactions, <tt class="literal">Ta</tt> and <tt class="literal">Tb</tt>. Suppose further that
-                <tt class="literal">Ta</tt> has a cursor that reads <tt class="literal">record R</tt>, but does not modify it. Normally,
-                <tt class="literal">Tb</tt> would then be unable to write <tt class="literal">record R</tt> because
-                <tt class="literal">Ta</tt> would be holding a read lock on it. But when you configure your transaction for
-                committed reads, <tt class="literal">Tb</tt> <span class="emphasis"><em>can</em></span> modify <tt class="literal">record
-                R</tt> before <tt class="literal">Ta</tt> completes, so long as the reading cursor is no longer
+                suppose you have two transactions, <code class="literal">Ta</code> and <code class="literal">Tb</code>. Suppose further that
+                <code class="literal">Ta</code> has a cursor that reads <code class="literal">record R</code>, but does not modify it. Normally,
+                <code class="literal">Tb</code> would then be unable to write <code class="literal">record R</code> because
+                <code class="literal">Ta</code> would be holding a read lock on it. But when you configure your transaction for
+                committed reads, <code class="literal">Tb</code> <span class="emphasis"><em>can</em></span> modify <code class="literal">record
+                R</code> before <code class="literal">Ta</code> completes, so long as the reading cursor is no longer
                 addressing the 
                     
                     <span>
@@ -342,7 +359,7 @@ int main(void)
               <p>
                         Create your transaction such that it allows committed reads. You do this by
                             <span>
-                                specifying <tt class="literal">DB_READ_COMMITTED</tt> when you open the transaction.
+                                specifying <code class="literal">DB_READ_COMMITTED</code> when you open the transaction.
                             </span>
                             
                     </p>
@@ -350,7 +367,7 @@ int main(void)
             <li>
               <p>
                             <span>
-                                Specify <tt class="literal">DB_READ_COMMITTED</tt>
+                                Specify <code class="literal">DB_READ_COMMITTED</code>
                                 when you open the cursor. 
                             </span>
                             
@@ -419,7 +436,6 @@ int main(void)
               <h3 class="title"><a id="snapshot_isolation"></a>Using Snapshot Isolation</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                     By default DB uses serializable isolation. An
@@ -463,7 +479,6 @@ int main(void)
                 <h4 class="title"><a id="sisolation_cost"></a>Snapshot Isolation Cost</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     Snapshot isolation does not come without a cost.
@@ -484,7 +499,7 @@ int main(void)
                     You can estimate how large your cache should be by
                     taking a checkpoint, followed by a call to the 
                     
-                    <tt class="methodname">DbEnv::log_archive()</tt>
+                    <code class="methodname">DbEnv::log_archive()</code>
                     
                     method. The amount of cache required is approximately
                     double the size of the remaining log files (that is,
@@ -498,13 +513,12 @@ int main(void)
                 <h4 class="title"><a id="sisolation_maxtxn"></a>Snapshot Isolation Transactional Requirements</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                     In addition to an increased cache size, you may also
                     need to increase the maximum number of transactions
                     that your application supports. (See 
-                    <a href="maxtxns.html">Configuring the Transaction Subsystem</a>
+                    <a class="xref" href="maxtxns.html" title="Configuring the Transaction Subsystem">Configuring the Transaction Subsystem</a>
                     for details on how to set this.) 
                     In the worst case scenario, you might need to configure your application for one
                     more transaction for every page in the cache. This is
@@ -519,7 +533,6 @@ int main(void)
                 <h4 class="title"><a id="sisolation_whenuse"></a>When to Use Snapshot Isolation</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                            Snapshot isolation is best used when all or most
@@ -565,7 +578,6 @@ int main(void)
                 <h4 class="title"><a id="sisolation_howuse"></a>How to use Snapshot Isolation</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                            You use snapshot isolation by:
@@ -587,9 +599,19 @@ int main(void)
 
                                            <span>
                                             Use the
-                                           <tt class="literal">DB_MULTIVERSION</tt>
+                                           <code class="literal">DB_MULTIVERSION</code>
                                            flag to configure this support.
                                             </span>
+
+                                           <span>
+                                            Use the
+                                            <code class="methodname">XmlContainerConfig::setMultiversion()</code>
+                                            option to configure this support when you open your
+                                            container. To configure multiversion support when you
+                                            open your environment, use the
+                                            <code class="literal">DB_MULTIVERSION</code> flag on the
+                                            environment open.
+                                           </span>
 
                                             
                                    </p>
@@ -603,7 +625,7 @@ int main(void)
                                            To do this, 
                                            
                                            <span>
-                                                pass the <tt class="literal">DB_TXN_SNAPSHOT</tt> flag 
+                                                pass the <code class="literal">DB_TXN_SNAPSHOT</code> flag 
                                                 when you 
 
                                                 <span>
@@ -643,7 +665,7 @@ int main(void)
                            isolation as well.  But doing this means that
                            you must manage deadlock errors.
                            See 
-                           <a href="lockingsubsystem.html#deadlockresolve">Resolving Deadlocks</a>
+                           <a class="xref" href="lockingsubsystem.html#deadlockresolve" title="Resolving Deadlocks">Resolving Deadlocks</a>
                            for details.
                    </p>
           <p>
@@ -662,7 +684,7 @@ int main(void)
                           DB_INIT_LOG   |  // Initialize logging
                           DB_INIT_MPOOL |  // Initialize the cache
                           DB_INIT_TXN   |  // Initialize transactions
-                          <b class="userinput"><tt>DB_MULTIVERSION; // Support snapshot isolation.</tt></b>
+                          <strong class="userinput"><code>DB_MULTIVERSION; // Support snapshot isolation.</code></strong>
 
     // Note that no special flags are required here for snapshot isolation.
     // This is because it is already enabled at the environment level.
@@ -693,7 +715,7 @@ int main(void)
 
     ....
 
-    envp-&gt;txn_begin(NULL, txn, <b class="userinput"><tt>DB_TXN_SNAPSHOT</tt></b>);
+    envp-&gt;txn_begin(NULL, txn, <strong class="userinput"><code>DB_TXN_SNAPSHOT</code></strong>);
 
     // Remainder of program omitted for brevity.
 

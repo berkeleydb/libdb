@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test029.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test029
 # TEST	Test the Btree and Record number renumbering.
@@ -17,6 +17,15 @@ proc test029 { method {nentries 10000} args} {
 
 	if { [string compare $omethod "-hash"] == 0 } {
 		puts "Test029 skipping for method HASH"
+		return
+	}
+	# Btree with compression does not support -recnum.
+	if { [is_compressed $args] == 1 } {
+		puts "Test029 skipping for compressed btree with -recnum."
+		return
+	}
+	if { [is_partitioned $args] } {
+		puts "Test029 skipping for partitioned $omethod"
 		return
 	}
 	if { [is_record_based $method] == 1 && $do_renumber != 1 } {

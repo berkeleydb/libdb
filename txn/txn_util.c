@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
- * $Id: txn_util.c,v 12.25 2008/01/31 18:40:48 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -40,6 +40,11 @@ struct __txn_event {
 	} u;
 };
 
+#define	TXN_TOP_PARENT(txn) do {					\
+	while (txn->parent != NULL)					\
+		txn = txn->parent;					\
+} while (0)
+
 /*
  * __txn_closeevent --
  *
@@ -63,6 +68,7 @@ __txn_closeevent(env, txn, dbp)
 
 	e->u.c.dbp = dbp;
 	e->op = TXN_CLOSE;
+	TXN_TOP_PARENT(txn);
 	TAILQ_INSERT_TAIL(&txn->events, e, links);
 
 	return (0);
@@ -103,6 +109,7 @@ __txn_remevent(env, txn, name, fileid, inmem)
 
 	e->u.r.inmem = inmem;
 	e->op = TXN_REMOVE;
+	TXN_TOP_PARENT(txn);
 	TAILQ_INSERT_TAIL(&txn->events, e, links);
 
 	return (0);
@@ -128,6 +135,7 @@ __txn_remrem(env, txn, name)
 {
 	TXN_EVENT *e, *next_e;
 
+	TXN_TOP_PARENT(txn);
 	for (e = TAILQ_FIRST(&txn->events); e != NULL; e = next_e) {
 		next_e = TAILQ_NEXT(e, links);
 		if (e->op != TXN_REMOVE || strcmp(name, e->u.r.name) != 0)
@@ -173,6 +181,7 @@ __txn_lockevent(env, txn, dbp, lock, locker)
 	e->u.t.lock = *lock;
 	e->u.t.dbp = dbp;
 	e->op = TXN_TRADE;
+	/* This event goes on the current transaction, not its parent. */
 	TAILQ_INSERT_TAIL(&txn->events, e, links);
 	dbp->cur_txn = txn;
 
@@ -218,15 +227,21 @@ __txn_remlock(env, txn, lock, locker)
 	memset(&req, 0, sizeof(req));					\
 	req.lock = e->u.t.lock;						\
 	req.op = DB_LOCK_TRADE;						\
-	t_ret = __lock_vec(env, e->u.t.locker, 0, &req, 1, NULL);	\
+	t_ret = __lock_vec(env, txn->parent ?				\
+	    txn->parent->locker : e->u.t.locker, 0, &req, 1, NULL);	\
 	if (t_ret == 0)	{						\
-		e->u.t.dbp->cur_locker = e->u.t.locker;			\
-		e->u.t.dbp->cur_txn = NULL;				\
+		if (txn->parent != NULL) {				\
+			e->u.t.dbp->cur_txn = txn->parent;		\
+			e->u.t.dbp->cur_locker = txn->parent->locker;	\
+		} else {						\
+			e->op = TXN_TRADED;				\
+			e->u.t.dbp->cur_locker = e->u.t.locker;		\
+			e->u.t.dbp->cur_txn = NULL;			\
+		}							\
 	} else if (t_ret == DB_NOTFOUND)				\
 		t_ret = 0;						\
 	if (t_ret != 0 && ret == 0)					\
 		ret = t_ret;						\
-	e->op = TXN_TRADED;						\
 } while (0)
 
 int
@@ -236,7 +251,7 @@ __txn_doevents(env, txn, opcode, preprocess)
 	int opcode, preprocess;
 {
 	DB_LOCKREQ req;
-	TXN_EVENT *e;
+	TXN_EVENT *e, *enext;
 	int ret, t_ret;
 
 	ret = 0;
@@ -250,11 +265,17 @@ __txn_doevents(env, txn, opcode, preprocess)
 	 */
 	if (preprocess) {
 		for (e = TAILQ_FIRST(&txn->events);
-		    e != NULL; e = TAILQ_NEXT(e, links)) {
+		    e != NULL; e = enext) {
+			enext = TAILQ_NEXT(e, links);
 			if (e->op != TXN_TRADE ||
 			    IS_WRITELOCK(e->u.t.lock.mode))
 				continue;
 			DO_TRADE;
+			if (txn->parent != NULL) {
+				TAILQ_REMOVE(&txn->events, e, links);
+				TAILQ_INSERT_HEAD(
+				     &txn->parent->events, e, links);
+			}
 		}
 		return (ret);
 	}
@@ -293,6 +314,11 @@ __txn_doevents(env, txn, opcode, preprocess)
 			break;
 		case TXN_TRADE:
 			DO_TRADE;
+			if (txn->parent != NULL) {
+				TAILQ_INSERT_HEAD(
+				     &txn->parent->events, e, links);
+				continue;
+			}
 			/* Fall through */
 		case TXN_TRADED:
 			/* Downgrade the lock. */
@@ -359,8 +385,11 @@ __txn_record_fname(env, txn, fname)
 	if (td->nlog_slots <= td->nlog_dbs) {
 		TXN_SYSTEM_LOCK(env);
 		if ((ret = __env_alloc(&mgr->reginfo,
-		    sizeof(roff_t) * (td->nlog_slots << 1), &np)) != 0)
+		    sizeof(roff_t) * (td->nlog_slots << 1), &np)) != 0) {
+			TXN_SYSTEM_UNLOCK(env);
 			return (ret);
+		}
+
 		memcpy(np, ldbs, td->nlog_dbs * sizeof(roff_t));
 		if (td->nlog_slots > TXN_NSLOTS)
 			__env_alloc_free(&mgr->reginfo, ldbs);

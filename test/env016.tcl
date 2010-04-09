@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: env016.tcl,v 1.1 2008/02/01 19:03:40 sue Exp $
+# $Id$
 #
 # TEST	env016
 # TEST	Replication settings and DB_CONFIG

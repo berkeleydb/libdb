@@ -1,13 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep048script.tcl,v 12.9 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # Rep048 script - toggle bulk transfer while updates are going on.
 
 # Usage: repscript masterdir
 # masterdir: master env directory
+# databases_in_memory: are we using named in-memory databases?
 #
 source ./include.tcl
 source $test_path/reputils.tcl
@@ -15,14 +16,15 @@ source $test_path/reputils.tcl
 set usage "repscript masterdir"
 
 # Verify usage
-if { $argc != 1 } {
+if { $argc != 2 } {
 	puts stderr "FAIL:[timestamp] Usage: $usage"
 	exit
 }
 
 # Initialize arguments
 set masterdir [ lindex $argv 0 ]
-
+global databases_in_memory
+set databases_in_memory [ lindex $argv 1 ]
 
 # Join the queue env.  We assume the rep test convention of
 # placing the messages in $testdir/MSGQUEUEDIR.
@@ -46,7 +48,11 @@ set masterenv [eval $ma_cmd]
 error_check_good script_menv_open [is_valid_env $masterenv] TRUE
 
 puts "Master open"
-set dbname "child.db"
+if { $databases_in_memory } {
+	set dbname { "" "child.db" }
+} else {
+	set dbname "child.db"
+}
 set db [eval "berkdb_open -create -btree -auto_commit -env $masterenv $dbname"]
 error_check_good dbopen [is_valid_db $db] TRUE
 

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleSerialFactoryTest.java,v 12.1 2008/02/07 17:12:32 mark Exp $
+ * $Id$
  */
 package com.sleepycat.collections.test.serial;
 
@@ -34,9 +34,7 @@ import com.sleepycat.util.test.TestEnv;
 public class TupleSerialFactoryTest extends TestCase
     implements TransactionWorker {
 
-    public static void main(String[] args)
-        throws Exception {
-
+    public static void main(String[] args) {
         junit.framework.TestResult tr =
             junit.textui.TestRunner.run(suite());
         if (tr.errorCount() > 0 ||
@@ -47,9 +45,7 @@ public class TupleSerialFactoryTest extends TestCase
         }
     }
 
-    public static Test suite()
-        throws Exception {
-
+    public static Test suite() {
         TestSuite suite = new TestSuite();
         for (int i = 0; i < TestEnv.ALL.length; i += 1) {
             for (int sorted = 0; sorted < 2; sorted += 1) {
@@ -69,7 +65,7 @@ public class TupleSerialFactoryTest extends TestCase
     private Database store2;
     private SecondaryDatabase index1;
     private SecondaryDatabase index2;
-    private boolean isSorted;
+    private final boolean isSorted;
     private Map storeMap1;
     private Map storeMap2;
     private Map indexMap1;
@@ -87,6 +83,7 @@ public class TupleSerialFactoryTest extends TestCase
         setName(name);
     }
 
+    @Override
     public void setUp()
         throws Exception {
 
@@ -97,6 +94,7 @@ public class TupleSerialFactoryTest extends TestCase
         createDatabase();
     }
 
+    @Override
     public void tearDown() {
 
         try {
@@ -138,15 +136,14 @@ public class TupleSerialFactoryTest extends TestCase
         }
     }
 
+    @Override
     public void runTest()
         throws Exception {
 
         runner.run(this);
     }
 
-    public void doWork()
-        throws Exception {
-
+    public void doWork() {
         createViews();
         writeAndRead();
     }
@@ -198,9 +195,7 @@ public class TupleSerialFactoryTest extends TestCase
             (env, null, file, null, primary, secConfig);
     }
 
-    private void createViews()
-        throws Exception {
-
+    private void createViews() {
         if (isSorted) {
             storeMap1 = factory.newSortedMap(store1, String.class,
                                              MarshalledObject.class, true);
@@ -222,9 +217,7 @@ public class TupleSerialFactoryTest extends TestCase
         }
     }
 
-    private void writeAndRead()
-        throws Exception {
-
+    private void writeAndRead() {
         MarshalledObject o1 = new MarshalledObject("data1", "pk1", "ik1", "");
         assertNull(storeMap1.put(null, o1));
 

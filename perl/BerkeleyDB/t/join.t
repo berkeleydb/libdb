@@ -7,15 +7,14 @@ use strict ;
 use lib 't';
 use BerkeleyDB; 
 use util ;
+use Test::More;
 
-if ($BerkeleyDB::db_ver < 2.005002)
-{
-    print "1..0 # Skip: join needs Berkeley DB 2.5.2 or later\n" ;
-    exit 0 ;
+BEGIN {
+    plan(skip_all => "this needs BerkeleyDB 2.5.2 or better" )
+        if $BerkeleyDB::db_ver < 2.005002;
+
+    plan tests => 42;    
 }
-
-
-print "1..42\n";
 
 my $Dfile1 = "dbhash1.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -32,7 +31,7 @@ umask(0) ;
     my $status ;
     my $cursor ;
 
-    ok 1, my $db1 = tie %hash1, 'BerkeleyDB::Hash', 
+    ok my $db1 = tie %hash1, 'BerkeleyDB::Hash', 
 				-Filename => $Dfile1,
                                	-Flags     => DB_CREATE,
                                 -DupCompare   => sub { $_[0] lt $_[1] },
@@ -40,24 +39,24 @@ umask(0) ;
 
     # no cursors supplied
     eval '$cursor = $db1->db_join() ;' ;
-    ok 2, $@ =~ /Usage: \$db->BerkeleyDB::db_join\Q([cursors], flags=0)/;
+    ok $@ =~ /Usage: \$db->BerkeleyDB::db_join\Q([cursors], flags=0)/;
 
     # empty list
     eval '$cursor = $db1->db_join([]) ;' ;
-    ok 3, $@ =~ /db_join: No cursors in parameter list/;
+    ok $@ =~ /db_join: No cursors in parameter list/;
 
     # cursor list, isn not a []
     eval '$cursor = $db1->db_join({}) ;' ;
-    ok 4, $@ =~ /db_join: first parameter is not an array reference/;
+    ok $@ =~ /db_join: first parameter is not an array reference/;
 
     eval '$cursor = $db1->db_join(\1) ;' ;
-    ok 5, $@ =~ /db_join: first parameter is not an array reference/;
+    ok $@ =~ /db_join: first parameter is not an array reference/;
 
     my ($a, $b) = ("a", "b");
     $a = bless [], "fred";
     $b = bless [], "fred";
     eval '$cursor = $db1->db_join($a, $b) ;' ;
-    ok 6, $@ =~ /db_join: first parameter is not an array reference/;
+    ok $@ =~ /db_join: first parameter is not an array reference/;
 
 }
 
@@ -73,14 +72,14 @@ umask(0) ;
 
     my $home = "./fred7" ;
     rmtree $home;
-    ok 7, ! -d $home;
-    ok 8, my $lexD = new LexDir($home);
-    ok 9, my $env = new BerkeleyDB::Env -Home => $home, @StdErrFile,
+    ok ! -d $home;
+    ok my $lexD = new LexDir($home);
+    ok my $env = new BerkeleyDB::Env -Home => $home, @StdErrFile,
 				     -Flags => DB_CREATE|DB_INIT_TXN
 					  	|DB_INIT_MPOOL;
 					  	#|DB_INIT_MPOOL| DB_INIT_LOCK;
-    ok 10, my $txn = $env->txn_begin() ;
-    ok 11, my $db1 = tie %hash1, 'BerkeleyDB::Hash', 
+    ok my $txn = $env->txn_begin() ;
+    ok my $db1 = tie %hash1, 'BerkeleyDB::Hash', 
 				-Filename => $Dfile1,
                                	-Flags     => DB_CREATE,
                                 -DupCompare   => sub { $_[0] cmp $_[1] },
@@ -89,7 +88,7 @@ umask(0) ;
 			    	-Txn	   => $txn  ;
 				;
 
-    ok 12, my $db2 = tie %hash2, 'BerkeleyDB::Hash', 
+    ok my $db2 = tie %hash2, 'BerkeleyDB::Hash', 
 				-Filename => $Dfile2,
                                	-Flags     => DB_CREATE,
                                 -DupCompare   => sub { $_[0] cmp $_[1] },
@@ -97,7 +96,7 @@ umask(0) ;
 			       	-Env 	   => $env,
 			    	-Txn	   => $txn  ;
 
-    ok 13, my $db3 = tie %hash3, 'BerkeleyDB::Btree', 
+    ok my $db3 = tie %hash3, 'BerkeleyDB::Btree', 
 				-Filename => $Dfile3,
                                	-Flags     => DB_CREATE,
                                 -DupCompare   => sub { $_[0] cmp $_[1] },
@@ -106,7 +105,7 @@ umask(0) ;
 			    	-Txn	   => $txn  ;
 
     
-    ok 14, addData($db1, qw( 	apple		Convenience
+    ok addData($db1, qw( 	apple		Convenience
     				peach		Shopway
 				pear		Farmer
 				raspberry	Shopway
@@ -115,7 +114,7 @@ umask(0) ;
 				blueberry	Farmer
     			));
 
-    ok 15, addData($db2, qw( 	red	apple
+    ok addData($db2, qw( 	red	apple
     				red	raspberry
     				red	strawberry
 				yellow	peach
@@ -123,7 +122,7 @@ umask(0) ;
 				green	gooseberry
 				blue	blueberry)) ;
 
-    ok 16, addData($db3, qw( 	expensive	apple
+    ok addData($db3, qw( 	expensive	apple
     				reasonable	raspberry
     				expensive	strawberry
 				reasonable	peach
@@ -131,13 +130,13 @@ umask(0) ;
 				expensive	gooseberry
 				reasonable	blueberry)) ;
 
-    ok 17, my $cursor2 = $db2->db_cursor() ;
+    ok my $cursor2 = $db2->db_cursor() ;
     my $k = "red" ;
     my $v = "" ;
-    ok 18, $cursor2->c_get($k, $v, DB_SET) == 0 ;
+    ok $cursor2->c_get($k, $v, DB_SET) == 0 ;
 
     # Two way Join
-    ok 19, my $cursor1 = $db1->db_join([$cursor2]) ;
+    ok my $cursor1 = $db1->db_join([$cursor2]) ;
 
     my %expected = qw( apple Convenience
 			raspberry Shopway
@@ -150,20 +149,20 @@ umask(0) ;
 	    if defined $expected{$k} && $expected{$k} eq $v ;
 	#print "[$k] [$v]\n" ;
     }
-    ok 20, keys %expected == 0 ;
-    ok 21, $cursor1->status() == DB_NOTFOUND ;
+    is keys %expected, 0 ;
+    ok $cursor1->status() == DB_NOTFOUND ;
 
     # Three way Join
-    ok 22, $cursor2 = $db2->db_cursor() ;
+    ok $cursor2 = $db2->db_cursor() ;
     $k = "red" ;
     $v = "" ;
-    ok 23, $cursor2->c_get($k, $v, DB_SET) == 0 ;
+    ok $cursor2->c_get($k, $v, DB_SET) == 0 ;
 
-    ok 24, my $cursor3 = $db3->db_cursor() ;
+    ok my $cursor3 = $db3->db_cursor() ;
     $k = "expensive" ;
     $v = "" ;
-    ok 25, $cursor3->c_get($k, $v, DB_SET) == 0 ;
-    ok 26, $cursor1 = $db1->db_join([$cursor2, $cursor3]) ;
+    ok $cursor3->c_get($k, $v, DB_SET) == 0 ;
+    ok $cursor1 = $db1->db_join([$cursor2, $cursor3]) ;
 
     %expected = qw( apple Convenience
 			strawberry Shopway
@@ -175,21 +174,21 @@ umask(0) ;
 	    if defined $expected{$k} && $expected{$k} eq $v ;
 	#print "[$k] [$v]\n" ;
     }
-    ok 27, keys %expected == 0 ;
-    ok 28, $cursor1->status() == DB_NOTFOUND ;
+    is keys %expected, 0 ;
+    ok $cursor1->status() == DB_NOTFOUND ;
 
     # test DB_JOIN_ITEM
     # #################
-    ok 29, $cursor2 = $db2->db_cursor() ;
+    ok $cursor2 = $db2->db_cursor() ;
     $k = "red" ;
     $v = "" ;
-    ok 30, $cursor2->c_get($k, $v, DB_SET) == 0 ;
+    ok $cursor2->c_get($k, $v, DB_SET) == 0 ;
  
-    ok 31, $cursor3 = $db3->db_cursor() ;
+    ok $cursor3 = $db3->db_cursor() ;
     $k = "expensive" ;
     $v = "" ;
-    ok 32, $cursor3->c_get($k, $v, DB_SET) == 0 ;
-    ok 33, $cursor1 = $db1->db_join([$cursor2, $cursor3]) ;
+    ok $cursor3->c_get($k, $v, DB_SET) == 0 ;
+    ok $cursor1 = $db1->db_join([$cursor2, $cursor3]) ;
  
     %expected = qw( apple 1
                         strawberry 1
@@ -203,22 +202,22 @@ umask(0) ;
             if defined $expected{$k} ;
         #print "[$k]\n" ;
     }
-    ok 34, keys %expected == 0 ;
-    ok 35, $cursor1->status() == DB_NOTFOUND ;
+    is keys %expected, 0 ;
+    ok $cursor1->status() == DB_NOTFOUND ;
 
-    ok 36, $cursor1->c_close() == 0 ;
-    ok 37, $cursor2->c_close() == 0 ;
-    ok 38, $cursor3->c_close() == 0 ;
+    ok $cursor1->c_close() == 0 ;
+    ok $cursor2->c_close() == 0 ;
+    ok $cursor3->c_close() == 0 ;
 
-    ok 39, ($status = $txn->txn_commit()) == 0;
+    ok (($status = $txn->txn_commit()) == 0);
 
     undef $txn ;
 
-    ok 40, my $cursor1a = $db1->db_cursor() ;
+    ok my $cursor1a = $db1->db_cursor() ;
     eval { $cursor1 = $db1->db_join([$cursor1a]) };
-    ok 41, $@ =~ /BerkeleyDB Aborting: attempted to do a self-join at/;
+    ok $@ =~ /BerkeleyDB Aborting: attempted to do a self-join at/;
     eval { $cursor1 = $db1->db_join([$cursor1]) } ;
-    ok 42, $@ =~ /BerkeleyDB Aborting: attempted to do a self-join at/;
+    ok $@ =~ /BerkeleyDB Aborting: attempted to do a self-join at/;
 
     undef $cursor1a;
     #undef $cursor1;

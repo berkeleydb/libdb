@@ -3,15 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>
-		Creating Collections with Entity Bindings
-	</title>
+    <title>Creating Collections with Entity Bindings</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Berkeley DB Collections Tutorial" />
-    <link rel="up" href="Entity.html" title="Chapter 4. &#10;        Using Entity Classes&#9;&#10;&#9;" />
-    <link rel="previous" href="creatingentitybindings.html" title="&#10;&#9;&#9;Creating Entity Bindings&#10;&#9;" />
-    <link rel="next" href="entitieswithcollections.html" title="&#10;&#9;&#9;Using Entities with Collections&#10;&#9;" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Collections Tutorial" />
+    <link rel="up" href="Entity.html" title="Chapter 4.  Using Entity Classes" />
+    <link rel="prev" href="creatingentitybindings.html" title="Creating Entity Bindings" />
+    <link rel="next" href="entitieswithcollections.html" title="Using Entities with Collections" />
   </head>
   <body>
     <div class="navheader">
@@ -40,20 +38,19 @@
 	</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
     Stored map objects are created in this example in the same way
 	as in prior examples, but using entity bindings in place of value
 	bindings. All value objects passed and returned to the Java
-	collections API are then actually entity objects (<tt class="classname">Part</tt>,
-	<tt class="classname">Supplier</tt> and <tt class="classname">Shipment</tt>). The application no longer
-	deals directly with plain value objects (<tt class="classname">PartData</tt>,
-	<tt class="classname">SupplierData</tt> and <tt class="classname">ShipmentData</tt>).
+	collections API are then actually entity objects (<code class="classname">Part</code>,
+	<code class="classname">Supplier</code> and <code class="classname">Shipment</code>). The application no longer
+	deals directly with plain value objects (<code class="classname">PartData</code>,
+	<code class="classname">SupplierData</code> and <code class="classname">ShipmentData</code>).
 </p>
       <p>
-    Since the <tt class="literal">partValueBinding</tt>, <tt class="literal">supplierValueBinding</tt>
-	and <tt class="literal">shipmentValueBinding</tt> were defined as entity bindings in
+    Since the <code class="literal">partValueBinding</code>, <code class="literal">supplierValueBinding</code>
+	and <code class="literal">shipmentValueBinding</code> were defined as entity bindings in
 	the prior section, there are no source code changes necessary for
 	creating the stored map objects.
 </p>
@@ -77,10 +74,10 @@
     } </pre>
       <p>
     Specifying an 
-    <a href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
+    <a class="ulink" href="../../java/com/sleepycat/bind/EntityBinding.html" target="_top">EntityBinding</a>
     
 	will select a different 
-    <a href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html" target="_top">StoredMap</a>
     
 	constructor, but the syntax is the same. In general, an entity
 	binding may be used anywhere that a value binding is used.
@@ -89,21 +86,21 @@
     The following getter methods are defined for use by other
 	classes in the example program. Instead of returning the map's
 	entry set 
-    (<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>),
+    (<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#entrySet" target="_top">Map.entrySet</a>),
 	the map's value set 
-    (<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>)
+    (<a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>)
 	is returned. The entry set was convenient in prior examples because
 	it allowed enumerating all key/value pairs in the collection. Since
 	an entity contains the key and the value, enumerating the value set
 	can now be used more conveniently for the same purpose.
 </p>
       <a id="entity_sampleviews3"></a>
-      <pre class="programlisting"><b class="userinput"><tt>import com.sleepycat.collections.StoredValueSet;</tt></b>
+      <pre class="programlisting"><strong class="userinput"><code>import com.sleepycat.collections.StoredValueSet;</code></strong>
 ...
 public class SampleViews
 {
     ...
-<b class="userinput"><tt>    public StoredValueSet getPartSet()
+<strong class="userinput"><code>    public StoredValueSet getPartSet()
     {
         return (StoredValueSet) partMap.values();
     }
@@ -116,21 +113,21 @@ public class SampleViews
     public StoredValueSet getShipmentSet()
     {
         return (StoredValueSet) shipmentMap.values();
-    }</tt></b>
+    }</code></strong>
     ...
 } </pre>
       <p>
     Notice that the collection returned by the 
-    <a href="../../java/com/sleepycat/collections/StoredMap.html#values()" target="_top">StoredMap.values</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/StoredMap.html#values()" target="_top">StoredMap.values</a>
     
 	method is actually a 
-    <a href="../../java/com/sleepycat/collections/StoredValueSet.html" target="_top">StoredValueSet</a>
+    <a class="ulink" href="../../java/com/sleepycat/collections/StoredValueSet.html" target="_top">StoredValueSet</a>
     
 	and not just a 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Collection.html" target="_top">Collection</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Collection.html" target="_top">Collection</a>
     
 	as defined by the 
-    <a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
+    <a class="ulink" href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/Map.html#values" target="_top">Map.values</a>
     
 	interface. As long as duplicate keys are not allowed, this
 	collection will behave as a true set and will disallow the addition

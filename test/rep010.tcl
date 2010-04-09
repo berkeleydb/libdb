@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003,2008 Oracle.  All rights reserved.
+# Copyright (c) 2003-2009 Oracle.  All rights reserved.
 #
-# $Id: rep010.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep010
 # TEST	Replication and ISPERM
@@ -16,6 +16,9 @@
 proc rep010 { method { niter 100 } { tnum "010" } args } {
 
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -24,6 +27,20 @@ proc rep010 { method { niter 100 } { tnum "010" } args } {
 	# Run for all access methods.
 	if { $checking_valid_methods } {
 		return "ALL"
+	}
+
+	set msg "with on-disk databases"
+	if { $databases_in_memory } {
+		set msg "with named in-memory databases"
+		if { [is_queueext $method] == 1 } {
+			puts "Skipping rep$tnum for method $method"
+			return 
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
 	}
 
 	set args [convert_args $method $args]
@@ -38,7 +55,8 @@ proc rep010 { method { niter 100 } { tnum "010" } args } {
 				    for in-memory logs with -recover."
 				continue
 			}
-			puts "Rep$tnum ($method $r): Replication and ISPERM."
+			puts "Rep$tnum ($method $r): Replication and ISPERM"
+			puts "Rep$tnum: with $msg $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			puts "Rep$tnum: Client logs are [lindex $l 1]"
 			rep010_sub $method $niter $tnum $l $r $args
@@ -51,12 +69,19 @@ proc rep010_sub { method niter tnum logset recargs largs } {
 	global rand_init
 	berkdb srand $rand_init
 	global perm_sent_list
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -84,14 +109,14 @@ proc rep010_sub { method niter tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    $m_logargs $verbargs -errpfx MASTER \
+	    $m_logargs $verbargs -errpfx MASTER $repmemargs \
 	    -home $masterdir $m_txnargs -rep_master \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
 
 	# Open a client
 	repladd 2
-	set env_cmd(C) "berkdb_env_noerr -create -home $clientdir \
+	set env_cmd(C) "berkdb_env_noerr -create -home $clientdir $repmemargs \
 	    $c_txnargs $c_logargs $verbargs -rep_client -errpfx CLIENT \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C) $recargs]
@@ -103,7 +128,11 @@ proc rep010_sub { method niter tnum logset recargs largs } {
 	process_msgs "{$masterenv 1} {$clientenv 2}"
 
 	# Open database in master, propagate to client.
-	set dbname rep010.db
+	if { $databases_in_memory } { 
+		set dbname { "" "test.db" } 
+	} else {
+		set dbname test.db
+	}
 	set db1 [eval {berkdb_open_noerr -create} $omethod -auto_commit \
 	    -env $masterenv $largs $dbname]
 	rep010_process_msgs $masterenv $clientenv 1
@@ -148,6 +177,9 @@ proc rep010_sub { method niter tnum logset recargs largs } {
 	}
 	set skip [berkdb random_int 2 8]
 	rep010_process_msgs $masterenv $clientenv 1 $skip
+
+	check_db_location $masterenv
+	check_db_location $clientenv
 
 	# Clean up.
 	error_check_good db1_close [$db1 close] 0

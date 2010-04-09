@@ -1,21 +1,25 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: memp001.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 
 # TEST	memp001
 # TEST	Randomly updates pages.
 proc memp001 { } {
-
+	source ./include.tcl
 	memp001_body 1 ""
 	memp001_body 3 ""
 	memp001_body 1 -private
 	memp001_body 3 -private
+	if { $is_qnx_test } {
+		puts "Skipping remainder of memp001 for\
+		    environments in system memory on QNX"
+		return
+	}
 	memp001_body 1 "-system_mem -shm_key 1"
 	memp001_body 3 "-system_mem -shm_key 1"
-
 }
 
 proc memp001_body { ncache flags } {
@@ -93,7 +97,7 @@ proc memp001_body { ncache flags } {
 		set p(10) [get_range $mpool 40]
 		set p(7) [replace $mpool $p(7)]
 		set p(8) [replace $mpool $p(8)]
-		set p(9) [replace $mpool $p(9) -dirty]
+		set p(9) [replace $mpool $p(9) ]
 		set p(10) [replace $mpool $p(10)]
 		#
 		# We now need to put all the pages we have here or
@@ -138,7 +142,7 @@ proc file_create { fname nblocks blocksize } {
 
 proc get_range { mpool max } {
 	set pno [berkdb random_int 0 $max]
-	set p [eval $mpool get -dirty $pno]
+	set p [eval $mpool get $pno]
 	error_check_good page [is_valid_page $p $mpool] TRUE
 	set got [$p pgnum]
 	if { $got != $pno } {

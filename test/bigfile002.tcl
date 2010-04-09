@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: bigfile002.tcl,v 12.9 2008/04/22 09:39:29 winter Exp $
+# $Id$
 #
 # TEST	bigfile002
 # TEST	This one should be faster and not require so much disk space,

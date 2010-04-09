@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_ret.c,v 12.13 2008/01/08 20:58:10 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -16,14 +16,12 @@
  * __db_ret --
  *	Build return DBT.
  *
- * PUBLIC: int __db_ret __P((DB *, DB_THREAD_INFO *, DB_TXN *,
+ * PUBLIC: int __db_ret __P((DBC *,
  * PUBLIC:    PAGE *, u_int32_t, DBT *, void **, u_int32_t *));
  */
 int
-__db_ret(dbp, ip, txn, h, indx, dbt, memp, memsize)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
+__db_ret(dbc, h, indx, dbt, memp, memsize)
+	DBC *dbc;
 	PAGE *h;
 	u_int32_t indx;
 	DBT *dbt;
@@ -32,10 +30,13 @@ __db_ret(dbp, ip, txn, h, indx, dbt, memp, memsize)
 {
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
+	DB *dbp;
 	HOFFPAGE ho;
 	u_int32_t len;
 	u_int8_t *hk;
 	void *data;
+
+	dbp = dbc->dbp;
 
 	switch (TYPE(h)) {
 	case P_HASH_UNSORTED:
@@ -43,7 +44,7 @@ __db_ret(dbp, ip, txn, h, indx, dbt, memp, memsize)
 		hk = P_ENTRY(dbp, h, indx);
 		if (HPAGE_PTYPE(hk) == H_OFFPAGE) {
 			memcpy(&ho, hk, sizeof(HOFFPAGE));
-			return (__db_goff(dbp, ip, txn, dbt,
+			return (__db_goff(dbc, dbt,
 			    ho.tlen, ho.pgno, memp, memsize));
 		}
 		len = LEN_HKEYDATA(dbp, h, dbp->pgsize, indx);
@@ -55,7 +56,7 @@ __db_ret(dbp, ip, txn, h, indx, dbt, memp, memsize)
 		bk = GET_BKEYDATA(dbp, h, indx);
 		if (B_TYPE(bk->type) == B_OVERFLOW) {
 			bo = (BOVERFLOW *)bk;
-			return (__db_goff(dbp, ip, txn, dbt,
+			return (__db_goff(dbc, dbt,
 			    bo->tlen, bo->pgno, memp, memsize));
 		}
 		len = bk->len;

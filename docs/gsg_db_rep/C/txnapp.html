@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 2. Transactional Application</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="previous" href="permmessages.html" title="Permanent Message Handling" />
+    <link rel="prev" href="permmessages.html" title="Permanent Message Handling" />
     <link rel="next" href="simpleprogramlisting.html" title="Program Listing" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="txnapp"></a>Chapter 2. Transactional Application</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -74,7 +73,7 @@
               <dt>
                 <span class="sect2">
                   <a href="simpleprogramlisting.html#printstocks_c">
-                            Function: print_stocks()
+                            <span>Function: print_stocks()</span>
                             
                             
                     </a>
@@ -97,7 +96,7 @@
         transaction-protected DB application, so we will not be
         covering those concepts in this book. To learn how to write a
         transaction-protected application, see the 
-        <i class="citetitle">Berkeley DB Getting Started with Transaction Processing</i> guide.
+        <em class="citetitle">Berkeley DB Getting Started with Transaction Processing</em> guide.
     </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -106,7 +105,6 @@
               <h2 class="title" style="clear: both"><a id="appoverview"></a>Application Overview</h2>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                 Our application maintains a stock market quotes database.
@@ -117,11 +115,11 @@
                 The application operates by presenting you with a command
                 line prompt. You then enter the stock symbol and its value,
                 separated by a space. The application takes this
-                information, writes it to the database. 
+                information and writes it to the database. 
             </p>
         <p>
                     To see the contents of the database, simply press
-                    <tt class="literal">return</tt> at the command prompt.
+                    <code class="literal">return</code> at the command prompt.
             </p>
         <p>
                 To quit the application, type 'quit' or 'exit' at the
@@ -132,13 +130,14 @@
                 usage. In it, we use entirely fictitious stock market
                 symbols and price values.
             </p>
-        <pre class="programlisting">&gt; ./simple_txn -h env_home_dir
+        <pre class="programlisting">&gt; ./ex_rep_gsg_simple -h env_home_dir
 QUOTESERVER&gt; stock1 88
 QUOTESERVER&gt; stock2 .08
 QUOTESERVER&gt; 
         Symbol  Price
         ======  =====
         stock1  88
+        stock2 .08
 
 QUOTESERVER&gt; stock1 88.9
 QUOTESERVER&gt; 
@@ -156,9 +155,7 @@ QUOTESERVER&gt; quit
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="permmessages.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="simpleprogramlisting.html">Next</a></td>
         </tr>
         <tr>

@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Base API In-Memory Transaction Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
-    <link rel="previous" href="txnexample_dpl.html" title="DPL Transaction Example" />
+    <link rel="prev" href="txnexample_dpl.html" title="DPL Transaction Example" />
   </head>
   <body>
     <div class="navheader">
@@ -31,7 +31,6 @@
             <h2 class="title" style="clear: both"><a id="inmem_txnexample_java"></a>Base API In-Memory Transaction Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         DB is sometimes used for applications that simply need to cache
@@ -54,7 +53,7 @@
             <p>
                 Refrain from specifying a home directory when you open your
                 environment. The exception to this is if you are using the
-                <tt class="literal">DB_CONFIG</tt> configuration file — in
+                <code class="literal">DB_CONFIG</code> configuration file — in
                 that case you must identify the environment's home
                 directory so that the configuration file can be found.
             </p>
@@ -93,20 +92,20 @@
       </div>
       <p>
         As an example, this section takes the transaction example provided
-        in <a href="txnexample_java.html">Base API Transaction Example</a>
+        in <a class="xref" href="txnexample_java.html" title="Base API Transaction Example">Base API Transaction Example</a>
         and it updates that example so that the environment, database, log
         files, and regions are all kept entirely in-memory. 
     </p>
       <p>
         For illustration purposes, we also modify this example so that 
-        uncommitted reads are no longer used to enable the <tt class="methodname">countRecords()</tt>
+        uncommitted reads are no longer used to enable the <code class="methodname">countRecords()</code>
         method. Instead, we simply provide a transaction handle to
-        <tt class="methodname">countRecords()</tt> so as to avoid the
+        <code class="methodname">countRecords()</code> so as to avoid the
         self-deadlock.
     </p>
       <p>
-        The majority of the modifications to the original example are performed in the <tt class="classname">TxnGuide</tt>
-        example class (see <a href="txnexample_java.html#txnguideexample">TxnGuide.java</a>). 
+        The majority of the modifications to the original example are performed in the <code class="classname">TxnGuide</code>
+        example class (see <a class="xref" href="txnexample_java.html#txnguideexample" title="TxnGuide.java">TxnGuide.java</a>). 
         This is because the majority of the work that we need to do is performed when the environment and
         databases are opened.
     </p>
@@ -114,7 +113,7 @@
         To begin, we simplify the beginning of the class a bit. We eliminate some variables that the example no longer
         needs — specifically variables having to do with the location of the environment and the names of the
         database files. 
-        We can also remove our <tt class="function">usage()</tt> method because we no
+        We can also remove our <code class="function">usage()</code> method because we no
         longer require any command line arguments. 
     </p>
       <pre class="programlisting">// File TxnGuideInMemory.java
@@ -135,7 +134,7 @@ import com.sleepycat.db.EnvironmentConfig;
 import java.io.File;
 import java.io.FileNotFoundException;
 
-<b class="userinput"><tt>public class TxnGuideInMemory {</tt></b>
+<strong class="userinput"><code>public class TxnGuideInMemory {</code></strong>
 
     // DB handles
     private static Database myDb = null;
@@ -144,8 +143,8 @@ import java.io.FileNotFoundException;
 
     private static final int NUMTHREADS = 5; </pre>
       <p>
-    Next, in our <tt class="function">main()</tt> method, we 
-    remove the call to <tt class="methodname">parseArgs()</tt> because that only existed in the previous example for
+    Next, in our <code class="function">main()</code> method, we 
+    remove the call to <code class="methodname">parseArgs()</code> because that only existed in the previous example for
     collecting the environment home location. Everything else is essentially the same.
 </p>
       <pre class="programlisting">    public static void main(String args[]) {
@@ -170,7 +169,7 @@ import java.io.FileNotFoundException;
                 threadArray[i].join();
             }
         } catch (Exception e) {
-            System.err.println("<b class="userinput"><tt>TxnGuideInMemory</tt></b>: " + e.toString());
+            System.err.println("<strong class="userinput"><code>TxnGuideInMemory</code></strong>: " + e.toString());
             e.printStackTrace();
         } finally {
             closeEnv();
@@ -184,8 +183,8 @@ import java.io.FileNotFoundException;
         <ul type="disc">
           <li>
             <p>
-                Set <tt class="methodname">EnvironmentConfig.setPrivate()</tt>
-                to <tt class="literal">true</tt>.
+                Set <code class="methodname">EnvironmentConfig.setPrivate()</code>
+                to <code class="literal">true</code>.
                 This causes our environment to back regions using our
                 application's heap memory rather than by using the filesystem.
                 This is the first important step to keeping our DB data
@@ -194,9 +193,9 @@ import java.io.FileNotFoundException;
           </li>
           <li>
             <p>
-                Remove <tt class="methodname">runRecovery()</tt>
+                Remove <code class="methodname">runRecovery()</code>
                 from the environment configuration. Because all our data will be held entirely in memory, recovery is a
-                non-issue. Note that if we had left the call to <tt class="methodname">runRecovery()</tt>
+                non-issue. Note that if we had left the call to <code class="methodname">runRecovery()</code>
                 in, it would be silently ignored.
             </p>
           </li>
@@ -208,9 +207,9 @@ import java.io.FileNotFoundException;
         // Set up the environment.
         EnvironmentConfig myEnvConfig = new EnvironmentConfig();
 
-        <b class="userinput"><tt>// Region files are not backed by the filesystem, they are
+        <strong class="userinput"><code>// Region files are not backed by the filesystem, they are
         // backed by heap memory.
-        myEnvConfig.setPrivate(true);</tt></b>
+        myEnvConfig.setPrivate(true);</code></strong>
 
         myEnvConfig.setAllowCreate(true);
         myEnvConfig.setInitializeCache(true);
@@ -233,8 +232,8 @@ import java.io.FileNotFoundException;
         application's workload.
       </p>
       <pre class="programlisting">
-        <b class="userinput">
-          <tt>        // Specify in-memory logging
+        <strong class="userinput">
+          <code>        // Specify in-memory logging
         myEnvConfig.setLogInMemory(true);
         // Specify the size of the in-memory log buffer
         // Must be large enough to handle the log data created by
@@ -242,12 +241,12 @@ import java.io.FileNotFoundException;
         myEnvConfig.setLogBufferSize(10 * 1024 * 1024);
         // Specify the size of the in-memory cache
         // Set it large enough so that it won't page.
-        myEnvConfig.setCacheSize(10 * 1024 * 1024); </tt>
-        </b>
+        myEnvConfig.setCacheSize(10 * 1024 * 1024); </code>
+        </strong>
       </pre>
       <p>
     Our database configuration is identical to the original example, except that we do not specify
-    <tt class="methodname">setReadUncomitted()</tt> here. We will be causing our <tt class="methodname">countRecords()</tt>
+    <code class="methodname">setReadUncomitted()</code> here. We will be causing our <code class="methodname">countRecords()</code>
     method to join the transaction rather than perform uncommitted reads, so we do not need our database to support them.
 </p>
       <pre class="programlisting">        // Set up the database
@@ -266,17 +265,17 @@ import java.io.FileNotFoundException;
  </p>
       <pre class="programlisting">        try {
             // Open the environment
-            myEnv = new Environment(<b class="userinput"><tt>null</tt></b>,    // Env home
+            myEnv = new Environment(<strong class="userinput"><code>null</code></strong>,    // Env home
                                     myEnvConfig); </pre>
       <p>
-        When we open our databases, we also specify <tt class="literal">null</tt> for the file names. The causes the database
+        When we open our databases, we also specify <code class="literal">null</code> for the file names. The causes the database
         to not be backed by the filesystem; that is, the databases are held entirely in memory.
     </p>
       <pre class="programlisting">            // Open the database. Do not provide a txn handle. This open
             // is auto committed because DatabaseConfig.setTransactional()
             // is true.
             myDb = myEnv.openDatabase(null,     // txn handle
-                                      <b class="userinput"><tt>null</tt></b>,     // Database file name
+                                      <strong class="userinput"><code>null</code></strong>,     // Database file name
                                       null,     // Database name
                                       myDbConfig);
 
@@ -284,7 +283,7 @@ import java.io.FileNotFoundException;
             // Class database must not support duplicates
             myDbConfig.setSortedDuplicates(false);
             myClassDb = myEnv.openDatabase(null,     // txn handle
-                                           <b class="userinput"><tt>null</tt></b>,     // Database file name
+                                           <strong class="userinput"><code>null</code></strong>,     // Database file name
                                            null,     // Database name,
                                            myDbConfig);
         } catch (FileNotFoundException fnfe) {
@@ -294,7 +293,7 @@ import java.io.FileNotFoundException;
     } </pre>
       <p>
     After that, our class is unchanged, except for some very minor modifications.
-    Most notably, we remove the <tt class="methodname">parseArgs()</tt>
+    Most notably, we remove the <code class="methodname">parseArgs()</code>
     method from the application, because we no longer need it.
   </p>
       <pre class="programlisting">    private static void closeEnv() {
@@ -329,20 +328,20 @@ import java.io.FileNotFoundException;
         }
     }
 
-    <b class="userinput"><tt>private TxnGuideInMemory() {}</tt></b>
+    <strong class="userinput"><code>private TxnGuideInMemory() {}</code></strong>
 } </pre>
       <p>
         That completes our modifications to this class.
-        We now turn our attention to our <tt class="classname">DBWriter</tt>
-        class (see <a href="txnexample_java.html#dbwriter">DBWriter.java</a>). 
+        We now turn our attention to our <code class="classname">DBWriter</code>
+        class (see <a class="xref" href="txnexample_java.html#dbwriter" title="DBWriter.java">DBWriter.java</a>). 
         It is unchanged, except for one small modification. In the 
-        <tt class="methodname">run()</tt> method, we call <tt class="methodname">countRecords()</tt>
+        <code class="methodname">run()</code> method, we call <code class="methodname">countRecords()</code>
         with a transaction handle, rather than configuring our entire
             application for uncommitted reads. Both mechanisms work well-enough
             for preventing a self-deadlock. However, the individual count
             in this example will tend to be lower than the counts seen in
             the previous transaction example, because
-            <tt class="function">countRecords()</tt> can no longer see records
+            <code class="function">countRecords()</code> can no longer see records
             created but not yet committed by other threads. 
             Additionally, the usage of the transaction handle here will 
             probably cause more deadlocks than using read-uncommitted does, because more locking is being performed in
@@ -434,7 +433,7 @@ public class DBWriter extends Thread
                         " : committing txn : " + i);
 
                     System.out.println(getName() + " : Found " +
-                        countRecords(<b class="userinput"><tt>txn</tt></b>) + " records in the database.");
+                        countRecords(<strong class="userinput"><code>txn</code></strong>) + " records in the database.");
                     try {
                         txn.commit();
                         txn = null;
@@ -482,11 +481,11 @@ public class DBWriter extends Thread
         }
     } </pre>
       <p>
-    Next we update <tt class="methodname">countRecords()</tt>. The only difference
-    here is that we no longer specify <tt class="methodname">CursorConfig.setReadUncomitted()</tt> when
+    Next we update <code class="methodname">countRecords()</code>. The only difference
+    here is that we no longer specify <code class="methodname">CursorConfig.setReadUncomitted()</code> when
     we open our cursor. Note that even this minor change is not required.
     If we do not configure our database to support uncommitted reads,
-    <tt class="methodname">CursorConfig.setReadUncomitted()</tt> is silently
+    <code class="methodname">CursorConfig.setReadUncomitted()</code> is silently
     ignored. However, we remove the property anyway from the cursor open so as to
     avoid confusion.
 </p>

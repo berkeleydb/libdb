@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Managing Connection Retries</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
-    <link rel="previous" href="electiontimes.html" title="Managing Election Times" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
+    <link rel="prev" href="electiontimes.html" title="Managing Election Times" />
     <link rel="next" href="heartbeats.html" title="Managing Heartbeats" />
   </head>
   <body>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="electiontimes.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 3. The DB Replication Framework</th>
+          <th width="60%" align="center">Chapter 3. The DB Replication Manager</th>
           <td width="20%" align="right"> <a accesskey="n" href="heartbeats.html">Next</a></td>
         </tr>
       </table>
@@ -32,11 +32,10 @@
             <h2 class="title" style="clear: both"><a id="fmwrkconnectretry"></a>Managing Connection Retries</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
                 In the event that a communication failure occurs between
-                two environments in a replication group, the replication framework will wait a set
+                two environments in a replication group, the Replication Manager will wait a set
                 amount of time before attempting to re-establish the
                 connection. You can configure this wait value using
 
@@ -44,16 +43,16 @@
                 
                 
                 To do so, specify the
-                <tt class="literal">DB_REP_CONNECTION_RETRY</tt>
-                flag to the <tt class="literal">which</tt> parameter and then a
+                <code class="literal">DB_REP_CONNECTION_RETRY</code>
+                value to the <code class="literal">which</code> parameter and then a
                 retry value in microseconds to the
-                <tt class="literal">timeout</tt> parameter.
+                <code class="literal">timeout</code> parameter.
                 </span>
 
                 <span>
-                        <tt class="methodname">Environment.setReplicationTimeout()</tt>.
+                        <code class="methodname">Environment.setReplicationTimeout()</code>.
                         You pass this method the 
-                        <tt class="methodname">ReplicationTimeoutType.CONNECTION_RETRY</tt>
+                        <code class="methodname">ReplicationTimeoutType.CONNECTION_RETRY</code>
                         constant and a retry value in microseconds.
                 </span>
             </p>

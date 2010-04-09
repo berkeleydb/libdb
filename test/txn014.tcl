@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005,2008 Oracle.  All rights reserved.
+# Copyright (c) 2005-2009 Oracle.  All rights reserved.
 #
-# $Id: txn014.tcl,v 12.4 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	txn014
 # TEST	Test of parent and child txns working on the same database.
@@ -22,7 +22,14 @@
 # TEST	Check contents of database with a second child.
 proc txn014 { } {
 	source ./include.tcl
+	global default_pagesize
 
+	set page_size $default_pagesize
+	# If the page size is very small, we increase page size,
+	# so we won't run out of lockers.
+	if { $page_size < 2048 } {
+		set page_size 2048
+	}
 	set tnum "014"
 	puts "Txn$tnum: Test use of parent and child txns."
 	set parentfile test$tnum.db
@@ -48,14 +55,14 @@ proc txn014 { } {
 	puts "\tTxn$tnum.b: Start parent txn and open database."
 	set parent [$env txn]
 	error_check_good parent_begin [is_valid_txn $parent $env] TRUE
-	set db [berkdb_open_noerr \
+	set db [berkdb_open_noerr -pagesize $page_size \
 	    -env $env -txn $parent -create $method $parentfile]
 	populate $db $method $parent $nentries 0 0
 
 	puts "\tTxn$tnum.c: Start non-parent txn and open database."
 	set nonparent [$env txn]
 	error_check_good nonparent_begin [is_valid_txn $nonparent $env] TRUE
-	set db2 [berkdb_open_noerr \
+	set db2 [berkdb_open_noerr -pagesize $page_size \
 	    -env $env -txn $nonparent -create $method $nonparentfile]
 	populate $db2 $method $nonparent $nentries 0 0
 
@@ -72,8 +79,8 @@ proc txn014 { } {
 	    parent_disabled [is_substr $ret "Child transaction is active"] 1
 
 	puts "\tTxn$tnum.f: Get a handle on parent's database using child txn."
-	set childdb \
-	    [berkdb_open_noerr -env $env -txn $child $method $parentfile]
+	set childdb [berkdb_open_noerr -pagesize $page_size \
+	    -env $env -txn $child $method $parentfile]
 
 	puts "\tTxn$tnum.g: Read database with child txn/child handle,"
 	puts "\tTxn$tnum.g:     and with child txn/parent handle."
@@ -125,8 +132,8 @@ proc txn014 { } {
 
 	puts "\tTxn$tnum.m: Start new child txn and read database."
 	set child2 [$env txn -parent $parent]
-	set child2db \
-	    [berkdb_open_noerr -env $env -txn $child2 $method $parentfile]
+	set child2db [berkdb_open_noerr -pagesize $page_size \
+	    -env $env -txn $child2 $method $parentfile]
 
 	set did [open $dict]
 	set count 0

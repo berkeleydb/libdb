@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Database Example</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DB.html" title="Chapter 2. Databases" />
-    <link rel="previous" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
+    <link rel="prev" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
     <link rel="next" href="DBEntry.html" title="Chapter 3. Database Records" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="CoreDbUsage"></a>Database Example</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
         Throughout this book we will build a couple of applications that load
@@ -52,7 +51,7 @@
     </p>
       <pre class="programlisting"><span class="emphasis"><em>DB_INSTALL</em></span>/examples_c/getting_started</pre>
       <p>
-        where <tt class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></tt> is the location where you
+        where <code class="literal"><span class="emphasis"><em>DB_INSTALL</em></span></code> is the location where you
         placed your DB distribution.  
     </p>
       <div class="example">
@@ -60,12 +59,13 @@
         <p class="title">
           <b>Example 2.1 The stock_db Structure</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             To begin, we create a structure that we will use to hold all our
             database pointers and database names:
         </p>
-        <a id="c_db11"></a>
-        <pre class="programlisting">/* File: gettingstarted_common.h */
+          <a id="c_db11"></a>
+          <pre class="programlisting">/* File: gettingstarted_common.h */
 #include &lt;db.h&gt;
 
 typedef struct stock_dbs {
@@ -84,13 +84,16 @@ void initialize_stockdbs(STOCK_DBS *);
 int open_database(DB **, const char *, const char *,
     FILE *);
 void set_db_filenames(STOCK_DBS *my_stock); </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <div class="example">
         <a id="stock-db-functions"></a>
         <p class="title">
           <b>Example 2.2 The stock_db Utility Functions</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             Before continuing, we want some utility functions that we use to
             make sure the stock_db structure is in a sane state before using it.
             One is a simple function that initializes all the structure's
@@ -99,8 +102,8 @@ void set_db_filenames(STOCK_DBS *my_stock); </pre>
             common path on all our database names so that we can explicitly
             identify where all the database files should reside.
         </p>
-        <a id="c_db12"></a>
-        <pre class="programlisting">/* File: gettingstarted_common.c */
+          <a id="c_db12"></a>
+          <pre class="programlisting">/* File: gettingstarted_common.c */
 #include "gettingstarted_common.h"
 
 /* Initializes the STOCK_DBS struct.*/
@@ -133,20 +136,23 @@ set_db_filenames(STOCK_DBS *my_stock)
     snprintf(my_stock-&gt;vendor_db_name, size, "%s%s",
       my_stock-&gt;db_home_dir, VENDORDB);
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
       <div class="example">
         <a id="open-db"></a>
         <p class="title">
           <b>Example 2.3 open_database() Function</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
 			We are opening multiple databases, and we are
 			opening those databases using identical flags and error reporting
 			settings. It is therefore worthwhile to create a function that
 			performs this operation for us:
 		</p>
-        <a id="c_db13"></a>
-        <pre class="programlisting">/* File: gettingstarted_common.c */
+          <a id="c_db13"></a>
+          <pre class="programlisting">/* File: gettingstarted_common.c */
     
 /* Opens a database */
 int
@@ -193,19 +199,22 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
                                                                                                                                
     return (0);
 }</pre>
+        </div>
       </div>
+      <br class="example-break" />
       <div class="example">
         <a id="databasesetup"></a>
         <p class="title">
           <b>Example 2.4 The databases_setup() Function</b>
         </p>
-        <p>
-            Now that we have our <tt class="function">open_database()</tt> function,
+        <div class="example-contents">
+          <p>
+            Now that we have our <code class="function">open_database()</code> function,
             we can use it to open a database. We now create a simple function
             that will open all our databases for us.
         </p>
-        <a id="c_db14"></a>
-        <pre class="programlisting">/* opens all databases */
+          <a id="c_db14"></a>
+          <pre class="programlisting">/* opens all databases */
 int
 databases_setup(STOCK_DBS *my_stock, const char *program_name,
   FILE *error_file_pointer)
@@ -237,17 +246,20 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
     printf("databases opened successfully\n");
     return (0);
 }</pre>
+        </div>
       </div>
+      <br class="example-break" />
       <div class="example">
         <a id="database_close"></a>
         <p class="title">
           <b>Example 2.5 The databases_close() Function</b>
         </p>
-        <p>
+        <div class="example-contents">
+          <p>
             Finally, it is useful to have a function that can close all our databases for us:
         </p>
-        <a id="c_db15"></a>
-        <pre class="programlisting">/* Closes all the databases. */
+          <a id="c_db15"></a>
+          <pre class="programlisting">/* Closes all the databases. */
 int
 databases_close(STOCK_DBS *my_stock)
 {
@@ -274,7 +286,9 @@ databases_close(STOCK_DBS *my_stock)
     printf("databases closed.\n");
     return (0);
 } </pre>
+        </div>
       </div>
+      <br class="example-break" />
     </div>
     <div class="navfooter">
       <hr />

@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2001-2009 Oracle.  All rights reserved.
  *
- * $Id: rep.h,v 12.111 2008/05/02 15:19:43 sue Exp $
+ * $Id$
  */
 
 #ifndef _DB_REP_H_
@@ -98,13 +98,15 @@ extern "C" {
 #define	DB_LOGVERSION_45	12
 #define	DB_LOGVERSION_46	13
 #define	DB_LOGVERSION_47	14
+#define	DB_LOGVERSION_48	15
 #define	DB_LOGVERSION_MIN	DB_LOGVERSION_44
 #define	DB_REPVERSION_INVALID	0
 #define	DB_REPVERSION_44	3
 #define	DB_REPVERSION_45	3
 #define	DB_REPVERSION_46	4
 #define	DB_REPVERSION_47	5
-#define	DB_REPVERSION		DB_REPVERSION_47
+#define	DB_REPVERSION_48	5
+#define	DB_REPVERSION		DB_REPVERSION_48
 #define	DB_REPVERSION_MIN	DB_REPVERSION_44
 
 /*
@@ -158,6 +160,7 @@ extern "C" {
 #define	REP_INITVERSION_47	2
 #define	REP_INITVERSION		2
 
+#define	REP_META_RETRY		3	/* Retry limit to get meta lock. */
 
 /*
  * Database types for __rep_client_dbinit
@@ -199,7 +202,6 @@ typedef struct __rep {
 	u_int32_t	version;	/* Current replication version. */
 	u_int32_t	egen;		/* Replication election generation. */
 	u_int32_t	gen;		/* Replication generation number. */
-	u_int32_t	recover_gen;	/* Last generation number in log. */
 	u_int32_t	asites;		/* Space allocated for sites. */
 	u_int32_t	nsites;		/* Number of sites in group. */
 	u_int32_t	nvotes;		/* Number of votes needed. */
@@ -250,11 +252,10 @@ typedef struct __rep {
 	 */
 	u_int32_t	notified_egen;
 
-	/* Backup information. */
+	/* Internal init information. */
 	u_int32_t	nfiles;		/* Number of files we have info on. */
 	u_int32_t	curfile;	/* Cur file we're getting (0-based). */
 	__rep_fileinfo_args	*curinfo;	/* Current file info ptr. */
-	u_int8_t	*finfo;		/* Current file info buffer. */
 	u_int8_t	*nextinfo;	/* Next file info buffer. */
 	u_int8_t	*originfo;	/* Original file info buffer. */
 	u_int32_t	infolen;	/* Remaining length file info buffer. */
@@ -263,6 +264,7 @@ typedef struct __rep {
 	DB_LSN		first_lsn;	/* Earliest LSN we need. */
 	u_int32_t	first_vers;	/* Log version of first log file. */
 	DB_LSN		last_lsn;	/* Latest LSN we need. */
+	/* These are protected by mtx_clientdb. */
 	db_pgno_t	ready_pg;	/* Next pg expected. */
 	db_pgno_t	waiting_pg;	/* First pg after gap. */
 	db_pgno_t	max_wait_pg;	/* Maximum pg requested. */
@@ -289,6 +291,23 @@ typedef struct __rep {
 	u_int32_t	clock_base;	/* Clock scale factor base. */
 	db_timespec	grant_expire;	/* Local grant expiration time. */
 
+#ifdef HAVE_REPLICATION_THREADS
+	/*
+	 * Replication Framework (repmgr) shared config information.
+	 */
+	db_mutex_t	mtx_repmgr;	/* Region mutex. */
+	SITEADDR	my_addr;	/* SITEADDR of local site. */
+
+	int		peer;		/* Site to use for C2C sync. */
+	roff_t		netaddr_off;	/* Offset of site addresses region. */
+	u_int		site_cnt;	/* Array slots in use. */
+	u_int		site_max;	/* Total array slots allocated. */
+	u_int		siteaddr_seq;	/* Number of updates to this info. */
+
+	pid_t		listener;
+
+#endif  /* HAVE_REPLICATION_THREADS */
+
 	/* Statistics. */
 	DB_REP_STAT	stat;
 #if defined(HAVE_REPLICATION_THREADS) && defined(HAVE_STATISTICS)
@@ -299,34 +318,45 @@ typedef struct __rep {
 #define	REP_C_2SITE_STRICT	0x00001		/* Don't cheat on elections. */
 #define	REP_C_BULK		0x00002		/* Bulk transfer. */
 #define	REP_C_DELAYCLIENT	0x00004		/* Delay client sync-up. */
-#define	REP_C_LEASE		0x00008		/* Leases configured. */
-#define	REP_C_NOAUTOINIT	0x00010		/* No auto initialization. */
-#define	REP_C_NOWAIT		0x00020		/* Immediate error return. */
+#define	REP_C_INMEM		0x00008		/* In-memory replication. */
+#define	REP_C_LEASE		0x00010		/* Leases configured. */
+#define	REP_C_NOAUTOINIT	0x00020		/* No auto initialization. */
+#define	REP_C_NOWAIT		0x00040		/* Immediate error return. */
 	u_int32_t	config;		/* Configuration flags. */
 
-#define	REP_F_CLIENT		0x00000001	/* Client replica. */
-#define	REP_F_DELAY		0x00000002	/* Delaying client sync-up. */
-#define	REP_F_EGENUPDATE	0x00000004	/* Egen updated by ALIVE msg. */
-#define	REP_F_EPHASE0		0x00000008	/* In phase 0 of election. */
-#define	REP_F_EPHASE1		0x00000010	/* In phase 1 of election. */
-#define	REP_F_EPHASE2		0x00000020	/* In phase 2 of election. */
-#define	REP_F_GROUP_ESTD	0x00000040	/* Rep group is established. */
-#define	REP_F_INREPELECT	0x00000080	/* Thread in rep_elect. */
-#define	REP_F_MASTER		0x00000100	/* Master replica. */
-#define	REP_F_MASTERELECT	0x00000200	/* Master elect. */
-#define	REP_F_NEWFILE		0x00000400	/* Newfile in progress. */
-#define	REP_F_NOARCHIVE		0x00000800	/* Rep blocks log_archive. */
-#define	REP_F_READY_API		0x00001000	/* Need handle_cnt to be 0. */
-#define	REP_F_READY_APPLY	0x00002000	/* Need apply_th to be 0. */
-#define	REP_F_READY_MSG		0x00004000	/* Need msg_th to be 0. */
-#define	REP_F_READY_OP		0x00008000	/* Need op_cnt to be 0. */
-#define	REP_F_RECOVER_LOG	0x00010000	/* In recovery - log. */
-#define	REP_F_RECOVER_PAGE	0x00020000	/* In recovery - pages. */
-#define	REP_F_RECOVER_UPDATE	0x00040000	/* In recovery - files. */
-#define	REP_F_RECOVER_VERIFY	0x00080000	/* In recovery - verify. */
-#define	REP_F_SKIPPED_APPLY	0x00100000	/* Skipped applying a record. */
-#define	REP_F_START_CALLED	0x00200000	/* Rep_start called. */
-#define	REP_F_TALLY		0x00400000	/* Tallied vote before elect. */
+	/*
+	 * Please change __rep_print_all (rep_stat.c) to track any changes made
+	 * to these flags.
+	 */
+#define	REP_F_ABBREVIATED	0x00000001	/* Recover NIMDB pages only. */
+#define	REP_F_APP_BASEAPI	0x00000002	/* Base API application. */
+#define	REP_F_APP_REPMGR	0x00000004	/* repmgr application. */
+#define	REP_F_CLIENT		0x00000008	/* Client replica. */
+#define	REP_F_DELAY		0x00000010	/* Delaying client sync-up. */
+#define	REP_F_EGENUPDATE	0x00000020	/* Egen updated by ALIVE msg. */
+#define	REP_F_EPHASE0		0x00000040	/* In phase 0 of election. */
+#define	REP_F_EPHASE1		0x00000080	/* In phase 1 of election. */
+#define	REP_F_EPHASE2		0x00000100	/* In phase 2 of election. */
+#define	REP_F_GROUP_ESTD	0x00000200	/* Rep group is established. */
+#define	REP_F_INREPELECT	0x00000400	/* Thread in rep_elect. */
+#define	REP_F_INREPSTART	0x00000800	/* Thread in rep_start. */
+#define	REP_F_LEASE_EXPIRED	0x00001000	/* Leases guaranteed expired. */
+#define	REP_F_MASTER		0x00002000	/* Master replica. */
+#define	REP_F_MASTERELECT	0x00004000	/* Master elect. */
+#define	REP_F_NEWFILE		0x00008000	/* Newfile in progress. */
+#define	REP_F_NIMDBS_LOADED	0x00010000	/* NIMDBs are materialized. */
+#define	REP_F_NOARCHIVE		0x00020000	/* Rep blocks log_archive. */
+#define	REP_F_READY_API		0x00040000	/* Need handle_cnt to be 0. */
+#define	REP_F_READY_APPLY	0x00080000	/* Need apply_th to be 0. */
+#define	REP_F_READY_MSG		0x00100000	/* Need msg_th to be 0. */
+#define	REP_F_READY_OP		0x00200000	/* Need op_cnt to be 0. */
+#define	REP_F_RECOVER_LOG	0x00400000	/* In recovery - log. */
+#define	REP_F_RECOVER_PAGE	0x00800000	/* In recovery - pages. */
+#define	REP_F_RECOVER_UPDATE	0x01000000	/* In recovery - files. */
+#define	REP_F_RECOVER_VERIFY	0x02000000	/* In recovery - verify. */
+#define	REP_F_SKIPPED_APPLY	0x04000000	/* Skipped applying a record. */
+#define	REP_F_START_CALLED	0x08000000	/* Rep_start called. */
+#define	REP_F_TALLY		0x10000000	/* Tallied vote before elect. */
 	u_int32_t	flags;
 } REP;
 
@@ -344,6 +374,15 @@ typedef struct __rep {
      REP_F_RECOVER_UPDATE | REP_F_RECOVER_VERIFY)
 
 /*
+ * These flag bits are "permanent": for each of these bits, once it has been set
+ * it shouldnever be cleared.  When adding a new flag bit, if it should be
+ * sticky please add it here too.
+ */
+#define	REP_F_STICKY_MASK						\
+    (REP_F_APP_BASEAPI | REP_F_APP_REPMGR | REP_F_GROUP_ESTD |		\
+     REP_F_NIMDBS_LOADED | REP_F_START_CALLED)
+
+/*
  * REP_F_EPHASE0 is not a *real* election phase.  It is used for
  * master leases and allowing the client to find the master or
  * expire its lease.  However, EPHASE0 is cleared by __rep_elect_done.
@@ -354,24 +393,28 @@ typedef struct __rep {
 	F_ISSET((R), REP_F_EPHASE1 | REP_F_EPHASE2 | REP_F_TALLY)
 #define	ELECTION_MAJORITY(n) (((n) / 2) + 1)
 
-#define	REP_F_INTERNAL_INIT_MASK (REP_F_RECOVER_PAGE | REP_F_RECOVER_LOG)
+#define	IN_INTERNAL_INIT(R) \
+	F_ISSET((R), REP_F_RECOVER_LOG | REP_F_RECOVER_PAGE)
 
 #define	IS_REP_MASTER(env)						\
 	(REP_ON(env) &&							\
-	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_MASTER))
+	    F_ISSET(((env)->rep_handle->region), REP_F_MASTER))
 
 #define	IS_REP_CLIENT(env)						\
 	(REP_ON(env) &&							\
-	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_CLIENT))
+	    F_ISSET(((env)->rep_handle->region), REP_F_CLIENT))
+
+#define	IS_REP_STARTED(env)						\
+	(REP_ON(env) &&							\
+	    F_ISSET(((env)->rep_handle->region), REP_F_START_CALLED))
 
 #define	IS_USING_LEASES(env)						\
 	(REP_ON(env) &&							\
-	    FLD_ISSET(((REP *)(env)->rep_handle->region)->config,	\
-	    REP_C_LEASE))
+	    FLD_ISSET(((env)->rep_handle->region)->config, REP_C_LEASE))
 
 #define	IS_CLIENT_PGRECOVER(env)					\
 	(IS_REP_CLIENT(env) &&						\
-	    F_ISSET(((REP *)(env)->rep_handle->region), REP_F_RECOVER_PAGE))
+	    F_ISSET(((env)->rep_handle->region), REP_F_RECOVER_PAGE))
 
 /*
  * Macros to figure out if we need to do replication pre/post-amble processing.
@@ -408,7 +451,8 @@ typedef struct __rep {
 /*
  * Per-process replication structure.
  *
- * There are 2 mutexes used in replication.
+ * There are 2 mutexes used in the Base replication API.  (See LOCK_MUTEX in
+ * repmgr.h for a discussion of repmgr.)
  * 1.  mtx_region - This protects the fields of the rep region above.
  * 2.  mtx_clientdb - This protects the per-process flags, and bookkeeping
  * database and all of the components that maintain it.  Those
@@ -430,6 +474,16 @@ typedef struct __rep {
  * The lock ordering protocol is that mtx_clientdb must be acquired first and
  * then either REP->mtx_region, or the LOG->mtx_region mutex may be acquired if
  * necessary.
+ *
+ * Note that the appropriate mutex is needed any time one or more related
+ * values are read or written that could possibly use more than one atomic
+ * machine instruction.  A single 32-bit integer value is safe without a
+ * mutex, but most other types of value should use a mutex.
+ *
+ * Any use of a mutex must be inside a matched pair of ENV_ENTER() and
+ * ENV_LEAVE() macros.  This ensures that if a thread dies while holding
+ * a lock (i.e. a mutex), recovery can clean it up so that it does not
+ * indefinitely block other threads.
  */
 struct __db_rep {
 	/*
@@ -470,12 +524,18 @@ struct __db_rep {
 	REP		*region;	/* In memory structure. */
 	u_int8_t	*bulk;		/* Shared memory bulk area. */
 
-#define	DBREP_OPENFILES		0x0001	/* This handle has opened files. */
+	/*
+	 * Please change __rep_print_all (rep_stat.c) to track any changes made
+	 * to these flags.
+	 */
+#define	DBREP_APP_BASEAPI	0x0001	/* Base API application. */
+#define	DBREP_APP_REPMGR	0x0002	/* repmgr application. */
+#define	DBREP_OPENFILES		0x0004	/* This handle has opened files. */
 	u_int32_t	flags;		/* per-process flags. */
 
 #ifdef HAVE_REPLICATION_THREADS
 	/*
-	 * Replication Framework (repmgr) information.
+	 * Replication Framework (repmgr) per-process information.
 	 */
 	int		nthreads;
 	u_int32_t	init_policy;
@@ -489,30 +549,35 @@ struct __db_rep {
 
 	/* Repmgr's copies of rep stuff. */
 	int		master_eid;
-	u_int32_t	generation;
 
 	/* Thread synchronization. */
 	REPMGR_RUNNABLE *selector, **messengers, *elect_thread;
-	mgr_mutex_t	mutex;
+	mgr_mutex_t	*mutex;
 	cond_var_t	queue_nonempty, check_election;
 #ifdef DB_WIN32
 	ACK_WAITERS_TABLE *waiters;
 	HANDLE		signaler;
-	int		wsa_inited;
 #else
 	pthread_cond_t	ack_condition;
 	int		read_pipe, write_pipe;
-	int		chg_sig_handler;
 #endif
 
 	/* Operational stuff. */
 	REPMGR_SITE	*sites;		/* Array of known sites. */
 	u_int		site_cnt;	/* Array slots in use. */
 	u_int		site_max;	/* Total array slots allocated. */
+	u_int		siteaddr_seq;	/* Last known update to this list. */
 
+	/*
+	 * The connections list contains only those connections not actively
+	 * associated with a known site (see repmgr.h).
+	 */
 	CONNECTION_LIST	connections;
 	RETRY_Q_HEADER	retries;	/* Sites needing connection retry. */
-	REPMGR_QUEUE	*input_queue;
+	struct {
+		int	size;
+		STAILQ_HEAD(__repmgr_q_header, __repmgr_message) header;
+	} input_queue;
 
 	socket_t	listen_fd;
 	repmgr_netaddr_t my_addr;
@@ -528,11 +593,79 @@ struct __db_rep {
 #define	ELECT_FAILURE_ELECTION	2 /* Do election, adjusting nsites to account
 				     for a failed master. */
 #define	ELECT_REPSTART		3 /* Call rep_start(CLIENT). */
-#define	ELECT_SEEK_MASTER	4 /* Alternate rep_start to find master. */
 	int		operation_needed; /* Next op for election thread. */
 
 #endif  /* HAVE_REPLICATION_THREADS */
 };
+
+/*
+ * Determine whether application is repmgr or base replication API.  If
+ * repmgr was configured, base the test on internal replication flags for
+ * APP_REPMGR and APP_BASEAPI.  These flags get set by the appropriate parts
+ * of the various replication APIs.
+ */
+#ifdef HAVE_REPLICATION_THREADS
+/*
+ * Application type is set to be repmgr when:
+ *   1. A local site is defined.
+ *   2. A remote site is defined.
+ *   3. An acknowledgement policy is configured.
+ *   4. 2SITE_STRICT is configured.
+ *   5. A timeout value is configured for one of the repmgr timeouts.
+ */
+#define	APP_IS_REPMGR(env)						\
+	(REP_ON(env) ?							\
+	    F_ISSET((env)->rep_handle->region, REP_F_APP_REPMGR) :	\
+	    F_ISSET((env)->rep_handle, DBREP_APP_REPMGR))
+
+/*
+ * Application type is set to be base replication API when:
+ *   1. Transport send function is defined and is not the repmgr send
+ *      function.
+ */
+#define	APP_IS_BASEAPI(env)						\
+	(REP_ON(env) ?							\
+	    F_ISSET((env)->rep_handle->region, REP_F_APP_BASEAPI) :	\
+	    F_ISSET((env)->rep_handle, DBREP_APP_BASEAPI))
+
+/*
+ * Set application type.  These macros do extra checking to guarantee that
+ * only one application type is ever set.
+ */
+#define	APP_SET_REPMGR(env) do {					\
+	if (REP_ON(env)) {						\
+		if (!F_ISSET((env)->rep_handle->region,			\
+		    REP_F_APP_BASEAPI))					\
+			F_SET((env)->rep_handle->region,		\
+			    REP_F_APP_REPMGR);				\
+	} else if (!F_ISSET((env)->rep_handle, DBREP_APP_BASEAPI))	\
+		F_SET((env)->rep_handle, DBREP_APP_REPMGR);		\
+} while (0)
+#define	APP_SET_BASEAPI(env) do {					\
+	if (REP_ON(env)) {						\
+		if (!F_ISSET((env)->rep_handle->region,		\
+		    REP_F_APP_REPMGR))					\
+			F_SET((env)->rep_handle->region,		\
+			    REP_F_APP_BASEAPI);				\
+	} else if (!F_ISSET((env)->rep_handle, DBREP_APP_REPMGR))	\
+		F_SET((env)->rep_handle, DBREP_APP_BASEAPI);		\
+} while (0)
+
+#else
+/*
+ * We did not configure repmgr, application must be base replication API.
+ * The APP_SET_* macros are noops in this case, but they must be defined
+ * with a null body to avoid compiler warnings on some platforms.
+ */
+#define	APP_IS_REPMGR(env) 0
+#define	APP_SET_REPMGR(env) do {					\
+	;								\
+} while (0)
+#define	APP_IS_BASEAPI(env) 1
+#define	APP_SET_BASEAPI(env) do {					\
+	;								\
+} while (0)
+#endif  /* HAVE_REPLICATION_THREADS */
 
 /*
  * Control structure flags for replication communication infrastructure.

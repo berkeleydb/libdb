@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Removing Log Files</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="filemanagement.html" title="Chapter 5. Managing DB Files" />
-    <link rel="previous" href="hotfailover.html" title="Using Hot Failovers" />
+    <link rel="prev" href="hotfailover.html" title="Using Hot Failovers" />
     <link rel="next" href="logconfig.html" title="Configuring the Logging Subsystem" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title" style="clear: both"><a id="logfileremoval"></a>Removing Log Files</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <p>
             By default DB does not delete log files for you. For this reason,
@@ -87,8 +86,8 @@
         <ul type="disc">
           <li>
             <p>
-                    Run the <span><b class="command">db_archive</b></span> command line
-                    utility with the <tt class="literal">-d</tt> option. 
+                    Run the <span class="command"><strong>db_archive</strong></span> command line
+                    utility with the <code class="literal">-d</code> option. 
                 </p>
           </li>
           <li>
@@ -96,8 +95,8 @@
                     From within your application, call the
                         <span>
                             
-                            <tt class="methodname">DbEnv::log_archive()</tt>
-                            method with the <tt class="literal">DB_ARCH_REMOVE</tt> flag.
+                            <code class="methodname">DbEnv::log_archive()</code>
+                            method with the <code class="literal">DB_ARCH_REMOVE</code> flag.
                         </span>
                         
                 </p>
@@ -108,8 +107,8 @@
                             Call
                         <span>
                             
-                            <tt class="methodname">DbEnv::log_set_config()</tt>
-                            method with the <tt class="literal">DB_LOG_AUTO_REMOVE</tt> flag.
+                            <code class="methodname">DbEnv::log_set_config()</code>
+                            method with the <code class="literal">DB_LOG_AUTO_REMOVE</code> flag.
                         </span>
                         
                             Note that this flag can be set at any point in
@@ -143,14 +142,14 @@
       <p>
             In order to safely remove log files and still be able to
             perform catastrophic recovery, use the
-            <span><b class="command">db_archive</b></span> command line utility as follows:
+            <span class="command"><strong>db_archive</strong></span> command line utility as follows:
         </p>
       <div class="orderedlist">
         <ol type="1">
           <li>
             <p>
                     Run either a normal or hot backup as described in
-                    <a href="backuprestore.html">Backup Procedures</a>. Make
+                    <a class="xref" href="backuprestore.html" title="Backup Procedures">Backup Procedures</a>. Make
                     sure that all of this data is safely stored to your
                     backup media before continuing.
                 </p>
@@ -158,7 +157,7 @@
           <li>
             <p>
                     If you have not already done so, perform a checkpoint.
-                    See <a href="filemanagement.html#checkpoints">Checkpoints</a>
+                    See <a class="xref" href="filemanagement.html#checkpoints" title="Checkpoints">Checkpoints</a>
                     for more information.
                 </p>
           </li>
@@ -166,20 +165,20 @@
             <p>
                     If you are maintaining a hot backup, perform the hot
                     backup procedure as described in
-                    <a href="hotfailover.html">Using Hot Failovers</a>.
+                    <a class="xref" href="hotfailover.html" title="Using Hot Failovers">Using Hot Failovers</a>.
                 </p>
           </li>
           <li>
             <p>
-                    Run the <span><b class="command">db_archive</b></span> command line
-                    utility with the <tt class="literal">-d</tt> option against
+                    Run the <span class="command"><strong>db_archive</strong></span> command line
+                    utility with the <code class="literal">-d</code> option against
                     your production environment. 
                 </p>
           </li>
           <li>
             <p>
-                    Run the <span><b class="command">db_archive</b></span> command line
-                    utility with the <tt class="literal">-d</tt> option against
+                    Run the <span class="command"><strong>db_archive</strong></span> command line
+                    utility with the <code class="literal">-d</code> option against
                     your failover environment, if you are maintaining one.
                 </p>
           </li>

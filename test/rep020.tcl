@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004,2008 Oracle.  All rights reserved.
+# Copyright (c) 2004-2009 Oracle.  All rights reserved.
 #
-# $Id: rep020.tcl,v 12.19 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep020
 # TEST	Replication elections - test election generation numbers.
@@ -10,6 +10,8 @@
 
 proc rep020 { method args } {
 	global rand_init
+	global databases_in_memory
+	global repfiles_in_memory
 
 	source ./include.tcl
 	if { $is_windows9x_test == 1 } {
@@ -31,8 +33,25 @@ proc rep020 { method args } {
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	set nclients 5
 	set logsets [create_logsets [expr $nclients + 1]]
+
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases"
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
-		puts "Rep$tnum ($method): Election generation test."
+		puts "Rep$tnum ($method): Election generation test $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		for { set i 0 } { $i < $nclients } { incr i } {
 			puts "Rep$tnum: Client $i logs are\
@@ -45,13 +64,20 @@ proc rep020 { method args } {
 proc rep020_sub { method nclients tnum logset largs } {
 	source ./include.tcl
 	global errorInfo
+	global databases_in_memory
 	global mixed_mode_logging
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	env_cleanup $testdir
@@ -77,7 +103,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 $verbargs \
-	    -event rep_event \
+	    -event rep_event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -88,7 +114,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create -event rep_event \
-		    $verbargs -home $clientdir($i) \
+		    $verbargs -home $clientdir($i) $repmemargs \
 		    $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -99,8 +125,21 @@ proc rep020_sub { method nclients tnum logset largs } {
 	process_msgs $envlist
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set niter 10
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 	process_msgs $envlist
+
+	# Check that databases are in-memory or on-disk as expected.
+	if { $databases_in_memory } {
+		set dbname { "" "test.db" }
+	} else { 
+		set dbname "test.db"
+	} 
+	check_db_location $masterenv
+	for { set i 0 } { $i < $nclients } { incr i } { 
+		check_db_location $clientenv($i)
+	}
+
+	# Close master.
 	error_check_good masterenv_close [$masterenv close] 0
 	set envlist [lreplace $envlist 0 0]
 
@@ -131,7 +170,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
 		run_election env_cmd envlist err_cmd pri crash $qdir \
-		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
+		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 	}
 	process_msgs $envlist
 
@@ -163,7 +202,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
 		run_election env_cmd envlist err_cmd pri crash $qdir \
-		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
+		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 	}
 	process_msgs $envlist
 	#
@@ -201,7 +240,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 	set elector [expr $nclients - 1]
 	setpriority pri $nclients $winner
 	run_election env_cmd envlist err_cmd pri crash $qdir \
-	    $msg $elector $nsites $nvotes $nclients $winner 0 test.db
+	    $msg $elector $nsites $nvotes $nclients $winner 0 $dbname
 
 	set newegen($i) \
 	    [stat_field $clientenv($i) rep_stat "Election generation number"]
@@ -217,23 +256,26 @@ proc rep020_sub { method nclients tnum logset largs } {
 	# since we can't recover with in-memory logs.
 	if { $mixed_mode_logging == 0 } {
 		set msg "Rep$tnum.e"
-		puts "\t$msg: Election generation is not changed in recovery."
+	puts "\t$msg: Election generation set as expected after recovery."
 		# Note all client egens.  Close, recover, process messages,
 		# and check that egens are unchanged.
 		set big_e [big_endian]
 		foreach pair $envlist {
 			set i [expr [lindex $pair 1] - 2]
-			set fid [open $clientdir($i)/__db.rep.egen r]
-			fconfigure $fid -translation binary
-			set data [read $fid 4]
-			if { $big_e } {
-				binary scan $data I egen($i)
-			} else {
-				binary scan $data i egen($i)
-			}
-			binary scan $data c val
-			close $fid
 			set clientenv($i) [lindex $pair 0]
+			# Can only get egen file if repfiles on-disk.
+			if { $repfiles_in_memory == 0 } {
+				set fid [open $clientdir($i)/__db.rep.egen r]
+				fconfigure $fid -translation binary
+				set data [read $fid 4]
+				if { $big_e } {
+					binary scan $data I egen($i)
+				} else {
+					binary scan $data i egen($i)
+				}
+				binary scan $data c val
+				close $fid
+			}
 			$clientenv($i) log_flush
 			error_check_good \
 			    clientenv_close($i) [$clientenv($i) close] 0
@@ -246,7 +288,14 @@ proc rep020_sub { method nclients tnum logset largs } {
 			set i [expr [lindex $pair 1] - 2]
 			set newegen($i) [stat_field $clientenv($i) \
 			    rep_stat "Election generation number"]
-			error_check_good egen_recovery $egen($i) $newegen($i)
+			if { $repfiles_in_memory == 0 } {
+				error_check_good egen_recovery $egen($i) \
+				    $newegen($i)
+			} else {
+				# For rep in-memory, egen expected to start
+				# over at 1 after close/reopen environment.
+				error_check_good egen_recovery $newegen($i) 1
+			}
 		}
 
 		# Run an election.  Now the egens should go forward.
@@ -254,15 +303,21 @@ proc rep020_sub { method nclients tnum logset largs } {
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
 		run_election env_cmd envlist err_cmd pri crash $qdir \
-		    $msg $elector $nsites $nvotes $nclients $winner 1 test.db
+		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 		foreach pair $envlist {
 			set i [expr [lindex $pair 1] - 2]
 			set clientenv($i) [lindex $pair 0]
 			set newegen($i) [stat_field $clientenv($i) \
 			    rep_stat "Election generation number"]
-			error_check_good \
-			    egen_forward [expr $newegen($i) > $egen($i)] 1
+			if { $repfiles_in_memory == 0 } {
+				error_check_good egen_forward \
+				    [expr $newegen($i) > $egen($i)] 1
+			} else {
+				# For rep in-memory, egen expected to
+				# increment to 2 after election.
+				error_check_good egen_recovery $newegen($i) 2
+			}
 		}
 	}
 

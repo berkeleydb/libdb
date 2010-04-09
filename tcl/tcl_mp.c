@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: tcl_mp.c,v 12.18 2008/03/28 01:16:02 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -354,41 +354,43 @@ tcl_MpStat(interp, objc, objv, dbenv)
 	MAKE_STAT_LIST(
 	    "Sleep after writing maximum buffers", sp->st_maxwrite_sleep);
 	MAKE_STAT_LIST("Pages mapped into address space", sp->st_map);
-	MAKE_STAT_LIST("Cache hits", sp->st_cache_hit);
-	MAKE_STAT_LIST("Cache misses", sp->st_cache_miss);
-	MAKE_STAT_LIST("Pages created", sp->st_page_create);
-	MAKE_STAT_LIST("Pages read in", sp->st_page_in);
-	MAKE_STAT_LIST("Pages written", sp->st_page_out);
-	MAKE_STAT_LIST("Clean page evictions", sp->st_ro_evict);
-	MAKE_STAT_LIST("Dirty page evictions", sp->st_rw_evict);
-	MAKE_STAT_LIST("Dirty pages trickled", sp->st_page_trickle);
+	MAKE_WSTAT_LIST("Cache hits", sp->st_cache_hit);
+	MAKE_WSTAT_LIST("Cache misses", sp->st_cache_miss);
+	MAKE_WSTAT_LIST("Pages created", sp->st_page_create);
+	MAKE_WSTAT_LIST("Pages read in", sp->st_page_in);
+	MAKE_WSTAT_LIST("Pages written", sp->st_page_out);
+	MAKE_WSTAT_LIST("Clean page evictions", sp->st_ro_evict);
+	MAKE_WSTAT_LIST("Dirty page evictions", sp->st_rw_evict);
+	MAKE_WSTAT_LIST("Dirty pages trickled", sp->st_page_trickle);
 	MAKE_STAT_LIST("Cached pages", sp->st_pages);
-	MAKE_STAT_LIST("Cached clean pages", sp->st_page_clean);
-	MAKE_STAT_LIST("Cached dirty pages", sp->st_page_dirty);
-	MAKE_STAT_LIST("Hash buckets", sp->st_hash_buckets);
-	MAKE_STAT_LIST("Hash lookups", sp->st_hash_searches);
-	MAKE_STAT_LIST("Longest hash chain found", sp->st_hash_longest);
-	MAKE_STAT_LIST("Hash elements examined", sp->st_hash_examined);
-	MAKE_STAT_LIST("Number of hash bucket nowaits", sp->st_hash_nowait);
-	MAKE_STAT_LIST("Number of hash bucket waits", sp->st_hash_wait);
+	MAKE_WSTAT_LIST("Cached clean pages", sp->st_page_clean);
+	MAKE_WSTAT_LIST("Cached dirty pages", sp->st_page_dirty);
+	MAKE_WSTAT_LIST("Hash buckets", sp->st_hash_buckets);
+	MAKE_WSTAT_LIST("Default pagesize", sp->st_pagesize);
+	MAKE_WSTAT_LIST("Hash lookups", sp->st_hash_searches);
+	MAKE_WSTAT_LIST("Longest hash chain found", sp->st_hash_longest);
+	MAKE_WSTAT_LIST("Hash elements examined", sp->st_hash_examined);
+	MAKE_WSTAT_LIST("Number of hash bucket nowaits", sp->st_hash_nowait);
+	MAKE_WSTAT_LIST("Number of hash bucket waits", sp->st_hash_wait);
 	MAKE_STAT_LIST("Maximum number of hash bucket nowaits",
 	    sp->st_hash_max_nowait);
 	MAKE_STAT_LIST("Maximum number of hash bucket waits",
 	    sp->st_hash_max_wait);
-	MAKE_STAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
-	MAKE_STAT_LIST("Number of region lock waits", sp->st_region_wait);
-	MAKE_STAT_LIST("Buffers frozen", sp->st_mvcc_frozen);
-	MAKE_STAT_LIST("Buffers thawed", sp->st_mvcc_thawed);
-	MAKE_STAT_LIST("Frozen buffers freed", sp->st_mvcc_freed);
-	MAKE_STAT_LIST("Page allocations", sp->st_alloc);
+	MAKE_WSTAT_LIST("Number of region lock nowaits", sp->st_region_nowait);
+	MAKE_WSTAT_LIST("Number of region lock waits", sp->st_region_wait);
+	MAKE_WSTAT_LIST("Buffers frozen", sp->st_mvcc_frozen);
+	MAKE_WSTAT_LIST("Buffers thawed", sp->st_mvcc_thawed);
+	MAKE_WSTAT_LIST("Frozen buffers freed", sp->st_mvcc_freed);
+	MAKE_WSTAT_LIST("Page allocations", sp->st_alloc);
 	MAKE_STAT_LIST("Buckets examined during allocation",
 	    sp->st_alloc_buckets);
 	MAKE_STAT_LIST("Maximum buckets examined during allocation",
 	    sp->st_alloc_max_buckets);
-	MAKE_STAT_LIST("Pages examined during allocation", sp->st_alloc_pages);
+	MAKE_WSTAT_LIST("Pages examined during allocation", sp->st_alloc_pages);
 	MAKE_STAT_LIST("Maximum pages examined during allocation",
 	    sp->st_alloc_max_pages);
-	MAKE_STAT_LIST("Threads waiting on buffer I/O", sp->st_io_wait);
+	MAKE_WSTAT_LIST("Threads waiting on buffer I/O", sp->st_io_wait);
+	MAKE_WSTAT_LIST("Number of syncs interrupted", sp->st_sync_interrupted);
 
 	/*
 	 * Save global stat list as res1.  The MAKE_STAT_LIST
@@ -398,19 +400,15 @@ tcl_MpStat(interp, objc, objv, dbenv)
 	res1 = res;
 	for (savefsp = fsp; fsp != NULL && *fsp != NULL; fsp++) {
 		res = Tcl_NewObj();
-		result = _SetListElem(interp, res, "File Name",
-		    strlen("File Name"), (*fsp)->file_name,
-		    strlen((*fsp)->file_name));
-		if (result != TCL_OK)
-			goto error;
+		MAKE_STAT_STRLIST("File Name", (*fsp)->file_name);
 		MAKE_STAT_LIST("Page size", (*fsp)->st_pagesize);
 		MAKE_STAT_LIST("Pages mapped into address space",
 		    (*fsp)->st_map);
-		MAKE_STAT_LIST("Cache hits", (*fsp)->st_cache_hit);
-		MAKE_STAT_LIST("Cache misses", (*fsp)->st_cache_miss);
-		MAKE_STAT_LIST("Pages created", (*fsp)->st_page_create);
-		MAKE_STAT_LIST("Pages read in", (*fsp)->st_page_in);
-		MAKE_STAT_LIST("Pages written", (*fsp)->st_page_out);
+		MAKE_WSTAT_LIST("Cache hits", (*fsp)->st_cache_hit);
+		MAKE_WSTAT_LIST("Cache misses", (*fsp)->st_cache_miss);
+		MAKE_WSTAT_LIST("Pages created", (*fsp)->st_page_create);
+		MAKE_WSTAT_LIST("Pages read in", (*fsp)->st_page_in);
+		MAKE_WSTAT_LIST("Pages written", (*fsp)->st_page_out);
 		/*
 		 * Now that we have a complete "per-file" stat list, append
 		 * that to the other list.

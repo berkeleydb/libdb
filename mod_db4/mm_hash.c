@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2004-2009 Oracle.  All rights reserved.
  *
  * http://www.apache.org/licenses/LICENSE-2.0.txt
  * 
@@ -18,7 +18,8 @@ MM_Hash *mm_hash_new(MM *mm, MM_HashDtor dtor)
 {
 	MM_Hash *table;
 
-	table = (MM_Hash *) mm_calloc(mm, 1, sizeof(MM_Hash));
+	if ((table = (MM_Hash *) mm_calloc(mm, 1, sizeof(MM_Hash))) == NULL)
+		return NULL;
 	table->mm = mm;
 	table->dtor = dtor;
 
@@ -87,16 +88,22 @@ void mm_hash_update(MM_Hash *table, char *key, int length, void *data)
 		b->data = data;
 	}
 	if(!b) {
-    	b = (MM_Bucket *) mm_malloc(table->mm, sizeof(MM_Bucket));
-    	b->key = (char *) mm_malloc(table->mm, length + 1);
-    	memcpy(b->key, key, length);
-    	b->key[length] = 0;
-    	b->length = length;
-    	b->hash = hash;
-    	b->data = data;
+    		if ((b = (MM_Bucket *) mm_malloc(
+		    table->mm, sizeof(MM_Bucket))) == NULL)
+			return;
+		if ((b->key = (char *) mm_malloc(
+		    table->mm, length + 1)) == NULL) {
+			free(b);
+			return;
+		}
+		memcpy(b->key, key, length);
+		b->key[length] = 0;
+		b->length = length;
+		b->hash = hash;
+		b->data = data;
 		b->next = table->buckets[ hash ];
 		table->buckets[ hash ] = b;
-	}	
+	}
 	table->nElements++;
 }
 

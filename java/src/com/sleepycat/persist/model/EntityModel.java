@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: EntityModel.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
@@ -79,11 +79,34 @@ public abstract class EntityModel {
 
     /**
      * Registers a persistent class, most importantly, a {@link
-     * PersistentProxy} class.  Any persistent class may be registered in
-     * advance of using it, to avoid the overhead of updating the catalog
-     * database when an instance of the class is first stored.  This method
-     * <em>must</em> be called to register {@link PersistentProxy} classes.
-     * This method must be called before opening a store based on this model.
+     * PersistentProxy} class or entity subclass.
+     *
+     * <p>Any persistent class may be registered in advance of using it, to
+     * avoid the overhead of updating the catalog database when an instance of
+     * the class is first stored.  This method <em>must</em> be called in two
+     * cases:</p>
+     * <ol>
+     * <li>to register all {@link PersistentProxy} classes, and</li>
+     * <li>to register an entity subclass defining a secondary key, if {@link
+     * EntityStore#getSubclassIndex getSubclassIndex} is not called for the
+     * subclass.</li>
+     * </ol>
+     *
+     * <p>For example:</p>
+     *
+     * <pre class="code">
+     * EntityModel model = new AnnotationModel();
+     * model.registerClass(MyProxy.class);
+     * model.registerClass(MyEntitySubclass.class);
+     *
+     * StoreConfig config = new StoreConfig();
+     * ...
+     * config.setModel(model);
+     *
+     * EntityStore store = new EntityStore(..., config);</pre>
+     *
+     * <p>This method must be called before opening a store based on this
+     * model.</p>
      *
      * @throws IllegalStateException if this method is called for a model that
      * is associated with an open store.
@@ -208,6 +231,22 @@ public abstract class EntityModel {
             } else {
                 return null;
             }
+        } else {
+            throw new IllegalStateException("Store is not open");
+        }
+    }
+
+    /**
+     * Returns all versions of all known types.
+     *
+     * @return an unmodifiable list of types.
+     *
+     * @throws IllegalStateException if this method is called for a model that
+     * is not associated with an open store.
+     */
+    public final List<RawType> getAllRawTypes() {
+        if (catalog != null) {
+            return catalog.getAllRawTypes();
         } else {
             throw new IllegalStateException("Store is not open");
         }

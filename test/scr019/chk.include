@@ -1,6 +1,6 @@
 #!/bin/sh -
 #
-# $Id: chk.include,v 12.4 2007/05/17 19:38:09 bostic Exp $
+# $Id$
 #
 # Check for inclusion of files already included in db_int.h.
 

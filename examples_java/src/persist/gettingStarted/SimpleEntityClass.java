@@ -1,3 +1,11 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2008-2009 Oracle.  All rights reserved.
+ *
+ * $Id$ 
+ */
+
 package persist.gettingStarted;
 
 import com.sleepycat.persist.model.Entity;

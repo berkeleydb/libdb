@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_java_stat,v 12.27 2008/04/25 14:50:06 bschmeck Exp $
+#	$Id$
 #
 # Build the Java files.
 
@@ -9,7 +9,7 @@ msgjava="/*-
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  */"
 
 s=/tmp/__java.sed
@@ -26,6 +26,7 @@ jclass()
 	cat > $s <<EOF
 /struct __db_$1 {/,/^}/{
 	/__db_$1/d
+	/CONFIG_TEST/,/#endif/d
 	/;/!d
 	/^}/d
 	/db_threadid_t/d
@@ -33,6 +34,14 @@ jclass()
 		s/^[	 ]*char[*	 ]*[	 ]*\([^[;]*\).*/\\
 $2    private String \1;\\
 $2    public String get_\1() {\\
+$2        return \1;\\
+$2    }/p
+		d
+	}
+	/db_seq_t/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/\\
+$2    private long \1;\\
+$2    public long get_\1() {\\
 $2        return \1;\\
 $2    }/p
 		d
@@ -45,7 +54,7 @@ $2        return \1;\\
 $2    }/p
 		d
 	}
-	/db_seq_t/{
+	/uintmax_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/\\
 $2    private long \1;\\
 $2    public long get_\1() {\\
@@ -69,7 +78,7 @@ $2        return \1;\\
 $2    }/p
 		d
 	}
-	/u_int8_t[	 ]*xid\[/{
+	/u_int8_t[	 ]*gid\[/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/\\
 $2    private byte[] \1;\\
 $2    public byte[] get_\1() {\\
@@ -119,6 +128,7 @@ jclass_jni()
 	cat > $s <<EOF
 /struct __db_$1 {/,/^}/{
 	/__db_$1/d
+	/CONFIG_TEST/,/#endif/d
 	/;/!d
 	/^}/d
 	/db_threadid_t/d
@@ -126,11 +136,15 @@ jclass_jni()
 		s/^[	 ]*char[*	 ]*[	 ]*\([^[;]*\).*/	JAVADB_STAT_STRING(jnienv, jobj, $1_\1_fid, statp, \1);/p
 		d
 	}
+	/db_seq_t/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	JAVADB_STAT_LONG(jnienv, jobj, $1_\1_fid, statp, \1);/p
+		d
+	}
 	/time_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	JAVADB_STAT_LONG(jnienv, jobj, $1_\1_fid, statp, \1);/p
 		d
 	}
-	/db_seq_t/{
+	/uintmax_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	JAVADB_STAT_LONG(jnienv, jobj, $1_\1_fid, statp, \1);/p
 		d
 	}
@@ -142,8 +156,8 @@ jclass_jni()
 		s/^[	 ]*[^\*]*\*[	 ]*\([^;]*\).*/	JAVADB_STAT_ACTIVE(jnienv, jobj, $1_\1_fid, statp, \1);/p
 		d
 	}
-	/u_int8_t[	 ]*xid\[/{
-		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/	JAVADB_STAT_XID(jnienv, jobj, $1_\1_fid, statp, \1);/p
+	/u_int8_t[	 ]*gid\[/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/	JAVADB_STAT_GID(jnienv, jobj, $1_\1_fid, statp, \1);/p
 		d
 	}
 	s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	JAVADB_STAT_INT(jnienv, jobj, $1_\1_fid, statp, \1);/p
@@ -161,6 +175,7 @@ jni_fieldid_decls()
 	cat > $s <<EOF
 /struct __db_$1 {/,/^}/{
 	/__db_$1/d
+	/CONFIG_TEST/,/#endif/d
 	/;/!d
 	/^}/d
 	/db_threadid_t/d
@@ -168,11 +183,15 @@ jni_fieldid_decls()
 		s/^[	 ]*char[*	 ]*[	 ]*\([^[;]*\).*/static jfieldID $1_\1_fid;/p
 		d
 	}
+	/db_seq_t/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/static jfieldID $1_\1_fid;/p
+		d
+	}
 	/time_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/static jfieldID $1_\1_fid;/p
 		d
 	}
-	/db_seq_t/{
+	/uintmax_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/static jfieldID $1_\1_fid;/p
 		d
 	}
@@ -184,7 +203,7 @@ jni_fieldid_decls()
 		s/^[	 ]*[^\*]*\*[	 ]*\([^;]*\).*/static jfieldID $1_\1_fid;/p
 		d
 	}
-	/u_int8_t[	 ]*xid\[/{
+	/u_int8_t[	 ]*gid\[/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/static jfieldID $1_\1_fid;/p
 		d
 	}
@@ -199,6 +218,7 @@ jni_fieldids()
 	cat > $s <<EOF
 /struct __db_$1 {/,/^}/{
 	/__db_$1/d
+	/CONFIG_TEST/,/#endif/d
 	/;/!d
 	/^}/d
 	/db_threadid_t/d
@@ -206,11 +226,15 @@ jni_fieldids()
 		s/^[	 ]*char[*	 ]*[	 ]*\([^[;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"Ljava\/lang\/String;\" },/p
 		d
 	}
+	/db_seq_t/{
+		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"J\" },/p
+		d
+	}
 	/time_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"J\" },/p
 		d
 	}
-	/db_seq_t/{
+	/uintmax_t/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"J\" },/p
 		d
 	}
@@ -222,7 +246,7 @@ jni_fieldids()
 		s/^[	 ]*[^\*]*\*[	 ]*\([^;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"[L\" DB_PKG \"TransactionStats\$Active;\" },/p
 		d
 	}
-	/u_int8_t[	 ]*xid\[/{
+	/u_int8_t[	 ]*gid\[/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/	{ \&$1_\1_fid, \&$1_class, \"\1\", \"[B\" },/p
 		d
 	}
@@ -238,6 +262,7 @@ jclass_toString()
 	cat > $s <<EOF
 /struct __db_$1 {/,/^}/{
 	/__db_$1/d
+	/CONFIG_TEST/,/#endif/d
 	/;/!d
 	/^}/d
 	/db_threadid_t/d
@@ -249,7 +274,7 @@ jclass_toString()
 		s/^[	 ]*[^\*]*\*[	 ]*\([^;]*\).*/$3            + \"\\\\n$3  \1=\" + DbUtil.objectArrayToString(\1, \"\1\")/p
 		d
 	}
-	/u_int8_t[	 ]*xid\[/{
+	/u_int8_t[	 ]*gid\[/{
 		s/^[	 ]*[^	 ]*[	 ]*\([^[;]*\).*/$3            + \"\\\\n$3  \1=\" + DbUtil.byteArrayToString(\1)/p
 		d
 	}
@@ -325,7 +350,7 @@ EOF
  jclass compact
  jclass_toString compact CompactStats
  echo '}') |
-   psed 's,public int get\(FillPercent\|Pages(\|Timeout\|Truncate\),/* package */ int get\1,g'> $t0
+   perl -w -p -e 's,public int get(FillPercent|Pages\(|Timeout|Truncate),/* package */ int get$1,g;'> $t0
 f=../java/src/com/sleepycat/db/CompactStats.java
 ./s_javadoc_merge $f $t0 > $t
 cmp $t $f > /dev/null 2>&1 ||

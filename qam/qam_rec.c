@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: qam_rec.c,v 12.32 2008/03/13 15:44:50 mbrey Exp $
+ * $Id$
  */
 
 #include "db_config.h"
@@ -123,7 +123,7 @@ __qam_incfirst_recover(env, dbtp, lsnp, op, info)
 		while (meta->first_recno != meta->cur_recno &&
 		    !QAM_BEFORE_FIRST(meta, argp->recno + 1)) {
 			if ((ret = __qam_position(dbc,
-			    &meta->first_recno, DB_LOCK_READ, 0, &exact)) != 0)
+			    &meta->first_recno, 0, &exact)) != 0)
 				goto err;
 			if (cp->page != NULL && (ret = __qam_fput(dbc,
 			    cp->pgno, cp->page, dbc->priority)) != 0)
@@ -248,8 +248,7 @@ __qam_mvptr_recover(env, dbtp, lsnp, op, info)
 				meta->first_recno = argp->new_first;
 			else {
 				if ((ret = __qam_position(dbc,
-				    &meta->first_recno, DB_LOCK_READ, 0,
-				    &exact)) != 0)
+				    &meta->first_recno, 0, &exact)) != 0)
 					goto err;
 				if (!exact)
 					meta->first_recno = argp->new_first;
@@ -265,8 +264,8 @@ __qam_mvptr_recover(env, dbtp, lsnp, op, info)
 			if (argp->old_cur < argp->new_cur)
 				meta->cur_recno = argp->new_cur;
 			else {
-				if ((ret = __qam_position(dbc, &meta->cur_recno,
-				    DB_LOCK_READ, 0, &exact)) != 0)
+				if ((ret = __qam_position(dbc,
+				     &meta->cur_recno, 0, &exact)) != 0)
 					goto err;
 				if (!exact)
 					meta->cur_recno = argp->new_cur;
@@ -326,13 +325,27 @@ __qam_del_recover(env, dbtp, lsnp, op, info)
 	int cmp_n, ret, t_ret;
 
 	COMPQUIET(pagep, NULL);
+	LOCK_INIT(lock);
+	meta = NULL;
+	pagep = NULL;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	REC_PRINT(__qam_del_print);
 	REC_INTRO(__qam_del_read, ip, 1);
 
+	/* Lock the meta page before latching the page. */
+	if (DB_UNDO(op)) {
+		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
+		if ((ret = __db_lget(dbc,
+		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
+			goto out;
+		if ((ret = __memp_fget(mpf, &metapg, ip, NULL,
+		    DB_MPOOL_EDIT, &meta)) != 0)
+			goto err;
+	}
+
 	if ((ret = __qam_fget(dbc, &argp->pgno, DB_MPOOL_CREATE, &pagep)) != 0)
-		goto out;
+		goto err;
 
 	if (pagep->pgno == PGNO_INVALID) {
 		QAM_DIRTY(dbc, argp->pgno, &pagep);
@@ -344,15 +357,6 @@ __qam_del_recover(env, dbtp, lsnp, op, info)
 
 	if (DB_UNDO(op)) {
 		/* make sure first is behind us */
-		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
-		if ((ret = __db_lget(dbc,
-		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
-			goto err;
-		if ((ret = __memp_fget(mpf, &metapg, ip, NULL,
-		    DB_MPOOL_EDIT, &meta)) != 0) {
-			(void)__LPUT(dbc, lock);
-			goto err;
-		}
 		if (meta->first_recno == RECNO_OOB ||
 		    (QAM_BEFORE_FIRST(meta, argp->recno) &&
 		    (meta->first_recno <= meta->cur_recno ||
@@ -360,13 +364,7 @@ __qam_del_recover(env, dbtp, lsnp, op, info)
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			REC_DIRTY(mpf, ip, dbc->priority, &meta);
 			meta->first_recno = argp->recno;
-			ret = __memp_fput(mpf, ip, meta, dbc->priority);
-		} else
-			ret = __memp_fput(mpf, ip, meta, dbc->priority);
-		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			goto err;
+		}
 
 		/* Need to undo delete - mark the record as present */
 		QAM_DIRTY(dbc, pagep->pgno, &pagep);
@@ -396,15 +394,18 @@ __qam_del_recover(env, dbtp, lsnp, op, info)
 		if (op == DB_TXN_APPLY)
 			LSN(pagep) = *lsnp;
 	}
-	if ((ret = __qam_fput(dbc, argp->pgno, pagep, dbc->priority)) != 0)
-		goto out;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-	if (0) {
-err:		(void)__qam_fput(dbc, argp->pgno, pagep, dbc->priority);
-	}
+err:	if (pagep != NULL && (t_ret =
+	    __qam_fput(dbc, argp->pgno, pagep, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (meta != NULL && (t_ret =
+	    __memp_fput(mpf, ip, meta, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
+		ret = t_ret;
 out:	REC_CLOSE;
 }
 
@@ -436,10 +437,25 @@ __qam_delext_recover(env, dbtp, lsnp, op, info)
 	int cmp_n, ret, t_ret;
 
 	COMPQUIET(pagep, NULL);
+	LOCK_INIT(lock);
+	meta = NULL;
+	pagep = NULL;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	REC_PRINT(__qam_delext_print);
 	REC_INTRO(__qam_delext_read, ip, 1);
+
+	if (DB_UNDO(op)) {
+		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
+		if ((ret = __db_lget(dbc,
+		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
+			goto err;
+		if ((ret = __memp_fget(mpf, &metapg, ip, NULL,
+		    DB_MPOOL_EDIT, &meta)) != 0) {
+			(void)__LPUT(dbc, lock);
+			goto err;
+		}
+	}
 
 	if ((ret = __qam_fget(dbc, &argp->pgno,
 	     DB_REDO(op) ? 0 : DB_MPOOL_CREATE, &pagep)) != 0) {
@@ -462,28 +478,13 @@ __qam_delext_recover(env, dbtp, lsnp, op, info)
 
 	if (DB_UNDO(op)) {
 		/* make sure first is behind us */
-		metapg = ((QUEUE *)file_dbp->q_internal)->q_meta;
-		if ((ret = __db_lget(dbc,
-		    LCK_ROLLBACK, metapg, DB_LOCK_WRITE, 0, &lock)) != 0)
-			goto err;
-		if ((ret = __memp_fget(mpf, &metapg, ip, NULL,
-		    DB_MPOOL_EDIT, &meta)) != 0) {
-			(void)__LPUT(dbc, lock);
-			goto err;
-		}
 		if (meta->first_recno == RECNO_OOB ||
 		    (QAM_BEFORE_FIRST(meta, argp->recno) &&
 		    (meta->first_recno <= meta->cur_recno ||
 		    meta->first_recno -
 		    argp->recno < argp->recno - meta->cur_recno))) {
 			meta->first_recno = argp->recno;
-			ret = __memp_fput(mpf, ip, meta, dbc->priority);
-		} else
-			ret = __memp_fput(mpf, ip, meta, dbc->priority);
-		if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			goto err;
+		}
 
 		QAM_DIRTY(dbc, pagep->pgno, &pagep);
 		if ((ret = __qam_pitem(dbc, pagep,
@@ -513,15 +514,19 @@ __qam_delext_recover(env, dbtp, lsnp, op, info)
 		if (op == DB_TXN_APPLY)
 			LSN(pagep) = *lsnp;
 	}
-	if ((ret = __qam_fput(dbc, argp->pgno, pagep, dbc->priority)) != 0)
-		goto out;
 
 done:	*lsnp = argp->prev_lsn;
 	ret = 0;
 
-	if (0) {
-err:		(void)__qam_fput(dbc, argp->pgno, pagep, dbc->priority);
-	}
+err:	if (pagep != NULL && (t_ret =
+	    __qam_fput(dbc, argp->pgno, pagep, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (meta != NULL && (t_ret =
+	    __memp_fput(mpf, ip, meta, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
+		ret = t_ret;
+
 out:	REC_CLOSE;
 }
 

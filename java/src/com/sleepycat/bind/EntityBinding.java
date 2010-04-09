@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: EntityBinding.java,v 12.7 2008/02/08 20:12:36 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind;
@@ -21,7 +21,7 @@ import com.sleepycat.db.DatabaseEntry;
  *
  * @author Mark Hayes
  */
-public interface EntityBinding {
+public interface EntityBinding<E> {
 
     /**
      * Converts key and data entry buffers into an entity Object.
@@ -32,7 +32,7 @@ public interface EntityBinding {
      *
      * @return the resulting Object.
      */
-    Object entryToObject(DatabaseEntry key, DatabaseEntry data);
+    E entryToObject(DatabaseEntry key, DatabaseEntry data);
 
     /**
      * Extracts the key entry from an entity Object.
@@ -41,7 +41,7 @@ public interface EntityBinding {
      *
      * @param key is the destination entry buffer.
      */
-    void objectToKey(Object object, DatabaseEntry key);
+    void objectToKey(E object, DatabaseEntry key);
 
     /**
      * Extracts the data entry from an entity Object.
@@ -50,5 +50,5 @@ public interface EntityBinding {
      *
      * @param data is the destination entry buffer.
      */
-    void objectToData(Object object, DatabaseEntry data);
+    void objectToData(E object, DatabaseEntry data);
 }

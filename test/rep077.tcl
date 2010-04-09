@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep077.tcl,v 12.3 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep077
 # TEST
@@ -16,6 +16,8 @@
 #
 proc rep077 { method { tnum "077"} args} {
 	source ./include.tcl
+	global databases_in_memory
+	global repfiles_in_memory
 
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win9x platform."
@@ -30,9 +32,25 @@ proc rep077 { method { tnum "077"} args} {
 	set args [convert_args $method $args]
 	set logsets [create_logsets 2]
 
+	# Set up for on-disk or in-memory databases.
+	set msg "using on-disk databases"
+	if { $databases_in_memory } {
+		set msg "using named in-memory databases"
+		if { [is_queueext $method] } { 
+			puts -nonewline "Skipping rep$tnum for method "
+			puts "$method with named in-memory databases."
+			return
+		}
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	foreach l $logsets {
-		puts "Rep$tnum ($method):\
-		    Recovered client getting immediate log records."
+		puts "Rep$tnum ($method): Recovered client\
+		    getting immediate log records $msg $msg2."
 		puts "Rep$tnum: Master logs are [lindex $l 0]"
 		puts "Rep$tnum: Client logs are [lindex $l 1]"
 		rep077_sub $method $tnum $l $args
@@ -41,12 +59,19 @@ proc rep077 { method { tnum "077"} args} {
 
 proc rep077_sub { method tnum logset largs} {
 	global testdir
+	global databases_in_memory
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set niter 5
@@ -72,17 +97,17 @@ proc rep077_sub { method tnum logset largs} {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create \
-	    $verbargs \
+	    $verbargs $repmemargs \
 	    -home $masterdir -errpfx MASTER -txn nosync -rep_master \
 	    -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
 
-	eval rep_test $method $masterenv NULL $niter 0 0 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
 	# Open a client
 	repladd 2
 	set env_cmd(C) "berkdb_env_noerr -create \
-	    $verbargs \
+	    $verbargs $repmemargs \
 	    -home $clientdir -errpfx CLIENT -txn nosync -rep_client \
 	    -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $env_cmd(C)]
@@ -106,7 +131,7 @@ proc rep077_sub { method tnum logset largs} {
 	#
 	# Move it forward by sending in niter as start and skip.
 	#
-	eval rep_test $method $masterenv NULL $niter $niter $niter 0 0 $largs
+	eval rep_test $method $masterenv NULL $niter $niter $niter 0 $largs
 
 	# We need to reopen with recovery to blow away our idea of
 	# who the master is, because this client will start up with

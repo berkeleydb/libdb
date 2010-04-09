@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: StoredCollection.java,v 12.10 2008/02/07 17:12:26 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.collections;
@@ -42,8 +42,8 @@ import com.sleepycat.db.OperationStatus;
  *
  * @author Mark Hayes
  */
-public abstract class StoredCollection extends StoredContainer
-    implements Collection {
+public abstract class StoredCollection<E> extends StoredContainer
+    implements Collection<E> {
 
     /**
      * The default number of records read at one time by iterators.
@@ -128,7 +128,7 @@ public abstract class StoredCollection extends StoredContainer
      *
      * @see #isWriteAllowed
      */
-    public Iterator iterator() {
+    public Iterator<E> iterator() {
         return blockIterator();
     }
 
@@ -151,7 +151,7 @@ public abstract class StoredCollection extends StoredContainer
      *
      * @see #isWriteAllowed
      */
-    public StoredIterator storedIterator() {
+    public StoredIterator<E> storedIterator() {
 
         return storedIterator(isWriteAllowed());
     }
@@ -185,7 +185,7 @@ public abstract class StoredCollection extends StoredContainer
      *
      * @see #isWriteAllowed
      */
-    public StoredIterator storedIterator(boolean writeAllowed) {
+    public StoredIterator<E> storedIterator(boolean writeAllowed) {
 
         try {
             return new StoredIterator(this, writeAllowed && isWriteAllowed(),
@@ -201,7 +201,7 @@ public abstract class StoredCollection extends StoredContainer
      * be closed, the method name {@code iterator} is confusing since standard
      * Java iterators do not need to be closed.
      */
-    public StoredIterator iterator(boolean writeAllowed) {
+    public StoredIterator<E> iterator(boolean writeAllowed) {
 
         return storedIterator(writeAllowed);
     }
@@ -215,7 +215,7 @@ public abstract class StoredCollection extends StoredContainer
      */
     public Object[] toArray() {
 
-        ArrayList list = new ArrayList();
+        ArrayList<Object> list = new ArrayList<Object>();
         StoredIterator i = storedIterator();
         try {
             while (i.hasNext()) {
@@ -236,20 +236,20 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public Object[] toArray(Object[] a) {
+    public <T> T[] toArray(T[] a) {
 
         int j = 0;
         StoredIterator i = storedIterator();
         try {
             while (j < a.length && i.hasNext()) {
-                a[j++] = i.next();
+                a[j++] = (T) i.next();
             }
             if (j < a.length) {
                 a[j] = null;
             } else if (i.hasNext()) {
-                ArrayList list = new ArrayList(Arrays.asList(a));
+                ArrayList<T> list = new ArrayList<T>(Arrays.asList(a));
                 while (i.hasNext()) {
-                    list.add(i.next());
+                    list.add((T) i.next());
                 }
                 a = list.toArray(a);
             }
@@ -267,8 +267,8 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean containsAll(Collection coll) {
-	Iterator i = storedOrExternalIterator(coll);
+    public boolean containsAll(Collection<?> coll) {
+	Iterator<?> i = storedOrExternalIterator(coll);
         try {
             while (i.hasNext()) {
                 if (!contains(i.next())) {
@@ -295,8 +295,8 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean addAll(Collection coll) {
-	Iterator i = null;
+    public boolean addAll(Collection<? extends E> coll) {
+	Iterator<? extends E> i = null;
         boolean doAutoCommit = beginAutoCommit();
         try {
             i = storedOrExternalIterator(coll);
@@ -325,7 +325,7 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean removeAll(Collection coll) {
+    public boolean removeAll(Collection<?> coll) {
 
         return removeAll(coll, true);
     }
@@ -340,12 +340,12 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public boolean retainAll(Collection coll) {
+    public boolean retainAll(Collection<?> coll) {
 
         return removeAll(coll, false);
     }
 
-    private boolean removeAll(Collection coll, boolean ifExistsInColl) {
+    private boolean removeAll(Collection<?> coll, boolean ifExistsInColl) {
 	StoredIterator i = null;
         boolean doAutoCommit = beginAutoCommit();
         try {
@@ -415,10 +415,10 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public List toList() {
+    public List<E> toList() {
 
-        ArrayList list = new ArrayList();
-        StoredIterator i = storedIterator();
+        ArrayList<E> list = new ArrayList<E>();
+        StoredIterator<E> i = storedIterator();
         try {
             while (i.hasNext()) list.add(i.next());
             return list;
@@ -518,8 +518,9 @@ public abstract class StoredCollection extends StoredContainer
      * @throws RuntimeExceptionWrapper if a {@link DatabaseException} is
      * thrown.
      */
-    public StoredIterator join(StoredContainer[] indices, Object[] indexKeys,
-                               JoinConfig joinConfig) {
+    public StoredIterator<E> join(StoredContainer[] indices,
+                                  Object[] indexKeys,
+                                  JoinConfig joinConfig) {
 
         try {
             DataView[] indexViews = new DataView[indices.length];
@@ -527,13 +528,13 @@ public abstract class StoredCollection extends StoredContainer
                 indexViews[i] = indices[i].view;
             }
             DataCursor cursor = view.join(indexViews, indexKeys, joinConfig);
-            return new StoredIterator(this, false, cursor);
+            return new StoredIterator<E>(this, false, cursor);
         } catch (Exception e) {
             throw StoredContainer.convertException(e);
         }
     }
 
-    final Object getFirstOrLast(boolean doGetFirst) {
+    final E getFirstOrLast(boolean doGetFirst) {
 
         DataCursor cursor = null;
         try {
@@ -553,7 +554,7 @@ public abstract class StoredCollection extends StoredContainer
         }
     }
 
-    Object makeIteratorData(BaseIterator iterator, DataCursor cursor) {
+    E makeIteratorData(BaseIterator iterator, DataCursor cursor) {
 
         return makeIteratorData(iterator,
                                 cursor.getKeyThang(),
@@ -561,10 +562,10 @@ public abstract class StoredCollection extends StoredContainer
                                 cursor.getValueThang());
     }
 
-    abstract Object makeIteratorData(BaseIterator iterator,
-                                     DatabaseEntry keyEntry,
-                                     DatabaseEntry priKeyEntry,
-                                     DatabaseEntry valueEntry);
+    abstract E makeIteratorData(BaseIterator iterator,
+                                DatabaseEntry keyEntry,
+                                DatabaseEntry priKeyEntry,
+                                DatabaseEntry valueEntry);
 
     abstract boolean hasValues();
 

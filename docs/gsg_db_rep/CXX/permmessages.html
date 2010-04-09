@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Permanent Message Handling</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="introduction.html" title="Chapter 1. Introduction" />
-    <link rel="previous" href="elections.html" title="Holding Elections" />
+    <link rel="prev" href="elections.html" title="Holding Elections" />
     <link rel="next" href="txnapp.html" title="Chapter 2. Transactional Application" />
   </head>
   <body>
@@ -32,16 +32,36 @@
             <h2 class="title" style="clear: both"><a id="permmessages"></a>Permanent Message Handling</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="permmessages.html#permmessagenot">When Not to Manage
+                            Permanent Messages</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="permmessages.html#permmanage">Managing Permanent Messages</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="permmessages.html#permimplement">Implementing Permanent
+                    Message Handling</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
-                Messages received by a replica may be marked with an
+                Messages received by a replica may be marked with 
                 special flag that indicates the message is permanent. 
                 Custom replicated applications will receive notification of
-                this flag via the <tt class="literal">DB_REP_ISPERM</tt> return value
+                this flag via the <code class="literal">DB_REP_ISPERM</code> return value
                 from the 
                     
-                    <tt class="methodname">DbEnv::rep_process_message()</tt>
+                    <code class="methodname">DbEnv::rep_process_message()</code>
                 method.
                 
                 There is no hard requirement that a replication application look for, or
@@ -58,23 +78,23 @@
                     guarantees required by the application.
             </p>
       <p>
-                    For example, consider what the replication framework does when it
+                    For example, consider what the Replication Manager does when it
                     has permanent message handling turned on and a
                     transactional commit record is sent to the replicas.
                     First, the replicas must transactional-commit the data
                     modifications identified by the message. And then, upon
-                    a successful commit, the replication framework sends the master a
+                    a successful commit, the Replication Manager sends the master a
                     message acknowledgment.
             </p>
       <p>
-                    For the master (again, using the replication framework), things are a little more complicated than
+                    For the master (again, using the Replication Manager), things are a little more complicated than
                 simple message acknowledgment.  Usually in a replicated
                 application, the master commits transactions
                 asynchronously; that is, the commit operation does not
                 block waiting for log data to be flushed to disk before
                 returning. So when a master is managing permanent
                 messages, it typically blocks the committing thread
-                immediately before <tt class="methodname">commit()</tt>
+                immediately before <code class="methodname">commit()</code>
                 returns. The thread then waits for acknowledgments from
                 its replicas. If it receives enough acknowledgments, it
                 continues to operate as normal. 
@@ -99,7 +119,6 @@
                             Permanent Messages</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             There are two reasons why you might
@@ -140,7 +159,7 @@
                         the machines that are hosting its replicas.
                     </p>
         <p>
-                            At the other end of the extreme, there is a
+                            At the other extreme, there is a
                             class of applications that use replication
                             purely to improve read performance. This sort
                             of application might choose to use synchronous
@@ -161,7 +180,6 @@
               <h3 class="title"><a id="permmanage"></a>Managing Permanent Messages</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             With the exception of a rare breed of
@@ -177,8 +195,8 @@
                         That said, it is important to remember that
                         managing permanent messages involves a fair amount
                         of network traffic. The messages must be sent to
-                        the replicas and the replicas must then acknowledge
-                        the message. This represents a performance overhead
+                        the replicas and the replicas must acknowledge
+                        them. This represents a performance overhead
                         that can be worsened by congested networks or
                         outright outages.
                     </p>
@@ -241,12 +259,11 @@
                     Message Handling</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             How you implement permanent message handling
                             depends on which API you are using to implement
-                            replication. If you are using the replication framework, then
+                            replication. If you are using the Replication Manager, then
                             permanent message handling is configured using
                             policies that you specify to the framework. In
                             this case, you can configure your application
@@ -266,16 +283,20 @@
                                            quorum. A quorum is reached when
                                            acknowledgments are received from the
                                            minimum number of electable
-                                           replicas needed to ensure that
+                                           peers needed to ensure that
                                            the record remains durable if
                                            an election is held. 
+                                   </p>
+              <p>
+                                       An <span class="emphasis"><em>electable peer</em></span> is any other
+                                       site that potentially can be elected master.
                                    </p>
               <p>
                                            The goal here is to be
                                            absolutely sure the record is
                                            durable. The master wants to
                                            hear from enough electable
-                                           replicas that they have
+                                           peer that they have
                                            committed the record so that if
                                            an election is held, the master
                                            knows the record will exist even
@@ -298,56 +319,52 @@
             </li>
             <li>
               <p>
-                                      Require an acknowledgment from a
-                                      peer. (The replication framework allows you to
-                                      designate one environment as a peer of
-                                      another).
+                                      Require an acknowledgment from at least one electable peer.
                                    </p>
             </li>
             <li>
               <p>
-                                           Require acknowledgments from
-                                           all peers.
+                                           Require acknowledgments from all electable peers.
                                    </p>
             </li>
           </ul>
         </div>
         <p>
-                        Note that the replication framework simply flushes its transaction
+                        Note that the Replication Manager simply flushes its transaction
                         logs and moves on if a permanent message is not
                         sufficiently acknowledged.
                    </p>
         <p>
                         For details on permanent message handling with the
-                        replication framework, see <a href="fwrkpermmessage.html">Permanent Message Handling</a>.
+                        Replication Manager, see <a class="xref" href="fwrkpermmessage.html" title="Permanent Message Handling">Permanent Message Handling</a>.
                    </p>
         <p>
                         If these policies are not sufficient for your
                         needs, or if you want your application to take more
                         corrective action than simply flushing log buffers
                         in the event of an unsuccessful commit, then you
-                        must use write a custom replication implementation. 
+                        must use implement replication using the Base APIs.
                    </p>
         <p>
-                        For custom replication implementation, messages are
+                        When using the Base APIs, messages are
                         sent from the master to its replica using a
-                        <tt class="function">send()</tt> callback that you
+                        <code class="function">send()</code> callback that you
                         implement.  Note, however, that DB's replication 
                         code automatically sets the permanent 
                         flag for you where appropriate. 
                    </p>
         <p>
-                        If the <tt class="function">send()</tt> callback returns with a
+                        If the <code class="function">send()</code> callback returns with a
                         non-zero status, DB flushes the transaction log 
                         buffers for you. Therefore, you must cause your
-                        <tt class="function">send()</tt> callback to block waiting
+                        <code class="function">send()</code> callback to block waiting
                         for acknowledgments from your replicas. 
                         As a part of implementing the
-                        <tt class="function">send()</tt> callback, you implement
+                        <code class="function">send()</code> callback, you implement
                         your permanent message handling policies. This
                         means that you identify how many replicas must
                         acknowledge the message before the callback can
-                        return <tt class="literal">0</tt>.  You must also
+                        return <code class="literal">0</code>.  You must also
                         implement the acknowledgment timeout, if any.
                    </p>
         <p>
@@ -363,7 +380,7 @@
         <p>
                         For more information on implementing permanent
                         message handling using a custom replication layer,
-                        see the <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>.
+                        see the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
                    </p>
       </div>
     </div>

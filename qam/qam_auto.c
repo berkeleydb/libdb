@@ -439,7 +439,7 @@ __qam_mvptr_log(dbp, txnp, ret_lsnp, flags,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(metalsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, metalsn) != 0))
+			    __log_check_page_lsn(env, dbp, metalsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, metalsn);
@@ -671,7 +671,7 @@ __qam_del_log(dbp, txnp, ret_lsnp, flags, lsn, pgno, indx, recno)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -933,7 +933,7 @@ __qam_add_log(dbp, txnp, ret_lsnp, flags, lsn, pgno, indx, recno, data,
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);
@@ -1206,7 +1206,7 @@ __qam_delext_log(dbp, txnp, ret_lsnp, flags, lsn, pgno, indx, recno, data)
 		if (txnp != NULL) {
 			LOG *lp = env->lg_handle->reginfo.primary;
 			if (LOG_COMPARE(lsn, &lp->lsn) >= 0 && (ret =
-			    __log_check_page_lsn(env, dbp, lsn) != 0))
+			    __log_check_page_lsn(env, dbp, lsn)) != 0)
 				return (ret);
 		}
 		LOGCOPY_FROMLSN(env, bp, lsn);

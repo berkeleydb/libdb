@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Using the BIND APIs</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
     <link rel="up" href="DBEntry.html" title="Chapter 8. Database Records" />
-    <link rel="previous" href="usingDbt.html" title="Reading and Writing Database Records" />
+    <link rel="prev" href="usingDbt.html" title="Reading and Writing Database Records" />
     <link rel="next" href="dbtJavaUsage.html" title="Database Usage Example" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="bindAPI"></a>Using the BIND APIs</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="bindAPI.html#bindPrimitive">Numerical and String Objects</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="bindAPI.html#object2dbt">Serializable Complex Objects</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="bindAPI.html#customTuple">Custom Tuple Bindings</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>Except for Java String and boolean types, efficiently moving data in
     and out of Java byte arrays for storage in a database can be a nontrivial
@@ -41,7 +59,7 @@
     
 
     <span>
-    <i class="citetitle">Berkeley DB Collections Tutorial</i>,
+    <em class="citetitle">Berkeley DB Collections Tutorial</em>,
     </span>
 
     this section provides a brief introduction to using the Bind APIs with:</p>
@@ -50,13 +68,13 @@
           <li>
             <p>Single field numerical and string objects</p>
             <p>Use this if you want to store a single numerical or string object,
-        such as <tt class="classname">Long</tt>, <tt class="classname">Double</tt>, or
-        <tt class="classname">String</tt>.</p>
+        such as <code class="classname">Long</code>, <code class="classname">Double</code>, or
+        <code class="classname">String</code>.</p>
           </li>
           <li>
             <p>Complex objects that implement Java serialization.</p>
             <p>Use this if you are storing objects that implement
-            <tt class="classname">Serializable</tt> and if you do not need to sort them.
+            <code class="classname">Serializable</code> and if you do not need to sort them.
         </p>
           </li>
           <li>
@@ -75,55 +93,54 @@
               <h3 class="title"><a id="bindPrimitive"></a>Numerical and String Objects</h3>
             </div>
           </div>
-          <div></div>
         </div>
-        <p>You can use the Bind APIs to store primitive data in a <tt class="classname">DatabaseEntry</tt>
+        <p>You can use the Bind APIs to store primitive data in a <code class="classname">DatabaseEntry</code>
       object. That is, you can store a single field containing one of the following types:</p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                <tt class="classname">String</tt>
+                <code class="classname">String</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Character</tt>
+                <code class="classname">Character</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Boolean</tt>
+                <code class="classname">Boolean</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Byte</tt>
+                <code class="classname">Byte</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Short</tt>
+                <code class="classname">Short</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Integer</tt>
+                <code class="classname">Integer</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Long</tt>
+                <code class="classname">Long</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Float</tt>
+                <code class="classname">Float</code>
               </p>
             </li>
             <li>
               <p>
-                <tt class="classname">Double</tt>
+                <code class="classname">Double</code>
               </p>
             </li>
           </ul>
@@ -134,13 +151,13 @@
         <div class="orderedlist">
           <ol type="1">
             <li>
-              <p>Create an <tt class="classname">EntryBinding</tt> object.</p>
-              <p>When you do this, you use <tt class="classname">TupleBinding.getPrimitiveBinding()</tt>
+              <p>Create an <code class="classname">EntryBinding</code> object.</p>
+              <p>When you do this, you use <code class="classname">TupleBinding.getPrimitiveBinding()</code>
           to return an appropriate binding for the conversion.</p>
             </li>
             <li>
-              <p>Use the <tt class="classname">EntryBinding</tt> object to place
-          the numerical object on the <tt class="classname">DatabaseEntry</tt>.</p>
+              <p>Use the <code class="classname">EntryBinding</code> object to place
+          the numerical object on the <code class="classname">DatabaseEntry</code>.</p>
             </li>
           </ol>
         </div>
@@ -175,7 +192,7 @@ try {
 } catch (Exception e) {
     // Exception handling goes here
 }</pre>
-        <p>Retrieval from the <tt class="classname">DatabaseEntry</tt> object is
+        <p>Retrieval from the <code class="classname">DatabaseEntry</code> object is
       performed in much the same way:</p>
         <a id="java_dbt7"></a>
         <pre class="programlisting">package db.GettingStarted;
@@ -229,7 +246,6 @@ try {
               <h3 class="title"><a id="object2dbt"></a>Serializable Complex Objects</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>Frequently your application requires you to store and manage
       objects for your record data and/or keys. You may need to do this if you
@@ -242,7 +258,7 @@ try {
       <span class="emphasis"><em>n</em></span> is the number of data members contained by the
       stored object(s).</p>
         <p>In order to store objects in a 
-      DB database, you must convert them to and from a <tt class="literal">byte</tt> array.
+      DB database, you must convert them to and from a <code class="literal">byte</code> array.
       The first instinct for many Java programmers is to do this using Java
       serialization. While this is functionally a correct solution, the result
       is poor space-performance because this causes the class information
@@ -257,9 +273,9 @@ try {
       </p>
         <p>The easiest way for you to solve this problem is to use the Bind
       APIs to perform the serialization for you. Doing so causes the extra
-      object information to be saved off to a unique <tt class="classname">Database</tt>
+      object information to be saved off to a unique <code class="classname">Database</code>
       dedicated for that purpose. This means that you do not have to duplicate
-      that information on each record in the <tt class="classname">Database</tt>
+      that information on each record in the <code class="classname">Database</code>
       that your application is using to store its information.</p>
         <p>
         Note that when you use the Bind APIs to perform serialization, you still
@@ -276,7 +292,6 @@ try {
                 <h4 class="title"><a id="bindCaveats"></a>Usage Caveats</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>Before using the Bind APIs to perform serialization, you may
         want to consider writing your own custom tuple bindings. Specifically,
@@ -291,26 +306,26 @@ try {
                 obtain through serialization. Consequently, you should not use serialization for keys if you
                 care about their sort order. You should
                 also not use serialization for record data if your
-                <tt class="classname">Database</tt> supports duplicate records and you care about sort order.
+                <code class="classname">Database</code> supports duplicate records and you care about sort order.
         </p>
               </li>
               <li>
                 <p>
                 You want to minimize the size of your byte arrays. Even when using the Bind APIs to perform the
-                serialization the resulting <tt class="literal">byte</tt> array may be larger than necessary. You can achieve
+                serialization the resulting <code class="literal">byte</code> array may be larger than necessary. You can achieve
                 more compact results by building your own custom tuple binding.
             </p>
               </li>
               <li>
                 <p>
                 You want to optimize for speed. In general, custom tuple bindings are faster than serialization at
-                moving data in and out of <tt class="literal">byte</tt> arrays.
+                moving data in and out of <code class="literal">byte</code> arrays.
             </p>
               </li>
             </ul>
           </div>
           <p>
-            For information on building your own custom tuple binding, see <a href="bindAPI.html#customTuple">Custom Tuple Bindings</a>.
+            For information on building your own custom tuple binding, see <a class="xref" href="bindAPI.html#customTuple" title="Custom Tuple Bindings">Custom Tuple Bindings</a>.
         </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
@@ -320,7 +335,6 @@ try {
                 <h4 class="title"><a id="objectSerial"></a>Serializing Objects</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>To store a serializable complex object using the
         Bind APIs:</p>
@@ -339,16 +353,16 @@ try {
               </li>
               <li>
                 <p>Instantiate a class catalog. You do this with
-            <tt class="classname">com.sleepycat.bind.serial.StoredClassCatalog</tt>,
+            <code class="classname">com.sleepycat.bind.serial.StoredClassCatalog</code>,
             and at that time you must provide a handle to an open database
             that is used to store the class information.</p>
               </li>
               <li>
-                <p>Create an entry binding that uses <tt class="methodname">com.sleepycat.bind.serial.SerialBinding</tt>.</p>
+                <p>Create an entry binding that uses <code class="methodname">com.sleepycat.bind.serial.SerialBinding</code>.</p>
               </li>
               <li>
                 <p>Instantiate an instance of the object that you want to
-            store, and place it in a <tt class="classname">DatabaseEntry</tt>
+            store, and place it in a <code class="classname">DatabaseEntry</code>
             using the entry binding that you created in the previous step.</p>
               </li>
             </ol>
@@ -464,11 +478,10 @@ try {
                 <h4 class="title"><a id="objectDeserial"></a>Deserializing Objects</h4>
               </div>
             </div>
-            <div></div>
           </div>
           <p>Once an object is stored in the database, you can retrieve the
-        <tt class="classname">MyData</tt> objects from the retrieved
-        <tt class="classname">DatabaseEntry</tt> using the Bind APIs in much the
+        <code class="classname">MyData</code> objects from the retrieved
+        <code class="classname">DatabaseEntry</code> using the Bind APIs in much the
         same way as is described above. For example:</p>
           <a id="java_dbt10"></a>
           <pre class="programlisting">package db.GettingStarted;
@@ -528,21 +541,20 @@ try {
               <h3 class="title"><a id="customTuple"></a>Custom Tuple Bindings</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
         If you want to store complex objects in your database, then you can use
         tuple bindings to do this. While they are more work to write and
         maintain than if you were to use serialization, the
-        <tt class="literal">byte</tt> array conversion is faster. In addition, custom
-        tuple bindings should allow you to create <tt class="literal">byte</tt> arrays
+        <code class="literal">byte</code> array conversion is faster. In addition, custom
+        tuple bindings should allow you to create <code class="literal">byte</code> arrays
         that are smaller than those created by serialization. Custom tuple
         bindings also allow you to optimize your BTree comparisons, whereas
         serialization does not.
       </p>
         <p>
         For information on using serialization to store complex objects, see
-        <a href="bindAPI.html#object2dbt">Serializable Complex Objects</a>.
+        <a class="xref" href="bindAPI.html#object2dbt" title="Serializable Complex Objects">Serializable Complex Objects</a>.
       </p>
         <p>To store complex objects using a custom tuple binding:</p>
         <div class="orderedlist">
@@ -552,7 +564,7 @@ try {
           Note that you do not have to implement the Serializable interface.</p>
             </li>
             <li>
-              <p>Write a tuple binding using the <tt class="classname">com.sleepycat.bind.tuple.TupleBinding</tt>
+              <p>Write a tuple binding using the <code class="classname">com.sleepycat.bind.tuple.TupleBinding</code>
           class.</p>
             </li>
             <li>
@@ -565,7 +577,7 @@ try {
             </li>
             <li>
               <p>Instantiate an instance of the object that you want to store,
-          and place it in a <tt class="classname">DatabaseEntry</tt> using the
+          and place it in a <code class="classname">DatabaseEntry</code> using the
           entry binding that you created in the previous step.</p>
             </li>
           </ol>
@@ -613,44 +625,44 @@ public class MyData2 {
     }
 } </pre>
         <p>In this case, you need to write a tuple binding for the
-      <tt class="classname">MyData2</tt> class. When you do this, you must
-      implement the <tt class="methodname">TupleBinding.objectToEntry()</tt>
-      and <tt class="methodname">TupleBinding.entryToObject()</tt> abstract methods.
+      <code class="classname">MyData2</code> class. When you do this, you must
+      implement the <code class="methodname">TupleBinding.objectToEntry()</code>
+      and <code class="methodname">TupleBinding.entryToObject()</code> abstract methods.
       Remember the following as you implement these methods:</p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
-              <p>You use <tt class="methodname">TupleBinding.objectToEntry()</tt> to convert
-          objects to <tt class="literal">byte</tt> arrays. You use
-          <tt class="classname">com.sleepycat.bind.tuple.TupleOutput</tt> to write
-          primitive data types to the <tt class="literal">byte</tt> array. Note that
-          <tt class="classname">TupleOutput</tt> provides methods that allows
-          you to work with numerical types (<tt class="literal">long</tt>,
-          <tt class="literal">double</tt>, <tt class="literal">int</tt>, and so forth) and
-          not the corresponding <tt class="literal">java.lang</tt> numerical
+              <p>You use <code class="methodname">TupleBinding.objectToEntry()</code> to convert
+          objects to <code class="literal">byte</code> arrays. You use
+          <code class="classname">com.sleepycat.bind.tuple.TupleOutput</code> to write
+          primitive data types to the <code class="literal">byte</code> array. Note that
+          <code class="classname">TupleOutput</code> provides methods that allows
+          you to work with numerical types (<code class="literal">long</code>,
+          <code class="literal">double</code>, <code class="literal">int</code>, and so forth) and
+          not the corresponding <code class="literal">java.lang</code> numerical
           classes.</p>
             </li>
             <li>
-              <p>The order that you write data to the <tt class="literal">byte</tt>
-          array in <tt class="methodname">TupleBinding.objectToEntry()</tt> is the order that
-          it appears in the array. So given the <tt class="classname">MyData2</tt>
-          class as an example, if you write <tt class="literal">description</tt>,
-          <tt class="literal">doubleData</tt>, and then <tt class="literal">longData</tt>,
+              <p>The order that you write data to the <code class="literal">byte</code>
+          array in <code class="methodname">TupleBinding.objectToEntry()</code> is the order that
+          it appears in the array. So given the <code class="classname">MyData2</code>
+          class as an example, if you write <code class="literal">description</code>,
+          <code class="literal">doubleData</code>, and then <code class="literal">longData</code>,
           then the resulting byte array will contain these data elements in
           that order. This means that your records will sort based on the
-          value of the <tt class="literal">description</tt> data member and then
-          the <tt class="literal">doubleData</tt> member, and so forth. If you
-          prefer to sort based on, say, the <tt class="literal">longData</tt> data
+          value of the <code class="literal">description</code> data member and then
+          the <code class="literal">doubleData</code> member, and so forth. If you
+          prefer to sort based on, say, the <code class="literal">longData</code> data
           member, write it to the byte array first.</p>
             </li>
             <li>
-              <p>You use <tt class="methodname">TupleBinding.entryToObject()</tt> to convert
-          the <tt class="literal">byte</tt> array back into an instance of your
-          original class. You use <tt class="classname">com.sleepycat.bind.tuple.TupleInput</tt>
-          to get data from the <tt class="literal">byte</tt> array.</p>
+              <p>You use <code class="methodname">TupleBinding.entryToObject()</code> to convert
+          the <code class="literal">byte</code> array back into an instance of your
+          original class. You use <code class="classname">com.sleepycat.bind.tuple.TupleInput</code>
+          to get data from the <code class="literal">byte</code> array.</p>
             </li>
             <li>
-              <p>The order that you read data from the <tt class="literal">byte</tt>
+              <p>The order that you read data from the <code class="literal">byte</code>
           array must be exactly the same as the order in which it was written.</p>
             </li>
           </ul>
@@ -700,12 +712,12 @@ public class MyTupleBinding extends TupleBinding {
         <div class="itemizedlist">
           <ul type="disc">
             <li>
-              <p><tt class="methodname">MyTupleBinding.objectToEntry()</tt> to
-          convert a MyData2 object to a <tt class="classname">DatabaseEntry</tt>.</p>
+              <p><code class="methodname">MyTupleBinding.objectToEntry()</code> to
+          convert a MyData2 object to a <code class="classname">DatabaseEntry</code>.</p>
             </li>
             <li>
-              <p><tt class="methodname">MyTupleBinding.entryToObject()</tt> to convert
-          a <tt class="classname">DatabaseEntry</tt> to a <tt class="classname">MyData2</tt>
+              <p><code class="methodname">MyTupleBinding.entryToObject()</code> to convert
+          a <code class="classname">DatabaseEntry</code> to a <code class="classname">MyData2</code>
           object.</p>
             </li>
           </ul>

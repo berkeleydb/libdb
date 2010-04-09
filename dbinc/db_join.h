@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1998-2009 Oracle.  All rights reserved.
  *
- * $Id: db_join.h,v 12.8 2008/01/08 20:58:17 bostic Exp $
+ * $Id$
  */
 
 #ifndef _DB_JOIN_H_

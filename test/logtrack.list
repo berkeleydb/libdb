@@ -14,11 +14,11 @@ BEGIN	pg_free	43	50
 BEGIN	cksum	42	51
 BEGIN	pg_freedata	43	52
 BEGIN	pg_init	43	60
-BEGIN	pg_sort	44	61
+BEGIN	pg_trunc	49	66
 PREFIX	__dbreg
 BEGIN	register	42	2
 PREFIX	__bam
-BEGIN	split	42	62
+BEGIN	split	48	62
 BEGIN	rsplit	42	63
 BEGIN	adj	42	55
 BEGIN	cadjust	42	56
@@ -31,10 +31,10 @@ BEGIN	relink	44	147
 BEGIN	merge	47	148
 BEGIN	pgno	44	149
 PREFIX	__fop
-BEGIN	create	42	143
+BEGIN	create	48	143
 BEGIN	remove	42	144
-BEGIN	write	42	145
-BEGIN	rename	42	146
+BEGIN	write	48	145
+BEGIN	rename	48	146
 BEGIN	file_remove	42	141
 PREFIX	__ham
 BEGIN	insdel	42	21
@@ -56,5 +56,5 @@ PREFIX	__txn
 BEGIN	regop	44	10
 BEGIN	ckp	43	11
 BEGIN	child	42	12
-BEGIN	xa_regop	42	13
+BEGIN	prepare	48	13
 BEGIN	recycle	42	14

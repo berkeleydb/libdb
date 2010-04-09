@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Chapter 3. Transaction Basics</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
     <link rel="up" href="index.html" title="Getting Started with Berkeley DB Transaction Processing" />
-    <link rel="previous" href="envopen.html" title="Opening a Transactional Environment and&#10;            Database&#10;            &#10;            &#10;        " />
+    <link rel="prev" href="envopen.html" title="Opening a Transactional Environment and Database" />
     <link rel="next" href="abortresults.html" title="Aborting a Transaction" />
   </head>
   <body>
@@ -32,7 +32,6 @@
             <h2 class="title"><a id="usingtxns"></a>Chapter 3. Transaction Basics</h2>
           </div>
         </div>
-        <div></div>
       </div>
       <div class="toc">
         <p>
@@ -93,7 +92,7 @@
      </p>
       <p>
         You obtain a transaction handle using the
-        <span><tt class="methodname">DB_ENV-&gt;txn_begin()</tt> method.</span>
+        <span><code class="methodname">DB_ENV-&gt;txn_begin()</code> method.</span>
         
         
         
@@ -102,7 +101,7 @@
       <p>
         Once you have completed all of the operations that you want to include
         in the transaction, you must commit the transaction using the 
-        <span><tt class="methodname">DB_TXN-&gt;commit()</tt> method.</span>
+        <span><code class="methodname">DB_TXN-&gt;commit()</code> method.</span>
         
         
         
@@ -112,7 +111,7 @@
       <p>
         If, for any reason, you want to abandon the transaction, you abort
         it using 
-        <span><tt class="methodname">DB_TXN-&gt;abort()</tt>.</span>
+        <span><code class="methodname">DB_TXN-&gt;abort()</code>.</span>
         
         
         
@@ -133,7 +132,7 @@
         <p>
             If you only want to transaction protect a single database write operation, you can use auto commit to 
             perform the transaction administration. When you use auto commit, you do not need an explicit transaction
-            handle. See <a href="autocommit.html">Auto Commit</a> for more information.
+            handle. See <a class="xref" href="autocommit.html" title="Auto Commit">Auto Commit</a> for more information.
         </p>
       </div>
       <p>
@@ -279,7 +278,15 @@ err:
               <h2 class="title" style="clear: both"><a id="commitresults"></a>Committing a Transaction</h2>
             </div>
           </div>
-          <div></div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="usingtxns.html#nodurabletxn">Non-Durable Transactions</a>
+              </span>
+            </dt>
+          </dl>
         </div>
         <p>
             In order to fully understand what is happening when you commit
@@ -336,13 +343,13 @@ err:
                     Any log information held in memory is (by default)
                     synchronously written to disk. Note that this requirement can be
                     relaxed, depending on the type of commit you perform.
-                    See <a href="usingtxns.html#nodurabletxn">Non-Durable Transactions</a> for
+                    See <a class="xref" href="usingtxns.html#nodurabletxn" title="Non-Durable Transactions">Non-Durable Transactions</a> for
                     more information. 
                     <span>Also, if you are
                     maintaining your logs entirely in-memory, then this
                     step will of course not be taken. To configure your
                     logging system for in-memory usage, see
-                    <a href="logconfig.html#inmemorylogging">Configuring In-Memory Logging</a>.
+                    <a class="xref" href="logconfig.html#inmemorylogging" title="Configuring In-Memory Logging">Configuring In-Memory Logging</a>.
                     </span>
                 </p>
             </li>
@@ -351,14 +358,14 @@ err:
                     All locks held by the transaction are released. This means
                     that read operations performed by other transactions or
                     threads of control can now see the modifications without
-                    resorting to uncommitted reads (see <a href="isolation.html#dirtyreads">Reading Uncommitted Data</a> for more information).
+                    resorting to uncommitted reads (see <a class="xref" href="isolation.html#dirtyreads" title="Reading Uncommitted Data">Reading Uncommitted Data</a> for more information).
                 </p>
             </li>
           </ul>
         </div>
         <p>
             To commit a transaction, you simply call
-            <span><tt class="methodname">DB_TXN-&gt;commit()</tt>.</span>
+            <span><code class="methodname">DB_TXN-&gt;commit()</code>.</span>
             
             
             
@@ -383,7 +390,7 @@ err:
                     in the cache to be written to disk, and a checkpoint
                     record is then written to the logs.  You can run checkpoints
                     explicitly. For more information on checkpoints,
-                    see <a href="filemanagement.html#checkpoints">Checkpoints</a>.
+                    see <a class="xref" href="filemanagement.html#checkpoints" title="Checkpoints">Checkpoints</a>.
                 </p>
             </li>
             <li>
@@ -425,7 +432,6 @@ err:
                 <h3 class="title"><a id="nodurabletxn"></a>Non-Durable Transactions</h3>
               </div>
             </div>
-            <div></div>
           </div>
           <p>
                 As previously noted, by default transaction commits are
@@ -457,8 +463,8 @@ err:
                 <p>
                         Specify          
                             <span>
-                                <tt class="literal">DB_TXN_NOSYNC</tt> using the
-                                <tt class="methodname">DB_ENV-&gt;set_flags()</tt>
+                                <code class="literal">DB_TXN_NOSYNC</code> using the
+                                <code class="methodname">DB_ENV-&gt;set_flags()</code>
                                 
                             method. 
                             </span>
@@ -501,8 +507,8 @@ err:
                 <p>
                         You can achieve this behavior on a transaction by transaction basis by
                             <span>
-                                specifying <tt class="literal">DB_TXN_NOSYNC</tt> to the
-                                    <tt class="methodname">DB_TXN-&gt;commit()</tt>
+                                specifying <code class="literal">DB_TXN_NOSYNC</code> to the
+                                    <code class="methodname">DB_TXN-&gt;commit()</code>
                                     
                                     
                                 method.
@@ -516,8 +522,8 @@ err:
                 <p>
                         Specify
                         <span>
-                            <tt class="literal">DB_TXN_WRITE_NOSYNC</tt> using the
-                                <tt class="methodname">DB_ENV-&gt;set_flags()</tt>
+                            <code class="literal">DB_TXN_WRITE_NOSYNC</code> using the
+                                <code class="methodname">DB_ENV-&gt;set_flags()</code>
                                 
                             method. 
                             </span>
@@ -541,7 +547,7 @@ err:
                                 This  form of commit protects you against application
                                  crashes, but not against OS
                                 crashes.  This method offers less room for the possibility of data loss than does
-                                <span><tt class="literal">DB_TXN_NOSYNC</tt>.</span>
+                                <span><code class="literal">DB_TXN_NOSYNC</code>.</span>
                                 
                     </p>
                 <p>
@@ -559,7 +565,7 @@ err:
                         case, your logs are never written to disk. The
                         result is that you lose all durability guarantees.
                         See 
-                        <a href="logconfig.html#inmemorylogging">Configuring In-Memory Logging</a>
+                        <a class="xref" href="logconfig.html#inmemorylogging" title="Configuring In-Memory Logging">Configuring In-Memory Logging</a>
                         for more information.
                     </p>
               </li>
@@ -573,14 +579,12 @@ err:
       <table width="100%" summary="Navigation footer">
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="envopen.html">Prev</a> </td>
-          <td width="20%" align="center">
-            <a accesskey="u" href="index.html">Up</a>
-          </td>
+          <td width="20%" align="center"> </td>
           <td width="40%" align="right"> <a accesskey="n" href="abortresults.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Opening a Transactional Environment and
-            Database
+            <span>Database</span>
             
             
          </td>

@@ -1,4 +1,4 @@
-# $Id: links.in,v 1.6 2006/09/15 06:52:59 mjc Exp $
+# $Id$
 # Lists links to Web sites to be installed on Windows.
 # If the URL starts with file: it is assumed to be a local file,
 # relative to the installation directory.

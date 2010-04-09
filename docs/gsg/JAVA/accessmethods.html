@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Access Methods</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB " />
-    <link rel="previous" href="javadplconcepts.html" title="Berkeley DB Concepts" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB" />
+    <link rel="prev" href="javadplconcepts.html" title="Berkeley DB Concepts" />
     <link rel="next" href="databaseLimits.html" title="Database Limits and Portability" />
   </head>
   <body>
@@ -32,7 +32,25 @@
             <h2 class="title" style="clear: both"><a id="accessmethods"></a>Access Methods</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="accessmethods.html#selectAM">Selecting Access Methods</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="accessmethods.html#BTreeVSHash">Choosing between BTree and Hash</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="accessmethods.html#QueueVSRecno">Choosing between Queue and Recno</a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
         While this manual will focus primarily on the BTree access method, it is
@@ -88,7 +106,7 @@
                     use keys that compare as equals. When this occurs, the
                     records are considered to be duplicates of one another.
                 </p>
-              </td>
+            </td>
             </tr>
             <tr>
               <td align="left">Hash</td>
@@ -99,7 +117,7 @@
                     arbitrarily complex data.  Also, like BTree, duplicate
                     records are optionally supported.
                 </p>
-              </td>
+            </td>
             </tr>
             <tr>
               <td align="left">Queue</td>
@@ -117,7 +135,7 @@
                     beneficial performance improvements in applications
                     requiring concurrent access to the queue.
                 </p>
-              </td>
+            </td>
             </tr>
             <tr>
               <td align="left">Recno</td>
@@ -126,7 +144,7 @@
                     Data is stored in either fixed or variable-length records.
                     Like Queue, Recno records use logical record numbers as keys.
                 </p>
-              </td>
+            </td>
             </tr>
           </tbody>
         </table>
@@ -138,7 +156,6 @@
               <h3 class="title"><a id="selectAM"></a>Selecting Access Methods</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             To select an access method, you should first consider what you want
@@ -159,7 +176,6 @@
               <h3 class="title"><a id="BTreeVSHash"></a>Choosing between BTree and Hash</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             For small working datasets that fit entirely in memory, there is no
@@ -221,7 +237,6 @@
               <h3 class="title"><a id="QueueVSRecno"></a>Choosing between Queue and Recno</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
             Queue or Recno are used when the application wants to use logical

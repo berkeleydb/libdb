@@ -15,10 +15,32 @@ typedef struct ___bam_split_args {
 	u_int32_t	indx;
 	db_pgno_t	npgno;
 	DB_LSN	nlsn;
+	db_pgno_t	ppgno;
+	DB_LSN	plsn;
+	u_int32_t	pindx;
+	DBT	pg;
+	DBT	pentry;
+	DBT	rentry;
+	u_int32_t	opflags;
+} __bam_split_args;
+
+#define	DB___bam_split_42	62
+typedef struct ___bam_split_42_args {
+	u_int32_t type;
+	DB_TXN *txnp;
+	DB_LSN prev_lsn;
+	int32_t	fileid;
+	db_pgno_t	left;
+	DB_LSN	llsn;
+	db_pgno_t	right;
+	DB_LSN	rlsn;
+	u_int32_t	indx;
+	db_pgno_t	npgno;
+	DB_LSN	nlsn;
 	db_pgno_t	root_pgno;
 	DBT	pg;
 	u_int32_t	opflags;
-} __bam_split_args;
+} __bam_split_42_args;
 
 #define	DB___bam_rsplit	63
 typedef struct ___bam_rsplit_args {

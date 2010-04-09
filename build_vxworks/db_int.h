@@ -2,9 +2,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: db_int.in,v 12.76 2008/05/07 12:34:15 bschmeck Exp $
+ * $Id$
  */
 
 #ifndef _DB_INT_H_
@@ -338,6 +338,7 @@ typedef struct __db_msgbuf {
 				    (ret) == DB_REP_NEWMASTER || \
 				    (ret) == DB_REP_NEWSITE || \
 				    (ret) == DB_REP_NOTPERM)
+#define	DB_RETOK_REPMGR_START(ret) ((ret) == 0 || (ret) == DB_REP_IGNORE)
 
 /* Find a reasonable operation-not-supported error. */
 #ifdef	EOPNOTSUPP
@@ -372,7 +373,8 @@ typedef enum {
 	DB_APP_NONE=0,			/* No type (region). */
 	DB_APP_DATA,			/* Data file. */
 	DB_APP_LOG,			/* Log file. */
-	DB_APP_TMP			/* Temporary file. */
+	DB_APP_TMP,			/* Temporary file. */
+	DB_APP_RECOVER			/* We are in recovery. */
 } APPNAME;
 
 /*
@@ -452,12 +454,18 @@ typedef enum {
 	}								\
 } while (0)
 
-#define ENV_GET_THREAD_INFO(env, ip) ENV_ENTER(env, ip)
+#define	FAILCHK_THREAD(env, ip) do {					\
+	if ((ip) != NULL)						\
+		(ip)->dbth_state = THREAD_FAILCHK;			\
+} while (0)
+
+#define	ENV_GET_THREAD_INFO(env, ip) ENV_ENTER(env, ip)
 
 #ifdef DIAGNOSTIC
 #define	ENV_LEAVE(env, ip) do {						\
 	if ((ip) != NULL) {						\
-		DB_ASSERT(env, (ip)->dbth_state == THREAD_ACTIVE);	\
+		DB_ASSERT(env, ((ip)->dbth_state == THREAD_ACTIVE  ||	\
+		    (ip)->dbth_state == THREAD_FAILCHK));		\
 		(ip)->dbth_state = THREAD_OUT;				\
 	}								\
 } while (0)
@@ -492,17 +500,16 @@ typedef enum {
 	THREAD_OUT,
 	THREAD_ACTIVE,
 	THREAD_BLOCKED,
-	THREAD_BLOCKED_DEAD
-#ifdef DIAGNOSTIC
-	, THREAD_VERIFY
-#endif
+	THREAD_BLOCKED_DEAD,
+	THREAD_FAILCHK,
+	THREAD_VERIFY
 } DB_THREAD_STATE;
 
 typedef struct __pin_list {
 	roff_t b_ref;		/* offset to buffer. */
 	int region;		/* region containing buffer. */
 } PIN_LIST;
-#define PINMAX 4
+#define	PINMAX 4
 
 struct __db_thread_info {
 	pid_t		dbth_pid;
@@ -510,7 +517,7 @@ struct __db_thread_info {
 	DB_THREAD_STATE	dbth_state;
 	SH_TAILQ_ENTRY	dbth_links;
 	/*
-	 * The following fields track which buffers this thread of 
+	 * The following fields track which buffers this thread of
 	 * control has pinned in the mpool buffer cache.
 	 */
 	u_int16_t	dbth_pincount;	/* Number of pins for this thread. */
@@ -596,13 +603,6 @@ struct __env {
 	db_mutex_t mtx_dblist;
 	int	   db_ref;		/* DB handle reference count */
 	TAILQ_HEAD(__dblist, __db) dblist;
-
-	/*
-	 * XA support.
-	 */
-	int		 xa_rmid;		/* XA Resource Manager ID */
-	TAILQ_ENTRY(__env) links;		/* XA environments */
-	TAILQ_HEAD(__xa_txn, __db_txn) xa_txn;	/* XA active transactions */
 
 	/*
 	 * List of open file handles for this ENV.  Must be protected
@@ -691,11 +691,18 @@ struct __env {
  */
 #define	__DBC_INTERNAL							\
 	DBC	 *opd;			/* Off-page duplicate cursor. */\
+	DBC	 *pdbc;			/* Pointer to parent cursor. */ \
 									\
 	void	 *page;			/* Referenced page. */		\
+	u_int32_t part;			/* Partition number. */		\
 	db_pgno_t root;			/* Tree root. */		\
 	db_pgno_t pgno;			/* Referenced page number. */	\
 	db_indx_t indx;			/* Referenced key item index. */\
+									\
+	/* Streaming -- cache last position. */				\
+	db_pgno_t stream_start_pgno;	/* Last start pgno. */		\
+	u_int32_t stream_off;		/* Current offset. */		\
+	db_pgno_t stream_curr_pgno;	/* Current overflow page. */	\
 									\
 	DB_LOCK		lock;		/* Cursor lock. */		\
 	db_lockmode_t	lock_mode;	/* Lock mode. */
@@ -711,7 +718,15 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
  * Access-method-common macro for determining whether a cursor
  * has been initialized.
  */
+#ifdef HAVE_PARTITION
+#define	IS_INITIALIZED(dbc)	(DB_IS_PARTITIONED((dbc)->dbp) ?	\
+		((PART_CURSOR *)(dbc)->internal)->sub_cursor != NULL && \
+		((PART_CURSOR *)(dbc)->internal)->sub_cursor->		\
+		    internal->pgno != PGNO_INVALID :			\
+		(dbc)->internal->pgno != PGNO_INVALID)
+#else
 #define	IS_INITIALIZED(dbc)	((dbc)->internal->pgno != PGNO_INVALID)
+#endif
 
 /* Free the callback-allocated buffer, if necessary, hanging off of a DBT. */
 #define	FREE_IF_NEEDED(env, dbt)					\
@@ -822,6 +837,12 @@ typedef struct __dbpginfo {
  *******************************************************/
 #define	DB_IV_BYTES     16		/* Bytes per IV */
 #define	DB_MAC_KEY	20		/* Bytes per MAC checksum */
+
+/*******************************************************
+ * Compression
+ *******************************************************/
+#define CMP_INT_SPARE_VAL	0xFC	/* Smallest byte value that the integer
+					   compression algorithm doesn't use */
 
 /*******************************************************
  * Secondaries over RPC.

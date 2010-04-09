@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep021.tcl,v 12.17 2008/04/02 02:46:54 moshen Exp $
+# $Id$
 #
 # TEST	rep021
 # TEST	Replication and multiple environments.
@@ -16,6 +16,8 @@
 proc rep021 { method { nclients 3 } { tnum "021" } args } {
 
 	source ./include.tcl
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -34,6 +36,19 @@ proc rep021 { method { nclients 3 } { tnum "021" } args } {
 		return
 	}
 
+	# This test closes its envs, so it's not appropriate for 
+	# testing of in-memory named databases.
+	global databases_in_memory
+	if { $databases_in_memory } { 
+		puts "Rep$tnum: Skipping for in-memory databases."
+		return
+	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set args [convert_args $method $args]
 	set logsets [create_logsets [expr $nclients + 1]]
 
@@ -46,8 +61,8 @@ proc rep021 { method { nclients 3 } { tnum "021" } args } {
 				    for in-memory logs with -recover."
 				continue
 			}
-			puts "Rep$tnum ($method $r):\
-			    Replication and $nclients recovered clients in sync."
+			puts "Rep$tnum ($method $r): Replication\
+			    and $nclients recovered clients in sync $msg2."
 			puts "Rep$tnum: Master logs are [lindex $l 0]"
 			for { set i 0 } { $i < $nclients } { incr i } {
 				puts "Rep$tnum: Client $i logs are\
@@ -61,12 +76,18 @@ proc rep021 { method { nclients 3 } { tnum "021" } args } {
 proc rep021_sub { method nclients tnum logset recargs largs } {
 	global testdir
 	global util_path
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set orig_tdir $testdir
@@ -125,7 +146,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	# For the 2nd group, just have 1 master and 1 client.
 	repladd 10
 	set ma2_envcmd "berkdb_env_noerr -create $m_txnargs $verbargs \
-	    $m_logargs -home $masterdir2 \
+	    $m_logargs -home $masterdir2 $repmemargs \
 	    -rep_master -rep_transport \[list 10 replsend\]"
 	set menv2 [eval $ma2_envcmd $recargs]
 
@@ -139,7 +160,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set id2 11
 	repladd $id2
 	set cl2_envcmd "berkdb_env_noerr -create $c_txnargs($id2) $verbargs \
-	    $c_logargs($id2) -home $clientdir2 \
+	    $c_logargs($id2) -home $clientdir2 $repmemargs \
 	    -rep_client -rep_transport \[list $id2 replsend\]"
 	set clenv2 [eval $cl2_envcmd $recargs]
 
@@ -170,9 +191,9 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set e2phase3 [expr $e2phase2 + $niter + $offset]
 
 	puts "\tRep$tnum.a: Running rep_test in 2nd replicated env."
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase1 1 1 0 $largs
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase2 1 1 0 $largs
-	eval rep_test $method $menv2 $masterdb2 $niter $e2phase3 1 1 0 $largs
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase1 1 1 $largs
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase2 1 1 $largs
+	eval rep_test $method $menv2 $masterdb2 $niter $e2phase3 1 1 $largs
 	error_check_good mdb_cl [$masterdb2 close] 0
 	process_msgs $env2list
 
@@ -197,7 +218,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $verbargs \
-	    $m_logargs -home $masterdir \
+	    $m_logargs -home $masterdir $repmemargs \
 	    -rep_master -rep_transport \[list 1 replsend\]"
 	set menv [eval $ma_envcmd $recargs]
 
@@ -210,7 +231,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 		set id($i) [expr 2 + $i]
 		repladd $id($i)
 		set cl_envcmd($i) "berkdb_env_noerr -create $c_txnargs($i) \
-		    $c_logargs($i) -home $clientdir($i) \
+		    $c_logargs($i) -home $clientdir($i) $repmemargs \
 		    $verbargs \
 		    -rep_client -rep_transport \[list $id($i) replsend\]"
 		set clenv($i) [eval $cl_envcmd($i) $recargs]
@@ -230,9 +251,9 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 
 	# Run a modified test001 in the master (and update clients).
 	puts "\tRep$tnum.c: Running rep_test in primary replicated env."
-	eval rep_test $method $menv $masterdb $niter $e1phase1 1 1 0 $largs
-	eval rep_test $method $menv $masterdb $niter $e1phase2 1 1 0 $largs
-	eval rep_test $method $menv $masterdb $niter $e1phase3 1 1 0 $largs
+	eval rep_test $method $menv $masterdb $niter $e1phase1 1 1 $largs
+	eval rep_test $method $menv $masterdb $niter $e1phase2 1 1 $largs
+	eval rep_test $method $menv $masterdb $niter $e1phase3 1 1 $largs
 	error_check_good mdb_cl [$masterdb close] 0
 	# Process any close messages.
 	process_msgs $envlist
@@ -246,7 +267,7 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set id($i) [expr 2 + $i]
 	repladd $id($i)
 	set cl_envcmd($i) "berkdb_env_noerr -create -txn nosync \
-	    -home $clientdir($i) $verbargs \
+	    -home $clientdir($i) $verbargs $repmemargs \
 	    -rep_client -rep_transport \[list $id($i) replsend\]"
 	set clenv($i) [eval $cl_envcmd($i) $recargs]
 	#
@@ -306,5 +327,4 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	set testdir $orig_tdir
 	return
 }
-
 

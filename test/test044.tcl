@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test044.tcl,v 12.6 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test044
 # TEST	Small system integration tests
@@ -29,6 +29,9 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
+
 
 	berkdb srand $rand_init
 
@@ -69,9 +72,16 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 		# Create the database and open the dictionary
 		env_cleanup $testdir
 
-		# Create an environment
+		# Create an environment.  Bump up the log region because
+		# we will create lots of files.  This is especially
+		# needed when we test partitioned databases.
+		set cid [open $testdir/DB_CONFIG w]
+		puts $cid "set_lg_regionmax 200000"
+		close $cid
+
 		puts "\tTest044.a: creating environment and $nfiles files"
-		set dbenv [berkdb_env -create -txn -home $testdir]
+		set dbenv \
+		     [eval {berkdb_env -create -txn} $pageargs -home $testdir]
 		error_check_good env_open [is_valid_env $dbenv] TRUE
 
 		# Create a bunch of files
@@ -106,7 +116,8 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 	set cycle 1
 	set ncycles 3
 	while { $cycle <= $ncycles } {
-		set dbenv [berkdb_env -create -txn -home $testdir]
+		set dbenv \
+		     [eval {berkdb_env -create -txn} $pageargs -home $testdir]
 		error_check_good env_open [is_valid_env $dbenv] TRUE
 
 		# Fire off deadlock detector and checkpointer
@@ -119,7 +130,7 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 		for { set i 0 } {$i < $nprocs} {incr i} {
 			set p [exec $tclsh_path \
 			    $test_path/sysscript.tcl $testdir \
-			    $nfiles $key_avg $data_avg $omethod \
+			    $nfiles $key_avg $data_avg $omethod $args\
 			    >& $testdir/test044.$i.log &]
 			lappend pidlist $p
 		}
@@ -151,7 +162,7 @@ proc test044 { method {nprocs 5} {nfiles 10} {cont 0} args } {
 		}
 
 		# Now run recovery
-		test044_verify $testdir $nfiles
+		eval test044_verify $testdir $nfiles $otherargs
 		incr cycle
 	}
 }
@@ -161,7 +172,7 @@ proc test044_usage { } {
 	puts " [-p procs] -x"
 }
 
-proc test044_verify { dir nfiles } {
+proc test044_verify { dir nfiles args} {
 	source ./include.tcl
 
 	# Save everything away in case something breaks
@@ -194,7 +205,7 @@ proc test044_verify { dir nfiles } {
 #	}
 
 	for { set f 0 } { $f < $nfiles } { incr f } {
-		set db($f) [berkdb_open $dir/test044.$f.db]
+		set db($f) [eval {berkdb_open} $args {$dir/test044.$f.db}]
 		error_check_good $f:dbopen [is_valid_db $db($f)] TRUE
 
 		set cursors($f) [$db($f) cursor]

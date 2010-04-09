@@ -1,14 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: ClassMetadata.java,v 1.1 2008/02/07 17:12:28 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.model;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +38,23 @@ public class ClassMetadata implements Serializable {
     private PrimaryKeyMetadata primaryKey;
     private Map<String,SecondaryKeyMetadata> secondaryKeys;
     private List<FieldMetadata> compositeKeyFields;
+    private Collection<FieldMetadata> persistentFields;
+
+    /**
+     * Used by an {@code EntityModel} to construct persistent class metadata.
+     * The optional {@link #getPersistentFields} property will be set to null.
+     */
+    public ClassMetadata(String className,
+                         int version,
+                         String proxiedClassName,
+                         boolean entityClass,
+                         PrimaryKeyMetadata primaryKey,
+                         Map<String,SecondaryKeyMetadata> secondaryKeys,
+                         List<FieldMetadata> compositeKeyFields) {
+
+        this(className, version, proxiedClassName, entityClass, primaryKey,
+             secondaryKeys, compositeKeyFields, null /*persistentFields*/);
+    }
 
     /**
      * Used by an {@code EntityModel} to construct persistent class metadata.
@@ -47,7 +65,8 @@ public class ClassMetadata implements Serializable {
                          boolean entityClass,
                          PrimaryKeyMetadata primaryKey,
                          Map<String,SecondaryKeyMetadata> secondaryKeys,
-                         List<FieldMetadata> compositeKeyFields) {
+                         List<FieldMetadata> compositeKeyFields,
+                         Collection<FieldMetadata> persistentFields) {
         this.className = className;
         this.version = version;
         this.proxiedClassName = proxiedClassName;
@@ -55,6 +74,7 @@ public class ClassMetadata implements Serializable {
         this.primaryKey = primaryKey;
         this.secondaryKeys = secondaryKeys;
         this.compositeKeyFields = compositeKeyFields;
+        this.persistentFields = persistentFields;
     }
 
     /**
@@ -98,10 +118,10 @@ public class ClassMetadata implements Serializable {
     }
 
     /**
-     * Returns an unmodifiable map of field name to secondary key metadata for
-     * all secondary keys declared in this class, or null if no secondary keys
-     * are declared in this class.  This metadata may be specified using {@link
-     * SecondaryKey} annotations.
+     * Returns an unmodifiable map of key name (which may be different from
+     * field name) to secondary key metadata for all secondary keys declared in
+     * this class, or null if no secondary keys are declared in this class.
+     * This metadata may be specified using {@link SecondaryKey} annotations.
      */
     public Map<String,SecondaryKeyMetadata> getSecondaryKeys() {
         return secondaryKeys;
@@ -117,6 +137,23 @@ public class ClassMetadata implements Serializable {
      */
     public List<FieldMetadata> getCompositeKeyFields() {
         return compositeKeyFields;
+    }
+
+    /**
+     * Returns an unmodifiable list of metadata for the persistent fields in
+     * this class, or null if the default rules for persistent fields should be
+     * used.  All fields returned must be declared in this class and must be
+     * non-static.
+     *
+     * <p>By default (if null is returned) the persistent fields of a class
+     * will be all declared instance fields that are non-transient (are not
+     * declared with the <code>transient</code> keyword).  The default rules
+     * may be overridden by an {@link EntityModel}.  For example, the {@link
+     * AnnotationModel} overrides the default rules when the {@link
+     * NotPersistent} or {@link NotTransient} annotation is specified.</p>
+     */
+    public Collection<FieldMetadata> getPersistentFields() {
+        return persistentFields;
     }
 
     @Override

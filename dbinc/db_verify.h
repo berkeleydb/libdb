@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1999-2009 Oracle.  All rights reserved.
  *
- * $Id: db_verify.h,v 12.17 2008/05/07 12:27:33 bschmeck Exp $
+ * $Id$
  */
 
 #ifndef _DB_VERIFY_H_
@@ -115,8 +115,9 @@ struct __vrfy_dbinfo {
 #define	SALVAGE_PRINTABLE	0x01	/* Output printable chars literally. */
 #define	SALVAGE_PRINTHEADER	0x02	/* Print the unknown-key header. */
 #define	SALVAGE_PRINTFOOTER	0x04	/* Print the unknown-key footer. */
-#define	VRFY_LEAFCHAIN_BROKEN	0x08	/* Lost one or more Btree leaf pgs. */
-#define	VRFY_QMETA_SET		0x10    /* We've seen a QUEUE meta page and
+#define	SALVAGE_HASSUBDBS	0x08	/* There are subdatabases to salvage. */
+#define	VRFY_LEAFCHAIN_BROKEN	0x10	/* Lost one or more Btree leaf pgs. */
+#define	VRFY_QMETA_SET		0x20    /* We've seen a QUEUE meta page and
 					   set things up for it. */
 	u_int32_t	flags;
 }; /* VRFY_DBINFO */
@@ -163,14 +164,17 @@ struct __vrfy_pageinfo {
 #define	VRFY_HAS_CHKSUM		0x0002
 #define	VRFY_HAS_DUPS		0x0004
 #define	VRFY_HAS_DUPSORT	0x0008	/* Has the flag set. */
-#define	VRFY_HAS_RECNUMS	0x0010
-#define	VRFY_HAS_SUBDBS		0x0020
-#define	VRFY_INCOMPLETE		0x0040	/* Meta or item order checks incomp. */
-#define	VRFY_IS_ALLZEROES	0x0080	/* Hash page we haven't touched? */
-#define	VRFY_IS_FIXEDLEN	0x0100
-#define	VRFY_IS_RECNO		0x0200
-#define	VRFY_IS_RRECNO		0x0400
-#define	VRFY_OVFL_LEAFSEEN	0x0800
+#define	VRFY_HAS_PART_RANGE	0x0010	/* Has the flag set. */
+#define	VRFY_HAS_PART_CALLBACK	0x0020	/* Has the flag set. */
+#define	VRFY_HAS_RECNUMS	0x0040
+#define	VRFY_HAS_SUBDBS		0x0080
+#define	VRFY_INCOMPLETE		0x0100	/* Meta or item order checks incomp. */
+#define	VRFY_IS_ALLZEROES	0x0200	/* Hash page we haven't touched? */
+#define	VRFY_IS_FIXEDLEN	0x0400
+#define	VRFY_IS_RECNO		0x0800
+#define	VRFY_IS_RRECNO		0x1000
+#define	VRFY_OVFL_LEAFSEEN	0x2000
+#define	VRFY_HAS_COMPRESS	0x4000
 	u_int32_t	flags;
 
 	LIST_ENTRY(__vrfy_pageinfo) links;

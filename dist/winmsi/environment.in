@@ -1,4 +1,4 @@
-# $Id: environment.in,v 1.5 2005/04/15 19:00:19 philipr Exp $
+# $Id$
 # Lists environment variables needed to install particular
 # features in Windows.  Feature names must be
 # listed in features.in .  The meaning of each line is:

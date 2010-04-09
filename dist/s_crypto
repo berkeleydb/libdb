@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$Id: s_crypto,v 12.2 2007/06/13 20:16:04 bostic Exp $
+#	$Id$
 
 # Remove crypto from the DB source tree.
 
@@ -42,6 +42,20 @@ r=`egrep crypto/crypto.c $f | awk 'BEGIN { FS="\t*" } { print $2 }'`
 (echo 'g/^crypto\//d' &&
  echo '/crypto_stub\.c/' &&
  echo "s/\$/ $r/" &&
+ echo 'w' &&
+ echo 'q') | ed $f
+
+# Change out crypto/crypto.c for common/crypto_stub.c, remove all other
+# references to crypto files.
+f=win_projects/projects.template.xml
+chmod 664 $f
+(echo '/crypto\/crypto\.c/' &&
+ echo 'c' &&
+ echo '      <file name="common/crypto_stub.c"/>' &&
+ echo '.' &&
+ echo 'g/"crypto\//d' &&
+ echo "s/\$/ $r/" &&
+ echo ',' &&
  echo 'w' &&
  echo 'q') | ed $f
 

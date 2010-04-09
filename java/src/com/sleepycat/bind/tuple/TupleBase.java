@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: TupleBase.java,v 12.6 2008/01/08 20:58:36 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.bind.tuple;
@@ -23,7 +23,7 @@ import com.sleepycat.db.DatabaseEntry;
  * buffer, and the {@link #getTupleOutput} method may be overridden by
  * subclasses to take over creation of the TupleOutput object.</p>
  */
-public class TupleBase {
+public class TupleBase<E> {
 
     private int outputBufferSize;
 
@@ -84,7 +84,7 @@ public class TupleBase {
      *
      * @see #setTupleBufferSize
      */
-    protected TupleOutput getTupleOutput(Object object) {
+    protected TupleOutput getTupleOutput(E object) {
         int byteSize = getTupleBufferSize();
         if (byteSize != 0) {
             return new TupleOutput(new byte[byteSize]);

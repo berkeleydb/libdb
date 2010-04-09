@@ -10,6 +10,52 @@
 #include "dbinc/fop.h"
 
 /*
+ * PUBLIC: int __fop_create_42_read __P((ENV *, void *,
+ * PUBLIC:     __fop_create_42_args **));
+ */
+int
+__fop_create_42_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__fop_create_42_args **argpp;
+{
+	__fop_create_42_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__fop_create_42_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->name, 0, sizeof(argp->name));
+	LOGCOPY_32(env,&argp->name.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->name.data = bp;
+	bp += argp->name.size;
+
+	LOGCOPY_32(env, &argp->appname, bp);
+	bp += sizeof(argp->appname);
+
+	LOGCOPY_32(env, &argp->mode, bp);
+	bp += sizeof(argp->mode);
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
  * PUBLIC: int __fop_create_read __P((ENV *, void *, __fop_create_args **));
  */
 int
@@ -44,6 +90,12 @@ __fop_create_read(env, recbuf, argpp)
 	argp->name.data = bp;
 	bp += argp->name.size;
 
+	memset(&argp->dirname, 0, sizeof(argp->dirname));
+	LOGCOPY_32(env,&argp->dirname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->dirname.data = bp;
+	bp += argp->dirname.size;
+
 	LOGCOPY_32(env, &argp->appname, bp);
 	bp += sizeof(argp->appname);
 
@@ -56,16 +108,17 @@ __fop_create_read(env, recbuf, argpp)
 
 /*
  * PUBLIC: int __fop_create_log __P((ENV *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, const DBT *, u_int32_t, u_int32_t));
+ * PUBLIC:     u_int32_t, const DBT *, const DBT *, u_int32_t, u_int32_t));
  */
 int
 __fop_create_log(env, txnp, ret_lsnp, flags,
-    name, appname, mode)
+    name, dirname, appname, mode)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	const DBT *name;
+	const DBT *dirname;
 	u_int32_t appname;
 	u_int32_t mode;
 {
@@ -85,8 +138,6 @@ __fop_create_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -113,6 +164,7 @@ __fop_create_log(env, txnp, ret_lsnp, flags,
 
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size)
+	    + sizeof(u_int32_t) + (dirname == NULL ? 0 : dirname->size)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t);
 	if (CRYPTO_ON(env)) {
@@ -161,6 +213,17 @@ __fop_create_log(env, txnp, ret_lsnp, flags,
 		bp += sizeof(name->size);
 		memcpy(bp, name->data, name->size);
 		bp += name->size;
+	}
+
+	if (dirname == NULL) {
+		zero = 0;
+		LOGCOPY_32(env, bp, &zero);
+		bp += sizeof(u_int32_t);
+	} else {
+		LOGCOPY_32(env, bp, &dirname->size);
+		bp += sizeof(dirname->size);
+		memcpy(bp, dirname->data, dirname->size);
+		bp += dirname->size;
 	}
 
 	LOGCOPY_32(env, bp, &appname);
@@ -293,8 +356,6 @@ __fop_remove_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -431,21 +492,22 @@ __fop_remove_log(env, txnp, ret_lsnp, flags,
 }
 
 /*
- * PUBLIC: int __fop_write_read __P((ENV *, void *, __fop_write_args **));
+ * PUBLIC: int __fop_write_42_read __P((ENV *, void *,
+ * PUBLIC:     __fop_write_42_args **));
  */
 int
-__fop_write_read(env, recbuf, argpp)
+__fop_write_42_read(env, recbuf, argpp)
 	ENV *env;
 	void *recbuf;
-	__fop_write_args **argpp;
+	__fop_write_42_args **argpp;
 {
-	__fop_write_args *argp;
+	__fop_write_42_args *argp;
 	u_int32_t uinttmp;
 	u_int8_t *bp;
 	int ret;
 
 	if ((ret = __os_malloc(env,
-	    sizeof(__fop_write_args) + sizeof(DB_TXN), &argp)) != 0)
+	    sizeof(__fop_write_42_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
@@ -493,19 +555,88 @@ __fop_write_read(env, recbuf, argpp)
 }
 
 /*
+ * PUBLIC: int __fop_write_read __P((ENV *, void *, __fop_write_args **));
+ */
+int
+__fop_write_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__fop_write_args **argpp;
+{
+	__fop_write_args *argp;
+	u_int32_t uinttmp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__fop_write_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->name, 0, sizeof(argp->name));
+	LOGCOPY_32(env,&argp->name.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->name.data = bp;
+	bp += argp->name.size;
+
+	memset(&argp->dirname, 0, sizeof(argp->dirname));
+	LOGCOPY_32(env,&argp->dirname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->dirname.data = bp;
+	bp += argp->dirname.size;
+
+	LOGCOPY_32(env, &argp->appname, bp);
+	bp += sizeof(argp->appname);
+
+	LOGCOPY_32(env, &argp->pgsize, bp);
+	bp += sizeof(argp->pgsize);
+
+	LOGCOPY_32(env, &uinttmp, bp);
+	argp->pageno = (db_pgno_t)uinttmp;
+	bp += sizeof(uinttmp);
+
+	LOGCOPY_32(env, &argp->offset, bp);
+	bp += sizeof(argp->offset);
+
+	memset(&argp->page, 0, sizeof(argp->page));
+	LOGCOPY_32(env,&argp->page.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->page.data = bp;
+	bp += argp->page.size;
+
+	LOGCOPY_32(env, &argp->flag, bp);
+	bp += sizeof(argp->flag);
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
  * PUBLIC: int __fop_write_log __P((ENV *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, const DBT *, u_int32_t, u_int32_t, db_pgno_t,
- * PUBLIC:     u_int32_t, const DBT *, u_int32_t));
+ * PUBLIC:     u_int32_t, const DBT *, const DBT *, u_int32_t, u_int32_t,
+ * PUBLIC:     db_pgno_t, u_int32_t, const DBT *, u_int32_t));
  */
 int
 __fop_write_log(env, txnp, ret_lsnp, flags,
-    name, appname, pgsize, pageno, offset, page,
-    flag)
+    name, dirname, appname, pgsize, pageno, offset,
+    page, flag)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	const DBT *name;
+	const DBT *dirname;
 	u_int32_t appname;
 	u_int32_t pgsize;
 	db_pgno_t pageno;
@@ -529,8 +660,6 @@ __fop_write_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -557,6 +686,7 @@ __fop_write_log(env, txnp, ret_lsnp, flags,
 
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t) + (name == NULL ? 0 : name->size)
+	    + sizeof(u_int32_t) + (dirname == NULL ? 0 : dirname->size)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t)
 	    + sizeof(u_int32_t)
@@ -609,6 +739,17 @@ __fop_write_log(env, txnp, ret_lsnp, flags,
 		bp += sizeof(name->size);
 		memcpy(bp, name->data, name->size);
 		bp += name->size;
+	}
+
+	if (dirname == NULL) {
+		zero = 0;
+		LOGCOPY_32(env, bp, &zero);
+		bp += sizeof(u_int32_t);
+	} else {
+		LOGCOPY_32(env, bp, &dirname->size);
+		bp += sizeof(dirname->size);
+		memcpy(bp, dirname->data, dirname->size);
+		bp += dirname->size;
 	}
 
 	LOGCOPY_32(env, bp, &appname);
@@ -684,20 +825,21 @@ __fop_write_log(env, txnp, ret_lsnp, flags,
 }
 
 /*
- * PUBLIC: int __fop_rename_read __P((ENV *, void *, __fop_rename_args **));
+ * PUBLIC: int __fop_rename_42_read __P((ENV *, void *,
+ * PUBLIC:     __fop_rename_42_args **));
  */
 int
-__fop_rename_read(env, recbuf, argpp)
+__fop_rename_42_read(env, recbuf, argpp)
 	ENV *env;
 	void *recbuf;
-	__fop_rename_args **argpp;
+	__fop_rename_42_args **argpp;
 {
-	__fop_rename_args *argp;
+	__fop_rename_42_args *argp;
 	u_int8_t *bp;
 	int ret;
 
 	if ((ret = __os_malloc(env,
-	    sizeof(__fop_rename_args) + sizeof(DB_TXN), &argp)) != 0)
+	    sizeof(__fop_rename_42_args) + sizeof(DB_TXN), &argp)) != 0)
 		return (ret);
 	bp = recbuf;
 	argp->txnp = (DB_TXN *)&argp[1];
@@ -738,60 +880,124 @@ __fop_rename_read(env, recbuf, argpp)
 }
 
 /*
+ * PUBLIC: int __fop_rename_read __P((ENV *, void *, __fop_rename_args **));
+ */
+int
+__fop_rename_read(env, recbuf, argpp)
+	ENV *env;
+	void *recbuf;
+	__fop_rename_args **argpp;
+{
+	__fop_rename_args *argp;
+	u_int8_t *bp;
+	int ret;
+
+	if ((ret = __os_malloc(env,
+	    sizeof(__fop_rename_args) + sizeof(DB_TXN), &argp)) != 0)
+		return (ret);
+	bp = recbuf;
+	argp->txnp = (DB_TXN *)&argp[1];
+	memset(argp->txnp, 0, sizeof(DB_TXN));
+
+	LOGCOPY_32(env, &argp->type, bp);
+	bp += sizeof(argp->type);
+
+	LOGCOPY_32(env, &argp->txnp->txnid, bp);
+	bp += sizeof(argp->txnp->txnid);
+
+	LOGCOPY_TOLSN(env, &argp->prev_lsn, bp);
+	bp += sizeof(DB_LSN);
+
+	memset(&argp->oldname, 0, sizeof(argp->oldname));
+	LOGCOPY_32(env,&argp->oldname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->oldname.data = bp;
+	bp += argp->oldname.size;
+
+	memset(&argp->newname, 0, sizeof(argp->newname));
+	LOGCOPY_32(env,&argp->newname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->newname.data = bp;
+	bp += argp->newname.size;
+
+	memset(&argp->dirname, 0, sizeof(argp->dirname));
+	LOGCOPY_32(env,&argp->dirname.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->dirname.data = bp;
+	bp += argp->dirname.size;
+
+	memset(&argp->fileid, 0, sizeof(argp->fileid));
+	LOGCOPY_32(env,&argp->fileid.size, bp);
+	bp += sizeof(u_int32_t);
+	argp->fileid.data = bp;
+	bp += argp->fileid.size;
+
+	LOGCOPY_32(env, &argp->appname, bp);
+	bp += sizeof(argp->appname);
+
+	*argpp = argp;
+	return (ret);
+}
+
+/*
  * PUBLIC: int __fop_rename_log __P((ENV *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, const DBT *, const DBT *, const DBT *, u_int32_t));
+ * PUBLIC:     u_int32_t, const DBT *, const DBT *, const DBT *, const DBT *,
+ * PUBLIC:     u_int32_t));
  */
 /*
  * PUBLIC: int __fop_rename_noundo_log __P((ENV *, DB_TXN *,
  * PUBLIC:     DB_LSN *, u_int32_t, const DBT *, const DBT *, const DBT *,
- * PUBLIC:     u_int32_t));
+ * PUBLIC:     const DBT *, u_int32_t));
  */
 /*
  * PUBLIC: int __fop_rename_int_log __P((ENV *, DB_TXN *, DB_LSN *,
- * PUBLIC:     u_int32_t, const DBT *, const DBT *, const DBT *, u_int32_t,
- * PUBLIC:     u_int32_t));
+ * PUBLIC:     u_int32_t, const DBT *, const DBT *, const DBT *, const DBT *,
+ * PUBLIC:     u_int32_t, u_int32_t));
  */
 int
 __fop_rename_log(env, txnp, ret_lsnp, flags,
-    oldname, newname, fileid, appname)
+    oldname, newname, dirname, fileid, appname)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	const DBT *oldname;
 	const DBT *newname;
+	const DBT *dirname;
 	const DBT *fileid;
 	u_int32_t appname;
 
 {
 	return (__fop_rename_int_log(env, txnp, ret_lsnp, flags,
-    oldname, newname, fileid, appname, DB___fop_rename));
+    oldname, newname, dirname, fileid, appname, DB___fop_rename));
 }
 int
 __fop_rename_noundo_log(env, txnp, ret_lsnp, flags,
-    oldname, newname, fileid, appname)
+    oldname, newname, dirname, fileid, appname)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	const DBT *oldname;
 	const DBT *newname;
+	const DBT *dirname;
 	const DBT *fileid;
 	u_int32_t appname;
 
 {
 	return (__fop_rename_int_log(env, txnp, ret_lsnp, flags,
-    oldname, newname, fileid, appname, DB___fop_rename_noundo));
+    oldname, newname, dirname, fileid, appname, DB___fop_rename_noundo));
 }
 int
 __fop_rename_int_log(env, txnp, ret_lsnp, flags,
-    oldname, newname, fileid, appname, type)
+    oldname, newname, dirname, fileid, appname, type)
 	ENV *env;
 	DB_TXN *txnp;
 	DB_LSN *ret_lsnp;
 	u_int32_t flags;
 	const DBT *oldname;
 	const DBT *newname;
+	const DBT *dirname;
 	const DBT *fileid;
 	u_int32_t appname;
 	u_int32_t type;
@@ -812,8 +1018,6 @@ __fop_rename_int_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;
@@ -841,6 +1045,7 @@ __fop_rename_int_log(env, txnp, ret_lsnp, flags,
 	logrec.size = sizeof(rectype) + sizeof(txn_num) + sizeof(DB_LSN)
 	    + sizeof(u_int32_t) + (oldname == NULL ? 0 : oldname->size)
 	    + sizeof(u_int32_t) + (newname == NULL ? 0 : newname->size)
+	    + sizeof(u_int32_t) + (dirname == NULL ? 0 : dirname->size)
 	    + sizeof(u_int32_t) + (fileid == NULL ? 0 : fileid->size)
 	    + sizeof(u_int32_t);
 	if (CRYPTO_ON(env)) {
@@ -900,6 +1105,17 @@ __fop_rename_int_log(env, txnp, ret_lsnp, flags,
 		bp += sizeof(newname->size);
 		memcpy(bp, newname->data, newname->size);
 		bp += newname->size;
+	}
+
+	if (dirname == NULL) {
+		zero = 0;
+		LOGCOPY_32(env, bp, &zero);
+		bp += sizeof(u_int32_t);
+	} else {
+		LOGCOPY_32(env, bp, &dirname->size);
+		bp += sizeof(dirname->size);
+		memcpy(bp, dirname->data, dirname->size);
+		bp += dirname->size;
 	}
 
 	if (fileid == NULL) {
@@ -1053,8 +1269,6 @@ __fop_file_remove_log(env, txnp, ret_lsnp, flags,
 	ret = 0;
 
 	if (LF_ISSET(DB_LOG_NOT_DURABLE)) {
-		if (txnp == NULL)
-			return (0);
 		if (txnp == NULL)
 			return (0);
 		is_durable = 0;

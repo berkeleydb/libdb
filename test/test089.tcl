@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996,2008 Oracle.  All rights reserved.
+# Copyright (c) 1996-2009 Oracle.  All rights reserved.
 #
-# $Id: test089.tcl,v 12.7 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST	test089
 # TEST	Concurrent Data Store test (CDB)
@@ -27,6 +27,8 @@ proc test089 { method {nentries 1000} args } {
 	set args [convert_args $method $args]
 	set oargs [split_encargs $args encargs]
 	set omethod [convert_method $method]
+	set pageargs ""
+	split_pageargs $args pageargs
 
 	puts "Test089: ($oargs) $method CDB Test cursor/dup operations"
 
@@ -37,7 +39,8 @@ proc test089 { method {nentries 1000} args } {
 
 	env_cleanup $testdir
 
-	set env [eval {berkdb_env -create -cdb} $encargs -home $testdir]
+	set env [eval \
+	     {berkdb_env -create -cdb} $pageargs $encargs -home $testdir]
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	set db [eval {berkdb_open -env $env -create \
@@ -81,7 +84,8 @@ proc test089 { method {nentries 1000} args } {
 	set ret [eval {berkdb envremove} $encargs -home $testdir]
 	error_check_good env_remove $ret 0
 
-	set env [eval {berkdb_env_noerr -create -cdb} $encargs -home $testdir]
+	set env [eval \
+	     {berkdb_env_noerr -create -cdb} $pageargs $encargs -home $testdir]
 	error_check_good dbenv [is_valid_widget $env env] TRUE
 
 	puts "\tTest089.b: CDB cursor dups"
@@ -151,15 +155,23 @@ proc test089 { method {nentries 1000} args } {
 		puts "Skipping rest of test089 for specific pagesizes"
 		return
 	}
+
 	append oargs " -dup "
-	test089_dup $testdir $encargs $oargs $omethod $nentries
+	# Skip unsorted duplicates for btree with compression.
+	if { [is_compressed $args] == 0 } {
+		test089_dup $testdir $encargs $oargs $omethod $nentries
+	}
+
 	append oargs " -dupsort "
 	test089_dup $testdir $encargs $oargs $omethod $nentries
 }
 
 proc test089_dup { testdir encargs oargs method nentries } {
 	env_cleanup $testdir
-	set env [eval {berkdb_env -create -cdb} $encargs -home $testdir]
+	set pageargs ""
+	split_pageargs $oargs pageargs
+	set env [eval \
+	     {berkdb_env -create -cdb} $encargs $pageargs -home $testdir]
 	error_check_good dbenv [is_valid_env $env] TRUE
 
 	#

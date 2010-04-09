@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2000-2009 Oracle.  All rights reserved.
  *
- * $Id: FastInputStream.java,v 12.8 2008/01/08 20:58:39 bostic Exp $
+ * $Id$
  */
 
 package com.sleepycat.util;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -59,26 +58,31 @@ public class FastInputStream extends InputStream {
 
     // --- begin ByteArrayInputStream compatible methods ---
 
+    @Override
     public int available() {
 
         return len - off;
     }
 
+    @Override
     public boolean markSupported() {
 
         return true;
     }
 
+    @Override
     public void mark(int readLimit) {
 
         mark = off;
     }
 
+    @Override
     public void reset() {
 
         off = mark;
     }
 
+    @Override
     public long skip(long count) {
 
         int myCount = (int) count;
@@ -89,17 +93,19 @@ public class FastInputStream extends InputStream {
         return myCount;
     }
 
-    public int read() throws IOException {
-
+    @Override
+    public int read() {
         return readFast();
     }
 
-    public int read(byte[] toBuf) throws IOException {
+    @Override
+    public int read(byte[] toBuf) {
 
         return readFast(toBuf, 0, toBuf.length);
     }
 
-    public int read(byte[] toBuf, int offset, int length) throws IOException {
+    @Override
+    public int read(byte[] toBuf, int offset, int length) {
 
         return readFast(toBuf, offset, length);
     }

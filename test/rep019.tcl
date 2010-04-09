@@ -1,8 +1,8 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001,2008 Oracle.  All rights reserved.
+# Copyright (c) 2001-2009 Oracle.  All rights reserved.
 #
-# $Id: rep019.tcl,v 12.16 2008/01/08 20:58:53 bostic Exp $
+# $Id$
 #
 # TEST  rep019
 # TEST	Replication and multiple clients at same LSN.
@@ -13,6 +13,8 @@
 proc rep019 { method { nclients 3 } { tnum "019" } args } {
 
 	source ./include.tcl
+	global repfiles_in_memory
+
 	if { $is_windows9x_test == 1 } {
 		puts "Skipping replication test on Win 9x platform."
 		return
@@ -24,18 +26,29 @@ proc rep019 { method { nclients 3 } { tnum "019" } args } {
 	}
 
 	# This test needs to use recovery, so mixed-mode testing
-	# isn't appropriate.
+	# isn't appropriate, nor in-memory database testing. 
+	global databases_in_memory
+	if { $databases_in_memory > 0 } {
+		puts "Rep$tnum: Skipping for in-memory databases."
+		return
+	}
 	global mixed_mode_logging
 	if { $mixed_mode_logging > 0 } {
 		puts "Rep$tnum: Skipping for mixed-mode logging."
 		return
 	}
+
+	set msg2 "and on-disk replication files"
+	if { $repfiles_in_memory } {
+		set msg2 "and in-memory replication files"
+	}
+
 	set args [convert_args $method $args]
 
 	# Run the body of the test with and without recovery.
 	foreach r $test_recopts {
-		puts "Rep$tnum ($method $r):\
-		    Replication and $nclients recovered clients in sync."
+		puts "Rep$tnum ($method $r): Replication\
+		     and $nclients recovered clients in sync $msg2."
 		rep019_sub $method $nclients $tnum $r $args
 	}
 }
@@ -43,12 +56,18 @@ proc rep019 { method { nclients 3 } { tnum "019" } args } {
 proc rep019_sub { method nclients tnum recargs largs } {
 	global testdir
 	global util_path
+	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
 		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
 	}
 
 	set orig_tdir $testdir
@@ -63,7 +82,7 @@ proc rep019_sub { method nclients tnum recargs largs } {
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync $verbargs \
-	    -home $masterdir -rep_master -errpfx MASTER \
+	    -home $masterdir -rep_master -errpfx MASTER $repmemargs \
 	    -rep_transport \[list 1 replsend\]"
 	set menv [eval $ma_envcmd $recargs]
 
@@ -74,6 +93,7 @@ proc rep019_sub { method nclients tnum recargs largs } {
 		repladd $id($i)
 		set cl_envcmd($i) "berkdb_env_noerr -create -txn nosync \
 		    -home $clientdir($i) $verbargs -errpfx CLIENT.$i \
+		    $repmemargs \
 		    -rep_client -rep_transport \[list $id($i) replsend\]"
 		set clenv($i) [eval $cl_envcmd($i) $recargs]
 		error_check_good client_env [is_valid_env $clenv($i)] TRUE

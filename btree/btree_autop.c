@@ -51,6 +51,75 @@ __bam_split_print(env, dbtp, lsnp, notused2, notused3)
 	(void)printf("\tnpgno: %lu\n", (u_long)argp->npgno);
 	(void)printf("\tnlsn: [%lu][%lu]\n",
 	    (u_long)argp->nlsn.file, (u_long)argp->nlsn.offset);
+	(void)printf("\tppgno: %lu\n", (u_long)argp->ppgno);
+	(void)printf("\tplsn: [%lu][%lu]\n",
+	    (u_long)argp->plsn.file, (u_long)argp->plsn.offset);
+	(void)printf("\tpindx: %lu\n", (u_long)argp->pindx);
+	(void)printf("\tpg: ");
+	for (i = 0; i < argp->pg.size; i++) {
+		ch = ((u_int8_t *)argp->pg.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\tpentry: ");
+	for (i = 0; i < argp->pentry.size; i++) {
+		ch = ((u_int8_t *)argp->pentry.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\trentry: ");
+	for (i = 0; i < argp->rentry.size; i++) {
+		ch = ((u_int8_t *)argp->rentry.data)[i];
+		printf(isprint(ch) || ch == 0x0a ? "%c" : "%#x ", ch);
+	}
+	(void)printf("\n");
+	(void)printf("\topflags: %lu\n", (u_long)argp->opflags);
+	(void)printf("\n");
+	__os_free(env, argp);
+	return (0);
+}
+
+/*
+ * PUBLIC: int __bam_split_42_print __P((ENV *, DBT *, DB_LSN *,
+ * PUBLIC:     db_recops, void *));
+ */
+int
+__bam_split_42_print(env, dbtp, lsnp, notused2, notused3)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops notused2;
+	void *notused3;
+{
+	__bam_split_42_args *argp;
+	u_int32_t i;
+	int ch;
+	int ret;
+
+	notused2 = DB_TXN_PRINT;
+	notused3 = NULL;
+
+	if ((ret =
+	    __bam_split_42_read(env, NULL, NULL, dbtp->data, &argp)) != 0)
+		return (ret);
+	(void)printf(
+    "[%lu][%lu]__bam_split_42%s: rec: %lu txnp %lx prevlsn [%lu][%lu]\n",
+	    (u_long)lsnp->file, (u_long)lsnp->offset,
+	    (argp->type & DB_debug_FLAG) ? "_debug" : "",
+	    (u_long)argp->type,
+	    (u_long)argp->txnp->txnid,
+	    (u_long)argp->prev_lsn.file, (u_long)argp->prev_lsn.offset);
+	(void)printf("\tfileid: %ld\n", (long)argp->fileid);
+	(void)printf("\tleft: %lu\n", (u_long)argp->left);
+	(void)printf("\tllsn: [%lu][%lu]\n",
+	    (u_long)argp->llsn.file, (u_long)argp->llsn.offset);
+	(void)printf("\tright: %lu\n", (u_long)argp->right);
+	(void)printf("\trlsn: [%lu][%lu]\n",
+	    (u_long)argp->rlsn.file, (u_long)argp->rlsn.offset);
+	(void)printf("\tindx: %lu\n", (u_long)argp->indx);
+	(void)printf("\tnpgno: %lu\n", (u_long)argp->npgno);
+	(void)printf("\tnlsn: [%lu][%lu]\n",
+	    (u_long)argp->nlsn.file, (u_long)argp->nlsn.offset);
 	(void)printf("\troot_pgno: %lu\n", (u_long)argp->root_pgno);
 	(void)printf("\tpg: ");
 	for (i = 0; i < argp->pg.size; i++) {

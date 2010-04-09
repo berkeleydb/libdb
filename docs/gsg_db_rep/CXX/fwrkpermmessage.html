@@ -5,10 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Permanent Message Handling</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
-    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
-    <link rel="home" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
-    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Framework" />
-    <link rel="previous" href="repmgr_init_example_c.html" title="Adding the Replication Framework to&#10;                    &#10;                    SimpleTxn&#10;            " />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
+    <link rel="up" href="repapp.html" title="Chapter 3. The DB Replication Manager" />
+    <link rel="prev" href="repmgr_init_example_c.html" title="Adding the Replication Manager to RepMgr" />
     <link rel="next" href="electiontimes.html" title="Managing Election Times" />
   </head>
   <body>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="repmgr_init_example_c.html">Prev</a> </td>
-          <th width="60%" align="center">Chapter 3. The DB Replication Framework</th>
+          <th width="60%" align="center">Chapter 3. The DB Replication Manager</th>
           <td width="20%" align="right"> <a accesskey="n" href="electiontimes.html">Next</a></td>
         </tr>
       </table>
@@ -32,26 +32,48 @@
             <h2 class="title" style="clear: both"><a id="fwrkpermmessage"></a>Permanent Message Handling</h2>
           </div>
         </div>
-        <div></div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="fwrkpermmessage.html#fmwrkpermpolicy">Identifying Permanent Message Policies</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="fwrkpermmessage.html#fmwrkpermtimeout">Setting the Permanent Message Timeout</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="fwrkpermmessage.html#perm2fmwrkexample">Adding a Permanent Message Policy to 
+                            
+                            <span>RepMgrGSG</span>
+                            
+                    </a>
+            </span>
+          </dt>
+        </dl>
       </div>
       <p>
-               As described in <a href="permmessages.html">Permanent Message Handling</a>,
+               As described in <a class="xref" href="permmessages.html" title="Permanent Message Handling">Permanent Message Handling</a>,
                messages are marked permanent if they contain database
                modifications that should be committed at the replica.
                DB's replication code decides if it must flush its
                transaction logs to disk depending on whether it receives
                sufficient permanent message acknowledgments from the
-               participating replica. More importantly, the thread 
+               participating replicas. More importantly, the thread 
                performing the transaction commit blocks
                until it either receives enough acknowledgments, or the
                acknowledgment timeout expires.
             </p>
       <p>
-                The replication framework is fully capable of managing permanent messages
+                The Replication Manager is fully capable of managing permanent messages
                 for you if your application requires it (most do). 
                 Almost all of the details of this are handled by the 
-                replication framework for you. However, you do have to set some policies
-                that tell the replication framework how to handle permanent messages.
+                Replication Manager for you. However, you do have to set some policies
+                that tell the Replication Manager how to handle permanent messages.
             </p>
       <p>
                 There are two things that you have to do:
@@ -80,7 +102,6 @@
               <h3 class="title"><a id="fmwrkpermpolicy"></a>Identifying Permanent Message Policies</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
 
@@ -95,13 +116,24 @@
                     </p>
         <p>
         The following permanent message policies are available when you use
-        the replication framework:
+        the Replication Manager:
 </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+        The following list mentions <span class="emphasis"><em>electable peer</em></span>
+        several times. This is simply another environment that can be
+        elected to be a master (that is, it has a priority greater than 0).
+        Do not confuse this with the concept of a peer as used for client
+        to client transfers. See <a class="xref" href="c2ctransfer.html" title="Client to Client Transfer">Client to Client Transfer</a> for more information on client
+        to client transfers.
+    </p>
+        </div>
         <div class="itemizedlist">
           <ul type="disc">
             <li>
               <p>
-                        <tt class="literal">DB_REPMGR_ACKS_NONE</tt>
+                        <code class="literal">DB_REPMGR_ACKS_NONE</code>
                         
                 </p>
               <p>
@@ -116,7 +148,7 @@
             </li>
             <li>
               <p>
-                        <tt class="literal">DB_REPMGR_ACKS_ONE</tt>
+                        <code class="literal">DB_REPMGR_ACKS_ONE</code>
                         
                 </p>
               <p>
@@ -126,30 +158,21 @@
             </li>
             <li>
               <p>
-                        <tt class="literal">DB_REPMGR_ACKS_ONE_PEER</tt>
+                        <code class="literal">DB_REPMGR_ACKS_ONE_PEER</code>
                         
                 </p>
               <p>
                     At least one electable peer must acknowledge the permanent
                     message within the timeout period. 
-                    
-                    Note that an
-                    <span class="emphasis"><em>electable peer</em></span> is simply another
-                    environment that can be elected to be a master (that
-                    is, it has a priority greater than 0). Do not confuse
-                    this with the concept of a peer as used for client to
-                    client transfers. See
-                    <a href="c2ctransfer.html">Client to Client Transfer</a>
-                    for more information on client to client transfers.
                 </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">DB_REPMGR_ACKS_ALL</tt>
+                    <code class="literal">DB_REPMGR_ACKS_ALL</code>
                     
                 </p>
               <p>
-                    All environments must acknowledge the message within
+                    All replicas must acknowledge the message within
                     the timeout period. This
                     policy should be selected only if your replication
                     group has a small number of replicas, and those replicas
@@ -157,39 +180,29 @@
                 </p>
               <p>
                         When this flag is used, the actual number of
-                        environments  that must respond is
+                        replicas that must respond is
                         determined by the value set for
                         
-                        <span><tt class="methodname">DbEnv::rep_set_nsites()</tt>.</span>
+                        <span><code class="methodname">DbEnv::rep_set_nsites()</code>.</span>
                         
                 </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">DB_REPMGR_ACKS_ALL_PEERS</tt>
+                    <code class="literal">DB_REPMGR_ACKS_ALL_PEERS</code>
                     
                 </p>
               <p>
-                        All electable peers must acknowledge the message within the
+                    All electable peers must acknowledge the message within the
                     timeout period. This
                     policy should be selected only if your replication
                     group is small, and its various environments
                     are on extremely reliable networks and servers.
                 </p>
-              <p>
-                    Note that an
-                    <span class="emphasis"><em>electable peer</em></span> is simply another
-                    environment that can be elected to be a master (that
-                    is, it has a priority greater than 0). Do not confuse
-                    this with the concept of a peer as used for client to
-                    client transfers. See
-                    <a href="c2ctransfer.html">Client to Client Transfer</a>
-                    for more information on client to client transfers.
-                </p>
             </li>
             <li>
               <p>
-                    <tt class="literal">DB_REPMGR_ACKS_QUORUM</tt>
+                    <code class="literal">DB_REPMGR_ACKS_QUORUM</code>
                     
                 </p>
               <p>
@@ -200,26 +213,16 @@
                     electable replicas that they have committed the record so that if an election 
                     is held, the master knows the record will exist even if a new master is selected.
                 </p>
-              <p>
-                    Note that an
-                    <span class="emphasis"><em>electable peer</em></span> is simply another
-                    environment that can be elected to be a master (that
-                    is, it has a priority greater than 0). Do not confuse
-                    this with the concept of a peer as used for client to
-                    client transfers. See
-                    <a href="c2ctransfer.html">Client to Client Transfer</a>
-                    for more information on client to client transfers.
-                </p>
             </li>
           </ul>
         </div>
         <p>
-        By default, a quorum of sites must must acknowledge a permanent
+        By default, a quorum of electable peers must must acknowledge a permanent
         message in order for it considered to have been successfully
-        transmitted. The actual number of environments that must respond is
+        transmitted. The actual number of replicas that must respond is
         calculated using the value set with
                         
-                        <span><tt class="methodname">DbEnv::rep_set_nsites()</tt>.</span>
+                        <span><code class="methodname">DbEnv::rep_set_nsites()</code>.</span>
                         
 </p>
       </div>
@@ -230,7 +233,6 @@
               <h3 class="title"><a id="fmwrkpermtimeout"></a>Setting the Permanent Message Timeout</h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                             The permanent message timeout represents the
@@ -247,12 +249,12 @@
         <p>
                         You set the timeout value using the
                         
-                        <tt class="methodname">DbEnv::rep_set_timeout()</tt>
+                        <code class="methodname">DbEnv::rep_set_timeout()</code>
                         method. When you do this, you provide the 
-                        <tt class="literal">DB_REP_ACK_TIMEOUT</tt> flag to
-                        the <tt class="literal">which</tt> parameter, and the
+                        <code class="literal">DB_REP_ACK_TIMEOUT</code> value to
+                        the <code class="literal">which</code> parameter, and the
                         timeout value in microseconds to the
-                        <tt class="literal">timeout</tt> parameter.
+                        <code class="literal">timeout</code> parameter.
                     </p>
         <p>
                         For example:
@@ -269,17 +271,16 @@
             <div>
               <h3 class="title"><a id="perm2fmwrkexample"></a>Adding a Permanent Message Policy to 
                             
-                            <span>RepMgr</span>
+                            <span>RepMgrGSG</span>
                             
                     </h3>
             </div>
           </div>
-          <div></div>
         </div>
         <p>
                         For illustration purposes, we will now update 
                         
-                        <tt class="literal">RepMgr</tt>
+                        <code class="literal">RepMgrGSG</code>
                         
                         such that it requires only one acknowledgment from
                         a replica on transactional commits. Also, we will give
@@ -294,12 +295,12 @@
         <p>
                         This is a very simple update. We can perform the
                         entire thing in 
-                        <tt class="methodname">RepMgr::init()</tt>
+                        <code class="methodname">RepMgrGSG::init()</code>
                         
                         immediately after we set the application's priority
                         and before we open our environment handle.
                     </p>
-        <pre class="programlisting">int RepMgr::init(RepConfigInfo *config)
+        <pre class="programlisting">int RepMgrGSG::init(RepConfigInfo *config)
 {
     int ret = 0;
 
@@ -309,7 +310,7 @@
     dbenv.set_errpfx(progname);
 
     if ((ret = dbenv.repmgr_set_local_site(app_config-&gt;this_host.host,
-        app_config-&gt;this_host.port, 0)) != 0) {
+        app_config-&gt;this_host.port, 0, 0)) != 0) {
         cerr &lt;&lt; "Could not set listen address to host:port "
              &lt;&lt; app_config-&gt;this_host.host &lt;&lt; ":"
              &lt;&lt; app_config-&gt;this_host.port
@@ -335,10 +336,10 @@
 
     dbenv.rep_set_priority(app_config-&gt;priority);
 
-    <b class="userinput"><tt>/* Permanent messages require at least one ack */
+    <strong class="userinput"><code>/* Permanent messages require at least one ack */
     dbenv.repmgr_set_ack_policy(DB_REPMGR_ACKS_ONE);
     /* Give 500 microseconds to receive the ack */
-    dbenv.rep_set_timeout(DB_REP_ACK_TIMEOUT, 500);</tt></b>
+    dbenv.rep_set_timeout(DB_REP_ACK_TIMEOUT, 500);</code></strong>
 
     dbenv.set_cachesize(0, CACHESIZE, 0);
     dbenv.set_flags(DB_TXN_NOSYNC, 1);
@@ -357,9 +358,10 @@
           <td width="40%" align="right"> <a accesskey="n" href="electiontimes.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Adding the Replication Framework to
+          <td width="40%" align="left" valign="top">Adding the Replication Manager to
                     
-                    SimpleTxn
+                    <span>RepMgr</span>
+                    
              </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>

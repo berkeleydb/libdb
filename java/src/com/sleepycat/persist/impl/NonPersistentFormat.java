@@ -1,15 +1,17 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2008 Oracle.  All rights reserved.
+ * Copyright (c) 2002-2009 Oracle.  All rights reserved.
  *
- * $Id: NonPersistentFormat.java,v 1.1 2008/02/07 17:12:27 mark Exp $
+ * $Id$
  */
 
 package com.sleepycat.persist.impl;
 
 import java.lang.reflect.Array;
 import java.util.Map;
+
+import com.sleepycat.persist.model.EntityModel;
 
 /**
  * Format for a non-persistent class that is only used for declared field
@@ -26,7 +28,7 @@ class NonPersistentFormat extends Format {
     }
 
     @Override
-    void initialize(Catalog catalog, int initVersion) {
+    void initialize(Catalog catalog, EntityModel model, int initVersion) {
     }
 
     @Override

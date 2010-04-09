@@ -1,15 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996,2008 Oracle.  All rights reserved.
+ * Copyright (c) 1996-2009 Oracle.  All rights reserved.
  *
- * $Id: mut_method.c,v 12.17 2008/01/08 20:58:43 bostic Exp $
+ * $Id$
  */
 
 #include "db_config.h"
 
 #include "db_int.h"
-#include "dbinc/mutex_int.h"
 
 /*
  * __mutex_alloc_pp --
@@ -29,14 +28,9 @@ __mutex_alloc_pp(dbenv, flags, indxp)
 
 	env = dbenv->env;
 
-	switch (flags) {
-	case 0:
-	case DB_MUTEX_PROCESS_ONLY:
-	case DB_MUTEX_SELF_BLOCK:
-		break;
-	default:
-		return (__db_ferr(env, "DB_ENV->mutex_alloc", 0));
-	}
+	if ((ret = __db_fchk(env, "DB_ENV->mutex_alloc",
+	    flags, DB_MUTEX_PROCESS_ONLY | DB_MUTEX_SELF_BLOCK)) != 0)
+		return (ret);
 
 	ENV_ENTER(env, ip);
 	ret = __mutex_alloc(env, MTX_APPLICATION, flags, indxp);
@@ -330,3 +324,111 @@ __mutex_set_tas_spins(dbenv, tas_spins)
 		dbenv->mutex_tas_spins = tas_spins;
 	return (0);
 }
+
+#if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+/*
+ * Provide atomic operations for platforms which have mutexes yet do not have
+ * native atomic operations configured. They are emulated by protected the
+ * operation with a mutex.  The address of the atomic value selects which
+ * mutex to use.
+ */
+/*
+ * atomic_get_mutex -
+ *	Map an address to the mutex to use to atomically modify it
+ */
+static inline db_mutex_t atomic_get_mutex(env, v)
+	ENV *env;
+	db_atomic_t *v;
+{
+	u_int	index;
+	DB_MUTEXREGION *mtxreg;
+
+	if (!MUTEX_ON(env))
+		return (MUTEX_INVALID);
+	index = (u_int)(((uintptr_t) (v)) >> 6) % MAX_ATOMIC_MUTEXES;
+	mtxreg = (DB_MUTEXREGION *)env->mutex_handle->reginfo.primary;
+	return (mtxreg->mtx_atomic[index]);
+}
+
+/*
+ * __atomic_inc
+ *	Use a mutex to provide an atomic increment function
+ *
+ * PUBLIC: #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+ * PUBLIC: atomic_value_t __atomic_inc __P((ENV *, db_atomic_t *));
+ * PUBLIC: #endif
+ */
+atomic_value_t
+__atomic_inc(env, v)
+	ENV *env;
+	db_atomic_t *v;
+{
+	db_mutex_t mtx;
+	int ret;
+
+	mtx = atomic_get_mutex(env, v);
+	MUTEX_LOCK(env, mtx);
+	ret = ++v->value;
+	MUTEX_UNLOCK(env, mtx);
+
+	return (ret);
+}
+
+/*
+ * __atomic_dec
+ *	Use a mutex to provide an atomic decrement function
+ *
+ * PUBLIC: #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+ * PUBLIC: atomic_value_t __atomic_dec __P((ENV *, db_atomic_t *));
+ * PUBLIC: #endif
+ */
+atomic_value_t
+__atomic_dec(env, v)
+	ENV *env;
+	db_atomic_t *v;
+{
+	db_mutex_t mtx;
+	int ret;
+
+	mtx = atomic_get_mutex(env, v);
+	MUTEX_LOCK(env, mtx);
+	ret = --v->value;
+	MUTEX_UNLOCK(env, mtx);
+
+	return (ret);
+}
+
+/*
+ * atomic_compare_exchange
+ *	Use a mutex to provide an atomic decrement function
+ *
+ * PRIVATE: int atomic_compare_exchange
+ * PRIVATE:     __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
+ *	Returns 1 if the *v was equal to oldval, else 0
+ *
+ *	Side Effect:
+ *		Sets the value to newval if and only if returning 1
+ */
+int
+atomic_compare_exchange(env, v, oldval, newval)
+	ENV *env;
+	db_atomic_t *v;
+	atomic_value_t oldval;
+	atomic_value_t newval;
+{
+	db_mutex_t mtx;
+	int ret;
+
+	if (atomic_read(v) != oldval)
+		return (0);
+
+	mtx = atomic_get_mutex(env, v);
+	MUTEX_LOCK(env, mtx);
+	ret = atomic_read(v) == oldval;
+	if (ret)
+		atomic_init(v, newval);
+	MUTEX_UNLOCK(env, mtx);
+
+	return (ret);
+}
+#endif
