@@ -113,21 +113,15 @@ public:
             <tbody>
               <tr>
                 <td>
-                  <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a>
-                </td>
-                <td>Checkpoint the transaction subsystem</td>
-              </tr>
-              <tr>
-                <td>
                   <a class="xref" href="txnrecover.html" title="DbEnv::txn_recover()">DbEnv::txn_recover()</a>
                 </td>
                 <td>Distributed transaction recovery</td>
               </tr>
               <tr>
                 <td>
-                  <a class="xref" href="txnset_timeout.html" title="DbTxn::set_timeout()">DbTxn::set_timeout()</a>
+                  <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a>
                 </td>
-                <td>Set transaction timeout</td>
+                <td>Checkpoint the transaction subsystem</td>
               </tr>
               <tr>
                 <td>
@@ -140,6 +134,12 @@ public:
                   <a class="xref" href="txnstat_print.html" title="DbEnv::txn_stat_print()">DbEnv::txn_stat_print()</a>
                 </td>
                 <td>Print transaction subsystem statistics</td>
+              </tr>
+              <tr>
+                <td>
+                  <a class="xref" href="txnset_timeout.html" title="DbTxn::set_timeout()">DbTxn::set_timeout()</a>
+                </td>
+                <td>Set transaction timeout</td>
               </tr>
               <tr>
                 <td colspan="2">
@@ -181,15 +181,15 @@ public:
               </tr>
               <tr>
                 <td>
-                  <a class="xref" href="txnabort.html" title="DbTxn::abort()">DbTxn::abort()</a>
-                </td>
-                <td>Abort a transaction</td>
-              </tr>
-              <tr>
-                <td>
                   <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>
                 </td>
                 <td>Begin a transaction</td>
+              </tr>
+              <tr>
+                <td>
+                  <a class="xref" href="txnabort.html" title="DbTxn::abort()">DbTxn::abort()</a>
+                </td>
+                <td>Abort a transaction</td>
               </tr>
               <tr>
                 <td>
@@ -218,6 +218,10 @@ public:
               <tr>
                 <td><a class="xref" href="txnset_name.html" title="DbTxn::set_name()">DbTxn::set_name()</a>, <a class="xref" href="txnget_name.html" title="DbTxn::get_name()">DbTxn::get_name()</a></td>
                 <td>Associate a string with a transaction</td>
+              </tr>
+              <tr>
+                <td><a class="xref" href="txnset_priority.html" title="DbTxn::set_priority()">DbTxn::set_priority()</a>, <a class="xref" href="txnget_priority.html" title="DbTxn::get_priority()">DbTxn::get_priority()</a></td>
+                <td>Set/get transaction's priority</td>
               </tr>
             </tbody>
           </table>

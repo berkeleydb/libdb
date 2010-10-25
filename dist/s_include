@@ -7,6 +7,7 @@ msgc="/* DO NOT EDIT: automatically built by dist/s_include. */"
 
 . ./RELEASE
 
+AWK=${AWK:-awk}
 head()
 {
 	defonly=0
@@ -95,7 +96,7 @@ for i in db btree clib common crypto dbreg env fileops hash hmac \
 	else
 		f=`ls ../$i/*.c`
 	fi
-	awk -f gen_inc.awk \
+	$AWK -f gen_inc.awk \
 	    -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
 	    -v e_dfile=$e_dfile \
 	    -v e_pfile=$e_pfile \
@@ -113,7 +114,7 @@ done
 # files.
 for i in dbm hsearch; do
 	f=`ls ../$i/*.c`
-	awk -f gen_inc.awk \
+	$AWK -f gen_inc.awk \
 	    -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
 	    -v e_dfile=$e_dfile \
 	    -v e_pfile=$e_pfile \
@@ -147,7 +148,7 @@ head space defonly _DB_EXT_185_DEF_IN_ > $e_dfile
 head space _DB_EXT_185_PROT_IN_ > $e_pfile
 
 f=`ls ../db185/*.c`
-awk -f gen_inc.awk \
+$AWK -f gen_inc.awk \
     -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
     -v e_dfile=$e_dfile \
     -v e_pfile=$e_pfile \
@@ -163,3 +164,11 @@ tail _DB_EXT_185_PROT_IN_ >> $e_pfile
 f=../dbinc_auto/ext_185_prot.in
 cmp $e_pfile $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $e_pfile $f && chmod 444 $f)
+
+# Make the DTrace provider description file from events.in
+rm -f db_provider.d
+(echo "/*"; \
+ echo " * DO NOT EDIT: automatically built by dist/s_include."; \
+ echo " * Oracle Berkeley DB DTrace Provider"; \
+ echo " */"; \
+perl gen_provider.pl events.in)  > db_provider.d

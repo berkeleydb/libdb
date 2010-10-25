@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -12,11 +12,6 @@ proc rep072 { method { niter 200 } { tnum "072" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Run for btree and queue methods only.
 	if { $checking_valid_methods } {
@@ -132,15 +127,15 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist
 
-	# Clobber replication's 30-second anti-archive timer, which will have
-	# been started by client sync-up internal init, so that we can do a
-	# log_archive in a moment.
-	#
-	$masterenv test force noarchive_timeout
-
 	# $limit is the number of internal init cycles we want to try
 	for {set count 1} {$count <= $limit} {incr count} {
 		puts "\tRep$tnum.a: Try internal init cycle number $count"
+
+		# Clobber replication's 30-second anti-archive timer, which will
+		# have been started by internal init, so that we can do a
+		# log_archive in a moment.
+		#
+		$masterenv test force noarchive_timeout
 
 		# Run rep_test in the master.
 		puts "\tRep$tnum.b: Running rep_test in replicated env."
@@ -195,13 +190,6 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 			set expected_lockers $n_lockers
 		} elseif {[string is true $check]} {
 			error_check_good leaking? $n_lockers $expected_lockers
-		}
-
-		if {$count < $limit} {
-			# Wait for replication "no-archive" timeout to expire
-			#
-			puts "\tRep$tnum.g: Sleep for 32 seconds"
-			tclsleep 32
 		}
 	}
 

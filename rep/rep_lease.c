@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2007-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -85,7 +85,8 @@ __rep_update_grant(env, ts)
  * __rep_islease_granted -
  *      Return 0 if this client has no outstanding lease granted.
  *	Return 1 otherwise.
- *	Caller must hold the REP_SYSTEM (region) mutex.
+ *	Caller must hold the REP_SYSTEM (region) mutex, and (rep_elect) relies
+ *      on us not dropping it.
  *
  * PUBLIC: int __rep_islease_granted __P((ENV *));
  */
@@ -204,8 +205,8 @@ __rep_lease_grant(env, rp, rec, eid)
 	 * Update the entry if it is an empty entry or if the new
 	 * lease grant is a later start time than the current one.
 	 */
-	RPRINT(env, DB_VERB_REP_LEASE,
-	    (env, "lease_grant: grant msg time %lu %lu",
+	VPRINT(env, (env, DB_VERB_REP_LEASE,
+	    "lease_grant: grant msg time %lu %lu",
 	    (u_long)msg_time.tv_sec, (u_long)msg_time.tv_nsec));
 	if (le->eid == DB_EID_INVALID ||
 	    timespeccmp(&msg_time, &le->start_time, >)) {
@@ -213,18 +214,25 @@ __rep_lease_grant(env, rp, rec, eid)
 		le->start_time = msg_time;
 		le->end_time = le->start_time;
 		timespecadd(&le->end_time, &rep->lease_duration);
-		RPRINT(env, DB_VERB_REP_LEASE, (env,
+		VPRINT(env, (env, DB_VERB_REP_LEASE,
     "lease_grant: eid %d, start %lu %lu, end %lu %lu, duration %lu %lu",
     le->eid, (u_long)le->start_time.tv_sec, (u_long)le->start_time.tv_nsec,
     (u_long)le->end_time.tv_sec, (u_long)le->end_time.tv_nsec,
     (u_long)rep->lease_duration.tv_sec, (u_long)rep->lease_duration.tv_nsec));
-		/*
-		 * XXX Is this really true?  Could we have a lagging
-		 * record that has a later start time, but smaller
-		 * LSN than we have previously seen??
-		 */
-		DB_ASSERT(env, LOG_COMPARE(&rp->lsn, &le->lease_lsn) >= 0);
+	}
+	/*
+	 * Only update the lease table with a larger LSN value
+	 * than the previous entry. This handles the case of a
+	 * lagging record with a later start time, which is
+	 * sometimes possible when a failed lease check resends
+	 * the last permanent record.
+	 */
+	if (LOG_COMPARE(&rp->lsn, &le->lease_lsn) > 0) {
 		le->lease_lsn = rp->lsn;
+		VPRINT(env, (env, DB_VERB_REP_LEASE,
+		    "lease_grant: eid %d, lease_lsn [%lu][%lu]",
+		    le->eid, (u_long)le->lease_lsn.file,
+		    (u_long)le->lease_lsn.offset));
 	}
 	REP_SYSTEM_UNLOCK(env);
 	return (0);
@@ -301,7 +309,7 @@ retry:
 	min_leases = rep->nsites / 2;
 	ret = 0;
 	__os_gettime(env, &curtime, 1);
-	RPRINT(env, DB_VERB_REP_LEASE, (env,
+	VPRINT(env, (env, DB_VERB_REP_LEASE,
 	"lease_check: try %d min_leases %lu curtime %lu %lu, maxLSN [%lu][%lu]",
 	    tries,
 	    (u_long)min_leases, (u_long)curtime.tv_sec,
@@ -319,13 +327,13 @@ retry:
 		 * - The LSN is up to date.
 		 */
 		if (le->eid != DB_EID_INVALID) {
-			RPRINT(env, DB_VERB_REP_LEASE, (env,
+			VPRINT(env, (env, DB_VERB_REP_LEASE,
 		    "lease_check: valid %lu eid %d, lease_lsn [%lu][%lu]",
 			    (u_long)valid_leases, le->eid,
 			    (u_long)le->lease_lsn.file,
 			    (u_long)le->lease_lsn.offset));
-			RPRINT(env, DB_VERB_REP_LEASE,
-			    (env, "lease_check: endtime %lu %lu",
+			VPRINT(env, (env, DB_VERB_REP_LEASE,
+			    "lease_check: endtime %lu %lu",
 			    (u_long)le->end_time.tv_sec,
 			    (u_long)le->end_time.tv_nsec));
 		}
@@ -339,7 +347,7 @@ retry:
 	/*
 	 * Now see if we have enough.
 	 */
-	RPRINT(env, DB_VERB_REP_LEASE, (env, "valid %lu, min %lu",
+	VPRINT(env, (env, DB_VERB_REP_LEASE, "valid %lu, min %lu",
 	    (u_long)valid_leases, (u_long)min_leases));
 	if (valid_leases < min_leases) {
 		if (!refresh)
@@ -371,7 +379,7 @@ retry:
 	}
 
 	if (ret == DB_REP_LEASE_EXPIRED)
-		RPRINT(env, DB_VERB_REP_LEASE, (env,
+		RPRINT(env, (env, DB_VERB_REP_LEASE,
 		    "lease_check: Expired.  Only %lu valid",
 		    (u_long)valid_leases));
 	return (ret);
@@ -497,7 +505,7 @@ __rep_lease_waittime(env)
 	 * lease timeout, we know our lease cannot be granted and there
 	 * is no need to wait again.
 	 */
-	RPRINT(env, DB_VERB_REP_LEASE, (env,
+	RPRINT(env, (env, DB_VERB_REP_LEASE,
     "wait_time: grant_expire %lu %lu lease_to %lu",
 	    (u_long)exptime.tv_sec, (u_long)exptime.tv_nsec,
 	    (u_long)rep->lease_timeout));
@@ -506,7 +514,7 @@ __rep_lease_waittime(env)
 			to = rep->lease_timeout;
 	} else {
 		__os_gettime(env, &mytime, 1);
-		RPRINT(env, DB_VERB_REP_LEASE, (env,
+		RPRINT(env, (env, DB_VERB_REP_LEASE,
     "wait_time: mytime %lu %lu, grant_expire %lu %lu",
 		    (u_long)mytime.tv_sec, (u_long)mytime.tv_nsec,
 		    (u_long)exptime.tv_sec, (u_long)exptime.tv_nsec));

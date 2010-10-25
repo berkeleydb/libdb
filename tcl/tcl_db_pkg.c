@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -293,7 +293,7 @@ berkdb_Cmd(notused, interp, objc, objv)
 		result = bdb_DbRename(interp, objc, objv);
 		break;
 	case BDB_ENVREMOVE:
-		result = tcl_EnvRemove(interp, objc, objv, NULL, NULL);
+		result = tcl_EnvRemove(interp, objc, objv);
 		break;
 	case BDB_OPEN:
 		snprintf(newname, sizeof(newname), "db%d", db_id);
@@ -745,13 +745,15 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 			FLD_SET(set_flags, DB_CDB_ALLDB);
 			break;
 		case TCL_ENV_EVENT:
-			if (i >= objc) {
-				Tcl_WrongNumArgs(interp, 2, objv,
-				    "-event eventproc");
-				result = TCL_ERROR;
-				break;
+			if ((ret = __os_calloc(dbenv->env, 1,
+			    sizeof(DBTCL_EVENT_INFO),
+			    &ip->i_event_info)) == 0) {
+				_debug_check();
+				ret = dbenv->set_event_notify(dbenv,
+				    _EventFunc);
 			}
-			result = tcl_EventNotify(interp, dbenv, objv[i++], ip);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "set_event_notify");
 			break;
 		case TCL_ENV_FAILCHK:
 			FLD_SET(open_flags, DB_FAILCHK);
@@ -1280,6 +1282,9 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 				} else if (strcmp(arg, "snapshot") == 0) {
 					FLD_SET(set_flags, DB_TXN_SNAPSHOT);
 					i++;
+				} else if (strcmp(arg, "wrnosync") == 0) {
+					FLD_SET(set_flags, DB_TXN_WRITE_NOSYNC);
+					i++;
 				} else
 					break;
 			}
@@ -1564,6 +1569,14 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 	ret = dbenv->open(dbenv, home, open_flags, mode);
 	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "dbenv open");
 
+	if (ip->i_event_info != NULL && result == TCL_OK) {
+		_debug_check();
+		ret = __mutex_alloc(dbenv->env, MTX_TCL_EVENTS,
+		    DB_MUTEX_PROCESS_ONLY, &ip->i_mutex);
+		result = _ReturnSetup(interp,
+		    ret, DB_RETOK_STD(ret), "__mutex_alloc");
+	}
+
 	if (rep_flags != 0 && result == TCL_OK) {
 		_debug_check();
 		ret = dbenv->rep_start(dbenv, NULL, rep_flags);
@@ -1576,6 +1589,7 @@ error:	if (result == TCL_ERROR) {
 			(void)fclose(ip->i_err);
 			ip->i_err = NULL;
 		}
+		(void)__mutex_free(dbenv->env, &ip->i_mutex);
 		(void)dbenv->close(dbenv, 0);
 	}
 	return (result);
@@ -2402,8 +2416,10 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			/*
 			 * If the user already set one, free it.
 			 */
-			if (errip->i_errpfx != NULL)
+			if (errip->i_errpfx != NULL) {
+				(*dbp)->set_errpfx(*dbp, NULL);
 				__os_free(NULL, errip->i_errpfx);
+			}
 			if ((ret = __os_strdup((*dbp)->env,
 			    arg, &errip->i_errpfx)) != 0) {
 				result = _ReturnSetup(interp, ret,
@@ -2490,6 +2506,11 @@ error:
 	if (subdb)
 		__os_free(env, subdb);
 	if (result == TCL_ERROR) {
+		if (set_pfx && errip && errip->i_errpfx != NULL) {
+			(*dbp)->set_errpfx(*dbp, NULL);
+			__os_free(env, errip->i_errpfx);
+			errip->i_errpfx = NULL;
+		}
 		(void)(*dbp)->close(*dbp, 0);
 		/*
 		 * If we opened and set up the error file in the environment
@@ -2506,10 +2527,6 @@ error:
 		    errip->i_err != stdout && errip->i_err != stderr) {
 			(void)fclose(errip->i_err);
 			errip->i_err = NULL;
-		}
-		if (set_pfx && errip && errip->i_errpfx != NULL) {
-			__os_free(env, errip->i_errpfx);
-			errip->i_errpfx = NULL;
 		}
 		*dbp = NULL;
 	}
@@ -4015,14 +4032,14 @@ tcl_compare_callback(dbp, dbta, dbtb, procobj, errname)
 		 * So, drop core.  If we're not running with diagnostic
 		 * mode, panic--and always return a negative number. :-)
 		 */
-panic:		__db_errx(dbp->env, "Tcl %s callback failed", errname);
+err:		__db_errx(dbp->env, "Tcl %s callback failed", errname);
 		return (__env_panic(dbp->env, DB_RUNRECOVERY));
 	}
 
 	resobj = Tcl_GetObjResult(interp);
 	result = Tcl_GetIntFromObj(interp, resobj, &cmp);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	Tcl_DecrRefCount(a);
 	Tcl_DecrRefCount(b);
@@ -4057,17 +4074,16 @@ tcl_h_hash(dbp, buf, len)
 	Tcl_IncrRefCount(objv[1]);
 	result = Tcl_EvalObjv(interp, 2, objv, 0);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	result = Tcl_GetIntFromObj(interp, Tcl_GetObjResult(interp), &hval);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	Tcl_DecrRefCount(objv[1]);
 	return ((u_int32_t)hval);
 
-panic:	__db_errx(dbp->env, "Tcl h_hash callback failed");
-
+err:	__db_errx(dbp->env, "Tcl h_hash callback failed");
 	(void)__env_panic(dbp->env, DB_RUNRECOVERY);
 	return (0);
 }
@@ -4107,16 +4123,15 @@ tcl_isalive(dbenv, pid, tid, flags)
 
 	result = Tcl_EvalObjv(interp, 2, objv, 0);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 	Tcl_DecrRefCount(objv[1]);
 	result = Tcl_GetIntFromObj(interp, Tcl_GetObjResult(interp), &answer);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	return (answer);
 
-panic:
-	env = dbenv->env;
+err:	env = dbenv->env;
 	__db_errx(env, "Tcl isalive callback failed: %s",
 	    Tcl_GetStringResult(interp));
 
@@ -4146,17 +4161,16 @@ tcl_part_callback(dbp, data)
 
 	result = Tcl_EvalObjv(interp, 2, objv, 0);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	result = Tcl_GetIntFromObj(interp, Tcl_GetObjResult(interp), &hval);
 	if (result != TCL_OK)
-		goto panic;
+		goto err;
 
 	Tcl_DecrRefCount(objv[1]);
 	return ((u_int32_t)hval);
 
-panic:	__db_errx(dbp->env, "Tcl part_callback callback failed");
-
+err:	__db_errx(dbp->env, "Tcl part_callback callback failed");
 	(void)__env_panic(dbp->env, DB_RUNRECOVERY);
 	return (0);
 }

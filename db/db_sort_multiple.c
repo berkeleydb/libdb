@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_config.h"
@@ -86,9 +86,9 @@ __db_quicksort(db, key, data, kstart, kend, dstart, dend, size)
 	u_int32_t *kstart, *kend, *dstart, *dend;
 	u_int32_t size;
 {
-	int ret;
-	u_int32_t tmp;
-	u_int32_t *kmiddle, *dmiddle, *kptr, *dptr;
+	int ret, cmp;
+	u_int32_t tmp, len;
+	u_int32_t *kptr, *dptr, *kl, *dl, *kr, *dr;
 	DBT a, ad, b, bd, m, md;
 	ENV *env;
 
@@ -120,66 +120,105 @@ __db_quicksort(db, key, data, kstart, kend, dstart, dend, size)
 	if (kend >= kstart) goto pop;
 
 	/* If there's only one value, it's already sorted */
-	tmp = (u_int32_t)(kstart - kend) / size;
-	if (tmp == 1) goto pop;
+	len = (u_int32_t)(kstart - kend) / size;
+	if (len == 1) goto pop;
 
 	DB_SORT_LOAD_DBT(a, ad, kstart, dstart);
 	DB_SORT_LOAD_DBT(b, bd, kend + size, dend + size);
 
-	if (tmp == 2) {
+	if (len == 2) {
 		/* Special case the sorting of two value sequences */
 		if (DB_SORT_COMPARE(a, ad, b, bd) > 0) {
-			DB_SORT_SWAP(kstart, dstart, kend + size, dend + size);
+			DB_SORT_SWAP(kstart, dstart, kend + size,
+				dend + size);
 		}
 		goto pop;
 	}
 
-	kmiddle = kstart - (tmp / 2) * size;
-	dmiddle = dstart - (tmp / 2) * size;
-	DB_SORT_LOAD_DBT(m, md, kmiddle, dmiddle);
+	kptr = kstart - (len / 2) * size;
+	dptr = dstart - (len / 2) * size;
+	DB_SORT_LOAD_DBT(m, md, kptr, dptr);
 
 	/* Find the median of three */
 	if (DB_SORT_COMPARE(a, ad, b, bd) < 0) {
 		if (DB_SORT_COMPARE(m, md, a, ad) < 0) {
 			/* m < a < b */
+			if (len == 3) {
+				DB_SORT_SWAP(kstart, dstart, kptr, dptr);
+				goto pop;
+			}
 			DB_SORT_SWAP(kstart, dstart, kend + size, dend + size);
 		} else if (DB_SORT_COMPARE(m, md, b, bd) < 0) {
-			/* a < m < b */
-			DB_SORT_SWAP(kmiddle,
-			    dmiddle, kend + size, dend + size);
+			/* a <= m < b */
+			if (len == 3) {
+				goto pop;
+			}
+			DB_SORT_SWAP(kptr, dptr, kend + size, dend + size);
 		} else {
-			/* a < b < m */
+			/* a < b <= m */
+			if (len == 3) {
+				DB_SORT_SWAP(kptr, dptr, kend + size,
+					dend + size);
+				goto pop;
+			}
 			/* Do nothing */
 		}
 	} else {
 		if (DB_SORT_COMPARE(a, ad, m, md) < 0) {
-			/* b < a < m */
-			DB_SORT_SWAP(kstart, dstart, kend + size, dend + size);
+			/* b <= a < m */
+			DB_SORT_SWAP(kstart, dstart, kend + size,
+			    dend + size);
+			if (len == 3) {
+				DB_SORT_SWAP(kptr, dptr, kend + size,
+				    dend + size);
+				goto pop;
+			}
 		} else if (DB_SORT_COMPARE(b, bd, m, md) < 0) {
-			/* b < m < a */
-			DB_SORT_SWAP(kmiddle,
-			    dmiddle, kend + size, dend + size);
+			/* b < m <= a */
+			if (len == 3) {
+				DB_SORT_SWAP(kstart, dstart, kend + size,
+					dend + size);
+				goto pop;
+			}
+			DB_SORT_SWAP(kptr, dptr, kend + size, dend + size);
 		} else {
-			/* m < b < a */
+			/* m <= b <= a */
+			if (len == 3) {
+				DB_SORT_SWAP(kstart, dstart, kptr, dptr);
+				DB_SORT_SWAP(kptr, dptr, kend + size,
+					dend + size);
+				goto pop;
+			}
 			/* Do nothing */
 		}
 	}
 
 	/* partition */
 	DB_SORT_LOAD_DBT(b, bd, kend + size, dend + size);
-	kmiddle = kstart;
-	dmiddle = dstart;
-	for (kptr = kstart, dptr = dstart; kptr > kend;
-	    kptr -= size, dptr -= size) {
+	kl = kstart;
+	dl = dstart;
+	kr = kend + size;
+	dr = dend + size;
+	kptr = kstart;
+	dptr = dstart;
+	while (kptr >= kr) {
 		DB_SORT_LOAD_DBT(a, ad, kptr, dptr);
-		if (DB_SORT_COMPARE(a, ad, b, bd) < 0) {
-			DB_SORT_SWAP(kmiddle, dmiddle, kptr, dptr);
-			kmiddle -= size;
-			dmiddle -= size;
+		cmp = DB_SORT_COMPARE(a, ad, b, bd);
+		if (cmp < 0) {
+			DB_SORT_SWAP(kl, dl, kptr, dptr);
+			kl -= size;
+			dl -= size;
+			kptr -= size;
+			dptr -= size;
+		} else if (cmp > 0) {
+			DB_SORT_SWAP(kr, dr, kptr, dptr);
+			kr += size;
+			dr += size;
+		} else {
+			kptr -= size;
+			dptr -= size;
 		}
 	}
-
-	DB_SORT_SWAP(kmiddle, dmiddle, kend + size, dend + size);
 
 	if (soff == slen) {
 		/* Grow the stack */
@@ -198,14 +237,14 @@ __db_quicksort(db, key, data, kstart, kend, dstart, dend, size)
 	}
 
 	/* divide and conquer */
-	stack[soff].kstart = kmiddle - size;
+	stack[soff].kstart = kr - size;
 	stack[soff].kend = kend;
-	stack[soff].dstart = dmiddle - size;
+	stack[soff].dstart = dr - size;
 	stack[soff].dend = dend;
 	++soff;
 
-	kend = kmiddle;
-	dend = dmiddle;
+	kend = kl;
+	dend = dl;
 
 	goto start;
 

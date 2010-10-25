@@ -20,12 +20,11 @@ int tcl_CompactStat __P((Tcl_Interp *, DBTCL_INFO *));
 int tcl_rep_send __P((DB_ENV *, const DBT *, const DBT *, const DB_LSN *, int, u_int32_t));
 int dbc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 int env_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
-int tcl_EnvRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
+int tcl_EnvRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
 int tcl_EnvIdReset __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_EnvLsnReset __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_EnvVerbose __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, Tcl_Obj *));
 int tcl_EnvAttr __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
-int tcl_EventNotify  __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, DBTCL_INFO *));
 int tcl_EnvSetFlags __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, Tcl_Obj *));
 int tcl_EnvTest __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_EnvGetEncryptFlags __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
@@ -47,7 +46,9 @@ int _GetGlobPrefix __P((char *, char **));
 int _ReturnSetup __P((Tcl_Interp *, int, int, char *));
 int _ErrorSetup __P((Tcl_Interp *, int, char *));
 void _ErrorFunc __P((const DB_ENV *, CONST char *, const char *));
+#ifdef CONFIG_TEST 
 void _EventFunc __P((DB_ENV *, u_int32_t, void *));
+#endif
 int _GetLsn __P((Tcl_Interp *, Tcl_Obj *, DB_LSN *));
 int _GetUInt32 __P((Tcl_Interp *, Tcl_Obj *, u_int32_t *));
 Tcl_Obj *_GetFlagsList __P((Tcl_Interp *, u_int32_t, const FN *));
@@ -66,7 +67,7 @@ int tcl_LogGet __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogPut __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_LogStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int logc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
-int tcl_LogConfig __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+int tcl_LogConfig __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, Tcl_Obj *));
 int tcl_LogGetConfig __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
 void _MpInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 int tcl_MpSync __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
@@ -99,6 +100,7 @@ int tcl_RepStat __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
 int tcl_RepMgr __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
 int tcl_RepMgrSiteList __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
 int tcl_RepMgrStat __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
+int tcl_RepApplied __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
 int seq_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 void _TxnInfoDelete __P((Tcl_Interp *, DBTCL_INFO *));
 int tcl_TxnCheckpoint __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
@@ -108,6 +110,8 @@ int tcl_TxnStat __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_TxnTimeout __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_TxnRecover __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 int bdb_RandCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+int tcl_LockMutex __P((DB_ENV *, db_mutex_t));
+int tcl_UnlockMutex __P((DB_ENV *, db_mutex_t));
 
 #if defined(__cplusplus)
 }

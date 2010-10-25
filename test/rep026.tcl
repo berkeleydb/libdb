@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,10 +16,6 @@ proc rep026 { method args } {
 	global repfiles_in_memory
 
 	set tnum "026"
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree only.
 	if { $checking_valid_methods } {
@@ -104,7 +100,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env -create -log_max 1000000 $verbargs \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -115,7 +111,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -196,10 +192,13 @@ proc rep026_sub { method nclients tnum logset largs } {
 		set crash($elector) 1
 		setpriority pri $nclients $winner
 		set err_cmd($elector) "electvote1"
-		run_election env_cmd envlist err_cmd pri crash $qdir \
+		run_election envlist err_cmd pri crash $qdir \
 		    $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 		set msg "\tRep$tnum.$let.3"
 		puts "\t$msg: Close and reopen elector with recovery."
+		# But first flush the log, since we're relying on this client to
+		# win the next election.
+		$clientenv($elector) log_flush
 		error_check_good \
 		    clientenv_close($elector) [$clientenv($elector) close] 0
 
@@ -246,7 +245,7 @@ proc rep026_sub { method nclients tnum logset largs } {
 		puts "\t$msg: Call second election."
 		set err_cmd($elector) "none"
 		set crash($elector) 0
-		run_election env_cmd envlist err_cmd pri crash $qdir \
+		run_election envlist err_cmd pri crash $qdir \
 		    $msg $elector2 $nsites $nvotes $nclients $winner 1 test.db
 
 		# Second chance to restore messages.

@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -108,7 +108,7 @@ b_get(int argc, char *argv[])
 	}
 #endif
 
-#if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1)
 	DB_BENCH_ASSERT(
 	    dbp->open(dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #else

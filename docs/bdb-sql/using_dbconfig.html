@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>The DB_CONFIG File</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="configure.html" title="Chapter 3. Configuring the Berkeley DB SQL interface" />
+    <link rel="prev" href="configure.html" title="Chapter 3. Configuring the Berkeley DB SQL interface" />
+    <link rel="next" href="configpage.html" title="Configuring the Database Page Size" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">The DB_CONFIG File</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="configure.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 3. Configuring the Berkeley DB SQL interface</th>
+          <td width="20%" align="right"> <a accesskey="n" href="configpage.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="using_dbconfig"></a>The DB_CONFIG File</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="using_dbconfig.html#dbconfigcreate">Creating the DB_CONFIG File Before Environment Creation</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="using_dbconfig.html#envrecreate">Re-creating the Environment</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+                You can configure most aspects of your Berkeley DB environment by
+                using the <code class="literal">DB_CONFIG</code> file. This file must be
+                placed in your environment directory. When using the BDB SQL interface, this is
+                the directory created alongside of your database. It has
+                the same name as your database, followed by a
+                <code class="literal">-journal</code> extension. For example, if your
+                database is named <code class="literal">mydb.db</code>, then your
+                environment directory is created next to the
+                <code class="literal">mydb.db</code> file, and it
+                is called <code class="literal">mydb.db-journal</code>.
+            </p>
+      <p>
+                If a <code class="literal">DB_CONFIG</code> file exists in your
+                environment directory, it will be read for lines of the
+                format <span class="bold"><strong>NAME VALUE</strong></span> when
+                your environment is opened. This happens when your
+                application starts up and creates its first connection to
+                the database.
+            </p>
+      <p>
+                One or more whitespace characters are used to delimit the two parts of
+                the line, and trailing whitespace characters are discarded.  All empty
+                lines or lines whose first character is a whitespace or hash 
+                (<span class="bold"><strong>#</strong></span>) character are ignored.  Each
+                line must specify both the NAME and the VALUE of the pair.  The
+                specific NAME VALUE pairs you can use with the BDB SQL interface are
+                documented in <a class="xref" href="configuration_reference.html" title="Appendix A. DB_CONFIG Parameter Reference">DB_CONFIG Parameter Reference</a>.
+            </p>
+      <p>
+                In some cases, you must either specify a configuration
+                option before the environment is created, or the
+                environment must be re-created before the configuration
+                option will take effect. The documentation for each
+                configuration option will indicate where this is true.
+            </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="dbconfigcreate"></a>Creating the DB_CONFIG File Before Environment Creation</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    In order to provide the <code class="literal">DB_CONFIG</code> file before
+                    the environment is first created, physically make the
+                    environment directory in the correct location in your
+                    filesystem (this is wherever you want to place your
+                    database file), and put the <code class="literal">DB_CONFIG</code>
+                    file there before you create your database.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="envrecreate"></a>Re-creating the Environment</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    Some <code class="literal">DB_CONFIG</code> parameters require you to
+                    re-create your environment before they take effect.
+                    The <code class="literal">DB_CONFIG</code> parameter descriptions
+                    indicates where this is the case.
+                </p>
+        <p>
+                    To re-create your environment:
+                </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                            Make sure the <code class="literal">DB_CONFIG</code> file
+                            contains the following line:
+                        </p>
+              <pre class="programlisting">add_data_dir ..</pre>
+              <p>
+                            (This line should already be in the
+                            <code class="literal">DB_CONFIG</code> file.)
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Run the <a href="../api_reference/C/db_recover.html" class="olink">db_recover</a> command line utility. If
+                            you run it from within your environment
+                            (<code class="literal">-journal</code>) directory, no
+                            command line arguments are required. If you run
+                            it from outside your environment directory, use
+                            the <code class="literal">-h</code> parameter to identify
+                            the location of the environment:
+                        </p>
+              <pre class="programlisting">db_recover -h /some/path/to/mydb.db-journal</pre>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="configure.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="configure.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="configpage.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 3. Configuring the Berkeley DB SQL interface </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Configuring the Database Page Size</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

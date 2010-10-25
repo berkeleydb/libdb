@@ -512,7 +512,7 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1691319"></a>Parameters</h3>
+              <h3 class="title"><a id="id3680954"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -520,32 +520,21 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1691740"></a>flags</h4>
+                <h4 class="title"><a id="id3680944"></a>gsp</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
-                          or the following value:
+                          The <span class="bold"><strong>gsp</strong></span> parameter references memory
+                          into which a pointer to the allocated global statistics structure is
+                          copied.
                      </p>
-          <div class="itemizedlist">
-            <ul type="disc">
-              <li>
-                <p><a id="stat_DB_STAT_CLEAR"></a>
-                  <code class="literal">DB_STAT_CLEAR</code>
-            </p>
-                <p>
-                Reset statistics after returning their values.
-            </p>
-              </li>
-            </ul>
-          </div>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1691839"></a>fsp</h4>
+                <h4 class="title"><a id="id3681012"></a>fsp</h4>
               </div>
             </div>
           </div>
@@ -559,22 +548,33 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1691108"></a>gsp</h4>
+                <h4 class="title"><a id="id3680278"></a>flags</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>gsp</strong></span> parameter references memory
-                          into which a pointer to the allocated global statistics structure is
-                          copied.
+                          The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
+                          or the following value:
                      </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p><a id="mempstat_DB_STAT_CLEAR"></a>
+                  <code class="literal">DB_STAT_CLEAR</code>
+            </p>
+                <p>
+                Reset statistics after returning their values.
+            </p>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1691960"></a>Errors</h3>
+              <h3 class="title"><a id="id3680913"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -592,7 +592,7 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692010"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3681243"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -605,7 +605,7 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1691634"></a>Class</h3>
+              <h3 class="title"><a id="id3681222"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -617,7 +617,7 @@ DbEnv::memp_stat(DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1691690"></a>See Also</h3>
+              <h3 class="title"><a id="id3681124"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # The procs in this file are used for replication messaging
 # ONLY when the default mechanism of setting up a queue of
@@ -62,9 +62,14 @@ proc replsend_noenv { control rec fromid toid flags lsn } {
 	#
 	# If we are testing with dropped messages, then we drop every
 	# $drop_msg time.  If we do that just return 0 and don't do
-	# anything.
+	# anything.  However, avoid dropping PAGE_REQ and LOG_REQ, because
+	# currently recovering from those cases can take a while, and some tests
+	# rely on the assumption that a single log_flush from the master clears
+	# up any missing messages.
 	#
-	if { $drop != 0 } {
+	if { $drop != 0 && 
+	    !([berkdb msgtype $control] eq "page_req" ||
+	    [berkdb msgtype $control] eq "log_req")} {
 		incr drop
 		if { $drop == $drop_msg } {
 			set drop 1

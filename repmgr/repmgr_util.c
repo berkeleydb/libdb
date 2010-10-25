@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
 #define	INITIAL_SITES_ALLOCATION	10	     /* Arbitrary guess. */
@@ -176,18 +175,19 @@ __repmgr_new_connection(env, connp, s, state)
 
 /*
  * PUBLIC: int __repmgr_new_site __P((ENV *, REPMGR_SITE**,
- * PUBLIC:     const char *, u_int, int));
+ * PUBLIC:     const char *, u_int, int, int));
  *
  * Manipulates the process-local copy of the sites list.  So, callers should
  * hold the db_rep->mutex (except for single-threaded, pre-open configuration).
  */
 int
-__repmgr_new_site(env, sitep, host, port, state)
+__repmgr_new_site(env, sitep, host, port, state, peer)
 	ENV *env;
 	REPMGR_SITE **sitep;
 	const char *host;
 	u_int port;
 	int state;
+	int peer;
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
@@ -217,6 +217,8 @@ __repmgr_new_site(env, sitep, host, port, state)
 
 	ZERO_LSN(site->max_ack);
 	site->flags = 0;
+	if (peer)
+		F_SET(site, SITE_IS_PEER);
 	timespecclear(&site->last_rcvd_timestamp);
 	TAILQ_INIT(&site->sub_conns);
 	site->state = state;
@@ -579,12 +581,11 @@ __repmgr_open(env, rep_)
 	if ((ret = __mutex_alloc(env, MTX_REPMGR, 0, &rep->mtx_repmgr)) != 0)
 		return (ret);
 
-	DB_ASSERT(env, rep->siteaddr_seq == 0 && db_rep->siteaddr_seq == 0);
-	rep->netaddr_off = INVALID_ROFF;
-	rep->siteaddr_seq = 0;
+	DB_ASSERT(env, rep->siteinfo_seq == 0 && db_rep->siteinfo_seq == 0);
+	rep->siteinfo_off = INVALID_ROFF;
+	rep->siteinfo_seq = 0;
 	if ((ret = __repmgr_share_netaddrs(env, rep, 0, db_rep->site_cnt)) != 0)
 		return (ret);
-	rep->peer = db_rep->peer;
 
 	if ((host = db_rep->my_addr.host) != NULL) {
 		sz = strlen(host) + 1;
@@ -593,7 +594,7 @@ __repmgr_open(env, rep_)
 		(void)strcpy(hostbuf, host);
 		rep->my_addr.host = R_OFFSET(infop, hostbuf);
 		rep->my_addr.port = db_rep->my_addr.port;
-		rep->siteaddr_seq++;
+		rep->siteinfo_seq++;
 	} else
 		rep->my_addr.host = INVALID_ROFF;
 
@@ -624,7 +625,7 @@ __repmgr_join(env, rep_)
 	DB_REP *db_rep;
 	REGINFO *infop;
 	REP *rep;
-	SITEADDR *p;
+	SITEINFO *p;
 	REPMGR_SITE temp, *unused;
 	repmgr_netaddr_t *addrp;
 	char *host;
@@ -667,32 +668,37 @@ __repmgr_join(env, rep_)
 	 * shared list.
 	 */
 	i = 0;
-	if (rep->netaddr_off != INVALID_ROFF) {
-		p = R_ADDR(infop, rep->netaddr_off);
+	if (rep->siteinfo_off != INVALID_ROFF) {
+		p = R_ADDR(infop, rep->siteinfo_off);
 
 		/* For each address in the shared list ... */
 		for (; i < rep->site_cnt; i++) {
-			host = R_ADDR(infop, p[i].host);
+			host = R_ADDR(infop, p[i].addr.host);
 
-			RPRINT(env, DB_VERB_REPMGR_MISC,
-			    (env, "Site %s:%lu found at EID %u",
-				host, (u_long)p[i].port, i));
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "Site %s:%lu found at EID %u",
+				host, (u_long)p[i].addr.port, i));
 			/*
 			 * Find it in the local list.  Everything before 'i'
 			 * already matches the shared list, and is therefore in
 			 * the right place.  So we only need to search starting
-			 * from 'i'.
+			 * from 'i'.  When found, local peer value will be used
+			 * because it is assumed to be "fresher".
 			 */
 			for (j = i; j < db_rep->site_cnt; j++) {
 				addrp = &db_rep->sites[j].net_addr;
 				if (strcmp(host, addrp->host) == 0 &&
-				    p[i].port == addrp->port)
+				    p[i].addr.port == addrp->port)
 					break;
 			}
 
+			/*
+			 * When not found in local list, copy peer value
+			 * from shared list.
+			 */
 			if (j == db_rep->site_cnt &&
 			    (ret = __repmgr_new_site(env, &unused,
-			    host, p[i].port, SITE_IDLE)) != 0)
+			    host, p[i].addr.port, SITE_IDLE, p[i].peer)) != 0)
 				goto unlock;
 			DB_ASSERT(env, j < db_rep->site_cnt);
 
@@ -701,29 +707,13 @@ __repmgr_join(env, rep_)
 				temp = db_rep->sites[j];
 				db_rep->sites[j] = db_rep->sites[i];
 				db_rep->sites[i] = temp;
-
-				/*
-				 * Keep peer pointer in sync with swapped
-				 * location.
-				 */
-				if (db_rep->peer == (int)j)
-					db_rep->peer = (int)i;
-				else if (db_rep->peer == (int)i)
-					db_rep->peer = (int)j;
 			}
 		}
 	}
 	if ((ret = __repmgr_share_netaddrs(env, rep, i, db_rep->site_cnt)) != 0)
 		goto unlock;
 
-	/*
-	 * Assume that any config settings I've made locally are "fresher" than
-	 * anything lying around in the shared region, so the local setting
-	 * overrides here.
-	 */
-	if (IS_VALID_EID(db_rep->peer))
-		rep->peer = db_rep->peer;
-	db_rep->siteaddr_seq = rep->siteaddr_seq;
+	db_rep->siteinfo_seq = rep->siteinfo_seq;
 
 unlock:
 	MUTEX_UNLOCK(env, rep->mtx_repmgr);
@@ -766,8 +756,9 @@ __repmgr_env_refresh(env)
 }
 
 /*
- * Copy network address information from the indicated local array slots into
- * the shared region.
+ * Copy network address information from the indicated local array slots,
+ * and peer information changes from any of the local array slots, into the
+ * shared region.
  *
  * PUBLIC: int __repmgr_share_netaddrs __P((ENV *, void *, u_int, u_int));
  *
@@ -786,7 +777,7 @@ __repmgr_share_netaddrs(env, rep_, start, limit)
 	REP *rep;
 	REGINFO *infop;
 	REGENV *renv;
-	SITEADDR *orig, *shared_array;
+	SITEINFO *orig, *shared_array;
 	char *host, *hostbuf;
 	size_t sz;
 	u_int i, n;
@@ -804,30 +795,30 @@ __repmgr_share_netaddrs(env, rep_, start, limit)
 	for (i = start; i < limit; i++) {
 		if (rep->site_cnt >= rep->site_max) {
 			/* Table is full, we need more space. */
-			if (rep->netaddr_off == INVALID_ROFF) {
+			if (rep->siteinfo_off == INVALID_ROFF) {
 				n = INITIAL_SITES_ALLOCATION;
-				sz = n * sizeof(SITEADDR);
+				sz = n * sizeof(SITEINFO);
 				if ((ret = __env_alloc(infop,
 				    sz, &shared_array)) != 0)
 					goto out;
 			} else {
 				n = 2 * rep->site_max;
-				sz = n * sizeof(SITEADDR);
+				sz = n * sizeof(SITEINFO);
 				if ((ret = __env_alloc(infop,
 				    sz, &shared_array)) != 0)
 					goto out;
-				orig = R_ADDR(infop, rep->netaddr_off);
+				orig = R_ADDR(infop, rep->siteinfo_off);
 				memcpy(shared_array, orig,
-				    sizeof(SITEADDR) * rep->site_cnt);
+				    sizeof(SITEINFO) * rep->site_cnt);
 				__env_alloc_free(infop, orig);
 			}
-			rep->netaddr_off = R_OFFSET(infop, shared_array);
+			rep->siteinfo_off = R_OFFSET(infop, shared_array);
 			rep->site_max = n;
 		} else
-			shared_array = R_ADDR(infop, rep->netaddr_off);
+			shared_array = R_ADDR(infop, rep->siteinfo_off);
 
 		DB_ASSERT(env, rep->site_cnt < rep->site_max &&
-		    rep->netaddr_off != INVALID_ROFF);
+		    rep->siteinfo_off != INVALID_ROFF);
 
 		host = db_rep->sites[i].net_addr.host;
 		sz = strlen(host) + 1;
@@ -835,24 +826,42 @@ __repmgr_share_netaddrs(env, rep_, start, limit)
 			goto out;
 		eid = (int)rep->site_cnt++;
 		(void)strcpy(hostbuf, host);
-		shared_array[eid].host = R_OFFSET(infop, hostbuf);
-		shared_array[eid].port = db_rep->sites[i].net_addr.port;
-		RPRINT(env, DB_VERB_REPMGR_MISC,
-		    (env, "EID %d is assigned for site %s:%lu",
-			eid, host, (u_long)shared_array[eid].port));
+		shared_array[eid].addr.host = R_OFFSET(infop, hostbuf);
+		shared_array[eid].addr.port = db_rep->sites[i].net_addr.port;
+		shared_array[eid].peer =
+		    F_ISSET(&db_rep->sites[i], SITE_IS_PEER) ? TRUE : FALSE;
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "EID %d is assigned for site %s:%lu",
+			eid, host, (u_long)shared_array[eid].addr.port));
 		touched = TRUE;
+	}
+
+	/* Get any peer information changes from local copy. */
+	if (rep->siteinfo_off != INVALID_ROFF) {
+		shared_array = R_ADDR(infop, rep->siteinfo_off);
+		for (i = 0; i < rep->site_cnt; i++) {
+			if (!F_ISSET(&db_rep->sites[i], SITE_IS_PEER) &&
+			    shared_array[i].peer) {
+				shared_array[i].peer = FALSE;
+				touched = TRUE;
+			} else if (F_ISSET(&db_rep->sites[i], SITE_IS_PEER) &&
+			    !shared_array[i].peer) {
+				shared_array[i].peer = TRUE;
+				touched = TRUE;
+			}
+		}
 	}
 
 out:
 	if (touched)
-		rep->siteaddr_seq++;
+		rep->siteinfo_seq++;
 	MUTEX_UNLOCK(env, renv->mtx_regenv);
 	return (ret);
 }
 
 /*
- * Copy into our local list any newly added remote site addresses that we
- * haven't seen yet.
+ * Copy into our local list any newly added/changed remote site
+ * configuration information.
  *
  * !!! Caller must hold db_rep->mutex and mtx_repmgr locks.
  *
@@ -865,7 +874,7 @@ __repmgr_copy_in_added_sites(env)
 	DB_REP *db_rep;
 	REP *rep;
 	REGINFO *infop;
-	SITEADDR *base, *p;
+	SITEINFO *base, *p;
 	REPMGR_SITE *site;
 	char *host;
 	int ret;
@@ -874,25 +883,32 @@ __repmgr_copy_in_added_sites(env)
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 
-	if (rep->netaddr_off == INVALID_ROFF)
+	if (rep->siteinfo_off == INVALID_ROFF)
 		return (0);
 
 	infop = env->reginfo;
-	base = R_ADDR(infop, rep->netaddr_off);
+	base = R_ADDR(infop, rep->siteinfo_off);
+	/* Update existing local site peer values with shared values. */
+	for (i = 0; i < db_rep->site_cnt; i++) {
+		p = &base[i];
+		if (p->peer)
+			F_SET(&db_rep->sites[i], SITE_IS_PEER);
+		else
+			F_CLR(&db_rep->sites[i], SITE_IS_PEER);
+	}
 	for (i = db_rep->site_cnt; i < rep->site_cnt; i++) {
 		p = &base[i];
-		host = R_ADDR(infop, p->host);
+		host = R_ADDR(infop, p->addr.host);
 		if ((ret = __repmgr_new_site(env,
-		    &site, host, p->port, SITE_IDLE)) != 0)
+		    &site, host, p->addr.port, SITE_IDLE, p->peer)) != 0)
 			return (ret);
-		RPRINT(env, DB_VERB_REPMGR_MISC,
-		    (env, "Site %s:%lu found at EID %u",
-			host, (u_long)p->port, i));
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "Site %s:%lu found at EID %u",
+			host, (u_long)p->addr.port, i));
 	}
 
 	DB_ASSERT(env, db_rep->site_cnt == rep->site_cnt);
-	db_rep->peer = rep->peer;
-	db_rep->siteaddr_seq = rep->siteaddr_seq;
+	db_rep->siteinfo_seq = rep->siteinfo_seq;
 	return (0);
 }
 
@@ -988,5 +1004,76 @@ __repmgr_failchk(env)
 		rep->listener = 0;
 	MUTEX_UNLOCK(env, rep->mtx_repmgr);
 
+	return (0);
+}
+
+/*
+ * PUBLIC: int __repmgr_master_is_known __P((ENV *));
+ */
+int
+__repmgr_master_is_known(env)
+	ENV *env;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	int master;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	master = rep->master_id;
+
+	/*
+	 * We are the master, or we know of a master and have a healthy
+	 * connection to it.
+	 */
+	return (master == SELF_EID || __repmgr_master_connection(env) != NULL);
+}
+
+/*
+ * PUBLIC: int __repmgr_stable_lsn __P((ENV *, DB_LSN *));
+ *
+ * This function may be called before any of repmgr's threads have
+ * been started.  This code must not be called before env open.
+ * Currently that is impossible since its only caller is log_archive
+ * which itself cannot be called before env_open.
+ */
+int
+__repmgr_stable_lsn(env, stable_lsn)
+	ENV *env;
+	DB_LSN *stable_lsn;
+{
+	DB_LSN min_lsn;
+	DB_REP *db_rep;
+	REP *rep;
+	REPMGR_SITE *site;
+	u_int eid;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+
+	ZERO_LSN(min_lsn);
+	LOCK_MUTEX(db_rep->mutex);
+	for (eid = 0; eid < db_rep->site_cnt; eid++) {
+		site = SITE_FROM_EID(eid);
+		/*
+		 * Record the smallest ack'ed LSN from all connected sites.
+		 * If we're a client, ignore the master because the master
+		 * does not maintain nor send out its repmgr perm LSN in
+		 * this way.
+		 */
+		if ((int)eid == rep->master_id)
+			continue;
+		if (IS_SITE_AVAILABLE(site) &&
+		    !IS_ZERO_LSN(site->max_ack) &&
+		    (IS_ZERO_LSN(min_lsn) ||
+		    LOG_COMPARE(&site->max_ack, &min_lsn) < 0))
+			min_lsn = site->max_ack;
+	}
+	UNLOCK_MUTEX(db_rep->mutex);
+	if (!IS_ZERO_LSN(min_lsn) && LOG_COMPARE(&min_lsn, stable_lsn) < 0)
+		*stable_lsn = min_lsn;
+	RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+	    "Repmgr_stable_lsn: Returning stable_lsn[%lu][%lu]",
+	    (u_long)stable_lsn->file, (u_long)stable_lsn->offset));
 	return (0);
 }

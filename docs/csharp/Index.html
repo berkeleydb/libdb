@@ -2,7 +2,7 @@
 <html>
 
 <head>
-<title>Table of Content</title>
+<title>Berkeley DB .NET API Documentation - Table of Content</title>
 <link rel="stylesheet" href="TOC.css">
 <script type="text/javascript" src="TOC.js"></script>
 </head>
@@ -112,6 +112,9 @@ Keyword Index
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_ActiveTransaction_ParentID.htm" target="TopicContent">ParentID Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_ActiveTransaction_Priority.htm" target="TopicContent">Priority Property </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_ActiveTransaction_ProcessID.htm" target="TopicContent">ProcessID Property </a>
@@ -1087,6 +1090,9 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_CompactData_Deadlocks.htm" target="TopicContent">Deadlocks Property </a>
 </div>
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_CompactData_EmptyBuckets.htm" target="TopicContent">EmptyBuckets Property </a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_CompactData_End.htm" target="TopicContent">End Property </a>
 </div>
 <div class="TreeItem">
@@ -1869,10 +1875,16 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_Close.htm" target="TopicContent">Close Method </a>
 </div>
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_CloseForceSync.htm" target="TopicContent">CloseForceSync Method </a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_DetectDeadlocks.htm" target="TopicContent">DetectDeadlocks Method </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_FailCheck.htm" target="TopicContent">FailCheck Method </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_IsTransactionApplied.htm" target="TopicContent">IsTransactionApplied Method </a>
 </div>
 <div class="TreeNode">
 <img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Overload_BerkeleyDB_DatabaseEnvironment_LockingSystemStats.htm" target="TopicContent">LockingSystemStats Method </a>
@@ -1912,6 +1924,9 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_LoggingSystemStats_1.htm" target="TopicContent">LoggingSystemStats Method (Boolean)</a>
 </div>
 </div>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_LogVerify.htm" target="TopicContent">LogVerify Method </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_DatabaseEnvironment_LogWrite.htm" target="TopicContent">LogWrite Method </a>
@@ -2402,6 +2417,9 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepAckTimeout.htm" target="TopicContent">RepAckTimeout Property </a>
 </div>
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepAutoInit.htm" target="TopicContent">RepAutoInit Property </a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepBulkTransfer.htm" target="TopicContent">RepBulkTransfer Property </a>
 </div>
 <div class="TreeItem">
@@ -2447,7 +2465,7 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepMgrRemoteSites.htm" target="TopicContent">RepMgrRemoteSites Property </a>
 </div>
 <div class="TreeItem">
-<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepNoAutoInit.htm" target="TopicContent">RepNoAutoInit Property </a>
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepMgrRunElections.htm" target="TopicContent">RepMgrRunElections Property </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_DatabaseEnvironment_RepNoBlocking.htm" target="TopicContent">RepNoBlocking Property </a>
@@ -3198,6 +3216,17 @@ Keyword Index
 <div class="Hidden">
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/Overload_BerkeleyDB_HashDatabase_Close.htm" target="TopicContent">Close Method </a>
+</div>
+<div class="TreeNode">
+<img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Overload_BerkeleyDB_HashDatabase_Compact.htm" target="TopicContent">Compact Method </a>
+<div class="Hidden">
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_HashDatabase_Compact.htm" target="TopicContent">Compact Method (CompactConfig)</a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_HashDatabase_Compact_1.htm" target="TopicContent">Compact Method (CompactConfig, Transaction)</a>
+</div>
+</div>
 </div>
 <div class="TreeNode">
 <img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Overload_BerkeleyDB_HashDatabase_Cursor.htm" target="TopicContent">Cursor Method </a>
@@ -3961,6 +3990,55 @@ Keyword Index
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogStats_Writes.htm" target="TopicContent">Writes Property </a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="TreeNode">
+<img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/T_BerkeleyDB_LogVerifyConfig.htm" target="TopicContent">LogVerifyConfig Class</a>
+<div class="Hidden">
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/AllMembers_T_BerkeleyDB_LogVerifyConfig.htm" target="TopicContent">LogVerifyConfig Members</a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/M_BerkeleyDB_LogVerifyConfig__ctor.htm" target="TopicContent">LogVerifyConfig Constructor </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/Methods_T_BerkeleyDB_LogVerifyConfig.htm" target="TopicContent">LogVerifyConfig Methods </a>
+</div>
+<div class="TreeNode">
+<img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Properties_T_BerkeleyDB_LogVerifyConfig.htm" target="TopicContent">LogVerifyConfig Properties </a>
+<div class="Hidden">
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_CacheSize.htm" target="TopicContent">CacheSize Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_ContinueAfterFail.htm" target="TopicContent">ContinueAfterFail Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_DbFile.htm" target="TopicContent">DbFile Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_DbName.htm" target="TopicContent">DbName Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_EndLsn.htm" target="TopicContent">EndLsn Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_EndTime.htm" target="TopicContent">EndTime Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_EnvHome.htm" target="TopicContent">EnvHome Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_StartLsn.htm" target="TopicContent">StartLsn Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_StartTime.htm" target="TopicContent">StartTime Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_LogVerifyConfig_Verbose.htm" target="TopicContent">Verbose Property </a>
 </div>
 </div>
 </div>
@@ -5041,13 +5119,16 @@ Keyword Index
 <img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Fields_T_BerkeleyDB_ReplicationConfig.htm" target="TopicContent">ReplicationConfig Fields</a>
 <div class="Hidden">
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_AutoInit.htm" target="TopicContent">AutoInit Field</a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_BulkTransfer.htm" target="TopicContent">BulkTransfer Field</a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_DelayClientSync.htm" target="TopicContent">DelayClientSync Field</a>
 </div>
 <div class="TreeItem">
-<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_NoAutoInit.htm" target="TopicContent">NoAutoInit Field</a>
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_Elections.htm" target="TopicContent">Elections Field</a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_ReplicationConfig_NoBlocking.htm" target="TopicContent">NoBlocking Field</a>
@@ -5385,6 +5466,9 @@ Keyword Index
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_RepMgrSite_isConnected.htm" target="TopicContent">isConnected Field</a>
 </div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_RepMgrSite_isPeer.htm" target="TopicContent">isPeer Field</a>
+</div>
 </div>
 </div>
 <div class="TreeItem">
@@ -5411,10 +5495,16 @@ Keyword Index
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_DroppedMessages.htm" target="TopicContent">DroppedMessages Property </a>
 </div>
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_ElectionThreads.htm" target="TopicContent">ElectionThreads Property </a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_FailedConnections.htm" target="TopicContent">FailedConnections Property </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_FailedMessages.htm" target="TopicContent">FailedMessages Property </a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_MaxElectionThreads.htm" target="TopicContent">MaxElectionThreads Property </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_RepMgrStats_QueuedMessages.htm" target="TopicContent">QueuedMessages Property </a>
@@ -6546,14 +6636,23 @@ Keyword Index
 <img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/Properties_T_BerkeleyDB_Transaction.htm" target="TopicContent">Transaction Properties </a>
 <div class="Hidden">
 <div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_Transaction_CommitToken.htm" target="TopicContent">CommitToken Property </a>
+</div>
+<div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_Transaction_Id.htm" target="TopicContent">Id Property </a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_Transaction_Name.htm" target="TopicContent">Name Property </a>
 </div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/P_BerkeleyDB_Transaction_Priority.htm" target="TopicContent">Priority Property </a>
 </div>
 </div>
 </div>
+</div>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/T_BerkeleyDB_TransactionAppliedStatus.htm" target="TopicContent">TransactionAppliedStatus Enumeration</a>
 </div>
 <div class="TreeNode">
 <img class="TreeNodeImg" onclick="javascript: Toggle(this);" src="Collapsed.gif"/><a class="UnselectedNode" onclick="javascript: return Expand(this);" href="html/T_BerkeleyDB_TransactionConfig.htm" target="TopicContent">TransactionConfig Class</a>
@@ -6711,6 +6810,9 @@ Keyword Index
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_VerboseMessages_ReplicationSync.htm" target="TopicContent">ReplicationSync Field</a>
+</div>
+<div class="TreeItem">
+<img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_VerboseMessages_ReplicationSystemInfo.htm" target="TopicContent">ReplicationSystemInfo Field</a>
 </div>
 <div class="TreeItem">
 <img src="Item.gif"/><a class="UnselectedNode" onclick="javascript: return SelectNode(this);" href="html/F_BerkeleyDB_VerboseMessages_ReplicationTest.htm" target="TopicContent">ReplicationTest Field</a>

@@ -61,7 +61,7 @@ Db::set_flags(u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647064"></a>Parameters</h3>
+              <h3 class="title"><a id="id3634030"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -69,97 +69,98 @@ Db::set_flags(u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1646915"></a>flags</h4>
+                <h4 class="title"><a id="id3634012"></a>flags</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
-                          or by bitwise inclusively <span class="bold"><strong>OR</strong></span>'ing
-                          together one or more of the following values: 
-                          
-                     </p>
+                  The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
+                  or by bitwise inclusively <span class="bold"><strong>OR</strong></span>'ing
+                  together one or more of the following values: 
+                  
+             </p>
           <p>
-                          <span class="bold"><strong>General</strong></span>
-                     </p>
+                  <span class="bold"><strong>General</strong></span>
+             </p>
           <p>
-                          The following flags may be specified for any Berkeley DB access
-                          method:
-                     </p>
+                  The following flags may be specified for any Berkeley DB access
+                  method:
+             </p>
           <div class="itemizedlist">
             <ul type="disc">
               <li>
                 <p><a id="dbset_flags_DB_CHKSUM"></a>
-                  <code class="literal">DB_CHKSUM</code>
-            </p>
+                          <code class="literal">DB_CHKSUM</code>
+                    </p>
                 <p>
-                 Do checksum verification of pages read into the cache from the backing
-                 filestore.  Berkeley DB uses the SHA1 Secure Hash Algorithm if
-                 encryption is configured and a general hash algorithm if it is not.
-            </p>
+                         Do checksum verification of pages read into the cache from the backing
+                         filestore.  Berkeley DB uses the SHA1 Secure Hash Algorithm if
+                         encryption is configured and a general hash algorithm if it is not.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_CHKSUM flag only affects the
-                 specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
-                 any other Berkeley DB handles opened within the scope of that handle).
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_CHKSUM flag only affects the
+                         specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
+                         any other Berkeley DB handles opened within the scope of that handle).
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_CHKSUM flag will be ignored.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_CHKSUM flag will be ignored.
+                    </p>
               </li>
               <li>
                 <p><a id="dbset_flags_DB_ENCRYPT"></a>
-                  <code class="literal">DB_ENCRYPT</code>
-            </p>
+                          <code class="literal">DB_ENCRYPT</code>
+                    </p>
                 <p>
-                 Encrypt the database using the cryptographic password specified to the
-                 <a class="xref" href="envset_encrypt.html" title="DbEnv::set_encrypt()">DbEnv::set_encrypt()</a>  or
-                 <a class="xref" href="dbset_encrypt.html" title="Db::set_encrypt()">Db::set_encrypt()</a> 
-                 methods.
-            </p>
+                         Encrypt the database using the cryptographic password specified to the
+                         <a class="xref" href="envset_encrypt.html" title="DbEnv::set_encrypt()">DbEnv::set_encrypt()</a>  or
+                         <a class="xref" href="dbset_encrypt.html" title="Db::set_encrypt()">Db::set_encrypt()</a> 
+                         methods.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_ENCRYPT flag only affects the
-                 specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
-                 any other Berkeley DB handles opened within the scope of that handle).
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_ENCRYPT flag only affects the
+                         specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
+                         any other Berkeley DB handles opened within the scope of that handle).
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_ENCRYPT flag must be the same as the existing database or an error
-                    will be returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_ENCRYPT flag must be the same as the existing database or an error
+                            will be returned.
+                    </p>
                 <p>
-                 Encrypted databases are not portable between machines of different
-                 byte orders, that is, encrypted databases created on big-endian
-                 machines cannot be read on little-endian machines, and vice versa.
-            </p>
+                         Encrypted databases are not portable between machines of different
+                         byte orders, that is, encrypted databases created on big-endian
+                         machines cannot be read on little-endian machines, and vice versa.
+                    </p>
               </li>
               <li>
                 <p><a id="dbset_flags_DB_TXN_NOT_DURABLE"></a>
-                  <code class="literal">DB_TXN_NOT_DURABLE</code>
-            </p>
+                          <code class="literal">DB_TXN_NOT_DURABLE</code>
+                    </p>
                 <p>
-                 If set, Berkeley DB will not write log records for this database. 
-                 This means that updates of this database exhibit the ACI (atomicity,
-                 consistency, and isolation) properties, but not D (durability); that
-                 is, database integrity will be maintained, but if the application or
-                 system fails, integrity will not persist.  The database file must be
-                 verified and/or restored from backup after a failure.  In order to
-                 ensure integrity after application shut down, the database handles
-                 must be closed without specifying 
-                 <a class="link" href="dbclose.html#dbclose_DB_NOSYNC">DB_NOSYNC</a>, or all
-                 database changes must be flushed from the database environment cache
-                 using either the <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a> 
-                 or <a class="xref" href="mempsync.html" title="DbEnv::memp_sync()">DbEnv::memp_sync()</a> 
-                 methods.  All database handles for a single physical file must set
-                 DB_TXN_NOT_DURABLE, including database handles for different databases
-                 in a physical file.
-            </p>
+                         If set, Berkeley DB will not write log records for this database. 
+                         This means that updates of this database exhibit the ACI (atomicity,
+                         consistency, and isolation) properties, but not D (durability); that
+                         is, database integrity will be maintained, but if the application or
+                         system fails, integrity will not persist.  The database file must be
+                         verified and/or restored from backup after a failure.  In order to
+                         ensure integrity after application shut down, the database handles
+                         must be closed without specifying 
+                         <a class="link" href="dbclose.html#dbclose_DB_NOSYNC">DB_NOSYNC</a>, or all
+                         database changes must be flushed from the database environment cache
+                         using either the <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a> 
+                         or <a class="xref" href="mempsync.html" title="DbEnv::memp_sync()">DbEnv::memp_sync()</a> 
+                         methods.  All database handles for a single physical file must set
+                         DB_TXN_NOT_DURABLE, including database handles for different databases
+                         in a physical file.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_TXN_NOT_DURABLE flag only affects
-                 the specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle
-                 (and any other Berkeley DB handles opened within the scope of that
-                 handle).
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code>
+                         with the DB_TXN_NOT_DURABLE flag only affects the
+                         specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>
+                         handle (and any other Berkeley DB handles opened
+                         within the scope of that handle).
+                    </p>
               </li>
             </ul>
           </div>
@@ -173,116 +174,118 @@ Db::set_flags(u_int32_t flags); </pre>
             <ul type="disc">
               <li>
                 <p><a id="dbset_flags_DB_DUP"></a>
-                 <code class="literal">DB_DUP</code>
-            </p>
+                         <code class="literal">DB_DUP</code>
+                    </p>
                 <p>
-                 Permit duplicate data items in the database; that is, insertion when
-                 the key of the key/data pair being inserted already exists in the
-                 database will be successful.  The ordering of duplicates in the
-                 database is determined by the order of insertion, unless the ordering
-                 is otherwise specified by use of a cursor operation or a
-                 duplicate sort function.
-            </p>
+                         Permit duplicate data items in the database; that is, insertion when
+                         the key of the key/data pair being inserted already exists in the
+                         database will be successful.  The ordering of duplicates in the
+                         database is determined by the order of insertion, unless the ordering
+                         is otherwise specified by use of a cursor operation or a
+                         duplicate sort function.
+                    </p>
                 <p>
-                 The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. 
-                 The DB_DUP flag should only be used by applications wanting to order
-                 duplicate data items manually.
-            </p>
+                         The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. 
+                         The DB_DUP flag should only be used by applications wanting to order
+                         duplicate data items manually.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_DUP flag affects the database,
-                 including all threads of control accessing the database.
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_DUP flag affects the database,
+                         including all threads of control accessing the database.
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_DUP flag must be the same as the existing database or an error will be
-                    returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_DUP flag must be the same as the existing database or an error will be
+                            returned.
+                    </p>
                 <p>
-                It is an error to specify both DB_DUP and DB_RECNUM.
-            </p>
+                        It is an error to specify both DB_DUP and DB_RECNUM.
+                    </p>
               </li>
               <li>
                 <p><a id="dbset_flags_DB_DUPSORT"></a>
-                  <code class="literal">DB_DUPSORT</code>
-            </p>
+                          <code class="literal">DB_DUPSORT</code>
+                    </p>
                 <p>
-                 Permit duplicate data items in the database; that is, insertion when
-                 the key of the key/data pair being inserted already exists in the
-                 database will be successful.  The ordering of duplicates in the
-                 database is determined by the duplicate comparison function.  If the
-                 application does not specify a comparison function using the 
-                 <a class="xref" href="dbset_dup_compare.html" title="Db::set_dup_compare()">Db::set_dup_compare()</a> 
-                 method, a default lexical comparison will be used. It is an error to
-                 specify both DB_DUPSORT and DB_RECNUM.
-            </p>
+                         Permit duplicate data items in the database; that is, insertion when
+                         the key of the key/data pair being inserted already exists in the
+                         database will be successful.  The ordering of duplicates in the
+                         database is determined by the duplicate comparison function.  If the
+                         application does not specify a comparison function using the 
+                         <a class="xref" href="dbset_dup_compare.html" title="Db::set_dup_compare()">Db::set_dup_compare()</a> 
+                         method, a default lexical comparison will be used. It is an error to
+                         specify both DB_DUPSORT and DB_RECNUM.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_DUPSORT flag affects the
-                 database, including all threads of control accessing the database.
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_DUPSORT flag affects the
+                         database, including all threads of control accessing the database.
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_DUPSORT flag must be the same as the existing database or an error
-                    will be returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_DUPSORT flag must be the same as the existing database or an error
+                            will be returned.
+                    </p>
               </li>
               <li>
                 <p><a id="dbset_flags_DB_RECNUM"></a>
-                  <code class="literal">DB_RECNUM</code>
-            </p>
+                          <code class="literal">DB_RECNUM</code>
+                    </p>
                 <p>
-                 Support retrieval from the Btree using record numbers.  For more
-                 information, see the 
-                 <a class="link" href="dbget.html#dbget_DB_SET_RECNO">DB_SET_RECNO</a>  
-                 flag to the <a class="xref" href="dbget.html" title="Db::get()">Db::get()</a>  and 
-                 <a class="xref" href="dbcget.html" title="Dbc::get()">Dbc::get()</a>  methods.
-            </p>
+                         Support retrieval from the Btree using record numbers.  For more
+                         information, see the 
+                         <a class="link" href="dbget.html#dbget_DB_SET_RECNO">DB_SET_RECNO</a>  
+                         flag to the <a class="xref" href="dbget.html" title="Db::get()">Db::get()</a>  and 
+                         <a class="xref" href="dbcget.html" title="Dbc::get()">Dbc::get()</a>  methods.
+                    </p>
                 <p>
-                 Logical record numbers in Btree databases are mutable in the face of
-                 record insertion or deletion.  See the DB_RENUMBER flag in the Recno
-                 access method information for further discussion.
-            </p>
+                         Logical record numbers in Btree databases are mutable in the face of
+                         record insertion or deletion.  See the DB_RENUMBER flag in the Recno
+                         access method information for further discussion.
+                    </p>
                 <p>
-                 Maintaining record counts within a Btree introduces a serious point of
-                 contention, namely the page locations where the record counts are
-                 stored.  In addition, the entire database must be locked during both
-                 insertions and deletions, effectively single-threading the database
-                 for those operations.  Specifying DB_RECNUM can result in serious
-                 performance degradation for some applications and data sets.
-            </p>
+                         Maintaining record counts within a Btree introduces a serious point of
+                         contention, namely the page locations where the record counts are
+                         stored.  In addition, the entire database must be locked during both
+                         insertions and deletions, effectively single-threading the database
+                         for those operations.  Specifying DB_RECNUM can result in serious
+                         performance degradation for some applications and data sets.
+                    </p>
                 <p>
-                It is an error to specify both DB_DUP and DB_RECNUM.
-            </p>
+                        It is an error to specify both DB_DUP and DB_RECNUM.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_RECNUM flag affects the database,
-                 including all threads of control accessing the database.
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_RECNUM flag affects the database,
+                         including all threads of control accessing the database.
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_RECNUM flag must be the same as the existing database or an error
-                    will be returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_RECNUM flag must be the same as the existing database or an error
+                            will be returned.
+                    </p>
               </li>
               <li>
                 <p><a id="dbset_flags_DB_REVSPLITOFF"></a>
-                  <code class="literal">DB_REVSPLITOFF</code>
-            </p>
+                          <code class="literal">DB_REVSPLITOFF</code>
+                    </p>
                 <p>
-                 Turn off reverse splitting in the Btree.  As pages are emptied in a
-                 database, the Berkeley DB Btree implementation attempts to coalesce
-                 empty pages into higher-level pages in order to keep the database as
-                 small as possible and minimize search time.  This can hurt performance
-                 in applications with cyclical data demands; that is, applications
-                 where the database grows and shrinks repeatedly.  For example, because
-                 Berkeley DB does page-level locking, the maximum level of concurrency
-                 in a database of two pages is far smaller than that in a database of
-                 100 pages, so a database that has shrunk to a minimal size can cause
-                 severe deadlocking when a new cycle of data insertion begins.
-            </p>
+                         Turn off reverse splitting in the Btree.  As pages are emptied in a
+                         database, the Berkeley DB Btree implementation attempts to coalesce
+                         empty pages into higher-level pages in order to keep the database as
+                         small as possible and minimize search time.  This can hurt performance
+                         in applications with cyclical data demands; that is, applications
+                         where the database grows and shrinks repeatedly.  For example, because
+                         Berkeley DB does page-level locking, the maximum level of concurrency
+                         in a database of two pages is far smaller than that in a database of
+                         100 pages, so a database that has shrunk to a minimal size can cause
+                         severe deadlocking when a new cycle of data insertion begins.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_REVSPLITOFF flag only affects the
-                 specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
-                 any other Berkeley DB handles opened within the scope of that handle).
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code>
+                         with the DB_REVSPLITOFF flag only affects the
+                         specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>
+                         handle (and any other Berkeley DB handles opened
+                         within the scope of that handle).
+                    </p>
               </li>
             </ul>
           </div>
@@ -296,52 +299,73 @@ Db::set_flags(u_int32_t flags); </pre>
             <ul type="disc">
               <li>
                 <p><a id="dbset_flags_h_DB_DUP"></a>
-                 <code class="literal">DB_DUP</code>
-            </p>
+                         <code class="literal">DB_DUP</code>
+                    </p>
                 <p>
-                 Permit duplicate data items in the database; that is, insertion when
-                 the key of the key/data pair being inserted already exists in the
-                 database will be successful.  The ordering of duplicates in the
-                 database is determined by the order of insertion, unless the ordering
-                 is otherwise specified by use of a cursor operation.
-            </p>
+                         Permit duplicate data items in the database; that is, insertion when
+                         the key of the key/data pair being inserted already exists in the
+                         database will be successful.  The ordering of duplicates in the
+                         database is determined by the order of insertion, unless the ordering
+                         is otherwise specified by use of a cursor operation.
+                    </p>
                 <p>
-                 The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. 
-                 The DB_DUP flag should only be used by applications wanting to order
-                 duplicate data items manually.
-            </p>
+                         The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. 
+                         The DB_DUP flag should only be used by applications wanting to order
+                         duplicate data items manually.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_DUP flag affects the database,
-                 including all threads of control accessing the database.
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_DUP flag affects the database,
+                         including all threads of control accessing the database.
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_DUP flag must be the same as the existing database or an error will be
-                    returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_DUP flag must be the same as the existing database or an error will be
+                            returned.
+                    </p>
               </li>
               <li>
                 <p>
-                  <code class="literal">DB_DUPSORT</code>
-            </p>
+                       <code class="literal">DB_DUPSORT</code>
+                    </p>
                 <p>
-                 Permit duplicate data items in the database; that is, insertion when
-                 the key of the key/data pair being inserted already exists in the
-                 database will be successful.  The ordering of duplicates in the
-                 database is determined by the duplicate comparison function.  If the
-                 application does not specify a comparison function using the 
-                 <a class="xref" href="dbset_dup_compare.html" title="Db::set_dup_compare()">Db::set_dup_compare()</a> 
-                 method, a default lexical comparison will be used.
-            </p>
+                         Permit duplicate data items in the database; that is, insertion when
+                         the key of the key/data pair being inserted already exists in the
+                         database will be successful.  The ordering of duplicates in the
+                         database is determined by the duplicate comparison function.  If the
+                         application does not specify a comparison function using the 
+                         <a class="xref" href="dbset_dup_compare.html" title="Db::set_dup_compare()">Db::set_dup_compare()</a> 
+                         method, a default lexical comparison will be used.
+                    </p>
                 <p>
-                 Calling <code class="methodname">Db::set_flags()</code> with the DB_DUPSORT flag affects the
-                 database, including all threads of control accessing the database.
-            </p>
+                         Calling <code class="methodname">Db::set_flags()</code> with the DB_DUPSORT flag affects the
+                         database, including all threads of control accessing the database.
+                    </p>
                 <p>
-                    If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
-                    is called, the DB_DUPSORT flag must be the same as the existing database or an error
-                    will be returned.
-            </p>
+                            If the database already exists when <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  
+                            is called, the DB_DUPSORT flag must be the same as the existing database or an error
+                            will be returned.
+                    </p>
+              </li>
+              <li>
+                <p><a id="dbset_flags_hash_DB_REVSPLITOFF"></a>
+                              <code class="literal">DB_REVSPLITOFF</code>
+                        </p>
+                <p>
+                             Turns off hash bucket compaction. When a hash bucket is
+                             emptied, the Berkeley DB Hash implementation will decrease
+                             the hash table size, coalescing buckets. This will
+                             decrease the number of pages in the database.
+                             This can hurt performance in applications with cyclical
+                             data demands — that is, applications where the
+                             database grows and shrinks repeatedly — because of
+                             the cost of resplitting buckets when they grow again.
+                        </p>
+                <p>
+                            Calling <code class="methodname">Db::set_flags()</code> with the 
+                            DB_REVSPLITOFF flag only affects the
+                            specified <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle (and
+                            any other Berkeley DB handles opened within the scope of that handle).
+                        </p>
               </li>
             </ul>
           </div>
@@ -486,7 +510,7 @@ Db::set_flags(u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647918"></a>Errors</h3>
+              <h3 class="title"><a id="id3634006"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -504,7 +528,7 @@ Db::set_flags(u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1647852"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3634446"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -517,7 +541,7 @@ Db::set_flags(u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647416"></a>Class</h3>
+              <h3 class="title"><a id="id3634132"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -529,7 +553,7 @@ Db::set_flags(u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647028"></a>See Also</h3>
+              <h3 class="title"><a id="id3633908"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -8,8 +8,8 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
-    <link rel="prev" href="txnprepare.html" title="DB_TXN-&gt;prepare()" />
-    <link rel="next" href="txnset_name.html" title="DB_TXN-&gt;set_name()" />
+    <link rel="prev" href="envset_tx_timestamp.html" title="DB_ENV-&gt;set_tx_timestamp()" />
+    <link rel="next" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()" />
   </head>
   <body>
     <div class="navheader">
@@ -18,11 +18,11 @@
           <th colspan="3" align="center">DB_ENV-&gt;txn_recover()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="txnprepare.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="envset_tx_timestamp.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnbegin.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -101,7 +101,7 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709562"></a>Parameters</h3>
+              <h3 class="title"><a id="id4028997"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -109,7 +109,21 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1709950"></a>count</h4>
+                <h4 class="title"><a id="id4029008"></a>preplist</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>preplist</strong></span> parameter references
+                          memory into which  the list of transactions to be resolved by the
+                          application is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4028992"></a>count</h4>
               </div>
             </div>
           </div>
@@ -123,7 +137,7 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1710116"></a>flags</h4>
+                <h4 class="title"><a id="id4029028"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -160,26 +174,12 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1710261"></a>preplist</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>preplist</strong></span> parameter references
-                          memory into which  the list of transactions to be resolved by the
-                          application is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709564"></a>Class</h3>
+              <h3 class="title"><a id="id4029127"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -191,7 +191,7 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710363"></a>See Also</h3>
+              <h3 class="title"><a id="id4029032"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -204,18 +204,18 @@ DB_ENV-&gt;txn_recover(DB_ENV *dbenv, DB_PREPLIST preplist[],
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="txnprepare.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="envset_tx_timestamp.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnbegin.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DB_TXN-&gt;prepare() </td>
+          <td width="40%" align="left" valign="top">DB_ENV-&gt;set_tx_timestamp() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DB_TXN-&gt;set_name()</td>
+          <td width="40%" align="right" valign="top"> DB_ENV-&gt;txn_begin()</td>
         </tr>
       </table>
     </div>

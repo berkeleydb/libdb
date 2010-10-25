@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="apiReference.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
-    <link rel="up" href="utilities.html" title="Appendix 1.  Berkeley DB Command Line Utilities" />
+    <link rel="up" href="utilities.html" title="Appendix A.  Berkeley DB Command Line Utilities" />
     <link rel="prev" href="db_dump.html" title="db_dump" />
     <link rel="next" href="db_load.html" title="db_load" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="db_dump.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix 1. 
+          <th width="60%" align="center">Appendix A. 
                 Berkeley DB Command Line Utilities
         </th>
           <td width="20%" align="right"> <a accesskey="n" href="db_load.html">Next</a></td>
@@ -94,12 +94,15 @@
       </div>
       <p>
          The <span class="command"><strong>db_hotbackup</strong></span> utility does not resolve pending transactions that
-         are in the prepared state.  Applications that use 
-         <a class="xref" href="txnprepare.html" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> must specify 
-         <a class="link" href="envopen.html#envopen_DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
-         when opening the environment, and run 
-         <a class="xref" href="txnrecover.html" title="DB_ENV-&gt;txn_recover()">DB_ENV-&gt;txn_recover()</a> to
-         resolve any pending transactions, when failing over to the backup.
+         are in the prepared state.  
+         <span>
+            Applications that use 
+            <a class="xref" href="txnprepare.html" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> must specify 
+            <a class="link" href="envopen.html#envopen_DB_RECOVER_FATAL">DB_RECOVER_FATAL</a>
+            when opening the environment, and run 
+            <a class="xref" href="txnrecover.html" title="DB_ENV-&gt;txn_recover()">DB_ENV-&gt;txn_recover()</a> to
+            resolve any pending transactions, when failing over to the backup.
+        </span>
     </p>
       <p>
         The options are as follows:
@@ -131,7 +134,8 @@
                  <span class="bold"><strong>-D</strong></span>
             </p>
             <p>
-                 Use the data and log directories listed in a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                Use the data and log directories listed in a 
+                <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file in the source directory.  This option has four
                  effects:     
             </p>
@@ -147,20 +151,23 @@
                 <li>
                   <p>
                          In step #3 above, all files in any source data directories specified
-                         in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file will
-                         be copied to the target data directories.
+                         in the 
+                        <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                         file will be copied to the target data directories.
                     </p>
                 </li>
                 <li>
                   <p>
                          In step #4 above, log files will be copied from any log directory
-                         specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file,
-                         instead of from the default locations.
+                         specified in the 
+                        <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                         file, instead of from the default locations.
                     </p>
                 </li>
                 <li>
                   <p>
-                         The <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                        The 
+                        <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                          configuration file will be copied from the source directory to the
                          target directory, and subsequently used for configuration if recovery
                          is run in the target directory.
@@ -179,7 +186,8 @@
             </p>
             <p>
                  <span class="bold"><strong>It is an error to use absolute pathnames for
-                 data or log directories in this mode, as the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 data or log directories in this mode, as the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file copied into the target directory would then point
                  at the source directories and running recovery would corrupt the
                  source data files.</strong></span>
@@ -204,7 +212,8 @@
                  files as they are named by the application program.  <span class="bold"><strong>If the application uses absolute or relative pathnames to
                  name database files, (rather than filenames and the 
                  <a class="xref" href="envset_data_dir.html" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a>
-                 method or the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 method or the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file to specify filenames), running recovery in the
                  target directory may not properly find the copies of the files or
                  might even find the source files, potentially resulting in
@@ -271,10 +280,11 @@
         </ul>
       </div>
       <p>
-         The <span class="command"><strong>db_hotbackup</strong></span> utility uses a Berkeley DB environment (as described
-         for the <span class="bold"><strong>-h</strong></span> option, the environment
-         variable <span class="bold"><strong>DB_HOME</strong></span>, or because the
-         utility was run in a directory containing a Berkeley DB environment). 
+          The <span class="command"><strong>db_hotbackup</strong></span> utility uses a Berkeley DB 
+            environment (as described for the <span class="bold"><strong>-h</strong></span> option, the environment variable
+            <span class="bold"><strong>DB_HOME</strong></span>, or because the
+            utility was run in a directory containing a Berkeley DB
+            environment). 
          In order to avoid environment corruption when using a Berkeley DB
          environment, <span class="command"><strong>db_hotbackup</strong></span> should always be given the chance to detach
          from the environment and exit gracefully.  To cause <span class="command"><strong>db_hotbackup</strong></span> to
@@ -289,7 +299,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713330"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id4034445"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -297,7 +307,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1713971"></a>DB_HOME</h4>
+                <h4 class="title"><a id="id4034451"></a>DB_HOME</h4>
               </div>
             </div>
           </div>

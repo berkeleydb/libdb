@@ -138,7 +138,8 @@ public class Sample
 <strong class="userinput"><code>    private void run()
         throws Exception
     {
-        TransactionRunner runner = new TransactionRunner(db.getEnvironment());
+        TransactionRunner runner = 
+            new TransactionRunner(db.getEnvironment());
         runner.run(new PopulateDatabase());
         runner.run(new PrintDatabase());
     }

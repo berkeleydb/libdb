@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -14,25 +14,26 @@
 # TEST	Sleep 30+ seconds.
 # TEST  Test that blocked operations are now unblocked.
 #
-proc rep031 { method { niter 200 } { tnum "031" } args } {
+proc rep031 { method { niter 400 } { tnum "031" } args } {
 
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
-
-	# There is nothing method-sensitive in this test, so
-	# skip for all except btree.
+	# This test is not method-sensitive, but we need to
+	# exercise log_archive with queue extents, so test 
+	# queueext.
 	if { $checking_valid_methods } {
-		set test_methods { btree }
+		set test_methods {}
+		foreach method $valid_methods {
+			if { [is_queueext $method] == 1 } {
+				lappend test_methods $method
+			}
+		}
 		return $test_methods
 	}
-	if { [is_btree $method] != 1 } {
-		puts "Skipping rep031 for method $method."
+	if { [is_queueext $method] == 0 } {
+		puts "Rep$tnum: Skipping for non-queueext method."
 		return
 	}
 
@@ -271,7 +272,17 @@ proc rep031_sub { method niter tnum logset recargs clean largs } {
 		set res [eval exec $util_path/db_archive -l -h $masterdir]
 		error_check_bad log.gone [lsearch -exact $res $first] -1
 
-		puts "\tRep$tnum.j.0: Try to log_archive in master env."
+		puts "\tRep$tnum.j.0: Exercise log_archive -arch_data."
+		set res [$masterenv log_archive -arch_data]
+		error_check_good arch_data [is_substr $res $dbname] 1
+
+		# Since we're doing queue extents they should be included
+		# in the results from log_archive -arch_data.
+		if { [is_queueext $method] } {
+			error_check_good arch_extent [is_substr $res "__dbq"] 1
+		}
+
+		puts "\tRep$tnum.j.1: Try to log_archive in master env."
 		set res [$masterenv log_archive -arch_remove]
 		set res [eval exec $util_path/db_archive -l -h $masterdir]
 		error_check_bad log.gone0 [lsearch -exact $res $first] -1

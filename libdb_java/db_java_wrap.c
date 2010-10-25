@@ -209,7 +209,7 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 
 /* Forward declarations */
 static int __dbj_throw(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv);
+    int ret, const char *msg, jobject obj, jobject jdbenv);
 
 /* Global data - JVM handle, classes, fields and methods */
 static JavaVM *javavm;
@@ -241,7 +241,8 @@ static jfieldID kr_less_fid, kr_equal_fid, kr_greater_fid;
 static jfieldID lock_cptr_fid;
 static jfieldID lockreq_op_fid, lockreq_modeflag_fid, lockreq_timeout_fid;
 static jfieldID lockreq_obj_fid, lockreq_lock_fid;
-static jfieldID repmgr_siteinfo_status_fid;
+static jfieldID repmgr_siteinfo_flags_fid, repmgr_siteinfo_status_fid;
+static jfieldID txn_commit_token;
 
 /* BEGIN-STAT-FIELD-DECLS */
 static jfieldID bt_stat_bt_magic_fid;
@@ -268,6 +269,7 @@ static jfieldID bt_stat_bt_over_pgfree_fid;
 static jfieldID compact_compact_fillpercent_fid;
 static jfieldID compact_compact_timeout_fid;
 static jfieldID compact_compact_pages_fid;
+static jfieldID compact_compact_empty_buckets_fid;
 static jfieldID compact_compact_pages_free_fid;
 static jfieldID compact_compact_pages_examine_fid;
 static jfieldID compact_compact_levels_fid;
@@ -428,8 +430,8 @@ static jfieldID qam_stat_qs_re_pad_fid;
 static jfieldID qam_stat_qs_pgfree_fid;
 static jfieldID qam_stat_qs_first_recno_fid;
 static jfieldID qam_stat_qs_cur_recno_fid;
-static jfieldID rep_stat_st_log_queued_fid;
 static jfieldID rep_stat_st_startup_complete_fid;
+static jfieldID rep_stat_st_log_queued_fid;
 static jfieldID rep_stat_st_status_fid;
 static jfieldID rep_stat_st_next_lsn_fid;
 static jfieldID rep_stat_st_waiting_lsn_fid;
@@ -489,6 +491,8 @@ static jfieldID repmgr_stat_st_msgs_queued_fid;
 static jfieldID repmgr_stat_st_msgs_dropped_fid;
 static jfieldID repmgr_stat_st_connection_drop_fid;
 static jfieldID repmgr_stat_st_connect_fail_fid;
+static jfieldID repmgr_stat_st_elect_threads_fid;
+static jfieldID repmgr_stat_st_max_elect_threads_fid;
 static jfieldID seq_stat_st_wait_fid;
 static jfieldID seq_stat_st_nowait_fid;
 static jfieldID seq_stat_st_current_fid;
@@ -520,6 +524,7 @@ static jfieldID txn_active_pid_fid;
 static jfieldID txn_active_lsn_fid;
 static jfieldID txn_active_read_lsn_fid;
 static jfieldID txn_active_mvcc_ref_fid;
+static jfieldID txn_active_priority_fid;
 static jfieldID txn_active_status_fid;
 static jfieldID txn_active_gid_fid;
 static jfieldID txn_active_name_fid;
@@ -548,8 +553,12 @@ static jmethodID lock_construct;
 static jmethodID app_dispatch_method, errcall_method, env_feedback_method;
 static jmethodID msgcall_method, paniccall_method, rep_transport_method;
 static jmethodID panic_event_notify_method, rep_client_event_notify_method;
+static jmethodID rep_dupmaster_event_notify_method;
 static jmethodID rep_elected_event_notify_method;
+static jmethodID rep_election_failed_event_notify_method;
+static jmethodID rep_join_failure_event_notify_method;
 static jmethodID rep_master_event_notify_method;
+static jmethodID rep_master_failure_event_notify_method;
 static jmethodID rep_new_master_event_notify_method;
 static jmethodID rep_perm_failed_event_notify_method;
 static jmethodID rep_startup_done_event_notify_method;
@@ -652,6 +661,7 @@ const struct {
 	    "L" DB_PKG "DatabaseEntry;" },
 	{ &lockreq_lock_fid, &lockreq_class, "lock",
 	    "L" DB_PKG "internal/DbLock;" },
+       { &txn_commit_token, &dbtxn_class, "commitToken", "[B" },
 
 /* BEGIN-STAT-FIELDS */
 	{ &bt_stat_bt_magic_fid, &bt_stat_class, "bt_magic", "I" },
@@ -678,6 +688,7 @@ const struct {
 	{ &compact_compact_fillpercent_fid, &compact_class, "compact_fillpercent", "I" },
 	{ &compact_compact_timeout_fid, &compact_class, "compact_timeout", "I" },
 	{ &compact_compact_pages_fid, &compact_class, "compact_pages", "I" },
+	{ &compact_compact_empty_buckets_fid, &compact_class, "compact_empty_buckets", "I" },
 	{ &compact_compact_pages_free_fid, &compact_class, "compact_pages_free", "I" },
 	{ &compact_compact_pages_examine_fid, &compact_class, "compact_pages_examine", "I" },
 	{ &compact_compact_levels_fid, &compact_class, "compact_levels", "I" },
@@ -838,8 +849,8 @@ const struct {
 	{ &qam_stat_qs_pgfree_fid, &qam_stat_class, "qs_pgfree", "I" },
 	{ &qam_stat_qs_first_recno_fid, &qam_stat_class, "qs_first_recno", "I" },
 	{ &qam_stat_qs_cur_recno_fid, &qam_stat_class, "qs_cur_recno", "I" },
-	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "J" },
 	{ &rep_stat_st_startup_complete_fid, &rep_stat_class, "st_startup_complete", "I" },
+	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "J" },
 	{ &rep_stat_st_status_fid, &rep_stat_class, "st_status", "I" },
 	{ &rep_stat_st_next_lsn_fid, &rep_stat_class, "st_next_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &rep_stat_st_waiting_lsn_fid, &rep_stat_class, "st_waiting_lsn", "L" DB_PKG "LogSequenceNumber;" },
@@ -899,6 +910,8 @@ const struct {
 	{ &repmgr_stat_st_msgs_dropped_fid, &repmgr_stat_class, "st_msgs_dropped", "J" },
 	{ &repmgr_stat_st_connection_drop_fid, &repmgr_stat_class, "st_connection_drop", "J" },
 	{ &repmgr_stat_st_connect_fail_fid, &repmgr_stat_class, "st_connect_fail", "J" },
+	{ &repmgr_stat_st_elect_threads_fid, &repmgr_stat_class, "st_elect_threads", "J" },
+	{ &repmgr_stat_st_max_elect_threads_fid, &repmgr_stat_class, "st_max_elect_threads", "J" },
 	{ &seq_stat_st_wait_fid, &seq_stat_class, "st_wait", "J" },
 	{ &seq_stat_st_nowait_fid, &seq_stat_class, "st_nowait", "J" },
 	{ &seq_stat_st_current_fid, &seq_stat_class, "st_current", "J" },
@@ -930,11 +943,13 @@ const struct {
 	{ &txn_active_lsn_fid, &txn_active_class, "lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_read_lsn_fid, &txn_active_class, "read_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_mvcc_ref_fid, &txn_active_class, "mvcc_ref", "I" },
+	{ &txn_active_priority_fid, &txn_active_class, "priority", "I" },
 	{ &txn_active_status_fid, &txn_active_class, "status", "I" },
 	{ &txn_active_gid_fid, &txn_active_class, "gid", "[B" },
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
+	{ &repmgr_siteinfo_flags_fid, &repmgr_siteinfo_class, "flags", "I" },
 	{ &repmgr_siteinfo_status_fid, &repmgr_siteinfo_class, "status", "I" }
 };
 
@@ -1017,10 +1032,18 @@ const struct {
 	    "()V" },
 	{ &rep_client_event_notify_method, &dbenv_class, 
 	    "handle_rep_client_event_notify", "()V" },
+	{ &rep_dupmaster_event_notify_method, &dbenv_class, 
+	    "handle_rep_dupmaster_event_notify" ,"()V" },
 	{ &rep_elected_event_notify_method, &dbenv_class, 
 	    "handle_rep_elected_event_notify" ,"()V" },
+	{ &rep_election_failed_event_notify_method, &dbenv_class, 
+	    "handle_rep_election_failed_event_notify" ,"()V" },
+	{ &rep_join_failure_event_notify_method, &dbenv_class, 
+	    "handle_rep_join_failure_event_notify" ,"()V" },
 	{ &rep_master_event_notify_method, &dbenv_class, 
 	    "handle_rep_master_event_notify", "()V" },
+	{ &rep_master_failure_event_notify_method, &dbenv_class, 
+	    "handle_rep_master_failure_event_notify", "()V" },
 	{ &rep_new_master_event_notify_method, &dbenv_class, 
 	    "handle_rep_new_master_event_notify", "(I)V" },
 	{ &rep_perm_failed_event_notify_method, &dbenv_class, 
@@ -1194,11 +1217,11 @@ static jobject __dbj_wrap_DB_LSN(JNIEnv *jenv, DB_LSN *lsn)
 
 
 static jthrowable __dbj_get_except(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv) {
+    int ret, const char *msg, jobject obj, jobject jdbenv) {
 	jobject jmsg;
 
 	if (msg == NULL)
-		msg = db_strerror(err);
+		msg = db_strerror(ret);
 
 	jmsg = (*jenv)->NewStringUTF(jenv, msg);
 
@@ -1208,7 +1231,7 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 		    jdbenv, dbenv_class, get_err_msg_method, jmsg);
 	}
 
-	switch (err) {
+	switch (ret) {
 	case EINVAL:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    illegalargex_class, illegalargex_construct, jmsg);
@@ -1223,78 +1246,78 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 
 	case DB_BUFFER_SMALL:
 		return (jthrowable)(*jenv)->NewObject(jenv, memex_class,
-		    memex_construct, jmsg, obj, err, jdbenv);
+		    memex_construct, jmsg, obj, ret, jdbenv);
 
 	case DB_REP_DUPMASTER:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repdupmasterex_class, repdupmasterex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_HANDLE_DEAD:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    rephandledeadex_class, rephandledeadex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_HOLDELECTION:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repholdelectionex_class, repholdelectionex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_JOIN_FAILURE:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repjoinfailex_class, repjoinfailex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LEASE_EXPIRED:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repleaseexpiredex_class, repleaseexpiredex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LEASE_TIMEOUT:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repleasetimeoutex_class, repleasetimeoutex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LOCKOUT:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    replockoutex_class, replockoutex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_UNAVAIL:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repunavailex_class, repunavailex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_RUNRECOVERY:
 		return (jthrowable)(*jenv)->NewObject(jenv, runrecex_class,
-		    runrecex_construct, jmsg, err, jdbenv);
+		    runrecex_construct, jmsg, ret, jdbenv);
 
 	case DB_LOCK_DEADLOCK:
 		return (jthrowable)(*jenv)->NewObject(jenv, deadex_class,
-		    deadex_construct, jmsg, err, jdbenv);
+		    deadex_construct, jmsg, ret, jdbenv);
 
 	case DB_LOCK_NOTGRANTED:
 		return (jthrowable)(*jenv)->NewObject(jenv, lockex_class,
-		    lockex_construct, jmsg, err, 0, NULL, NULL, 0, jdbenv);
+		    lockex_construct, jmsg, ret, 0, NULL, NULL, 0, jdbenv);
 
 	case DB_VERSION_MISMATCH:
 		return (jthrowable)(*jenv)->NewObject(jenv, versionex_class,
-		    versionex_construct, jmsg, err, jdbenv);
+		    versionex_construct, jmsg, ret, jdbenv);
 
 	default:
 		return (jthrowable)(*jenv)->NewObject(jenv, dbex_class,
-		    dbex_construct, jmsg, err, jdbenv);
+		    dbex_construct, jmsg, ret, jdbenv);
 	}
 }
 
 static int __dbj_throw(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv)
+    int ret, const char *msg, jobject obj, jobject jdbenv)
 {
 	jthrowable t;
 
 	/* If an exception is pending, ignore requests to throw a new one. */
 	if ((*jenv)->ExceptionOccurred(jenv) == NULL) {
-		t = __dbj_get_except(jenv, err, msg, obj, jdbenv);
+		t = __dbj_get_except(jenv, ret, msg, obj, jdbenv);
 		if (t == NULL) {
 			/*
 			 * This is a problem - something went wrong creating an
@@ -1304,7 +1327,7 @@ static int __dbj_throw(JNIEnv *jenv,
 			 * this error, so we just call __db_errx here.
 			 */
 			if (msg == NULL)
-				msg = db_strerror(err);
+				msg = db_strerror(ret);
 
 			 __db_errx(NULL, "Couldn't create exception for: '%s'",
 			     msg);
@@ -1312,8 +1335,41 @@ static int __dbj_throw(JNIEnv *jenv,
 			(*jenv)->Throw(jenv, t);
 	}
 
-	return (err);
+	return (ret);
 }
+
+
+typedef int db_ret_t;
+typedef int int_bool;
+
+struct __db_lk_conflicts {
+       u_int8_t *lk_conflicts;
+       int lk_modes;
+};
+
+struct __db_out_stream {
+       void *handle;
+       int (*callback) __P((void *, const void *));
+};
+
+struct __db_repmgr_sites {
+       DB_REPMGR_SITE *sites;
+       u_int32_t nsites;
+};
+
+#define        Db __db
+#define        Dbc __dbc
+#define        Dbt __db_dbt
+#define        DbEnv __db_env
+#define        DbLock __db_lock_u
+#define        DbLogc __db_log_cursor
+#define        DbLsn __db_lsn
+#define        DbMpoolFile __db_mpoolfile
+#define        DbSequence __db_sequence
+#define        DbTxn __db_txn
+
+/* Suppress a compilation warning for an unused symbol */
+void *unused = (void *)SWIG_JavaThrowException;
 
 
 typedef struct __dbt_locked {
@@ -1589,7 +1645,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	DBT_LOCKED *locked_dbts;
 	DBT *obj;
 	ENV *env;
-	int err, alloc_err, i;
+	int alloc_err, i, ret;
 	size_t bytesize, ldbtsize;
 	jobject jlockreq;
 	db_lockop_t op;
@@ -1622,15 +1678,15 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	}
 
 	bytesize = sizeof(DB_LOCKREQ) * count;
-	if ((err = __os_malloc(env, bytesize, &lockreq)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	if ((ret = __os_malloc(env, bytesize, &lockreq)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 		return;
 	}
 	memset(lockreq, 0, bytesize);
 
 	ldbtsize = sizeof(DBT_LOCKED) * count;
-	if ((err = __os_malloc(env, ldbtsize, &locked_dbts)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	if ((ret = __os_malloc(env, ldbtsize, &locked_dbts)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 		goto err;
 	}
 	memset(locked_dbts, 0, ldbtsize);
@@ -1661,9 +1717,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			    jenv, jlockreq, lockreq_modeflag_fid);
 			jobj = (*jenv)->GetObjectField(jenv, jlockreq,
 			    lockreq_obj_fid);
-			if ((err = __dbj_dbt_copyin(jenv,
+			if ((ret = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
-			    (err = __dbt_usercopy(env, obj)) != 0)
+			    (ret = __dbt_usercopy(env, obj)) != 0)
 				goto err;
 			prereq->obj = obj;
 			break;
@@ -1690,9 +1746,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			/* Needed: obj.  Ignored: lock, mode. */
 			jobj = (*jenv)->GetObjectField(jenv, jlockreq,
 			    lockreq_obj_fid);
-			if ((err = __dbj_dbt_copyin(jenv,
+			if ((ret = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
-			    (err = __dbt_usercopy(env, obj)) != 0)
+			    (ret = __dbt_usercopy(env, obj)) != 0)
 				goto err;
 			prereq->obj = obj;
 			break;
@@ -1703,9 +1759,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 		}
 	}
 
-	err = dbenv->lock_vec(dbenv, (u_int32_t)locker, (u_int32_t)flags,
+	ret = dbenv->lock_vec(dbenv, (u_int32_t)locker, (u_int32_t)flags,
 	    lockreq, count, &failedreq);
-	if (err == 0)
+	if (ret == 0)
 		completed = count;
 	else
 		completed = (int)(failedreq - lockreq);
@@ -1758,7 +1814,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	}
 
 	/* If one of the locks was not granted, build the exception now. */
-	if (err == DB_LOCK_NOTGRANTED && i < count) {
+	if (ret == DB_LOCK_NOTGRANTED && i < count) {
 		jlockreq = (*jenv)->GetObjectArrayElement(jenv, list,
 		    i + offset);
 		jobj = (*jenv)->GetObjectField(jenv, jlockreq, lockreq_obj_fid);
@@ -1768,8 +1824,8 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 		    (*jenv)->NewObject(jenv, lockex_class, lockex_construct,
 		    (*jenv)->NewStringUTF(jenv, "DbEnv.lock_vec incomplete"),
 		    lockreq[i].op, lockreq[i].mode, jobj, jlock, i, jdbenv));
-	} else if (err != 0)
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	} else if (ret != 0)
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 
 err:	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++)
 		if (prereq->op == DB_LOCK_GET_TIMEOUT ||
@@ -1786,6 +1842,68 @@ err:	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++)
 		__os_free(env, locked_dbts);
 	if (lockreq != NULL)
 		__os_free(env, lockreq);
+}
+
+
+SWIGEXPORT void JNICALL
+Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1commit(JNIEnv *jenv,
+    jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  struct DbTxn *txn = (struct DbTxn *) 0 ;
+  ENV *env = (ENV *) 0 ;
+  u_int32_t flags;
+  DB_TXN_TOKEN token;
+  db_ret_t result;
+  db_ret_t result1;
+  int is_nested, is_logging_enabled, is_rep_client, commit_token_enabled;
+  
+  (void)jcls;
+  txn = *(struct DbTxn **)&jarg1; 
+  flags = (u_int32_t)jarg2; 
+  
+  if (jarg1 == 0) {
+     __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+  return ;
+  }
+
+  /*
+   * The Java API uses set_commit_token in a different way to the C API.
+   * In Java a commit token is always generated, unless doing so would
+   * generate an error from the C API.
+   * The checks below are based on those in place in the implementation
+   * of set_commit_token in the C API. It is invalid to set a commit
+   * token for a subtransaction, or if logging is disabled, or on a rep
+   * client node.
+   */
+  env = txn->mgrp->env;
+  is_nested = (txn->parent != NULL);
+  is_logging_enabled = env->lg_handle != NULL;
+  is_rep_client = (env->rep_handle != NULL && 
+                   env->rep_handle->region != NULL &&
+                   F_ISSET((env->rep_handle->region), REP_F_CLIENT));
+  commit_token_enabled = (!is_nested && is_logging_enabled && !is_rep_client);
+
+  if (commit_token_enabled) {
+    result1 = (db_ret_t)txn->set_commit_token(txn, &token);
+  }
+
+  result = (db_ret_t)txn->commit(txn, flags);
+  if (!DB_RETOK_STD(result)) {
+     __dbj_throw(jenv, result, NULL, NULL, NULL);
+  }
+
+  /* 
+   * Set the commit token in the Java Transaction class object only if 
+   * the Core has generated a valid token for this transaction
+   */
+  if (commit_token_enabled && DB_RETOK_STD(result1)) {
+     jbyteArray newarr = (*jenv)->NewByteArray(jenv, (jsize)DB_TXN_TOKEN_SIZE);
+     if (newarr == NULL) {
+        return; /* An exception is pending */
+     }
+     (*jenv)->SetByteArrayRegion(jenv, newarr, 0, (jsize)DB_TXN_TOKEN_SIZE,
+        (jbyte *)&token);
+     (*jenv)->SetObjectField(jenv, jarg1_, txn_commit_token, newarr);
+  }
 }
 
 
@@ -1877,7 +1995,7 @@ static void __dbj_message(const DB_ENV *dbenv, const char *msg)
 		__dbj_detach();
 }
 
-static void __dbj_panic(DB_ENV *dbenv, int err)
+static void __dbj_panic(DB_ENV *dbenv, int ret)
 {
 	int detach;
 	JNIEnv *jenv = __dbj_get_jnienv(&detach);
@@ -1886,7 +2004,7 @@ static void __dbj_panic(DB_ENV *dbenv, int err)
 	if (jdbenv != NULL)
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
 		    paniccall_method,
-		    __dbj_get_except(jenv, err, NULL, NULL, jdbenv));
+		    __dbj_get_except(jenv, ret, NULL, NULL, jdbenv));
 
 	if (detach)
 		__dbj_detach();
@@ -1952,13 +2070,29 @@ static void __dbj_event_notify(DB_ENV *dbenv, u_int32_t event_id, void * info)
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_client_event_notify_method);
 		break;
+	case DB_EVENT_REP_DUPMASTER:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_dupmaster_event_notify_method);
+		break;
 	case DB_EVENT_REP_ELECTED:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_elected_event_notify_method);
 		break;
+	case DB_EVENT_REP_ELECTION_FAILED:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_election_failed_event_notify_method);
+		break;
+	case DB_EVENT_REP_JOIN_FAILURE:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_join_failure_event_notify_method);
+		break;
 	case DB_EVENT_REP_MASTER:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_master_event_notify_method);
+		break;
+	case DB_EVENT_REP_MASTER_FAILURE:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_master_failure_event_notify_method);
 		break;
 	case DB_EVENT_REP_NEWMASTER:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
@@ -2742,39 +2876,6 @@ Java_com_sleepycat_db_internal_DbUtil_is_1big_1endian(
 	return (__db_isbigendian() ? JNI_TRUE : JNI_FALSE);
 }
 
-
-typedef int db_ret_t;
-typedef int int_bool;
-
-struct __db_lk_conflicts {
-	u_int8_t *lk_conflicts;
-	int lk_modes;
-};
-
-struct __db_out_stream {
-	void *handle;
-	int (*callback) __P((void *, const void *));
-};
-
-struct __db_repmgr_sites {
-	DB_REPMGR_SITE *sites;
-	u_int32_t nsites;
-};
-
-#define	Db __db
-#define	Dbc __dbc
-#define	Dbt __db_dbt
-#define	DbEnv __db_env
-#define	DbLock __db_lock_u
-#define	DbLogc __db_log_cursor
-#define	DbLsn __db_lsn
-#define	DbMpoolFile __db_mpoolfile
-#define	DbSequence __db_sequence
-#define	DbTxn __db_txn
-
-/* Suppress a compilation warning for an unused symbol */
-void *unused = (void *)SWIG_JavaThrowException;
-
 SWIGINTERN struct Db *new_Db(DB_ENV *dbenv,u_int32_t flags){
 		DB *self = NULL;
 		errno = db_create(&self, dbenv, flags);
@@ -2804,8 +2905,8 @@ SWIGINTERN DBC *Db_cursor(struct Db *self,DB_TXN *txnid,u_int32_t flags){
 SWIGINTERN int Db_del(struct Db *self,DB_TXN *txnid,DBT *key,u_int32_t flags){
 		return self->del(self, txnid, key, flags);
 	}
-SWIGINTERN void Db_err(struct Db *self,int error,char const *message){
-		self->err(self, error, message);
+SWIGINTERN void Db_err(struct Db *self,int ret,char const *message){
+		self->err(self, ret, message);
 	}
 SWIGINTERN void Db_errx(struct Db *self,char const *message){
 		self->errx(self, message);
@@ -3140,8 +3241,8 @@ SWIGINTERN db_ret_t DbEnv_dbrename(struct DbEnv *self,DB_TXN *txnid,char const *
 		return self->dbrename(self,
 		    txnid, file, database, newname, flags);
 	}
-SWIGINTERN void DbEnv_err(struct DbEnv *self,int error,char const *message){
-		self->err(self, error, message);
+SWIGINTERN void DbEnv_err(struct DbEnv *self,int ret,char const *message){
+		self->err(self, ret, message);
 	}
 SWIGINTERN void DbEnv_errx(struct DbEnv *self,char const *message){
 		self->errx(self, message);
@@ -3251,10 +3352,10 @@ SWIGINTERN db_ret_t DbEnv_set_mp_max_write(struct DbEnv *self,int maxwrite,db_ti
 SWIGINTERN db_ret_t DbEnv_set_mp_mmapsize(struct DbEnv *self,size_t mp_mmapsize){
 		return self->set_mp_mmapsize(self, mp_mmapsize);
 	}
-SWIGINTERN db_ret_t DbEnv_set_mp_pagesize(struct DbEnv *self,size_t mp_pagesize){
+SWIGINTERN db_ret_t DbEnv_set_mp_pagesize(struct DbEnv *self,u_int32_t mp_pagesize){
 		return self->set_mp_pagesize(self, mp_pagesize);
 	}
-SWIGINTERN db_ret_t DbEnv_set_mp_tablesize(struct DbEnv *self,size_t mp_tablesize){
+SWIGINTERN db_ret_t DbEnv_set_mp_tablesize(struct DbEnv *self,u_int32_t mp_tablesize){
 		return self->set_mp_tablesize(self, mp_tablesize);
 	}
 SWIGINTERN void DbEnv_set_msgcall(struct DbEnv *self,void (*db_msgcall_fcn)(DB_ENV const *,char const *)){
@@ -3322,6 +3423,11 @@ SWIGINTERN u_int32_t DbEnv_get_lk_partitions(struct DbEnv *self){
 		errno = self->get_lk_partitions(self, &ret);
 		return ret;
 	}
+SWIGINTERN u_int32_t DbEnv_get_lk_priority(struct DbEnv *self,u_int32_t lockerid){
+		u_int32_t ret;
+		errno = self->get_lk_priority(self, lockerid, &ret);
+		return ret;
+	}
 SWIGINTERN int DbEnv_lock_detect(struct DbEnv *self,u_int32_t flags,u_int32_t atype){
 		int aborted;
 		errno = self->lock_detect(self, flags, atype, &aborted);
@@ -3368,6 +3474,9 @@ SWIGINTERN db_ret_t DbEnv_set_lk_max_objects(struct DbEnv *self,u_int32_t max){
 	}
 SWIGINTERN db_ret_t DbEnv_set_lk_partitions(struct DbEnv *self,u_int32_t partitions){
 		return self->set_lk_partitions(self, partitions);
+	}
+SWIGINTERN db_ret_t DbEnv_set_lk_priority(struct DbEnv *self,u_int32_t lockerid,u_int32_t priority){
+		return self->set_lk_priority(self, lockerid, priority);
 	}
 SWIGINTERN u_int32_t DbEnv_get_lg_bsize(struct DbEnv *self){
 		u_int32_t ret;
@@ -3434,6 +3543,11 @@ SWIGINTERN DB_LOG_STAT *DbEnv_log_stat(struct DbEnv *self,u_int32_t flags){
 		errno = self->log_stat(self, &sp, flags);
 		return sp;
 	}
+SWIGINTERN int DbEnv_log_verify(struct DbEnv *self,char const *envhome,u_int32_t cachesz,char const *dbfile,char const *dbname,time_t stime,time_t etime,u_int32_t stfile,u_int32_t stoffset,u_int32_t efile,u_int32_t eoffset,int caf,int verbose){
+                return self->env->log_verify_wrap(self->env, envhome, cachesz,
+                    dbfile, dbname, stime, etime, stfile, stoffset, efile, 
+                    eoffset, caf, verbose);
+        }
 SWIGINTERN db_ret_t DbEnv_set_lg_bsize(struct DbEnv *self,u_int32_t lg_bsize){
 		return self->set_lg_bsize(self, lg_bsize);
 	}
@@ -3570,6 +3684,9 @@ SWIGINTERN db_timeout_t DbEnv_get_timeout(struct DbEnv *self,u_int32_t flag){
 		db_timeout_t ret;
 		errno = self->get_timeout(self, &ret, flag);
 		return ret;
+	}
+SWIGINTERN int DbEnv_txn_applied(struct DbEnv *self,DB_TXN_TOKEN *token,u_int32_t maxwait,u_int32_t flags){
+		return self->txn_applied(self, token, maxwait, flags);
 	}
 SWIGINTERN DB_TXN *DbEnv_txn_begin(struct DbEnv *self,DB_TXN *parent,u_int32_t flags){
 		DB_TXN *tid = NULL;
@@ -3724,8 +3841,14 @@ SWIGINTERN DB_REPMGR_STAT *DbEnv_repmgr_stat(struct DbEnv *self,u_int32_t flags)
 		errno = self->repmgr_stat(self, &statp, flags);
 		return statp;
 	}
-SWIGINTERN char const *DbEnv_strerror(int error){
-		return db_strerror(error);
+SWIGINTERN char const *DbEnv_strerror(int ret){
+		return db_strerror(ret);
+	}
+SWIGINTERN int DbEnv_get_version_family(){
+		return DB_VERSION_FAMILY;
+	}
+SWIGINTERN int DbEnv_get_version_release(){
+		return DB_VERSION_RELEASE;
 	}
 SWIGINTERN int DbEnv_get_version_major(){
 		return DB_VERSION_MAJOR;
@@ -3738,6 +3861,9 @@ SWIGINTERN int DbEnv_get_version_patch(){
 	}
 SWIGINTERN char const *DbEnv_get_version_string(){
 		return DB_VERSION_STRING;
+	}
+SWIGINTERN char const *DbEnv_get_version_full_string(){
+		return DB_VERSION_FULL_STRING;
 	}
 SWIGINTERN void delete_DbLock(struct DbLock *self){
 		__os_free(NULL, self);
@@ -3846,9 +3972,6 @@ SWIGINTERN DB_SEQUENCE_STAT *DbSequence_stat(struct DbSequence *self,u_int32_t f
 SWIGINTERN db_ret_t DbTxn_abort(struct DbTxn *self){
 		return self->abort(self);
 	}
-SWIGINTERN db_ret_t DbTxn_commit(struct DbTxn *self,u_int32_t flags){
-		return self->commit(self, flags);
-	}
 SWIGINTERN db_ret_t DbTxn_discard(struct DbTxn *self,u_int32_t flags){
 		return self->discard(self, flags);
 	}
@@ -3856,6 +3979,11 @@ SWIGINTERN char const *DbTxn_get_name(struct DbTxn *self){
 		const char *name = NULL;
 		errno = self->get_name(self, &name);
 		return name;
+	}
+SWIGINTERN u_int32_t DbTxn_get_priority(struct DbTxn *self){
+		u_int32_t priority;
+		errno = self->get_priority(self, &priority);
+		return priority;
 	}
 SWIGINTERN u_int32_t DbTxn_id(struct DbTxn *self){
 		return self->id(self);
@@ -3868,6 +3996,9 @@ SWIGINTERN db_ret_t DbTxn_set_timeout(struct DbTxn *self,db_timeout_t timeout,u_
 	}
 SWIGINTERN db_ret_t DbTxn_set_name(struct DbTxn *self,char const *name){
 		return self->set_name(self, name);
+	}
+SWIGINTERN db_ret_t DbTxn_set_priority(struct DbTxn *self,u_int32_t priority){
+		return self->set_priority(self, priority);
 	}
 
 #ifdef __cplusplus
@@ -4713,7 +4844,7 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_Db_1g
   
   {
     if (result != NULL) {
-      /*@SWIG:../libdb_java/java_typemaps.i,367,STRING_ARRAY_OUT@*/	int i, len;
+      /*@SWIG:../libdb_java/java_typemaps.i,436,STRING_ARRAY_OUT@*/	int i, len;
       
       len = 0;
       while (result[len] != NULL)
@@ -4966,11 +5097,11 @@ SWIGEXPORT jlong JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_Db_1join(JNI
   (void)jarg1_;
   arg1 = *(struct Db **)&jarg1; 
   {
-    int i, count, err;
+    int i, count, ret;
     
     count = (*jenv)->GetArrayLength(jenv, jarg2);
-    if ((err = __os_malloc(NULL, (count + 1) * sizeof(DBC *), &arg2)) != 0) {
-      __dbj_throw(jenv, err, NULL, NULL, DB2JDBENV);
+    if ((ret = __os_malloc(NULL, (count + 1) * sizeof(DBC *), &arg2)) != 0) {
+      __dbj_throw(jenv, ret, NULL, NULL, DB2JDBENV);
       return 0;
     }
     for (i = 0; i < count; i++) {
@@ -5995,10 +6126,10 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_Db_1stat(J
   else {
     DB *db = (DB *)arg1;
     DBTYPE dbtype;
-    int err;
+    int ret;
     
-    if ((err = db->get_type(db, &dbtype)) != 0) {
-      __dbj_throw(jenv, err, NULL, NULL, DB2JDBENV);
+    if ((ret = db->get_type(db, &dbtype)) != 0) {
+      __dbj_throw(jenv, ret, NULL, NULL, DB2JDBENV);
       return 0;
     }
     
@@ -6749,7 +6880,7 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv
   
   {
     if (result != NULL) {
-      /*@SWIG:../libdb_java/java_typemaps.i,367,STRING_ARRAY_OUT@*/	int i, len;
+      /*@SWIG:../libdb_java/java_typemaps.i,436,STRING_ARRAY_OUT@*/	int i, len;
       
       len = 0;
       while (result[len] != NULL)
@@ -7407,16 +7538,16 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1m
 }
 
 
-SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1mp_1pagesize(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
+SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1mp_1pagesize(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   struct DbEnv *arg1 = (struct DbEnv *) 0 ;
-  size_t arg2 ;
+  u_int32_t arg2 ;
   db_ret_t result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(struct DbEnv **)&jarg1; 
-  arg2 = (size_t)jarg2; 
+  arg2 = (u_int32_t)jarg2; 
   
   if (jarg1 == 0) {
     __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
@@ -7431,16 +7562,16 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1m
 }
 
 
-SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1mp_1tablesize(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jlong jarg2) {
+SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1mp_1tablesize(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   struct DbEnv *arg1 = (struct DbEnv *) 0 ;
-  size_t arg2 ;
+  u_int32_t arg2 ;
   db_ret_t result;
   
   (void)jenv;
   (void)jcls;
   (void)jarg1_;
   arg1 = *(struct DbEnv **)&jarg1; 
-  arg2 = (size_t)jarg2; 
+  arg2 = (u_int32_t)jarg2; 
   
   if (jarg1 == 0) {
     __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
@@ -7917,6 +8048,34 @@ SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1l
 }
 
 
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1lk_1priority(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  jint jresult = 0 ;
+  struct DbEnv *arg1 = (struct DbEnv *) 0 ;
+  u_int32_t arg2 ;
+  u_int32_t result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbEnv **)&jarg1; 
+  arg2 = (u_int32_t)jarg2; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return 0;
+  }
+  
+  errno = 0;
+  result = (u_int32_t)DbEnv_get_lk_priority(arg1,arg2);
+  if (!DB_RETOK_STD(errno)) {
+    __dbj_throw(jenv, errno, NULL, NULL, JDBENV);
+  }
+  
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1detect(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3) {
   jint jresult = 0 ;
   struct DbEnv *arg1 = (struct DbEnv *) 0 ;
@@ -8104,14 +8263,14 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1l
   (void)jarg1_;
   arg1 = *(struct DbEnv **)&jarg1; 
   {
-    int i, len, err;
+    int i, len, ret;
     size_t bytesize;
     
     len = (&arg2)->lk_modes = (*jenv)->GetArrayLength(jenv, jarg2);
     bytesize = sizeof(u_char) * len * len;
     
-    if ((err = __os_malloc(NULL, bytesize, &(&arg2)->lk_conflicts)) != 0) {
-      __dbj_throw(jenv, err, NULL, NULL, JDBENV);
+    if ((ret = __os_malloc(NULL, bytesize, &(&arg2)->lk_conflicts)) != 0) {
+      __dbj_throw(jenv, ret, NULL, NULL, JDBENV);
       return ;
     }
     
@@ -8252,6 +8411,32 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1l
   }
   
   result = (db_ret_t)DbEnv_set_lk_partitions(arg1,arg2);
+  if (!DB_RETOK_STD(result)) {
+    __dbj_throw(jenv, result, NULL, NULL, JDBENV);
+  }
+  
+}
+
+
+SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1set_1lk_1priority(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2, jint jarg3) {
+  struct DbEnv *arg1 = (struct DbEnv *) 0 ;
+  u_int32_t arg2 ;
+  u_int32_t arg3 ;
+  db_ret_t result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbEnv **)&jarg1; 
+  arg2 = (u_int32_t)jarg2; 
+  arg3 = (u_int32_t)jarg3; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return ;
+  }
+  
+  result = (db_ret_t)DbEnv_set_lk_priority(arg1,arg2,arg3);
   if (!DB_RETOK_STD(result)) {
     __dbj_throw(jenv, result, NULL, NULL, JDBENV);
   }
@@ -8414,7 +8599,7 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv
   
   {
     if (result != NULL) {
-      /*@SWIG:../libdb_java/java_typemaps.i,367,STRING_ARRAY_OUT@*/	int i, len;
+      /*@SWIG:../libdb_java/java_typemaps.i,436,STRING_ARRAY_OUT@*/	int i, len;
       
       len = 0;
       while (result[len] != NULL)
@@ -8788,6 +8973,75 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1log
   __dbj_fill_log_stat(jenv, jresult, result);
   __os_ufree(NULL, result);
   
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1log_1verify(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jstring jarg2, jint jarg3, jstring jarg4, jstring jarg5, jlong jarg6, jlong jarg7, jint jarg8, jint jarg9, jint jarg10, jint jarg11, jint jarg12, jint jarg13) {
+  jint jresult = 0 ;
+  struct DbEnv *arg1 = (struct DbEnv *) 0 ;
+  char *arg2 = (char *) 0 ;
+  u_int32_t arg3 ;
+  char *arg4 = (char *) 0 ;
+  char *arg5 = (char *) 0 ;
+  time_t arg6 ;
+  time_t arg7 ;
+  u_int32_t arg8 ;
+  u_int32_t arg9 ;
+  u_int32_t arg10 ;
+  u_int32_t arg11 ;
+  int arg12 ;
+  int arg13 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbEnv **)&jarg1; 
+  arg2 = 0;
+  if (jarg2) {
+    arg2 = (char *)(*jenv)->GetStringUTFChars(jenv, jarg2, 0);
+    if (!arg2) return 0;
+  }
+  arg3 = (u_int32_t)jarg3; 
+  arg4 = 0;
+  if (jarg4) {
+    arg4 = (char *)(*jenv)->GetStringUTFChars(jenv, jarg4, 0);
+    if (!arg4) return 0;
+  }
+  arg5 = 0;
+  if (jarg5) {
+    arg5 = (char *)(*jenv)->GetStringUTFChars(jenv, jarg5, 0);
+    if (!arg5) return 0;
+  }
+  
+  arg6 = jarg6;
+  
+  
+  arg7 = jarg7;
+  
+  arg8 = (u_int32_t)jarg8; 
+  arg9 = (u_int32_t)jarg9; 
+  arg10 = (u_int32_t)jarg10; 
+  arg11 = (u_int32_t)jarg11; 
+  arg12 = (int)jarg12; 
+  arg13 = (int)jarg13; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return 0;
+  }
+  
+  errno = 0;
+  result = (int)DbEnv_log_verify(arg1,(char const *)arg2,arg3,(char const *)arg4,(char const *)arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12,arg13);
+  if (!DB_RETOK_STD(errno)) {
+    __dbj_throw(jenv, errno, NULL, NULL, JDBENV);
+  }
+  
+  jresult = (jint)result; 
+  if (arg2) (*jenv)->ReleaseStringUTFChars(jenv, jarg2, (const char *)arg2);
+  if (arg4) (*jenv)->ReleaseStringUTFChars(jenv, jarg4, (const char *)arg4);
+  if (arg5) (*jenv)->ReleaseStringUTFChars(jenv, jarg5, (const char *)arg5);
   return jresult;
 }
 
@@ -9646,6 +9900,51 @@ SWIGEXPORT jlong JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1
   }
   
   jresult = (jlong)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1txn_1applied(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jobject jarg2, jint jarg3, jint jarg4) {
+  jint jresult = 0 ;
+  struct DbEnv *arg1 = (struct DbEnv *) 0 ;
+  DB_TXN_TOKEN *arg2 = (DB_TXN_TOKEN *) 0 ;
+  u_int32_t arg3 ;
+  u_int32_t arg4 ;
+  DB_TXN_TOKEN token2 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbEnv **)&jarg1; 
+  
+  if (jarg2 == NULL) {
+    arg2 = NULL;
+  } else {
+    arg2 = &token2;
+    (*jenv)->GetByteArrayRegion(jenv, (jbyteArray)jarg2, 0, DB_TXN_TOKEN_SIZE, arg2->buf);
+  }
+  
+  arg3 = (u_int32_t)jarg3; 
+  arg4 = (u_int32_t)jarg4; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return 0;
+  }
+  
+  if (arg2 == NULL) {
+    __dbj_throw(jenv, EINVAL, "null txn commit token", NULL, NULL);
+    return 0;
+  }
+  
+  
+  result = (int)DbEnv_txn_applied(arg1,arg2,arg3,arg4);
+  if (!DB_RETOK_TXNAPPLIED(result)) {
+    __dbj_throw(jenv, result, NULL, NULL, JDBENV);
+  }
+  
+  jresult = (jint)result; 
   return jresult;
 }
 
@@ -10622,10 +10921,12 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv
       
       jrep_info = (*jenv)->NewObject(jenv,
         repmgr_siteinfo_class, repmgr_siteinfo_construct, jrep_addr, (&result)->sites[i].eid);
-      (*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_status_fid,
-        (&result)->sites[i].status);
       if (jrep_info == NULL)
       return 0; /* An exception is pending */
+      (*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_flags_fid,
+        (&result)->sites[i].flags);
+      (*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_status_fid,
+        (&result)->sites[i].status);
       
       (*jenv)->SetObjectArrayElement(jenv, jresult, i, jrep_info);
     }
@@ -10708,6 +11009,30 @@ SWIGEXPORT jstring JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1str
 }
 
 
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1version_1family(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)DbEnv_get_version_family(); 
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1version_1release(JNIEnv *jenv, jclass jcls) {
+  jint jresult = 0 ;
+  int result;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (int)DbEnv_get_version_release(); 
+  jresult = (jint)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1version_1major(JNIEnv *jenv, jclass jcls) {
   jint jresult = 0 ;
   int result;
@@ -10751,6 +11076,18 @@ SWIGEXPORT jstring JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get
   (void)jenv;
   (void)jcls;
   result = (char *)DbEnv_get_version_string(); 
+  if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jstring JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1get_1version_1full_1string(JNIEnv *jenv, jclass jcls) {
+  jstring jresult = 0 ;
+  char *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  result = (char *)DbEnv_get_version_full_string(); 
   if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
   return jresult;
 }
@@ -11487,30 +11824,6 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1abort0
 }
 
 
-SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1commit0(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
-  struct DbTxn *arg1 = (struct DbTxn *) 0 ;
-  u_int32_t arg2 ;
-  db_ret_t result;
-  
-  (void)jenv;
-  (void)jcls;
-  (void)jarg1_;
-  arg1 = *(struct DbTxn **)&jarg1; 
-  arg2 = (u_int32_t)jarg2; 
-  
-  if (jarg1 == 0) {
-    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
-    return ;
-  }
-  
-  result = (db_ret_t)DbTxn_commit(arg1,arg2);
-  if (!DB_RETOK_STD(result)) {
-    __dbj_throw(jenv, result, NULL, NULL, NULL);
-  }
-  
-}
-
-
 SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1discard0(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
   struct DbTxn *arg1 = (struct DbTxn *) 0 ;
   u_int32_t arg2 ;
@@ -11557,6 +11870,32 @@ SWIGEXPORT jstring JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1get
   }
   
   if (result) jresult = (*jenv)->NewStringUTF(jenv, (const char *)result);
+  return jresult;
+}
+
+
+SWIGEXPORT jint JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1get_1priority(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_) {
+  jint jresult = 0 ;
+  struct DbTxn *arg1 = (struct DbTxn *) 0 ;
+  u_int32_t result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbTxn **)&jarg1; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return 0;
+  }
+  
+  errno = 0;
+  result = (u_int32_t)DbTxn_get_priority(arg1);
+  if (!DB_RETOK_STD(errno)) {
+    __dbj_throw(jenv, errno, NULL, NULL, TXN2JDBENV);
+  }
+  
+  jresult = (jint)result; 
   return jresult;
 }
 
@@ -11670,6 +12009,30 @@ SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1set_1n
   }
   
   if (arg2) (*jenv)->ReleaseStringUTFChars(jenv, jarg2, (const char *)arg2);
+}
+
+
+SWIGEXPORT void JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1set_1priority(JNIEnv *jenv, jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  struct DbTxn *arg1 = (struct DbTxn *) 0 ;
+  u_int32_t arg2 ;
+  db_ret_t result;
+  
+  (void)jenv;
+  (void)jcls;
+  (void)jarg1_;
+  arg1 = *(struct DbTxn **)&jarg1; 
+  arg2 = (u_int32_t)jarg2; 
+  
+  if (jarg1 == 0) {
+    __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+    return ;
+  }
+  
+  result = (db_ret_t)DbTxn_set_priority(arg1,arg2);
+  if (!DB_RETOK_STD(result)) {
+    __dbj_throw(jenv, result, NULL, NULL, TXN2JDBENV);
+  }
+  
 }
 
 

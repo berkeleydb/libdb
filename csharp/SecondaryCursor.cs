@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -173,10 +173,11 @@ namespace BerkeleyDB {
         /// </remarks>
         /// <param name="key">The key at which to position the cursor</param>
         /// <param name="exact">
-        /// If true, require the given key to match the key in the database
-        /// exactly.  If false, position the cursor at the smallest key greater
-        /// than or equal to the specified key, permitting partial key matches
-        /// and range searches.
+        /// If false and in a database configured for sorted duplicates,
+        /// position the cursor at the smallest key greater than or equal to the
+        /// specified key, permitting partial key matches and range searches.
+        /// Otherwise, require the given key to match the key in the database
+        /// exactly.
         /// </param>
         /// <returns>
         /// True if the cursor was positioned successfully, false otherwise.
@@ -197,10 +198,11 @@ namespace BerkeleyDB {
         /// </remarks>
         /// <param name="key">The key at which to position the cursor</param>
         /// <param name="exact">
-        /// If true, require the given key to match the key in the database
-        /// exactly.  If false, position the cursor at the smallest key greater
-        /// than or equal to the specified key, permitting partial key matches
-        /// and range searches.
+        /// If false and in a database configured for sorted duplicates,
+        /// position the cursor at the smallest key greater than or equal to the
+        /// specified key, permitting partial key matches and range searches.
+        /// Otherwise, require the given key to match the key in the database
+        /// exactly.
         /// </param>
         /// <param name="info">The locking behavior to use.</param>
         /// <returns>
@@ -233,11 +235,11 @@ namespace BerkeleyDB {
         /// The key/data pair at which to position the cursor.
         /// </param>
         /// <param name="exact">
-        /// If true, require the given key and data to match the key and data
-        /// in the database exactly.  If false, position the cursor at the
-        /// smallest data value which is greater than or equal to the value
-        /// provided by <paramref name="pair.Value"/> (as determined by the
-        /// comparison function).
+        /// If false and in a database configured for sorted duplicates,
+        /// position the cursor at the smallest data value which is greater than
+        /// or equal to the value provided by <paramref name="pair.Value"/> (as
+        /// determined by the comparison function). Otherwise, require the given
+        /// key and data to match the key and data in the database exactly.
         /// </param>
         /// <returns>
         /// True if the cursor was positioned successfully, false otherwise.
@@ -265,11 +267,11 @@ namespace BerkeleyDB {
         /// The key/data pair at which to position the cursor.
         /// </param>
         /// <param name="exact">
-        /// If true, require the given key and data to match the key and data
-        /// in the database exactly.  If false, position the cursor at the
-        /// smallest data value which is greater than or equal to the value
-        /// provided by <paramref name="pair.Value"/> (as determined by the
-        /// comparison function).
+        /// If false and in a database configured for sorted duplicates,
+        /// position the cursor at the smallest data value which is greater than
+        /// or equal to the value provided by <paramref name="pair.Value"/> (as
+        /// determined by the comparison function). Otherwise, require the given
+        /// key and data to match the key and data in the database exactly.
         /// </param>
         /// <param name="info">The locking behavior to use.</param>
         /// <returns>

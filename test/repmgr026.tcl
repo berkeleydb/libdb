@@ -1,179 +1,234 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# TEST repmgr026
-# TEST Repmgr site address discovery via NEWSITE
+# TEST	repmgr026
+# TEST	Test of "full election" timeouts.
+# TEST	1. Cold boot with all sites present.
+# TEST	2. Cold boot with some sites missing.
+# TEST	3. Partial-participation election with one client having seen a master,
+# TEST	   but another just starting up fresh.
+# TEST	4. Partial participation, with all participants already having seen a
+# TEST	   master.
 # TEST
-# TEST New client, previously unknown to (main) master process, connects to an
-# TEST existing client, which broadcasts NEWSITE message.
-# TEST This causes master to discover its address, and connect to it.
-# TEST Other new clients may also have been added to master's configuration in
-# TEST the interim (via a subordinate master process).
 
-proc repmgr026 { } {
-	foreach sitelist { {} {2} {3 2} {3 2 4} {3} } {
-		repmgr026_sub $sitelist
+proc repmgr026 { { tnum 026 } } {
+	source ./include.tcl
+
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
+	}
+
+	foreach use_leases {no yes} {
+		foreach client_down {no yes} {
+			puts "Repmgr$tnum: Full election test, \
+			    client_down: $client_down; leases: $use_leases"
+			repmgr026_sub $tnum $client_down $use_leases
+		}
 	}
 }
 
-proc repmgr026_sub { extras } {
-	source ./include.tcl
+proc repmgr026_sub { tnum client_down use_leases } {
+	global testdir
+	global repfiles_in_memory
+	global rep_verbose
+	global verbose_type
+	
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
 
-	set tnum "026"
-	puts "Repmgr$tnum:\
-	    Repmgr and NEWSITE, with these extra clients: {$extras}"
-	set site_prog [setup_site_prog]
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
 	env_cleanup $testdir
+	file mkdir [set dira $testdir/SITE_A]
+	file mkdir [set dirb $testdir/SITE_B]
+	file mkdir [set dirc $testdir/SITE_C]
+	foreach { porta portb portc } [available_ports 3] {}
 
-	set ports [available_ports 5]
-	set master_port [lindex $ports 0]
-	set portB [lindex $ports 1]
-	set portC [lindex $ports 2]
-	
-	set i 0
-	foreach site_id "A B C D E" {
-		set d "$testdir/$site_id"
-		set dirs($i) $d
-		file mkdir $d
-		incr i
-	}
-	set masterdir $dirs(0)
-	set dirB $dirs(1)
-	set dirC $dirs(2)
-
-	puts "\tRepmgr$tnum.a: Start 2 processes at master."
-	make_dbconfig $masterdir {{rep_set_nsites 5}
-		{rep_set_timeout DB_REP_CONNECTION_RETRY 300000000}}
-	set m1 [open "| $site_prog" "r+"]
-	fconfigure $m1 -buffering line
-	puts $m1 "home $masterdir"
-	puts $m1 "local $master_port"
-	puts $m1 "output $testdir/m1output"
-	puts $m1 "open_env"
-	puts $m1 "start master"
-	gets $m1
-
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "output $testdir/m2output"
-	puts $m2 "open_env"
-	puts $m2 "echo done"
-	gets $m2
-
-	puts "\tRepmgr$tnum.b: Start client B, connecting to master."
-	make_dbconfig $dirB {{rep_set_nsites 5}}
-	set b [open "| $site_prog" "r+"]
-	fconfigure $b -buffering line
-	puts $b "home $dirB"
-	puts $b "local $portB"
-	puts $b "remote localhost $master_port"
-	puts $b "output $testdir/boutput"
-	puts $b "open_env"
-	puts $b "start client"
-	gets $b
-	
-	set envB [berkdb_env -home $dirB]
-	await_startup_done $envB
-
-	# Add some newly arrived client configurations to the master, but do it
-	# via the subordinate process A2, so that the main process doesn't
-	# notice them until it gets the NEWSITE message.  Note that these
-	# clients aren't running yet.
+	# Cold boot the group (with or without site C), giving site A a
+	# high priority.
 	# 
-	puts "\tRepmgr$tnum.c: Add new client addresses at master."
-	foreach client_index $extras {
-		puts $m2 "remote localhost [lindex $ports $client_index]"
-		if {$client_index == 2} {
-			# Start client C last, below.
-			continue;
-		}
-		make_dbconfig $dirs($client_index) {{rep_set_nsites 5}}
-		set x [open "| $site_prog" "r+"]
-		fconfigure $x -buffering line
-		puts $x "home $dirs($client_index)"
-		puts $x "local [lindex $ports $client_index]"
-		puts $x "output $testdir/c${client_index}output"
-		puts $x "open_env"
-		puts $x "start client"
-		gets $x
-		set sites($client_index) $x
+	set common "-create -txn $verbargs $repmemargs \
+	    -rep -thread -event"
+	if { $use_leases } {
+		append common " -rep_lease {[list 3 3000000]} "
 	}
-	puts $m2 "echo done"
-	gets $m2
+	set common_mgr "-nsites 3 -start elect -timeout {conn_retry 5000000} \
+	    -timeout {elect_retry 2000000}"
+	set times "-timeout {full_elect 60000000} -timeout {elect 5000000} \
+	    -timeout {ack 3000000}"
 
-	# Start client C, triggering the NEWSITE mechanism at the master.
+	# The wait_limit's are intended to be an amount that is way more than
+	# the expected timeout, used for nothing more than preventing the test
+	# from hanging forever.  The leeway amount should be enough less than
+	# the timeout to allow for any imprecision introduced by the test
+	# mechanism.
+	# 
+	set elect_wait_limit 25
+	set full_secs_leeway 59
+	set full_wait_limit 85
+
+	puts "\tRepmgr$tnum.a: Start first two sites."
+	set cmda "berkdb_env_noerr $common -errpfx SITE_A -home $dira"
+	set enva [eval $cmda]
+	eval $enva repmgr $common_mgr $times -pri 200 \
+	    -local {[list localhost $porta]}
+
+	set cmdb "berkdb_env_noerr $common -errpfx SITE_B -home $dirb"
+	set envb [eval $cmdb]
+	eval $envb repmgr $common_mgr $times -pri 100 \
+	    -local {[list localhost $portb]} -remote {[list localhost $porta]}
+
+	set cmdc "berkdb_env_noerr $common -errpfx SITE_C -home $dirc"
+	if { $client_down } {
+		set envc NONE
+	} else {
+		puts "\tRepmgr$tnum.b: Start third site."
+		set envc [eval $cmdc]
+		eval $envc repmgr $common_mgr $times -pri 50 \
+		    -local {[list localhost $portc]} \
+		    -remote {[list localhost $porta]}
+	}
+
+	# wait for results, and make sure they're correct
 	#
-	puts "\tRepmgr$tnum.d: Start client C, connecting first only to B."
-	make_dbconfig $dirC {{rep_set_nsites 5}}
-	set c [open "| $site_prog" "r+"]
-	fconfigure $c -buffering line
-	puts $c "home $dirC"
-	puts $c "local $portC"
-	puts $c "remote localhost $portB"
-	puts $c "output $testdir/coutput"
-	puts $c "open_env"
-	puts $c "start client"
-	gets $c
-	
-	# First check for startup-done at site C.
-	# 
-	set envC [berkdb_env -home $dirC]
-	await_startup_done $envC 15
-	$envC close
+	set envlist [list $enva $envb]
+	if { $envc != "NONE" } {
+		lappend envlist $envc
+	}
+	set limit $full_wait_limit
+	puts "\tRepmgr$tnum.c: wait (up to $limit seconds) for first election."
+	set t [repmgr026_await_election_result $envlist $limit]
+	if { $client_down } {
+		error_check_good slow_election [expr $t > $full_secs_leeway] 1
+	} else {
+		# When all sites participate, the election should finish in way
+		# less than 60 seconds.
+		# 
+		error_check_good timely_election [expr $t < $full_secs_leeway] 1
+	}
+	puts "\tRepmgr$tnum.d: first election completed in $t seconds"
 
-	# Then check for startup-done at any other clients.
+	puts "\tRepmgr$tnum.e: wait for start-up done"
+	$enva event_info -clear
+	await_startup_done $envb
+	$envb event_info -clear
+	if { $envc != "NONE" } {
+		await_startup_done $envc
+		$envc event_info -clear
+	}
+
+	# Shut down site A, in order to test elections with less than the whole
+	# group voting.  However, normally repmgr's reaction to losing master
+	# connection is to try a "fast election" (the n-1 trick).  So we must do
+	# something to mitigate that (see below).
 	# 
-	foreach client_index $extras {
-		if {$client_index == 2} {
-			continue;
+	puts "\tRepmgr$tnum.f: shut down master site A"
+	if { $client_down } {
+
+		# The third site is already down, so now there's only site B
+		# running.  In its first election attempt it won't be able to
+		# succeed.  In subsequent attempts it won't bother with the
+		# "fast election" trick, so we can avoid that just by waiting.
+		#
+		$enva close
+		set initial_egen \
+		    [stat_field $envb rep_stat "Election generation number"]
+		
+		# Just to be safe, skip over 2 egens.
+		# 
+		puts "\tRepmgr$tnum.f: skip over \"fast election\" egen"
+		set goal [expr $initial_egen + 2]
+		await_condition {[expr \
+		    [stat_field $envb rep_stat "Election generation number"] \
+		    >= $goal]}
+
+		puts "\tRepmgr$tnum.g: Start third client"
+		set envc [eval $cmdc]
+		eval $envc repmgr $common_mgr $times -pri 50 \
+		    -local {[list localhost $portc]} \
+		    -remote {[list localhost $portb]}
+	} else {
+
+		# Here the third client is not initially down, so waiting (as we
+		# did above) won't work.  Instead we'll fake a higher group size
+		# in order to compensate for the "n-1" trick.  However, that
+		# doesn't work when leases are in effect, since leases currently
+		# disallow group size changes.  So just skip this part of the
+		# test in this case.
+		# 
+		if { $use_leases } {
+			$envc close
+			$envb close
+			$enva close
+			return
 		}
-		set envx [berkdb_env -home $dirs($client_index)]
-		await_startup_done $envx 20
-		$envx close
+		$envb repmgr -nsites 4
+		$envc repmgr -nsites 4
+
+		$enva close
+		set initial_egen \
+		    [stat_field $envb rep_stat "Election generation number"]
+		set goal [expr $initial_egen + 2]
+		await_condition {[expr \
+		    [stat_field $envb rep_stat "Election generation number"] \
+		    >= $goal]}
+		$envb repmgr -nsites 3
+		$envc repmgr -nsites 3
 	}
 
-	# If we've gotten this far, we know that everything must have worked
-	# fine, because otherwise the clients wouldn't have been able to
-	# complete their start-up.  But let's check the master's site list
-	# anyway, to make sure it knows about site C at the list index location
-	# we think should be correct.
-	#
-	# Site C's address appears at the position indicated in the "extras"
-	# list, or right after that if it didn't appear in extras.
+	# wait for results, and check them
 	# 
-	set pos [lsearch -exact $extras 2]
-	if {$pos == -1} {
-		set pos [llength $extras]
-	}
-	incr pos;			# make allowance for site B which is
-					# always there
+	set envlist [list $envb $envc]
+	set limit $elect_wait_limit
+	puts "\tRepmgr$tnum.h: wait (up to $limit seconds) for second election."
+	set t [repmgr026_await_election_result $envlist $limit]
+	error_check_good normal_election [expr $t < $full_secs_leeway] 1
+	puts "\tRepmgr$tnum.i: second election completed in $t seconds"
 
-	puts "\tRepmgr$tnum.e: Check address lists."
-	set masterenv [berkdb_env -home $masterdir]
-	error_check_good master_knows_clientC \
-	    [lindex [$masterenv repmgr_site_list] $pos 2 ] $portC
+	await_startup_done $envc
+	$envc close
+	$envb close
+}
 
-	set envC [berkdb_env -home $dirC]
-	error_check_good C_knows_master \
-	    [lindex [$envC repmgr_site_list] 1 2] $master_port
-
-	puts "\tRepmgr$tnum.f: Clean up."
-	$envC close
-	$envB close
-	$masterenv close
-
-	close $c 
-
-	foreach client_index $extras {
-		if {$client_index == 2} {
-			continue;
+# Wait (a limited amount of time) for the election to finish.  The first env
+# handle in the list is the expected winner, and the others are the remaining
+# clients.  Returns the approximate amount of time (in seconds) that the
+# election took.
+# 
+proc repmgr026_await_election_result { envlist limit } {
+	set begin [clock seconds]
+	set deadline [expr $begin + $limit]
+	while { true } {
+		set t [clock seconds]
+		if { $t > $deadline } {
+			error "FAIL: time limit exceeded"
 		}
-		close $sites($client_index)
+
+		if { [repmgr026_is_ready $envlist] } {
+			return [expr $t - $begin]
+		}
+
+		tclsleep 1
 	}
-	close $b
-	close $m2
-	close $m1
+}
+
+proc repmgr026_is_ready { envlist } {
+	set winner [lindex $envlist 0]
+	if {![is_elected $winner]} {
+		return false
+	}
+
+	foreach client [lrange $envlist 1 end] {
+		if {![is_event_present $client newmaster]} {
+			return false
+		}
+	}
+	return true
 }

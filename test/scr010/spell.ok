@@ -1171,7 +1171,6 @@ NG
 NL
 NOARCHIVE
 NOAUTO
-NOAUTOINIT
 NOBUFFER
 NOCOPY
 NODENAME
@@ -3682,7 +3681,6 @@ nnextlsn
 nnowaits
 noWait
 noarchive
-noautoinit
 nobjects
 nobuf
 nobuffer

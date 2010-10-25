@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -51,7 +51,7 @@ proc recd013 { method { nitems 100 } args } {
 
 	puts "\tRecd$tnum.a:\
 	    Create environment, database, and parent transaction."
-	set flags "-create -txn -home $testdir"
+	set flags "-create -txn wrnosync -home $testdir"
 
 	set env_cmd "berkdb_env $flags"
 	set env [eval $env_cmd]

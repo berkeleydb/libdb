@@ -68,17 +68,17 @@
                             If you are using the DPL, then be aware that
                             you never have to provide a transactional
                             handle when opening an index, be it a primary
-                            or a secondary. However, transactions are
+                            or a secondary. However, if transactions are
                             enabled for your store, then all of the indexes
                             that you open will be enabled for transactional
-                            usage. More, any write operation performed
+                            usage. Moreover, any write operation performed
                             using that index will be done using a
                             transaction, regardless of whether you
-                            explictly provide a transactional handle to the
+                            explicitly provide a transactional handle to the
                             write operation.
                     </p>
         <p>
-                            If you do not explictly provide a transaction
+                            If you do not explicitly provide a transaction
                             handle to DPL write operations performed on a
                             transactional store, then auto commit is
                             silently used for that operation.
@@ -119,7 +119,8 @@ try {
 
     // Open the secondary. FullNameKeyCreator is not actually implemented
     // anywhere. See the Getting Started Guide for details.
-    FullNameKeyCreator keyCreator = new FullNameKeyCreator(myTupleBinding);
+    FullNameKeyCreator keyCreator = 
+        new FullNameKeyCreator(myTupleBinding);
 
     // Set the key creator on the secondary config object.
     mySecConfig.setKeyCreator(keyCreator);
@@ -129,7 +130,8 @@ try {
     //      - myEnv is the environment handle.
     //      - myDb is the primary database handle.
     String secDbName = "mySecondaryDatabase";
-    mySecDb = myEnv.openSecondary(null, secDbName, null, myDb, mySecConfig);
+    mySecDb = myEnv.openSecondary(null, secDbName, null, myDb, 
+                                  mySecConfig);
 } catch (DatabaseException de) {
     // Exception handling goes here ...
 } catch (FileNotFoundException fnfe) {

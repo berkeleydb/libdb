@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # http://www.apache.org/licenses/LICENSE-2.0.txt
 #
@@ -19,7 +19,7 @@ PHP_ARG_WITH(mod_db4, whether to link against mod_db4,
 
 if test "$PHP_DB4" != "no"; then
   if test "$PHP_DB4" != "no"; then
-    for i in $PHP_DB4 /usr/local/BerkeleyDB.4.7 /usr/local /usr; do
+    for i in $PHP_DB4 /usr/local/BerkeleyDB.5.0 /usr/local /usr; do
       if test -f "$i/db4/db.h"; then
         THIS_PREFIX=$i
         INC_DIR=$i/db4

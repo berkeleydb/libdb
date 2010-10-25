@@ -6,59 +6,53 @@
   </Platforms>
   <Configurations>
     <Configuration Name="Debug|Win32" OutputDirectory="..\build_windows\$(PlatformName)\Debug_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48sd.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50sd.lib" AdditionalOptions="/machine:x86"/></Configuration>
     <Configuration Name="Release|Win32" OutputDirectory="..\build_windows\$(PlatformName)\Release_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48s.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50s.lib" AdditionalOptions="/machine:x86"/></Configuration>
     <Configuration Name="Debug|x64" OutputDirectory="..\build_windows\$(PlatformName)\Debug_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48sd.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50sd.lib" AdditionalOptions="/machine:x64"/></Configuration>
     <Configuration Name="Release|x64" OutputDirectory="..\build_windows\$(PlatformName)\Release_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48s.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50s.lib" AdditionalOptions="/machine:x64"/></Configuration>
     <Configuration Name="Debug|IA64" OutputDirectory="..\build_windows\$(PlatformName)\Debug_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48sd.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;DIAGNOSTIC;_LIB;" StringPooling="TRUE" RuntimeLibrary="1" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50sd.lib" AdditionalOptions="/machine:IA64"/></Configuration>
     <Configuration Name="Release|IA64" OutputDirectory="..\build_windows\$(PlatformName)\Release_static" IntermediateDirectory="./$(OutDir)/db_small_static" ConfigurationType="4" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
-      <Tool Name="VCPreBuildEventTool"/>
       <Tool Name="VCPreLinkEventTool"/>
       <Tool Name="VCResourceCompilerTool"/>
       <Tool Name="VCXMLDataGeneratorTool"/>
       <Tool Name="VCManagedWrapperGeneratorTool"/>
       <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
-      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
-      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small48s.lib"/></Configuration>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="../build_windows,../,../dbinc,../include" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD;_LIB;" StringPooling="TRUE" RuntimeLibrary="0" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/db_small_static.pch" AssemblerListingLocation="$(OutDir)/db_small_static/" ObjectFile="$(OutDir)/db_small_static/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLibrarianTool" OutputFile="$(OutDir)/libdb_small50s.lib" AdditionalOptions="/machine:IA64"/></Configuration>
   </Configurations>
   <References/>
   <Files>
@@ -80,7 +74,9 @@
     <File RelativePath="..\btree\bt_stat.c"/>
     <File RelativePath="..\btree\bt_upgrade.c"/>
     <File RelativePath="..\btree\btree_auto.c"/>
+    <File RelativePath="..\clib\isalpha.c"/>
     <File RelativePath="..\clib\strsep.c"/>
+    <File RelativePath="..\common\clock.c"/>
     <File RelativePath="..\common\crypto_stub.c"/>
     <File RelativePath="..\common\db_byteorder.c"/>
     <File RelativePath="..\common\db_err.c"/>
@@ -113,6 +109,7 @@
     <File RelativePath="..\db\db_auto.c"/>
     <File RelativePath="..\db\db_cam.c"/>
     <File RelativePath="..\db\db_cds.c"/>
+    <File RelativePath="..\db\db_compact.c"/>
     <File RelativePath="..\db\db_conv.c"/>
     <File RelativePath="..\db\db_dispatch.c"/>
     <File RelativePath="..\db\db_dup.c"/>
@@ -181,6 +178,7 @@
     <File RelativePath="..\log\log_method.c"/>
     <File RelativePath="..\log\log_put.c"/>
     <File RelativePath="..\log\log_stat.c"/>
+    <File RelativePath="..\log\log_verify_stub.c"/>
     <File RelativePath="..\mp\mp_alloc.c"/>
     <File RelativePath="..\mp\mp_bh.c"/>
     <File RelativePath="..\mp\mp_fget.c"/>

@@ -58,7 +58,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1650806"></a>Parameters</h3>
+              <h3 class="title"><a id="id3968017"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -66,7 +66,27 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1650770"></a>flags</h4>
+                <h4 class="title"><a id="id3967513"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the
+                          operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3967939"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -113,32 +133,12 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1650888"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the
-                          operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1651027"></a>Statistical Structure</h3>
+              <h3 class="title"><a id="id3967604"></a>Statistical Structure</h3>
             </div>
           </div>
         </div>
@@ -181,7 +181,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1651062"></a>Hash Statistics</h4>
+                <h4 class="title"><a id="id3968316"></a>Hash Statistics</h4>
               </div>
             </div>
           </div>
@@ -337,7 +337,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1651092"></a>Btree and Recno Statistics</h4>
+                <h4 class="title"><a id="id3968391"></a>Btree and Recno Statistics</h4>
               </div>
             </div>
           </div>
@@ -551,7 +551,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1651128"></a>Queue Statistics</h4>
+                <h4 class="title"><a id="id3968281"></a>Queue Statistics</h4>
               </div>
             </div>
           </div>
@@ -676,7 +676,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1650880"></a>Errors</h3>
+              <h3 class="title"><a id="id3968122"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -692,7 +692,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1650612"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3969101"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -711,7 +711,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1651391"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3968964"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -723,7 +723,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1650597"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3968945"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -736,7 +736,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1650718"></a>Class</h3>
+              <h3 class="title"><a id="id3969092"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -748,7 +748,7 @@ DB-&gt;stat(DB *db, DB_TXN *txnid, void *sp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1650864"></a>See Also</h3>
+              <h3 class="title"><a id="id3968231"></a>See Also</h3>
             </div>
           </div>
         </div>

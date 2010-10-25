@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Building the SQL API</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Installation and Build Guide" />
+    <link rel="up" href="build_win.html" title="Chapter 4.  Building Berkeley DB for Windows" />
+    <link rel="prev" href="build_win_csharp.html" title="Building the C# API" />
+    <link rel="next" href="build_win_tcl.html" title="Building the Tcl API" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Building the SQL API</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="build_win_csharp.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. 
+		Building Berkeley DB for Windows
+        </th>
+          <td width="20%" align="right"> <a accesskey="n" href="build_win_tcl.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="build_win_sql"></a>Building the SQL API</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#id3747347">Binary Compatibility With SQLite</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#id3747352">Enabling Extensions</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#id3746992">Building the JDBC Driver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#id3747123">Building the ODBC Driver</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        SQL support is built as part of the default build on Windows. 
+        For information on the build instructions, see <a class="xref" href="build_win.html" title="Chapter 4.  Building Berkeley DB for Windows">
+		Building Berkeley DB for Windows
+        </a>. 
+        </p>
+      <p>
+        The SQL library is built as <code class="literal">libdb_sql50.dll</code> in the Release mode or <code class="literal">libdb_sql50d.dll</code> in the Debug mode.
+        An SQL command line interpreter called <code class="literal">db_sql_shell.exe</code> is also built. 
+        </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3747347"></a>Binary Compatibility With SQLite</h3>
+            </div>
+          </div>
+        </div>
+        <p>Both <code class="literal">libdb_sql50.dll</code> and <code class="literal">libdb_sql50d.dll</code> are compatible with sqlite3.dll. You can rename <code class="literal">libdb_sql50.dll</code> to <code class="literal">sqlite3.dll</code> and <code class="literal">db_sql_shell.exe</code> to <code class="literal">sqlite3.exe</code>, and use these applications as a replacement for the standard SQLite binaries with same names. 
+    </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3747352"></a>Enabling Extensions</h3>
+            </div>
+          </div>
+        </div>
+        <p>The Berkeley DB SQL API provides extensions such as full text search and R-Tree index. To enable these extensions, do the following:
+</p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+Open the Berkeley DB solution in Visual Studio.
+</li>
+            <li>
+Specify <code class="literal">SQLITE_ENABLE_FTS3</code> or <code class="literal">SQLITE_ENABLE_RTREE</code> in <span class="emphasis"><em>Preprocessor Definitions</em></span> of the <span class="emphasis"><em>db_sql</em></span> project.
+</li>
+            <li>
+Re-build the <span class="emphasis"><em>db_sql</em></span> project.
+</li>
+          </ol>
+        </div>
+        <p> See the SQLite Documentation for more information on <a class="ulink" href="http://www.sqlite.org/fts3.html" target="_top">full text search</a> and <a class="ulink" href="http://www.sqlite.org/rtree.html" target="_top">R-Tree</a>.</p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3746992"></a>Building the JDBC Driver</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+   This section describes the steps to build the JDBC driver.</p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+    Configure your build environment. For information on how to configure to build Java applications, see <a class="xref" href="build_win_java.html" title="Building the Java API">Building the Java API</a>. 
+    </li>
+            <li>
+    Build the SQL project in Debug mode. 
+    </li>
+            <li>Open Visual Studio.
+    </li>
+            <li>
+     Select <code class="literal">File</code>-&gt;<code class="literal">Add</code>-&gt;<code class="literal">Existing Project</code>.
+     </li>
+            <li>
+      Select <code class="literal">build_windows/db_sql_jdbc.vcproj</code> and add it to the Berkeley_DB solution.
+     This adds the <span class="emphasis"><em>db_sql_jdbc</em></span> Visual Studio project to the Berkeley_DB solution file.
+    </li>
+            <li>
+    Build the <code class="literal">db_sql_jdbc</code> project in Visual Studio.
+    </li>
+          </ol>
+        </div>
+        <p>
+   You can test the build by entering the following commands from the <code class="literal">db\build_windows\Win32\Debug</code> directory:
+    </p>
+        <table class="simplelist" border="0" summary="Simple list">
+          <tr>
+            <td> javac -cp ".;jdbc.jar" -d . ..\..\..\sql\jdbc\test3.java </td>
+          </tr>
+          <tr>
+            <td>java -cp ".;jdbc.jar" test3 </td>
+          </tr>
+        </table>
+        <p>
+    </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3747123"></a>Building the ODBC Driver</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+   This section describes the steps required to build the ODBC driver.</p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3747130"></a>Configuring Your System</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+    To configure your system prior to building the ODBC driver, do the following:
+    </p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>
+    Download and install the latest SQLite ODBC driver Windows installer package for <a class="ulink" href="http://www.ch-werner.de/sqliteodbc/sqliteodbc.exe" target="_top">32 bit Windows</a> or <a class="ulink" href="http://www.ch-werner.de/sqliteodbc/sqliteodbc_w64.exe" target="_top">64 bit Windows</a>.
+    </li>
+              <li>
+    Download and install the latest <a class="ulink" href="http://www.microsoft.com/downloads/details.aspx?familyid=5067faf8-0db4-429a-b502-de4329c8c850" target="_top">Microsoft Data Access Components (MDAC) SDK</a>. The MDAC SDK is only required for testing the installation.
+    </li>
+            </ol>
+          </div>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3747499"></a>Building the Library</h4>
+              </div>
+            </div>
+          </div>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>
+    Build the SQL project in Release mode. See <a class="xref" href="build_win_sql.html" title="Building the SQL API">Building the SQL API</a>.
+    </li>
+              <li>Open Visual Studio.</li>
+              <li>Load the Berkeley_DB solution file into Visual Studio.</li>
+              <li>Set the build target to <span class="emphasis"><em>Release</em></span></li>
+              <li>Build the solution.</li>
+              <li>
+     Select <code class="literal">File</code>-&gt;<code class="literal">Add</code>-&gt;<code class="literal">Existing Project</code>.
+     </li>
+              <li>
+      Select <code class="literal">build_windows/db_sql_odbc.vcproj</code> and add it to the Berkeley_DB solution.
+     This adds the <span class="emphasis"><em>db_sql_odbc</em></span> Visual Studio project to the Berkeley_DB solution file.
+    </li>
+              <li>Build the <code class="literal">db_sql_odbc</code> project. This can be done by right-clicking the <code class="literal">db_sql_odbc</code> project in the project explorer panel, and selecting <code class="literal">build</code>.</li>
+            </ol>
+          </div>
+          <p>The <code class="literal">sqlite3odbc.dll</code>, <code class="literal">libdb_sql50.dll</code> and <code class="literal">libdb50.dll</code> files are now built.</p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3747572"></a>Installing the Library</h4>
+              </div>
+            </div>
+          </div>
+          <p>Copy the dll files built in the <span class="emphasis"><em>Building the Library</em></span> section to the Windows system folder.</p>
+          <p>The Windows system folder is different on different systems, but is often <code class="literal">C:\WINDOWS\System32</code>.</p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3747590"></a>Testing the ODBC Install</h4>
+              </div>
+            </div>
+          </div>
+          <p>The steps to verify that the installed driver works are as follows:</p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>Open the Unicode ODBCTest application. On Windows XP: <code class="literal">Windows start</code>-&gt;<code class="literal">Microsoft Data Access SDK 2.8</code>-&gt;<code class="literal">ODBCTest (Unicode, x86).</code></li>
+              <li>Select the <code class="literal">Conn</code>-&gt;<code class="literal">Full Connect...</code> menu item.</li>
+              <li>Select <code class="literal">SQLite3 Datasource</code> and click <code class="literal">OK</code>.</li>
+              <li>Select the <code class="literal">Stmt</code>-&gt;<code class="literal">SQLExecDirect...</code> menu item.</li>
+              <li>Enter <code class="literal">CREATE TABLE t1(x);</code> in the <code class="literal">Statement</code> text box and click <code class="literal">OK</code>.</li>
+              <li>Verify that no error messages were output to the error window.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="build_win_csharp.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="build_win.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="build_win_tcl.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Building the C# API </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Building the Tcl API</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

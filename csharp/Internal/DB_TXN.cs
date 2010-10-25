@@ -39,11 +39,34 @@ internal class DB_TXN : IDisposable {
     }
   }
 
+	internal int get_name(out string name) {
+		int ret;
+		IntPtr namep;
+		ret = get_name(out namep);		
+		name = Marshal.PtrToStringAnsi(namep);		
+		return ret;
+	}	
+
   internal int abort() {
 		int ret;
 		ret = libdb_csharpPINVOKE.DB_TXN_abort(swigCPtr);
 		DatabaseException.ThrowException(ret);
 		return ret;
+}
+
+internal bool is_commit_token_enabled()
+{
+    int ret;
+    ret = libdb_csharpPINVOKE.DB_TXN_is_commit_token_enabled(swigCPtr);
+    return (ret > 0 ? true : false);
+}
+
+internal int set_commit_token(DB_TXN_TOKEN token)
+{
+    int ret;
+    ret = libdb_csharpPINVOKE.DB_TXN_set_commit_token(swigCPtr, DB_TXN_TOKEN.getCPtr(token));
+    DatabaseException.ThrowException(ret);
+    return ret;
 }
 
   internal int commit(uint flags) {
@@ -72,9 +95,9 @@ internal class DB_TXN : IDisposable {
 		return ret;
 }
 
-  internal int get_name(ref string name) {
+  internal int get_name(out IntPtr name) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_TXN_get_name(swigCPtr, ref name);
+		ret = libdb_csharpPINVOKE.DB_TXN_get_name(swigCPtr, out name);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }
@@ -82,6 +105,20 @@ internal class DB_TXN : IDisposable {
   internal int set_name(string name) {
 		int ret;
 		ret = libdb_csharpPINVOKE.DB_TXN_set_name(swigCPtr, name);
+		DatabaseException.ThrowException(ret);
+		return ret;
+}
+
+  internal int get_priority(ref uint priorityp) {
+		int ret;
+		ret = libdb_csharpPINVOKE.DB_TXN_get_priority(swigCPtr, ref priorityp);
+		DatabaseException.ThrowException(ret);
+		return ret;
+}
+
+  internal int set_priority(uint priority) {
+		int ret;
+		ret = libdb_csharpPINVOKE.DB_TXN_set_priority(swigCPtr, priority);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }

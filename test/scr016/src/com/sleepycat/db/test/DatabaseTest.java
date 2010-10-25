@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -32,6 +32,7 @@ import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
+import com.sleepycat.db.Transaction;
 
 import java.io.File;
 import java.io.IOException;
@@ -186,7 +187,87 @@ public class DatabaseTest {
 	    System.runFinalization();
     }
     */
+    /*
+     * Test leaving database and cursors open won't harm.
+     */
+    @Test public void test10()
+        throws DatabaseException, FileNotFoundException
+    {
+	System.out.println("\nTest 10 transactional.");
+	test10_int(true);
+	System.out.println("\nTest 10 non-transactional.");
+	test10_int(false);
+    }
 
+    void test10_int(boolean havetxn)
+        throws DatabaseException, FileNotFoundException
+    {
+	String name;
+	Transaction txn = null;
+
+	itemcount = 0;
+	TestOptions options = new TestOptions();
+	options.save_db = true;
+	options.db_config.setErrorPrefix("DatabaseTest::test10 ");
+
+	EnvironmentConfig envc = new EnvironmentConfig();
+	envc.setAllowCreate(true);
+	envc.setInitializeCache(true);
+	envc.setPrivate(true);
+	if (havetxn) {
+		envc.setInitializeLogging(true);
+		envc.setInitializeLocking(true);
+		envc.setTransactional(true);
+	}
+	options.db_env = new Environment(null, envc);
+
+	if (havetxn)
+		txn = options.db_env.beginTransaction(null, null);
+	try {
+		options.db_config.setAllowCreate(true);
+		options.database = options.db_env.openDatabase(txn, null, null, options.db_config);
+
+		// Acquire a cursor for the database and use it to insert data, but don't close it.
+		Cursor dbc = options.database.openCursor(txn, CursorConfig.DEFAULT);
+
+		DatabaseEntry key = new DatabaseEntry();
+		DatabaseEntry data = new DatabaseEntry();
+		byte bytes[] = new byte[4];
+		int ii;
+		for (int i = 0; i < 100; i++) {
+			ii = i;
+			bytes[0] = (byte)ii;
+			ii >>= 8;
+			bytes[1] = (byte)ii;
+			ii >>= 8;
+			bytes[2] = (byte)ii;
+			ii >>= 8;
+			bytes[3] = (byte)ii;
+			key.setData(bytes);
+			key.setSize(bytes.length);
+			data.setData(bytes);
+			data.setSize(bytes.length);
+
+			dbc.putKeyLast(key, data);
+		}
+		// Do not close dbc.
+
+		// Acquire a cursor for the database and use it to read data, but don't close it.
+		Cursor csr = options.database.openCursor(txn, CursorConfig.DEFAULT);
+		int i = 0;
+		while (i < 100 && csr.getNext(key, data, LockMode.DEFAULT) == OperationStatus.SUCCESS) {
+			i++;	
+		}
+		// Do not close csr.
+		if (havetxn)
+			txn.commit();
+	} catch (DatabaseException e) {
+		if (havetxn && txn != null)
+			txn.abort();
+	}
+	// Do not close options.database
+	options.db_env.closeForceSync();
+    }
     /*
      * Test creating a new database.
      */

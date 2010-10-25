@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -22,6 +22,13 @@ public class PreparedTransaction {
         this.gid = gid;
     }
 
+    /**
+    Return the global transaction ID for the transaction. The global transaction
+    ID is the one specified when the transaction was prepared. The application is
+    responsible for ensuring uniqueness among global transaction IDs.
+    <p>
+    @return The global transaction ID for the transaction.
+    */
     public byte[] getGID() {
         return gid;
     }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -47,7 +47,6 @@
 #include "dbinc/crypto.h"
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
-#include "dbinc/log.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
@@ -94,6 +93,7 @@ __ham_open(dbp, ip, txn, name, base_pgno, flags)
 	hcp = (HASH_CURSOR *)dbc->internal;
 	hashp = dbp->h_internal;
 	hashp->meta_pgno = base_pgno;
+	hashp->revision = dbp->mpf->mfp->revision;
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		goto err;
 
@@ -110,12 +110,10 @@ __ham_open(dbp, ip, txn, name, base_pgno, flags)
 			F_SET(dbp, DB_AM_DUPSORT);
 		if (F_ISSET(&hcp->hdr->dbmeta, DB_HASH_SUBDB))
 			F_SET(dbp, DB_AM_SUBDB);
-#ifndef HAVE_FTRUNCATE
 		if (PGNO(hcp->hdr) == PGNO_BASE_MD &&
-		    !F_ISSET(dbp, DB_AM_RECOVER) && !IS_VERSION(dbp, hcp->hdr))
+		     !F_ISSET(dbp, DB_AM_RECOVER))
 			__memp_set_last_pgno(dbp->mpf,
 			    hcp->hdr->dbmeta.last_pgno);
-#endif
 	} else if (!IS_RECOVERING(env) && !F_ISSET(dbp, DB_AM_RECOVER)) {
 		__db_errx(env,
 		    "%s: Invalid hash meta page %lu", name, (u_long)base_pgno);
@@ -263,10 +261,12 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 		hashp->h_hash = DB_HASHVERSION < 5 ? __ham_func4 : __ham_func5;
 
 	if (hashp->h_nelem != 0 && hashp->h_ffactor != 0) {
-		hashp->h_nelem = (hashp->h_nelem - 1) / hashp->h_ffactor + 1;
-		l2 = __db_log2(hashp->h_nelem > 2 ? hashp->h_nelem : 2);
+		nbuckets = (hashp->h_nelem - 1) / hashp->h_ffactor + 1;
+		l2 = __db_log2(nbuckets > 2 ? nbuckets : 2);
 	} else
 		l2 = 1;
+
+	/* Now make number of buckets a power of two. */
 	nbuckets = (db_pgno_t)(1 << l2);
 
 	memset(meta, 0, sizeof(HMETA));
@@ -371,8 +371,8 @@ __ham_new_file(dbp, ip, txn, fhp, name)
 	if (F_ISSET(dbp, DB_AM_INMEM)) {
 		/* Build meta-data page. */
 		lpgno = PGNO_BASE_MD;
-		if ((ret = __memp_fget(mpf, &lpgno, ip, txn,
-		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
+		if ((ret = __memp_fget(mpf, &lpgno,
+		    ip, txn, DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 			return (ret);
 		LSN_NOT_LOGGED(lsn);
 		lpgno = __ham_init_meta(dbp, meta, PGNO_BASE_MD, &lsn);
@@ -386,8 +386,8 @@ __ham_new_file(dbp, ip, txn, fhp, name)
 			goto err;
 
 		/* Allocate the final hash bucket. */
-		if ((ret = __memp_fget(mpf, &lpgno, ip, txn,
-		    DB_MPOOL_CREATE, &page)) != 0)
+		if ((ret = __memp_fget(mpf, &lpgno,
+		    ip, txn, DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &page)) != 0)
 			goto err;
 		P_INIT(page,
 		    dbp->pgsize, lpgno, PGNO_INVALID, PGNO_INVALID, 0, P_HASH);
@@ -494,7 +494,7 @@ __ham_new_subdb(mdbp, dbp, ip, txn)
 	    0, dbp->meta_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
 	if ((ret = __memp_fget(mpf, &dbp->meta_pgno, ip, dbc->txn,
-	    DB_MPOOL_CREATE, &meta)) != 0)
+	    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 		goto err;
 
 	/* Initialize the new meta-data page. */
@@ -511,7 +511,7 @@ __ham_new_subdb(mdbp, dbp, ip, txn)
 	if ((ret = __db_lget(dbc, 0, mpgno, DB_LOCK_WRITE, 0, &mmlock)) != 0)
 		goto err;
 	if ((ret = __memp_fget(mpf, &mpgno, ip, dbc->txn,
-	    DB_MPOOL_DIRTY, &mmeta)) != 0)
+	    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &mmeta)) != 0)
 		goto err;
 
 	/*

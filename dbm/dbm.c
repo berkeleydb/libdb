@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993
@@ -41,7 +41,6 @@
  * $Id$
  */
 
-#define	DB_DBM_HSEARCH	1
 #include "db_config.h"
 
 #include "db_int.h"
@@ -51,7 +50,6 @@
  * This package provides dbm and ndbm compatible interfaces to DB.
  *
  * EXTERN: #if DB_DBM_HSEARCH != 0
- *
  * EXTERN: int	 __db_ndbm_clearerr __P((DBM *));
  * EXTERN: void	 __db_ndbm_close __P((DBM *));
  * EXTERN: int	 __db_ndbm_delete __P((DBM *, datum));
@@ -72,7 +70,6 @@
  * EXTERN: int	 __db_dbm_init __P((char *));
  * EXTERN: datum __db_dbm_nextkey __P((datum));
  * EXTERN: int	 __db_dbm_store __P((datum, datum));
- *
  * EXTERN: #endif
  */
 

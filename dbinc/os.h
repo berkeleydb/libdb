@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -139,7 +139,7 @@ struct __fh_t {
 	 */
 	db_pgno_t pgno;
 	u_int32_t pgsize;
-	u_int32_t offset;
+	off_t offset;
 
 #ifdef HAVE_STATISTICS
 	u_int32_t seek_count;		/* I/O statistics */
@@ -164,8 +164,10 @@ struct __fh_t {
  */
 #ifdef HAVE_VXWORKS
 #define	CHAR_STAR_CAST	(char *)
+#define	VOID_STAR_CAST	(void *)
 #else
 #define	CHAR_STAR_CAST
+#define VOID_STAR_CAST
 #endif
 
 #if defined(__cplusplus)

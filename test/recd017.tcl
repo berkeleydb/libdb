@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -43,7 +43,7 @@ proc recd017 { method {select 0} args} {
 	set testfile recd017.db
 	set testfile2 recd017-2.db
 
-	set flags "-create -encryptaes $passwd -txn -home $testdir"
+	set flags "-create -encryptaes $passwd -txn wrnosync -home $testdir"
 
 	puts "\tRecd017.a.0: creating environment"
 	set env_cmd "berkdb_env $flags"
@@ -56,7 +56,7 @@ proc recd017 { method {select 0} args} {
 	# the default or whatever might have been specified).
 	# Then remove it so we can compute fixed_len and create the
 	# real database.
-	set oflags "-create $omethod -mode 0644 \
+	set oflags "-create -auto_commit $omethod -mode 0644 \
 	    -env $dbenv -encrypt $opts $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
@@ -77,13 +77,13 @@ proc recd017 { method {select 0} args} {
 	set opts [convert_args $method $args]
 	convert_encrypt $env_cmd
 	set omethod [convert_method $method]
-	set oflags "-create $omethod -mode 0644 \
+	set oflags "-create -auto_commit $omethod -mode 0644 \
 	    -env $dbenv -encrypt $opts $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
-	set oflags "-create $omethod -mode 0644 \
+	set oflags "-create -auto_commit $omethod -mode 0644 \
 	    -env $dbenv -encrypt $opts $testfile2"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE

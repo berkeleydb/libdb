@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -27,20 +27,38 @@ __ham_get_meta(dbc)
 	DB_MPOOLFILE *mpf;
 	HASH *hashp;
 	HASH_CURSOR *hcp;
-	int ret;
+	u_int32_t revision;
+	int ret, t_ret;
 
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	hashp = dbp->h_internal;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
+again:
+	revision = hashp->revision;
 	if ((ret = __db_lget(dbc, 0,
 	     hashp->meta_pgno, DB_LOCK_READ, 0, &hcp->hlock)) != 0)
 		return (ret);
 
 	if ((ret = __memp_fget(mpf, &hashp->meta_pgno,
-	    dbc->thread_info, dbc->txn, DB_MPOOL_CREATE, &hcp->hdr)) != 0)
+	    dbc->thread_info, dbc->txn, DB_MPOOL_CREATE, &hcp->hdr)) != 0) {
 		(void)__LPUT(dbc, hcp->hlock);
+		return (ret);
+	}
+
+	if (F_ISSET(dbp, DB_AM_SUBDB) && revision != dbp->mpf->mfp->revision) {
+		ret = __LPUT(dbc, hcp->hlock);
+		t_ret =
+		    __memp_fput(mpf, dbc->thread_info, hcp->hdr, dbc->priority);
+		if (ret != 0)
+			return (ret);
+		if (t_ret != 0)
+			return (t_ret);
+		if ((ret = __db_reopen(dbc)) != 0)
+			return (ret);
+		goto again;
+	}
 
 	return (ret);
 }
@@ -144,4 +162,3 @@ __ham_dirty_meta(dbc, flags)
 	*metap = (DBMETA *)hcp->hdr;
 	return (0);
 }
-

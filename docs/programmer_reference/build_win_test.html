@@ -39,12 +39,12 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="build_win_test.html#id1633142">Building the software needed by the tests</a>
+              <a href="build_win_test.html#id1632503">Building the software needed by the tests</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_win_test.html#id1633225">Running the test suite under Windows</a>
+              <a href="build_win_test.html#id1632589">Running the test suite under Windows</a>
             </span>
           </dt>
         </dl>
@@ -52,16 +52,16 @@
       <p>To build the test suite on Windows platforms, you will need to configure
 Tcl support.  You will also need sufficient main memory (at least 64MB),
 and disk (around 250MB of disk will be sufficient).</p>
-      <div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id1633142"></a>Building the software needed by the tests</h3></div></div></div>
+      <div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id1632503"></a>Building the software needed by the tests</h3></div></div></div>
 The test suite must be run against a Debug version of
 Berkeley DB, so you will need a Debug version of the Tcl
 libraries.  This involves building Tcl from its source.  See the Tcl
 sources for more information.
 Then build the Tcl API - see
 <a class="xref" href="build_win_tcl.html" title="Building the Tcl API">Building the Tcl API</a> for details.
-<div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id1633181"></a>Visual Studio 2005 or newer</h4></div></div></div><p>To build for testing, perform the following steps:</p><p>
+<div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id1632542"></a>Visual Studio 2005 or newer</h4></div></div></div><p>To build for testing, perform the following steps:</p><p>
 </p><div class="orderedlist"><ol type="1"><li>Open the Berkeley DB solution.</li><li>Ensure that the target configuration is Debug</li><li>Right click the <span class="emphasis"><em>db_tcl</em></span> project in the Solution Explorer, and select <span class="emphasis"><em>Build</em></span>.</li><li>Right click the <span class="emphasis"><em>db_test</em></span> project in the Solution Explorer, and select <span class="emphasis"><em>Build</em></span>.</li></ol></div><p>
-</p></div><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id1633474"></a>Visual Studio 2003 .NET or earlier</h4></div></div></div><p>To build for testing, perform the following steps:</p><div class="orderedlist"><ol type="1"><li>Open the Berkeley DB workspace.</li><li>In Visual C++ 6.0, set the active configuration to db_test --
+</p></div><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id1632838"></a>Visual Studio 2003 .NET or earlier</h4></div></div></div><p>To build for testing, perform the following steps:</p><div class="orderedlist"><ol type="1"><li>Open the Berkeley DB workspace.</li><li>In Visual C++ 6.0, set the active configuration to db_test --
 Debug.  To set an active configuration, under the <span class="emphasis"><em>Build</em></span> menu,
 select <span class="emphasis"><em>Set Active Configuration</em></span>.  Then choose
 <span class="emphasis"><em>db_test -- Debug</em></span>.  In Visual C++ .NET, just make sure
@@ -75,7 +75,7 @@ are needed by the test suite are all built.</li></ol></div></div></div>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1633225"></a>Running the test suite under Windows</h3>
+              <h3 class="title"><a id="id1632589"></a>Running the test suite under Windows</h3>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -30,7 +30,7 @@ proc recd005 { method args } {
 	set testfile1 recd005.1.db
 	set testfile2 recd005.2.db
 	set max_locks 2000
-	set eflags "-create -txn -lock_max_locks $max_locks \
+	set eflags "-create -txn wrnosync -lock_max_locks $max_locks \
 	    -lock_max_objects $max_locks -home $testdir $envargs"
 
 	set tnum 0
@@ -52,8 +52,8 @@ proc recd005 { method args } {
 			error_check_bad dbenv $dbenv NULL
 
 			# Create the two databases.
-			set oflags \
-			    "-create -mode 0644 -env $dbenv $args $omethod"
+			set oflags "-create \
+			    -auto_commit -mode 0644 -env $dbenv $args $omethod"
 			set db1 [eval {berkdb_open} $oflags $testfile1]
 			error_check_bad db_open $db1 NULL
 			error_check_good db_open [is_substr $db1 db] 1

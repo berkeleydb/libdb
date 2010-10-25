@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,7 +11,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 
 /*
  * We need to check sites == nsites, not more than half
@@ -74,6 +73,12 @@ __rep_elect_pp(dbenv, given_nsites, nvotes, flags)
 		return (EINVAL);
 	}
 
+	if (!IS_REP_STARTED(env)) {
+		__db_errx(env,
+	"DB_ENV->rep_elect: must be called after DB_ENV->rep_start");
+		return (EINVAL);
+	}
+
 	if (IS_USING_LEASES(env) && given_nsites != 0) {
 		__db_errx(env,
 	    "DB_ENV->rep_elect: nsites must be zero if leases configured");
@@ -82,6 +87,14 @@ __rep_elect_pp(dbenv, given_nsites, nvotes, flags)
 
 	ret = __rep_elect_int(env, given_nsites, nvotes, flags);
 
+	/*
+	 * The DB_REP_IGNORE return code can be of use to repmgr (which of
+	 * course calls __rep_elect_int directly), but it may too subtle to be
+	 * useful for (Base API) applications: so preserve the pre-existing API
+	 * behavior for applications by making this look like a 0.
+	 */
+	if (ret == DB_REP_IGNORE)
+		ret = 0;
 	return (ret);
 }
 
@@ -105,20 +118,21 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 	DB_THREAD_INFO *ip;
 	LOG *lp;
 	REP *rep;
-	int done, elected, full_elect, in_progress, locked, need_req;
-	int ret, send_vote, t_ret;
+	int done, elected, full_elect, in_progress;
+	int need_req, ret, send_vote, t_ret;
 	u_int32_t ack, ctlflags, egen, nsites, orig_tally, priority, realpri;
 	u_int32_t repflags, tiebreaker;
-	db_timeout_t last_to, timeout, to;
+	db_timeout_t timeout;
 
 	COMPQUIET(flags, 0);
-	COMPQUIET(egen, 0);
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 	elected = 0;
+	egen = 0;
+	ret = 0;
 
 	/*
 	 * Specifying 0 for nsites signals us to use the value configured
@@ -127,7 +141,6 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 	 */
 	nsites = given_nsites == 0 ? rep->config_nsites : given_nsites;
 	ack = nvotes == 0 ? ELECTION_MAJORITY(nsites) : nvotes;
-	locked = 0;
 
 	/*
 	 * XXX
@@ -149,20 +162,10 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 		return (EINVAL);
 	}
 
-	/*
-	 * Default to the normal timeout unless the user configured
-	 * a full election timeout and we think we need a full election.
-	 */
-	full_elect = 0;
-	timeout = rep->elect_timeout;
-	if (!F_ISSET(rep, REP_F_GROUP_ESTD) && rep->full_elect_timeout != 0) {
-		full_elect = 1;
-		timeout = rep->full_elect_timeout;
-	}
 	realpri = rep->priority;
 
-	RPRINT(env, DB_VERB_REP_ELECT,
-	    (env, "Start election nsites %d, ack %d, priority %d",
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
+	    "Start election nsites %d, ack %d, priority %d",
 	    nsites, ack, realpri));
 
 	/*
@@ -178,20 +181,104 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 	 */
 	ctlflags = realpri != 0 ? REPCTL_ELECTABLE : 0;
 	ENV_ENTER(env, ip);
+	LOG_SYSTEM_LOCK(env);
+	lsn = lp->lsn;
+	LOG_SYSTEM_UNLOCK(env);
 
 	orig_tally = 0;
-	if ((ret = __rep_elect_init(env, nsites, ack,
-	    &in_progress, &orig_tally)) != 0) {
-		if (ret == DB_REP_NEWMASTER)
-			ret = 0;
-		goto err;
+	/* If we are already master, simply broadcast that fact and return. */
+	if (F_ISSET(rep, REP_F_MASTER)) {
+		(void)__rep_send_message(env,
+		    DB_EID_BROADCAST, REP_NEWMASTER, &lsn, NULL, 0, 0);
+		if (IS_USING_LEASES(env))
+			ret = __rep_lease_refresh(env);
+		if (ret == 0)
+		    ret = DB_REP_IGNORE;
+		goto envleave;
 	}
+	REP_SYSTEM_LOCK(env);
+
+	/*
+	 * If leases are configured, wait for them to expire, and
+	 * see if we can discover the master while waiting.
+	 */
+	if (IS_USING_LEASES(env) &&
+	    (timeout = __rep_lease_waittime(env)) != 0) {
+		FLD_SET(rep->elect_flags, REP_E_PHASE0);
+		egen = rep->egen;
+		REP_SYSTEM_UNLOCK(env);
+		(void)__rep_send_message(env, DB_EID_BROADCAST,
+		    REP_MASTER_REQ, NULL, NULL, 0, 0);
+
+		/*
+		 * The only possible non-zero return from __rep_wait() is a
+		 * panic for a mutex failure.  So the state of the PHASE0 flag
+		 * doesn't matter much.  If that changes in the future, it is
+		 * still best not to clear the flag after an error, because
+		 * another thread might be in the middle of its PHASE0 wait (and
+		 * not getting an error), so we wouldn't want to cut short its
+		 * wait.  If there isn't another concurrent thread, the worst
+		 * that would happen would be that we would leave the flag set,
+		 * until the next time we came through here and completed a
+		 * wait.  Note that the code here is the only place where we
+		 * check this flag.
+		 */
+		if ((ret = __rep_wait(env,
+		    &timeout, 0, egen, REP_E_PHASE0)) != 0)
+			goto envleave;
+		REP_SYSTEM_LOCK(env);
+		repflags = rep->elect_flags;
+		FLD_CLR(rep->elect_flags, REP_E_PHASE0);
+		/*
+		 * If any other thread cleared PHASE0 while we were waiting,
+		 * then we're done.  Either we heard from a master, or some
+		 * other thread completed its PHASE0 wait.
+		 *
+		 * Or, we could have waited long enough for our lease grant to
+		 * expire.  Check it to make sure.
+		 */
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "after PHASE0 wait, flags 0x%x, elect_flags 0x%x",
+		    rep->flags, rep->elect_flags));
+		if (!FLD_ISSET(repflags, REP_E_PHASE0) ||
+		    __rep_islease_granted(env))
+			goto unlck_lv;
+		F_SET(rep, REP_F_LEASE_EXPIRED);
+	}
+
+	if ((ret = __rep_elect_init(env, nsites, ack,
+	    &in_progress, &orig_tally)) != 0)
+		goto unlck_lv;
 	/*
 	 * If another thread is in the middle of an election we
 	 * just quietly return and not interfere.
 	 */
-	if (in_progress)
-		goto edone;
+	if (in_progress) {
+		ret = DB_REP_IGNORE;
+		goto unlck_lv;
+	}
+
+	/*
+	 * Count threads in the guts of rep_elect, so that we only clear
+	 * lockouts when the last thread is finishing.  The "guts" start here,
+	 * and do not include the above test where we "quietly return" via
+	 * envleave.
+	 *
+	 * Closely associated with that is the notion that the current thread
+	 * "owns" the right to process the election at the current egen.  We set
+	 * the local variable "egen" now to "our" egen; if rep->egen ever
+	 * advances "out from under us" we know it's time to yield to a new
+	 * generation.  Our egen value was vetted in __rep_elect_init(), and we
+	 * have not dropped the mutex since then.
+	 *
+	 * Other than occasionally checking that "our" egen still matches the
+	 * current latest rep->egen, there should be no use of rep->egen in this
+	 * function after this point.
+	 */
+	rep->elect_th++;
+	egen = rep->egen;
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
+		"Election thread owns egen %lu", (u_long)egen));
 
 	priority = lp->persist.version != DB_LOGVERSION ? 0 : realpri;
 #ifdef	CONFIG_TEST
@@ -200,63 +287,25 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 	 * using the priority values.
 	 */
 	if (priority > 0 && priority <= 5) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 	   "Artificially setting priority 0 (ELECTABLE) for CONFIG_TEST mode"));
 		DB_ASSERT(env, ctlflags == REPCTL_ELECTABLE);
 		priority = 0;
 	}
 #endif
 	__os_gettime(env, &rep->etime, 1);
-	REP_SYSTEM_LOCK(env);
+
 	/*
-	 * If leases are configured, wait for them to expire, and
-	 * see if we can discover the master while waiting.
+	 * Default to the normal timeout unless the user configured
+	 * a full election timeout and we think we need a full election.
 	 */
-	if (IS_USING_LEASES(env)) {
-		to = __rep_lease_waittime(env);
-		if (to != 0) {
-			F_SET(rep, REP_F_EPHASE0);
-			REP_SYSTEM_UNLOCK(env);
-			(void)__rep_send_message(env, DB_EID_BROADCAST,
-			    REP_MASTER_REQ, NULL, NULL, 0, 0);
-			ret = __rep_wait(env, &to, 0, rep->egen, REP_F_EPHASE0);
-			REP_SYSTEM_LOCK(env);
-			repflags = rep->flags;
-			F_CLR(rep, REP_F_EPHASE0);
-			switch (ret) {
-			/*
-			 * If waiting is successful, our flag is cleared
-			 * and the master responded.  We're done.
-			 */
-			case DB_REP_EGENCHG:
-			case 0:
-				REP_SYSTEM_UNLOCK(env);
-				goto edone;
-			/*
-			 * If we get a timeout, continue with the election.
-			 */
-			case DB_TIMEOUT:
-				/*
-				 * We have waited a full lease timeout.  We
-				 * need to check now under lock to verify that
-				 * the phase was not over and that the client
-				 * did not grant the lease.  If either happened
-				 * between the time the wait finished and we
-				 * reacquired the mutex, we're done.
-				 */
-				if (!FLD_ISSET(repflags, REP_F_EPHASE0) ||
-				    __rep_islease_granted(env) != 0) {
-					ret = 0;
-					REP_SYSTEM_UNLOCK(env);
-					goto edone;
-				}
-				F_SET(rep, REP_F_LEASE_EXPIRED);
-				break;
-			default:
-				goto lockdone;
-			}
-		}
+	full_elect = 0;
+	timeout = rep->elect_timeout;
+	if (!F_ISSET(rep, REP_F_GROUP_ESTD) && rep->full_elect_timeout != 0) {
+		full_elect = 1;
+		timeout = rep->full_elect_timeout;
 	}
+
 	/*
 	 * We need to lockout applying incoming log records during
 	 * the election.  We need to use a special rep_lockout_apply
@@ -264,20 +313,27 @@ __rep_elect_int(env, given_nsites, nvotes, flags)
 	 * lockout all incoming messages, like other VOTEs!
 	 */
 	if ((ret = __rep_lockout_apply(env, rep, 0)) != 0)
-		goto lockdone;
-	locked = 1;
-	last_to = to = timeout;
-	REP_SYSTEM_UNLOCK(env);
-restart:
+		goto err_locked;
+	if ((ret = __rep_lockout_archive(env, rep)) != 0)
+		goto err_locked;
+
+	/*
+	 * Since the lockout step (above) could have dropped the mutex, we must
+	 * check to see if we still own the right to proceed with the election
+	 * at this egen.
+	 */
+	if (rep->egen != egen) {
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "Found egen %lu, abandon my election at egen %lu",
+		    (u_long)rep->egen, (u_long)egen));
+		goto err_locked;
+	}
+
 	/* Generate a randomized tiebreaker value. */
 	__os_unique_id(env, &tiebreaker);
-	LOG_SYSTEM_LOCK(env);
-	lsn = lp->lsn;
-	LOG_SYSTEM_UNLOCK(env);
-	REP_SYSTEM_LOCK(env);
 
-	F_SET(rep, REP_F_EPHASE1 | REP_F_NOARCHIVE);
-	F_CLR(rep, REP_F_TALLY);
+	FLD_SET(rep->elect_flags, REP_E_PHASE1);
+	FLD_CLR(rep->elect_flags, REP_E_TALLY);
 	/*
 	 * We made sure that leases were expired before starting the
 	 * election, but an existing master may be slow in responding.
@@ -287,21 +343,20 @@ restart:
 	if (IS_USING_LEASES(env) &&
 	     __rep_islease_granted(env)) {
 		ret = 0;
-		goto lockdone;
+		goto err_locked;
 	}
 
 	/*
 	 * If we are in the middle of recovering or internal
 	 * init, we participate, but we set our priority to 0
-	 * and turn off REPCTL_ELECTABLE.  We *cannot* use the
-	 * REP_F_RECOVER_MASK macro because we must explicitly
-	 * exclude REP_F_RECOVER_VERIFY.  If we are in verify
+	 * and turn off REPCTL_ELECTABLE.  Check whether we
+	 * are in an internal init state.  If not,
 	 * then that is okay, we can be elected (i.e. we are not
 	 * in an inconsistent state).
 	 */
-	if (F_ISSET(rep, REP_F_READY_API | REP_F_READY_OP |
-	    REP_F_RECOVER_LOG | REP_F_RECOVER_PAGE | REP_F_RECOVER_UPDATE)) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+	if (ISSET_LOCKOUT_BDB(rep) || IN_INTERNAL_INIT(rep) ||
+	    rep->sync_state == SYNC_UPDATE) {
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 	   "Setting priority 0, unelectable, due to internal init/recovery"));
 		priority = 0;
 		ctlflags = 0;
@@ -313,22 +368,27 @@ restart:
 	 * so that if we crash we can never participate in this egen
 	 * again.
 	 */
-	if ((ret = __rep_write_egen(env, rep, rep->egen + 1)) != 0)
-		goto lockdone;
+	if ((ret = __rep_write_egen(env, rep, egen + 1)) != 0)
+		goto err_locked;
 
 	/* Tally our own vote */
-	if (__rep_tally(env, rep, rep->eid, &rep->sites, rep->egen, 1) != 0) {
-		ret = EINVAL;
-		goto lockdone;
+	if ((ret = __rep_tally(env, rep, rep->eid, &rep->sites, egen, 1))
+	    != 0) {
+		/*
+		 * __rep_tally is telling us that this vote is a duplicate.  But
+		 * this is our own vote in this case, and that should be
+		 * impossible for a given egen.
+		 */
+		DB_ASSERT(env, ret != DB_REP_IGNORE);
+		goto err_locked;
 	}
 	__rep_cmp_vote(env, rep, rep->eid, &lsn, priority, rep->gen,
 	    tiebreaker, ctlflags);
 
-	RPRINT(env, DB_VERB_REP_ELECT, (env, "Beginning an election"));
+	RPRINT(env, (env, DB_VERB_REP_ELECT, "Beginning an election"));
 
 	/* Now send vote */
 	send_vote = DB_EID_INVALID;
-	egen = rep->egen;
 	done = IS_PHASE1_DONE(rep);
 	REP_SYSTEM_UNLOCK(env);
 	__rep_send_vote(env, &lsn, nsites, ack, priority, tiebreaker, egen,
@@ -338,70 +398,30 @@ restart:
 		REP_SYSTEM_LOCK(env);
 		goto vote;
 	}
-	last_to = to;
-	ret = __rep_wait(env, &to, full_elect, egen, REP_F_EPHASE1);
-	switch (ret) {
-		case 0:
-			/* Check if election complete or phase complete. */
-			if (!IN_ELECTION(rep)) {
-				RPRINT(env, DB_VERB_REP_ELECT,
-				    (env, "Ended election phase 1"));
-				goto edone;
-			}
-			goto phase2;
-		case DB_REP_EGENCHG:
-			/*
-			 * Pick up reducing our timeout where we last
-			 * left off.
-			 */
-			if (to > last_to)
-				to = last_to;
-			to = (to * 8) / 10;
-			RPRINT(env, DB_VERB_REP_ELECT, (env,
-"Egen changed while waiting. Now %lu.  New timeout %lu, orig timeout %lu",
-			    (u_long)rep->egen, (u_long)to, (u_long)timeout));
-			/*
-			 * If the egen changed while we were sleeping, that
-			 * means we're probably late to the next election,
-			 * so we'll backoff our timeout so that we don't get
-			 * into an out-of-phase election scenario.
-			 *
-			 * Backoff to 80% of the current timeout.
-			 */
-			goto restart;
-		case DB_TIMEOUT:
-			break;
-		default:
-			goto err;
+
+	ret = __rep_wait(env, &timeout, full_elect, egen, REP_E_PHASE1);
+	REP_SYSTEM_LOCK(env);
+	if (ret != 0)
+		goto err_locked;
+	if (rep->egen > egen)
+		/*
+		 * For one reason or another, this election cycle is over; it
+		 * doesn't matter why.
+		 */
+		goto out;
+
+	if (FLD_ISSET(rep->elect_flags, REP_E_PHASE2)) {
+		/* Received enough votes while waiting to move us to phase 2. */
+		REP_SYSTEM_UNLOCK(env);
+		goto phase2;
 	}
 
-	REP_SYSTEM_LOCK(env);
 	/*
 	 * If we got here, we haven't heard from everyone, but we've
 	 * run out of time, so it's time to decide if we have enough
 	 * votes to pick a winner and if so, to send out a vote to
 	 * the winner.
-	 *
-	 * Check the state of the world after reacquiring the mutex.
-	 * See if the election actually finished anyway.
 	 */
-	if (!IN_ELECTION(rep)) {
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "Ended election after acquiring mutex"));
-		ret = 0;
-		goto lockdone;
-	}
-	/*
-	 * If our egen changed while we were waiting.  We need to
-	 * essentially reinitialize our election.
-	 */
-	if (egen != rep->egen) {
-		REP_SYSTEM_UNLOCK(env);
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "Egen changed from %lu to %lu",
-		    (u_long)egen, (u_long)rep->egen));
-		goto restart;
-	}
 	if (rep->sites >= rep->nvotes) {
 vote:
 		/* We think we've seen enough to cast a vote. */
@@ -412,15 +432,16 @@ vote:
 		 * with incoming votes.
 		 */
 		if (rep->winner == rep->eid) {
-			(void)__rep_tally(env, rep, rep->eid, &rep->votes,
-			    egen, 2);
-			RPRINT(env, DB_VERB_REP_ELECT, (env,
+			if ((ret =__rep_tally(env,
+			    rep, rep->eid, &rep->votes, egen, 2)) != 0 &&
+			    ret != DB_REP_IGNORE)
+				goto err_locked;
+			RPRINT(env, (env, DB_VERB_REP_ELECT,
 			    "Counted my vote %d", rep->votes));
 		}
-		F_SET(rep, REP_F_EPHASE2);
-		F_CLR(rep, REP_F_EPHASE1);
+		FLD_SET(rep->elect_flags, REP_E_PHASE2);
+		FLD_CLR(rep->elect_flags, REP_E_PHASE1);
 	}
-	REP_SYSTEM_UNLOCK(env);
 	if (send_vote == DB_EID_INVALID) {
 		/* We do not have enough votes to elect. */
 		if (rep->sites >= rep->nvotes)
@@ -432,15 +453,16 @@ vote:
 	"Not enough votes to elect: recvd %d of %d from %d sites",
 			    rep->sites, rep->nvotes, rep->nsites);
 		ret = DB_REP_UNAVAIL;
-		goto err;
+		goto err_locked;
 	}
+	REP_SYSTEM_UNLOCK(env);
 
 	/*
 	 * We have seen enough vote1's.  Now we need to wait
 	 * for all the vote2's.
 	 */
 	if (send_vote != rep->eid) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env, "Sending vote"));
+		RPRINT(env, (env, DB_VERB_REP_ELECT, "Sending vote"));
 		__rep_send_vote(env, NULL, 0, 0, 0, 0, egen,
 		    send_vote, REP_VOTE2, 0);
 		/*
@@ -455,113 +477,118 @@ vote:
 		 * new election before the winner can declare
 		 * itself.
 		 */
-		to = to * 2;
+		timeout = timeout * 2;
 	}
 
 phase2:
 	if (I_HAVE_WON(rep, rep->winner)) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 		    "Skipping phase2 wait: already got %d votes", rep->votes));
 		REP_SYSTEM_LOCK(env);
 		goto i_won;
 	}
-	/*
-	 * Don't set last_to to 'to' here because we may have adjusted
-	 * it above.  If egen changes we want to pick up reducing the
-	 * timeout from the point we were above.
-	 */
-	ret = __rep_wait(env, &to, full_elect, egen, REP_F_EPHASE2);
-	RPRINT(env, DB_VERB_REP_ELECT,
-	    (env, "Ended election phase 2 %d", ret));
-	switch (ret) {
-		case 0:
-			goto edone;
-		case DB_REP_EGENCHG:
-			if (to > last_to)
-				to = last_to;
-			to = (to * 8) / 10;
-			RPRINT(env, DB_VERB_REP_ELECT, (env,
-"While waiting egen changed to %lu.  Phase 2 New timeout %lu, orig timeout %lu",
-			    (u_long)rep->egen,
-			    (u_long)to, (u_long)timeout));
-			goto restart;
-		case DB_TIMEOUT:
-			ret = DB_REP_UNAVAIL;
-			break;
-		default:
-			goto err;
-	}
+	ret = __rep_wait(env, &timeout, full_elect, egen, REP_E_PHASE2);
 	REP_SYSTEM_LOCK(env);
 	/*
-	 * Check the state of the world after reacquiring the mutex.
-	 * See if the election actually finished anyway.
+	 * Since at "err_lock" we're expected to have the lock, it's convenient
+	 * to acquire it before testing "ret" here, since we need it anyway for
+	 * the following stuff.
 	 */
-	if (!IN_ELECTION(rep)) {
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "Ended election phase 2 after acquiring mutex"));
-		ret = 0;
-		goto lockdone;
-	}
-	if (egen != rep->egen) {
-		REP_SYSTEM_UNLOCK(env);
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
-		    "Egen ph2 changed from %lu to %lu",
-		    (u_long)egen, (u_long)rep->egen));
-		goto restart;
-	}
-	RPRINT(env, DB_VERB_REP_ELECT, (env,
+	if (ret != 0)
+		goto err_locked;
+	if (rep->egen > egen || !IN_ELECTION(rep))
+		goto out;
+
+	/* We must have timed out. */
+	ret = DB_REP_UNAVAIL;
+
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
 	    "After phase 2: votes %d, nvotes %d, nsites %d",
 	    rep->votes, rep->nvotes, rep->nsites));
+
 	if (I_HAVE_WON(rep, rep->winner)) {
 i_won:		__rep_elect_master(env, rep);
 		ret = 0;
 		elected = 1;
 	}
-	if (0) {
-err:		REP_SYSTEM_LOCK(env);
-	}
-lockdone:
+err_locked:
 	/*
-	 * If we get here because of a non-election error, then we
-	 * did not tally our vote.  The only non-election error is
-	 * from elect_init where we were unable to grow_sites.  In
-	 * that case we do not want to discard all known election info.
+	 * If we get here because of a non-election error, then we did not tally
+	 * our vote.  In that case we do not want to discard all known election
+	 * info.
 	 */
 	if (ret == 0 || ret == DB_REP_UNAVAIL)
-		__rep_elect_done(env, rep, 0);
+		__rep_elect_done(env, rep);
 	else if (orig_tally)
-		F_SET(rep, orig_tally);
+		FLD_SET(rep->elect_flags, orig_tally);
+
+#ifdef CONFIG_TEST
+	if (0) {
+DB_TEST_RECOVERY_LABEL
+		REP_SYSTEM_LOCK(env);
+	}
+#endif
+
+out:
+#ifdef CONFIG_TEST
+	DB_ASSERT(env, rep->egen > egen ||
+	    ret == EINVAL);	/* from DB_ENV_TEST_RECOVERY  */
+#else
+	DB_ASSERT(env, rep->egen > egen);
+#endif
 
 	/*
-	 * If the election finished elsewhere, we need to clear
-	 * the elect flag anyway.
+	 * We're leaving, so decrement thread count.  If it's still >0 after
+	 * that, another thread has come along to handle a later egen.  Only the
+	 * last thread to come through here should clear the lockouts.
 	 */
-	if (0) {
-edone:		REP_SYSTEM_LOCK(env);
-	}
-	F_CLR(rep, REP_F_INREPELECT);
-	if (locked) {
+	need_req = 0;
+	DB_ASSERT(env, rep->elect_th > 0);
+	rep->elect_th--;
+	if (rep->elect_th == 0) {
 		need_req = F_ISSET(rep, REP_F_SKIPPED_APPLY) &&
 		    !I_HAVE_WON(rep, rep->winner);
-		F_CLR(rep, REP_F_READY_APPLY | REP_F_SKIPPED_APPLY);
-		REP_SYSTEM_UNLOCK(env);
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_APPLY);
+		F_CLR(rep, REP_F_SKIPPED_APPLY);
+	}
+	/*
+	 * Only clear archiving lockout if the election failed.  If
+	 * it succeeded, we keep archiving disabled until we either
+	 * become master or complete synchronization with a master.
+	 */
+	if (ret != 0 && rep->elect_th == 0)
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_ARCHIVE);
+	REP_SYSTEM_UNLOCK(env);
+	/*
+	 * If we skipped any log records, request them now.
+	 */
+	if (need_req && (t_ret = __rep_resend_req(env, 0)) != 0 &&
+	    (ret == 0 || ret == DB_REP_UNAVAIL || ret == DB_REP_IGNORE))
+		ret = t_ret;
+
+	/* Note that "elected" implies ret cannot be DB_REP_UNAVAIL here. */
+	if (elected) {
 		/*
-		 * If we skipped any log records, request them now.
+		 * The only way ret can be non-zero is if __rep_resend_req()
+		 * failed.  So we don't have to check for UNAVAIL and IGNORE in
+		 * deciding whether we're overwriting ret, as we did above.
 		 */
-		if (need_req && (t_ret = __rep_resend_req(env, 0)) != 0 &&
+		DB_ASSERT(env, ret != DB_REP_UNAVAIL && ret != DB_REP_IGNORE);
+		if ((t_ret = __rep_fire_elected(env, rep, egen)) != 0 &&
 		    ret == 0)
 			ret = t_ret;
-	} else
-		REP_SYSTEM_UNLOCK(env);
+	}
 
-	if (elected)
-		ret = __rep_fire_elected(env, rep, egen);
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
+"Ended election with %d, e_th %lu, egen %lu, flag 0x%lx, e_fl 0x%lx, lo_fl 0x%lx",
+	    ret, (u_long) rep->elect_th, (u_long)rep->egen,
+	    (u_long)rep->flags, (u_long)rep->elect_flags,
+	    (u_long)rep->lockout_flags));
 
-	RPRINT(env, DB_VERB_REP_ELECT, (env,
-	    "Ended election with %d, sites %d, egen %lu, flags 0x%lx",
-	    ret, rep->sites, (u_long)rep->egen, (u_long)rep->flags));
-
-DB_TEST_RECOVERY_LABEL
+	if (0) {
+unlck_lv:	REP_SYSTEM_UNLOCK(env);
+	}
+envleave:
 	ENV_LEAVE(env, ip);
 	return (ret);
 }
@@ -589,7 +616,7 @@ __rep_vote1(env, rp, rec, eid)
 	__rep_egen_args egen_arg;
 	__rep_vote_info_args tmpvi, *vi;
 	u_int32_t egen;
-	int elected, inelect, master, ret;
+	int elected, master, ret;
 	u_int8_t buf[__REP_MAXMSG_SIZE];
 	size_t len;
 
@@ -602,7 +629,7 @@ __rep_vote1(env, rp, rec, eid)
 	lp = dblp->reginfo.primary;
 
 	if (F_ISSET(rep, REP_F_MASTER)) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env, "Master received vote"));
+		RPRINT(env, (env, DB_VERB_REP_ELECT, "Master received vote"));
 		LOG_SYSTEM_LOCK(env);
 		lsn = lp->lsn;
 		LOG_SYSTEM_UNLOCK(env);
@@ -635,11 +662,11 @@ __rep_vote1(env, rp, rec, eid)
 	 * start over by tallying it.  If we get an old vote,
 	 * send an ALIVE to the old participant.
 	 */
-	RPRINT(env, DB_VERB_REP_ELECT,
-	    (env, "Received vote1 egen %lu, egen %lu",
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
+	    "Received vote1 egen %lu, egen %lu",
 	    (u_long)vi->egen, (u_long)rep->egen));
 	if (vi->egen < rep->egen) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 		    "Received old vote %lu, egen %lu, ignoring vote1",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		egen_arg.egen = rep->egen;
@@ -655,23 +682,19 @@ __rep_vote1(env, rp, rec, eid)
 		}
 		(void)__rep_send_message(env,
 		    eid, REP_ALIVE, &rp->lsn, &data_dbt, 0, 0);
-		return (ret);
+		return (0);
 	}
-	inelect = F_ISSET(rep, REP_F_INREPELECT);
 	if (vi->egen > rep->egen) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
-		    "Received VOTE1 from egen %lu, my egen %lu; reset",
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "Received VOTE1 from egen %lu, my egen %lu",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		/*
-		 * Record if we're currently in rep_elect.  If so, don't
-		 * return HOLDELECTION because the election thread should
-		 * notice it.  However, there is a window where the thread
-		 * could be at the tail end of processing the previous
-		 * election and it would not see this change in egen.
+		 * Terminate an election that may be in progress at the old
+		 * egen.  Whether or not there was one, this call will result in
+		 * HOLDELECTION (assuming no unexpected failures crop up).
 		 */
-		__rep_elect_done(env, rep, 0);
+		__rep_elect_done(env, rep);
 		rep->egen = vi->egen;
-		F_SET(rep, REP_F_EGENUPDATE);
 	}
 
 	/*
@@ -680,7 +703,7 @@ __rep_vote1(env, rp, rec, eid)
 	 * about more sites, and/or requires more votes, than we do.
 	 */
 	if (!IN_ELECTION_TALLY(rep)) {
-		F_SET(rep, REP_F_TALLY);
+		FLD_SET(rep->elect_flags, REP_E_TALLY);
 		rep->nsites = vi->nsites;
 		rep->nvotes = vi->nvotes;
 	} else {
@@ -699,30 +722,31 @@ __rep_vote1(env, rp, rec, eid)
 	/*
 	 * Ignore vote1's if we're in phase 2.
 	 */
-	if (F_ISSET(rep, REP_F_EPHASE2)) {
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "In phase 2, ignoring vote1"));
+	if (FLD_ISSET(rep->elect_flags, REP_E_PHASE2)) {
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "In phase 2, ignoring vote1"));
 		goto err;
 	}
 
 	/*
-	 * Record this vote.  If we get back non-zero, we
-	 * ignore the vote.
+	 * Record this vote.  If we're ignoring it, there's nothing more we need
+	 * to do.
 	 */
 	if ((ret = __rep_tally(env, rep, eid, &rep->sites, vi->egen, 1)) != 0) {
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "Tally returned %d, sites %d", ret, rep->sites));
-		ret = 0;
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "Tally returned %d, sites %d", ret, rep->sites));
+		if (ret == DB_REP_IGNORE)
+			ret = 0;
 		goto err;
 	}
-	RPRINT(env, DB_VERB_REP_ELECT, (env,
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
 	    "Incoming vote: (eid)%d (pri)%lu %s (gen)%lu (egen)%lu [%lu,%lu]",
 	    eid, (u_long)vi->priority,
 	    F_ISSET(rp, REPCTL_ELECTABLE) ? "ELECTABLE" : "",
 	    (u_long)rp->gen, (u_long)vi->egen,
 	    (u_long)rp->lsn.file, (u_long)rp->lsn.offset));
 	if (rep->sites > 1)
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 	    "Existing vote: (eid)%d (pri)%lu (gen)%lu (sites)%d [%lu,%lu]",
 		    rep->winner, (u_long)rep->w_priority,
 		    (u_long)rep->w_gen, rep->sites,
@@ -732,38 +756,34 @@ __rep_vote1(env, rp, rec, eid)
 	__rep_cmp_vote(env, rep, eid, &rp->lsn, vi->priority,
 	    rp->gen, vi->tiebreaker, rp->flags);
 	/*
-	 * If you get a vote and you're not in an election, we've
-	 * already recorded this vote.  But that is all we need
-	 * to do.
+	 * If you get a vote and you're not yet "in an election" at the proper
+	 * egen, we've already recorded this vote.  But that is all we need to
+	 * do.
 	 */
 	if (!IN_ELECTION(rep)) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
-		    "Not in election, but received vote1 0x%x", rep->flags));
-		/*
-		 * If we were in the middle of an election and we ended up
-		 * clearing the election out from under the rep_elect caller,
-		 * we want to just return here.
-		 */
-		if (inelect)
-			ret = 0;
-		else
-			ret = DB_REP_HOLDELECTION;
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "Not in election, but received vote1 0x%x 0x%x",
+		    rep->flags, rep->elect_flags));
+		ret = DB_REP_HOLDELECTION;
 		goto err;
 	}
 
 	master = rep->winner;
 	lsn = rep->w_lsn;
 	if (IS_PHASE1_DONE(rep)) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env, "Phase1 election done"));
-		RPRINT(env, DB_VERB_REP_ELECT, (env, "Voting for %d%s",
+		RPRINT(env, (env, DB_VERB_REP_ELECT, "Phase1 election done"));
+		RPRINT(env, (env, DB_VERB_REP_ELECT, "Voting for %d%s",
 		    master, master == rep->eid ? "(self)" : ""));
 		egen = rep->egen;
-		F_SET(rep, REP_F_EPHASE2);
-		F_CLR(rep, REP_F_EPHASE1);
+		FLD_SET(rep->elect_flags, REP_E_PHASE2);
+		FLD_CLR(rep->elect_flags, REP_E_PHASE1);
 		if (master == rep->eid) {
-			(void)__rep_tally(env, rep, rep->eid,
-			    &rep->votes, egen, 2);
-			RPRINT(env, DB_VERB_REP_ELECT, (env,
+			if ((ret =__rep_tally(env, rep, rep->eid,
+			    &rep->votes, egen, 2)) != 0 &&
+			    ret != DB_REP_IGNORE)
+				goto err;
+			ret = 0;
+			RPRINT(env, (env, DB_VERB_REP_ELECT,
 			    "After phase 1 done: counted vote %d of %d",
 			    rep->votes, rep->nvotes));
 			if (I_HAVE_WON(rep, rep->winner)) {
@@ -813,7 +833,7 @@ __rep_vote2(env, rp, rec, eid)
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	RPRINT(env, DB_VERB_REP_ELECT, (env, "We received a vote%s",
+	RPRINT(env, (env, DB_VERB_REP_ELECT, "We received a vote%s",
 	    F_ISSET(rep, REP_F_MASTER) ? " (master)" : ""));
 	if (F_ISSET(rep, REP_F_MASTER)) {
 		LOG_SYSTEM_LOCK(env);
@@ -855,7 +875,7 @@ __rep_vote2(env, rp, rec, eid)
 			return (ret);
 	vi = &tmpvi;
 	if (!IN_ELECTION_TALLY(rep) && vi->egen >= rep->egen) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 		    "Not in election gen %lu, at %lu, got vote",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		ret = DB_REP_HOLDELECTION;
@@ -883,8 +903,8 @@ __rep_vote2(env, rp, rec, eid)
 	 * Case 1.
 	 */
 	if (vi->egen != rep->egen) {
-		RPRINT(env, DB_VERB_REP_ELECT,
-		    (env, "Bad vote egen %lu.  Mine %lu",
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "Bad vote egen %lu.  Mine %lu",
 		    (u_long)vi->egen, (u_long)rep->egen));
 		ret = 0;
 		goto err;
@@ -894,10 +914,11 @@ __rep_vote2(env, rp, rec, eid)
 	 * __rep_tally takes care of cases 2, 3 and 4.
 	 */
 	if ((ret = __rep_tally(env, rep, eid, &rep->votes, vi->egen, 2)) != 0) {
-		ret = 0;
+		if (ret == DB_REP_IGNORE)
+			ret = 0;
 		goto err;
 	}
-	RPRINT(env, DB_VERB_REP_ELECT, (env, "Counted vote %d of %d",
+	RPRINT(env, (env, DB_VERB_REP_ELECT, "Counted vote %d of %d",
 	    rep->votes, rep->nvotes));
 	if (I_HAVE_WON(rep, rep->winner)) {
 		__rep_elect_master(env, rep);
@@ -912,11 +933,15 @@ err:	REP_SYSTEM_UNLOCK(env);
 
 /*
  * __rep_tally --
- *	Handle incoming vote message on a client.  Called with the db_rep
- *	mutex held.  This function will return 0 if we successfully tally
- *	the vote and non-zero if the vote is ignored.  This will record
- *	both VOTE1 and VOTE2 records, depending on which region offset the
- *	caller passed in.
+ *	Handle incoming vote message on a client.  This will record either a
+ *	VOTE1 or a VOTE2, depending on the "phase" value the caller passed in.
+ *
+ *	This function will return:
+ *	    0                if we successfully tally the vote;
+ *	    DB_REP_IGNORE    if the vote is properly ignored;
+ *	    (anything else)  in case of an unexpected error.
+ *
+ *	!!! Caller must hold REP_SYSTEM_LOCK.
  */
 static int
 __rep_tally(env, rep, eid, countp, egen, phase)
@@ -940,7 +965,7 @@ __rep_tally(env, rep, eid, countp, egen, phase)
 		max_sites = rep->nsites;
 	if (max_sites > rep->asites &&
 	    (ret = __rep_grow_sites(env, max_sites)) != 0) {
-		RPRINT(env, DB_VERB_REP_ELECT, (env,
+		RPRINT(env, (env, DB_VERB_REP_ELECT,
 		    "Grow sites returned error %d", ret));
 		return (ret);
 	}
@@ -961,12 +986,12 @@ __rep_tally(env, rep, eid, countp, egen, phase)
 		 * Also ignore votes that are duplicates.
 		 */
 		if (vtp->eid == eid) {
-			RPRINT(env, DB_VERB_REP_ELECT, (env,
+			RPRINT(env, (env, DB_VERB_REP_ELECT,
 			    "Tally found[%d] (%d, %lu), this vote (%d, %lu)",
 				    i, vtp->eid, (u_long)vtp->egen,
 				    eid, (u_long)egen));
 			if (vtp->egen >= egen)
-				return (1);
+				return (DB_REP_IGNORE);
 			else {
 				vtp->egen = egen;
 				return (0);
@@ -980,7 +1005,7 @@ __rep_tally(env, rep, eid, countp, egen, phase)
 	 * If we get here, we have a new voter we haven't seen before.  Tally
 	 * this vote.
 	 */
-	RPRINT(env, DB_VERB_REP_ELECT, (env, "Tallying VOTE%d[%d] (%d, %lu)",
+	RPRINT(env, (env, DB_VERB_REP_ELECT, "Tallying VOTE%d[%d] (%d, %lu)",
 	    phase, i, eid, (u_long)egen));
 
 	vtp->eid = eid;
@@ -1033,8 +1058,8 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, tiebreaker, flags)
 		    (cmp == 0 && (priority > rep->w_priority ||
 		    (priority == rep->w_priority &&
 		    (tiebreaker > rep->w_tiebreaker))))) {
-			RPRINT(env, DB_VERB_REP_ELECT,
-			    (env, "Accepting new vote"));
+			RPRINT(env, (env, DB_VERB_REP_ELECT,
+			    "Accepting new vote"));
 			rep->winner = eid;
 			rep->w_priority = priority;
 			rep->w_lsn = *lsnp;
@@ -1062,7 +1087,10 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, tiebreaker, flags)
 /*
  * __rep_elect_init
  *	Initialize an election.  Sets beginp non-zero if the election is
- * already in progress; makes it 0 otherwise.
+ * already in progress; makes it 0 otherwise.  Leaves it untouched if we return
+ * DB_REP_NEWMASTER.
+ *
+ * Caller holds the REP_SYSTEM mutex, and relies on us not dropping it.
  */
 static int
 __rep_elect_init(env, nsites, nvotes, beginp, otally)
@@ -1071,10 +1099,7 @@ __rep_elect_init(env, nsites, nvotes, beginp, otally)
 	int *beginp;
 	u_int32_t *otally;
 {
-	DB_LOG *dblp;
-	DB_LSN lsn;
 	DB_REP *db_rep;
-	LOG *lp;
 	REP *rep;
 	int ret;
 
@@ -1083,28 +1108,11 @@ __rep_elect_init(env, nsites, nvotes, beginp, otally)
 
 	ret = 0;
 
-	/* We may miscount, as we don't hold the replication mutex here. */
-	STAT(rep->stat.st_elections++);
-
-	/* If we are already master; simply broadcast that fact and return. */
-	if (F_ISSET(rep, REP_F_MASTER)) {
-		dblp = env->lg_handle;
-		lp = dblp->reginfo.primary;
-		LOG_SYSTEM_LOCK(env);
-		lsn = lp->lsn;
-		LOG_SYSTEM_UNLOCK(env);
-		(void)__rep_send_message(env,
-		    DB_EID_BROADCAST, REP_NEWMASTER, &lsn, NULL, 0, 0);
-		if (IS_USING_LEASES(env))
-			ret = __rep_lease_refresh(env);
-		STAT(rep->stat.st_elections_won++);
-		return (DB_REP_NEWMASTER);
-	}
-
-	REP_SYSTEM_LOCK(env);
 	if (otally != NULL)
-		*otally = F_ISSET(rep, REP_F_TALLY);
-	*beginp = IN_ELECTION(rep) || F_ISSET(rep, REP_F_INREPELECT);
+		*otally = FLD_ISSET(rep->elect_flags, REP_E_TALLY);
+
+	DB_ASSERT(env, rep->spent_egen <= rep->egen);
+	*beginp = rep->spent_egen == rep->egen;
 	if (!*beginp) {
 		/*
 		 * Make sure that we always initialize all the election fields
@@ -1116,8 +1124,9 @@ __rep_elect_init(env, nsites, nvotes, beginp, otally)
 		    (ret = __rep_grow_sites(env, nsites)) != 0)
 			goto err;
 		DB_ENV_TEST_RECOVERY(env, DB_TEST_ELECTINIT, ret, NULL);
-		F_SET(rep, REP_F_INREPELECT);
-		F_CLR(rep, REP_F_EGENUPDATE);
+		rep->spent_egen = rep->egen;
+		STAT(rep->stat.st_elections++);
+
 		/*
 		 * If we're the first to the party, we simply set initial
 		 * values: pre-existing values would be left over from previous
@@ -1134,7 +1143,7 @@ __rep_elect_init(env, nsites, nvotes, beginp, otally)
 		}
 	}
 DB_TEST_RECOVERY_LABEL
-err:	REP_SYSTEM_UNLOCK(env);
+err:
 	return (ret);
 }
 
@@ -1156,9 +1165,9 @@ __rep_elect_master(env, rep)
 	F_SET(rep, REP_F_MASTERELECT);
 	STAT(rep->stat.st_elections_won++);
 
-	RPRINT(env, DB_VERB_REP_ELECT, (env,
-	    "Got enough votes to win; election done; winner is %d, gen %lu",
-	    rep->master_id, (u_long)rep->gen));
+	RPRINT(env, (env, DB_VERB_REP_ELECT,
+	    "Got enough votes to win; election done; (prev) gen %lu",
+	    (u_long)rep->gen));
 }
 
 static int
@@ -1177,12 +1186,25 @@ __rep_fire_elected(env, rep, egen)
 }
 
 /*
- * Compute a sleep interval.  Set it to the smaller of .5s or
- * timeout/10, making sure we sleep at least 1usec if timeout < 10.
+ * Compute a sleep interval.
+ *
+ * The user specifies an overall timeout function, but checking is cheap and the
+ * timeout may be a generous upper bound.  So sleep for the smaller of .5s and
+ * timeout/10.  Make sure we sleep at least 1usec if timeout < 10.
  */
 #define	SLEEPTIME(timeout)					\
-	(timeout > 5000000) ? 500000 : ((timeout >= 10) ? timeout / 10 : 1);
+	((timeout > 5000000) ? 500000 : ((timeout >= 10) ? timeout / 10 : 1))
 
+/*
+ * __rep_wait --
+ *
+ * Sleep until the indicated phase is over, or the timeout expires.  The phase
+ * is over when someone clears the phase flag (in the course of processing an
+ * incoming message).  This could either be a normal progression one one phase
+ * to the other, or it could be due to receiving a NEWMASTER or an egen change.
+ * In all cases we simply return 0, and the caller should check the state of the
+ * world (generally under mutex protection) to decide what to do next.
+ */
 static int
 __rep_wait(env, timeoutp, full_elect, egen, flags)
 	ENV *env;
@@ -1192,19 +1214,14 @@ __rep_wait(env, timeoutp, full_elect, egen, flags)
 {
 	DB_REP *db_rep;
 	REP *rep;
-	int done, echg, phase_over, ret;
+	int done;
 	u_int32_t sleeptime, sleeptotal, timeout;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
-	done = echg = phase_over = ret = 0;
+	done = 0;
 
 	timeout = *timeoutp;
-	/*
-	 * The user specifies an overall timeout function, but checking
-	 * is cheap and the timeout may be a generous upper bound.
-	 * Sleep repeatedly for the smaller of .5s and timeout/10.
-	 */
 	sleeptime = SLEEPTIME(timeout);
 	sleeptotal = 0;
 	while (sleeptotal < timeout) {
@@ -1220,62 +1237,20 @@ __rep_wait(env, timeoutp, full_elect, egen, flags)
 		if (full_elect && F_ISSET(rep, REP_F_GROUP_ESTD)) {
 			*timeoutp = rep->elect_timeout;
 			timeout = *timeoutp;
-			/*
-			 * We adjusted timeout, if we've already waited
-			 * that long, then return as though this phase
-			 * timed out.  However, we want to give other
-			 * changes a chance to return, so if we both
-			 * found a group and found a new egen, we
-			 * override this return with the egen information.
-			 * If we found a group and our election finished
-			 * then we want to return the election completion.
-			 */
-			if (sleeptotal >= timeout) {
+			if (sleeptotal >= timeout)
 				done = 1;
-				ret = DB_TIMEOUT;
-			} else
+			else
 				sleeptime = SLEEPTIME(timeout);
 		}
 
-		echg = egen != rep->egen;
-		phase_over = !F_ISSET(rep, flags);
-
-		/*
-		 * Since we're not clearing out master_id any more,
-		 * we need to do more to detect the difference between
-		 * a new master getting elected and egen changing,
-		 * or a new election starting because the old one
-		 * timed out at another site (which easily happens
-		 * when sites have very different timeout settings).
-		 *
-		 * Detect this by:
-		 * If my phase was over, egen has changed but
-		 * there are still election flags set, or we're
-		 * told our egen was out of date and updated
-		 * then return DB_REP_EGENCHG.
-		 *
-		 * Phase 0 doesn't care about egen, only the phase over.
-		 *
-		 * Otherwise, if my phase is over I want to
-		 * set my idea of the master and return.
-		 */
-		if (phase_over && echg &&
-		    flags != REP_F_EPHASE0 &&
-		    (IN_ELECTION_TALLY(rep) ||
-		    F_ISSET(rep, REP_F_EGENUPDATE))) {
+		if (egen != rep->egen || !FLD_ISSET(rep->elect_flags, flags))
 			done = 1;
-			F_CLR(rep, REP_F_EGENUPDATE);
-			ret = DB_REP_EGENCHG;
-		} else if (phase_over) {
-			done = 1;
-			ret = 0;
-		}
 		REP_SYSTEM_UNLOCK(env);
 
 		if (done)
-			return (ret);
+			return (0);
 	}
-	return (DB_TIMEOUT);
+	return (0);
 }
 
 /*

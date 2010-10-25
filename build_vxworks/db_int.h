@@ -2,7 +2,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -21,7 +21,7 @@
 #endif
 #include <sys/stat.h>
 
-#if defined(__INCLUDE_SELECT_H)
+#if defined(HAVE_REPLICATION_THREADS)
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
@@ -47,7 +47,7 @@
 #include <sys/uio.h>
 #endif
 
-#if defined(__INCLUDE_NETWORKING)
+#if defined(HAVE_REPLICATION_THREADS)
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
@@ -73,25 +73,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(__INCLUDE_DIRECTORY)
-#if HAVE_DIRENT_H
-# include <dirent.h>
-# define NAMLEN(dirent) strlen((dirent)->d_name)
-#else
-# define dirent direct
-# define NAMLEN(dirent) (dirent)->d_namlen
-# if HAVE_SYS_NDIR_H
-#  include <sys/ndir.h>
-# endif
-# if HAVE_SYS_DIR_H
-#  include <sys/dir.h>
-# endif
-# if HAVE_NDIR_H
-#  include <ndir.h>
-# endif
-#endif
-#endif /* __INCLUDE_DIRECTORY */
-
 #endif /* !HAVE_SYSTEM_INCLUDE_FILES */
 #include "clib_port.h"
 #include "db.h"
@@ -100,25 +81,61 @@
 #include "dbinc/win_db.h"
 #endif
 
+#ifdef HAVE_DBM
+#undef	DB_DBM_HSEARCH
+#define	DB_DBM_HSEARCH 1
+#endif
+
 #include "db.h"
 #include "clib_port.h"
 
 #include "dbinc/queue.h"
 #include "dbinc/shqueue.h"
+#include "dbinc/perfmon.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+/*
+ * The Windows compiler needs to be told about structures that are available
+ * outside a dll.
+ */
+#if defined(DB_WIN32) && defined(_MSC_VER) && \
+    !defined(DB_CREATE_DLL) && !defined(_LIB)
+#define	__DB_IMPORT __declspec(dllimport)
+#else
+#define	__DB_IMPORT
+#endif
+
 /*******************************************************
  * Forward structure declarations.
  *******************************************************/
+struct __db_commit_info; typedef struct __db_commit_info DB_COMMIT_INFO;
 struct __db_reginfo_t;	typedef struct __db_reginfo_t REGINFO;
 struct __db_txnhead;	typedef struct __db_txnhead DB_TXNHEAD;
 struct __db_txnlist;	typedef struct __db_txnlist DB_TXNLIST;
 struct __vrfy_childinfo;typedef struct __vrfy_childinfo VRFY_CHILDINFO;
 struct __vrfy_dbinfo;   typedef struct __vrfy_dbinfo VRFY_DBINFO;
 struct __vrfy_pageinfo; typedef struct __vrfy_pageinfo VRFY_PAGEINFO;
+
+struct __db_log_verify_info;
+struct __txn_verify_info;
+struct __lv_filereg_info;
+struct __lv_ckp_info;
+struct __lv_timestamp_info;
+typedef struct __db_log_verify_info DB_LOG_VRFY_INFO;
+typedef struct __txn_verify_info VRFY_TXN_INFO;
+typedef struct __lv_filereg_info VRFY_FILEREG_INFO;
+typedef struct __lv_filelife VRFY_FILELIFE;
+typedef struct __lv_ckp_info VRFY_CKP_INFO;
+typedef struct __lv_timestamp_info VRFY_TIMESTAMP_INFO;
+
+/*
+ * TXNINFO_HANDLER --
+ *	Callback function pointer type for __iterate_txninfo.
+ */
+typedef int (*TXNINFO_HANDLER) __P((DB_LOG_VRFY_INFO *, VRFY_TXN_INFO *, void *));
 
 typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 
@@ -141,6 +158,12 @@ typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 #define	MS_PER_SEC	1000		/* Milliseconds in a second */
 
 #define	RECNO_OOB	0		/* Illegal record number. */
+
+/*
+ * Define a macro which has no runtime effect, yet avoids triggering empty
+ * statement compiler warnings. Use it as the text of conditionally-null macros.
+ */
+#define	NOP_STATEMENT	do { } while (0)
 
 /* Test for a power-of-two (tests true for zero, which doesn't matter here). */
 #define	POWER_OF_TWO(x)	(((x) & ((x) - 1)) == 0)
@@ -169,6 +192,14 @@ typedef SH_TAILQ_HEAD(__hash_head) DB_HASHTAB;
 #undef	ALIGNP_INC
 #define	ALIGNP_INC(p, bound)						\
 	(void *)(((uintptr_t)(p) + (bound) - 1) & ~(((uintptr_t)(bound)) - 1))
+
+/*
+ * Berkeley DB uses the va_copy macro from C99, not all compilers include
+ * it, so add a dumb implementation compatible with pre C99 implementations.
+ */
+#ifndef	va_copy
+#define	va_copy(d, s)	((d) = (s))
+#endif
 
 /*
  * Print an address as a u_long (a u_long is the largest type we can print
@@ -245,9 +276,46 @@ typedef struct __fn {
 #undef	STAT
 #ifdef	HAVE_STATISTICS
 #define	STAT(x)	x
+#define	STAT_ADJUST(env, cat, id, val, amount)		\
+	do {						\
+		(val) += (amount);			\
+		STAT_PERFMON1((env), cat, id, (val));	\
+	} while (0)
+#define	STAT_INC(env, cat, id, val) 			\
+	 STAT_ADJUST(env, cat, id, val, 1) 
+#define	STAT_DEC(env, cat, id, val) 			\
+	 STAT_ADJUST(env, cat, id, val, -1)
+#define	STAT_SET(env, cat, id, val, newwal) 		\
+	do {						\
+		(val) = (newval);			\
+		STAT_PERFMON1((env), cat, id, (val));	\
+	} while (0)
 #else
-#define	STAT(x)
+#define	STAT(x)					NOP_STATEMENT
+#define	STAT_ADJUST(env, cat, id, val, amount)	NOP_STATEMENT
+#define	STAT_INC(env, cat, id, val)		NOP_STATEMENT
+#define	STAT_DEC(env, cat, id, val)		NOP_STATEMENT
+#define	STAT_SET(env, cat, id, val, newwal)	NOP_STATEMENT
 #endif
+
+/* 
+ * These macros are used when an error condition is first noticed. They allow
+ * one to be notified (via e.g. DTrace, SystemTap, ...) when an error occurs
+ * deep inside DB, rather than when it is returned back through the API.
+ *
+ * The second actual argument to these is the second part of the error or
+ * warning event name. They work when 'errcode' is a symbolic name e.g.
+ * EINVAL or DB_LOCK_DEALOCK, not a variable.  Noticing system call failures
+ * would be handled by tracing on syscall exit returning < 0.
+ */
+#define	ERR_ORIGIN(env, errcode)        \
+	(PERFMON0(env, error, errcode), errcode)
+
+#define	ERR_ORIGIN_MSG(env, errcode, msg)	\
+	(PERFMON1(env, error, errcode, msg), errcode)
+
+#define	WARNING_ORIGIN(env, errcode)	\
+	(PERFMON0(env, warning, errcode), errcode)
 
 /*
  * Structure used for callback message aggregation.
@@ -269,6 +337,18 @@ typedef struct __db_msgbuf {
 			__db_msg(env, "%s", (a)->buf);		\
 		__os_free(env, (a)->buf);				\
 		DB_MSGBUF_INIT(a);					\
+	}								\
+} while (0)
+#define	DB_MSGBUF_REP_FLUSH(env, a, diag_msg, regular_msg) do {		\
+	if ((a)->buf != NULL) {						\
+		if ((a)->cur != (a)->buf && diag_msg)			\
+			__db_repmsg(env, "%s", (a)->buf);		\
+		if (regular_msg)					\
+			DB_MSGBUF_FLUSH(env, a);			\
+		else {							\
+			__os_free(env, (a)->buf);			\
+			DB_MSGBUF_INIT(a);				\
+		}							\
 	}								\
 } while (0)
 #define	STAT_FMT(msg, fmt, type, v) do {				\
@@ -339,6 +419,10 @@ typedef struct __db_msgbuf {
 				    (ret) == DB_REP_NEWSITE || \
 				    (ret) == DB_REP_NOTPERM)
 #define	DB_RETOK_REPMGR_START(ret) ((ret) == 0 || (ret) == DB_REP_IGNORE)
+#define	DB_RETOK_TXNAPPLIED(ret) ((ret) == 0 || \
+				    (ret) == DB_NOTFOUND ||		\
+				    (ret) == DB_TIMEOUT ||		\
+				    (ret) == DB_KEYEMPTY)
 
 /* Find a reasonable operation-not-supported error. */
 #ifdef	EOPNOTSUPP
@@ -488,11 +572,11 @@ typedef enum {
 		CHECK_THREAD(env);					\
 } while (0)
 #else
-#define	CHECK_MTX_THREAD(env, mtx)
+#define	CHECK_MTX_THREAD(env, mtx)	NOP_STATEMENT
 #endif
 #else
-#define	CHECK_THREAD(env)
-#define	CHECK_MTX_THREAD(env, mtx)
+#define	CHECK_THREAD(env)		NOP_STATEMENT
+#define	CHECK_MTX_THREAD(env, mtx)	NOP_STATEMENT
 #endif
 
 typedef enum {
@@ -628,6 +712,10 @@ struct __env {
 	int (*dbt_usercopy)
 	    __P((DBT *, u_int32_t, void *, u_int32_t, u_int32_t));
 
+	int (*log_verify_wrap) __P((ENV *, const char *, u_int32_t,  
+	    const char *, const char *, time_t, time_t, u_int32_t,  u_int32_t,
+	    u_int32_t, u_int32_t, int, int));
+
 	REGINFO	*reginfo;		/* REGINFO structure reference */
 
 #define	DB_TEST_ELECTINIT	 1	/* after __rep_elect_init */
@@ -639,7 +727,8 @@ struct __env {
 #define	DB_TEST_POSTSYNC	 7	/* after syncing the log */
 #define	DB_TEST_PREDESTROY	 8	/* before destroy op */
 #define	DB_TEST_PREOPEN		 9	/* before __os_open */
-#define	DB_TEST_SUBDB_LOCKS	 10	/* subdb locking tests */
+#define	DB_TEST_REPMGR_PERM	 10	/* repmgr perm/archiving tests */
+#define	DB_TEST_SUBDB_LOCKS	 11	/* subdb locking tests */
 	int	test_abort;		/* Abort value for testing */
 	int	test_check;		/* Checkpoint value for testing */
 	int	test_copy;		/* Copy value for testing */
@@ -712,7 +801,7 @@ struct __dbc_internal {
 };
 
 /* Actions that __db_master_update can take. */
-typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
+typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN, MU_MOVE } mu_action;
 
 /*
  * Access-method-common macro for determining whether a cursor
@@ -761,6 +850,11 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN } mu_action;
 		(dbc)->rkey = &(dbc)->my_rkey;		\
 		(dbc)->rdata = &(dbc)->my_rdata;	\
 	} while (0)
+
+#define	COMPACT_TRUNCATE(c_data) do {			\
+	if (c_data->compact_truncate > 1)		\
+		c_data->compact_truncate--;		\
+} while (0)
 
 /*******************************************************
  * Mpool.
@@ -816,10 +910,10 @@ typedef struct __dbpginfo {
  */
 
 #define	LOG_COMPARE(lsn0, lsn1)						\
-    ((lsn0)->file != (lsn1)->file ?					\
-    ((lsn0)->file < (lsn1)->file ? -1 : 1) :				\
-    ((lsn0)->offset != (lsn1)->offset ?					\
-    ((lsn0)->offset < (lsn1)->offset ? -1 : 1) : 0))
+	((lsn0)->file != (lsn1)->file ?					\
+	((lsn0)->file < (lsn1)->file ? -1 : 1) :			\
+	((lsn0)->offset != (lsn1)->offset ?				\
+	((lsn0)->offset < (lsn1)->offset ? -1 : 1) : 0))
 
 /*******************************************************
  * Txn.
@@ -828,7 +922,7 @@ typedef struct __dbpginfo {
 #define	NOWAIT_FLAG(txn) \
 	((txn) != NULL && F_ISSET((txn), TXN_NOWAIT) ? DB_LOCK_NOWAIT : 0)
 #define	IS_REAL_TXN(txn)						\
-	((txn) != NULL && !F_ISSET(txn, TXN_CDSGROUP))
+	((txn) != NULL && !F_ISSET(txn, TXN_FAMILY))
 #define	IS_SUBTRANSACTION(txn)						\
 	((txn) != NULL && (txn)->parent != NULL)
 
@@ -841,7 +935,7 @@ typedef struct __dbpginfo {
 /*******************************************************
  * Compression
  *******************************************************/
-#define CMP_INT_SPARE_VAL	0xFC	/* Smallest byte value that the integer
+#define	CMP_INT_SPARE_VAL	0xFC	/* Smallest byte value that the integer
 					   compression algorithm doesn't use */
 
 /*******************************************************

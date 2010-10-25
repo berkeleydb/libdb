@@ -59,7 +59,8 @@ import com.sleepycat.db.SecondaryDatabase;</code></strong>
 public class SampleDatabase
 {
     ...
-<strong class="userinput"><code>    private static final String SHIPMENT_PART_INDEX = "shipment_part_index";
+<strong class="userinput"><code>    private static final String SHIPMENT_PART_INDEX = 
+        "shipment_part_index";
     private static final String SHIPMENT_SUPPLIER_INDEX = 
         "shipment_supplier_index";
     ...
@@ -82,10 +83,10 @@ public class SampleDatabase
                                          ShipmentData.class,
                                          PartKey.class));
         shipmentByPartDb = env.openSecondaryDatabase(null, 
-                                                     SHIPMENT_PART_INDEX,
-                                                     null,
-                                                     shipmentDb,
-                                                     secConfig);
+                                         SHIPMENT_PART_INDEX,
+                                         null,
+                                         shipmentDb,
+                                         secConfig);
 
         secConfig.setKeyCreator(
             new ShipmentBySupplierKeyCreator(javaCatalog,
@@ -93,10 +94,10 @@ public class SampleDatabase
                                              ShipmentData.class,
                                              SupplierKey.class));
         shipmentBySupplierDb = env.openSecondaryDatabase(null,
-                                                     SHIPMENT_SUPPLIER_INDEX,
-                                                     null,
-                                                     shipmentDb,
-                                                     secConfig);</code></strong>
+                                                  SHIPMENT_SUPPLIER_INDEX,
+                                                  null,
+                                                  shipmentDb,
+                                                  secConfig);</code></strong>
     ...
     }
 } </pre>
@@ -116,7 +117,7 @@ public class SampleDatabase
 <strong class="userinput"><code>    private static class ShipmentByPartKeyCreator
         extends SerialSerialKeyCreator
     {
-        private ShipmentByPartKeyCreator(StoredClassCatalog catalog,
+        private ShipmentByPartKeyCreator(ClassCatalog catalog,
                                          Class primaryKeyClass,
                                          Class valueClass,
                                          Class indexKeyClass)
@@ -135,7 +136,7 @@ public class SampleDatabase
     private static class ShipmentBySupplierKeyCreator
         extends SerialSerialKeyCreator
     {
-        private ShipmentBySupplierKeyCreator(StoredClassCatalog catalog,
+        private ShipmentBySupplierKeyCreator(ClassCatalog catalog,
                                              Class primaryKeyClass,
                                              Class valueClass,
                                              Class indexKeyClass)

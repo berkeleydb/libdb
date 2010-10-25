@@ -39,22 +39,22 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="intro_dbis.html#id1587756">Data Access Services</a>
+              <a href="intro_dbis.html#id3634935">Data Access Services</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="intro_dbis.html#id1588499">Data management services</a>
+              <a href="intro_dbis.html#id3635736">Data management services</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="intro_dbis.html#id1588295">Design</a>
+              <a href="intro_dbis.html#id3636176">Design</a>
             </span>
           </dt>
         </dl>
       </div>
-      <p>So far, we've discussed database systems in general terms. It's time
+      <p>So far, we have discussed database systems in general terms. It is time
 now to consider Berkeley DB in particular and see how it fits into the
 framework we have introduced. The key question is, what kinds of
 applications should use Berkeley DB?</p>
@@ -86,14 +86,28 @@ operating systems. It runs on both 32-bit and 64-bit systems.  It has
 been deployed on high-end Internet servers, desktop machines, and on
 palmtop computers, set-top boxes, in network switches, and elsewhere.
 Once Berkeley DB is linked into the application, the end user generally does
-not know that there's a database present at all.</p>
-      <p>Berkeley DB is scalable in a number of respects. The database library itself
-is quite compact (under 300 kilobytes of text space on common
-architectures), but it can manage databases up to 256 terabytes in size.
-It also supports high concurrency, with thousands of users operating on
-the same database at the same time. Berkeley DB is small enough to run in
-tightly constrained embedded systems, but can take advantage of
-gigabytes of memory and terabytes of disk on high-end server machines.</p>
+not know that there is a database present at all.</p>
+      <p>
+    Berkeley DB is scalable in a number of respects. The database library
+    itself is quite compact (under 300 kilobytes of text space on common
+    architectures), which means it is small enough to run in tightly
+    constrained embedded systems, but yet it can take advantage of
+    gigabytes of memory and terabytes of disk if you are using hardware that
+    has those resources.
+</p>
+      <p>
+    Each of Berkeley DB's database files can contain up to 256
+    terabytes of data, assuming the underlying filesystem is capable of supporting
+    files of that size. Note that Berkeley DB applications often use
+    multiple database files. This means that the amount of data your
+    Berkeley DB application can manage is really limited only by the
+    constraints imposed by your operating system, filesystem, and physical
+    hardware.
+</p>
+      <p>
+    Berkeley DB also supports high concurrency, allowing thousands of users
+    to operat on the same database files at the same time. 
+</p>
       <p>Berkeley DB generally outperforms relational and object-oriented database
 systems in embedded applications for a couple of reasons. First, because
 the library runs in the same address space, no inter-process
@@ -107,7 +121,7 @@ to produce.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1587756"></a>Data Access Services</h3>
+              <h3 class="title"><a id="id3634935"></a>Data Access Services</h3>
             </div>
           </div>
         </div>
@@ -127,7 +141,7 @@ value.  Btrees also do a better job of exploiting <span class="emphasis"><em>loc
 of reference</em></span>.  If the application is likely to touch keys near each
 other at the same time, the Btrees work well. The tree structure keeps
 keys that are close together near one another in storage, so fetching
-nearby values usually doesn't require a disk access.</p>
+nearby values usually does not require a disk access.</p>
         <p>Record-number-based storage is natural for applications that need to
 store and fetch records, but that do not have a simple way to generate
 keys of their own. In a record number table, the record number is the
@@ -142,7 +156,7 @@ but should generally be filled in the order in which they were placed.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1588499"></a>Data management services</h3>
+              <h3 class="title"><a id="id3635736"></a>Data management services</h3>
             </div>
           </div>
         </div>
@@ -171,7 +185,7 @@ services it will use. Some applications need fast, single-user,
 non-transactional Btree data storage. In that case, the application can
 disable the locking and transaction systems, and will not incur the
 overhead of locking or logging. If an application needs to support
-multiple concurrent users, but doesn't need transactions, it can turn
+multiple concurrent users, but does not need transactions, it can turn
 on locking without transactions. Applications that need concurrent,
 transaction-protected database access can enable all of the
 subsystems.</p>
@@ -182,7 +196,7 @@ fetch and update records.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1588295"></a>Design</h3>
+              <h3 class="title"><a id="id3636176"></a>Design</h3>
             </div>
           </div>
         </div>

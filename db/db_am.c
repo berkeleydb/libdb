@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1998, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,7 +13,6 @@
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/qam.h"
@@ -45,11 +44,11 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	DBC_INTERNAL *cp;
 	ENV *env;
 	db_threadid_t tid;
-	int allocated, ret;
+	int allocated, envlid, ret;
 	pid_t pid;
 
 	env = dbp->env;
-	allocated = 0;
+	allocated = envlid = 0;
 
 	/*
 	 * If dbcp is non-NULL it is assumed to point to an area to initialize
@@ -66,13 +65,15 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	 * If this DBP is being logged then refcount the log filename
 	 * relative to this transaction. We do this here because we have
 	 * the dbp->mutex which protects the refcount.  We want to avoid
-	 * calling the function if we are duplicating a cursor.  This includes
-	 * the case of creating an off page duplicate cursor. If we know this
-	 * cursor will not be used in an update, we could avoid this,
-	 * but we don't have that information.
+	 * calling the function if the transaction handle has a shared parent
+	 * locker or we are duplicating a cursor.  This includes the case of
+	 * creating an off page duplicate cursor.
+	 * If we knew this cursor will not be used in an update, we could avoid
+	 * this, but we don't have that information.
 	 */
-	if (txn != NULL && !LF_ISSET(DBC_OPD | DBC_DUPLICATE)
-	    && !F_ISSET(dbp, DB_AM_RECOVER) &&
+	if (txn != NULL && !F_ISSET(txn, TXN_FAMILY) &&
+	    !LF_ISSET(DBC_OPD | DBC_DUPLICATE) &&
+	    !F_ISSET(dbp, DB_AM_RECOVER) &&
 	    dbp->log_filename != NULL && !IS_REP_CLIENT(env) &&
 	    (ret = __txn_record_fname(env, txn, dbp->log_filename)) != 0) {
 		MUTEX_UNLOCK(env, dbp->mutex);
@@ -112,9 +113,12 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 			 * environment handles.
 			 */
 			if (!DB_IS_THREADED(dbp)) {
-				if (env->env_lref == NULL && (ret =
-				    __lock_id(env, NULL, &env->env_lref)) != 0)
-					goto err;
+				if (env->env_lref == NULL) {
+					if ((ret = __lock_id(env,
+					    NULL, &env->env_lref)) != 0)
+						goto err;
+				       envlid = 1;
+				}
 				dbc->lref = env->env_lref;
 			} else {
 				if ((ret =
@@ -203,6 +207,23 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	dbc->set_priority = __dbc_set_priority;
 	dbc->get_priority = __dbc_get_priority;
 	dbc->priority = dbp->priority;
+	dbc->txn_cursors.tqe_next = NULL;
+	dbc->txn_cursors.tqe_prev = NULL;
+
+	/*
+	 * If the DB handle is not threaded, there is one locker ID for the
+	 * whole environment.  There should only one family transaction active
+	 * as well.  This doesn't apply to CDS group transactions, where the
+	 * cursor can simply use the transaction's locker directly.
+	 */
+	if (!CDB_LOCKING(env) && txn != NULL && F_ISSET(txn, TXN_FAMILY) &&
+	    (F_ISSET(dbc, DBC_OWN_LID) || envlid))  {
+		if ((ret = __lock_addfamilylocker(env,
+		    txn->txnid, dbc->lref->id, 1)) != 0)
+			goto err;
+		F_SET(dbc, DBC_FAMILY);
+		txn = NULL;
+	}
 
 	if ((dbc->txn = txn) != NULL)
 		dbc->locker = txn->locker;
@@ -477,6 +498,8 @@ __db_put(dbp, ip, txn, key, data, flags)
 		ret = __dbc_put(dbc, key, data, flags);
 
 err:	/* Close the cursor. */
+	if (ret != 0)
+		F_SET(dbc, DBC_ERROR);
 	if ((t_ret = __dbc_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -663,6 +686,8 @@ next:	if (ret == 0 && LF_ISSET(DB_MULTIPLE | DB_MULTIPLE_KEY)) {
 		goto bulk_next;
 	}
 err:	/* Discard the cursor. */
+	if (ret != 0)
+		F_SET(dbc, DBC_ERROR);
 	if ((t_ret = __dbc_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -764,6 +789,8 @@ __db_associate(dbp, ip, txn, sdbp, callback, flags)
 			ret = 0;
 		}
 
+		if (ret != 0)
+			F_SET(sdbc, DBC_ERROR);
 		if ((t_ret = __dbc_close(sdbc)) != 0 && ret == 0)
 			ret = t_ret;
 
@@ -908,6 +935,15 @@ __db_secondary_close(sdbp, flags)
 	ENV *env;
 	int doclose;
 
+	/*
+	 * If the opening trasaction is rolled back then the db handle
+	 * will have already been refreshed, we just need to call
+	 * __db_close to free the data.
+	 */
+	if (!F_ISSET(sdbp, DB_AM_OPEN_CALLED)) {
+		doclose = 1;
+		goto done;
+	}
 	doclose = 0;
 	primary = sdbp->s_primary;
 	env = primary->env;
@@ -934,7 +970,7 @@ __db_secondary_close(sdbp, flags)
 	 * sdbp->close is this function;  call the real one explicitly if
 	 * need be.
 	 */
-	return (doclose ? __db_close(sdbp, NULL, flags) : 0);
+done:	return (doclose ? __db_close(sdbp, NULL, flags) : 0);
 }
 
 /*

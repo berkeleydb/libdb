@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -41,6 +41,7 @@ __log_archive_pp(dbenv, listp, flags)
 	ENV_REQUIRES_CONFIG(env,
 	    env->lg_handle, "DB_ENV->log_archive", DB_INIT_LOG);
 
+#undef	OKFLAGS
 #define	OKFLAGS	(DB_ARCH_ABS | DB_ARCH_DATA | DB_ARCH_LOG | DB_ARCH_REMOVE)
 	if (flags != 0) {
 		if ((ret = __db_fchk(
@@ -78,7 +79,7 @@ __log_archive(env, listp, flags)
 	LOG *lp;
 	u_int array_size, n;
 	u_int32_t fnum;
-	int ret, t_ret;
+	int handle_check, ret, t_ret;
 	char **array, **arrayp, *name, *p, *pref;
 #ifdef HAVE_GETCWD
 	char path[DB_MAXPATHLEN];
@@ -102,12 +103,24 @@ __log_archive(env, listp, flags)
 	}
 
 	/*
-	 * If the user wants the list of log files to remove and we're
-	 * at a bad time in replication initialization, just return.
+	 * Check if the user wants the list of log files to remove and we're
+	 * at a bad time in replication initialization.
 	 */
+	handle_check = 0;
 	if (!LF_ISSET(DB_ARCH_DATA) &&
-	    !LF_ISSET(DB_ARCH_LOG) && __rep_noarchive(env))
-		return (0);
+	    !LF_ISSET(DB_ARCH_LOG)) {
+		/*
+		 * If we're locked out, just return success.  No files
+		 * can be archived right now.  Any other error pass back
+		 * to the caller.
+		 */
+		handle_check = IS_ENV_REPLICATED(env);
+		if (handle_check && (ret = __archive_rep_enter(env)) != 0) {
+			if (ret == DB_REP_LOCKOUT)
+				ret = 0;
+			return (ret);
+		}
+	}
 
 	/*
 	 * Prepend the original absolute pathname if the user wants an
@@ -128,7 +141,7 @@ __log_archive(env, listp, flags)
 			ret = __os_get_errno();
 			__db_err(env,
 			    ret, "no absolute path for the current directory");
-			return (ret);
+			goto err;
 		}
 		pref = path;
 	} else
@@ -159,7 +172,7 @@ __log_archive(env, listp, flags)
 		goto err;
 	case 0:
 
-		ret = __log_get_stable_lsn(env, &stable_lsn);
+		ret = __log_get_stable_lsn(env, &stable_lsn, 1);
 		/*
 		 * A return of DB_NOTFOUND means the checkpoint LSN
 		 * is before the beginning of the log files we have.
@@ -193,10 +206,10 @@ __log_archive(env, listp, flags)
 			goto err;
 		}
 		if (__os_exists(env, name, NULL) != 0) {
-			if (LF_ISSET(DB_ARCH_LOG) && fnum == stable_lsn.file)
-				continue;
 			__os_free(env, name);
 			name = NULL;
+			if (LF_ISSET(DB_ARCH_LOG) && fnum == stable_lsn.file)
+				continue;
 			break;
 		}
 
@@ -246,6 +259,8 @@ err:		if (array != NULL) {
 		if (name != NULL)
 			__os_free(env, name);
 	}
+	if (handle_check && (t_ret = __archive_rep_exit(env)) != 0 && ret == 0)
+		ret = t_ret;
 
 	return (ret);
 }
@@ -254,12 +269,13 @@ err:		if (array != NULL) {
  * __log_get_stable_lsn --
  *	Get the stable lsn based on where checkpoints are.
  *
- * PUBLIC: int __log_get_stable_lsn __P((ENV *, DB_LSN *));
+ * PUBLIC: int __log_get_stable_lsn __P((ENV *, DB_LSN *, int));
  */
 int
-__log_get_stable_lsn(env, stable_lsn)
+__log_get_stable_lsn(env, stable_lsn, group_wide)
 	ENV *env;
 	DB_LSN *stable_lsn;
+	int group_wide;
 {
 	DBT rec;
 	DB_LOGC *logc;
@@ -313,6 +329,16 @@ __log_get_stable_lsn(env, stable_lsn)
 	}
 	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
+#ifdef	HAVE_REPLICATION_THREADS
+	/*
+	 * If we have RepMgr, get the minimum group-aware LSN.
+	 */
+	if (group_wide && ret == 0 && REP_ON(env) && APP_IS_REPMGR(env) &&
+	    (t_ret = __repmgr_stable_lsn(env, stable_lsn)) != 0)
+		ret = t_ret;
+#else
+	COMPQUIET(group_wide, 0);
+#endif
 err:
 	return (ret);
 }

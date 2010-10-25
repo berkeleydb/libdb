@@ -82,7 +82,7 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675570"></a>Parameters</h3>
+              <h3 class="title"><a id="id3663798"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -90,7 +90,21 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1675436"></a>flags</h4>
+                <h4 class="title"><a id="id3663748"></a>timeout</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The <span class="bold"><strong>timeout</strong></span> parameter is the timeout value. It must
+                be specified as an unsigned 32-bit number of microseconds, limiting the maximum
+                timeout to roughly 71 minutes.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3663792"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -170,26 +184,12 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1675835"></a>timeout</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                The <span class="bold"><strong>timeout</strong></span> parameter is the timeout value. It must
-                be specified as an unsigned 32-bit number of microseconds, limiting the maximum
-                timeout to roughly 71 minutes.
-            </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1676091"></a>Errors</h3>
+              <h3 class="title"><a id="id3664037"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -207,7 +207,7 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1675876"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3664159"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -220,7 +220,7 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675877"></a>Class</h3>
+              <h3 class="title"><a id="id3664137"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ DbEnv::set_timeout(db_timeout_t timeout, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675669"></a>See Also</h3>
+              <h3 class="title"><a id="id3664082"></a>See Also</h3>
             </div>
           </div>
         </div>

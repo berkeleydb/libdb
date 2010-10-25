@@ -56,7 +56,7 @@
       <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -65,7 +65,7 @@ int main(void)
                           DB_INIT_LOG   |  // Initialize logging
                           DB_INIT_MPOOL |  // Initialize the cache
                           DB_INIT_TXN;     // Initialize transactions
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 
@@ -103,7 +103,7 @@ int main(void)
              and you must open the database within a transaction.
              Typically auto commit is used for this purpose. To do so, pass 
             <code class="literal">DB_AUTO_COMMIT</code> to the database open command.
-            Also, make sure you close all your databases before you close 
+            It is recommended that you close all your databases before you close 
             your environment.
             For example:
         </span>
@@ -113,7 +113,7 @@ int main(void)
       <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -126,7 +126,7 @@ int main(void)
     <strong class="userinput"><code>u_int32_t db_flags = DB_CREATE | DB_AUTO_COMMIT;
     Db *dbp = NULL;
     const char *file_name = "mydb.db";</code></strong>
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 

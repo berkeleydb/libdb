@@ -72,10 +72,9 @@ char *search_name = "John Doe";
 Dbt key(search_name, strlen(search_name) + 1);
 Dbt pkey, pdata; // Primary key and data
 
-                                                                                                                                     
 Db my_secondary_database(NULL, 0);
 // Primary and secondary database opens omitted for brevity
-                                                                                                                                     
+
 // Returns the key from the secondary database, and the data from the 
 // associated primary database entry.
 my_secondary_database.get(NULL, &amp;key, &amp;pdata, 0);

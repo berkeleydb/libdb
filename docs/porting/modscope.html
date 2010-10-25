@@ -221,12 +221,24 @@ Minor run-time configuration information
               <tr>
                 <td>
                             <p>
+os_cpu.c
+					</p>
+				</td>
+                <td>
+                        <p>
+Return the number of CPUs
+					</p>
+				</td>
+              </tr>
+              <tr>
+                <td>
+                            <p>
 os_ctime.c
 					</p>
 				</td>
                 <td>
                         <p>
-ctime()
+Format a time-stamp
 					</p>
 				</td>
               </tr>
@@ -269,12 +281,36 @@ Return a unique identifier for a file
               <tr>
                 <td>
                             <p>
+os_flock.c
+                            </p>
+				</td>
+                <td>
+                        <p>
+Acquire/release a lock on a byte in a file
+                            </p>
+				</td>
+              </tr>
+              <tr>
+                <td>
+                            <p>
 os_fsync.c
                             </p>
 				</td>
                 <td>
                         <p>
 fsync()
+                            </p>
+				</td>
+              </tr>
+              <tr>
+                <td>
+                            <p>
+os_getenv.c
+                            </p>
+				</td>
+                <td>
+                        <p>
+Retrieve an environment variable
                             </p>
 				</td>
               </tr>
@@ -329,18 +365,6 @@ mkdir()
               <tr>
                 <td>
                             <p>
-os_oflags.c
-                            </p>
-				</td>
-                <td>
-                        <p>
-open() Used to convert open flags to Berkeley DB flags
-                            </p>
-				</td>
-              </tr>
-              <tr>
-                <td>
-                            <p>
 os_open.c
                             </p>
 				</td>
@@ -358,7 +382,7 @@ os_rename.c
 				</td>
                 <td>
 					<p>
-rename()
+Rename a file
                             </p>
 				</td>
               </tr>
@@ -413,24 +437,12 @@ lseek()
               <tr>
                 <td>
 					<p>
-os_sleep.c
+os_stack.c
                             </p>
 				</td>
                 <td>
 					<p>
-sleep()
-                            </p>
-				</td>
-              </tr>
-              <tr>
-                <td>
-					<p>
-os_spin.c
-                            </p>
-				</td>
-                <td>
-					<p>
-Return the number of test-and-set mutex spins before blocking
+Output a stack trace to the message file handle
                             </p>
 				</td>
               </tr>

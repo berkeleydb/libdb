@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -133,18 +133,19 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	 */
 	id = renv->envid;
 
+	MUTEX_LOCK(env, region->mtx_ckp);
 	/*
 	 * The checkpoint LSN is an LSN such that all transactions begun before
 	 * it are complete.  Our first guess (corrected below based on the list
 	 * of active transactions) is the last-written LSN.
 	 */
 	if ((ret = __log_current_lsn(env, &ckp_lsn, &mbytes, &bytes)) != 0)
-		return (ret);
+		goto err;
 
 	if (!LF_ISSET(DB_FORCE)) {
 		/* Don't checkpoint a quiescent database. */
 		if (bytes == 0 && mbytes == 0)
-			return (0);
+			goto err;
 
 		/*
 		 * If either kbytes or minutes is non-zero, then only take the
@@ -172,7 +173,7 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 		 * we're done.
 		 */
 		if (minutes != 0 || kbytes != 0)
-			return (0);
+			goto err;
 	}
 
 	/*
@@ -184,7 +185,6 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	 * then remove a log this checkpoint depends on.
 	 */
 do_ckp:
-	MUTEX_LOCK(env, region->mtx_ckp);
 	if ((ret = __txn_getactive(env, &ckp_lsn)) != 0)
 		goto err;
 

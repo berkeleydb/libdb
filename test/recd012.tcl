@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -61,7 +61,7 @@ proc recd012_body { method {ndbs 5} iter noutiter niniter psz tnum {largs ""} } 
 	puts $f "set_lk_max_lockers	5000"
 	close $f
 
-	set flags "-create -txn -home $testdir"
+	set flags "-create -txn wrnosync -home $testdir"
 	set env_cmd "berkdb_env $flags"
 	error_check_good env_remove [berkdb envremove -home $testdir] 0
 	set dbenv [eval $env_cmd]

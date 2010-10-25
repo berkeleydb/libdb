@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -171,9 +171,11 @@ _DeleteInfo(p)
 	if (p->i_rep_send != NULL) {
 		Tcl_DecrRefCount(p->i_rep_send);
 	}
-	if (p->i_event != NULL) {
-		Tcl_DecrRefCount(p->i_event);
-	}
+
+	if (p->i_type == I_ENV && p->i_event_info != NULL)
+		__os_free(NULL, p->i_event_info);
+	if (p->i_type == I_TXN && p->i_commit_token != NULL)
+		__os_free(NULL, p->i_commit_token);
 	__os_free(NULL, p->i_name);
 	__os_free(NULL, p);
 
@@ -511,8 +513,11 @@ _ErrorFunc(dbenv, pfx, msg)
 	return;
 }
 
+#ifdef CONFIG_TEST
 /*
+ * PUBLIC: #ifdef CONFIG_TEST 
  * PUBLIC: void _EventFunc __P((DB_ENV *, u_int32_t, void *));
+ * PUBLIC: #endif
  */
 void
 _EventFunc(dbenv, event, info)
@@ -520,104 +525,53 @@ _EventFunc(dbenv, event, info)
 	u_int32_t event;
 	void *info;
 {
-#define	TCLDB_EVENTITEMS 2	/* Event name and any info */
-#define	TCLDB_SENDEVENT 3	/* Event Tcl proc, env name, event objects. */
 	DBTCL_INFO *ip;
-	Tcl_Interp *interp;
-	Tcl_Obj *event_o, *origobj;
-	Tcl_Obj *myobjv[TCLDB_EVENTITEMS], *objv[TCLDB_SENDEVENT];
-	int i, myobjc, result;
+	u_int32_t bit_flag;
 
 	ip = (DBTCL_INFO *)dbenv->app_private;
-	interp = ip->i_interp;
-	if (ip->i_event == NULL)
+	DB_ASSERT(dbenv->env, ip->i_event_info != NULL);
+	DB_ASSERT(dbenv->env, event < 32); /* Flag bits fit in 32-bit word. */
+
+	if (tcl_LockMutex(dbenv, ip->i_mutex) != 0) {
+		(void)puts("FAIL: __mutex_lock failed");
 		return;
-	objv[0] = ip->i_event;
-	objv[1] = NewStringObj(ip->i_name, strlen(ip->i_name));
+	}
+
+	/* Record the fact that this event occurred. */
+	bit_flag = 1 << event;
+	ip->i_event_info->events |= bit_flag;
 
 	/*
-	 * Most events don't have additional info.  Assume none
-	 * and handle individually those that do.
+	 * For events that have associated "info" (currently most don't), save
+	 * the info too.
 	 */
-	myobjv[1] = NULL;
-	myobjc = 1;
 	switch (event) {
 	case DB_EVENT_PANIC:
 		/*
 		 * Info is the original error code.
 		 */
-		myobjv[0] = NewStringObj("panic", strlen("panic"));
-		myobjv[myobjc++] = Tcl_NewIntObj(*(int *)info);
+		ip->i_event_info->panic_error = *(int *)info;
 		break;
-	case DB_EVENT_REP_CLIENT:
-		myobjv[0] = NewStringObj("rep_client", strlen("rep_client"));
-		break;
-	case DB_EVENT_REP_ELECTED:
-		myobjv[0] = NewStringObj("elected", strlen("elected"));
-		break;
-	case DB_EVENT_REP_MASTER:
-		myobjv[0] = NewStringObj("rep_master", strlen("rep_master"));
+	case DB_EVENT_REG_ALIVE:
+		/*
+		 * Info is the attached process's PID.
+		 */
+		ip->i_event_info->attached_process = *(pid_t *)info;
 		break;
 	case DB_EVENT_REP_NEWMASTER:
 		/*
 		 * Info is the EID of the new master.
 		 */
-		myobjv[0] = NewStringObj("newmaster", strlen("newmaster"));
-		myobjv[myobjc++] = Tcl_NewIntObj(*(int *)info);
-		break;
-	case DB_EVENT_REP_PERM_FAILED:
-		myobjv[0] = NewStringObj("perm_failed", strlen("perm_failed"));
-		break;
-	case DB_EVENT_REP_STARTUPDONE:
-		myobjv[0] = NewStringObj("startupdone", strlen("startupdone"));
-		break;
-	case DB_EVENT_WRITE_FAILED:
-		myobjv[0] =
-		    NewStringObj("write_failed", strlen("write_failed"));
+		ip->i_event_info->newmaster_eid = *(int *)info;
 		break;
 	default:
-		__db_errx(dbenv->env, "Tcl unknown event %lu", (u_long)event);
-		return;
+		/* Remaining events don't use "info": so nothing to do. */
+		break;
 	}
-
-	for (i = 0; i < myobjc; i++)
-		Tcl_IncrRefCount(myobjv[i]);
-
-	event_o = Tcl_NewListObj(myobjc, myobjv);
-	Tcl_IncrRefCount(event_o);
-	objv[2] = event_o;
-
-	/*
-	 * We really want to return the original result to the
-	 * user.  So, save the result obj here, and then after
-	 * we've taken care of the Tcl_EvalObjv, set the result
-	 * back to this original result.
-	 */
-	origobj = Tcl_GetObjResult(interp);
-	Tcl_IncrRefCount(origobj);
-	result = Tcl_EvalObjv(interp, TCLDB_SENDEVENT, objv, 0);
-	if (result != TCL_OK) {
-		/*
-		 * XXX
-		 * This probably isn't the right error behavior, but
-		 * this error should only happen if the Tcl callback is
-		 * somehow invalid, which is a fatal scripting bug.
-		 * The event handler is a void function so we either
-		 * just return or abort.
-		 * For now, abort.
-		 */
-		__db_errx(dbenv->env, "Tcl event failure");
-		__os_abort(dbenv->env);
-	}
-
-	Tcl_SetObjResult(interp, origobj);
-	Tcl_DecrRefCount(origobj);
-	for (i = 0; i < myobjc; i++)
-		Tcl_DecrRefCount(myobjv[i]);
-	Tcl_DecrRefCount(event_o);
-
-	return;
+	if (tcl_UnlockMutex(dbenv, ip->i_mutex) != 0)
+		(void)puts("FAIL: __mutex_unlock failed");
 }
+#endif
 
 #define	INVALID_LSNMSG "Invalid LSN with %d parts. Should have 2.\n"
 

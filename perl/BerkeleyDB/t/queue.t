@@ -12,7 +12,7 @@ use util;
 plan(skip_all => "Queue needs Berkeley DB 3.3.x or better\n" )
     if $BerkeleyDB::db_version < 3.3;
     
-plan tests => 253;
+plan tests => 257;
 
 
 my $Dfile = "dbhash.tmp";
@@ -59,6 +59,7 @@ umask(0) ;
     # Add a k/v pair
     my $value ;
     my $status ;
+    is $db->Env, undef;
     ok $db->db_put(1, "some value") == 0  ;
     ok $db->status() == 0 ;
     ok $db->db_get(1, $value) == 0 ;
@@ -113,6 +114,8 @@ umask(0) ;
 				    -Flags    => DB_CREATE,
 				    -Len      => $rec_len;
 
+    isa_ok $db->Env, 'BerkeleyDB::Env';
+                    
     # Add a k/v pair
     my $value ;
     ok $db->db_put(1, "some value") == 0 ;
@@ -293,9 +296,12 @@ umask(0) ;
     ok (( $FA ? pop @array : $db->pop ) eq fillout("the", $rec_len)) ;
     ok (( $FA ? pop @array : $db->pop ) == 200)  ;
 
+    undef $cursor;
+
     # now clear the array 
     $FA ? @array = () 
         : $db->clear() ;
+    ok $cursor = (tied @array)->db_cursor() ;
     ok $cursor->c_get($k, $v, DB_FIRST) == DB_NOTFOUND ;
 
     undef $cursor ;
@@ -849,9 +855,11 @@ EOM
     ok (( $FA ? pop @array : $db->pop ) eq fillout("the", $rec_len)) ;
     ok (( $FA ? pop @array : $db->pop ) == 200 ) ;
 
+    undef $cursor ;
     # now clear the array 
     $FA ? @array = () 
         : $db->clear() ;
+    ok $cursor = (tied @array)->db_cursor() ;
     ok $cursor->c_get($k, $v, DB_FIRST) == DB_NOTFOUND ;
     undef $cursor ;
     ok $txn->txn_commit() == 0 ;

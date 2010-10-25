@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -118,4 +118,35 @@ bdb_RandCommand(interp, objc, objv)
 	if (result == TCL_OK && res)
 		Tcl_SetObjResult(interp, res);
 	return (result);
+}
+
+/*
+ * PUBLIC: int tcl_LockMutex __P((DB_ENV *, db_mutex_t));
+ */
+int
+tcl_LockMutex(dbenv, mutex)
+	DB_ENV *dbenv;
+	db_mutex_t mutex;
+{
+	/*
+	 * Why such a seemingly ridiculously trivial function?  MUTEX_LOCK can't
+	 * be invoked in a void function.  The behavior of the macro could be
+	 * unwrapped and duplicated in line; but by the time you account for
+	 * HAVE_MUTEX_SUPPORT, checking for MUTEX_INVALID, etc., you've created
+	 * a maintenance burden, and it's just not worth it.
+	 */ 
+	MUTEX_LOCK(dbenv->env, mutex);
+	return (0);
+}
+
+/*
+ * PUBLIC: int tcl_UnlockMutex __P((DB_ENV *, db_mutex_t));
+ */
+int
+tcl_UnlockMutex(dbenv, mutex)
+	DB_ENV *dbenv;
+	db_mutex_t mutex;
+{
+	MUTEX_UNLOCK(dbenv->env, mutex);
+	return (0);
 }

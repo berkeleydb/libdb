@@ -53,7 +53,7 @@ environment.  In such applications the replication initialization code
 may not be able to locate the databases, and applications that change
 their working directories may need to use absolute pathnames.</p>
       <p>During application initialization, the application performs
-three additional tasks: first, it must specify the <a href="../api_reference/C/envopen.html#open_DB_INIT_REP" class="olink">DB_INIT_REP</a>
+three additional tasks: first, it must specify the <a href="../api_reference/C/envopen.html#envopen_DB_INIT_REP" class="olink">DB_INIT_REP</a>
 flag when opening its database environment and additionally, a
 Replication Manager application must also specify the <a href="../api_reference/C/dbopen.html#open_DB_THREAD" class="olink">DB_THREAD</a> flag;
 second, it must provide Berkeley DB information about its communications

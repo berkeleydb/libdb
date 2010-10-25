@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@ proc rep010 { method { niter 100 } { tnum "010" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for all access methods.
 	if { $checking_valid_methods } {

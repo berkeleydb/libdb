@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 void db_recover_feedback __P((DB_ENV *, int, int));
@@ -127,13 +127,13 @@ db_recover_main(argc, argv)
 	if (timestamp &&
 	    (ret = dbenv->set_tx_timestamp(dbenv, &timestamp)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->set_timestamp");
-		goto shutdown;
+		goto err;
 	}
 
 	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
 	    passwd, DB_ENCRYPT_AES)) != 0) {
 		dbenv->err(dbenv, ret, "set_passwd");
-		goto shutdown;
+		goto err;
 	}
 
 	/*
@@ -155,11 +155,11 @@ db_recover_main(argc, argv)
 	LF_SET(retain_env ? DB_INIT_LOCK : DB_PRIVATE);
 	if ((ret = dbenv->open(dbenv, home, flags, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->open");
-		goto shutdown;
+		goto err;
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 
 	/* Flush to the next line of the output device. */

@@ -37,12 +37,12 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="stl_memory_mgmt.html#id1602244">Freeing memory</a>
+              <a href="stl_memory_mgmt.html#id3651295">Freeing memory</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="stl_memory_mgmt.html#id1602395">Type specific notes</a>
+              <a href="stl_memory_mgmt.html#id3651371">Type specific notes</a>
             </span>
           </dt>
         </dl>
@@ -51,7 +51,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1602244"></a>Freeing memory</h3>
+              <h3 class="title"><a id="id3651295"></a>Freeing memory</h3>
             </div>
           </div>
         </div>
@@ -78,7 +78,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1602395"></a>Type specific notes</h3>
+              <h3 class="title"><a id="id3651371"></a>Type specific notes</h3>
             </div>
           </div>
         </div>
@@ -86,7 +86,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1602915"></a>DbEnv/Db</h4>
+                <h4 class="title"><a id="id3651394"></a>DbEnv/Db</h4>
               </div>
             </div>
           </div>
@@ -127,12 +127,17 @@
         objects in order to explicitly close the databases or environments. If you do this, 
         can then delete these objects, and then call <code class="function">dbstl_exit()</code>.
     </p>
+          <p>
+    In addition, before exiting a thread that uses dbstl API, you can call the <code class="function">dbstl_thread_exit() </code>function to release any Berkeley DB handles if they are not used by other threads. 
+    If you do not call the <code class="function">dbstl_thread_exit() </code>function or call this function only in some threads, all open Berkeley DB handles will be closed by the <code class="function">dbstl_exit()</code>function. 
+    You must call the <code class="function">dbstl_exit() </code>function before the process exits, to avoid memory leak and database update loss, if you do not have transactions and persistent log files.
+  </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1602901"></a>DbstlDbt</h4>
+                <h4 class="title"><a id="id3651722"></a>DbstlDbt</h4>
               </div>
             </div>
           </div>
@@ -154,9 +159,8 @@
         However, because dbstl supports storing any type of object or primitive data, it is rare
         that you would have to store data using <code class="classname">DbstlDbt</code> objects while using
         dbstl.  Examples of storing <code class="classname">DbstlDbt</code> objects can be found in the
-        <code class="methodname">TestAssoc::test_arbitrary_object_storage()</code> and
-        <code class="methodname">TestAssoc::test_char_star_string_storage()</code> functions, which are
-        available in the dbstl test suite.
+        <code class="methodname">StlAdvancedFeaturesExample::arbitrary_object_storage()</code> and
+        <code class="methodname">StlAdvancedFeaturesExample::char_star_string_storage()</code> methods.
     </p>
         </div>
       </div>

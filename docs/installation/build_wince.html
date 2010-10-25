@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 5.  Building Berkeley DB for Windows Mobile</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Installation and Build Guide" />
+    <link rel="up" href="index.html" title="Berkeley DB Installation and Build Guide" />
+    <link rel="prev" href="build_win_faq.html" title="Windows FAQ" />
+    <link rel="next" href="build_wince_notes.html" title="Windows Mobile notes" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 5. 
+		Building Berkeley DB for Windows Mobile
+        </th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="build_win_faq.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="build_wince_notes.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="build_wince"></a>Chapter 5. 
+		Building Berkeley DB for Windows Mobile
+        </h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="build_wince.html#build_wince_intro">Building for Windows Mobile</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="build_wince.html#id3748301">Building Berkeley DB for Windows Mobile</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_wince.html#id3748978">Changing Build Configuration Type</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_wince.html#id3748905">Building Berkeley DB for different target platforms</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="build_wince_notes.html">Windows Mobile notes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="build_wince_faq.html">Windows Mobile FAQ</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="build_wince_intro"></a>Building for Windows Mobile</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="build_wince.html#id3748301">Building Berkeley DB for Windows Mobile</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="build_wince.html#id3748978">Changing Build Configuration Type</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="build_wince.html#id3748905">Building Berkeley DB for different target platforms</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>This page contains general instructions on building Berkeley DB for
+Windows Mobile platforms using specific compilers.</p>
+        <p>The <code class="filename">build_wince</code> directory in the Berkeley DB distribution contains
+project files for Microsoft Visual 2005 with the Mobile SDK installed:</p>
+        <div class="informaltable">
+          <table border="1" width="80%">
+            <colgroup>
+              <col />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th align="center">Project File</th>
+                <th align="center">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td align="center">Berkeley_DB.sln</td>
+                <td align="center">Visual Studio 2005 solution</td>
+              </tr>
+              <tr>
+                <td align="center">*.vcproj</td>
+                <td align="center">Visual Studio 2005 project files</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>These project files can be used to build Berkeley DB for the Windows Mobile platform.</p>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="id3748301"></a>Building Berkeley DB for Windows Mobile</h3>
+              </div>
+            </div>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="id3748016"></a>Visual Studio 2005</h4>
+                </div>
+              </div>
+            </div>
+            <div class="orderedlist">
+              <ol type="1">
+                <li>Choose <span class="emphasis"><em>File -&gt; Open Workspace...</em></span>.
+Navigate to the <code class="filename">build_wince</code> directory, select <code class="filename">Berkeley_DB</code>
+and click <code class="literal">Open</code>.</li>
+                <li>Select the desired target platform from the platform drop-down menu.</li>
+                <li>Build the desired projects.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="id3748980"></a>Build results</h4>
+                </div>
+              </div>
+            </div>
+            <p>The results of your build will be placed in a subdirectory of
+<code class="filename">build_windows</code> named after the configuration you chose (for
+examples, <code class="filename">build_wince\Debug_PocketPC2003_ARMV4</code></p>
+            <p>When building your application during development, you should normally
+link against
+<code class="filename">libdb_small50sd.lib</code>.  You can
+also build using a release version of the Berkeley DB libraries and tools,
+which will be placed in
+<code class="filename">build_windows\Release\libdb_small50s.lib</code>.
+You will also need to add the <code class="filename">build_wince</code> directory to the list
+of include directories of your application's project, or copy the Berkeley DB
+include files to a location in your Visual Studio include path.</p>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="id3748978"></a>Changing Build Configuration Type</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+This section contains information on how to change between a dynamic
+library (.dll) and static library (.lib). The library projects and their default
+output and configuration in the Release build is as follows: 
+</p>
+          <div class="informaltable">
+            <table border="1" width="80%">
+              <colgroup>
+                <col />
+                <col />
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th align="center">Project</th>
+                  <th align="center">Default Output</th>
+                  <th align="center">Default Configuration</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td align="center">db_small_static</td>
+                  <td align="center">libdb_small50s.lib</td>
+                  <td align="center">Static Library</td>
+                </tr>
+                <tr>
+                  <td align="center">db_static</td>
+                  <td align="center">libdb50s.lib</td>
+                  <td align="center">Static Library</td>
+                </tr>
+                <tr>
+                  <td align="center">db_sql</td>
+                  <td align="center">libdb_sql50.dll</td>
+                  <td align="center">Dynamic Library</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+To change a project configuration type in Visual Studio 2005, select a
+project and do the following:
+</p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>Choose <span class="emphasis"><em>Project</em></span>-&gt;<span class="emphasis"><em>Properties</em></span> and navigate to <code class="literal">Configuration Properties.</code></li>
+              <li>Under <code class="literal">Project Defaults</code>, change the <code class="literal">Configuration Type</code> to your desired type.</li>
+            </ol>
+          </div>
+          <p>Note: After this change, the output file names change to the Visual Studio 2005 defaults based on the project name.</p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="id3748905"></a>Building Berkeley DB for different target platforms</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+        There are many possible target CPU architectures for a Windows
+        Mobile application.  This section outlines the process required to
+        add a new target architecture to the project files supplied with
+        Berkeley DB.
+    </p>
+          <p>
+        The Visual Studio 2005 project files will by default build for
+        Pocket PC 2003 (ARMV4) and Smartphone 2003 (ARMV4). If you want to
+        build for other platforms such as Windows Mobile 6.0 or Windows
+        Mobile 6.0 Professional, you need to follow the steps provided
+        in this section.
+    </p>
+          <p>
+        Different target architectures are available in different Platform
+        SDK downloads from Microsoft. The appropriate SDK must be installed
+        for your mobile architecture before you can build for that
+        platform.
+    </p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="id3749059"></a>Visual Studio 2005</h4>
+                </div>
+              </div>
+            </div>
+            <div class="orderedlist">
+              <ol type="1">
+                <li>
+                Choose <span class="emphasis"><em>File -&gt; Open Workspace...</em></span>.
+                Navigate to the <code class="filename">build_wince</code> directory,
+                select <code class="filename">Berkeley_DB</code> and click Open.
+            </li>
+                <li>
+                From the <code class="literal">Solution explorer</code> window,
+                right-click the <code class="literal">Solution Berkeley_DB</code> and
+                select <code class="literal">Configuration manager...</code></li>
+                <li>
+                In the <code class="literal">Active solution platform:</code> drop
+                down box select <code class="literal">New...</code></li>
+                <li>
+                From the <code class="literal">Type or select the new platform</code>
+                drop-down box, select a configuration from the ones
+                available and click <code class="literal">OK.</code></li>
+                <li>
+                Click <code class="literal">Close</code> from the
+                <code class="literal">Configuration Manager</code> dialog box.
+            </li>
+                <li>
+                The target platform drop-down now contains the platform 
+                just added.
+            </li>
+                <li>
+                Build as per the instructions given at the beginning of this chapter.
+            </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="build_win_faq.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="build_wince_notes.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Windows FAQ </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Windows Mobile notes</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

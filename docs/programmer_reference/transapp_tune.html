@@ -79,7 +79,7 @@ significantly increase application throughput.  In addition, limiting
 the lifetime of non-transactional cursors will reduce the length of
 times locks are held, thereby improving concurrency.</dd>
           <dt>
-            <span class="term"><a href="../api_reference/C/envset_flags.html#set_flags_DB_DIRECT_DB" class="olink">DB_DIRECT_DB</a>, <a href="../api_reference/C/envlog_get_config.html#log_set_config_DB_LOG_DIRECT" class="olink">DB_LOG_DIRECT</a></span>
+            <span class="term"><a href="../api_reference/C/envset_flags.html#set_flags_DB_DIRECT_DB" class="olink">DB_DIRECT_DB</a>, <a href="../api_reference/C/envlog_set_config.html#log_set_config_DB_LOG_DIRECT" class="olink">DB_LOG_DIRECT</a></span>
           </dt>
           <dd>
 On some systems, avoiding caching in the operating system can improve
@@ -168,7 +168,7 @@ possible.</dd>
         For some applications and systems (generally highly concurrent
         applications on large multiprocessor systems), Berkeley DB makes
         the wrong choice.  In some cases, better performance can be
-        achieved by configuring with the <a class="link" href="build_unix_conf.html#build_unix_conf.--with-mutex">--with-mutex</a>
+        achieved by configuring with the <a href="../installation/build_unix_conf.html#build_unix_conf.--with-mutex" class="olink">--with-mutex</a>
         argument and selecting a different mutex implementation than the
         one selected by Berkeley DB.  When a test-and-set spin mutex
         implementation is selected, it may be useful to tune the number of
@@ -184,7 +184,7 @@ possible.</dd>
           </dd>
           <dt>
             <span class="term">
-              <a class="link" href="build_unix_conf.html#build_unix_conf.--enable-posixmutexes">--enable-posixmutexes</a>
+              <a href="../installation/build_unix_conf.html#build_unix_conf.--enable-posixmutexes" class="olink">--enable-posix-mutexes</a>
             </span>
           </dt>
           <dd>By default, the Berkeley DB library will only select the POSIX pthread mutex
@@ -193,7 +193,7 @@ If your application does not share its database environment between
 processes and your system's POSIX mutex support was not selected because
 it did not support inter-process mutexes, you may be able to increase
 performance and transactional throughput by configuring with the
-<a class="link" href="build_unix_conf.html#build_unix_conf.--enable-posixmutexes">--enable-posixmutexes</a> argument.</dd>
+<a href="../installation/build_unix_conf.html#build_unix_conf.--enable-posixmutexes" class="olink">--enable-posix-mutexes</a> argument.</dd>
           <dt>
             <span class="term">log buffer size</span>
           </dt>

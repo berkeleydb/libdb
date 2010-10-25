@@ -106,8 +106,9 @@ public class SampleViews
         {
             PartKey key = (PartKey) keyInput;
             PartData data = (PartData) dataInput;
-            return new Part(key.getNumber(), data.getName(), data.getColor(),
-                            data.getWeight(), data.getCity());
+            return new Part(key.getNumber(), data.getName(),
+                            data.getColor(), data.getWeight(), 
+                            data.getCity());
         }
 
         public Object objectToKey(Object object)
@@ -120,7 +121,7 @@ public class SampleViews
         {
             Part part = (Part) object;
             return new PartData(part.getName(), part.getColor(),
-                                 part.getWeight(), part.getCity());
+                                part.getWeight(), part.getCity());
         }
     }</code></strong>
     ...
@@ -201,8 +202,9 @@ public class SampleViews
         public Object objectToData(Object object)
         {
             Supplier supplier = (Supplier) object;
-            return new SupplierData(supplier.getName(), supplier.getStatus(),
-                                     supplier.getCity());
+            return new SupplierData(supplier.getName(),
+                                    supplier.getStatus(), 
+                                    supplier.getCity());
         }
     }
 
@@ -218,7 +220,8 @@ public class SampleViews
         {
             ShipmentKey key = (ShipmentKey) keyInput;
             ShipmentData data = (ShipmentData) dataInput;
-            return new Shipment(key.getPartNumber(), key.getSupplierNumber(),
+            return new Shipment(key.getPartNumber(), 
+                                key.getSupplierNumber(),
                                 data.getQuantity());
         }
 

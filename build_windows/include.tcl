@@ -2,7 +2,7 @@
 
 set tclsh_path SET_YOUR_TCLSH_PATH
 set buildpath Win32/Debug
-set tcllib libdb_tcl48d.dll
+set tcllib libdb_tcl50d.dll
 
 set src_root ..
 set test_path ../test

@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 #include "dbinc/mp.h"
 
@@ -70,6 +69,7 @@ static int __repmgr_send_internal
 static int enqueue_msg
     __P((ENV *, REPMGR_CONNECTION *, struct sending_msg *, size_t));
 static REPMGR_SITE *__repmgr_available_site __P((ENV *, int));
+static REPMGR_SITE *__repmgr_find_available_peer __P((ENV *));
 
 /*
  * __repmgr_send --
@@ -115,7 +115,7 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 	 * Check whether we need to refresh our site address information with
 	 * more recent updates from shared memory.
 	 */
-	if (rep->siteaddr_seq > db_rep->siteaddr_seq &&
+	if (rep->siteinfo_seq > db_rep->siteinfo_seq &&
 	    (ret = __repmgr_sync_siteaddr(env)) != 0)
 		goto out;
 
@@ -127,6 +127,14 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 		DB_ASSERT(env, IS_KNOWN_REMOTE_SITE(eid));
 
 		/*
+		 * Since repmgr's simple c2c implementation doesn't truly manage
+		 * staged synchronization it doesn't work well with master
+		 * leases.  So, disable it during the time when a new master may
+		 * be trying to establish its first set of lease grants.
+		 */
+		if (IS_USING_LEASES(env) && !rep->stat.st_startup_complete)
+			LF_CLR(DB_REP_ANYWHERE);
+		/*
 		 * If this is a request that can be sent anywhere, then see if
 		 * we can send it to our peer (to save load on the master), but
 		 * not if it's a rerequest, 'cuz that likely means we tried this
@@ -134,14 +142,12 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 		 */
 		if ((flags & (DB_REP_ANYWHERE | DB_REP_REREQUEST)) ==
 		    DB_REP_ANYWHERE &&
-		    IS_VALID_EID(db_rep->peer) &&
-		    (site = __repmgr_available_site(env, db_rep->peer)) !=
-		    NULL) {
-			RPRINT(env, DB_VERB_REPMGR_MISC,
-			    (env, "sending request to peer"));
+		    (site = __repmgr_find_available_peer(env)) != NULL) {
+			VPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "sending request to peer"));
 		} else if ((site = __repmgr_available_site(env, eid)) ==
 		    NULL) {
-			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			    "ignoring message sent to unavailable site"));
 			ret = DB_REP_UNAVAIL;
 			goto out;
@@ -234,7 +240,7 @@ __repmgr_send(dbenv, control, rec, lsnp, eid, flags)
 			goto out;
 		}
 		/* In ALL_PEERS case, display of "needed" might be confusing. */
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "will await acknowledgement: need %u", needed));
 		ret = __repmgr_await_ack(env, lsnp);
 	}
@@ -257,10 +263,7 @@ __repmgr_available_site(env, eid)
 
 	db_rep = env->rep_handle;
 	site = SITE_FROM_EID(eid);
-	if (site->state != SITE_CONNECTED)
-		return (NULL);
-
-	if (site->ref.conn->state == CONN_READY)
+	if (IS_SITE_HANDSHAKEN(site))
 		return (site);
 	return (NULL);
 }
@@ -388,6 +391,15 @@ __repmgr_send_broadcast(env, type, control, rec, nsitesp, npeersp)
 			nsites++;
 			if (site->priority > 0)
 				npeers++;
+		} else if (ret == DB_TIMEOUT) {
+			/*
+			 * Couldn't send because of a full output queue.
+			 * Incrementing counters would be wrong, but it's
+			 * otherwise OK in the sense that the connection isn't
+			 * definitively known to be broken, and rep protocol
+			 * always allows us to drop a message if we have to.
+			 */ 
+			ret = 0;
 		} else if (ret == DB_REP_UNAVAIL) {
 			if ((ret = __repmgr_bust_connection(env, conn)) != 0)
 				return (ret);
@@ -426,9 +438,13 @@ __repmgr_send_one(env, conn, msg_type, control, rec, blockable)
 	int blockable;
 {
 	struct sending_msg msg;
+	int ret;
 
 	setup_sending_msg(&msg, msg_type, control, rec);
-	return (__repmgr_send_internal(env, conn, &msg, blockable));
+	if ((ret = __repmgr_send_internal(env, conn, &msg, blockable))
+	    == DB_TIMEOUT && !blockable)
+		ret = 0;
+	return (ret);
 }
 
 /*
@@ -476,24 +492,24 @@ __repmgr_send_internal(env, conn, msg, blockable)
 		 * thread, so we can't try sending in-line here.  We can only
 		 * queue the msg for later.
 		 */
-		RPRINT(env, DB_VERB_REPMGR_MISC,
-		    (env, "msg to %s to be queued",
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "msg to %s to be queued",
 		    __repmgr_format_eid_loc(env->rep_handle,
 		    conn->eid, buffer)));
 		if (conn->out_queue_length >= OUT_QUEUE_LIMIT &&
 		    blockable && conn->state != CONN_CONGESTED) {
-			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			    "block msg thread, await queue space"));
 
 			if ((drain_to = db_rep->ack_timeout) == 0)
 				drain_to = DB_REPMGR_DEFAULT_ACK_TIMEOUT;
-			RPRINT(env, DB_VERB_REPMGR_MISC,
-			    (env, "will await drain"));
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "will await drain"));
 			conn->blockers++;
 			ret = __repmgr_await_drain(env,
 			    conn, drain_to * OUT_QUEUE_LIMIT);
 			conn->blockers--;
-			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			    "drain returned %d (%d,%d)", ret,
 			    db_rep->finished, conn->out_queue_length));
 			if (db_rep->finished)
@@ -506,11 +522,11 @@ __repmgr_send_internal(env, conn, msg, blockable)
 		if (conn->out_queue_length < OUT_QUEUE_LIMIT)
 			return (enqueue_msg(env, conn, msg, 0));
 		else {
-			RPRINT(env, DB_VERB_REPMGR_MISC,
-			    (env, "queue limit exceeded"));
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "queue limit exceeded"));
 			STAT(env->rep_handle->
 			    region->mstat.st_msgs_dropped++);
-			return (blockable ? DB_TIMEOUT : 0);
+			return (DB_TIMEOUT);
 		}
 	}
 empty:
@@ -530,7 +546,13 @@ empty:
 			return (0);
 	}
 
-	if (ret != WOULDBLOCK) {
+	switch (ret) {
+	case WOULDBLOCK:
+#if defined(DB_REPMGR_EAGAIN) && DB_REPMGR_EAGAIN != WOULDBLOCK
+	case DB_REPMGR_EAGAIN:
+#endif
+		break;
+	default:
 #ifdef EBADF
 		DB_ASSERT(env, ret != EBADF);
 #endif
@@ -539,7 +561,7 @@ empty:
 		return (DB_REP_UNAVAIL);
 	}
 
-	RPRINT(env, DB_VERB_REPMGR_MISC, (env, "wrote only %lu bytes to %s",
+	RPRINT(env, (env, DB_VERB_REPMGR_MISC, "wrote only %lu bytes to %s",
 	    (u_long)total_written,
 	    __repmgr_format_eid_loc(env->rep_handle, conn->eid, buffer)));
 	/*
@@ -693,10 +715,13 @@ __repmgr_bust_connection(env, conn)
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
+	REP *rep;
 	REPMGR_SITE *site;
+	u_int32_t flags;
 	int connecting, ret, subordinate_conn, eid;
 
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
 	ret = 0;
 
 	eid = conn->eid;
@@ -728,13 +753,46 @@ __repmgr_bust_connection(env, conn)
 		 * only do it if the connection had managed to progress beyond
 		 * the "connecting" state, because otherwise it was just a
 		 * reconnection attempt that may have found the site unreachable
-		 * or the master process not running.
+		 * or the master process not running.  And skip it if the
+		 * application has configured us not to do elections.
 		 */
 		if (!IS_SUBORDINATE(db_rep) && !subordinate_conn &&
-		    !connecting && eid == db_rep->master_eid &&
-		    (ret = __repmgr_init_election(
-		    env, ELECT_FAILURE_ELECTION)) != 0)
-			return (ret);
+		    !connecting && eid == rep->master_id) {
+			/*
+			 * Even if we're not doing elections, defer the event
+			 * notification to later execution in the election
+			 * thread.  We don't want to fire an event in the select
+			 * thread, and certainly not while holding the mutex.
+			 */
+			flags = ELECT_F_EVENT_NOTIFY;
+			if (FLD_ISSET(db_rep->region->config, REP_C_ELECTIONS))
+				LF_SET(ELECT_F_IMMED | ELECT_F_FAST);
+			else
+				RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+				    "Master failure, but no elections"));
+
+			if ((ret = __repmgr_init_election(env, flags)) != 0)
+				return (ret);
+		}
+
+		/*
+		 * If we're the master site, and we lose a main connection to a
+		 * client (whether we're the main replication process or a
+		 * subordinate process), then the client is going to have
+		 * trouble receiving live log records from us.  So, set the
+		 * temporary log archive block timer, to give the client a
+		 * fighting chance to restart/recover/reconnect.  (We don't care
+		 * about the client's subordinate connections to us -- i.e.,
+		 * connections with a subordinate process at the client site --
+		 * because those sites can only be reading, not applying updates
+		 * from us.)
+		 */
+		if (!subordinate_conn && !connecting &&
+		    rep->master_id == SELF_EID) {
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "Repmgr: bust connection.  Block archive"));
+			MASTER_UPDATE(env, (REGENV *)env->reginfo->primary);
+		}
 	} else {
 		/*
 		 * The connection was not marked with a valid EID, so we know it
@@ -1049,6 +1107,31 @@ __repmgr_find_site(env, host, port)
 }
 
 /*
+ * Scan the list of remote sites, returning the first one that is a peer,
+ * is not the current master, and is available.
+ */
+static REPMGR_SITE *
+__repmgr_find_available_peer(env)
+	ENV *env;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	REPMGR_SITE *site;
+	u_int i;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	for (i = 0; i < db_rep->site_cnt; i++) {
+		site = &db_rep->sites[i];
+		if (F_ISSET(site, SITE_IS_PEER) &&
+		    EID_FROM_SITE(site) != rep->master_id &&
+		    IS_SITE_AVAILABLE(site))
+			return (site);
+	}
+	return (NULL);
+}
+
+/*
  * Initialize the fields of a (given) netaddr structure, with the given values.
  * We copy the host name, but take ownership of the ADDRINFO buffer.
  *
@@ -1128,51 +1211,54 @@ __repmgr_getaddr(env, host, port, flags, result)
  * we set newsitep, either to the already existing site, or to the newly created
  * site.  Unless newsitep is passed in as NULL, which is allowed.
  *
- * PUBLIC: int __repmgr_add_site
- * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **, u_int32_t));
+ * PUBLIC: int __repmgr_add_site __P((ENV *,
+ * PUBLIC:     const char *, u_int, REPMGR_SITE **, u_int32_t, int));
  *
  * !!!
  * Caller is expected to hold db_rep->mutex on entry.
  */
 int
-__repmgr_add_site(env, host, port, sitep, flags)
+__repmgr_add_site(env, host, port, sitep, flags, from_user)
 	ENV *env;
 	const char *host;
 	u_int port;
 	REPMGR_SITE **sitep;
 	u_int32_t flags;
+	int from_user;
 {
 	int peer, state;
 
 	state = SITE_IDLE;
 	peer = LF_ISSET(DB_REPMGR_PEER);
-	return (__repmgr_add_site_int(env, host, port, sitep, peer, state));
+	return (__repmgr_add_site_int(env,
+	    host, port, sitep, peer, state, from_user));
 }
 
 /*
- * PUBLIC: int __repmgr_add_site_int
- * PUBLIC:     __P((ENV *, const char *, u_int, REPMGR_SITE **, int, int));
+ * PUBLIC: int __repmgr_add_site_int __P((ENV *,
+ * PUBLIC:     const char *, u_int, REPMGR_SITE **, int, int, int));
  */
 int
-__repmgr_add_site_int(env, host, port, sitep, peer, state)
+__repmgr_add_site_int(env, host, port, sitep, peer, state, from_user)
 	ENV *env;
 	const char *host;
 	u_int port;
 	REPMGR_SITE **sitep;
-	int peer, state;
+	int peer, state, from_user;
 {
 	DB_REP *db_rep;
 	REP *rep;
 	DB_THREAD_INFO *ip;
 	REPMGR_SITE *site;
 	u_int base;
-	int eid, locked, pre_exist, ret, t_ret;
+	int eid, locked, pre_exist, ret, t_ret, touched;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	COMPQUIET(site, NULL);
 	COMPQUIET(pre_exist, 0);
 	eid = DB_EID_INVALID;
+	touched = FALSE;
 
 	/* Make sure we're up to date before adding to our local list. */
 	ENV_ENTER(env, ip);
@@ -1192,7 +1278,7 @@ __repmgr_add_site_int(env, host, port, sitep, peer, state)
 		 * Store both locally and in shared region.
 		 */
 		if ((ret = __repmgr_new_site(env,
-		    &site, host, port, state)) != 0)
+		    &site, host, port, state, peer)) != 0)
 			goto init;
 		eid = EID_FROM_SITE(site);
 		DB_ASSERT(env, (u_int)eid == db_rep->site_cnt - 1);
@@ -1205,19 +1291,37 @@ __repmgr_add_site_int(env, host, port, sitep, peer, state)
 			db_rep->site_cnt--;
 			__repmgr_cleanup_netaddr(env, &site->net_addr);
 		}
-	} else {
+	} else if (from_user) {
+		/*
+		 * A user-supplied existing site might have peer information
+		 * to share, but an existing site from internal repmgr paths
+		 * will not.
+		 */
 		pre_exist = TRUE;
 		eid = EID_FROM_SITE(site);
+		if (peer && !F_ISSET(site, SITE_IS_PEER)) {
+			F_SET(site, SITE_IS_PEER);
+			touched = TRUE;
+		} else if (!peer && F_ISSET(site, SITE_IS_PEER)) {
+			F_CLR(site, SITE_IS_PEER);
+			touched = TRUE;
+		}
+		if (touched)
+			/*
+			 * Only share peer information, not the site itself.
+			 * Pass the same value for start and limit to avoid
+			 * creating any new sites but still share peer values.
+			 */
+			ret = __repmgr_share_netaddrs(env,
+			    rep, (u_int)eid, (u_int)eid);
 	}
 
 	/*
-	 * Bump sequence count explicitly, to cover the pre-exist case.  In the
-	 * other case it's wasted, but that's not worth worrying about.
+	 * Bump sequence count if this is a new site or if we updated any
+	 * peer value.
 	 */
-	if (peer) {
-		db_rep->peer = rep->peer = EID_FROM_SITE(site);
-		db_rep->siteaddr_seq = ++rep->siteaddr_seq;
-	}
+	if (!pre_exist || touched)
+		db_rep->siteinfo_seq = ++rep->siteinfo_seq;
 
 init:
 	MUTEX_UNLOCK(env, rep->mtx_repmgr);

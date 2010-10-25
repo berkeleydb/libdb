@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,6 +13,8 @@
 #include "dbinc/hmac.h"
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
+#include "dbinc/db_page.h"
+#include "dbinc_auto/db_ext.h"
 
 static int __log_encrypt_record __P((ENV *, DBT *, HDR *, u_int32_t));
 static int __log_file __P((ENV *, const DB_LSN *, char *, size_t));
@@ -21,6 +23,8 @@ static int __log_flush_commit __P((ENV *, const DB_LSN *, u_int32_t));
 static int __log_newfh __P((DB_LOG *, int));
 static int __log_put_next __P((ENV *,
     DB_LSN *, const DBT *, HDR *, DB_LSN *));
+static int __log_put_record_int __P((ENV *, DB *, DB_TXN *, DB_LSN *,
+    u_int32_t, u_int32_t, u_int32_t, u_int32_t, DB_LOG_RECSPEC *, va_list));
 static int __log_putr __P((DB_LOG *,
     DB_LSN *, const DBT *, u_int32_t, HDR *));
 static int __log_write __P((DB_LOG *, void *, u_int32_t));
@@ -476,8 +480,11 @@ __log_flush_commit(env, lsnp, flags)
 {
 	DB_LOG *dblp;
 	DB_LSN flush_lsn;
+	HDR hdr;
 	LOG *lp;
-	int ret;
+	int ret, t_ret;
+	size_t nr, nw;
+	u_int8_t *buffer;
 
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
@@ -508,8 +515,16 @@ __log_flush_commit(env, lsnp, flags)
 	if (ret == 0 || !LF_ISSET(DB_LOG_COMMIT))
 		return (ret);
 
-	if (flush_lsn.file != lp->lsn.file || flush_lsn.offset < lp->w_off)
+	if (LF_ISSET(DB_FLUSH) ? 
+	    flush_lsn.file != lp->s_lsn.file ||
+	    flush_lsn.offset < lp->s_lsn.offset :
+	    flush_lsn.file != lp->lsn.file || flush_lsn.offset < lp->w_off)
 		return (0);
+
+	if (IS_REP_MASTER(env)) {
+		__db_err(env, ret, "Write failed on MASTER commit.");
+		return (__env_panic(env, ret));
+	}
 
 	/*
 	 * Else, make sure that the commit record does not get out after we
@@ -521,9 +536,45 @@ __log_flush_commit(env, lsnp, flags)
 	 * interesting part of the buffer may have actually made it out to
 	 * disk before there was a failure, we can't know for sure.
 	 */
-	if (__txn_force_abort(env,
-	    dblp->bufp + flush_lsn.offset - lp->w_off) == 0)
-		(void)__log_flush_int(dblp, &flush_lsn, 0);
+	if (flush_lsn.offset > lp->w_off) {
+		if ((t_ret = __txn_force_abort(env,
+		     dblp->bufp + flush_lsn.offset - lp->w_off)) != 0)
+		     	return (__env_panic(env, t_ret));
+	} else {
+		/*
+		 * The buffer was written, but its not on disk, we
+		 * must read it back and force things from a commit
+		 * state to an abort state.  Lots of things could fail
+		 * here and we will be left with a commit record but
+		 * a panic return.
+		 */
+		 if (
+		    (t_ret = __os_seek(env,
+		    dblp->lfhp, 0, 0, flush_lsn.offset)) != 0 ||
+		    (t_ret = __os_read(env, dblp->lfhp, &hdr,
+		    HDR_NORMAL_SZ, &nr)) != 0 || nr != HDR_NORMAL_SZ)
+			return (__env_panic(env, t_ret == 0 ? EIO : t_ret));
+		if (LOG_SWAPPED(env))
+			__log_hdrswap(&hdr, CRYPTO_ON(env));
+		if ((t_ret = __os_malloc(env, hdr.len, &buffer)) != 0 ||
+		    (t_ret = __os_seek(env,
+		    dblp->lfhp, 0, 0, flush_lsn.offset)) != 0 ||
+		    (t_ret = __os_read(env, dblp->lfhp, buffer,
+		    hdr.len, &nr)) != 0 || nr != hdr.len ||
+		    (t_ret = __txn_force_abort(env, buffer)) != 0 ||
+		    (t_ret = __os_seek(env,
+		    dblp->lfhp, 0, 0, flush_lsn.offset)) != 0 ||
+		    (t_ret = __os_write(env, dblp->lfhp, buffer,
+		    nr, &nw)) != 0 || nw != nr)
+			return (__env_panic(env, t_ret == 0 ? EIO : t_ret));
+		__os_free(env, buffer);
+	}
+ 	/*
+ 	 * Try to flush the log again, if the disk just bounced then we
+ 	 * want to be sure it does not go away again before we write the
+ 	 * abort record.
+ 	 */
+ 	(void)__log_flush_int(dblp, &flush_lsn, 0);
 
 	return (ret);
 }
@@ -1037,8 +1088,8 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 		MUTEX_UNLOCK(env, lp->mtx_flush);
 		if (release)
 			LOG_SYSTEM_LOCK(env);
-		ret = __env_panic(env, ret);
-		return (ret);
+		lp->in_flush--;
+		goto done;
 	}
 
 	/*
@@ -1556,4 +1607,400 @@ __log_encrypt_record(env, dbt, hdr, orig)
 		hdr->size = HDR_NORMAL_SZ;
 	}
 	return (0);
+}
+/*
+ * __log_put_record_pp --
+ *	DB_ENV->log_put_record pre/post processing.
+ *
+ * PUBLIC: int __log_put_record_pp __P((DB_ENV *, DB *, DB_TXN *, DB_LSN *,
+ * PUBLIC:     u_int32_t, u_int32_t, u_int32_t, u_int32_t,
+ * PUBLIC:     DB_LOG_RECSPEC *, ...));
+ */
+#ifdef STDC_HEADERS
+int
+__log_put_record_pp(DB_ENV *dbenv, DB *dbp, DB_TXN *txnp, DB_LSN *ret_lsnp,
+    u_int32_t flags, u_int32_t rectype, u_int32_t has_data, u_int32_t size,
+    DB_LOG_RECSPEC *spec, ...)
+#else
+int
+__log_put_record_pp(dbenv, dbp, txnp, ret_lsnp,
+    flags, rectype, has_data, size,
+    spec, va_alist)
+	DB_ENV *dbenv;
+	DB *dbp;
+	DB_TXN *txnp;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	u_int32_t rectype;
+	u_int32_t has_data;
+	u_int32_t size;
+	DB_LOG_RECSPEC *spec;
+	va_dcl
+#endif
+{
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	va_list argp;
+	int ret;
+
+	env = dbenv->env;
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->lg_handle, "DB_ENV->log_put_record", DB_INIT_LOG);
+
+	/* Validate arguments: check for allowed flags. */
+	if ((ret = __db_fchk(env, "DB_ENV->log_put_record", flags,
+	    DB_LOG_CHKPNT | DB_LOG_COMMIT |
+	    DB_FLUSH | DB_LOG_NOCOPY | DB_LOG_WRNOSYNC)) != 0)
+		return (ret);
+
+	/* DB_LOG_WRNOSYNC and DB_FLUSH are mutually exclusive. */
+	if (LF_ISSET(DB_LOG_WRNOSYNC) && LF_ISSET(DB_FLUSH))
+		return (__db_ferr(env, "DB_ENV->log_put_record", 1));
+
+	/* Replication clients should never write log records. */
+	if (IS_REP_CLIENT(env)) {
+		__db_errx(env,
+		    "DB_ENV->log_put is illegal on replication clients");
+		return (EINVAL);
+	}
+
+	ENV_ENTER(env, ip);
+	va_start(argp, spec);
+	REPLICATION_WRAP(env, (__log_put_record_int(env, dbp,
+	    txnp, ret_lsnp, flags, rectype, has_data, size, spec, argp)),
+	    0, ret);
+	va_end(argp);
+	ENV_LEAVE(env, ip);
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __log_put_record __P((ENV *, DB *, DB_TXN *, DB_LSN *,
+ * PUBLIC:     u_int32_t, u_int32_t, u_int32_t, u_int32_t,
+ * PUBLIC:     DB_LOG_RECSPEC *, ...));
+ */
+#ifdef STDC_HEADERS
+int
+__log_put_record(ENV *env, DB *dbp, DB_TXN *txnp, DB_LSN *ret_lsnp,
+    u_int32_t flags, u_int32_t rectype, u_int32_t has_data, u_int32_t size,
+    DB_LOG_RECSPEC *spec, ...)
+#else
+int
+__log_put_record(env, dbp, txnp, ret_lsnp,
+    flags, rectype, has_data, size, spec, va_alist);
+	ENV *env;
+	DB *dbp;
+	DB_TXN *txnp;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	u_int32_t rectype;
+	u_int32_t has_data;
+	u_int32_t size
+	DB_LOG_RECSPEC *spec;
+	va_dcl
+#endif
+{
+	va_list argp;
+	int ret;
+
+	va_start(argp, spec);
+	ret = __log_put_record_int(env, dbp, txnp, ret_lsnp, flags,
+	    rectype, has_data, size, spec, argp);
+	va_end(argp);
+	return (ret);
+}
+
+#ifdef STDC_HEADERS
+static int
+__log_put_record_int(ENV *env, DB *dbp, DB_TXN *txnp, DB_LSN *ret_lsnp,
+    u_int32_t flags, u_int32_t rectype, u_int32_t has_data, u_int32_t size,
+    DB_LOG_RECSPEC *spec, va_list argp)
+#else
+int
+__log_put_record_int(env, dbp, txnp, ret_lsnp,
+    flags, rectype, has_data, size, spec, argp);
+	ENV *env;
+	DB *dbp;
+	DB_TXN *txnp;
+	DB_LSN *ret_lsnp;
+	u_int32_t flags;
+	u_int32_t has_data;
+	u_int32_t size;
+	u_int32_t rectype;
+	DB_LOG_RECSPEC *spec;
+	va_list argp;
+#endif
+{
+	DBT *data, *dbt, *header, logrec;
+	DB_LOG_RECSPEC *sp;
+	DB_LSN *lsnp, lsn, null_lsn, *pagelsn, *rlsnp;
+	DB_TXNLOGREC *lr;
+	LOG *lp;
+	PAGE *pghdrstart;
+	u_int32_t hdrsize, op, zero, uinttmp, txn_num;
+	u_int npad;
+	u_int8_t *bp;
+	int is_durable, ret;
+	void *hdrstart;
+
+	COMPQUIET(lr, NULL);
+	COMPQUIET(hdrsize, 0);
+	COMPQUIET(op, 0);
+	COMPQUIET(hdrstart, NULL);
+	COMPQUIET(pghdrstart, NULL);
+	COMPQUIET(header, NULL);
+
+	/*
+	 * rlsnp will be stored into while holding the log system lock.
+	 * If this is a commit record then ret_lsnp will be the address of
+	 * the transaction detail visible_lsn field.  If not then this
+	 * may be the lsn of a page and we do not want to set it if
+	 * the log_put fails after writing the record (due to an I/O error).
+	 */
+	if (LF_ISSET(DB_LOG_COMMIT))
+		rlsnp = ret_lsnp;
+	else
+		rlsnp = &lsn;
+	npad = 0;
+	ret = 0;
+	data = NULL;
+
+	if (LF_ISSET(DB_LOG_NOT_DURABLE) ||
+	    (dbp != NULL && F_ISSET(dbp, DB_AM_NOT_DURABLE))) {
+		if (txnp == NULL)
+			return (0);
+		is_durable = 0;
+	} else
+		is_durable = 1;
+
+	if (txnp == NULL) {
+		txn_num = 0;
+		lsnp = &null_lsn;
+		null_lsn.file = null_lsn.offset = 0;
+	} else {
+		if (TAILQ_FIRST(&txnp->kids) != NULL &&
+		    (ret = __txn_activekids(env, rectype, txnp)) != 0)
+			return (ret);
+		/*
+		 * We need to assign begin_lsn while holding region mutex.
+		 * That assignment is done inside the DbEnv->log_put call,
+		 * so pass in the appropriate memory location to be filled
+		 * in by the log_put code.
+		 */
+		DB_SET_TXN_LSNP(txnp, &rlsnp, &lsnp);
+		txn_num = txnp->txnid;
+	}
+
+	if (dbp != NULL) {
+		DB_ASSERT(env, dbp->log_filename != NULL);
+		if (dbp->log_filename->id == DB_LOGFILEID_INVALID &&
+		    (ret = __dbreg_lazy_id(dbp)) != 0)
+			return (ret);
+	}
+
+	logrec.size = size;
+
+	if (CRYPTO_ON(env)) {
+		npad = env->crypto_handle->adj_size(logrec.size);
+		logrec.size += npad;
+	}
+
+	if (is_durable || txnp == NULL) {
+		if ((ret =
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0)
+			return (ret);
+	} else {
+		if ((ret = __os_malloc(env,
+		    logrec.size + sizeof(DB_TXNLOGREC), &lr)) != 0)
+			return (ret);
+#ifdef DIAGNOSTIC
+		if ((ret =
+		    __os_malloc(env, logrec.size, &logrec.data)) != 0) {
+			__os_free(env, lr);
+			return (ret);
+		}
+#else
+		logrec.data = lr->data;
+#endif
+	}
+	if (npad > 0)
+		memset((u_int8_t *)logrec.data + logrec.size - npad, 0, npad);
+
+	bp = logrec.data;
+
+	LOGCOPY_32(env, bp, &rectype);
+	bp += sizeof(rectype);
+
+	LOGCOPY_32(env, bp, &txn_num);
+	bp += sizeof(txn_num);
+
+	LOGCOPY_FROMLSN(env, bp, lsnp);
+	bp += sizeof(DB_LSN);
+
+	zero = 0;
+	lp = env->lg_handle->reginfo.primary;
+	for (sp = spec; sp->type != LOGREC_Done; sp++) {
+		switch (sp->type) {
+		case LOGREC_DB:
+			/* This is not in the varargs. */
+			uinttmp = (u_int32_t)dbp->log_filename->id;
+			LOGCOPY_32(env, bp, &uinttmp);
+			bp += sizeof(uinttmp);
+			break;
+
+		case LOGREC_ARG:
+		case LOGREC_TIME:
+		case LOGREC_DBOP:
+			uinttmp = va_arg(argp, u_int32_t);
+			LOGCOPY_32(env, bp, &uinttmp);
+			bp += sizeof(uinttmp);
+			break;
+		case LOGREC_OP:
+			op = va_arg(argp, u_int32_t);
+			LOGCOPY_32(env, bp, &op);
+			bp += sizeof(uinttmp);
+			break;
+		case LOGREC_DBT:
+		case LOGREC_PGLIST:
+		case LOGREC_LOCKS:
+		case LOGREC_HDR:
+		case LOGREC_DATA:
+			dbt = va_arg(argp, DBT *);
+			if (dbt == NULL) {
+				LOGCOPY_32(env, bp, &zero);
+				bp += sizeof(u_int32_t);
+			} else {
+				LOGCOPY_32(env, bp, &dbt->size);
+				bp += sizeof(dbt->size);
+				memcpy(bp, dbt->data, dbt->size);
+			}
+			/* Process fields that need to be byte swapped. */
+			if (dbp != NULL && F_ISSET(dbp, DB_AM_SWAP)) {
+				if (sp->type == LOGREC_HDR &&
+				    dbt != NULL && has_data == 0)
+					__db_recordswap(op,
+					    dbt->size, bp, NULL, 0);
+				else if (sp->type == LOGREC_HDR) {
+					hdrstart = bp;
+					hdrsize = dbt == NULL ? 0 : dbt->size;
+				} else if (sp->type == LOGREC_DATA) {
+					__db_recordswap(op,
+					    hdrsize, hdrstart, bp, 0);
+					has_data = 0;
+				}
+			}
+			if (dbt != NULL)
+				bp += dbt->size;
+
+			break;
+		/*
+		 * Page header and data -- we assume that the header
+		 * is listed first and the data follows sometime later.
+		 * There should be only one header/data pair per record.
+		 */
+		case LOGREC_PGDBT:
+			header = va_arg(argp, DBT *);
+			if (header == NULL) {
+				LOGCOPY_32(env, bp, &zero);
+				bp += sizeof(u_int32_t);
+			} else {
+				LOGCOPY_32(env, bp, &header->size);
+				bp += sizeof(header->size);
+				pghdrstart = (PAGE *)bp;
+				memcpy(bp, header->data, header->size);
+				if (has_data == 0 &&
+				    F_ISSET(dbp, DB_AM_SWAP) &&
+				    (ret = __db_pageswap(
+				     env, dbp, pghdrstart, (size_t)header->size,
+				     NULL, 0)) != 0)
+					return (ret);
+				bp += header->size;
+			}
+			break;
+
+		case LOGREC_PGDDBT:
+			data = va_arg(argp, DBT *);
+			if (data == NULL) {
+				zero = 0;
+				LOGCOPY_32(env, bp, &zero);
+				bp += sizeof(u_int32_t);
+			} else {
+				if (F_ISSET(dbp, DB_AM_SWAP) &&
+				    (ret = __db_pageswap(env, dbp, pghdrstart,
+				    (size_t)header->size, (DBT *)data, 0)) != 0)
+					return (ret);
+				LOGCOPY_32(env, bp, &data->size);
+				bp += sizeof(data->size);
+				memcpy(bp, data->data, data->size);
+				if (F_ISSET(dbp, DB_AM_SWAP) &&
+				     F_ISSET(data, DB_DBT_APPMALLOC))
+					__os_free(env, data->data);
+				bp += data->size;
+			}
+			break;
+		case LOGREC_POINTER:
+			pagelsn = va_arg(argp, DB_LSN *);
+			if (pagelsn != NULL) {
+				if (txnp != NULL) {
+					if (LOG_COMPARE(pagelsn,
+					    &lp->lsn) >= 0 && (ret =
+					    __log_check_page_lsn(env,
+					    dbp, pagelsn)) != 0)
+						return (ret);
+				}
+				LOGCOPY_FROMLSN(env, bp, pagelsn);
+			} else
+				memset(bp, 0, sizeof(*pagelsn));
+			bp += sizeof(*pagelsn);
+			break;
+
+		default:
+			DB_ASSERT(env, sp->type != sp->type);
+		}
+	}
+
+	DB_ASSERT(env,
+	    (u_int32_t)(bp - (u_int8_t *)logrec.data) <= logrec.size);
+
+	if (is_durable || txnp == NULL) {
+		if ((ret = __log_put(env, rlsnp,(DBT *)&logrec,
+		    flags | DB_LOG_NOCOPY)) == 0) {
+			if (txnp != NULL)
+				*lsnp = *rlsnp;
+			*ret_lsnp = *rlsnp;
+		}
+	} else {
+		ret = 0;
+#ifdef DIAGNOSTIC
+		/*
+		 * Set the debug bit if we are going to log non-durable
+		 * transactions so they will be ignored by recovery.
+		 */
+		memcpy(lr->data, logrec.data, logrec.size);
+		rectype |= DB_debug_FLAG;
+		LOGCOPY_32(env, logrec.data, &rectype);
+
+		if (!IS_REP_CLIENT(env) && !lp->db_log_inmemory)
+			ret = __log_put(env,
+			    rlsnp, (DBT *)&logrec, flags | DB_LOG_NOCOPY);
+#endif
+		STAILQ_INSERT_HEAD(&txnp->logs, lr, links);
+		F_SET((TXN_DETAIL *)txnp->td, TXN_DTL_INMEMORY);
+		LSN_NOT_LOGGED(*ret_lsnp);
+	}
+
+#ifdef LOG_DIAGNOSTIC
+	if (ret != 0)
+		(void)__db_addrem_print(env,
+		    (DBT *)&logrec, ret_lsnp, DB_TXN_PRINT, NULL);
+#endif
+
+#ifdef DIAGNOSTIC
+	__os_free(env, logrec.data);
+#else
+	if (is_durable || txnp == NULL)
+		__os_free(env, logrec.data);
+#endif
+	return (ret);
 }

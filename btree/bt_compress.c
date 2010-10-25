@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_config.h"
@@ -2207,8 +2207,9 @@ __bamc_compress_get(dbc, key, data, flags)
 	case DB_PREV:
 	case DB_PREV_DUP:
 	case DB_PREV_NODUP:
-		if (F_ISSET((BTREE_CURSOR *)dbc->internal, C_COMPRESS_MODIFIED)
-		    && (ret = __bamc_compress_relocate(dbc)) != 0)
+		if (F_ISSET((BTREE_CURSOR *)dbc->internal, 
+		    C_COMPRESS_MODIFIED) && 
+		    (ret = __bamc_compress_relocate(dbc)) != 0)
 			return (ret);
 		tmp_flags = DB_POSITION;
 		break;
@@ -2837,7 +2838,7 @@ __bam_compress_salvage(dbp, vdp, handle, callback, key, data)
 		ret = DB_VERIFY_FATAL;
 		goto unknown_data;
 	}
-	
+
 	/* Unmarshal the first data */
 	size = __db_decompress_count_int(compcursor);
 	if (size == 0xFF || compcursor + size > compend) {

@@ -50,6 +50,11 @@
               <a href="lockingsubsystem.html#deadlockresolve">Resolving Deadlocks</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#setpriority">Setting Transaction Priorities</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -180,7 +185,7 @@
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -190,7 +195,7 @@ int main(void)
                           DB_INIT_MPOOL |  // Initialize the cache
                           DB_THREAD     |  // Free-thread the env handle.
                           DB_INIT_TXN;     // Initialize transactions
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 
@@ -352,7 +357,7 @@ int main(void)
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -491,6 +496,98 @@ while (retry_count &lt; MAX_DEADLOCK_RETRIES) {
             return (EXIT_FAILURE);    
         }
     }
+} </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="setpriority"></a>Setting Transaction Priorities</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                Normally when a thread of control must be selected to
+                resolve a deadlock, DB decides which thread will
+                perform the resolution; you have no way of knowing in
+                advance which thread will be selected to resolve the
+                deadlock.
+            </p>
+        <p>
+                However, there may be situations where you know it is
+                better for one thread to resolve a deadlock over another
+                thread. As an example, if you have a background thread
+                running data management activities, and another thread
+                responding to user requests, you might want deadlock
+                resolution to occur in the background thread because you
+                can better afford the throughput costs there. Under these
+                circumstances, you can identify which thread of control
+                will be selected for resolved deadlocks by setting a
+                transaction priorities.
+            </p>
+        <p>
+                When two transactions are deadlocked, DB will abort the
+                transaction with the lowest priority. By default, every
+                transaction is given a priority of 100. However, you can
+                set a different priority on a transaction-by-transaction
+                basis by using the
+                
+                <code class="methodname">DbTxn::set_priority()</code>
+                
+                method.
+            </p>
+        <p>
+                When two or more transactions are tied for the lowest
+                priority, the tie is broken based on the policy provided to
+                <span>
+                    the
+                    
+                    <code class="methodname">DbEnv::lock_detect()</code>
+                    method's <code class="literal">atype</code> parameter.
+                </span>
+                
+            </p>
+        <p>
+                A transaction's priority can be changed at any time after
+                the transaction handle has been created and before the
+                transaction has been resolved (committed or aborted).
+                For example:
+            </p>
+        <pre class="programlisting">#include "db_cxx.h"
+
+...
+
+int main(void)
+{
+    ...
+
+    try {
+
+        ...
+        // Database and environment open omitted for brevity.
+        ...
+        DbTxn *txn = NULL;
+        myEnv.txn_begin(NULL, &amp;txn, 0);
+        <strong class="userinput"><code>txn-&gt;set_priority(200);</code></strong>
+
+        try {
+            db-&gt;put(txn, &amp;key, &amp;data, 0);
+            txn-&gt;commit(0);
+        } catch (DbException &amp;e) {
+            std::cerr &lt;&lt; "Error in transaction: "
+                       &lt;&lt; e.what() &lt;&lt; std::endl;
+            txn-&gt;abort();
+        }
+
+    } catch(DbException &amp;e) {
+        std::cerr &lt;&lt; "Error opening database and environment: "
+                  &lt;&lt; file_name &lt;&lt; ", "
+                  &lt;&lt; envHome &lt;&lt; std::endl;
+        std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+    }
+
+    ...
+
 } </pre>
       </div>
     </div>

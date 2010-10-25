@@ -303,7 +303,7 @@
 #include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 void *checkpoint_thread(void *);
 
 int main(void)
@@ -315,7 +315,7 @@ int main(void)
                           DB_INIT_MPOOL |  // Initialize the cache
                           DB_THREAD     |  // Free-thread the env handle
                           DB_INIT_TXN;     // Initialize transactions
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 

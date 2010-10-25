@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -298,7 +298,7 @@ public:
 	typedef typename iterator::difference_type difference_type;
 	typedef typename iterator::value_type_wrap value_type_wrap;
 	// Construct a reverse iterator from iterator vi. We don't duplicate
-	// itrerator vi here because vi is not supposed to be used again.
+	// iterator vi here because vi is not supposed to be used again.
 	// This function is supposed to be used by dbstl users, internally
 	// self::set_iterator method is used.
 	/// Constructor. Construct from an iterator of wrapped type.

@@ -40,9 +40,11 @@
 int
 Db::close(u_int32_t flags);</pre>
       <p>
-         The <code class="methodname">Db::close()</code> method flushes any cached database information to
-         disk, closes any open cursors, frees any allocated resources, and
-         closes any underlying files.
+         The <code class="methodname">Db::close()</code> method flushes cached database information to
+         disk, closes any open cursors, frees allocated resources, and
+         closes underlying files. When the close operation for a cursor fails, 
+         the method returns a non-zero error value for the first instance of such an error, 
+         and continues to close the rest of the cursors and database handles.
     </p>
       <p>
          Although closing a database handle will close any open cursors, it
@@ -80,6 +82,10 @@ Db::close(u_int32_t flags);</pre>
          accessed again after <code class="methodname">Db::close()</code> is called, regardless of its return.
     </p>
       <p>
+     	If you do not close the <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a> handle explicitly, it will be closed when
+     	the environment handle that owns the <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a> handle is closed.
+    </p>
+      <p>
          The <code class="methodname">Db::close()</code> <span>
             
             <span>
@@ -88,12 +94,61 @@ Db::close(u_int32_t flags);</pre>
                 failure, and returns 0 on success.
             </span>
         </span>
+         The error values that <code class="methodname">Db::close()</code> method returns include the error values of <code class="methodname">Dbc::close()</code> and the following:
     </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3617750"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+        <p>
+                <a class="xref" href="dbdeadlock.html" title="DbDeadlockException">DbDeadlockException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_DEADLOCK</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3617794"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        <p>
+                <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_NOTGRANTED</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3616514"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1630309"></a>Parameters</h3>
+              <h3 class="title"><a id="id3618147"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -101,7 +156,7 @@ Db::close(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631831"></a>flags</h4>
+                <h4 class="title"><a id="id3618150"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -148,7 +203,7 @@ Db::close(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631670"></a>Errors</h3>
+              <h3 class="title"><a id="id3618180"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -166,7 +221,7 @@ Db::close(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1629693"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3618269"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -174,12 +229,63 @@ Db::close(u_int32_t flags);</pre>
                 An invalid flag value or parameter was specified.
             </p>
         </div>
+        <p>
+	The error messages returned for the first error encountered when <code class="methodname">Db::close()</code> method closes any open cursors include:
+	</p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3618318"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+          <p>
+                <a class="xref" href="dbdeadlock.html" title="DbDeadlockException">DbDeadlockException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_DEADLOCK</code> is returned.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3618412"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+          <p>
+                <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_NOTGRANTED</code> is returned.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3617697"></a>EINVAL</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631850"></a>Class</h3>
+              <h3 class="title"><a id="id3618270"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -191,7 +297,7 @@ Db::close(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631709"></a>See Also</h3>
+              <h3 class="title"><a id="id3617866"></a>See Also</h3>
             </div>
           </div>
         </div>

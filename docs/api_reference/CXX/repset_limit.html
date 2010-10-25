@@ -40,41 +40,44 @@
 int
 DbEnv::rep_set_limit(u_int32_t gbytes, u_int32_t bytes); </pre>
       <p>
-         The <code class="methodname">DbEnv::rep_set_limit()</code> method sets 
-record transmission throttling. This is a byte-count limit on the
-         amount of data that will be transmitted from a site in response to a
-         single message processed by the 
-         <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> 
-         method.  The limit is not a hard limit, and the record that exceeds
-         the limit is the last record to be sent.
+         The <code class="methodname">DbEnv::rep_set_limit()</code> method sets
+         record transmission throttling. This is a byte-count limit on the
+         amount of data that will be transmitted from a site in response to
+         a single message processed by the 
+         <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> method.  
+         The limit is not a hard limit, and the record that exceeds the limit 
+         is the last record to be sent.
     </p>
       <p>
          Record transmission throttling is turned on by default with a limit of
          10MB.
     </p>
       <p>
-         If the values passed to the <code class="methodname">DbEnv::rep_set_limit()</code> method are both
-         zero, then the transmission limit is turned off.
+         If the values passed to the <code class="methodname">DbEnv::rep_set_limit()</code> 
+         method are both zero, then the transmission limit is turned off.
     </p>
       <p>
-         The database environment's replication subsystem may also be configured using the
-         environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.  The
-         syntax of the entry in that file is a single line with the string "rep_set_limit", one or
-         more whitespace characters, and the limit specified in two parts: the 
-gigabytes and the
-         bytes values. For example, "rep_set_limit 0 1048576" sets a 1 megabyte limit.. Because
-         the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when
-         the database environment is opened, it will silently overrule configuration done before
-         that time.
+         The database environment's replication subsystem may also be
+         configured using the environment's 
+         <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> 
+         file.  The syntax of the entry in that file is a single line with the
+         string "rep_set_limit", one or more whitespace characters, and the
+         limit specified in two parts: the gigabytes and the bytes values.
+         For example, "rep_set_limit 0 1048576" sets a 1 megabyte limit.
+         Because the 
+         <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> 
+         file is read when the database environment is opened, it will silently
+         overrule configuration done before that time.
     </p>
       <p>
-         The <code class="methodname">DbEnv::rep_set_limit()</code> method configures a database environment,
-         not only operations performed using the specified <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
+         The <code class="methodname">DbEnv::rep_set_limit()</code> method
+         configures a database environment, not only operations performed
+         using the specified <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>
          handle.
     </p>
       <p>
-         The <code class="methodname">DbEnv::rep_set_limit()</code> method may be called at any time during
-         the life of the application.
+         The <code class="methodname">DbEnv::rep_set_limit()</code> method may be
+         called at any time during the life of the application.
     </p>
       <p>
          The <code class="methodname">DbEnv::rep_set_limit()</code> <span>
@@ -90,7 +93,7 @@ gigabytes and the
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1703210"></a>Parameters</h3>
+              <h3 class="title"><a id="id3692445"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -98,58 +101,58 @@ gigabytes and the
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1703582"></a>bytes</h4>
+                <h4 class="title"><a id="id3692587"></a>gbytes</h4>
               </div>
             </div>
           </div>
           <p>
-                         The  <span class="bold"><strong>bytes</strong></span> parameter specifies the number of 
-                         bytes which, when added to the <span class="bold"><strong>gbytes</strong></span>
-                         parameter,  specifies the maximum number of bytes that will be sent in a 
-                         single call to the <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> 
-                         method.
-                     </p>
+                 The  <span class="bold"><strong>gbytes</strong></span> parameter specifies the number of 
+                 gigabytes which, when added to the <span class="bold"><strong>bytes</strong></span>
+                 parameter,  specifies the maximum number of bytes that will be sent in a 
+                 single call to the <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> 
+                 method.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1703106"></a>gbytes</h4>
+                <h4 class="title"><a id="id3692426"></a>bytes</h4>
               </div>
             </div>
           </div>
           <p>
-                         The  <span class="bold"><strong>gbytes</strong></span> parameter specifies the number of 
-                         gigabytes which, when added to the <span class="bold"><strong>bytes</strong></span>
-                         parameter,  specifies the maximum number of bytes that will be sent in a 
-                         single call to the <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> 
-                         method.
-                     </p>
+                 The  <span class="bold"><strong>bytes</strong></span> parameter specifies the number of 
+                 bytes which, when added to the <span class="bold"><strong>gbytes</strong></span>
+                 parameter,  specifies the maximum number of bytes that will be sent in a 
+                 single call to the <a class="xref" href="repmessage.html" title="DbEnv::rep_process_message()">DbEnv::rep_process_message()</a> 
+                 method.
+             </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1703716"></a>Class</h3>
+              <h3 class="title"><a id="id3692970"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-                <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
-            </p>
+            <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
+        </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1703542"></a>See Also</h3>
+              <h3 class="title"><a id="id3693025"></a>See Also</h3>
             </div>
           </div>
         </div>
         <p>
-                     <a class="xref" href="rep.html#replist" title="Replication and Related Methods">Replication and Related Methods</a> 
-                </p>
+             <a class="xref" href="rep.html#replist" title="Replication and Related Methods">Replication and Related Methods</a> 
+        </p>
       </div>
     </div>
     <div class="navfooter">

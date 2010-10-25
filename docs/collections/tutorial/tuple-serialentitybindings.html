@@ -133,8 +133,9 @@ public class SampleViews
         public Object objectToData(Object object)
         {
             Supplier supplier = (Supplier) object;
-            return new SupplierData(supplier.getName(), supplier.getStatus(),
-                                     supplier.getCity());
+            return new SupplierData(supplier.getName(), 
+                                    supplier.getStatus(),
+                                    supplier.getCity());
         }
     }
     ...

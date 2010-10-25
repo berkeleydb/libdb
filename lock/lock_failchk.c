@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -49,7 +49,7 @@ retry:	LOCK_LOCKERS(env, lrp);
 			 * it has no read locks or has no locks at all.  Check
 			 * the heldby list rather then nlocks since a lock may
 			 * be PENDING.  __txn_failchk aborts any transactional
-			 * lockers.  Non-transactional lockers progress to  
+			 * lockers.  Non-transactional lockers progress to
 			 * is_alive test.
 			 */
 			if ((lip->id >= TXN_MINIMUM) &&
@@ -78,15 +78,15 @@ retry:	LOCK_LOCKERS(env, lrp);
 			 * Discard the locker and its read locks.
 			 */
 			if (!SH_LIST_EMPTY(&lip->heldby)) {
-				__db_msg(env, 
+				__db_msg(env,
 				    "Freeing read locks for locker %#lx: %s",
-			    	    (u_long)lip->id, dbenv->thread_id_string(
-			    	    dbenv, lip->pid, lip->tid, buf));
+				    (u_long)lip->id, dbenv->thread_id_string(
+				    dbenv, lip->pid, lip->tid, buf));
 				UNLOCK_LOCKERS(env, lrp);
 				memset(&request, 0, sizeof(request));
 				request.op = DB_LOCK_PUT_READ;
 				if ((ret = __lock_vec(env,
-			    	    lip, 0, &request, 1, NULL)) != 0)
+				    lip, 0, &request, 1, NULL)) != 0)
 					return (ret);
 			}
 			else
@@ -100,7 +100,7 @@ retry:	LOCK_LOCKERS(env, lrp);
 			 * it.
 			 */
 			if (lip->id < TXN_MINIMUM &&
-			    (ret = __lock_freefamilylocker(lt, lip)) != 0)
+			    (ret = __lock_freelocker(lt, lip)) != 0)
 				return (ret);
 			goto retry;
 		}

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -99,8 +99,10 @@ u_int32_t DbTxn::id()
 }
 
 DBTXN_METHOD(get_name, 0, (const char **namep), (txn, namep))
+DBTXN_METHOD(get_priority, 0, (u_int32_t *priorityp), (txn, priorityp))
 DBTXN_METHOD(prepare, 0, (u_int8_t *gid), (txn, gid))
 DBTXN_METHOD(set_name, 0, (const char *name), (txn, name))
+DBTXN_METHOD(set_priority, 0, (u_int32_t priority), (txn, priority))
 DBTXN_METHOD(set_timeout, 0, (db_timeout_t timeout, u_int32_t flags),
     (txn, timeout, flags))
 

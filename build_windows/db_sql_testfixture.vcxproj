@@ -1,0 +1,329 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{5D79B660-0667-11DF-8A39-0800200C9A66}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\build_windows\$(Platform)\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">./$(OutDir)db_sql_testfixture\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\build_windows\$(Platform)\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">./$(OutDir)db_sql_testfixture\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\build_windows\$(Platform)\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./$(OutDir)db_sql_testfixture\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db_sql_testfixture\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">testfixture</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">testfixture</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">testfixture</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.exe</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">testfixture</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.exe</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_DEBUG;SQLITE_MEMDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_testfixture.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)testfixture/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)testfixture/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb50d.lib;tcl84g.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);C:/tcl/lib;../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)testfixture.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_testfixture.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)testfixture/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)testfixture/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb50.lib;tcl84.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);C:/tcl/lib;../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)testfixture.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_DEBUG;SQLITE_MEMDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_testfixture.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)testfixture/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)testfixture/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb50d.lib;tcl84g.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);C:/tcl/lib;../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)testfixture.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_testfixture.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)testfixture/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)testfixture/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb50.lib;tcl84.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);C:/tcl/lib;../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)testfixture.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\sql\sqlite\src\alter.c" />
+    <ClCompile Include="..\sql\sqlite\src\analyze.c" />
+    <ClCompile Include="..\sql\sqlite\src\attach.c" />
+    <ClCompile Include="..\sql\sqlite\src\auth.c" />
+    <ClCompile Include="..\sql\adapter\backup.c" />
+    <ClCompile Include="..\sql\sqlite\src\bitvec.c" />
+    <ClCompile Include="..\sql\adapter\btmutex.c" />
+    <ClCompile Include="..\sql\adapter\btree.c" />
+    <ClCompile Include="..\sql\sqlite\src\build.c" />
+    <ClCompile Include="..\sql\sqlite\src\callback.c" />
+    <ClCompile Include="..\sql\sqlite\src\ctime.c" />
+    <ClCompile Include="..\sql\sqlite\src\complete.c" />
+    <ClCompile Include="..\sql\sqlite\src\date.c" />
+    <ClCompile Include="..\sql\sqlite\src\delete.c" />
+    <ClCompile Include="..\sql\sqlite\src\expr.c" />
+    <ClCompile Include="..\sql\sqlite\src\fault.c" />
+    <ClCompile Include="..\sql\sqlite\src\fkey.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_expr.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_hash.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_icu.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_porter.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_snippet.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_tokenizer1.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_tokenizer.c" />
+    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_write.c" />
+    <ClCompile Include="..\sql\sqlite\src\func.c" />
+    <ClCompile Include="..\sql\sqlite\src\global.c" />
+    <ClCompile Include="..\sql\sqlite\src\hash.c" />
+    <ClCompile Include="..\sql\sqlite\src\insert.c" />
+    <ClCompile Include="..\sql\sqlite\src\journal.c" />
+    <ClCompile Include="..\sql\sqlite\src\legacy.c" />
+    <ClCompile Include="..\sql\sqlite\src\loadext.c" />
+    <ClCompile Include="..\sql\sqlite\src\main.c" />
+    <ClCompile Include="..\sql\sqlite\src\malloc.c" />
+    <ClCompile Include="..\sql\sqlite\src\mem0.c" />
+    <ClCompile Include="..\sql\sqlite\src\mem1.c" />
+    <ClCompile Include="..\sql\sqlite\src\mem2.c" />
+    <ClCompile Include="..\sql\sqlite\src\mem3.c" />
+    <ClCompile Include="..\sql\sqlite\src\mem5.c" />
+    <ClCompile Include="..\sql\sqlite\src\memjournal.c" />
+    <ClCompile Include="..\sql\sqlite\src\mutex.c" />
+    <ClCompile Include="..\sql\sqlite\src\mutex_w32.c" />
+    <ClCompile Include="..\sql\sqlite\src\notify.c" />
+    <ClCompile Include="..\sql\generated\opcodes.c" />
+    <ClCompile Include="..\sql\sqlite\src\os.c" />
+    <ClCompile Include="..\sql\sqlite\src\os_win.c" />
+    <ClCompile Include="..\sql\adapter\pager.c" />
+    <ClCompile Include="..\sql\generated\parse.c" />
+    <ClCompile Include="..\sql\adapter\pcache.c" />
+    <ClCompile Include="..\sql\adapter\pcache1.c" />
+    <ClCompile Include="..\sql\sqlite\src\pragma.c" />
+    <ClCompile Include="..\sql\sqlite\src\prepare.c" />
+    <ClCompile Include="..\sql\sqlite\src\printf.c" />
+    <ClCompile Include="..\sql\sqlite\src\random.c" />
+    <ClCompile Include="..\sql\sqlite\src\resolve.c" />
+    <ClCompile Include="..\sql\sqlite\src\rowset.c" />
+    <ClCompile Include="..\sql\sqlite\ext\rtree\rtree.c" />
+    <ClCompile Include="..\sql\sqlite\src\select.c" />
+    <ClCompile Include="..\sql\sqlite\src\status.c" />
+    <ClCompile Include="..\sql\sqlite\src\table.c" />
+    <ClCompile Include="..\sql\sqlite\src\tokenize.c" />
+    <ClCompile Include="..\sql\sqlite\src\trigger.c" />
+    <ClCompile Include="..\sql\sqlite\src\update.c" />
+    <ClCompile Include="..\sql\sqlite\src\utf.c" />
+    <ClCompile Include="..\sql\sqlite\src\util.c" />
+    <ClCompile Include="..\sql\adapter\vacuum.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbe.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbeapi.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbeaux.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbeblob.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbemem.c" />
+    <ClCompile Include="..\sql\sqlite\src\vdbetrace.c" />
+    <ClCompile Include="..\sql\sqlite\src\vtab.c" />
+    <ClCompile Include="..\sql\sqlite\src\walker.c" />
+    <ClCompile Include="..\sql\sqlite\src\where.c" />
+    <ClCompile Include="..\sql\sqlite\src\tclsqlite.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_init.c" />
+    <ClCompile Include="..\sql\sqlite\src\test1.c" />
+    <ClCompile Include="..\sql\sqlite\src\test2.c" />
+    <ClCompile Include="..\sql\sqlite\src\test3.c" />
+    <ClCompile Include="..\sql\sqlite\src\test4.c" />
+    <ClCompile Include="..\sql\sqlite\src\test5.c" />
+    <ClCompile Include="..\sql\sqlite\src\test6.c" />
+    <ClCompile Include="..\sql\sqlite\src\test7.c" />
+    <ClCompile Include="..\sql\sqlite\src\test8.c" />
+    <ClCompile Include="..\sql\sqlite\src\test9.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_async.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_autoext.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_backup.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_btree.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_config.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_devsym.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_func.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_hexio.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_intarray.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_journal.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_loadext.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_malloc.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_mutex.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_onefile.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_osinst.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_pcache.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_schema.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_server.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_tclvar.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_thread.c" />
+    <ClCompile Include="..\sql\sqlite\src\test_wsd.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="db.vcxproj">
+      <Project>{fd045d60-abad-4a6c-9794-9bfb085fc3e7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

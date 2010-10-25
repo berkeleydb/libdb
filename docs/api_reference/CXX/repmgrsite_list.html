@@ -98,6 +98,16 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
                             <code class="literal">DB_REPMGR_DISCONNECTED</code>.
                     </p>
           </li>
+          <li>
+            <p>
+                            <span class="bold"><strong>u_int32_t flags;</strong></span>
+                    </p>
+            <p>
+                        Zero or a bitwise inclusive OR of the <code class="literal">DB_REPMGR_ISPEER</code> constant. 
+                        The <code class="literal">DB_REPMGR_ISPEER</code>
+                        value means that the site is a possible client-to-client peer.
+                    </p>
+          </li>
         </ul>
       </div>
       <p>
@@ -118,7 +128,7 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707460"></a>Parameters</h3>
+              <h3 class="title"><a id="id3697824"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -126,7 +136,7 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708117"></a>countp</h4>
+                <h4 class="title"><a id="id3697814"></a>countp</h4>
               </div>
             </div>
           </div>
@@ -139,7 +149,7 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708162"></a>listp</h4>
+                <h4 class="title"><a id="id3697160"></a>listp</h4>
               </div>
             </div>
           </div>
@@ -153,7 +163,7 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708176"></a>Class</h3>
+              <h3 class="title"><a id="id3696320"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -165,7 +175,7 @@ DbEnv::repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708004"></a>See Also</h3>
+              <h3 class="title"><a id="id3697475"></a>See Also</h3>
             </div>
           </div>
         </div>

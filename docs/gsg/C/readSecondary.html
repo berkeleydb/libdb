@@ -70,15 +70,15 @@ DBT pkey, pdata; /* Used to return the primary key and data */
 char *search_name = "John Doe";
 
 /* Primary and secondary database opens omitted for brevity */
-                                                                                                                                     
+
 /* Zero out the DBTs before using them. */
 memset(&amp;key, 0, sizeof(DBT));
 memset(&amp;pkey, 0, sizeof(DBT));
 memset(&amp;pdata, 0, sizeof(DBT));
-                                                                                                                                     
+
 key.data = search_name;
 key.size = strlen(search_name) + 1;
-                                                                                                                                     
+
 /* Returns the key from the secondary database, and the data from the 
  * associated primary database entry.
  */

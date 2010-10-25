@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -646,16 +646,17 @@ enum logwhich {
 
 /*
  * tcl_LogConfig --
- *	Call DB_ENV->rep_set_config().
+ *	Call DB_ENV->log_set_config().
  *
  * PUBLIC: int tcl_LogConfig
- * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *));
+ * PUBLIC:     __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, Tcl_Obj *));
  */
 int
-tcl_LogConfig(interp, dbenv, list)
+tcl_LogConfig(interp, dbenv, which, onoff)
 	Tcl_Interp *interp;		/* Interpreter */
 	DB_ENV *dbenv;			/* Environment pointer */
-	Tcl_Obj *list;			/* {which on|off} */
+	Tcl_Obj *which;			/* {which on|off} */
+	Tcl_Obj *onoff;		
 {
 	static const char *confonoff[] = {
 		"off",
@@ -666,19 +667,11 @@ tcl_LogConfig(interp, dbenv, list)
 		LOGCONF_OFF,
 		LOGCONF_ON
 	};
-	Tcl_Obj **myobjv, *onoff, *which;
-	int myobjc, on, optindex, result, ret;
+	int on, optindex, ret;
 	u_int32_t wh;
 
-	result = Tcl_ListObjGetElements(interp, list, &myobjc, &myobjv);
-	if (myobjc != 2)
-		Tcl_WrongNumArgs(interp, 2, myobjv, "?{which onoff}?");
-	which = myobjv[0];
-	onoff = myobjv[1];
-	if (result != TCL_OK)
-		return (result);
-	if (Tcl_GetIndexFromObj(interp, which, confwhich, "option",
-	    TCL_EXACT, &optindex) != TCL_OK)
+	if (Tcl_GetIndexFromObj(interp,
+	    which, confwhich, "option", TCL_EXACT, &optindex) != TCL_OK)
 		return (IS_HELP(which));
 
 	switch ((enum logwhich)optindex) {
@@ -700,8 +693,8 @@ tcl_LogConfig(interp, dbenv, list)
 	default:
 		return (TCL_ERROR);
 	}
-	if (Tcl_GetIndexFromObj(interp, onoff, confonoff, "option",
-	    TCL_EXACT, &optindex) != TCL_OK)
+	if (Tcl_GetIndexFromObj(interp,
+	    onoff, confonoff, "option", TCL_EXACT, &optindex) != TCL_OK)
 		return (IS_HELP(onoff));
 	switch ((enum confonoff)optindex) {
 	case LOGCONF_OFF:

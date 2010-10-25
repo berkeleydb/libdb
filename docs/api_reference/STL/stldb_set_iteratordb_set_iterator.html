@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-db_set_iterator
-</th>
+          <th colspan="3" align="center">db_set_iterator</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="db_set_iterator.html">Prev</a> </td>
@@ -32,9 +30,7 @@ db_set_iterator
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldb_set_iteratordb_set_iterator"></a>
-db_set_iterator
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldb_set_iteratordb_set_iterator"></a>db_set_iterator</h2>
           </div>
         </div>
       </div>
@@ -42,27 +38,21 @@ db_set_iterator
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldb_set_iteratordb_set_iterator_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
-db_set_iterator(db_container *powner, u_int32_t b_bulk_retrieval=0,
-    bool brmw=false, bool directdbget=true,
-    bool b_read_only=false)
+db_set_iterator(db_container *powner, u_int32_t b_bulk_retrieval=0,
+    bool brmw=false, bool directdbget=true,
+    bool b_read_only=false)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Constructor. </p>
-          <p></p>
-        </div>
+        <p>Constructor. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1565929"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3505844"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -70,8 +60,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566314"></a>
- b_bulk_retrieval </h5>
+                  <h5 class="title"><a id="id3505873"></a>b_bulk_retrieval</h5>
                 </div>
               </div>
             </div>
@@ -81,8 +70,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566296"></a>
- brmw </h5>
+                  <h5 class="title"><a id="id3505906"></a>brmw</h5>
                 </div>
               </div>
             </div>
@@ -92,8 +80,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566286"></a>
- powner </h5>
+                  <h5 class="title"><a id="id3505911"></a>powner</h5>
                 </div>
               </div>
             </div>
@@ -103,8 +90,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566281"></a>
- directdbget </h5>
+                  <h5 class="title"><a id="id3505916"></a>directdbget</h5>
                 </div>
               </div>
             </div>
@@ -114,8 +100,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566282"></a>
- b_read_only </h5>
+                  <h5 class="title"><a id="id3505924"></a>b_read_only</h5>
                 </div>
               </div>
             </div>
@@ -125,24 +110,16 @@ Parameters</h4>
         <pre class="programlisting">
 db_set_iterator()
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Default constructor, dose not create the cursor for now. </p>
-        </div>
+        <p>Default constructor, dose not create the cursor for now. </p>
         <pre class="programlisting">
-db_set_iterator(const db_set_iterator &amp;s)
+db_set_iterator(const db_set_iterator &amp;s)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Copy constructor. </p>
-          <p></p>
-        </div>
+        <p>Copy constructor. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1566253"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3505935"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -150,8 +127,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566511"></a>
- s </h5>
+                  <h5 class="title"><a id="id3505938"></a>s</h5>
                 </div>
               </div>
             </div>
@@ -159,19 +135,14 @@ Parameters</h4>
           </div>
         </div>
         <pre class="programlisting">
-db_set_iterator(const base &amp;bo)
+db_set_iterator(const base &amp;bo)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Base copy constructor. </p>
-          <p></p>
-        </div>
+        <p>Base copy constructor. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1566213"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3505835"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -179,8 +150,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566318"></a>
- bo </h5>
+                  <h5 class="title"><a id="id3505954"></a>bo</h5>
                 </div>
               </div>
             </div>
@@ -188,21 +158,17 @@ Parameters</h4>
           </div>
         </div>
         <pre class="programlisting">
-db_set_iterator(const db_set_base_iterator&lt; kdt &gt; &amp;bs)
+db_set_iterator(const db_set_base_iterator&lt; kdt &gt; &amp;bs)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Sibling copy constructor. </p>
-          <p>Note that this class does not derive from <a class="link" href="db_set_base_iterator.html" title="Chapter 18.  Db_set_base_iterator">db_set_base_iterator</a>
+        <p>Sibling copy constructor. </p>
+        <p>Note that this class does not derive from <a class="link" href="db_set_base_iterator.html" title="Chapter 18.  Db_set_base_iterator">db_set_base_iterator</a>
  but from <a class="link" href="db_map_iterator.html" title="Chapter 16.  Db_map_iterator">db_map_iterator</a>
 . </p>
-        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1566567"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3505978"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -210,8 +176,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1566528"></a>
- bs </h5>
+                  <h5 class="title"><a id="id3505981"></a>bs</h5>
                 </div>
               </div>
             </div>
@@ -223,8 +188,7 @@ Parameters</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1566204"></a>
-Group: Constructors and destructor</h3>
+              <h3 class="title"><a id="id3505632"></a>Group: Constructors and destructor</h3>
             </div>
           </div>
         </div>
@@ -236,14 +200,12 @@ Group: Constructors and destructor</h3>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1566313"></a>
-Class</h3>
+              <h3 class="title"><a id="id3505854"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="db_set_iterator.html" title="Chapter 19.  Db_set_iterator">
-  db_set_iterator</a>
+  <a class="link" href="db_set_iterator.html" title="Chapter 19.  Db_set_iterator">db_set_iterator</a>
      </p>
       </div>
     </div>
@@ -263,9 +225,7 @@ Class</h3>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-operator++
-</td>
+          <td width="40%" align="right" valign="top"> operator++</td>
         </tr>
       </table>
     </div>

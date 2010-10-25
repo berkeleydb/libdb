@@ -27,7 +27,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id1629380"></a>Berkeley DB C++ API Reference</h1>
+            <h1 class="title"><a id="id2784314"></a>Berkeley DB C++ API Reference</h1>
           </div>
           <div class="navtable">
             <table border="1" width="80%">
@@ -516,6 +516,12 @@
                 </tr>
                 <tr>
                   <td>
+                    <a class="xref" href="envfullversion.html" title="DbEnv::full_version()">DbEnv::full_version()</a>
+                  </td>
+                  <td>Return full version information</td>
+                </tr>
+                <tr>
+                  <td>
                     <a class="xref" href="envget_home.html" title="DbEnv::get_home()">DbEnv::get_home()</a>
                   </td>
                   <td>Return environment's home directory</td>
@@ -525,6 +531,12 @@
                     <a class="xref" href="envget_open_flags.html" title="DbEnv::get_open_flags()">DbEnv::get_open_flags()</a>
                   </td>
                   <td>Return flags with which the environment was opened</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="envlog_verify.html" title="DbEnv::log_verify()">DbEnv::log_verify()</a>
+                  </td>
+                  <td>Verify log files of an environment.</td>
                 </tr>
                 <tr>
                   <td>
@@ -735,6 +747,10 @@
                   <td>Set/get number of lock partitions</td>
                 </tr>
                 <tr>
+                  <td><a class="xref" href="envset_lk_priority.html" title="DbEnv::set_lk_priority()">DbEnv::set_lk_priority()</a>, <a class="xref" href="envget_lk_priority.html" title="DbEnv::get_lk_priority()">DbEnv::get_lk_priority()</a></td>
+                  <td>Set/get a locker's deadlock priority</td>
+                </tr>
+                <tr>
                   <td>
                     <a class="xref" href="lockdetect.html" title="DbEnv::lock_detect()">DbEnv::lock_detect()</a>
                   </td>
@@ -941,6 +957,14 @@
                 <tr>
                   <td><a class="xref" href="envset_mp_mmapsize.html" title="DbEnv::set_mp_mmapsize()">DbEnv::set_mp_mmapsize()</a>, <a class="xref" href="envget_mp_mmapsize.html" title="DbEnv::get_mp_mmapsize()">DbEnv::get_mp_mmapsize()</a></td>
                   <td>Set/get maximum file size to memory map when opened read-only</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="envset_mp_pagesize.html" title="DbEnv::set_mp_pagesize()">DbEnv::set_mp_pagesize()</a>, <a class="xref" href="envget_mp_pagesize.html" title="DbEnv::get_mp_pagesize()">DbEnv::get_mp_pagesize()</a></td>
+                  <td>Set/get page size to configure the buffer pool</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="envset_mp_tablesize.html" title="DbEnv::set_mp_tablesize()">DbEnv::set_mp_tablesize()</a>, <a class="xref" href="envget_mp_tablesize.html" title="DbEnv::get_mp_tablesize()">DbEnv::get_mp_tablesize()</a></td>
+                  <td>Set/get the hash table size</td>
                 </tr>
                 <tr>
                   <td>
@@ -1168,6 +1192,18 @@
                 </tr>
                 <tr>
                   <td>
+                    <a class="xref" href="envtxn_applied.html" title="DbEnv::txn_applied()">DbEnv::txn_applied()</a>
+                  </td>
+                  <td>Check if a transaction has been replicated</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="txnset_commit_token.html" title="DbTxn::set_commit_token()">DbTxn::set_commit_token()</a>
+                  </td>
+                  <td>Set a commit token</td>
+                </tr>
+                <tr>
+                  <td>
                     <a class="xref" href="seqcreate.html" title="DbSequence">DbSequence</a>
                   </td>
                   <td>Create a sequence handle</td>
@@ -1260,9 +1296,9 @@
                 </tr>
                 <tr>
                   <td>
-                    <a class="xref" href="txnabort.html" title="DbTxn::abort()">DbTxn::abort()</a>
+                    <a class="xref" href="txnrecover.html" title="DbEnv::txn_recover()">DbEnv::txn_recover()</a>
                   </td>
-                  <td>Abort a transaction</td>
+                  <td>Distributed transaction recovery</td>
                 </tr>
                 <tr>
                   <td>
@@ -1275,6 +1311,24 @@
                     <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a>
                   </td>
                   <td>Checkpoint the transaction subsystem</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="txnstat.html" title="DbEnv::txn_stat()">DbEnv::txn_stat()</a>
+                  </td>
+                  <td>Return transaction subsystem statistics</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="txnstat_print.html" title="DbEnv::txn_stat_print()">DbEnv::txn_stat_print()</a>
+                  </td>
+                  <td>Print transaction subsystem statistics</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="txnabort.html" title="DbTxn::abort()">DbTxn::abort()</a>
+                  </td>
+                  <td>Abort a transaction</td>
                 </tr>
                 <tr>
                   <td>
@@ -1301,32 +1355,18 @@
                   <td>Prepare a transaction for commit</td>
                 </tr>
                 <tr>
-                  <td>
-                    <a class="xref" href="txnrecover.html" title="DbEnv::txn_recover()">DbEnv::txn_recover()</a>
-                  </td>
-                  <td>Distributed transaction recovery</td>
-                </tr>
-                <tr>
                   <td><a class="xref" href="txnset_name.html" title="DbTxn::set_name()">DbTxn::set_name()</a>, <a class="xref" href="txnget_name.html" title="DbTxn::get_name()">DbTxn::get_name()</a></td>
                   <td>Associate a string with a transaction</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="txnset_priority.html" title="DbTxn::set_priority()">DbTxn::set_priority()</a>, <a class="xref" href="txnget_priority.html" title="DbTxn::get_priority()">DbTxn::get_priority()</a></td>
+                  <td>Set/get transaction's priority</td>
                 </tr>
                 <tr>
                   <td>
                     <a class="xref" href="txnset_timeout.html" title="DbTxn::set_timeout()">DbTxn::set_timeout()</a>
                   </td>
                   <td>Set transaction timeout</td>
-                </tr>
-                <tr>
-                  <td>
-                    <a class="xref" href="txnstat.html" title="DbEnv::txn_stat()">DbEnv::txn_stat()</a>
-                  </td>
-                  <td>Return transaction subsystem statistics</td>
-                </tr>
-                <tr>
-                  <td>
-                    <a class="xref" href="txnstat_print.html" title="DbEnv::txn_stat_print()">DbEnv::txn_stat_print()</a>
-                  </td>
-                  <td>Print transaction subsystem statistics</td>
                 </tr>
                 <tr>
                   <td>
@@ -1366,6 +1406,12 @@
                 </tr>
                 <tr>
                   <td>
+                    <a class="xref" href="db_log_verify.html" title="db_log_verify">db_log_verify</a>
+                  </td>
+                  <td>Log verification utility</td>
+                </tr>
+                <tr>
+                  <td>
                     <a class="xref" href="db_printlog.html" title="db_printlog">db_printlog</a>
                   </td>
                   <td>Transaction log display utility</td>
@@ -1378,9 +1424,15 @@
                 </tr>
                 <tr>
                   <td>
-                    <a class="xref" href="db_sql.html" title="db_sql">db_sql</a>
+                    <a class="xref" href="db_sql_codegen.html" title="db_sql_codegen">db_sql_codegen</a>
                   </td>
                   <td>SQL schema to Berkeley DB code in C</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="dbsql.html" title="dbsql">dbsql</a>
+                  </td>
+                  <td>Command line interface to libdb_sql</td>
                 </tr>
                 <tr>
                   <td>
@@ -1400,12 +1452,18 @@
                   </td>
                   <td>Verification utility</td>
                 </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="sqlite3.html" title="sqlite3">sqlite3</a>
+                  </td>
+                  <td>Command line tool for wrapper library libsqlite3</td>
+                </tr>
               </tbody>
             </table>
           </div>
           <div>
             <div class="legalnotice">
-              <a id="id1629563"></a>
+              <a id="id3615487"></a>
               <p class="legalnotice-title">
                 <b>Legal Notice</b>
               </p>
@@ -1427,6 +1485,9 @@
             express prior written consent of Oracle.
     </p>
               <p>
+        Other names may be trademarks of their respective owners.
+    </p>
+              <p>
         To obtain a copy of this document's original source code, please
         submit a request to the Oracle Technology Network forum at:
         <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
@@ -1436,7 +1497,7 @@
             </div>
           </div>
           <div>
-            <p class="pubdate">4/12/2010</p>
+            <p class="pubdate">11/8/2010</p>
           </div>
         </div>
         <hr />

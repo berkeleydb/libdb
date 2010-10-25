@@ -13,6 +13,10 @@ package com.sleepycat.db.internal;
     db_javaJNI.DbEnv_lock_vec(DbEnv.getCPtr(dbenv), dbenv, locker, flags, list, offset, nlist);
   }
 
+  public static void DbTxn_commit(DbTxn txn, int flags) throws com.sleepycat.db.DatabaseException {
+    db_javaJNI.DbTxn_commit(DbTxn.getCPtr(txn), txn, flags);
+  }
+
   /* package */ static long initDbEnvRef0(DbEnv self, Object handle) {
     return db_javaJNI.initDbEnvRef0(DbEnv.getCPtr(self), self, handle);
   }

@@ -678,10 +678,10 @@ public class DBWriter extends Thread
                     System.out.println(getName() + " : committing txn : " 
                         + i);
 
-                    // Using uncommitted reads to avoid the deadlock, so null
-                    // is passed for the transaction here.
+                    // Using uncommitted reads to avoid the deadlock, so
+                    // null is passed for the transaction here.
                     System.out.println(getName() + " : Found " +
-                        countRecords(null) + " records in the database."); </pre>
+                        countRecords(null) + " records in the database.");</pre>
         <p>
     Having performed this somewhat inelegant counting of the records in the
     database, we can now commit the transaction.

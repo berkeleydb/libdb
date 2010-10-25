@@ -90,13 +90,13 @@ too_few:
 }
 
 /*
- * PUBLIC: void __repmgr_ack_marshal __P((ENV *, __repmgr_ack_args *,
- * PUBLIC:	 u_int8_t *));
+ * PUBLIC: void __repmgr_permlsn_marshal __P((ENV *,
+ * PUBLIC:	 __repmgr_permlsn_args *, u_int8_t *));
  */
 void
-__repmgr_ack_marshal(env, argp, bp)
+__repmgr_permlsn_marshal(env, argp, bp)
 	ENV *env;
-	__repmgr_ack_args *argp;
+	__repmgr_permlsn_args *argp;
 	u_int8_t *bp;
 {
 	DB_HTONL_COPYOUT(env, bp, argp->generation);
@@ -105,18 +105,18 @@ __repmgr_ack_marshal(env, argp, bp)
 }
 
 /*
- * PUBLIC: int __repmgr_ack_unmarshal __P((ENV *, __repmgr_ack_args *,
- * PUBLIC:	 u_int8_t *, size_t, u_int8_t **));
+ * PUBLIC: int __repmgr_permlsn_unmarshal __P((ENV *,
+ * PUBLIC:	 __repmgr_permlsn_args *, u_int8_t *, size_t, u_int8_t **));
  */
 int
-__repmgr_ack_unmarshal(env, argp, bp, max, nextp)
+__repmgr_permlsn_unmarshal(env, argp, bp, max, nextp)
 	ENV *env;
-	__repmgr_ack_args *argp;
+	__repmgr_permlsn_args *argp;
 	u_int8_t *bp;
 	size_t max;
 	u_int8_t **nextp;
 {
-	if (max < __REPMGR_ACK_SIZE)
+	if (max < __REPMGR_PERMLSN_SIZE)
 		goto too_few;
 	DB_NTOHL_COPYIN(env, argp->generation, bp);
 	DB_NTOHL_COPYIN(env, argp->lsn.file, bp);
@@ -128,7 +128,7 @@ __repmgr_ack_unmarshal(env, argp, bp, max, nextp)
 
 too_few:
 	__db_errx(env,
-	    "Not enough input bytes to fill a __repmgr_ack message");
+	    "Not enough input bytes to fill a __repmgr_permlsn message");
 	return (EINVAL);
 }
 

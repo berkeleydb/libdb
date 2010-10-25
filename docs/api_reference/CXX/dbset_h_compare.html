@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 extern "C" {
-    typedef int (*compare_fcn_type)(DB *db, const DBT *dbt1, const DBT *dbt2);
+    typedef int (*compare_fcn_type)(DB *db, const DBT *dbt1, 
+                                    const DBT *dbt2);
 };
 int
 Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
@@ -77,7 +78,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647428"></a>Parameters</h3>
+              <h3 class="title"><a id="id3633466"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -85,7 +86,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1647013"></a>compare_fcn</h4>
+                <h4 class="title"><a id="id3634129"></a>compare_fcn</h4>
               </div>
             </div>
           </div>
@@ -143,7 +144,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1648374"></a>Errors</h3>
+              <h3 class="title"><a id="id3634388"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -161,7 +162,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1647131"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3635222"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -175,7 +176,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647956"></a>Class</h3>
+              <h3 class="title"><a id="id3635068"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -187,7 +188,7 @@ Db::set_h_compare(compare_fcn_type compare_fcn);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1648306"></a>See Also</h3>
+              <h3 class="title"><a id="id3635119"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -142,6 +142,7 @@ public class MultipleCursorTest {
 
 	if (verbose)
 	    dumpDatabase(db);
+	db.close();
     }
     @Test public void testMultipleDelete()
         throws DatabaseException, FileNotFoundException
@@ -173,6 +174,7 @@ public class MultipleCursorTest {
 	// Should have about 3 entries left.
 	if (verbose)
 	    dumpDatabase(db);
+	db.close();
     }
     	
     /* Not implemented yet.

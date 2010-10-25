@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -165,10 +165,15 @@ event_callback(dbenv, which, info)
 {
 	APP_DATA *app = dbenv->app_private;
 	SHARED_DATA *shared = &app->shared_data;
+	int err;
 
-	info = NULL;				/* Currently unused. */
 
 	switch (which) {
+	case DB_EVENT_PANIC:
+		err = *(int*)info;
+		printf("Got a panic: %s (%d)\n", db_strerror(err), err);
+		abort();
+
 	case DB_EVENT_REP_CLIENT:
 		shared->is_master = 0;
 		shared->in_client_sync = 1;

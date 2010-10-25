@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -385,16 +385,87 @@ struct __cursor {
 	(B_MAX(BOVERFLOW_PSIZE, BKEYDATA_PSIZE(ovflsize)))
 
 /*
+ * BAM_GET_ROOT --
+ *	This macro is used to isolate the fact that the root page of
+ * a subdatabase may move if DB->compact is called on it.
+ * The dbp->mpf->mfp->revision will be incremented every time
+ * a subdatabase root or meta page moves.  If this is the case then
+ * we must call __db_reopen to read the master database to find it.
+ * We leave the loop only by breaking out if we do not have a subdb
+ * or we are sure the have the right revision.
+ *
+ * It must be guranteed that we cannot read an old root pgno and a
+ * current revision number.  We note that the global revision number
+ * and DB handle information are only updated while holding the latches
+ * and locks of the master database pages.
+ * If another thread is sychronizing the DB handle with the master
+ * database it will exclusively latch both the old and new pages so we will
+ * sychronize on that.
+ */
+#define BAM_GET_ROOT(dbc, root_pgno, 					\
+	     page, get_mode, lock_mode, lock, ret) do {			\
+	BTREE *__t = (dbc)->dbp->bt_internal;				\
+	BTREE_CURSOR *__cp = (BTREE_CURSOR *)(dbc)->internal;		\
+	db_pgno_t __root;						\
+	u_int32_t __rev = 0;						\
+	if ((root_pgno) == PGNO_INVALID) {				\
+		if (__cp->root == PGNO_INVALID) {			\
+			__root = __t->bt_root;				\
+			__rev = __t->revision;				\
+		} else 							\
+			__root = root_pgno = __cp->root;		\
+	} else								\
+		__root = root_pgno;					\
+	if (STD_LOCKING(dbc) &&						\
+	    ((lock_mode) == DB_LOCK_WRITE || F_ISSET(dbc, DBC_DOWNREV)	\
+	    || dbc->dbtype == DB_RECNO || F_ISSET(__cp, C_RECNUM)) &&	\
+	    (ret =							\
+	    __db_lget(dbc, 0, __root, lock_mode, 0, &(lock))) != 0)	\
+		break;							\
+	if ((ret = __memp_fget((dbc)->dbp->mpf, &__root,		\
+	     (dbc)->thread_info, dbc->txn, get_mode, &page)) == 0) {	\
+		if (__root == root_pgno)				\
+			break;						\
+		if (F_ISSET(dbc, DBC_OPD) ||				\
+		    !F_ISSET((dbc)->dbp, DB_AM_SUBDB) ||		\
+		     (__t->bt_root == __root &&				\
+		     __rev == (dbc)->dbp->mpf->mfp->revision)) {	\
+			root_pgno = __root;				\
+			break;						\
+		}							\
+		if ((ret = __memp_fput((dbc)->dbp->mpf, 		\
+		     (dbc)->thread_info, page, (dbc)->priority)) != 0)	\
+			break;						\
+	} else if (ret != DB_PAGE_NOTFOUND)				\
+		break;							\
+	if ((ret = __LPUT(dbc, lock)) != 0)				\
+		break;							\
+	if ((ret = __db_reopen(dbc)) != 0)				\
+		break;							\
+} while (1)
+
+/*
+ * Return the root of this tree. If this is an off page duplicate tree
+ * then its in the cursor, otherwise we must look in the db handle.
+ */
+#define BAM_ROOT_PGNO(dbc)						\
+	(((BTREE_CURSOR *)(dbc)->internal)->root == PGNO_INVALID ?	\
+	    ((BTREE*)(dbc)->dbp->bt_internal)->bt_root :		\
+	    ((BTREE_CURSOR *)(dbc)->internal)->root)
+
+	
+
+/*
  * The in-memory, per-tree btree/recno data structure.
  */
 struct __btree {			/* Btree access method. */
 	/*
-	 * !!!
-	 * These fields are write-once (when the structure is created) and
-	 * so are ignored as far as multi-threading is concerned.
+	 * These fields may change if this is a subdatabase and
+	 * it gets compacted.
 	 */
 	db_pgno_t bt_meta;		/* Database meta-data page. */
 	db_pgno_t bt_root;		/* Database root page. */
+	u_int32_t revision;		/* Revision of root/meta. */
 
 	u_int32_t bt_minkey;		/* Minimum keys per page. */
 

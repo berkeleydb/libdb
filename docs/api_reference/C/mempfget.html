@@ -47,7 +47,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
          All pages returned by <code class="methodname">DB_MPOOLFILE-&gt;get()</code> will be retained (that is,
          <span class="emphasis"><em>latched</em></span>) in the cache until a subsequent call to
          <a class="xref" href="mempput.html" title="DB_MPOOLFILE-&gt;put()">DB_MPOOLFILE-&gt;put()</a>.
-	 There is no deadlock detection amoung latches so care must be taken in the application if the DB_MPOOL_DIRTY
+	 There is no deadlock detection among latches so care must be taken in the application if the DB_MPOOL_DIRTY
 	 or DB_MPOOL_EDIT flags are used as these get exlusive latches on the pages.
     </p>
       <p>
@@ -76,7 +76,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689424"></a>Parameters</h3>
+              <h3 class="title"><a id="id4009093"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -84,7 +84,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689441"></a>flags</h4>
+                <h4 class="title"><a id="id4009083"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
                  flag set, a new copy of the page will be made if this is the first
                  time the specified transaction is modifying it.
 		 A page fetched with the <code class="literal">DB_MPOOL_DIRTY</code> flag will be
-		 <span class="bold"><strong>excluively latched</strong></span> until 
+		 <span class="bold"><strong>exclusively latched</strong></span> until 
 		a subsequent call to <a class="xref" href="mempput.html" title="DB_MPOOLFILE-&gt;put()">DB_MPOOLFILE-&gt;put()</a>.
             </p>
               </li>
@@ -133,7 +133,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
                  transaction handle is not available, such as during aborts or
                  recovery.
 		 A page fetched with the <code class="literal">DB_MPOOL_EDIT</code> flag will be
-		 <span class="bold"><strong>excluively latched</strong></span> until 
+		 <span class="bold"><strong>exclusively latched</strong></span> until 
 		a subsequent call to <a class="xref" href="mempput.html" title="DB_MPOOLFILE-&gt;put()">DB_MPOOLFILE-&gt;put()</a>.
             </p>
               </li>
@@ -170,7 +170,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689759"></a>pagep</h4>
+                <h4 class="title"><a id="id4009183"></a>pagep</h4>
               </div>
             </div>
           </div>
@@ -183,7 +183,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689735"></a>pgnoaddr</h4>
+                <h4 class="title"><a id="id4009341"></a>pgnoaddr</h4>
               </div>
             </div>
           </div>
@@ -207,7 +207,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689745"></a>txnid</h4>
+                <h4 class="title"><a id="id4009378"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -229,7 +229,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689577"></a>Errors</h3>
+              <h3 class="title"><a id="id4009396"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -245,7 +245,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689663"></a>EACCES</h4>
+                <h4 class="title"><a id="id4009272"></a>EACCES</h4>
               </div>
             </div>
           </div>
@@ -259,7 +259,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689754"></a>EAGAIN</h4>
+                <h4 class="title"><a id="id4009305"></a>EAGAIN</h4>
               </div>
             </div>
           </div>
@@ -272,7 +272,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689606"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4009552"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689278"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id4008543"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -302,7 +302,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689437"></a>ENOMEM</h4>
+                <h4 class="title"><a id="id4008492"></a>ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -315,7 +315,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689659"></a>Class</h3>
+              <h3 class="title"><a id="id4009234"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -327,7 +327,7 @@ DB_MPOOLFILE-&gt;get(DB_MPOOLFILE *mpf,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689400"></a>See Also</h3>
+              <h3 class="title"><a id="id4009437"></a>See Also</h3>
             </div>
           </div>
         </div>

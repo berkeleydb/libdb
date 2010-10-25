@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -64,9 +64,9 @@ namespace BerkeleyDB {
             /// synchronize with the new master.
             /// </summary>
             /// <remarks>
-            /// Possibly because the client has been configured with
-            /// <see cref="ReplicationConfig.NoAutoInit"/> to turn off
-            /// automatic internal initialization.
+            /// Possibly because the client has turned off automatic
+            /// internal initialization (the
+            /// <see cref="ReplicationConfig.AutoInit"/> setting).
             /// </remarks>
             JOIN_FAILURE,
             /// <summary>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -50,7 +50,6 @@ INCLUDE #include "dbinc/db_page.h"
 INCLUDE #include "dbinc/db_dispatch.h"
 INCLUDE #include "dbinc/db_am.h"
 INCLUDE #include "dbinc/hash.h"
-INCLUDE #include "dbinc/log.h"
 INCLUDE #include "dbinc/txn.h"
 INCLUDE
 
@@ -66,7 +65,19 @@ INCLUDE
  *  key - the key being inserted
  *  data - the data being inserted
  */
-BEGIN insdel		42	21
+BEGIN insdel		50	21
+ARG	opcode		u_int32_t	lu
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	ndx		u_int32_t	lu
+POINTER	pagelsn		DB_LSN *	lu
+OP	keytype		u_int32_t	lu
+HDR	key		DBT		s
+OP	datatype	u_int32_t	lu
+HDR	data		DBT		s
+END
+
+BEGIN_COMPAT insdel		42	21
 ARG	opcode		u_int32_t	lu
 DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
@@ -123,7 +134,19 @@ END
  *  newitem - DBT of the new item.
  *  makedup - this was a replacement that made an item a duplicate.
  */
-BEGIN replace		42	25
+BEGIN replace		50	25
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	ndx		u_int32_t	lu
+POINTER	pagelsn		DB_LSN *	lu
+ARG	off		int32_t		ld
+OP	oldtype		u_int32_t	lu
+HDR	olditem		DBT		s
+OP	newtype		u_int32_t	lu
+HDR	newitem		DBT		s
+END
+
+BEGIN_COMPAT replace		42	25
 DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
 ARG	ndx		u_int32_t	lu
@@ -229,6 +252,32 @@ ARG	start_pgno	db_pgno_t	lu
 ARG	num		u_int32_t	lu
 ARG	unused		db_pgno_t	lu
 ARG	last_pgno	db_pgno_t	lu
+END
+
+/*
+ * Changeslot
+ * Change the entry in a spares table slot from the "old" page to the "new"
+ * page.
+ */
+BEGIN changeslot	50 35
+DB	fileid		int32_t		ld
+POINTER	meta_lsn	DB_LSN *	lu
+ARG	slot		u_int32_t	lu
+ARG	old		db_pgno_t	lu
+ARG	new		db_pgno_t	lu
+END
+
+/*
+ * Contract
+ * Contract the hash table by removing the last "bucket".  "pgno" is the
+ * page number for that bucket.
+ */
+BEGIN contract		50 37
+DB	fileid		int32_t		ld
+ARG	meta		db_pgno_t	lu
+POINTER	meta_lsn	DB_LSN *	lu
+ARG	bucket		u_int32_t	lu
+ARG	pgno		db_pgno_t	lu
 END
 
 /*

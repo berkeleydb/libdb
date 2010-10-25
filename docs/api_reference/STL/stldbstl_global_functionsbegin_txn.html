@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-begin_txn
-</th>
+          <th colspan="3" align="center">begin_txn</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsclose_all_db_envs.html">Prev</a> </td>
@@ -32,9 +30,7 @@ begin_txn
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsbegin_txn"></a>
-begin_txn
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsbegin_txn"></a>begin_txn</h2>
           </div>
         </div>
       </div>
@@ -42,26 +38,21 @@ begin_txn
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsbegin_txn_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- DbTxn* begin_txn(u_int32_t flags,
-    DbEnv *env)
+ DbTxn* begin_txn(u_int32_t flags,
+    DbEnv *env)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Begin a new transaction from the specified environment "env". </p>
-          <p>This function is called by dbstl user to begin an external transaction. The "flags" parameter is passed to DbEnv::txn_begin(). If a transaction created from the same database environment already exists and is unresolved, the new transaction is started as a child transaction of that transaction, and thus you can't specify the parent transaction. </p>
-        </div>
+        <p>Begin a new transaction from the specified environment "env". </p>
+        <p>This function is called by dbstl user to begin an external transaction. The "flags" parameter is passed to DbEnv::txn_begin(). If a transaction created from the same database environment already exists and is unresolved, the new transaction is started as a child transaction of that transaction, and thus you can't specify the parent transaction. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1542262"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3482017"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -69,8 +60,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542363"></a>
- flags </h5>
+                  <h5 class="title"><a id="id3482156"></a>flags</h5>
                 </div>
               </div>
             </div>
@@ -80,8 +70,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542297"></a>
- env </h5>
+                  <h5 class="title"><a id="id3482187"></a>env</h5>
                 </div>
               </div>
             </div>
@@ -92,8 +81,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1542205"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3482140"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -104,8 +92,7 @@ Return Value</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1541283"></a>
-Group: Transaction control global functions.</h3>
+              <h3 class="title"><a id="id3482122"></a>Group: Transaction control global functions.</h3>
             </div>
           </div>
         </div>
@@ -116,14 +103,12 @@ Group: Transaction control global functions.</h3>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1542180"></a>
-Class</h3>
+              <h3 class="title"><a id="id3482102"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -138,15 +123,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionscommit_txn.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-close_all_db_envs
- </td>
+          <td width="40%" align="left" valign="top">close_all_db_envs </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-commit_txn
-</td>
+          <td width="40%" align="right" valign="top"> commit_txn</td>
         </tr>
       </table>
     </div>

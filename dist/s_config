@@ -20,10 +20,13 @@ rm -f configure
 autoconf
 
 # Edit version information we couldn't pre-compute.
-sed -e "s/__EDIT_DB_VERSION_MAJOR__/$DB_VERSION_MAJOR/g" \
+sed -e "s/__EDIT_DB_VERSION_FAMILY__/$DB_VERSION_FAMILY/g" \
+    -e "s/__EDIT_DB_VERSION_RELEASE__/$DB_VERSION_RELEASE/g" \
+    -e "s/__EDIT_DB_VERSION_MAJOR__/$DB_VERSION_MAJOR/g" \
     -e "s/__EDIT_DB_VERSION_MINOR__/$DB_VERSION_MINOR/g" \
     -e "s/__EDIT_DB_VERSION_PATCH__/$DB_VERSION_PATCH/g" \
     -e "s/__EDIT_DB_VERSION_STRING__/$DB_VERSION_STRING/g" \
+    -e "s/__EDIT_DB_VERSION_FULL_STRING__/$DB_VERSION_FULL_STRING/g" \
     -e "s/__EDIT_DB_VERSION_UNIQUE_NAME__/$DB_VERSION_UNIQUE_NAME/g" \
     -e "s/__EDIT_DB_VERSION__/$DB_VERSION/g" configure > configure.version
 mv configure.version configure

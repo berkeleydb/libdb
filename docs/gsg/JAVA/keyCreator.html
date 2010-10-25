@@ -105,7 +105,8 @@ public class PersonData {
     private String surname;
     private String familiarName;
 
-    public PersonData(String userID, String surname, String familiarName) {
+    public PersonData(String userID, String surname, 
+                      String familiarName) {
         this.userID = userID;
         this.surname = surname;
         this.familiarName = familiarName;
@@ -186,6 +187,7 @@ import com.sleepycat.db.SecondaryConfig;
 import java.io.FileNotFoundException;
 
 ...
+
 Database myDb = null;
 SecondaryDatabase mySecDb = null;
 try {

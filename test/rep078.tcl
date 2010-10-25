@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@ proc rep078 { method { tnum "078" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Valid for all access methods.  Other lease tests limit the
 	# test because there is nothing method-specific being tested.
@@ -154,7 +149,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(0) "berkdb_env -create $m_txnargs $m_logargs \
 	    $verbargs -errpfx MASTER -home $masterdir \
 	    -rep_lease \[list $nsites $lease_to\] \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -rep_client -rep_transport \[list 2 replsend\]"
 	set masterenv [eval $envcmd(0) $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
@@ -167,7 +162,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(1) "berkdb_env -create $c_txnargs $c_logargs \
 	    $verbargs -errpfx CLIENT -home $clientdir \
 	    -rep_lease \[list $nsites $lease_to $clock_fast $clock_slow\] \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -rep_client -rep_transport \[list 3 replsend\]"
 	set clientenv [eval $envcmd(1) $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
@@ -179,7 +174,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	set envcmd(2) "berkdb_env -create $c2_txnargs $c2_logargs \
 	    $verbargs -errpfx CLIENT2 -home $clientdir2 \
 	    -rep_lease \[list $nsites $lease_to\] \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -rep_client -rep_transport \[list 4 replsend\]"
 	set clientenv2 [eval $envcmd(2) $recargs]
 	error_check_good client_env [is_valid_env $clientenv2] TRUE
@@ -204,7 +199,7 @@ proc rep078_sub { method tnum logset recargs largs } {
 	# that nsites be set before calling rep_start, and master leases
 	# require that the nsites arg to rep_elect be 0.
 	#
-	run_election envcmd envlist err_cmd pri crash $qdir $msg \
+	run_election envlist err_cmd pri crash $qdir $msg \
 	    $elector 0 $nvotes $nsites $winner 0 NULL
 
 	puts "\tRep$tnum.b: Spawn a child tclsh to do txn work."

@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Data Migration</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="admin.html" title="Chapter 4. Administrating Berkeley DB SQL" />
+    <link rel="prev" href="sync.html" title="Syncing with Oracle Databases" />
+    <link rel="next" href="configuration_reference.html" title="Appendix A. DB_CONFIG Parameter Reference" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Data Migration</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="sync.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Administrating Berkeley DB SQL</th>
+          <td width="20%" align="right"> <a accesskey="n" href="configuration_reference.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="datamigration"></a>Data Migration</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="datamigration.html#shellmigrate">Migration Using the Shells</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="datamigration.html#migratedataschema">Supported Data and Schema</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+                If you have a database created by SQLite, you can migrate
+                it to a Berkeley DB database for use with the BDB SQL interface. For
+                production applications, you should do this only when your
+                application is shutdown. 
+            </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="shellmigrate"></a>Migration Using the Shells</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    To migrate your data from SQLite to a Berkeley DB database:
+                </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                            Make sure your application is shutdown.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Open the SQLite database within the
+                            <span class="command"><strong>sqlite3</strong></span> shell.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Execute the <code class="literal">.output</code> command to
+                            specify the location where you want to dump data.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Dump the database using the SQLite
+                            <code class="literal">.dump</code> command.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Close the <span class="command"><strong>sqlite3</strong></span> shell and open
+                            the Berkeley DB <a href="../api_reference/C/dbsql.html" class="olink">dbsql</a> shell. Note that if you build the
+                            BDB SQL interface with the compatibility option, you can
+                            alternatively use Berkeley DB's <a href="../api_reference/C/sqlite3.html" class="olink">sqlite3</a> utility.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Load the dumped data using the
+                            <code class="literal">.read</code> command.
+                        </p>
+            </li>
+          </ol>
+        </div>
+        <p>
+                    Note that you can migrate in the reverse direction as well.
+                    Dump the Berkeley DB database by calling <code class="literal">.dump</code>
+                    from within the <a href="../api_reference/C/dbsql.html" class="olink">dbsql</a> shell, and load it into SQLite by calling
+                    <code class="literal">.read</code> from within SQLite's
+                    <span class="command"><strong>sqlite3</strong></span> shell.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="migratedataschema"></a>Supported Data and Schema</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    You can migrate data between SQLite and Berkeley DB that uses the UTF-8 
+                    character encoding.
+                </p>
+        <p>
+                    The following data types can be migrated between
+                    SQLite and Berkeley DB:
+                </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                            CHAR, TEXT , VARCHAR, NVARCHAR, STRING
+                        </p>
+            </li>
+            <li>
+              <p>
+                            REAL, DOUBLE, FLOAT
+                        </p>
+            </li>
+            <li>
+              <p>
+                            INTEGER, BOOLEAN, BIG INTEGER, NUMBER
+                        </p>
+            </li>
+            <li>
+              <p>
+                            NUMERIC
+                        </p>
+            </li>
+            <li>
+              <p>
+                            BLOB, CLOB
+                        </p>
+            </li>
+            <li>
+              <p>
+                            NULL, NOT NULL
+                        </p>
+            </li>
+            <li>
+              <p>
+                            COLLATE BINARY, COLLATE RTRIM, COLLATE NOCASE
+                        </p>
+            </li>
+            <li>
+              <p>
+                            DATETIME, CURRENT_TIME, CURRENT_DATE,
+                            CURRENT_TIMESTAMP
+                        </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+                    The following schema can be migrated between  SQLite
+                    and Berkeley DB:
+                </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                            PRAGMA writable_schema=ON/OFF
+                        </p>
+            </li>
+            <li>
+              <p>
+                            PRAGMA foreign_keys=ON/OFF
+                        </p>
+            </li>
+            <li>
+              <p>
+                            PRAGMA cache_size
+                        </p>
+            </li>
+            <li>
+              <p>
+                            CREATE TABLE
+                        </p>
+              <div class="itemizedlist">
+                <ul type="circle">
+                  <li>
+                    <p>
+                                    PRIMARY KEY
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    UNIQUE
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    CONFLICT IGNORE, FAIL, REPLACE, ABORT,
+                                    ROOLBACK
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    REFERENCE ON ... CASECADE, ON ... NO
+                                    ACTION, DEFERRABLE INITIALLY DEFERRED,
+                                    and so forth.
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    AUTOINCREMENT
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    Static DEFAULT value, dynamic DEFAULT
+                                    value
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    Functions such as datetime, typeof, and
+                                    so forth.
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    ASC, DESC
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    HIDDEN
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    CHECK
+                                </p>
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li>
+              <p>
+                            CREATE INDEX, UNIQUE INDEX
+                        </p>
+            </li>
+            <li>
+              <p>
+                            CREATE VIEW
+                        </p>
+              <div class="itemizedlist">
+                <ul type="circle">
+                  <li>
+                    <p>
+                                    SELECT statement, ANALYZE
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    JOIN
+                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                    UNION
+                                </p>
+                  </li>
+                </ul>
+              </div>
+            </li>
+            <li>
+              <p>
+                            CREATE TRIGGER AFTER/BEFORE BEGIN
+                        </p>
+            </li>
+            <li>
+              <p>
+                            CREATE VIRTUAL TABLE USING
+                        </p>
+            </li>
+            <li>
+              <p>
+                            INSERT
+                        </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="sync.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="admin.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="configuration_reference.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Syncing with Oracle Databases </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Appendix A. DB_CONFIG Parameter Reference</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

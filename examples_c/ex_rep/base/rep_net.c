@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -20,7 +20,7 @@
  * these might already have been included.  In that case, it would be bad
  * to include them again.
  */
-#include <dbinc/queue.h>		/* !!!: for the LIST_XXX macros. */
+#include "dbinc/queue.h"		/* !!!: for the LIST_XXX macros. */
 #endif
 
 int machtab_add __P((machtab_t *, socket_t, u_int32_t, int, int *));
@@ -585,7 +585,7 @@ readn(fd, vptr, n)
 
 /*
  * quote_send --
- * The f_send function for DB_ENV->set_rep_transport.
+ * The f_send function for DB_ENV->rep_set_transport.
  */
 int
 quote_send(dbenv, control, rec, lsnp, eid, flags)

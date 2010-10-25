@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -51,6 +51,7 @@ extern "C" {
 /* Hash internal structure. */
 typedef struct hash_t {
 	db_pgno_t meta_pgno;	/* Page number of the meta data page. */
+	u_int32_t revision;	/* Revision of subdb metadata. */
 	u_int32_t h_ffactor;	/* Fill factor. */
 	u_int32_t h_nelem;	/* Number of elements. */
 				/* Hash and compare functions. */
@@ -82,13 +83,14 @@ typedef struct cursor_t {
 	u_int32_t	order;		/* Relative order among deleted curs. */
 
 #define	H_CONTINUE	0x0001		/* Join--search strictly fwd for data */
-#define	H_DELETED	0x0002		/* Cursor item is deleted. */
-#define	H_DUPONLY	0x0004		/* Dups only; do not change key. */
-#define	H_EXPAND	0x0008		/* Table expanded. */
-#define	H_ISDUP		0x0010		/* Cursor is within duplicate set. */
-#define	H_NEXT_NODUP	0x0020		/* Get next non-dup entry. */
-#define	H_NOMORE	0x0040		/* No more entries in bucket. */
-#define	H_OK		0x0080		/* Request succeeded. */
+#define	H_CONTRACT	0x0002		/* Table contracted.*/
+#define	H_DELETED	0x0004		/* Cursor item is deleted. */
+#define	H_DUPONLY	0x0008		/* Dups only; do not change key. */
+#define	H_EXPAND	0x0010		/* Table expanded. */
+#define	H_ISDUP		0x0020		/* Cursor is within duplicate set. */
+#define	H_NEXT_NODUP	0x0040		/* Get next non-dup entry. */
+#define	H_NOMORE	0x0080		/* No more entries in bucket. */
+#define	H_OK		0x0100		/* Request succeeded. */
 	u_int32_t	flags;
 } HASH_CURSOR;
 
@@ -118,6 +120,7 @@ typedef struct cursor_t {
 #define	DUP_SIZE(len)	((len) + 2 * sizeof(db_indx_t))
 
 /* Log messages types (these are subtypes within a record type) */
+/* These bits are obsolete and are only needed for down rev logs. */
 #define	PAIR_KEYMASK		0x1
 #define	PAIR_DATAMASK		0x2
 #define	PAIR_DUPMASK		0x4
@@ -127,6 +130,7 @@ typedef struct cursor_t {
 #define	PAIR_ISDATADUP(N)	(N & PAIR_DUPMASK)
 #define	OPCODE_OF(N)	(N & ~PAIR_MASK)
 
+/* Operators for hash recover routines. */
 #define	PUTPAIR		0x20
 #define	DELPAIR		0x30
 #define	PUTOVFL		0x40

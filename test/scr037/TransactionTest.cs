@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -284,6 +284,24 @@ namespace CsharpAPITest
 		}
 
 		[Test]
+		public void TestTxnPriority() {
+			DatabaseEnvironment env;
+			Transaction txn;
+
+			testName = "TestTxnPriority";
+			testHome = testFixtureHome + "/" + testName;
+
+			Configuration.ClearDir(testHome);
+
+			SetUpTransactionalEnv(testHome, out env);
+			txn = env.BeginTransaction();
+			txn.Priority = 555;
+			Assert.AreEqual(555, txn.Priority);
+			txn.Commit();
+			env.Close();
+		}
+
+		[Test]
 		public void TestSetLockTimeout()
 		{
 			testName = "TestSetLockTimeout";
@@ -395,6 +413,7 @@ namespace CsharpAPITest
 			    new DatabaseEnvironmentConfig();
 			envConfig.Create = true;
 			envConfig.UseLogging = true;
+			envConfig.UseLocking = true;
 			envConfig.UseMPool = true;
 			envConfig.UseTxns = true;
 			env = DatabaseEnvironment.Open(

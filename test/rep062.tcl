@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006-2009 Oracle.  All rights reserved.
+# Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -21,11 +21,6 @@ proc rep062 { method {tnum "062"} args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# This test uses different access methods internally.
 	# Called from outside, accept only btree.

@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2009 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2010 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.39';
+$VERSION = '0.42';
 
 require Exporter;
 #require DynaLoader;
@@ -656,7 +656,7 @@ sub parseEncrypt
     }
 }
 
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 
 sub env_remove
 {
@@ -706,7 +706,7 @@ sub db_remove
 	if ! defined $got->{Filename} ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     return _db_remove($got);
 }
@@ -724,7 +724,7 @@ sub db_rename
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Must specify a filename")
 	if ! defined $got->{Filename} ;
@@ -750,7 +750,7 @@ sub db_verify
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Must specify a filename")
 	if ! defined $got->{Filename} ;
@@ -760,7 +760,7 @@ sub db_verify
 
 package BerkeleyDB::Env ;
 
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 use IO::File;
 use vars qw( %valid_config_keys ) ;
@@ -769,7 +769,7 @@ sub isaFilehandle
 {
     my $fh = shift ;
 
-    return ((isa($fh,'GLOB') or isa(\$fh,'GLOB')) and defined fileno($fh) )
+    return ((UNIVERSAL::isa($fh,'GLOB') or UNIVERSAL::isa(\$fh,'GLOB')) and defined fileno($fh) )
 
 }
 
@@ -807,6 +807,11 @@ sub new
 					SetFlags     	=> 0,
 					Cachesize     	=> 0,
 					LockDetect     	=> 0,
+					TxMax     	=> 0,
+					LogConfig     	=> 0,
+					MaxLockers     	=> 0,
+					MaxLocks     	=> 0,
+					MaxObjects     	=> 0,
 					Verbose		=> 0,
 					Config		=> undef,
 					Encrypt		=> undef,
@@ -905,7 +910,7 @@ package BerkeleyDB::Hash ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedHash ) ;
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 
 sub new
@@ -942,10 +947,10 @@ sub new
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+	if defined $got->{Txn} and ! UNIVERSAL::isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
@@ -970,7 +975,7 @@ package BerkeleyDB::Btree ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedHash ) ;
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 
 sub new
@@ -1002,10 +1007,10 @@ sub new
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-        if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+        if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-        if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+        if defined $got->{Txn} and ! UNIVERSAL::isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("-Tie needs a reference to a hash")
         if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
@@ -1047,7 +1052,7 @@ package BerkeleyDB::Recno ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 
 sub new
@@ -1079,10 +1084,10 @@ sub new
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+	if defined $got->{Txn} and ! UNIVERSAL::isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("Tie needs a reference to an array")
 	if defined $got->{Tie} and $got->{Tie} !~ /ARRAY/ ;
@@ -1113,7 +1118,7 @@ package BerkeleyDB::Queue ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 
 sub new
@@ -1144,10 +1149,10 @@ sub new
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+	if defined $got->{Txn} and ! UNIVERSAL::isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("Tie needs a reference to an array")
 	if defined $got->{Tie} and $got->{Tie} !~ /ARRAY/ ;
@@ -1182,7 +1187,7 @@ sub UNSHIFT
 ## 
 ## use vars qw(@ISA) ;
 ## @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
-## use UNIVERSAL qw( isa ) ;
+## use UNIVERSAL ;
 ## use Carp ;
 ## 
 ## sub new
@@ -1233,7 +1238,7 @@ package BerkeleyDB::Unknown ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
-use UNIVERSAL qw( isa ) ;
+use UNIVERSAL ;
 use Carp ;
 
 sub new
@@ -1259,10 +1264,10 @@ sub new
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+	if defined $got->{Env} and ! UNIVERSAL::isa($got->{Env},'BerkeleyDB::Env');
 
     croak("Txn not of type BerkeleyDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+	if defined $got->{Txn} and ! UNIVERSAL::isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
@@ -1360,7 +1365,7 @@ sub DELETE
     $self->db_del($key) ;
 }
 
-sub CLEAR
+sub CLEAR_old
 {
     my $self = shift ;
     my ($key, $value) = (0, 0) ;
@@ -1368,6 +1373,14 @@ sub CLEAR
     while ($cursor->c_get($key, $value, BerkeleyDB::DB_PREV()) == 0) 
 	{ $cursor->c_del() }
 }
+
+sub CLEAR_new
+{
+    my $self = shift ;
+    $self->truncate(my $count);
+}
+
+*CLEAR = $BerkeleyDB::db_version < 4 ? \&CLEAR_old : \&CLEAR_new ;
 
 #sub DESTROY
 #{
@@ -1578,6 +1591,11 @@ sub DESTROY
 {
     my $self = shift ;
     $self->_DESTROY() ;
+}
+sub Env
+{
+    my $self = shift ;
+    $self->[1] ;
 }
 
 sub Txn

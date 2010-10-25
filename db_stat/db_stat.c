@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -292,7 +292,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 				goto err;
 			}
 
-		       	if ((ret = dbp->open(dbp,
+			if ((ret = dbp->open(dbp,
 			    NULL, db, subdb, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
 				dbenv->err(dbenv, ret, "DB->open: %s", db);
 				goto err;

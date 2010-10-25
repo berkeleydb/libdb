@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,6 +11,9 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+
+static int __lock_freelocker_int
+    __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *, int));
 
 /*
  * __lock_id_pp --
@@ -164,7 +167,7 @@ __lock_id_free_pp(dbenv, id)
 	if ((ret =
 	     __lock_getlocker_int(env->lk_handle, id, 0, &sh_locker)) == 0) {
 		if (sh_locker != NULL)
-			ret = __lock_freelocker(lt, region, sh_locker);
+			ret = __lock_freelocker_int(lt, region, sh_locker, 1);
 		else {
 			__db_errx(env, "Unknown locker id: %lx", (u_long)id);
 			ret = EINVAL;
@@ -205,11 +208,10 @@ __lock_id_free(env, sh_locker)
 	}
 
 	LOCK_LOCKERS(env, region);
-	ret = __lock_freelocker(lt, region, sh_locker);
+	ret = __lock_freelocker_int(lt, region, sh_locker, 1);
 	UNLOCK_LOCKERS(env, region);
 
-err:
-	return (ret);
+err:	return (ret);
 }
 
 /*
@@ -320,6 +322,7 @@ __lock_getlocker_int(lt, locker, create, retp)
 		SH_LIST_INIT(&sh_locker->heldby);
 		sh_locker->nlocks = 0;
 		sh_locker->nwrites = 0;
+		sh_locker->priority = DB_LOCK_DEFPRIORITY;
 		sh_locker->lk_timeout = 0;
 		timespecclear(&sh_locker->tx_expire);
 		timespecclear(&sh_locker->lk_expire);
@@ -338,12 +341,13 @@ __lock_getlocker_int(lt, locker, create, retp)
  * __lock_addfamilylocker
  *	Put a locker entry in for a child transaction.
  *
- * PUBLIC: int __lock_addfamilylocker __P((ENV *, u_int32_t, u_int32_t));
+ * PUBLIC: int __lock_addfamilylocker __P((ENV *,
+ * PUBLIC:     u_int32_t, u_int32_t, u_int32_t));
  */
 int
-__lock_addfamilylocker(env, pid, id)
+__lock_addfamilylocker(env, pid, id, is_family)
 	ENV *env;
-	u_int32_t pid, id;
+	u_int32_t pid, id, is_family;
 {
 	DB_LOCKER *lockerp, *mlockerp;
 	DB_LOCKREGION *region;
@@ -381,6 +385,14 @@ __lock_addfamilylocker(env, pid, id)
 	}
 
 	/*
+	 * Set the family locker flag, so it is possible to distinguish
+	 * between locks held by subtransactions and those with compatible
+	 * lockers.
+	 */
+	if (is_family)
+		F_SET(mlockerp, DB_LOCKER_FAMILY_LOCKER);
+
+	/*
 	 * Link the child at the head of the master's list.
 	 * The guess is when looking for deadlock that
 	 * the most recent child is the one thats blocked.
@@ -394,15 +406,57 @@ err:	UNLOCK_LOCKERS(env, region);
 }
 
 /*
- * __lock_freefamilylocker
- *	Remove a locker from the hash table and its family.
+ * __lock_freelocker_int
+ *      Common code for deleting a locker; must be called with the
+ *	locker bucket locked.
+ */
+static int
+__lock_freelocker_int(lt, region, sh_locker, reallyfree)
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	DB_LOCKER *sh_locker;
+	int reallyfree;
+{
+	ENV *env;
+	u_int32_t indx;
+
+	env = lt->env;
+
+	if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) != NULL) {
+		__db_errx(env, "Freeing locker with locks");
+		return (EINVAL);
+	}
+
+	/* If this is part of a family, we must fix up its links. */
+	if (sh_locker->master_locker != INVALID_ROFF) {
+		SH_LIST_REMOVE(sh_locker, child_link, __db_locker);
+		sh_locker->master_locker = INVALID_ROFF;
+	}
+
+	if (reallyfree) {
+		LOCKER_HASH(lt, region, sh_locker->id, indx);
+		SH_TAILQ_REMOVE(&lt->locker_tab[indx], sh_locker,
+		    links, __db_locker);
+		SH_TAILQ_INSERT_HEAD(&region->free_lockers, sh_locker,
+		    links, __db_locker);
+		SH_TAILQ_REMOVE(&region->lockers, sh_locker,
+		    ulinks, __db_locker);
+		region->nlockers--;
+	}
+
+	return (0);
+}
+
+/*
+ * __lock_freelocker
+ *	Remove a locker its family from the hash table.
  *
  * This must be called without the locker bucket locked.
  *
- * PUBLIC: int __lock_freefamilylocker  __P((DB_LOCKTAB *, DB_LOCKER *));
+ * PUBLIC: int __lock_freelocker  __P((DB_LOCKTAB *, DB_LOCKER *));
  */
 int
-__lock_freefamilylocker(lt, sh_locker)
+__lock_freelocker(lt, sh_locker)
 	DB_LOCKTAB *lt;
 	DB_LOCKER *sh_locker;
 {
@@ -410,51 +464,42 @@ __lock_freefamilylocker(lt, sh_locker)
 	ENV *env;
 	int ret;
 
-	env = lt->env;
 	region = lt->reginfo.primary;
+	env = lt->env;
 
 	if (sh_locker == NULL)
 		return (0);
 
 	LOCK_LOCKERS(env, region);
+	ret = __lock_freelocker_int(lt, region, sh_locker, 1);
+	UNLOCK_LOCKERS(env, region);
 
-	if (SH_LIST_FIRST(&sh_locker->heldby, __db_lock) != NULL) {
-		ret = EINVAL;
-		__db_errx(env, "Freeing locker with locks");
-		goto err;
-	}
-
-	/* If this is part of a family, we must fix up its links. */
-	if (sh_locker->master_locker != INVALID_ROFF)
-		SH_LIST_REMOVE(sh_locker, child_link, __db_locker);
-
-	ret = __lock_freelocker(lt, region, sh_locker);
-
-err:	UNLOCK_LOCKERS(env, region);
 	return (ret);
 }
 
 /*
- * __lock_freelocker
- *      Common code for deleting a locker; must be called with the
- *	locker bucket locked.
+ * __lock_familyremove
+ *	Remove a locker from its family.
  *
- * PUBLIC: int __lock_freelocker
- * PUBLIC:    __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *));
+ * This must be called without the locker bucket locked.
+ *
+ * PUBLIC: int __lock_familyremove  __P((DB_LOCKTAB *, DB_LOCKER *));
  */
 int
-__lock_freelocker(lt, region, sh_locker)
+__lock_familyremove(lt, sh_locker)
 	DB_LOCKTAB *lt;
-	DB_LOCKREGION *region;
 	DB_LOCKER *sh_locker;
-
 {
-	u_int32_t indx;
-	LOCKER_HASH(lt, region, sh_locker->id, indx);
-	SH_TAILQ_REMOVE(&lt->locker_tab[indx], sh_locker, links, __db_locker);
-	SH_TAILQ_INSERT_HEAD(
-	    &region->free_lockers, sh_locker, links, __db_locker);
-	SH_TAILQ_REMOVE(&region->lockers, sh_locker, ulinks, __db_locker);
-	region->nlockers--;
-	return (0);
+	DB_LOCKREGION *region;
+	ENV *env;
+	int ret;
+
+	region = lt->reginfo.primary;
+	env = lt->env;
+
+	LOCK_LOCKERS(env, region);
+	ret = __lock_freelocker_int(lt, region, sh_locker, 0);
+	UNLOCK_LOCKERS(env, region);
+
+	return (ret);
 }

@@ -190,6 +190,34 @@ internal class DB_ENV : IDisposable {
         
 		return ret;
 	}
+	internal int get_home(out string file) {
+		int ret;
+		IntPtr fp;
+		ret = get_home(out fp);
+		file = Marshal.PtrToStringAnsi(fp);
+		return ret;
+	}	
+	internal int get_intermediate_dir_mode(out string mode) {
+		int ret;
+		IntPtr mp;
+		ret = get_intermediate_dir_mode(out mp);
+		mode = Marshal.PtrToStringAnsi(mp);	
+		return ret;
+	}
+	internal int get_lg_dir(out string dir) {
+		int ret;
+		IntPtr dirp;
+		ret = get_lg_dir(out dirp);
+		dir = Marshal.PtrToStringAnsi(dirp);
+		return ret;
+	}
+	internal int get_tmp_dir(out string dir) {
+		int ret;
+		IntPtr dirp;
+		ret = get_tmp_dir(out dirp);
+		dir = Marshal.PtrToStringAnsi(dirp);
+		return ret;
+	}
 	
 
   internal DatabaseEnvironment api2_internal {
@@ -254,11 +282,15 @@ internal class DB_ENV : IDisposable {
 		return ret;
 }
 
-  internal int get_home(ref string file) {
+  internal int get_home(out IntPtr file) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_ENV_get_home(swigCPtr, ref file);
+		ret = libdb_csharpPINVOKE.DB_ENV_get_home(swigCPtr, out file);
 		DatabaseException.ThrowException(ret);
 		return ret;
+}
+
+  internal int is_transaction_applied(DB_TXN_TOKEN token, uint timeout, uint flags) {
+		return libdb_csharpPINVOKE.DB_ENV_is_transaction_applied(swigCPtr, DB_TXN_TOKEN.getCPtr(token), timeout, flags);
 }
 
   internal int lock_detect(uint flags, uint atype, ref uint rejected) {
@@ -868,9 +900,9 @@ internal class DB_ENV : IDisposable {
 		return ret;
 }
 
-  internal int get_intermediate_dir_mode(ref string mode) {
+  internal int get_intermediate_dir_mode(out IntPtr mode) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_ENV_get_intermediate_dir_mode(swigCPtr, ref mode);
+		ret = libdb_csharpPINVOKE.DB_ENV_get_intermediate_dir_mode(swigCPtr, out mode);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }
@@ -903,9 +935,9 @@ internal class DB_ENV : IDisposable {
 		return ret;
 }
 
-  internal int get_lg_dir(ref string dir) {
+  internal int get_lg_dir(out IntPtr dir) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_ENV_get_lg_dir(swigCPtr, ref dir);
+		ret = libdb_csharpPINVOKE.DB_ENV_get_lg_dir(swigCPtr, out dir);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }
@@ -955,6 +987,13 @@ internal class DB_ENV : IDisposable {
   internal int set_lg_regionmax(uint max) {
 		int ret;
 		ret = libdb_csharpPINVOKE.DB_ENV_set_lg_regionmax(swigCPtr, max);
+		DatabaseException.ThrowException(ret);
+		return ret;
+}
+
+  internal int log_verify(string envhome, uint cachesz, string dbfile, string dbname, long stime, long etime, uint stfile, uint stoffset, uint efile, uint eoffset, int caf, int verbose) {
+		int ret;
+		ret = libdb_csharpPINVOKE.DB_ENV_log_verify(swigCPtr, envhome, cachesz, dbfile, dbname, stime, etime, stfile, stoffset, efile, eoffset, caf, verbose);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }
@@ -1134,9 +1173,9 @@ internal class DB_ENV : IDisposable {
 		return ret;
 }
 
-  internal int get_tmp_dir(ref string dir) {
+  internal int get_tmp_dir(out IntPtr dir) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_ENV_get_tmp_dir(swigCPtr, ref dir);
+		ret = libdb_csharpPINVOKE.DB_ENV_get_tmp_dir(swigCPtr, out dir);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }

@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
     <link rel="prev" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()" />
-    <link rel="next" href="txncommit.html" title="DB_TXN-&gt;commit()" />
+    <link rel="next" href="txnstat.html" title="DB_ENV-&gt;txn_stat()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txncommit.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnstat.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -61,7 +61,7 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708563"></a>Parameters</h3>
+              <h3 class="title"><a id="id4029369"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -69,7 +69,35 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708455"></a>flags</h4>
+                <h4 class="title"><a id="id4029374"></a>kbyte</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the <span class="bold"><strong>kbyte</strong></span> parameter is non-zero, a
+                          checkpoint will be done if more than <span class="bold"><strong>kbyte</strong></span> kilobytes of log data have been written
+                          since the last checkpoint.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4029383"></a>min</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the <span class="bold"><strong>min</strong></span> parameter is non-zero, a
+                          checkpoint will be done if more than <span class="bold"><strong>min</strong></span> minutes have passed since the last
+                          checkpoint.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4028748"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -91,40 +119,12 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1709109"></a>kbyte</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the <span class="bold"><strong>kbyte</strong></span> parameter is non-zero, a
-                          checkpoint will be done if more than <span class="bold"><strong>kbyte</strong></span> kilobytes of log data have been written
-                          since the last checkpoint.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1709247"></a>min</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the <span class="bold"><strong>min</strong></span> parameter is non-zero, a
-                          checkpoint will be done if more than <span class="bold"><strong>min</strong></span> minutes have passed since the last
-                          checkpoint.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708723"></a>Errors</h3>
+              <h3 class="title"><a id="id4029903"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -140,7 +140,7 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708465"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4029994"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -153,7 +153,7 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708466"></a>Class</h3>
+              <h3 class="title"><a id="id4029341"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708582"></a>See Also</h3>
+              <h3 class="title"><a id="id4030012"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -182,14 +182,14 @@ DB_ENV-&gt;txn_checkpoint(const DB_ENV *env,
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txncommit.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnstat.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DB_ENV-&gt;txn_begin() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DB_TXN-&gt;commit()</td>
+          <td width="40%" align="right" valign="top"> DB_ENV-&gt;txn_stat()</td>
         </tr>
       </table>
     </div>

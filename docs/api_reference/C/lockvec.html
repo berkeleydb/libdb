@@ -68,7 +68,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1679321"></a>Parameters</h3>
+              <h3 class="title"><a id="id3997752"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -76,21 +76,21 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1678958"></a>elistp</h4>
+                <h4 class="title"><a id="id3996822"></a>locker</h4>
               </div>
             </div>
           </div>
           <p>
-                          If an error occurs, and the <span class="bold"><strong>elistp</strong></span>
-                          parameter is non-NULL, it is set to point to the DB_LOCKREQ entry that
-                          was being processed when the error occurred.
+                          The <span class="bold"><strong>locker</strong></span> parameter is an unsigned
+                          32-bit integer quantity.  It represents the entity requesting or
+                          releasing the lock.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679335"></a>flags</h4>
+                <h4 class="title"><a id="id3998005"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -119,21 +119,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679017"></a>locker</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>locker</strong></span> parameter is an unsigned
-                          32-bit integer quantity.  It represents the entity requesting or
-                          releasing the lock.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1679509"></a>list</h4>
+                <h4 class="title"><a id="id3998164"></a>list</h4>
               </div>
             </div>
           </div>
@@ -339,7 +325,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679972"></a>nlist</h4>
+                <h4 class="title"><a id="id3998492"></a>nlist</h4>
               </div>
             </div>
           </div>
@@ -348,12 +334,26 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
                           number of elements in the <span class="bold"><strong>list</strong></span> array.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3998786"></a>elistp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If an error occurs, and the <span class="bold"><strong>elistp</strong></span>
+                          parameter is non-NULL, it is set to point to the DB_LOCKREQ entry that
+                          was being processed when the error occurred.
+                     </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1680096"></a>Errors</h3>
+              <h3 class="title"><a id="id3998213"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -369,7 +369,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679525"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3998464"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -382,7 +382,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679668"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3998168"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -395,7 +395,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679658"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3998626"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -409,7 +409,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679396"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3998481"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -421,7 +421,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679625"></a>ENOMEM</h4>
+                <h4 class="title"><a id="id3998781"></a>ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -434,7 +434,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1679316"></a>Class</h3>
+              <h3 class="title"><a id="id3998838"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -447,7 +447,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1679348"></a>See Also</h3>
+              <h3 class="title"><a id="id3998363"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -152,7 +152,7 @@ typedef struct stock_dbs {
     DB *inventory_dbp; /* Database containing inventory information */
     DB *vendor_dbp;    /* Database containing vendor information */
     <strong class="userinput"><code>DB *itemname_sdbp; /* Index based on the item name index */</code></strong>
-                                                                                                                                
+
     char *db_home_dir;       /* Directory containing the database files */
     <strong class="userinput"><code>char *itemname_db_name;  /* Itemname secondary database */</code></strong>
     char *inventory_db_name; /* Name of the inventory database */
@@ -188,7 +188,7 @@ void set_db_filenames(STOCK_DBS *my_stock);
         <a id="c_index11"></a>
         <pre class="programlisting">/* file: gettingstarted_common.c */
 #include "gettingstarted_common.h"
-                                                                                                                                  
+
 <strong class="userinput"><code>/*
  * Used to extract an inventory item's name from an
  * inventory database record. This function is used to create
@@ -198,7 +198,7 @@ int
 get_item_name(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
 {
     int offset;
-                                                                                                                                  
+
     /*
      * First, obtain the buffer location where we placed the
      * item's name. In this example, the item's name is located
@@ -210,18 +210,18 @@ get_item_name(DB *dbp, const DBT *pkey, const DBT *pdata, DBT *skey)
      * data DBT.
      */
     offset = sizeof(float) + sizeof(int);
-                                                                                                                                  
+
     /* Check to make sure there's data */
     if (pdata-&gt;size &lt; offset)
         return (-1); /* Returning non-zero means that the
                       * secondary record is not created/updated.
                       */
-                                                                                                                                  
+
     /* Now set the secondary key's data to be the item name */
     memset(skey, 0, sizeof(DBT));
     skey-&gt;data = pdata-&gt;data + offset;
     skey-&gt;size = strlen(skey-&gt;data) + 1;
-                                                                                                                                  
+
     return (0);
 }</code></strong> </pre>
         <p>
@@ -414,7 +414,7 @@ databases_setup(STOCK_DBS *my_stock, const char *program_name,
          * the return code here.
          */
         return (ret);
-                                                                                                                                
+
     /*
      * Associate the itemname db with its primary db
      * (inventory db).
@@ -519,7 +519,7 @@ databases_close(STOCK_DBS *my_stock)
         <pre class="programlisting">/* File: example_database_read.c */
 /* gettingstarted_common.h includes db.h for us */
 #include "gettingstarted_common.h"
-                                                                                                                                  
+
 /* Forward declarations */
 char * show_inventory_item(void *);
 int show_all_records(STOCK_DBS *);
@@ -546,10 +546,10 @@ main(int argc, char *argv[])
     STOCK_DBS my_stock;
     int ret;
     <strong class="userinput"><code>char *itemname</code></strong>;
-                                                                                                                                         
+
     /* Initialize the STOCK_DBS struct */
     initialize_stockdbs(&amp;my_stock);
-                                                                                                                                         
+
     <strong class="userinput"><code>itemname = NULL;</code></strong>
     /*
      * Parse the command line arguments here and determine
@@ -557,7 +557,7 @@ main(int argc, char *argv[])
      * inventory item we want displayed, if any.</code></strong> This step is
      * omitted for brevity.
      */
-                                                                                                                                         
+
     /*
      * Identify the files that will hold our databases
      * This function uses information obtained from the
@@ -565,7 +565,7 @@ main(int argc, char *argv[])
      * the database files reside.
      */
     set_db_filenames(&amp;my_stock);
-                                                                                                                                         
+
     /* Open all databases */
     ret = databases_setup(&amp;my_stock, "example_database_read", stderr);
     if (ret != 0) {
@@ -588,7 +588,7 @@ main(int argc, char *argv[])
         ret = show_all_records(&amp;my_stock);
     else
         ret = show_records(&amp;my_stock, itemname);</code></strong>
-                                                                                                                                  
+
     /* Close our databases */
     databases_close(&amp;my_stock);
     return (ret);
@@ -629,22 +629,22 @@ show_records(STOCK_DBS *my_stock, char *itemname)
     DBT key, data;
     char *the_vendor;
     int ret, exit_value;
-                                                                                                                                  
+
     /* Initialize our DBTs. */
     memset(&amp;key, 0, sizeof(DBT));
     memset(&amp;data, 0, sizeof(DBT));
-                                                                                                                                  
+
     /* Get a cursor to the itemname db */
     my_stock-&gt;itemname_sdbp-&gt;cursor(my_stock-&gt;itemname_sdbp, 0,
       &amp;itemname_cursorp, 0);
-                                                                                                                                  
+
     /*
      * Get the search key. This is the name on the inventory
      * record that we want to examine.
      */
     key.data = itemname;
     key.size = strlen(itemname) + 1;
-                                                                                                                                  
+
     /*
      * Position our cursor to the first record in the secondary
      * database that has the appropriate key.
@@ -673,10 +673,10 @@ show_records(STOCK_DBS *my_stock, char *itemname)
     } else {
         printf("No records found for '%s'\n", itemname);
     }
-                                                                                                                                  
+
     /* Close the cursor */
     itemname_cursorp-&gt;close(itemname_cursorp);
-                                                                                                                                  
+
     return (exit_value);
 } </pre>
         <p>

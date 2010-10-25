@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -237,6 +237,7 @@ proc run_std { { testname ALL } args } {
 	{"locking"		"lock"}
 	{"logging"		"log"}
 	{"memory pool"		"memp"}
+	{"mutex"		"mutex"}
 	{"transaction"		"txn"}
 	{"deadlock detection"	"dead"}
 	{"subdatabase"		"sdb"}
@@ -249,6 +250,7 @@ proc run_std { { testname ALL } args } {
 	{"partition"		"partition"}
 	{"compression"		"compressed"}
 	{"replication manager" 	"repmgr"}
+	{"repmgr multi-process"	"multi_repmgr"}
 	}
 
 	# If this is run_std only, run each rep test for a single
@@ -399,7 +401,6 @@ proc check_output { file } {
 		^100.*|
 		^eval\s.*|
 		^exec\s.*|
-		^fileops:\s.*|
 		^jointest.*$|
 		^r\sarchive\s*|
 		^r\sbackup\s*|
@@ -469,7 +470,7 @@ proc check_output { file } {
 		^\t*[l|L]ock[0-9][0-9][0-9].*|
 		^\t*[l|L]og[0-9][0-9][0-9].*|
 		^\t*[m|M]emp[0-9][0-9][0-9].*|
-		^\t*[m|M]utex[0-9][0-9][0-9].*|
+		^\t*[m|M]ut[0-9][0-9][0-9].*|
 		^\t*NDBM.*|
 		^\t*opening\ssecondaries\.$|
 		^\t*op_recover_rec:\sRunning\srecovery.*|
@@ -553,14 +554,15 @@ proc r { args } {
 			memp -
 			multi_repmgr -
 			mutex -
+			repmgr -
 			rsrc -
 			sdbtest -
 			txn {
 				if { $display } {
-					run_subsystem $sub 1 0
+					run_subsystem $sub 1 0 $starttest
 				}
 				if { $run } {
-					run_subsystem $sub
+					run_subsystem $sub 0 1 $starttest
 				}
 			}
 			byte {
@@ -674,77 +676,22 @@ proc r { args } {
 				check_handles
 				eval {run_recds all $run $display} [lrange $args 1 end]
 			}
-			repmgr {
-				set tindex [lsearch $test_names(repmgr) $starttest]
-				if { $tindex == -1 } {
-					set tindex 0
-				}
-				set rlist [lrange $test_names(repmgr) $tindex end]
-				foreach test $rlist {
-					run_test $test $display $run
-				}
-			}
 			rep {
-				r rep_subset $starttest
+				run_rep_subset rep $starttest $testdir \
+				    $display $run $args
+			}
+			rep_commit {
+				run_rep_subset rep_commit $starttest $testdir \
+				    $display $run $args
+				r repmgr
 			}
 			# To run a subset of the complete rep tests, use
 			# rep_subset, which randomly picks an access type to
 			# use, and randomly picks whether to open envs with
 			# the -recover flag.
 			rep_subset {
-				if  { [is_partition_callback $args] == 1 } {
-					set nodump 1
-				} else {
-					set nodump 0
-				}
-				berkdb srand $rand_init
-				set tindex [lsearch $test_names(rep) $starttest]
-				if { $tindex == -1 } {
-					set tindex 0
-				}
-				set rlist [lrange $test_names(rep) $tindex end]
-				foreach test $rlist {
-					set random_recopt \
-					    [berkdb random_int 0 1]
-					if { $random_recopt == 1 } {
-						set test_recopts "-recover"
-					} else {
-						set test_recopts {""}
-					}
-
-					set method_list \
-					    [find_valid_methods $test]
-					set list_length \
-					    [expr [llength $method_list] - 1]
-					set method_index \
-					    [berkdb random_int 0 $list_length]
-					set rand_method \
-					    [lindex $method_list $method_index]
-
-					if { $display } {
-						puts "eval $test $rand_method; \
-						    verify_dir \
-						    $testdir \"\" 1 0 $nodump; \
-						    salvage_dir $testdir"
-					}
-					if { $run } {
-				 		check_handles
-						eval $test $rand_method
-						verify_dir $testdir "" 1 0 $nodump
-						salvage_dir $testdir
-					}
-				}
-				if { $one_test == "ALL" } {
-					if { $display } {
-						#puts "basic_db_reptest"
-						#puts "basic_db_reptest 1"
-					}
-					if { $run } {
-						#basic_db_reptest
-						#basic_db_reptest 1
-					}
-				}
-				set test_recopts { "-recover" "" }
+				run_rep_subset rep $starttest $testdir \
+				    $display $run $args
 			}
 			rep_complete {
 				set tindex [lsearch $test_names(rep) $starttest]
@@ -808,7 +755,7 @@ proc r { args } {
 							check_handles
 							eval run_rpcmethod -btree
 							verify_dir $testdir "" 1
-							salvage_dir $testdir
+							salvage_dir $testdir 1
 						} else {
 							run_test run_rpcmethod $display $run
 						}
@@ -908,7 +855,60 @@ proc r { args } {
 	}
 }
 
-proc run_subsystem { sub { display 0 } { run 1} } {
+proc run_rep_subset { sub starttest testdir display run args } {
+	global one_test
+	global rand_init
+	global test_names
+
+	if  { [is_partition_callback $args] == 1 } {
+		set nodump 1
+	} else {
+		set nodump 0
+	}
+	berkdb srand $rand_init
+	set tindex [lsearch $test_names($sub) $starttest]
+	if { $tindex == -1 } {
+		set tindex 0
+	}
+	set rlist [lrange $test_names($sub) $tindex end]
+	foreach test $rlist {
+		set random_recopt [berkdb random_int 0 1]
+		if { $random_recopt == 1 } {
+			set test_recopts "-recover"
+		} else {
+			set test_recopts {""}
+		}
+
+		set method_list [find_valid_methods $test]
+		set list_length [expr [llength $method_list] - 1]
+		set method_index [berkdb random_int 0 $list_length]
+		set rand_method [lindex $method_list $method_index]
+
+		if { $display } {
+			puts "eval $test $rand_method; verify_dir \
+			    $testdir \"\" 1 0 $nodump; salvage_dir $testdir 1"
+		}
+		if { $run } {
+	 		check_handles
+			eval $test $rand_method
+			verify_dir $testdir "" 1 0 $nodump
+			salvage_dir $testdir 1
+		}
+	}
+	if { $one_test == "ALL" } {
+		if { $display } {
+			#puts "basic_db_reptest"
+			#puts "basic_db_reptest 1"
+		}
+		if { $run } {
+			#basic_db_reptest
+			#basic_db_reptest 1
+		}
+	}
+	set test_recopts { "-recover" "" }
+}
+
+proc run_subsystem { sub {display 0} {run 1} {starttest "NULL"} } {
 	global test_names
 
 	if { [info exists test_names($sub)] != 1 } {
@@ -916,14 +916,21 @@ proc run_subsystem { sub { display 0 } { run 1} } {
 		    testparams.tcl; skipping."
 		return
 	}
-	foreach test $test_names($sub) {
+
+	set index [lsearch $test_names($sub) $starttest]
+	if { $index == -1 } {
+		set index 0
+	}
+	set testlist [lrange $test_names($sub) $index end]
+
+	foreach test $testlist {
 		if { $display } {
 			puts "eval $test"
 		}
 		if { $run } {
 			check_handles
 			if {[catch {eval $test} ret] != 0 } {
-				puts "FAIL: run_subsystem: $sub $test: \
+				error "FAIL: run_subsystem: $sub $test: \
 				    $ret"
 			}
 		}
@@ -938,7 +945,7 @@ proc run_test { test {display 0} {run 1} args } {
 		if { $display } {
 			puts "eval $test -$method $args; \
 			    verify_dir $testdir \"\" 1; \
-			    salvage_dir $testdir"
+			    salvage_dir $testdir 1"
 		}
 		if  { [is_partition_callback $args] == 1 } {
 			set nodump 1
@@ -949,7 +956,7 @@ proc run_test { test {display 0} {run 1} args } {
 	 		check_handles
 			eval {$test -$method} $args
 			verify_dir $testdir "" 1 0 $nodump
-			salvage_dir $testdir
+			salvage_dir $testdir 1
 		}
 	}
 }
@@ -974,7 +981,7 @@ proc run_method { method test {display 0} {run 1} \
 			puts -nonewline $outfile "eval \{ $test \} $method"
 			puts -nonewline $outfile " $parms($test) { $args }"
 			puts -nonewline $outfile " ; verify_dir $testdir \"\" 1 0 $nodump"
-			puts $outfile " ; salvage_dir $testdir"
+			puts $outfile " ; salvage_dir $testdir 1"
 		}
 		if { $run } {
 			check_handles $outfile
@@ -988,7 +995,7 @@ proc run_method { method test {display 0} {run 1} \
 			if { $__debug_on != 0 } {
 				debug $__debug_test
 			}
-			salvage_dir $testdir
+			salvage_dir $testdir 1
 		}
 		flush stdout
 		flush stderr
@@ -1366,10 +1373,6 @@ proc run_secenv { method test {largs ""} } {
 proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
     {do_sec 0} {do_oob 0} {largs "" } } {
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	global __debug_on
 	global __debug_print
@@ -1382,6 +1385,15 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 	puts "run_reptest \
 	    $method $test $droppct $nclients $do_del $do_sec $do_oob $largs"
 
+	# Test124 can't be run under reptest because we delete all 
+	# the test files at the end of the test to avoid triggering 
+	# verification failures (it uses a non-standard sort).
+
+	if { $test == "test124" } {
+		puts "Skipping test124 under run_repmethod"
+		return
+	}
+		
 	env_cleanup $testdir
 	set is_envmethod 1
 	set stat [catch {
@@ -1464,10 +1476,6 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 proc run_repmethod { method test {numcl 0} {display 0} {run 1} \
     {outfile stdout} {largs ""} } {
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	global __debug_on
 	global __debug_print
@@ -2463,14 +2471,14 @@ proc sindex { {display 0} {run 1} {outfile stdout} {verbose 0} args } {
 						    " verify_dir \
 						    $testdir \"\" 1; "
 						puts $outfile " salvage_dir \
-						    $testdir "
+						    $testdir 1"
 					}
 					if { $run } {
 			 			check_handles $outfile
 						eval $test \
 						    {[list $pm $sm $sm]} $n
 						verify_dir $testdir "" 1
-						salvage_dir $testdir
+						salvage_dir $testdir 1
 					}
 				}
 			}

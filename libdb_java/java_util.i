@@ -71,7 +71,7 @@
 
 /* Forward declarations */
 static int __dbj_throw(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv);
+    int ret, const char *msg, jobject obj, jobject jdbenv);
 
 /* Global data - JVM handle, classes, fields and methods */
 static JavaVM *javavm;
@@ -103,7 +103,8 @@ static jfieldID kr_less_fid, kr_equal_fid, kr_greater_fid;
 static jfieldID lock_cptr_fid;
 static jfieldID lockreq_op_fid, lockreq_modeflag_fid, lockreq_timeout_fid;
 static jfieldID lockreq_obj_fid, lockreq_lock_fid;
-static jfieldID repmgr_siteinfo_status_fid;
+static jfieldID repmgr_siteinfo_flags_fid, repmgr_siteinfo_status_fid;
+static jfieldID txn_commit_token;
 
 /* BEGIN-STAT-FIELD-DECLS */
 static jfieldID bt_stat_bt_magic_fid;
@@ -130,6 +131,7 @@ static jfieldID bt_stat_bt_over_pgfree_fid;
 static jfieldID compact_compact_fillpercent_fid;
 static jfieldID compact_compact_timeout_fid;
 static jfieldID compact_compact_pages_fid;
+static jfieldID compact_compact_empty_buckets_fid;
 static jfieldID compact_compact_pages_free_fid;
 static jfieldID compact_compact_pages_examine_fid;
 static jfieldID compact_compact_levels_fid;
@@ -290,8 +292,8 @@ static jfieldID qam_stat_qs_re_pad_fid;
 static jfieldID qam_stat_qs_pgfree_fid;
 static jfieldID qam_stat_qs_first_recno_fid;
 static jfieldID qam_stat_qs_cur_recno_fid;
-static jfieldID rep_stat_st_log_queued_fid;
 static jfieldID rep_stat_st_startup_complete_fid;
+static jfieldID rep_stat_st_log_queued_fid;
 static jfieldID rep_stat_st_status_fid;
 static jfieldID rep_stat_st_next_lsn_fid;
 static jfieldID rep_stat_st_waiting_lsn_fid;
@@ -351,6 +353,8 @@ static jfieldID repmgr_stat_st_msgs_queued_fid;
 static jfieldID repmgr_stat_st_msgs_dropped_fid;
 static jfieldID repmgr_stat_st_connection_drop_fid;
 static jfieldID repmgr_stat_st_connect_fail_fid;
+static jfieldID repmgr_stat_st_elect_threads_fid;
+static jfieldID repmgr_stat_st_max_elect_threads_fid;
 static jfieldID seq_stat_st_wait_fid;
 static jfieldID seq_stat_st_nowait_fid;
 static jfieldID seq_stat_st_current_fid;
@@ -382,6 +386,7 @@ static jfieldID txn_active_pid_fid;
 static jfieldID txn_active_lsn_fid;
 static jfieldID txn_active_read_lsn_fid;
 static jfieldID txn_active_mvcc_ref_fid;
+static jfieldID txn_active_priority_fid;
 static jfieldID txn_active_status_fid;
 static jfieldID txn_active_gid_fid;
 static jfieldID txn_active_name_fid;
@@ -410,8 +415,12 @@ static jmethodID lock_construct;
 static jmethodID app_dispatch_method, errcall_method, env_feedback_method;
 static jmethodID msgcall_method, paniccall_method, rep_transport_method;
 static jmethodID panic_event_notify_method, rep_client_event_notify_method;
+static jmethodID rep_dupmaster_event_notify_method;
 static jmethodID rep_elected_event_notify_method;
+static jmethodID rep_election_failed_event_notify_method;
+static jmethodID rep_join_failure_event_notify_method;
 static jmethodID rep_master_event_notify_method;
+static jmethodID rep_master_failure_event_notify_method;
 static jmethodID rep_new_master_event_notify_method;
 static jmethodID rep_perm_failed_event_notify_method;
 static jmethodID rep_startup_done_event_notify_method;
@@ -514,6 +523,7 @@ const struct {
 	    "L" DB_PKG "DatabaseEntry;" },
 	{ &lockreq_lock_fid, &lockreq_class, "lock",
 	    "L" DB_PKG "internal/DbLock;" },
+       { &txn_commit_token, &dbtxn_class, "commitToken", "[B" },
 
 /* BEGIN-STAT-FIELDS */
 	{ &bt_stat_bt_magic_fid, &bt_stat_class, "bt_magic", "I" },
@@ -540,6 +550,7 @@ const struct {
 	{ &compact_compact_fillpercent_fid, &compact_class, "compact_fillpercent", "I" },
 	{ &compact_compact_timeout_fid, &compact_class, "compact_timeout", "I" },
 	{ &compact_compact_pages_fid, &compact_class, "compact_pages", "I" },
+	{ &compact_compact_empty_buckets_fid, &compact_class, "compact_empty_buckets", "I" },
 	{ &compact_compact_pages_free_fid, &compact_class, "compact_pages_free", "I" },
 	{ &compact_compact_pages_examine_fid, &compact_class, "compact_pages_examine", "I" },
 	{ &compact_compact_levels_fid, &compact_class, "compact_levels", "I" },
@@ -700,8 +711,8 @@ const struct {
 	{ &qam_stat_qs_pgfree_fid, &qam_stat_class, "qs_pgfree", "I" },
 	{ &qam_stat_qs_first_recno_fid, &qam_stat_class, "qs_first_recno", "I" },
 	{ &qam_stat_qs_cur_recno_fid, &qam_stat_class, "qs_cur_recno", "I" },
-	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "J" },
 	{ &rep_stat_st_startup_complete_fid, &rep_stat_class, "st_startup_complete", "I" },
+	{ &rep_stat_st_log_queued_fid, &rep_stat_class, "st_log_queued", "J" },
 	{ &rep_stat_st_status_fid, &rep_stat_class, "st_status", "I" },
 	{ &rep_stat_st_next_lsn_fid, &rep_stat_class, "st_next_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &rep_stat_st_waiting_lsn_fid, &rep_stat_class, "st_waiting_lsn", "L" DB_PKG "LogSequenceNumber;" },
@@ -761,6 +772,8 @@ const struct {
 	{ &repmgr_stat_st_msgs_dropped_fid, &repmgr_stat_class, "st_msgs_dropped", "J" },
 	{ &repmgr_stat_st_connection_drop_fid, &repmgr_stat_class, "st_connection_drop", "J" },
 	{ &repmgr_stat_st_connect_fail_fid, &repmgr_stat_class, "st_connect_fail", "J" },
+	{ &repmgr_stat_st_elect_threads_fid, &repmgr_stat_class, "st_elect_threads", "J" },
+	{ &repmgr_stat_st_max_elect_threads_fid, &repmgr_stat_class, "st_max_elect_threads", "J" },
 	{ &seq_stat_st_wait_fid, &seq_stat_class, "st_wait", "J" },
 	{ &seq_stat_st_nowait_fid, &seq_stat_class, "st_nowait", "J" },
 	{ &seq_stat_st_current_fid, &seq_stat_class, "st_current", "J" },
@@ -792,11 +805,13 @@ const struct {
 	{ &txn_active_lsn_fid, &txn_active_class, "lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_read_lsn_fid, &txn_active_class, "read_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_mvcc_ref_fid, &txn_active_class, "mvcc_ref", "I" },
+	{ &txn_active_priority_fid, &txn_active_class, "priority", "I" },
 	{ &txn_active_status_fid, &txn_active_class, "status", "I" },
 	{ &txn_active_gid_fid, &txn_active_class, "gid", "[B" },
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
 
+	{ &repmgr_siteinfo_flags_fid, &repmgr_siteinfo_class, "flags", "I" },
 	{ &repmgr_siteinfo_status_fid, &repmgr_siteinfo_class, "status", "I" }
 };
 
@@ -879,10 +894,18 @@ const struct {
 	    "()V" },
 	{ &rep_client_event_notify_method, &dbenv_class, 
 	    "handle_rep_client_event_notify", "()V" },
+	{ &rep_dupmaster_event_notify_method, &dbenv_class, 
+	    "handle_rep_dupmaster_event_notify" ,"()V" },
 	{ &rep_elected_event_notify_method, &dbenv_class, 
 	    "handle_rep_elected_event_notify" ,"()V" },
+	{ &rep_election_failed_event_notify_method, &dbenv_class, 
+	    "handle_rep_election_failed_event_notify" ,"()V" },
+	{ &rep_join_failure_event_notify_method, &dbenv_class, 
+	    "handle_rep_join_failure_event_notify" ,"()V" },
 	{ &rep_master_event_notify_method, &dbenv_class, 
 	    "handle_rep_master_event_notify", "()V" },
+	{ &rep_master_failure_event_notify_method, &dbenv_class, 
+	    "handle_rep_master_failure_event_notify", "()V" },
 	{ &rep_new_master_event_notify_method, &dbenv_class, 
 	    "handle_rep_new_master_event_notify", "(I)V" },
 	{ &rep_perm_failed_event_notify_method, &dbenv_class, 

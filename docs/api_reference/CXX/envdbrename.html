@@ -73,7 +73,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1663511"></a>Parameters</h3>
+              <h3 class="title"><a id="id3650964"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -81,20 +81,28 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1663821"></a>database</h4>
+                <h4 class="title"><a id="id3650967"></a>txnid</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>database</strong></span> parameter is the
-                          database to be renamed.
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
+                          operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          <code class="literal">DB_AUTO_COMMIT</code> flag is specified to either this method or the
+                          environment handle, the operation will be implicitly
+                          transaction protected.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1663533"></a>file</h4>
+                <h4 class="title"><a id="id3650985"></a>file</h4>
               </div>
             </div>
           </div>
@@ -113,7 +121,33 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1663852"></a>flags</h4>
+                <h4 class="title"><a id="id3650330"></a>database</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>database</strong></span> parameter is the
+                          database to be renamed.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3650895"></a>newname</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>newname</strong></span> parameter is the new name
+                          of the database or file.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3650920"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -137,46 +171,12 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1663534"></a>newname</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>newname</strong></span> parameter is the new name
-                          of the database or file.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1663853"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
-                          operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          <code class="literal">DB_AUTO_COMMIT</code> flag is specified to either this method or the
-                          environment handle, the operation will be implicitly
-                          transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1663969"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id3651115"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1663984"></a>Errors</h3>
+              <h3 class="title"><a id="id3650938"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -207,7 +207,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1664013"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3651262"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1664125"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3650997"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -243,7 +243,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1664104"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3650725"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -256,7 +256,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1664133"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3649702"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -269,7 +269,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1663865"></a>Class</h3>
+              <h3 class="title"><a id="id3651028"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -281,7 +281,7 @@ DbEnv::dbrename(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1663805"></a>See Also</h3>
+              <h3 class="title"><a id="id3650557"></a>See Also</h3>
             </div>
           </div>
         </div>

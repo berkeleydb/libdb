@@ -40,12 +40,11 @@
 int
 DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
       <p>
-         The <code class="methodname">DbEnv::set_cache_max()</code> method sets the maximum cache size, in
-         bytes. The specified size is rounded to the nearest multiple of the
-         cache region size, which is the initial cache size divided by the
-         number of regions specified to the 
-         <a class="xref" href="envset_cachesize.html" title="DbEnv::set_cachesize()">DbEnv::set_cachesize()</a> 
-         method.  If no value is specified, it defaults to the initial cache
+         Sets the maximum cache size in bytes. The specified size is
+         rounded to the nearest multiple of the cache region size, which is
+         the initial cache size divided by the number of regions specified
+         to the <a class="xref" href="envset_cachesize.html" title="DbEnv::set_cachesize()">DbEnv::set_cachesize()</a> method.  If no value is
+         specified, it defaults to the initial cache
          size.
     </p>
       <p>
@@ -80,7 +79,7 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692382"></a>Parameters</h3>
+              <h3 class="title"><a id="id3681745"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -88,21 +87,7 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692544"></a>bytes</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                         The  <span class="bold"><strong>bytes</strong></span> parameter specifies the number of
-                         bytes which, when added to the <span class="bold"><strong>gbytes</strong></span>
-                         parameter,  specifies the maximum size of the cache.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1692631"></a>gbytes</h4>
+                <h4 class="title"><a id="id3681734"></a>gbytes</h4>
               </div>
             </div>
           </div>
@@ -112,12 +97,26 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
                          parameter,  specifies the maximum size of the cache.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3681623"></a>bytes</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                         The  <span class="bold"><strong>bytes</strong></span> parameter specifies the number of
+                         bytes which, when added to the <span class="bold"><strong>gbytes</strong></span>
+                         parameter,  specifies the maximum size of the cache.
+                     </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692689"></a>Errors</h3>
+              <h3 class="title"><a id="id3681323"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -135,7 +134,7 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692691"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3681890"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -148,7 +147,7 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692603"></a>Class</h3>
+              <h3 class="title"><a id="id3681324"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -160,7 +159,7 @@ DbEnv::set_cache_max(u_int32_t gbytes, u_int32_t bytes); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692576"></a>See Also</h3>
+              <h3 class="title"><a id="id3681800"></a>See Also</h3>
             </div>
           </div>
         </div>

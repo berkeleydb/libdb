@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -47,21 +47,54 @@ proc fop003 { method args } {
 		error_check_good envremove [berkdb envremove -home $testdir] 0
 	}
 
-	puts "\tFop$tnum.b: -create is allowed on open of existing\
-	    zero-length file."
 	# Create an empty file, then open with -create.  We get an
 	# error message warning us that this does not look like a
 	# DB file, but the open should succeed.
-	set fd [open $testdir/foo w]
-	close $fd
-	catch {set db [eval \
-	    {berkdb_open_noerr -create} $omethod $args $testdir/foo]} res
-	error_check_good open_fail [is_substr $errorInfo \
-	    "unexpected file type or format"] 1
-	error_check_good db_open [is_valid_db $db] TRUE
-	error_check_good db_close [$db close] 0
+	foreach tflag { "" "-truncate" } {
+		puts "\tFop$tnum.b: -create $tflag is allowed on open of\
+		    existing zero-length file."
+		set fd [open $testdir/foo w]
+		close $fd
+		catch {set db [eval {berkdb_open_noerr -create} \
+		    $tflag $omethod $args $testdir/foo]} res
+		error_check_good open_fail [is_substr $errorInfo \
+		    "unexpected file type or format"] 1
+		error_check_good db_open [is_valid_db $db] TRUE
+		error_check_good db_close [$db close] 0
+	}
 
-	puts "\tFop$tnum.c: -create is ignored on open of existing\
+	# Create a non-empty non-DB file, then open with -create.  This
+	# should fail.  Try again with -truncate, and it should 
+	# succeed, and the file should be empty.
+	foreach tflag { "" "-truncate" } {
+		if { $tflag == "-truncate" } {
+			puts "\tFop$tnum.c: -create with -truncate\
+			    succeeds on open of non-empty non-DB file."
+		} else {
+			puts "\tFop$tnum.c: -create without -truncate\
+			   fails on open of non-empty non-DB file."
+		}
+		set fd [open $testdir/bar w]
+		puts $fd "junk"
+		close $fd
+		catch {set db [eval {berkdb_open_noerr -create} \
+		    $tflag $omethod $args $testdir/bar]} ret
+		if { $tflag == "-truncate" } {
+			# We expect an error message, but also an open db.
+			error_check_good open_fail [is_substr $errorInfo \
+			    "unexpected file type or format"] 1
+			error_check_good db_open [is_valid_db $db] TRUE
+			error_check_good db_handle \
+			    [llength [berkdb handles]] 1
+			error_check_good db_close [$db close] 0
+		} else {
+			error_check_good no_db_handle \
+			    [llength [berkdb handles]] 0
+		}
+		fileremove -f $testdir/bar
+	}
+
+	puts "\tFop$tnum.d: -create is ignored on open of existing\
 	    non-zero-length file."
 	# Create a db file.  Close and reopen with -create.  Make
 	# sure that we still have the same file by checking the contents.
@@ -79,7 +112,7 @@ proc fop003 { method args } {
 	    [lindex [lindex $ret 0] 1] [pad_data $method $data]
 	error_check_good db_close2 [$db close] 0
 
-	puts "\tFop$tnum.d: -create is allowed on open -truncate of\
+	puts "\tFop$tnum.e: -create is allowed on open -truncate of\
 	    existing non-zero-length file."
 	# Use the file we already have with -truncate flag.  The open
 	# should be successful, and when we query for the key that

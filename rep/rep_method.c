@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,16 +11,24 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
 static int  __rep_abort_prepared __P((ENV *));
+static int  __rep_await_condition __P((ENV *,
+    struct rep_waitgoal *, db_timeout_t));
 static int  __rep_bt_cmp __P((DB *, const DBT *, const DBT *));
+static int  __rep_check_applied __P((ENV *,
+    DB_THREAD_INFO *, DB_COMMIT_INFO *, struct rep_waitgoal *));
 static void __rep_config_map __P((ENV *, u_int32_t *, u_int32_t *));
 static u_int32_t __rep_conv_vers __P((ENV *, u_int32_t));
+static int __rep_open_lsn_history __P((ENV *,
+    DB_THREAD_INFO *, DB_TXN *, u_int32_t, DB **));
+static int __rep_read_lsn_history __P((ENV *,
+    DB_THREAD_INFO *, DB_TXN **, DBC **, u_int32_t,
+    __rep_lsn_hist_data_args *, struct rep_waitgoal *, u_int32_t));
 static int  __rep_restore_prepared __P((ENV *));
-
+static int  __rep_save_lsn_hist __P((ENV *, DB_THREAD_INFO *, DB_LSN *));
 /*
  * __rep_env_create --
  *	Replication-specific initialization of the ENV structure.
@@ -53,6 +61,12 @@ __rep_env_create(dbenv)
 	 */
 	db_rep->clock_skew = 1;
 	db_rep->clock_base = 1;
+	FLD_SET(db_rep->config, REP_C_AUTOINIT);
+
+	/*
+	 * Turn on system messages by default.
+	 */
+	FLD_SET(dbenv->verbose, DB_VERB_REP_SYSTEM);
 
 #ifdef HAVE_REPLICATION_THREADS
 	if ((ret = __repmgr_env_create(env, db_rep)) != 0) {
@@ -109,9 +123,9 @@ __rep_get_config(dbenv, which, onp)
 
 #undef	OK_FLAGS
 #define	OK_FLAGS							\
-    (DB_REP_CONF_BULK | DB_REP_CONF_DELAYCLIENT | DB_REP_CONF_INMEM |	\
-    DB_REP_CONF_LEASE | DB_REP_CONF_NOAUTOINIT | DB_REP_CONF_NOWAIT |	\
-    DB_REPMGR_CONF_2SITE_STRICT)
+    (DB_REP_CONF_AUTOINIT | DB_REP_CONF_BULK | DB_REP_CONF_DELAYCLIENT |\
+    DB_REP_CONF_INMEM | DB_REP_CONF_LEASE | DB_REP_CONF_NOWAIT |	\
+    DB_REPMGR_CONF_2SITE_STRICT | DB_REPMGR_CONF_ELECTIONS)
 
 	if (FLD_ISSET(which, ~OK_FLAGS))
 		return (__db_ferr(env, "DB_ENV->rep_get_config", 0));
@@ -157,7 +171,7 @@ __rep_set_config(dbenv, which, on)
 	REP *rep;
 	REP_BULK bulk;
 	u_int32_t mapped, orig;
-	int ret;
+	int ret, t_ret;
 
 	env = dbenv->env;
 	db_rep = env->rep_handle;
@@ -165,9 +179,10 @@ __rep_set_config(dbenv, which, on)
 
 #undef	OK_FLAGS
 #define	OK_FLAGS							\
-    (DB_REP_CONF_BULK | DB_REP_CONF_DELAYCLIENT | DB_REP_CONF_INMEM |	\
-    DB_REP_CONF_LEASE | DB_REP_CONF_NOAUTOINIT | DB_REP_CONF_NOWAIT |	\
-    DB_REPMGR_CONF_2SITE_STRICT)
+    (DB_REP_CONF_AUTOINIT | DB_REP_CONF_BULK | DB_REP_CONF_DELAYCLIENT |\
+    DB_REP_CONF_INMEM | DB_REP_CONF_LEASE | DB_REP_CONF_NOWAIT |	\
+    DB_REPMGR_CONF_2SITE_STRICT | DB_REPMGR_CONF_ELECTIONS)
+#define	REPMGR_FLAGS (REP_C_2SITE_STRICT | REP_C_ELECTIONS)
 
 	ENV_NOT_CONFIGURED(
 	    env, db_rep->region, "DB_ENV->rep_set_config", DB_INIT_REP);
@@ -178,13 +193,18 @@ __rep_set_config(dbenv, which, on)
 	mapped = 0;
 	__rep_config_map(env, &which, &mapped);
 
-	if (APP_IS_BASEAPI(env) && FLD_ISSET(mapped, REP_C_2SITE_STRICT)) {
+	if (APP_IS_BASEAPI(env) && FLD_ISSET(mapped, REPMGR_FLAGS)) {
 		__db_errx(env, "%s %s", "DB_ENV->rep_set_config:",
-"cannot configure 2SITE_STRICT from base replication application");
+"cannot configure repmgr settings from base replication application");
 		return (EINVAL);
 	}
 
 	if (REP_ON(env)) {
+#ifdef HAVE_REPLICATION_THREADS
+		if ((ret = __repmgr_valid_config(env, mapped)) != 0)
+			return (ret);
+#endif
+
 		ENV_ENTER(env, ip);
 
 		rep = db_rep->region;
@@ -197,6 +217,7 @@ __rep_set_config(dbenv, which, on)
 		if (FLD_ISSET(mapped, REP_C_INMEM)) {
 			__db_errx(env, "%s %s", "DB_ENV->rep_set_config:",
 	"in-memory replication must be configured before DB_ENV->open");
+			ENV_LEAVE(env, ip);
 			return (EINVAL);
 		}
 		/*
@@ -214,8 +235,10 @@ __rep_set_config(dbenv, which, on)
 	"DB_ENV->rep_set_config: leases cannot be turned off");
 				ret = EINVAL;
 			}
-			if (ret != 0)
+			if (ret != 0) {
+				ENV_LEAVE(env, ip);
 				return (ret);
+			}
 		}
 		MUTEX_LOCK(env, rep->mtx_clientdb);
 		REP_SYSTEM_LOCK(env);
@@ -258,14 +281,25 @@ __rep_set_config(dbenv, which, on)
 		MUTEX_UNLOCK(env, rep->mtx_clientdb);
 
 		ENV_LEAVE(env, ip);
+
+#ifdef HAVE_REPLICATION_THREADS
+		/*
+		 * If turning ELECTIONS on, and it was off, check whether we
+		 * need to start an election immediately.
+		 */
+		if (!FLD_ISSET(orig, REP_C_ELECTIONS) &&
+		    FLD_ISSET(rep->config, REP_C_ELECTIONS) &&
+		    (t_ret = __repmgr_turn_on_elections(env)) != 0 && ret == 0)
+			ret = t_ret;
+#endif
 	} else {
 		if (on)
 			FLD_SET(db_rep->config, mapped);
 		else
 			FLD_CLR(db_rep->config, mapped);
 	}
-	/* Configuring 2SITE_STRICT makes this a repmgr application */
-	if (ret == 0 && FLD_ISSET(mapped, REP_C_2SITE_STRICT))
+	/* Configuring 2SITE_STRICT, etc. makes this a repmgr application */
+	if (ret == 0 && FLD_ISSET(mapped, REPMGR_FLAGS))
 		APP_SET_REPMGR(env);
 	return (ret);
 }
@@ -277,6 +311,10 @@ __rep_config_map(env, inflagsp, outflagsp)
 {
 	COMPQUIET(env, NULL);
 
+	if (FLD_ISSET(*inflagsp, DB_REP_CONF_AUTOINIT)) {
+		FLD_SET(*outflagsp, REP_C_AUTOINIT);
+		FLD_CLR(*inflagsp, DB_REP_CONF_AUTOINIT);
+	}
 	if (FLD_ISSET(*inflagsp, DB_REP_CONF_BULK)) {
 		FLD_SET(*outflagsp, REP_C_BULK);
 		FLD_CLR(*inflagsp, DB_REP_CONF_BULK);
@@ -293,10 +331,6 @@ __rep_config_map(env, inflagsp, outflagsp)
 		FLD_SET(*outflagsp, REP_C_LEASE);
 		FLD_CLR(*inflagsp, DB_REP_CONF_LEASE);
 	}
-	if (FLD_ISSET(*inflagsp, DB_REP_CONF_NOAUTOINIT)) {
-		FLD_SET(*outflagsp, REP_C_NOAUTOINIT);
-		FLD_CLR(*inflagsp, DB_REP_CONF_NOAUTOINIT);
-	}
 	if (FLD_ISSET(*inflagsp, DB_REP_CONF_NOWAIT)) {
 		FLD_SET(*outflagsp, REP_C_NOWAIT);
 		FLD_CLR(*inflagsp, DB_REP_CONF_NOWAIT);
@@ -305,6 +339,11 @@ __rep_config_map(env, inflagsp, outflagsp)
 		FLD_SET(*outflagsp, REP_C_2SITE_STRICT);
 		FLD_CLR(*inflagsp, DB_REPMGR_CONF_2SITE_STRICT);
 	}
+	if (FLD_ISSET(*inflagsp, DB_REPMGR_CONF_ELECTIONS)) {
+		FLD_SET(*outflagsp, REP_C_ELECTIONS);
+		FLD_CLR(*inflagsp, DB_REPMGR_CONF_ELECTIONS);
+	}
+	DB_ASSERT(env, *inflagsp == 0);
 }
 
 /*
@@ -368,7 +407,7 @@ __rep_start_pp(dbenv, dbt, flags)
  * rep->msg_th - this is the count of threads currently in rep_process_message
  * rep->handle_cnt - number of threads actively using a dbp in library.
  * rep->txn_cnt - number of active txns.
- * REP_F_READY_* - Replication flag that indicates that we wish to run
+ * REP_LOCKOUT_* - Replication flag that indicates that we wish to run
  * recovery, and want to prohibit new transactions from entering and cause
  * existing ones to return immediately (with a DB_LOCK_DEADLOCK error).
  *
@@ -400,8 +439,8 @@ __rep_start_int(env, dbt, flags)
 	REGINFO *infop;
 	REP *rep;
 	db_timeout_t tmp;
-	u_int32_t oldvers, pending_event, repflags, role;
-	int do_ckp, interrupting, locked, ret, role_chg, start_th, t_ret;
+	u_int32_t new_gen, oldvers, pending_event, role;
+	int interrupting, locked, ret, role_chg, start_th, t_ret;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -411,7 +450,6 @@ __rep_start_int(env, dbt, flags)
 	pending_event = DB_EVENT_NO_SUCH_EVENT;
 	role = LF_ISSET(DB_REP_CLIENT | DB_REP_MASTER);
 	start_th = 0;
-	do_ckp = 0;
 
 	/*
 	 * If we're using master leases, check that all needed
@@ -425,39 +463,47 @@ __rep_start_int(env, dbt, flags)
 
 	ENV_ENTER(env, ip);
 
+	/* Serialize rep_start() calls. */
+	MUTEX_LOCK(env, rep->mtx_repstart);
+	start_th = 1;
+
 	/*
 	 * In order to correctly check log files for old versions, we
-	 * need to flush the logs.
+	 * need to flush the logs.  Serialize log flush to make sure it is
+	 * always done just before the log old version check.  Otherwise it
+	 * is possible that another thread in rep_start could write LSN history
+	 * and create a new log file that is not yet fully there for the log
+	 * old version check.
 	 */
 	if ((ret = __log_flush(env, NULL)) != 0)
 		goto out;
 
 	REP_SYSTEM_LOCK(env);
+	role_chg = (!F_ISSET(rep, REP_F_MASTER) && role == DB_REP_MASTER) ||
+	    (!F_ISSET(rep, REP_F_CLIENT) && role == DB_REP_CLIENT);
+
 	/*
-	 * We only need one thread to start-up replication, so if
-	 * there is another thread in rep_start, we'll let it finish
-	 * its work and have this thread simply return.  Similarly,
-	 * if a thread is in a critical lockout section we return.
+	 * There is no need for lockout if all we're doing is sending a message.
+	 * In fact, lockout could be harmful: the typical use of this "duplicate
+	 * client" style of call is when the application has to poll, seeking
+	 * for a master.  If the resulting NEWMASTER message were to arrive when
+	 * we had messages locked out, we would discard it, resulting in further
+	 * delay.
 	 */
-	if (F_ISSET(rep, REP_F_INREPSTART)) {
-		/*
-		 * There is already someone in rep_start.  Return.
-		 */
-		RPRINT(env, DB_VERB_REP_MISC,
-		    (env, "Thread already in rep_start"));
+	if (role == DB_REP_CLIENT && !role_chg) {
 		REP_SYSTEM_UNLOCK(env);
+		if ((ret = __dbt_usercopy(env, dbt)) == 0)
+			(void)__rep_send_message(env,
+			    DB_EID_BROADCAST, REP_NEWCLIENT, NULL, dbt, 0, 0);
 		goto out;
-	} else {
-		F_SET(rep, REP_F_INREPSTART);
-		start_th = 1;
 	}
 
-	if (F_ISSET(rep, REP_F_READY_MSG)) {
+	if (FLD_ISSET(rep->lockout_flags, REP_LOCKOUT_MSG)) {
 		/*
 		 * There is already someone in msg lockout.  Return.
 		 */
-		RPRINT(env, DB_VERB_REP_MISC,
-		    (env, "Thread already in msg lockout"));
+		RPRINT(env, (env, DB_VERB_REP_MISC,
+		    "Thread already in msg lockout"));
 		REP_SYSTEM_UNLOCK(env);
 		goto out;
 	} else if ((ret = __rep_lockout_msg(env, rep, 0)) != 0)
@@ -474,9 +520,6 @@ __rep_start_int(env, dbt, flags)
 		ret = DB_REP_UNAVAIL;
 		goto errunlock;
 	}
-
-	role_chg = (!F_ISSET(rep, REP_F_MASTER) && role == DB_REP_MASTER) ||
-	    (!F_ISSET(rep, REP_F_CLIENT) && role == DB_REP_CLIENT);
 
 	/*
 	 * Wait for any active txns or mpool ops to complete, and
@@ -524,13 +567,14 @@ __rep_start_int(env, dbt, flags)
 			if ((ret = __rep_preclose(env)) != 0)
 				goto errunlock;
 
-			rep->gen++;
+			new_gen = rep->gen + 1;
 			/*
 			 * There could have been any number of failed
 			 * elections, so jump the gen if we need to now.
 			 */
 			if (rep->egen > rep->gen)
-				rep->gen = rep->egen;
+				new_gen = rep->egen;
+			SET_GEN(new_gen);
 			if (IS_USING_LEASES(env) &&
 			    !F_ISSET(rep, REP_F_MASTERELECT)) {
 				__db_errx(env,
@@ -539,35 +583,31 @@ __rep_start_int(env, dbt, flags)
 				goto errunlock;
 			}
 			if (F_ISSET(rep, REP_F_MASTERELECT)) {
-				__rep_elect_done(env, rep, 0);
+				__rep_elect_done(env, rep);
 				F_CLR(rep, REP_F_MASTERELECT);
-			}
+			} else if (FLD_ISSET(rep->config, REP_C_INMEM))
+				/*
+				 * Help detect if application has ignored our
+				 * recommendation against reappointing same
+				 * master after a crash/reboot when running
+				 * in-memory replication.  Doing this allows a
+				 * slight chance of two masters at the same
+				 * generation, resulting in client crashes.
+				 */
+				RPRINT(env, (env, DB_VERB_REP_MISC,
+	"Appointed new master while running in-memory replication."));
 			if (rep->egen <= rep->gen)
 				rep->egen = rep->gen + 1;
-			RPRINT(env, DB_VERB_REP_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REP_MISC,
 			    "New master gen %lu, egen %lu",
 			    (u_long)rep->gen, (u_long)rep->egen));
 			/*
 			 * If not running in-memory replication, write
 			 * gen file.
 			 */
-			if (!FLD_ISSET(rep->config, REP_C_INMEM)) {
-				if ((ret = __rep_write_gen(env, rep, rep->gen))
-				    != 0)
+			if (!FLD_ISSET(rep->config, REP_C_INMEM) &&
+			    (ret = __rep_write_gen(env, rep, rep->gen)) != 0)
 					goto errunlock;
-			} else if (!F_ISSET(rep, REP_F_MASTERELECT))
-				/*
-				 * Help detect if application has
-				 * ignored our recommendation against
-				 * reappointing same master after a
-				 * crash/reboot when running in-memory
-				 * replication. Doing this allows a
-				 * slight chance of two masters at the
-				 * same generation resulting in client
-				 * crashes.
-				 */
-				RPRINT(env, DB_VERB_REP_MISC, (env,
-	"Appointed new master while running in-memory replication."));
 		}
 		/*
 		 * Set lease duration assuming clients have faster clock.
@@ -599,25 +639,9 @@ __rep_start_int(env, dbt, flags)
 			 */
 			if (ret == 0)
 				lp->max_perm_lsn = perm_lsn;
-			else if (ret == DB_NOTFOUND) {
-				/*
-				 * If we have no perm records, we want to
-				 * force (later) a checkpoint to the log.
-				 * By doing this now, we avoid a sticky
-				 * deadlock with a txn.  We need a perm
-				 * record for leases, but if the first perm
-				 * record is a txn, that txn cannot commit
-				 * without leases refreshed.  A client may
-				 * be in internal init and cannot sync up if
-				 * it needs to read pages the txn holds write
-				 * locks on and we have an impasse.  This
-				 * checkpoint will allow leases to be granted
-				 * on this perm record first and that does not
-				 * need any locks.
-				 */
-				do_ckp = 1;
+			else if (ret == DB_NOTFOUND)
 				INIT_LSN(lp->max_perm_lsn);
-			} else
+			else
 				goto errunlock;
 
 			/*
@@ -634,22 +658,44 @@ __rep_start_int(env, dbt, flags)
 		rep->master_id = rep->eid;
 		STAT(rep->stat.st_master_changes++);
 
-		/*
-		 * Clear out almost everything, and then set MASTER.  Leave
-		 * READY_* alone in case we did a lockout above;
-		 * we'll clear it in a moment (below), once we've written
-		 * the txn_recycle into the log.
-		 */
-		repflags = F_ISSET(rep, REP_F_INREPSTART | REP_F_READY_API |
-		    REP_F_READY_MSG | REP_F_READY_OP | REP_F_STICKY_MASK);
 #ifdef	DIAGNOSTIC
 		if (!F_ISSET(rep, REP_F_GROUP_ESTD))
-			RPRINT(env, DB_VERB_REP_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REP_MISC,
 			    "Establishing group as master."));
 #endif
-		FLD_SET(repflags, REP_F_MASTER |
-		    REP_F_GROUP_ESTD | REP_F_NIMDBS_LOADED);
-		rep->flags = repflags;
+		/*
+		 * When becoming a master, clear the following flags:
+		 *   CLIENT: Site is no longer a client.
+		 *   ABBREVIATED: Indicates abbreviated internal init, which
+		 *       cannot occur on a master.
+		 *   MASTERELECT: Indicates that this master is elected
+		 *       rather than appointed. If we're changing roles we
+		 *       used this flag above for error checks and election
+		 *       cleanup.
+		 *   SKIPPED_APPLY: Indicates that client apply skipped
+		 *       some log records during an election, no longer
+		 *       applicable on master.
+		 *   DELAY: Indicates user config to delay initial client
+		 *       sync with new master, doesn't apply to master.
+		 *   LEASE_EXPIRED: Applies to client leases which are
+		 *       now defunct on master.
+		 *   NEWFILE: Used to delay client apply during newfile
+		 *       operation, not applicable to master.
+		 */
+		F_CLR(rep, REP_F_CLIENT | REP_F_ABBREVIATED |
+		    REP_F_MASTERELECT | REP_F_SKIPPED_APPLY | REP_F_DELAY |
+		    REP_F_LEASE_EXPIRED | REP_F_NEWFILE);
+		/*
+		 * When becoming a master, set the following flags:
+		 *   MASTER: Indicate that this site is master.
+		 *   GROUP_ESTD: Having a master means a that replication
+		 *       group exists.
+		 *   NIMDBS_LOADED: Inmem dbs are always present on a master.
+		 */
+		F_SET(rep, REP_F_MASTER | REP_F_GROUP_ESTD |
+		    REP_F_NIMDBS_LOADED);
+		/* Master cannot be in internal init. */
+		rep->sync_state = SYNC_OFF;
 
 		/*
 		 * We're master.  Set the versions to the current ones.
@@ -661,14 +707,22 @@ __rep_start_int(env, dbt, flags)
 		 * recovery table since it contains pointers to old
 		 * recovery functions.
 		 */
-		RPRINT(env, DB_VERB_REP_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REP_MISC,
 		    "rep_start: Old log version was %lu", (u_long)oldvers));
 		if (lp->persist.version != DB_LOGVERSION) {
 			if ((ret = __env_init_rec(env, DB_LOGVERSION)) != 0)
 				goto errunlock;
 		}
 		rep->version = DB_REPVERSION;
-		F_CLR(rep, REP_F_READY_MSG);
+		/*
+		 * When becoming a master, clear the following lockouts:
+		 *   ARCHIVE: Used to keep logs while client may be
+		 *       inconsistent, not needed on master.
+		 *   MSG: We set this above to block message processing while
+		 *       becoming a master, can turn messages back on here.
+		 */
+		FLD_CLR(rep->lockout_flags,
+		    REP_LOCKOUT_ARCHIVE | REP_LOCKOUT_MSG);
 		REP_SYSTEM_UNLOCK(env);
 		LOG_SYSTEM_LOCK(env);
 		lsn = lp->lsn;
@@ -707,53 +761,75 @@ __rep_start_int(env, dbt, flags)
 			}
 			if ((t_ret = __txn_recycle_id(env)) != 0 && ret == 0)
 				ret = t_ret;
+
+			/*
+			 * Write LSN history database, ahead of unlocking the
+			 * API so that clients can always know the heritage of
+			 * any transaction they receive via replication.
+			 */
+			if ((t_ret = __rep_save_lsn_hist(env, ip, &lsn)) != 0 &&
+			    ret == 0)
+				ret = t_ret;
+
 			REP_SYSTEM_LOCK(env);
-			F_CLR(rep, REP_F_READY_API | REP_F_READY_OP);
+			rep->gen_base_lsn = lsn;
+			rep->master_envid = renv->envid;
+			CLR_LOCKOUT_BDB(rep);
 			locked = 0;
 			REP_SYSTEM_UNLOCK(env);
 			(void)__memp_set_config(
 			    env->dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
 			interrupting = 0;
-			/*
-			 * Force a checkpoint if this new master has no
-			 * perm record yet.
-			 */
-			if (ret == 0 && do_ckp)
-				ret = __txn_checkpoint(env, 0, 0,
-				    DB_CKP_INTERNAL | DB_FORCE);
 		}
 	} else {
-		if (role_chg)
-			rep->master_id = DB_EID_INVALID;
 		/*
-		 * Zero out "everything" except recovery and tally flags.
+		 * Start a non-client as a client.
 		 */
-		repflags = F_ISSET(rep,
-		    REP_F_INREPSTART | REP_F_NOARCHIVE | REP_F_READY_MSG |
-		    REP_F_RECOVER_MASK | REP_F_TALLY | REP_F_STICKY_MASK);
-		FLD_SET(repflags, REP_F_CLIENT);
-		if (role_chg) {
-			if ((ret = __log_get_oldversion(env, &oldvers)) != 0)
+		rep->master_id = DB_EID_INVALID;
+		/*
+		 * A non-client should not have been participating in an
+		 * election, so most election flags should be off.  The TALLY
+		 * flag is an exception because it is set any time we receive
+		 * a VOTE1 and there is no reason to clear and lose it for an
+		 * election that may begin shortly.
+		 */
+		DB_ASSERT(env, !FLD_ISSET(rep->elect_flags, ~REP_E_TALLY));
+		/*
+		 * A non-client should not have the following client flags
+		 * set and should not be in internal init.
+		 */
+		DB_ASSERT(env, !F_ISSET(rep,
+		    REP_F_ABBREVIATED | REP_F_DELAY | REP_F_NEWFILE));
+		DB_ASSERT(env, rep->sync_state == SYNC_OFF);
+
+		if ((ret = __log_get_oldversion(env, &oldvers)) != 0)
+			goto errunlock;
+		RPRINT(env, (env, DB_VERB_REP_MISC,
+			"rep_start: Found old version log %d", oldvers));
+		if (oldvers >= DB_LOGVERSION_MIN) {
+			__log_set_version(env, oldvers);
+			if ((ret = __env_init_rec(env, oldvers)) != 0)
 				goto errunlock;
-			RPRINT(env, DB_VERB_REP_MISC, (env,
-			    "rep_start: Found old version log %d", oldvers));
-			if (oldvers >= DB_LOGVERSION_MIN) {
-				__log_set_version(env, oldvers);
-				oldvers = __rep_conv_vers(env, oldvers);
-				DB_ASSERT(
-				    env, oldvers != DB_REPVERSION_INVALID);
-				rep->version = oldvers;
-			}
+			oldvers = __rep_conv_vers(env, oldvers);
+			DB_ASSERT(env, oldvers != DB_REPVERSION_INVALID);
+			rep->version = oldvers;
 		}
-		rep->flags = repflags;
+		/*
+		 * When becoming a client, clear the following flags:
+		 *   MASTER: Site is no longer a master.
+		 *   MASTERELECT: Indicates that a master is elected
+		 *       rather than appointed, not applicable on client.
+		 */
+		F_CLR(rep, REP_F_MASTER | REP_F_MASTERELECT);
+		F_SET(rep, REP_F_CLIENT);
+
 		/*
 		 * On a client, compute the lease duration on the
 		 * assumption that the client has a fast clock.
 		 * Expire any existing leases we might have held as
 		 * a master.
 		 */
-		if (IS_USING_LEASES(env) &&
-		    (role_chg || !IS_REP_STARTED(env))) {
+		if (IS_USING_LEASES(env) && !IS_REP_STARTED(env)) {
 			if ((ret = __rep_lease_expire(env)) != 0)
 				goto errunlock;
 			/*
@@ -792,34 +868,31 @@ __rep_start_int(env, dbt, flags)
 			goto errlock;
 
 		/*
-		 * If we're changing roles we need to init the db.
+		 * Since we're changing roles we need to init the db.
 		 */
-		if (role_chg) {
-			if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
-				goto errlock;
-			/*
-			 * Ignore errors, because if the file doesn't exist,
-			 * this is perfectly OK.
-			 */
-			MUTEX_LOCK(env, rep->mtx_clientdb);
-			(void)__db_remove(dbp, ip, NULL, REPDBNAME,
-			    NULL, DB_FORCE);
-			MUTEX_UNLOCK(env, rep->mtx_clientdb);
-			/*
-			 * Set pending_event after calls that can fail.
-			 */
-			pending_event = DB_EVENT_REP_CLIENT;
-		}
+		if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
+			goto errlock;
+		/*
+		 * Ignore errors, because if the file doesn't exist,
+		 * this is perfectly OK.
+		 */
+		MUTEX_LOCK(env, rep->mtx_clientdb);
+		(void)__db_remove(dbp, ip, NULL, REPDBNAME,
+		    NULL, DB_FORCE);
+		MUTEX_UNLOCK(env, rep->mtx_clientdb);
+		/*
+		 * Set pending_event after calls that can fail.
+		 */
+		pending_event = DB_EVENT_REP_CLIENT;
+
 		REP_SYSTEM_LOCK(env);
-		F_CLR(rep, REP_F_READY_MSG);
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_MSG);
 		if (locked) {
-			F_CLR(rep, REP_F_READY_API | REP_F_READY_OP);
+			CLR_LOCKOUT_BDB(rep);
 			locked = 0;
 		}
-		REP_SYSTEM_UNLOCK(env);
 
-		if ((role_chg || rep->master_id == DB_EID_INVALID) &&
-		    F_ISSET(env, ENV_PRIVATE))
+		if (F_ISSET(env, ENV_PRIVATE))
 			/*
 			 * If we think we're a new client, and we have a
 			 * private env, set our gen number down to 0.
@@ -828,7 +901,8 @@ __rep_start_int(env, dbt, flags)
 			 * gen is okay), but really this client needs to
 			 * sync with the master.
 			 */
-			rep->gen = 0;
+			SET_GEN(0);
+		REP_SYSTEM_UNLOCK(env);
 
 		/*
 		 * Announce ourselves and send out our data.
@@ -842,15 +916,15 @@ __rep_start_int(env, dbt, flags)
 	if (0) {
 		/*
 		 * We have separate labels for errors.  If we're returning an
-		 * error before we've set REP_F_READY_MSG, we use 'err'.  If
+		 * error before we've set REP_LOCKOUT_MSG, we use 'err'.  If
 		 * we are erroring while holding the region mutex, then we use
 		 * 'errunlock' label.  If we error without holding the rep
 		 * mutex we must use 'errlock'.
 		 */
 errlock:	REP_SYSTEM_LOCK(env);
-errunlock:	F_CLR(rep, REP_F_READY_MSG);
+errunlock:	FLD_CLR(rep->lockout_flags, REP_LOCKOUT_MSG);
 		if (locked)
-			F_CLR(rep, REP_F_READY_API | REP_F_READY_OP);
+			CLR_LOCKOUT_BDB(rep);
 		if (interrupting)
 			(void)__memp_set_config(
 			    env->dbenv, DB_MEMP_SYNC_INTERRUPT, 0);
@@ -862,16 +936,174 @@ out:
 		F_SET(rep, REP_F_START_CALLED);
 		REP_SYSTEM_UNLOCK(env);
 	}
-	if (start_th) {
-		REP_SYSTEM_LOCK(env);
-		F_CLR(rep, REP_F_INREPSTART);
-		REP_SYSTEM_UNLOCK(env);
-	}
+	if (start_th)
+		MUTEX_UNLOCK(env, rep->mtx_repstart);
 	if (pending_event != DB_EVENT_NO_SUCH_EVENT)
 		__rep_fire_event(env, pending_event, NULL);
 	__dbt_userfree(env, dbt, NULL, NULL);
 	ENV_LEAVE(env, ip);
 	return (ret);
+}
+
+/*
+ * Write the current generation's base LSN into the history database.
+ */
+static int
+__rep_save_lsn_hist(env, ip, lsnp)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_LSN *lsnp;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	REGENV *renv;
+	DB_TXN *txn;
+	DB *dbp;
+	DBT key_dbt, data_dbt;
+	__rep_lsn_hist_key_args key;
+	__rep_lsn_hist_data_args data;
+	u_int8_t key_buf[__REP_LSN_HIST_KEY_SIZE];
+	u_int8_t data_buf[__REP_LSN_HIST_DATA_SIZE];
+	db_timespec now;
+	int ret, t_ret;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	renv = env->reginfo->primary;
+	txn = NULL;
+	ret = 0;
+
+	if ((ret = __txn_begin(env, ip, NULL, &txn, DB_IGNORE_LEASE)) != 0)
+		return (ret);
+
+	/*
+	 * Use the cached handle to the history database if it is already open.
+	 * Since we're becoming master, we don't expect to need it after this,
+	 * so clear the cached handle and close the database once we've written
+	 * our update.
+	 */
+	if ((dbp = db_rep->lsn_db) == NULL) {
+		if ((ret = __rep_open_lsn_history(env,
+		    ip, txn, DB_CREATE, &dbp)) != 0)
+			goto err;
+	} else
+		db_rep->lsn_db = NULL;
+
+	key.version = REP_LSN_HISTORY_FMT_VERSION;
+	key.gen = rep->gen;
+	__rep_lsn_hist_key_marshal(env, &key, key_buf);
+
+	data.envid = renv->envid;
+	data.lsn = *lsnp;
+	__os_gettime(env, &now, 0);
+	data.hist_sec = (u_int32_t)now.tv_sec;
+	data.hist_nsec = (u_int32_t)now.tv_nsec;
+	__rep_lsn_hist_data_marshal(env, &data, data_buf);
+
+	DB_INIT_DBT(key_dbt, key_buf, sizeof(key_buf));
+	DB_INIT_DBT(data_dbt, data_buf, sizeof(data_buf));
+	ret = __db_put(dbp, ip, txn, &key_dbt, &data_dbt, 0);
+err:
+	if (dbp != NULL &&
+	    (t_ret = __db_close(dbp, txn, DB_NOSYNC)) != 0 && ret == 0)
+		ret = t_ret;
+
+	DB_ASSERT(env, txn != NULL);
+	if ((t_ret = __db_txn_auto_resolve(env, txn, 0, ret)) && ret == 0)
+		ret = t_ret;
+
+	return (ret);
+}
+
+/*
+ * Open existing LSN history database, wherever it may be (on disk or in
+ * memory).  If it doesn't exist, create it only if DB_CREATE is specified by
+ * our caller.
+ *
+ * If we could be sure that all sites in the replication group had matching
+ * REP_C_INMEM settings (that never changed over time), we could simply look for
+ * the database in the place where we knew it should be.  The code here tries to
+ * be more flexible/resilient to mis-matching INMEM settings, even though we
+ * recommend against that.
+ */
+static int
+__rep_open_lsn_history(env, ip, txn, flags, dbpp)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_TXN *txn;
+	u_int32_t flags;
+	DB **dbpp;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	DB *dbp;
+	char *fname;
+	u_int32_t myflags;
+	int ret, t_ret;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+
+	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
+		return (ret);
+
+	myflags = (F_ISSET(env, ENV_THREAD) ? DB_THREAD : 0);
+
+	/*
+	 * First, try opening it as a sub-database within a disk-resident
+	 * database file.  (If success, skip to the end.)
+	 */
+	if ((ret = __db_open(dbp, ip, txn,
+	    REPSYSDBNAME, REPLSNHIST, DB_BTREE, myflags, 0, PGNO_BASE_MD)) == 0)
+		goto found;
+	if (ret != ENOENT)
+		goto err;
+
+	/*
+	 * Here, the file was not found.  Next, try opening it as an in-memory
+	 * database (after the necessary clean-up).
+	 */
+	ret = __db_close(dbp, txn, DB_NOSYNC);
+	dbp = NULL;
+	if (ret != 0 || (ret = __db_create_internal(&dbp, env, 0)) != 0)
+		goto err;
+	if ((ret = __db_open(dbp, ip, txn,
+	    NULL, REPLSNHIST, DB_BTREE, myflags, 0, PGNO_BASE_MD)) == 0)
+		goto found;
+	if (ret != ENOENT)
+		goto err;
+
+	/*
+	 * Here, the database was not found either on disk or in memory.  Create
+	 * it, according to our local INMEM setting.
+	 */
+	ret = __db_close(dbp, txn, DB_NOSYNC);
+	dbp = NULL;
+	if (ret != 0)
+		goto err;
+	if (LF_ISSET(DB_CREATE)) {
+		if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
+			goto err;
+		if ((ret = __db_set_pagesize(dbp, REPSYSDBPGSZ)) != 0)
+			goto err;
+		FLD_SET(myflags, DB_CREATE);
+		fname = FLD_ISSET(rep->config, REP_C_INMEM) ?
+		    NULL : REPSYSDBNAME;
+		if ((ret = __db_open(dbp, ip, txn, fname,
+		    REPLSNHIST, DB_BTREE, myflags, 0, PGNO_BASE_MD)) == 0)
+			goto found;
+	} else
+		ret = ENOENT;
+
+err:
+	if (dbp != NULL && (t_ret = __db_close(dbp, txn, DB_NOSYNC)) != 0 &&
+	    (ret == 0 || ret == ENOENT))
+		ret = t_ret;
+	return (ret);
+
+found:
+	*dbpp = dbp;
+	return (0);
 }
 
 /*
@@ -1089,8 +1321,8 @@ __rep_restore_prepared(env)
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	if (IS_ZERO_LSN(rep->max_prep_lsn)) {
-		RPRINT(env, DB_VERB_REP_MISC,
-		    (env, "restore_prep: No prepares. Skip."));
+		VPRINT(env, (env, DB_VERB_REP_MISC,
+		    "restore_prep: No prepares. Skip."));
 		return (0);
 	}
 	txninfo = NULL;
@@ -1118,8 +1350,8 @@ __rep_restore_prepared(env)
 	 * that txn has been resolved.  We're done.
 	 */
 	if (rep->max_prep_lsn.file < lsn.file) {
-		RPRINT(env, DB_VERB_REP_MISC,
-		    (env, "restore_prep: Prepare resolved. Skip"));
+		VPRINT(env, (env, DB_VERB_REP_MISC,
+		    "restore_prep: Prepare resolved. Skip"));
 		ZERO_LSN(rep->max_prep_lsn);
 		goto done;
 	}
@@ -1517,6 +1749,7 @@ __rep_set_timeout(dbenv, which, timeout)
 	db_timeout_t timeout;
 {
 	DB_REP *db_rep;
+	DB_THREAD_INFO *ip;
 	ENV *env;
 	REP *rep;
 	int repmgr_timeout, ret;
@@ -1526,6 +1759,13 @@ __rep_set_timeout(dbenv, which, timeout)
 	rep = db_rep->region;
 	ret = 0;
 	repmgr_timeout = 0;
+
+	if (timeout == 0 && (which == DB_REP_CONNECTION_RETRY ||
+	    which == DB_REP_ELECTION_TIMEOUT || which == DB_REP_LEASE_TIMEOUT ||
+	    which == DB_REP_ELECTION_RETRY)) {
+		__db_errx(env, "timeout value must be > 0");
+		return (EINVAL);
+	}
 
 	if (which == DB_REP_ACK_TIMEOUT || which == DB_REP_CONNECTION_RETRY ||
 	    which == DB_REP_ELECTION_RETRY ||
@@ -1785,6 +2025,7 @@ __rep_set_transport_pp(dbenv, eid, f_send)
 	    const DBT *, const DBT *, const DB_LSN *, int, u_int32_t));
 {
 	DB_REP *db_rep;
+	DB_THREAD_INFO *ip;
 	ENV *env;
 	int ret;
 
@@ -2084,8 +2325,9 @@ __rep_sync(dbenv, flags)
 	 * synchronize until the next time the master changes.
 	 */
 	F_CLR(rep, REP_F_DELAY);
-	if (IS_ZERO_LSN(lsn) && FLD_ISSET(rep->config, REP_C_NOAUTOINIT)) {
-		F_CLR(rep, REP_F_NOARCHIVE | REP_F_RECOVER_MASK);
+	if (IS_ZERO_LSN(lsn) && !FLD_ISSET(rep->config, REP_C_AUTOINIT)) {
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_ARCHIVE);
+		CLR_RECOVERY_SETTINGS(rep);
 		ret = DB_REP_JOIN_FAILURE;
 		REP_SYSTEM_UNLOCK(env);
 		goto out;
@@ -2098,17 +2340,559 @@ __rep_sync(dbenv, flags)
 	 * __rep_new_master delayed sending.
 	 */
 	if (IS_ZERO_LSN(lsn)) {
-		DB_ASSERT(env, F_ISSET(rep, REP_F_RECOVER_UPDATE));
+		DB_ASSERT(env, rep->sync_state == SYNC_UPDATE);
 		type = REP_UPDATE_REQ;
 		repflags = 0;
 	} else {
-		DB_ASSERT(env, F_ISSET(rep, REP_F_RECOVER_VERIFY));
+		DB_ASSERT(env, rep->sync_state == SYNC_VERIFY);
 		type = REP_VERIFY_REQ;
 		repflags = DB_REP_ANYWHERE;
 	}
 	(void)__rep_send_message(env, master, type, &lsn, NULL, 0, repflags);
 
 out:	ENV_LEAVE(env, ip);
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __rep_txn_applied __P((ENV *,
+ * PUBLIC:     DB_THREAD_INFO *, DB_COMMIT_INFO *, db_timeout_t));
+ */
+int
+__rep_txn_applied(env, ip, commit_info, timeout)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_COMMIT_INFO *commit_info;
+	db_timeout_t timeout;
+{
+	REP *rep;
+	db_timespec limit, now, t;
+	db_timeout_t duration;
+	struct rep_waitgoal reason;
+	int locked, ret, t_ret;
+
+	if (commit_info->gen == 0) {
+		__db_errx(env,
+		    "non-replication commit token in replication env");
+		return (EINVAL);
+	}
+
+	rep = env->rep_handle->region;
+
+	VPRINT(env, (env, DB_VERB_REP_MISC,
+	    "checking txn_applied: gen %lu, envid %lu, LSN [%lu][%lu]",
+	    (u_long)commit_info->gen, (u_long)commit_info->envid,
+	    (u_long)commit_info->lsn.file, (u_long)commit_info->lsn.offset));
+	locked = 0;
+	__os_gettime(env, &limit, 1);
+	TIMESPEC_ADD_DB_TIMEOUT(&limit, timeout);
+
+retry:
+	/*
+	 * The checking is done within the scope of the handle count, but if we
+	 * end up having to wait that part is not.  If a lockout sequence begins
+	 * while we're waiting, it will wake us up, and we'll come back here to
+	 * try entering the scope again, at which point we'll get an error so
+	 * that we return immediately.
+	 */
+	if ((ret = __op_handle_enter(env)) != 0)
+		goto out;
+
+	ret = __rep_check_applied(env, ip, commit_info, &reason);
+	t_ret = __env_db_rep_exit(env);
+
+	/*
+	 * Between here and __rep_check_applied() we use DB_TIMEOUT privately to
+	 * mean that the transaction hasn't been applied yet, but it still
+	 * plausibly could be soon; think of it as meaning "not yet".  So
+	 * DB_TIMEOUT doesn't necessarily mean that DB_TIMEOUT is the ultimate
+	 * return that the application will see.
+	 *
+	 * When we get this "not yet", we check the actual time remaining.  If
+	 * the time has expired, then indeed we can simply pass DB_TIMEOUT back
+	 * up to the calling application.  But if not, it tells us that we have
+	 * a chance to wait and try again.  This is a nice division of labor,
+	 * because it means the lower level functions (__rep_check_applied() and
+	 * below) do not have to mess with any actual time computations, or
+	 * waiting, at all.
+	 */
+	if (ret == DB_TIMEOUT && t_ret == 0 && F_ISSET(rep, REP_F_CLIENT)) {
+		__os_gettime(env, &now, 1);
+		if (timespeccmp(&now, &limit, <)) {
+
+			/* Compute how much time remains before the limit. */
+			t = limit;
+			timespecsub(&t, &now);
+			DB_TIMESPEC_TO_TIMEOUT(duration, &t, 1);
+
+			/*
+			 * Wait for whatever __rep_check_applied told us we
+			 * needed to wait for.  But first, check the condition
+			 * again under mutex protection, in case there was a
+			 * close race.
+			 */
+			if (reason.why == AWAIT_LSN ||
+			    reason.why == AWAIT_HISTORY) {
+				MUTEX_LOCK(env, rep->mtx_clientdb);
+				locked = 1;
+			}
+			REP_SYSTEM_LOCK(env);
+			ret = __rep_check_goal(env, &reason);
+			if (locked) {
+				MUTEX_UNLOCK(env, rep->mtx_clientdb);
+				locked = 0;
+			}
+			if (ret == DB_TIMEOUT) {
+				/*
+				 * The usual case: we haven't reached our goal
+				 * yet, even after checking again while holding
+				 * mutex.
+				 */
+				ret = __rep_await_condition(env,
+				    &reason, duration);
+
+				/*
+				 * If it were possible for
+				 * __rep_await_condition() to return DB_TIMEOUT
+				 * that would confuse the outer "if" statement
+				 * here.
+				 */
+				DB_ASSERT(env, ret != DB_TIMEOUT);
+			}
+			REP_SYSTEM_UNLOCK(env);
+			if (ret != 0)
+				goto out;
+
+			/*
+			 * Note that the "reason" that check_applied set, and
+			 * that await_condition waited for, does not necessarily
+			 * represent a final result ready to return to the
+			 * user.  In some cases there may be a few state changes
+			 * necessary before we are able to determine the final
+			 * result.  Thus whenever we complete a successful wait
+			 * we need to cycle back and check the full txn_applied
+			 * question again.
+			 */
+			goto retry;
+		}
+	}
+
+	if (t_ret != 0 &&
+	    (ret == 0 || ret == DB_TIMEOUT || ret == DB_NOTFOUND))
+		ret = t_ret;
+
+out:
+	return (ret);
+}
+
+/*
+ * The only non-zero return code from this function is for unexpected errors.
+ * We normally return 0, regardless of whether the wait terminated because the
+ * condition was satisfied or the timeout expired.
+ */
+static int
+__rep_await_condition(env, reasonp, duration)
+	ENV *env;
+	struct rep_waitgoal *reasonp;
+	db_timeout_t duration;
+{
+	REGENV *renv;
+	REGINFO *infop;
+	REP *rep;
+	struct __rep_waiter *waiter;
+	int ret;
+
+	rep = env->rep_handle->region;
+	infop = env->reginfo;
+	renv = infop->primary;
+
+	/*
+	 * Acquire the first lock on the self-blocking mutex when we first
+	 * allocate it.  Thereafter when it's on the free list we know that
+	 * first lock has already been taken.
+	 */
+	if ((waiter = SH_TAILQ_FIRST(&rep->free_waiters,
+	    __rep_waiter)) == NULL) {
+		MUTEX_LOCK(env, renv->mtx_regenv);
+		if ((ret = __env_alloc(env->reginfo,
+		    sizeof(struct __rep_waiter), &waiter)) == 0) {
+			memset(waiter, 0, sizeof(*waiter));
+			if ((ret = __mutex_alloc(env, MTX_REP_WAITER,
+			    DB_MUTEX_SELF_BLOCK, &waiter->mtx_repwait)) != 0)
+				__env_alloc_free(infop, waiter);
+		}
+		MUTEX_UNLOCK(env, renv->mtx_regenv);
+		if (ret != 0)
+			return (ret);
+
+		MUTEX_LOCK(env, waiter->mtx_repwait);
+	} else
+		SH_TAILQ_REMOVE(&rep->free_waiters,
+		    waiter, links, __rep_waiter);
+	waiter->flags = 0;
+	waiter->goal = *reasonp;
+	SH_TAILQ_INSERT_HEAD(&rep->waiters,
+	    waiter, links, __rep_waiter);
+
+	VPRINT(env, (env, DB_VERB_REP_MISC,
+	    "waiting for condition %d", (int)reasonp->why));
+	REP_SYSTEM_UNLOCK(env);
+	/* Wait here for conditions to become more favorable. */
+	MUTEX_WAIT(env, waiter->mtx_repwait, duration);
+	REP_SYSTEM_LOCK(env);
+
+	if (!F_ISSET(waiter, REP_F_WOKEN))
+		SH_TAILQ_REMOVE(&rep->waiters, waiter, links, __rep_waiter);
+	SH_TAILQ_INSERT_HEAD(&rep->free_waiters, waiter, links, __rep_waiter);
+
+	return (0);
+}
+
+/*
+ * Check whether the transaction is currently applied.  If it is not, but it
+ * might likely become applied in the future, then return DB_TIMEOUT.  It's the
+ * caller's duty to figure out whether to wait or not in that case.  Here we
+ * only do an immediate check of the current state of affairs.
+ */
+static int
+__rep_check_applied(env, ip, commit_info, reasonp)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_COMMIT_INFO *commit_info;
+	struct rep_waitgoal *reasonp;
+{
+	DB_LOG *dblp;
+	DB_REP *db_rep;
+	LOG *lp;
+	REP *rep;
+	DB_TXN *txn;
+	DBC *dbc;
+	__rep_lsn_hist_data_args hist, hist2;
+	DB_LSN lsn;
+	u_int32_t gen;
+	int ret, t_ret;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	dblp = env->lg_handle;
+	lp = dblp->reginfo.primary;
+	gen = rep->gen;
+	txn = NULL;
+	dbc = NULL;
+
+	if (F_ISSET(rep, REP_F_MASTER)) {
+		LOG_SYSTEM_LOCK(env);
+		lsn = lp->lsn;
+		LOG_SYSTEM_UNLOCK(env);
+	} else {
+		MUTEX_LOCK(env, rep->mtx_clientdb);
+		lsn = lp->max_perm_lsn;
+		MUTEX_UNLOCK(env, rep->mtx_clientdb);
+	}
+
+	/*
+	 * The first thing to consider is whether we're in the right gen.
+	 * The token gen either matches our current gen, or is left over from an
+	 * older gen, or in rare circumstances could be from a "future" gen that
+	 * we haven't learned about yet (or that got rolled back).
+	 */
+	if (commit_info->gen == gen) {
+		ret = __rep_read_lsn_history(env,
+		    ip, &txn, &dbc, gen, &hist, reasonp, DB_SET);
+		if (ret == DB_NOTFOUND) {
+			/*
+			 * We haven't yet received the LSN history of the
+			 * current generation from the master.  Return
+			 * DB_TIMEOUT to tell the caller it needs to wait and
+			 * tell it to wait for the LSN history.
+			 *
+			 * Note that this also helps by eliminating the weird
+			 * period between receiving a new gen (from a NEWMASTER)
+			 * and the subsequent syncing with that new gen.  We
+			 * really only want to return success at the current gen
+			 * once we've synced.
+			 */
+			ret = DB_TIMEOUT;
+			reasonp->why = AWAIT_HISTORY;
+			reasonp->u.lsn = lsn;
+		}
+		if (ret != 0)
+			goto out;
+
+		if (commit_info->envid != hist.envid) {
+			/*
+			 * Gens match, but envids don't: means there were two
+			 * masters at the same gen, and the txn of interest was
+			 * rolled back.
+			 */
+			ret = DB_NOTFOUND;
+			goto out;
+		}
+
+		if (LOG_COMPARE(&commit_info->lsn, &lsn) > 0) {
+			/*
+			 * We haven't yet gotten the LSN of interest, but we can
+			 * expect it soon; so wait for it.
+			 */
+			ret = DB_TIMEOUT;
+			reasonp->why = AWAIT_LSN;
+			reasonp->u.lsn = commit_info->lsn;
+			goto out;
+		}
+
+		if (LOG_COMPARE(&commit_info->lsn, &hist.lsn) >= 0) {
+			/*
+			 * The LSN of interest is in the past, but within the
+			 * range claimed for this gen.  Success!  (We have read
+			 * consistency.)
+			 */
+			ret = 0;
+			goto out;
+		}
+
+		/*
+		 * There must have been a DUPMASTER at some point: the
+		 * description of the txn of interest doesn't match what we see
+		 * in the history available to us now.
+		 */
+		ret = DB_NOTFOUND;
+
+	} else if (commit_info->gen < gen || gen == 0) {
+		/*
+		 * Transaction from an old gen.  Read this gen's base LSN, plus
+		 * that of the next higher gen, because we want to check that
+		 * the token LSN is within the close/open range defined by
+		 * [base,next).
+		 */
+		ret = __rep_read_lsn_history(env,
+		    ip, &txn, &dbc, commit_info->gen, &hist, reasonp, DB_SET);
+		t_ret = __rep_read_lsn_history(env,
+		    ip, &txn, &dbc, commit_info->gen, &hist2, reasonp, DB_NEXT);
+		if (ret == DB_NOTFOUND) {
+			/*
+			 * If the desired gen is not in our database, it could
+			 * mean either of two things.  1. The whole gen could
+			 * have been rolled back.  2. We could just be really
+			 * far behind on replication.  Reading ahead to the next
+			 * following gen, which we likely need anyway, helps us
+			 * decide which case to conclude.
+			 */
+			if (t_ret == 0)
+				/*
+				 * Second read succeeded, so "being behind in
+				 * replication" is not a viable reason for
+				 * having failed to find the first read.
+				 * Therefore, the gen must have been rolled
+				 * back, and the proper result is NOTFOUND to
+				 * indicate that.
+				 */
+				goto out;
+			if (t_ret == DB_NOTFOUND) {
+				/*
+				 * Second read also got a NOTFOUND: we're
+				 * definitely "behind" (we don't even have
+				 * current gen's history).  So, waiting is the
+				 * correct result.
+				 */
+				ret = DB_TIMEOUT;
+				reasonp->why = AWAIT_HISTORY;
+				reasonp->u.lsn = lsn;
+				goto out;
+			}
+			/*
+			 * Here, t_ret is something unexpected, which trumps the
+			 * NOTFOUND returned from the first read.
+			 */
+			ret = t_ret;
+			goto out;
+		}
+		if (ret != 0)
+			goto out; /* Unexpected error, first read. */
+		if (commit_info->envid != hist.envid) {
+			/*
+			 * (We don't need the second read in order to make this
+			 * test.)
+			 *
+			 * We have info for the indicated gen, but the envids
+			 * don't match, meaning the txn was written at a dup
+			 * master and that gen instance was rolled back.
+			 */
+			ret = DB_NOTFOUND;
+			goto out;
+		}
+
+		/* Examine result of second read. */
+		if ((ret = t_ret) == DB_NOTFOUND) {
+			/*
+			 * We haven't even heard about our current gen yet, so
+			 * it's worth waiting for it.
+			 */
+			ret = DB_TIMEOUT;
+			reasonp->why = AWAIT_HISTORY;
+			reasonp->u.lsn = lsn;
+		} else if (ret != 0)
+			goto out; /* Second read returned unexpeced error. */
+
+		/*
+		 * We now have the history info for the gen of the txn, and for
+		 * the subsequent gen.  All we have to do is see if the LSN is
+		 * in range.
+		 */
+		if (LOG_COMPARE(&commit_info->lsn, &hist.lsn) >= 0 &&
+		    LOG_COMPARE(&commit_info->lsn, &hist2.lsn) < 0)
+			ret = 0;
+		else
+			ret = DB_NOTFOUND;
+	} else {
+		/*
+		 * Token names a future gen.  If we're a client and the LSN also
+		 * is in the future, then it's possible we just haven't caught
+		 * up yet, so we can wait for it.  Otherwise, it must have been
+		 * part of a generation that got lost in a roll-back.
+		 */
+		if (F_ISSET(rep, REP_F_CLIENT) &&
+		    LOG_COMPARE(&commit_info->lsn, &lsn) > 0) {
+			reasonp->why = AWAIT_GEN;
+			reasonp->u.gen = commit_info->gen;
+			return (DB_TIMEOUT);
+		}
+		return (DB_NOTFOUND);
+	}
+
+out:
+	if (dbc != NULL &&
+	    (t_ret = __dbc_close(dbc)) != 0 && ret == 0)
+		ret = t_ret;
+	if (txn != NULL &&
+	    (t_ret = __db_txn_auto_resolve(env, txn, 1, ret)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
+}
+
+/*
+ * The txn and dbc handles are owned by caller, though we create them if
+ * necessary.  Caller is responsible for closing them.
+ */
+static int
+__rep_read_lsn_history(env, ip, txn, dbc, gen, gen_infop, reasonp, flags)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_TXN **txn;
+	DBC **dbc;
+	u_int32_t gen;
+	__rep_lsn_hist_data_args *gen_infop;
+	struct rep_waitgoal *reasonp;
+	u_int32_t flags;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	DB *dbp;
+	__rep_lsn_hist_key_args key;
+	u_int8_t key_buf[__REP_LSN_HIST_KEY_SIZE];
+	u_int8_t data_buf[__REP_LSN_HIST_DATA_SIZE];
+	DBT key_dbt, data_dbt;
+	u_int32_t desired_gen;
+	int ret, tries;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	ret = 0;
+
+	DB_ASSERT(env, flags == DB_SET || flags == DB_NEXT);
+
+	/* Simply return cached info, if we already have it. */
+	desired_gen = flags == DB_SET ? gen : gen + 1;
+	REP_SYSTEM_LOCK(env);
+	if (rep->gen == desired_gen && !IS_ZERO_LSN(rep->gen_base_lsn)) {
+		gen_infop->lsn = rep->gen_base_lsn;
+		gen_infop->envid = rep->master_envid;
+		goto unlock;
+	}
+	REP_SYSTEM_UNLOCK(env);
+
+	tries = 0;
+retry:
+	if (*txn == NULL &&
+	    (ret = __txn_begin(env, ip, NULL, txn, 0)) != 0)
+		return (ret);
+
+	if ((dbp = db_rep->lsn_db) == NULL) {
+		if ((ret = __rep_open_lsn_history(env,
+		    ip, *txn, 0, &dbp)) != 0) {
+			/*
+			 * If the database isn't there, it could be because it's
+			 * memory-resident, and we haven't yet sync'ed with the
+			 * master to materialize it.  (It could make sense to
+			 * include a test for INMEM in this conditional
+			 * expression, if we were sure all sites had matching
+			 * INMEM settings; but since we don't enforce that,
+			 * leaving it out makes for more optimistic behavior.)
+			 */
+			if (ret == ENOENT &&
+			    !F_ISSET(rep, REP_F_NIMDBS_LOADED | REP_F_MASTER)) {
+				ret = DB_TIMEOUT;
+				reasonp->why = AWAIT_NIMDB;
+			}
+			goto err;
+		}
+		db_rep->lsn_db = dbp;
+	}
+
+	if (*dbc == NULL &&
+	    (ret = __db_cursor(dbp, ip, *txn, dbc, 0)) != 0)
+		goto err;
+
+	if (flags == DB_SET) {
+		key.version = REP_LSN_HISTORY_FMT_VERSION;
+		key.gen = gen;
+		__rep_lsn_hist_key_marshal(env, &key, key_buf);
+	}
+	DB_INIT_DBT(key_dbt, key_buf, __REP_LSN_HIST_KEY_SIZE);
+	key_dbt.ulen = __REP_LSN_HIST_KEY_SIZE;
+	F_SET(&key_dbt, DB_DBT_USERMEM);
+
+	memset(&data_dbt, 0, sizeof(data_dbt));
+	data_dbt.data = data_buf;
+	data_dbt.ulen = __REP_LSN_HIST_DATA_SIZE;
+	F_SET(&data_dbt, DB_DBT_USERMEM);
+	if ((ret = __dbc_get(*dbc, &key_dbt, &data_dbt, flags)) != 0) {
+		if ((ret == DB_LOCK_DEADLOCK || ret == DB_LOCK_NOTGRANTED) &&
+		    ++tries < 5) { /* Limit of 5 is an arbitrary choice. */
+			ret = __dbc_close(*dbc);
+			*dbc = NULL;
+			if (ret != 0)
+				goto err;
+			ret = __txn_abort(*txn);
+			*txn = NULL;
+			if (ret != 0)
+				goto err;
+			__os_yield(env, 0, 10000); /* Arbitrary duration. */
+			goto retry;
+		}
+		goto err;
+	}
+
+	/*
+	 * In the DB_NEXT case, we don't know what the next gen is.  Unmarshal
+	 * the key too, just so that we can check whether it matches the current
+	 * gen, for setting the cache.  Note that, interestingly, the caller
+	 * doesn't care what the key is in that case!
+	 */
+	if ((ret = __rep_lsn_hist_key_unmarshal(env,
+	    &key, key_buf, __REP_LSN_HIST_KEY_SIZE, NULL)) != 0)
+		goto err;
+	ret = __rep_lsn_hist_data_unmarshal(env,
+	    gen_infop, data_buf, __REP_LSN_HIST_DATA_SIZE, NULL);
+
+	REP_SYSTEM_LOCK(env);
+	if (rep->gen == key.gen) {
+		rep->gen_base_lsn = gen_infop->lsn;
+		rep->master_envid = gen_infop->envid;
+	}
+unlock:
+	REP_SYSTEM_UNLOCK(env);
+
+err:
 	return (ret);
 }
 
@@ -2130,13 +2914,17 @@ __rep_conv_vers(env, log_ver)
 	 */
 	if (log_ver == DB_LOGVERSION)
 		return (DB_REPVERSION);
-	if (log_ver == DB_LOGVERSION_44)
-		return (DB_REPVERSION_44);
-	if (log_ver == DB_LOGVERSION_45)
-		return (DB_REPVERSION_45);
-	if (log_ver == DB_LOGVERSION_46)
-		return (DB_REPVERSION_46);
+	if (log_ver == DB_LOGVERSION_48p2)
+		return (DB_REPVERSION_48);
+	if (log_ver == DB_LOGVERSION_48)
+		return (DB_REPVERSION_48);
 	if (log_ver == DB_LOGVERSION_47)
 		return (DB_REPVERSION_47);
+	if (log_ver == DB_LOGVERSION_46)
+		return (DB_REPVERSION_46);
+	if (log_ver == DB_LOGVERSION_45)
+		return (DB_REPVERSION_45);
+	if (log_ver == DB_LOGVERSION_44)
+		return (DB_REPVERSION_44);
 	return (DB_REPVERSION_INVALID);
 }

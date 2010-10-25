@@ -2,6 +2,10 @@ db_env_create
 	DB_CXX_NO_EXCEPTIONS		# C++: return error values
 	DB_RPCCLIENT			# An RPC client environment
 
+DbEnv.close
+	# Sync database when automatically closing its db handles.
+	DB_FORCESYNC			
+
 DbEnv.dbremove
 	DB_AUTO_COMMIT			# Implied transaction
 	DB_TXN_NOT_DURABLE		# Don't log the remove
@@ -11,6 +15,19 @@ DbEnv.dbrename
 
 DbEnv.fileid_reset
 	DB_ENCRYPT			# File contains encrypted databases
+
+DbEnv.log_verify
+	DB_LOG_VERIFY_ERR		# Verify failed.
+	DB_LOG_VERIFY_CAF		# Continue after a failed check.
+	# Not the entire logs are verified, due to user specified log range,
+	# archiving, or other reasons. Only part of the entire logs verified.
+	DB_LOG_VERIFY_PARTIAL
+	DB_LOG_VERIFY_DBFILE		# Verify only logs of one db file.
+	# Pre-scan log from last to first record to get aborts and timestamps.
+	DB_LOG_VERIFY_FORWARD		
+	DB_LOG_VERIFY_INTERR		# Got internal error during verify.
+	DB_LOG_VERIFY_WARNING		# Got warnings during verify.
+	DB_LOG_VERIFY_VERBOSE		# Output verbose information.
 
 DbEnv.open
 	DB_CREATE			# Create as necessary
@@ -115,11 +132,12 @@ DbEnv.remove
 
 DbEnv.rep_set_config
 	DB_REPMGR_CONF_2SITE_STRICT	# Don't cheat on election votes
+	DB_REPMGR_CONF_ELECTIONS	# Manage elections to choose master
+	DB_REP_CONF_AUTOINIT		# automatic client init
 	DB_REP_CONF_BULK		# Bulk transfer
 	DB_REP_CONF_DELAYCLIENT		# Delay client synchronization
 	DB_REP_CONF_INMEM		# In-memory replication
 	DB_REP_CONF_LEASE		# Master leases
-	DB_REP_CONF_NOAUTOINIT		# No automatic client init
 	DB_REP_CONF_NOWAIT		# Don't wait, return error
 
 DbEnv.rep_set_transport
@@ -208,6 +226,7 @@ DbEnv.set_verbose
 	DB_VERB_REP_MISC		# Miscellaneous replication output
 	DB_VERB_REP_MSGS		# Replication message output
 	DB_VERB_REP_SYNC		# Replication client sync output
+	DB_VERB_REP_SYSTEM		# Replication system messages
 	DB_VERB_REP_TEST		# Replication temporary test output
 	DB_VERB_WAITSFOR		# Dump waits-for table
 
@@ -217,10 +236,13 @@ DbEnv.stat_print
 	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.txn_begin
+	DB_IGNORE_LEASE			# UNDOC: Ignore leases
 	DB_READ_COMMITTED		# Degree 2 isolation
 	DB_READ_UNCOMMITTED		# Degree 1 isolation
 	DB_TXN_NOSYNC			# Do not sync log on commit
 	DB_TXN_NOWAIT			# Do not wait for locks
+	DB_TXN_FAMILY			# Cursors and child txns are
+					# independent but lock-compatible
 	DB_TXN_SNAPSHOT			# Snapshot isolation
 	DB_TXN_SYNC			# Always sync log on commit
 	DB_TXN_WAIT			# Always wait for locks in this txn
@@ -383,6 +405,7 @@ Db.open
 	# The following flags aren't actually part of the Db.open method
 	# API, but they are accepted by the underlying __db_open function.
 	DB_DURABLE_UNKNOWN		# UNDOC: Durability on open
+	DB_NOERROR			# UNDOC: Don't raise errors.
 	DB_ODDFILESIZE			# UNDOC: Truncate file to N * pgsize
 	DB_WRITEOPEN			# UNDOC: open with write lock
 

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -47,12 +47,13 @@
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 
 static int __ham_alloc_pages __P((DBC *, __ham_groupalloc_args *, DB_LSN *));
 static int __ham_alloc_pages_42
     __P((DBC *, __ham_groupalloc_42_args *, DB_LSN *));
+static int __ham_chgpg_recover_func
+    __P((DBC *, DBC *, u_int32_t *, db_pgno_t, u_int32_t, void *));
 
 /*
  * __ham_insdel_recover --
@@ -75,13 +76,113 @@ __ham_insdel_recover(env, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	db_indx_t dindx;
-	u_int32_t opcode;
-	int cmp_n, cmp_p, dtype, ktype, ret;
+	int cmp_n, cmp_p, ret;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
 	REC_PRINT(__ham_insdel_print);
 	REC_INTRO(__ham_insdel_read, ip, 1);
+
+	if ((ret = __memp_fget(mpf, &argp->pgno, ip, NULL,
+	    0, &pagep)) != 0) {
+		if (DB_UNDO(op)) {
+			if (ret == DB_PAGE_NOTFOUND)
+				goto done;
+			else {
+				ret = __db_pgerr(file_dbp, argp->pgno, ret);
+				goto out;
+			}
+		}
+		/* If the page is not here then it was later truncated. */
+		if (!IS_ZERO_LSN(argp->pagelsn))
+			goto done;
+		/*
+		 * This page was created by a group allocation and
+		 * the file may not have been extend yet.
+		 * Create the page if necessary.
+		 */
+		if ((ret = __memp_fget(mpf, &argp->pgno, ip, NULL,
+		    DB_MPOOL_CREATE, &pagep)) != 0) {
+			ret = __db_pgerr(file_dbp, argp->pgno, ret);
+			goto out;
+		}
+	}
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+
+	/*
+	 * Two possible things going on:
+	 * redo a delete/undo a put: delete the item from the page.
+	 * redo a put/undo a delete: add the item to the page.
+	 * If we are undoing a delete, then the information logged is the
+	 * entire entry off the page, not just the data of a dbt.  In
+	 * this case, we want to copy it back onto the page verbatim.
+	 * We do this by calling __insertpair with the type H_OFFPAGE instead
+	 * of H_KEYDATA.
+	 */
+	if ((argp->opcode == DELPAIR && cmp_n == 0 && DB_UNDO(op)) ||
+	    (argp->opcode == PUTPAIR && cmp_p == 0 && DB_REDO(op))) {
+		/*
+		 * Need to redo a PUT or undo a delete.
+		 */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		dindx = (db_indx_t)argp->ndx;
+		if ((ret = __ham_insertpair(dbc, pagep, &dindx, &argp->key,
+		    &argp->data, OP_MODE_GET(argp->keytype),
+		    OP_MODE_GET(argp->datatype))) != 0)
+			goto out;
+		LSN(pagep) = DB_REDO(op) ? *lsnp : argp->pagelsn;
+	} else if ((argp->opcode == DELPAIR && cmp_p == 0 && DB_REDO(op)) ||
+	    (argp->opcode == PUTPAIR && cmp_n == 0 && DB_UNDO(op))) {
+		/* Need to undo a put or redo a delete. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		__ham_dpair(file_dbp, pagep, argp->ndx);
+		LSN(pagep) = DB_REDO(op) ? *lsnp : argp->pagelsn;
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+	pagep = NULL;
+
+	/* Return the previous LSN. */
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	if (pagep != NULL)
+		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
+	REC_CLOSE;
+}
+
+/*
+ * __ham_insdel_42_recover --
+ *
+ * PUBLIC: int __ham_insdel_42_recover
+ * PUBLIC:     __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__ham_insdel_42_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__ham_insdel_42_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	db_indx_t dindx;
+	u_int32_t dtype, ktype, opcode;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	pagep = NULL;
+	REC_PRINT(__ham_insdel_print);
+	REC_INTRO(__ham_insdel_42_read, ip, 1);
 
 	if ((ret = __memp_fget(mpf, &argp->pgno, ip, NULL,
 	    0, &pagep)) != 0) {
@@ -330,13 +431,133 @@ __ham_replace_recover(env, dbtp, lsnp, op, info)
 	DBT dbt;
 	PAGE *pagep;
 	u_int32_t change;
-	int cmp_n, cmp_p, is_plus, modified, ret;
+	int cmp_n, cmp_p, is_plus, modified, off, ret;
 	u_int8_t *hk;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
 	REC_PRINT(__ham_replace_print);
 	REC_INTRO(__ham_replace_read, ip, 0);
+
+	REC_FGET(mpf, ip, argp->pgno, &pagep, done);
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+
+	memset(&dbt, 0, sizeof(dbt));
+	modified = 0;
+
+	/*
+	 * Before we know the direction of the transformation we will
+	 * determine the size differential; then once we know if we are
+	 * redoing or undoing, we'll adjust the sign (is_plus) appropriately.
+	 */
+	if (argp->newitem.size > argp->olditem.size) {
+		change = argp->newitem.size - argp->olditem.size;
+		is_plus = 1;
+	} else {
+		change = argp->olditem.size - argp->newitem.size;
+		is_plus = 0;
+	}
+	/*
+	 * When chaning from a "regular" record to an off page record
+	 * the old record does not contain a header while the new record
+	 * does and is at an offset of -1 relative to the data part of
+	 * the record. We add this to the amount of the change (which is
+	 * an absolute value).  If we are undoing then the offset is not
+	 * used in the placement of the data.
+	 */
+	off = argp->off;
+	if (off < 0 &&
+	     (OP_MODE_GET(argp->oldtype) == H_DUPLICATE ||
+	     OP_MODE_GET(argp->oldtype) == H_KEYDATA)) {
+		change -= (u_int32_t)off;
+		if (DB_UNDO(op))
+			off = 0;
+	}
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Reapply the change as specified. */
+		dbt.data = argp->newitem.data;
+		dbt.size = argp->newitem.size;
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		LSN(pagep) = *lsnp;
+		/*
+		 * The is_plus flag is set properly to reflect
+		 * newitem.size - olditem.size.
+		 */
+		modified = 1;
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
+		/* Undo the already applied change. */
+		dbt.data = argp->olditem.data;
+		dbt.size = argp->olditem.size;
+		/*
+		 * Invert is_plus to reflect sign of
+		 * olditem.size - newitem.size.
+		 */
+		is_plus = !is_plus;
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		LSN(pagep) = argp->pagelsn;
+		modified = 1;
+	}
+
+	if (modified) {
+		__ham_onpage_replace(file_dbp, pagep,
+		    argp->ndx, off, change, is_plus, &dbt);
+		if (argp->oldtype != argp->newtype) {
+			hk = P_ENTRY(file_dbp, pagep, argp->ndx);
+			if (DB_REDO(op))
+				HPAGE_PTYPE(hk) = OP_MODE_GET(argp->newtype);
+			else
+				HPAGE_PTYPE(hk) = OP_MODE_GET(argp->oldtype);
+		}
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+	pagep = NULL;
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	if (pagep != NULL)
+		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
+	REC_CLOSE;
+}
+
+/*
+ * __ham_replace_42_recover --
+ *	This log message refers to partial puts that are local to a single
+ *	page.  You can think of them as special cases of the more general
+ *	insdel log message.
+ *
+ * PUBLIC: int __ham_replace_42_recover
+ * PUBLIC:    __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__ham_replace_42_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__ham_replace_42_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	DBT dbt;
+	PAGE *pagep;
+	u_int32_t change;
+	int cmp_n, cmp_p, is_plus, modified, ret;
+	u_int8_t *hk;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	pagep = NULL;
+	REC_PRINT(__ham_replace_print);
+	REC_INTRO(__ham_replace_42_read, ip, 0);
 
 	REC_FGET(mpf, ip, argp->pgno, &pagep, done);
 
@@ -734,10 +955,12 @@ __ham_metagroup_recover(env, dbtp, lsnp, op, info)
 			    &pgno, ip, NULL, DB_MPOOL_CREATE, &pagep)) != 0)
 				goto out;
 
-			if (IS_ZERO_LSN(LSN(pagep)))
+			if (IS_ZERO_LSN(LSN(pagep))) {
+				REC_DIRTY(mpf, ip, dbc->priority, &pagep);
 				P_INIT(pagep, file_dbp->pgsize,
 				    PGNO_INVALID, PGNO_INVALID, PGNO_INVALID,
 				    0, P_HASH);
+			}
 			if ((ret =
 			    __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)
 				goto out;
@@ -777,13 +1000,9 @@ do_meta:
 	/*
 	 * Now we need to fix up the spares array.  Each entry in the
 	 * spares array indicates the beginning page number for the
-	 * indicated doubling.  We need to fill this in whenever the
-	 * spares array is invalid, if we never reclaim pages then
-	 * we have to allocate the pages to the spares array in both
-	 * the redo and undo cases.
+	 * indicated doubling.
 	 */
-	if (did_alloc && !DB_UNDO(op) &&
-	    hcp->hdr->spares[__db_log2(argp->bucket + 1) + 1] == PGNO_INVALID) {
+	if (cmp_p == 0 && did_alloc && !DB_UNDO(op)) {
 		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
 		hcp->hdr->spares[__db_log2(argp->bucket + 1) + 1] =
 		    (argp->pgno - argp->bucket) - 1;
@@ -822,7 +1041,7 @@ do_meta:
 
 	if (cmp_n == 0 && DB_UNDO(op))
 		mmeta->last_pgno = argp->last_pgno;
-	else if (DB_REDO(op) && mmeta->last_pgno < pgno)
+	else if (cmp_p == 0 && DB_REDO(op) && mmeta->last_pgno < pgno)
 		mmeta->last_pgno = pgno;
 
 	if (argp->mmpgno != argp->mpgno &&
@@ -839,6 +1058,70 @@ out:	if (mmeta != NULL)
 		(void)__ham_release_meta(dbc);
 
 	REC_CLOSE;
+}
+
+/*
+ * __ham_contract_recover --
+ *	Recovery function for contracting a hash table
+ *
+ * PUBLIC: int __ham_contract_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__ham_contract_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__ham_contract_args *argp;
+	DB_THREAD_INFO *ip;
+	DB_MPOOLFILE *mpf;
+	DB *file_dbp;
+	DBC *dbc;
+	HASH_CURSOR *hcp;
+	HMETA *meta;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	REC_PRINT(__ham_contract_print);
+	REC_INTRO(__ham_contract_read, ip, 1);
+
+	hcp = (HASH_CURSOR *)dbc->internal;
+	if ((ret = __ham_get_meta(dbc)) != 0)
+		goto done;
+	meta = hcp->hdr;
+	cmp_n = LOG_COMPARE(lsnp, &meta->dbmeta.lsn);
+	cmp_p = LOG_COMPARE(&meta->dbmeta.lsn, &argp->meta_lsn);
+	CHECK_LSN(env, op, cmp_p, &meta->dbmeta.lsn, &argp->meta_lsn);
+	if (cmp_p == 0 && DB_REDO(op)) {
+		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
+		meta = hcp->hdr;
+		meta->max_bucket = argp->bucket - 1;
+		if (argp->bucket == meta->low_mask + 1) {
+			meta->spares[
+			    __db_log2(argp->bucket) + 1] = PGNO_INVALID;
+			meta->high_mask = meta->low_mask;
+			meta->low_mask >>= 1;
+		}
+		meta->dbmeta.lsn = *lsnp;
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
+		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
+		meta = hcp->hdr;
+		meta->max_bucket = argp->bucket;
+		if (argp->bucket == meta->high_mask + 1) {
+			meta->spares[__db_log2(argp->bucket) + 1] =
+			    argp->pgno - argp->bucket;
+			meta->low_mask = meta->high_mask;
+			meta->high_mask = meta->max_bucket | meta->low_mask;
+		}
+		meta->dbmeta.lsn = argp->meta_lsn;
+	}
+	*lsnp = argp->prev_lsn;
+
+out:	ret = __ham_release_meta(dbc);
+done:	REC_CLOSE;
 }
 
 /*
@@ -1018,6 +1301,64 @@ out:	return (__memp_fput(mpf, ip, pagep, dbc->priority));
 }
 
 /*
+ * __ham_changeslot_recover --
+ *	Recovery function for changeslot.
+ * When we compact a hash database we may change one of the spares slots
+ * to point at a new block of pages.
+ *
+ * PUBLIC: int __ham_changeslot_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__ham_changeslot_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__ham_changeslot_args *argp;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
+	HASH_CURSOR *hcp;
+	HMETA *meta;
+	u_int32_t bucket;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
+	REC_PRINT(__ham_changeslot_print);
+	REC_INTRO(__ham_changeslot_read, ip, 1);
+
+	hcp = (HASH_CURSOR *)dbc->internal;
+	if ((ret = __ham_get_meta(dbc)) != 0)
+		goto out;
+	meta = hcp->hdr;
+	cmp_n = log_compare(lsnp, &LSN(meta));
+	cmp_p = log_compare(&LSN(meta), &argp->meta_lsn);
+
+	bucket = argp->slot == 0 ? 0 : 1 << (argp->slot - 1);
+	if (cmp_p == 0 && DB_REDO(op)) {
+		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
+		meta = hcp->hdr;
+		meta->spares[argp->slot] = argp->new - bucket;
+		LSN(meta) = *lsnp;
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
+		REC_DIRTY(mpf, ip, dbc->priority, &hcp->hdr);
+		meta = hcp->hdr;
+		meta->spares[argp->slot] = argp->old - bucket;
+		LSN(meta) = argp->meta_lsn;
+	}
+	*lsnp = argp->prev_lsn;
+	ret = __ham_release_meta(dbc);
+
+done:
+out:	REC_CLOSE;
+}
+
+/*
  * __ham_curadj_recover --
  *	Undo cursor adjustments if a subtransaction fails.
  *
@@ -1092,6 +1433,103 @@ done:	*lsnp = argp->prev_lsn;
 out:	REC_CLOSE;
 }
 
+static int
+__ham_chgpg_recover_func(cp, my_dbc, countp, pgno, indx, vargs)
+	DBC *cp, *my_dbc;
+	u_int32_t *countp;
+	db_pgno_t pgno;
+	u_int32_t indx;
+	void *vargs;
+{
+	BTREE_CURSOR *opdcp;
+	HASH_CURSOR *lcp;
+	u_int32_t order;
+	int ret;
+	__ham_chgpg_args *argp;
+
+	COMPQUIET(my_dbc, NULL);
+	COMPQUIET(countp, NULL);
+	COMPQUIET(pgno, 0);
+	lcp = (HASH_CURSOR *)cp->internal;
+	argp = vargs;
+
+	/* Overloaded field for DB_HAM_DEL*PG */
+	order = argp->new_indx;
+
+	switch (argp->mode) {
+	case DB_HAM_DELFIRSTPG:
+		if (lcp->pgno != argp->new_pgno ||
+		    MVCC_SKIP_CURADJ(cp, lcp->pgno))
+			break;
+		if (lcp->indx != indx ||
+		    !F_ISSET(lcp, H_DELETED) ||
+		    lcp->order >= order) {
+			lcp->pgno = argp->old_pgno;
+			if (lcp->indx == indx)
+				lcp->order -= order;
+		}
+		break;
+	case DB_HAM_DELMIDPG:
+	case DB_HAM_DELLASTPG:
+		if (lcp->pgno == argp->new_pgno &&
+		    lcp->indx == indx &&
+		    F_ISSET(lcp, H_DELETED) &&
+		    lcp->order >= order &&
+		    !MVCC_SKIP_CURADJ(cp, lcp->pgno)) {
+			lcp->pgno = argp->old_pgno;
+			lcp->order -= order;
+			lcp->indx = 0;
+		}
+		break;
+	case DB_HAM_CHGPG:
+		/*
+		 * If we're doing a CHGPG, we're undoing
+		 * the move of a non-deleted item to a
+		 * new page.  Any cursors with the deleted
+		 * flag set do not belong to this item;
+		 * don't touch them.
+		 */
+		if (F_ISSET(lcp, H_DELETED))
+			break;
+		/* FALLTHROUGH */
+	case DB_HAM_SPLIT:
+		if (lcp->pgno == argp->new_pgno &&
+		    lcp->indx == argp->new_indx &&
+		    !MVCC_SKIP_CURADJ(cp, lcp->pgno)) {
+			lcp->indx = argp->old_indx;
+			lcp->pgno = argp->old_pgno;
+		}
+		break;
+	case DB_HAM_DUP:
+		if (lcp->opd == NULL)
+			break;
+		opdcp = (BTREE_CURSOR *)lcp->opd->internal;
+		if (opdcp->pgno != argp->new_pgno ||
+		    opdcp->indx != argp->new_indx ||
+		    MVCC_SKIP_CURADJ(lcp->opd, opdcp->pgno))
+			break;
+
+		if (F_ISSET(opdcp, C_DELETED))
+			F_SET(lcp, H_DELETED);
+		/*
+		 * We can't close a cursor while we have the
+		 * dbp mutex locked, since c_close reacquires
+		 * it.  It should be safe to drop the mutex
+		 * here, though, since newly opened cursors
+		 * are put only at the end of the tailq and
+		 * the cursor we're adjusting can't be closed
+		 * under us.
+		 */
+		MUTEX_UNLOCK(cp->dbp->env, cp->dbp->mutex);
+		ret = __dbc_close(lcp->opd);
+		MUTEX_LOCK(cp->dbp->env, cp->dbp->mutex);
+		if (ret != 0)
+			return (ret);
+		lcp->opd = NULL;
+		break;
+	}
+	return (0);
+}
 /*
  * __ham_chgpg_recover --
  *	Undo cursor adjustments if a subtransaction fails.
@@ -1109,14 +1547,11 @@ __ham_chgpg_recover(env, dbtp, lsnp, op, info)
 {
 	__ham_chgpg_args *argp;
 	DB_THREAD_INFO *ip;
-	BTREE_CURSOR *opdcp;
 	DB_MPOOLFILE *mpf;
-	DB *file_dbp, *ldbp;
+	DB *file_dbp;
 	DBC *dbc;
-	DBC *cp;
-	HASH_CURSOR *lcp;
-	u_int32_t order, indx;
 	int ret;
+	u_int32_t count;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	REC_PRINT(__ham_chgpg_print);
@@ -1125,94 +1560,8 @@ __ham_chgpg_recover(env, dbtp, lsnp, op, info)
 	if (op != DB_TXN_ABORT)
 		goto done;
 
-	/* Overloaded fields for DB_HAM_DEL*PG */
-	indx = argp->old_indx;
-	order = argp->new_indx;
-
-	MUTEX_LOCK(env, env->mtx_dblist);
-	FIND_FIRST_DB_MATCH(env, file_dbp, ldbp);
-	for (;
-	    ldbp != NULL && ldbp->adj_fileid == file_dbp->adj_fileid;
-	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-		MUTEX_LOCK(env, file_dbp->mutex);
-		TAILQ_FOREACH(cp, &ldbp->active_queue, links) {
-			lcp = (HASH_CURSOR *)cp->internal;
-
-			switch (argp->mode) {
-			case DB_HAM_DELFIRSTPG:
-				if (lcp->pgno != argp->new_pgno ||
-				    MVCC_SKIP_CURADJ(cp, lcp->pgno))
-					break;
-				if (lcp->indx != indx ||
-				    !F_ISSET(lcp, H_DELETED) ||
-				    lcp->order >= order) {
-					lcp->pgno = argp->old_pgno;
-					if (lcp->indx == indx)
-						lcp->order -= order;
-				}
-				break;
-			case DB_HAM_DELMIDPG:
-			case DB_HAM_DELLASTPG:
-				if (lcp->pgno == argp->new_pgno &&
-				    lcp->indx == indx &&
-				    F_ISSET(lcp, H_DELETED) &&
-				    lcp->order >= order &&
-				    !MVCC_SKIP_CURADJ(cp, lcp->pgno)) {
-					lcp->pgno = argp->old_pgno;
-					lcp->order -= order;
-					lcp->indx = 0;
-				}
-				break;
-			case DB_HAM_CHGPG:
-				/*
-				 * If we're doing a CHGPG, we're undoing
-				 * the move of a non-deleted item to a
-				 * new page.  Any cursors with the deleted
-				 * flag set do not belong to this item;
-				 * don't touch them.
-				 */
-				if (F_ISSET(lcp, H_DELETED))
-					break;
-				/* FALLTHROUGH */
-			case DB_HAM_SPLIT:
-				if (lcp->pgno == argp->new_pgno &&
-				    lcp->indx == argp->new_indx &&
-				    !MVCC_SKIP_CURADJ(cp, lcp->pgno)) {
-					lcp->indx = argp->old_indx;
-					lcp->pgno = argp->old_pgno;
-				}
-				break;
-			case DB_HAM_DUP:
-				if (lcp->opd == NULL)
-					break;
-				opdcp = (BTREE_CURSOR *)lcp->opd->internal;
-				if (opdcp->pgno != argp->new_pgno ||
-				    opdcp->indx != argp->new_indx ||
-				    MVCC_SKIP_CURADJ(lcp->opd, opdcp->pgno))
-					break;
-
-				if (F_ISSET(opdcp, C_DELETED))
-					F_SET(lcp, H_DELETED);
-				/*
-				 * We can't close a cursor while we have the
-				 * dbp mutex locked, since c_close reacquires
-				 * it.  It should be safe to drop the mutex
-				 * here, though, since newly opened cursors
-				 * are put only at the end of the tailq and
-				 * the cursor we're adjusting can't be closed
-				 * under us.
-				 */
-				MUTEX_UNLOCK(env, file_dbp->mutex);
-				if ((ret = __dbc_close(lcp->opd)) != 0)
-					goto out;
-				MUTEX_LOCK(env, file_dbp->mutex);
-				lcp->opd = NULL;
-				break;
-			}
-		}
-		MUTEX_UNLOCK(env, file_dbp->mutex);
-	}
-	MUTEX_UNLOCK(env, env->mtx_dblist);
+	ret = __db_walk_cursors(file_dbp, dbc,
+	    __ham_chgpg_recover_func, &count, 0, argp->old_indx, argp);
 
 done:	*lsnp = argp->prev_lsn;
 out:	REC_CLOSE;

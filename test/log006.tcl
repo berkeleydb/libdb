@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -152,7 +152,7 @@ proc log006 { } {
 	error_check_good lfiles [lsearch $lfiles $testdir/log.0000000001] 0
 
 	puts "\tLog006.l: turn on auto remove and repopulate database."
-	error_check_good sf [$env log_config "autoremove on"] 0
+	error_check_good sf [$env log_config autoremove on] 0
 
 	log006_put $testdir $env
 

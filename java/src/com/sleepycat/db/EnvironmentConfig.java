@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1233,6 +1233,13 @@ The database environment lock timeout value, in microseconds;
     Automatic log file removal is likely to make catastrophic recovery
     impossible.
     <p>
+    Replication Manager applications operate in a group-aware manner for log file
+    removal, and automatic log file removal simplifies the application.
+    <p>
+    Replication Base API applications will rarely want to configure automatic log
+    file removal as it increases the likelihood a master will be unable to
+    satisfy a client's request for a recent log record. 
+    <p>
     This method configures a database environment, including all threads
 of control accessing the database environment, not only the operations
 performed using a specified {@link com.sleepycat.db.Environment Environment} handle.
@@ -1968,16 +1975,24 @@ The an OutputStream for displaying informational messages.
         return mmapSize;
     }
 
+/**
+ */
     public void setCachePageSize(final int mpPageSize) {
         this.mpPageSize = mpPageSize;
     }
+/**
+ */
     public int getCachePageSize() {
         return mpPageSize;
     }
 
+/**
+ */
     public void setCacheTableSize(final int mpTableSize) {
         this.mpTableSize = mpTableSize;
     }
+/**
+ */
     public int getCacheTableSize() {
         return mpTableSize;
     }
@@ -2381,8 +2396,10 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     before requesting the same missing record again, and so on, up to a maximum
     threshold, set by {@link #setReplicationRequestMax}.  
     <p>
-    These values are thresholds only.  Since Berkeley DB has no thread available
-    in the library as a timer, the threshold is only checked when a thread enters
+    These values are thresholds only.  Replication Manager applications use these
+    values to determine when to automatically request retransmission of missing
+    messages. For Base API applications, Berkeley DB has no thread available in
+    the library as a timer, the threshold is only checked when a thread enters
     the Berkeley DB library to process an incoming replication message.  Any
     amount of time may have passed since the last message arrived and Berkeley DB
     only checks whether the amount of time since a request was made is beyond the

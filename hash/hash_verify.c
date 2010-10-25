@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -838,7 +838,7 @@ __ham_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 		if (!LF_ISSET(DB_AGGRESSIVE) && i >= NUM_ENT(h))
 			break;
 
-		/* 
+		/*
 		 * Verify the current item. If we're beyond NUM_ENT errors are
 		 * expected and ignored.
 		 */
@@ -850,7 +850,7 @@ __ham_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 				ret = 0;
 			break;
 		} else if (ret != 0 && i >= NUM_ENT(h)) {
-			/* Not a reportable error, but don't salvage the item. */
+			/* Not a reportable error, but don't salvage item. */
 			ret = 0;
 		} else if (ret == 0) {
 			/* Set len to total entry length. */
@@ -881,8 +881,9 @@ keydata:			memcpy(buf, HKEYDATA_DATA(hk), len);
 				}
 				memcpy(&dpgno,
 				    HOFFPAGE_PGNO(hk), sizeof(dpgno));
-				if ((ret = __db_safe_goff(dbp, vdp,
-				    dpgno, &dbt, &buf, &ovfl_bufsz, flags)) != 0) {
+				if ((ret = __db_safe_goff(dbp,
+				    vdp, dpgno, &dbt, &buf,
+				    &ovfl_bufsz, flags)) != 0) {
 					err_ret = ret;
 					(void)__db_vrfy_prdbt(&unkdbt, 0, " ",
 					    handle, callback, 0, vdp);

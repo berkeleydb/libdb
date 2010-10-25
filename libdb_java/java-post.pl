@@ -4,7 +4,7 @@
 s!public (class db_java|[^(]* delete|[^(]* [A-Za-z_]*0\()!/* package */ $1!;
 
 # Mark methods that don't throw exceptions
-s!public [^(]*get_version_[a-z]*\([^)]*\)!$& /* no exception */!;
+s!public [^(]*get_version_[a-z_]*\([^)]*\)!$& /* no exception */!;
 s!public [^(]*[ _]err[a-z_]*\([^)]*\)!$& /* no exception */!;
 s!public [^(]*[ _]msg[a-z_]*\([^)]*\)!$& /* no exception */!;
 s!public [^(]*[ _]message[a-z_]*\([^)]*\)!$& /* no exception */!;

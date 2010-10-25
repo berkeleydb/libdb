@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -29,18 +29,20 @@ tcl_RepConfig(interp, dbenv, list)
 	Tcl_Obj *list;			/* {which on|off} */
 {
 	static const char *confwhich[] = {
+		"autoinit",
 		"bulk",
 		"delayclient",
 		"mgr2sitestrict",
-		"noautoinit",
+		"mgrelections",
 		"nowait",
 		NULL
 	};
 	enum confwhich {
+		REPCONF_AUTOINIT,
 		REPCONF_BULK,
 		REPCONF_DELAYCLIENT,
 		REPCONF_MGR2SITESTRICT,
-		REPCONF_NOAUTOINIT,
+		REPCONF_MGRELECTIONS,
 		REPCONF_NOWAIT
 	};
 	static const char *confonoff[] = {
@@ -66,8 +68,8 @@ tcl_RepConfig(interp, dbenv, list)
 		return (IS_HELP(which));
 
 	switch ((enum confwhich)optindex) {
-	case REPCONF_NOAUTOINIT:
-		wh = DB_REP_CONF_NOAUTOINIT;
+	case REPCONF_AUTOINIT:
+		wh = DB_REP_CONF_AUTOINIT;
 		break;
 	case REPCONF_BULK:
 		wh = DB_REP_CONF_BULK;
@@ -77,6 +79,9 @@ tcl_RepConfig(interp, dbenv, list)
 		break;
 	case REPCONF_MGR2SITESTRICT:
 		wh = DB_REPMGR_CONF_2SITE_STRICT;
+		break;
+	case REPCONF_MGRELECTIONS:
+		wh = DB_REPMGR_CONF_ELECTIONS;
 		break;
 	case REPCONF_NOWAIT:
 		wh = DB_REP_CONF_NOWAIT;
@@ -158,22 +163,24 @@ tcl_RepGetConfig(interp, dbenv, which)
 	Tcl_Obj *which;			/* which flag */
 {
 	static const char *confwhich[] = {
+		"autoinit",
 		"bulk",
 		"delayclient",
 		"inmem_files",
 		"lease",
 		"mgr2sitestrict",
-		"noautoinit",
+		"mgrelections",
 		"nowait",
 		NULL
 	};
 	enum confwhich {
+		REPGCONF_AUTOINIT,
 		REPGCONF_BULK,
 		REPGCONF_DELAYCLIENT,
 		REPGCONF_INMEM_FILES,
 		REPGCONF_LEASE,
 		REPGCONF_MGR2SITESTRICT,
-		REPGCONF_NOAUTOINIT,
+		REPGCONF_MGRELECTIONS,
 		REPGCONF_NOWAIT
 	};
 	Tcl_Obj *res;
@@ -186,6 +193,9 @@ tcl_RepGetConfig(interp, dbenv, which)
 
 	res = NULL;
 	switch ((enum confwhich)optindex) {
+	case REPGCONF_AUTOINIT:
+		wh = DB_REP_CONF_AUTOINIT;
+		break;
 	case REPGCONF_BULK:
 		wh = DB_REP_CONF_BULK;
 		break;
@@ -201,8 +211,8 @@ tcl_RepGetConfig(interp, dbenv, which)
 	case REPGCONF_MGR2SITESTRICT:
 		wh = DB_REPMGR_CONF_2SITE_STRICT;
 		break;
-	case REPGCONF_NOAUTOINIT:
-		wh = DB_REP_CONF_NOAUTOINIT;
+	case REPGCONF_MGRELECTIONS:
+		wh = DB_REPMGR_CONF_ELECTIONS;
 		break;
 	case REPGCONF_NOWAIT:
 		wh = DB_REP_CONF_NOWAIT;
@@ -324,7 +334,7 @@ tcl_RepElect(interp, objc, objv, dbenv)
 	u_int32_t full_timeout, nsites, nvotes, pri, timeout;
 
 	if (objc != 6 && objc != 7) {
-		Tcl_WrongNumArgs(interp, 6, objv,
+		Tcl_WrongNumArgs(interp, 2, objv,
 		    "nsites nvotes pri timeout [full_timeout]");
 		return (TCL_ERROR);
 	}
@@ -518,7 +528,7 @@ tcl_RepLimit(interp, objc, objv, dbenv)
 	u_int32_t bytes, gbytes;
 
 	if (objc != 4) {
-		Tcl_WrongNumArgs(interp, 4, objv, "gbytes bytes");
+		Tcl_WrongNumArgs(interp, 2, objv, "gbytes bytes");
 		return (TCL_ERROR);
 	}
 
@@ -556,7 +566,7 @@ tcl_RepRequest(interp, objc, objv, dbenv)
 	long min, max;
 
 	if (objc != 4) {
-		Tcl_WrongNumArgs(interp, 4, objv, "min max");
+		Tcl_WrongNumArgs(interp, 2, objv, "min max");
 		return (TCL_ERROR);
 	}
 
@@ -631,7 +641,7 @@ tcl_RepTransport(interp, objc, objv, dbenv, ip)
 	int intarg, result, ret;
 
 	if (objc != 2) {
-		Tcl_WrongNumArgs(interp, 2, objv, "{id transport_func");
+		Tcl_WrongNumArgs(interp, 2, objv, "{id transport_func}");
 		return (TCL_ERROR);
 	}
 
@@ -710,7 +720,7 @@ tcl_RepStart(interp, objc, objv, dbenv)
 	flag = 0;
 
 	if (objc != 3) {
-		Tcl_WrongNumArgs(interp, 3, objv, "[-master/-client]");
+		Tcl_WrongNumArgs(interp, 2, objv, "[-master/-client]");
 		return (TCL_ERROR);
 	}
 
@@ -766,7 +776,7 @@ tcl_RepProcessMessage(interp, objc, objv, dbenv)
 	int freectl, freerec, myobjc, result, ret;
 
 	if (objc != 5) {
-		Tcl_WrongNumArgs(interp, 5, objv, "id control rec");
+		Tcl_WrongNumArgs(interp, 2, objv, "id control rec");
 		return (TCL_ERROR);
 	}
 	freectl = freerec = 0;
@@ -1257,6 +1267,8 @@ tcl_RepMgr(interp, objc, objv, dbenv)
 				totype = DB_REP_ELECTION_TIMEOUT;
 			else if (strcmp(arg, "elect_retry") == 0)
 				totype = DB_REP_ELECTION_RETRY;
+			else if (strcmp(arg, "full_elect") == 0)
+				totype = DB_REP_FULL_ELECTION_TIMEOUT;
 			else if (strcmp(arg, "heartbeat_monitor") == 0)
 				totype = DB_REP_HEARTBEAT_MONITOR;
 			else if (strcmp(arg, "heartbeat_send") == 0)
@@ -1313,9 +1325,9 @@ tcl_RepMgrSiteList(interp, objc, objv, dbenv)
 	DB_ENV *dbenv;
 {
 	DB_REPMGR_SITE *sp;
-	Tcl_Obj *myobjv[4], *res, *thislist;
+	Tcl_Obj *myobjv[5], *res, *thislist;
 	u_int count, i;
-	char *st;
+	char *pr, *st;
 	int myobjc, result, ret;
 
 	result = TCL_OK;
@@ -1333,7 +1345,7 @@ tcl_RepMgrSiteList(interp, objc, objv, dbenv)
 		return (result);
 
 	/*
-	 * Have our sites, now construct the {eid host port status}
+	 * Have our sites, now construct the {eid host port status peer}
 	 * tuples and free up the memory.
 	 */
 	res = Tcl_NewObj();
@@ -1348,7 +1360,11 @@ tcl_RepMgrSiteList(interp, objc, objv, dbenv)
 			st = "disconnected";
 		else
 			st = "unknown";
-		MAKE_SITE_LIST(sp[i].eid, sp[i].host, sp[i].port, st);
+		if (F_ISSET(&sp[i], DB_REPMGR_ISPEER))
+			pr = "peer";
+		else
+			pr = "non-peer";
+		MAKE_SITE_LIST(sp[i].eid, sp[i].host, sp[i].port, st, pr);
 	}
 
 	Tcl_SetObjResult(interp, res);
@@ -1416,11 +1432,79 @@ tcl_RepMgrStat(interp, objc, objv, dbenv)
 	MAKE_WSTAT_LIST("Messages discarded", sp->st_msgs_dropped);
 	MAKE_WSTAT_LIST("Connections dropped", sp->st_connection_drop);
 	MAKE_WSTAT_LIST("Failed re-connects", sp->st_connect_fail);
+	MAKE_WSTAT_LIST("Election threads", sp->st_elect_threads);
+	MAKE_WSTAT_LIST("Max elect threads", sp->st_max_elect_threads);
 #endif
 
 	Tcl_SetObjResult(interp, res);
 error:
 	__os_ufree(dbenv->env, sp);
+	return (result);
+}
+
+/*
+ * tcl_RepApplied -
+ *
+ * PUBLIC: int tcl_RepApplied
+ * PUBLIC:     __P((Tcl_Interp *, int, Tcl_Obj * CONST *, DB_ENV *));
+ */
+int
+tcl_RepApplied(interp, objc, objv, dbenv)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* How many arguments? */
+	Tcl_Obj *CONST objv[];		/* The argument objects */
+	DB_ENV *dbenv;
+{
+	static const char *repapplied_option_names[] = {
+		"-timeout",
+		NULL
+	};
+	enum envinfo_options {
+		REPAPPLIEDTIMEOUT
+	};
+	unsigned char *arg;
+	char msg[MSG_SIZE];
+	db_timeout_t timeout;
+	int i, len, ptr, result, ret;
+
+	if (objc != 3 && objc != 5) {
+		Tcl_WrongNumArgs(interp, 2, objv,
+		    "?-timeout t? token");
+		return (TCL_ERROR);
+	}
+	timeout = 0;
+	i = 2;
+	if (objc == 5) {
+		if (Tcl_GetIndexFromObj(interp, objv[i],
+		    repapplied_option_names, "option", TCL_EXACT, &ptr)
+		    != TCL_OK)
+			return (IS_HELP(objv[i]));
+		i++;
+		switch ((enum envinfo_options)ptr) {
+		case REPAPPLIEDTIMEOUT:
+			result = _GetUInt32(interp, objv[i++], &timeout);
+			if (result != TCL_OK)
+				return (result);
+			break;
+		}
+	}
+
+	arg = Tcl_GetByteArrayFromObj(objv[i], &len);
+	if (len != DB_TXN_TOKEN_SIZE) {
+		Tcl_SetErrorCode(interp, "BerkeleyDB",
+		    "Commit token is the wrong size", NULL);
+
+		snprintf(msg, MSG_SIZE,
+		    "Bad commit token size %lu, should be %lu",
+		    (u_long)len, (u_long)DB_TXN_TOKEN_SIZE);
+		Tcl_SetResult(interp, msg, TCL_VOLATILE);
+		return (TCL_ERROR);
+	}		
+
+	_debug_check();
+	ret = dbenv->txn_applied(dbenv, (DB_TXN_TOKEN*)arg, timeout, 0);
+	result = _ReturnSetup(interp, ret , DB_RETOK_TXNAPPLIED(ret),
+	    "txn_applied");
 	return (result);
 }
 #endif

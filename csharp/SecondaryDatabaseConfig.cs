@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -100,10 +100,31 @@ namespace BerkeleyDB {
         private Database fdbp;
         private ForeignKeyNullifyDelegate nullifier;
         private ForeignKeyDeleteAction fkaction;
+        /// <summary>
+        /// Specify the action taken when a referenced record in the foreign key
+        /// database is deleted.
+        /// </summary>
+        /// <param name="ForeignDB">The foreign key database.</param>
+        /// <param name="OnDelete">
+        /// The action taken when a referenced record is deleted.
+        /// </param>
         public void SetForeignKeyConstraint(
             Database ForeignDB, ForeignKeyDeleteAction OnDelete) {
             SetForeignKeyConstraint(ForeignDB, OnDelete, null);
         }
+        /// <summary>
+        /// Specify the action taken when a referenced record in the foreign key
+        /// database is deleted.
+        /// </summary>
+        /// <param name="ForeignDB">The foreign key database.</param>
+        /// <param name="OnDelete">
+        /// The action taken when a reference record is deleted.
+        /// </param>
+        /// <param name="NullifyFunc">
+        /// When <paramref name="OnDelete"/> is
+        /// <see cref="ForeignKeyDeleteAction.NULLIFY"/>, NullifyFunc is used to
+        /// set the foreign key to null.
+        /// </param>
         public void SetForeignKeyConstraint(Database ForeignDB,
             ForeignKeyDeleteAction OnDelete,
             ForeignKeyNullifyDelegate NullifyFunc) {
@@ -116,10 +137,20 @@ namespace BerkeleyDB {
             fkaction = OnDelete;
             nullifier = NullifyFunc;
         }
+        /// <summary>
+        /// The database used to check the foreign key integrity constraint.
+        /// </summary>
         public Database ForeignKeyDatabase { get { return fdbp; } }
+        /// <summary>
+        /// The action taken when a referenced record in
+        /// <see cref="ForeignKeyDatabase"/> is deleted.
+        /// </summary>
         public ForeignKeyDeleteAction OnForeignKeyDelete {
             get { return fkaction; }
         }
+        /// <summary>
+        /// The nullifying function used to set the foreign key to null.
+        /// </summary>
         public ForeignKeyNullifyDelegate ForeignKeyNullfier {
             get { return nullifier; }
         }

@@ -402,11 +402,17 @@ _exported size_t close_db_cursors(Db* dbp1);
 /// are allowed to call it anyway.
 _exported void dbstl_startup();
 
-/// This function releases any memory allocated in the heap by code of dbstl.
+/// This function releases any memory allocated in the heap by code of dbstl, 
+/// and close all DB handles in the right order.
 /// So you can only call dbstl_exit() right before the entire process exits.
 /// It will release any memory allocated by dbstl that have to live during
 /// the entire process lifetime.
 _exported void dbstl_exit();
+
+/// This function release all DB handles in the right order. The environment
+/// and database handles are only closed when they are not used by other 
+/// threads, otherwise the reference cout is decremented.
+_exported void dbstl_thread_exit();
 
 /// Operators to compare two Dbt objects.
 /// \param d1 Dbt object to compare.

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,14 +12,11 @@
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
 static int __bam_compact_dups __P((DBC *,
      PAGE **, u_int32_t, int, DB_COMPACT *, int *));
-static int __bam_compact_int __P((DBC *,
-     DBT *, DBT *, u_int32_t, int *, DB_COMPACT *, int *));
 static int __bam_compact_isdone __P((DBC *, DBT *, PAGE *, int *));
 static int __bam_csearch __P((DBC *, DBT *, u_int32_t, int));
 static int __bam_lock_tree __P((DBC *, EPG *, EPG *csp, u_int32_t, u_int32_t));
@@ -30,275 +27,12 @@ static int __bam_merge_internal __P((DBC *, DBC *, int, DB_COMPACT *, int *));
 static int __bam_merge_pages __P((DBC *, DBC *, DB_COMPACT *));
 static int __bam_merge_records __P((DBC *, DBC*,  u_int32_t, DB_COMPACT *));
 static int __bam_truncate_internal_overflow __P((DBC *, PAGE *, DB_COMPACT *));
-static int __bam_truncate_overflow __P((DBC *,
-     db_pgno_t, PAGE **, DB_COMPACT *));
-static int __bam_truncate_page __P((DBC *, PAGE **, PAGE *, int));
 static int __bam_truncate_root_page __P((DBC *,
      PAGE *, u_int32_t, DB_COMPACT *));
 
 #ifdef HAVE_FTRUNCATE
-static int __bam_free_freelist __P((DB *, DB_THREAD_INFO *, DB_TXN *));
 static int __bam_savekey __P((DBC *, int, DBT *));
-static int __bam_setup_freelist __P((DB *, db_pglist_t *, u_int32_t));
-static int __bam_truncate_internal __P((DB *,
-     DB_THREAD_INFO *, DB_TXN *, DB_COMPACT *));
 #endif
-
-#define	SAVE_START							\
-	do {								\
-		save_data = *c_data;					\
-		ret = __db_retcopy(env,				\
-		     &save_start, current.data, current.size,		\
-		     &save_start.data, &save_start.ulen);		\
-	} while (0)
-
-/*
- * Only restore those things that are negated by aborting the
- * transaction.  We don't restore the number of deadlocks, for example.
- */
-
-#define	RESTORE_START							\
-	do {								\
-		c_data->compact_pages_free =				\
-		      save_data.compact_pages_free;			\
-		c_data->compact_levels = save_data.compact_levels;	\
-		c_data->compact_truncate = save_data.compact_truncate;	\
-		ret = __db_retcopy(env, &current,			\
-		     save_start.data, save_start.size,			\
-		     &current.data, &current.ulen);			\
-	} while (0)
-
-/*
- e __bam_compact -- compact a btree.
- *
- * PUBLIC: int __bam_compact __P((DB *, DB_THREAD_INFO *, DB_TXN *,
- * PUBLIC:     DBT *, DBT *, DB_COMPACT *, u_int32_t, DBT *));
- */
-int
-__bam_compact(dbp, ip, txn, start, stop, c_data, flags, end)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
-	DBT *start, *stop;
-	DB_COMPACT *c_data;
-	u_int32_t flags;
-	DBT *end;
-{
-	DBC *dbc;
-	DBT current, save_start;
-	DB_COMPACT save_data;
-	ENV *env;
-	u_int32_t factor, retry;
-	int deadlock, have_freelist, isdone, ret, span, t_ret, txn_local;
-
-#ifdef HAVE_FTRUNCATE
-	db_pglist_t *list;
-	db_pgno_t last_pgno;
-	u_int32_t nelems, truncated;
-#endif
-
-	env = dbp->env;
-
-	memset(&current, 0, sizeof(current));
-	memset(&save_start, 0, sizeof(save_start));
-	dbc = NULL;
-	factor = 0;
-	have_freelist = deadlock = isdone = ret = span = 0;
-	ret = retry = 0;
-
-#ifdef HAVE_FTRUNCATE
-	list = NULL;
-	last_pgno = 0;
-	nelems = truncated = 0;
-#endif
-
-	/*
-	 * We pass "current" to the internal routine, indicating where that
-	 * routine should begin its work and expecting that it will return to
-	 * us the last key that it processed.
-	 */
-	if (start != NULL && (ret = __db_retcopy(env,
-	     &current, start->data, start->size,
-	     &current.data, &current.ulen)) != 0)
-		return (ret);
-
-	if (IS_DB_AUTO_COMMIT(dbp, txn))
-		txn_local = 1;
-	else
-		txn_local = 0;
-	if (!LF_ISSET(DB_FREE_SPACE | DB_FREELIST_ONLY))
-		goto no_free;
-	if (LF_ISSET(DB_FREELIST_ONLY))
-		LF_SET(DB_FREE_SPACE);
-
-#ifdef HAVE_FTRUNCATE
-	/* Sort the freelist and set up the in-memory list representation. */
-	if (txn_local && (ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
-		goto err;
-
-	if ((ret = __db_free_truncate(dbp, ip,
-	     txn, flags, c_data, &list, &nelems, &last_pgno)) != 0) {
-		LF_CLR(DB_FREE_SPACE);
-		goto terr;
-	}
-
-	/* If the freelist is empty and we are not filling, get out. */
-	if (nelems == 0 && LF_ISSET(DB_FREELIST_ONLY)) {
-		ret = 0;
-		LF_CLR(DB_FREE_SPACE);
-		goto terr;
-	}
-	if ((ret = __bam_setup_freelist(dbp, list, nelems)) != 0) {
-		/* Someone else owns the free list. */
-		if (ret == EBUSY)
-			ret = 0;
-	}
-	if (ret == 0)
-		have_freelist = 1;
-
-	/* Commit the txn and release the meta page lock. */
-terr:	if (txn_local) {
-		if ((t_ret = __txn_commit(txn, DB_TXN_NOSYNC)) != 0 && ret == 0)
-			ret = t_ret;
-		txn = NULL;
-	}
-	if (ret != 0)
-		goto err;
-
-	/* Save the number truncated so far, we will add what we get below. */
-	truncated = c_data->compact_pages_truncated;
-	if (LF_ISSET(DB_FREELIST_ONLY))
-		goto done;
-#endif
-
-	/*
-	 * We want factor to be the target number of free bytes on each page,
-	 * so we know when to stop adding items to a page.   Make sure to
-	 * subtract the page overhead when computing this target.  This can
-	 * result in a 1-2% error on the smallest page.
-	 * First figure out how many bytes we should use:
-	 */
-no_free:
-	factor = dbp->pgsize - SIZEOF_PAGE;
-	if (c_data->compact_fillpercent != 0) {
-		factor *= c_data->compact_fillpercent;
-		factor /= 100;
-	}
-	/* Now convert to the number of free bytes to target. */
-	factor = (dbp->pgsize - SIZEOF_PAGE) - factor;
-
-	if (c_data->compact_pages == 0)
-		c_data->compact_pages = DB_MAX_PAGES;
-
-	do {
-		deadlock = 0;
-
-		SAVE_START;
-		if (ret != 0)
-			break;
-
-		if (txn_local) {
-			if ((ret = __txn_begin(env, ip, NULL, &txn, 0)) != 0)
-				break;
-
-			if (c_data->compact_timeout != 0 &&
-			    (ret = __txn_set_timeout(txn,
-			    c_data->compact_timeout, DB_SET_LOCK_TIMEOUT)) != 0)
-				goto err;
-		}
-
-		if ((ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
-			goto err;
-
-		if ((ret = __bam_compact_int(dbc, &current, stop, factor,
-		     &span, c_data, &isdone)) ==
-		     DB_LOCK_DEADLOCK && txn_local) {
-			/*
-			 * We retry on deadlock.  Cancel the statistics
-			 * and reset the start point to before this
-			 * iteration.
-			 */
-			deadlock = 1;
-			c_data->compact_deadlock++;
-			RESTORE_START;
-		}
-		/*
-		 * If we could not get a lock while holding an internal
-		 * node latched, commit the current local transaction otherwise
-		 * report a deadlock.
-		 */
-		if (ret == DB_LOCK_NOTGRANTED) {
-			if (txn_local || retry++ < 5)
-				ret = 0;
-			else
-				ret = DB_LOCK_DEADLOCK;
-		} else
-			retry = 0;
-
-		if ((t_ret = __dbc_close(dbc)) != 0 && ret == 0)
-			ret = t_ret;
-
-err:		if (txn_local && txn != NULL) {
-			if (ret == 0 && deadlock == 0)
-				ret = __txn_commit(txn, DB_TXN_NOSYNC);
-			else if ((t_ret = __txn_abort(txn)) != 0 && ret == 0)
-				ret = t_ret;
-			txn = NULL;
-		}
-	} while (ret == 0 && !isdone);
-
-	if (ret == 0 && end != NULL)
-		ret = __db_retcopy(env, end, current.data, current.size,
-		    &end->data, &end->ulen);
-	if (current.data != NULL)
-		__os_free(env, current.data);
-	if (save_start.data != NULL)
-		__os_free(env, save_start.data);
-
-#ifdef HAVE_FTRUNCATE
-	/*
-	 * Finish up truncation work.  If there are pages left in the free
-	 * list then search the internal nodes of the tree as we may have
-	 * missed some while walking the leaf nodes.  Then calculate how
-	 * many pages we have truncated and release the in-memory free list.
-	 */
-done:	if (LF_ISSET(DB_FREE_SPACE)) {
-		DBMETA *meta;
-		db_pgno_t pgno;
-
-		pgno = PGNO_BASE_MD;
-		isdone = 1;
-		if (ret == 0 && !LF_ISSET(DB_FREELIST_ONLY) && (t_ret =
-		    __memp_fget(dbp->mpf, &pgno, ip, txn, 0, &meta)) == 0) {
-			isdone = meta->free == PGNO_INVALID;
-			ret = __memp_fput(dbp->mpf, ip, meta, dbp->priority);
-		}
-
-		if (!isdone)
-			ret = __bam_truncate_internal(dbp, ip, txn, c_data);
-
-		/* Clean up the free list. */
-		if (list != NULL)
-			__os_free(env, list);
-
-		if ((t_ret =
-		    __memp_fget(dbp->mpf, &pgno, ip, txn, 0, &meta)) == 0) {
-			c_data->compact_pages_truncated =
-			    truncated + last_pgno - meta->last_pgno;
-			if ((t_ret = __memp_fput(dbp->mpf, ip,
-			    meta, dbp->priority)) != 0 && ret == 0)
-				ret = t_ret;
-		} else if (ret == 0)
-			ret = t_ret;
-
-		if (have_freelist && (t_ret =
-		    __bam_free_freelist(dbp, ip, txn)) != 0 && ret == 0)
-			t_ret = ret;
-	}
-#endif
-
-	return (ret);
-}
 
 /*
  * __bam_csearch -- isolate search code for bam_compact.
@@ -395,7 +129,7 @@ __bam_csearch(dbc, start, sflag, level)
 			FLD_SET(sflag, SR_MIN);
 
 		if ((ret = __bam_search(dbc,
-		     cp->root, start, sflag, level, NULL, &not_used)) != 0)
+		     PGNO_INVALID, start, sflag, level, NULL, &not_used)) != 0)
 			return (ret);
 	}
 
@@ -407,8 +141,10 @@ __bam_csearch(dbc, start, sflag, level)
  *	Called either with a cursor on the main database
  * or a cursor initialized to the root of an off page duplicate
  * tree.
+ * PUBLIC: int __bam_compact_int __P((DBC *,
+ * PUBLIC:      DBT *, DBT *, u_int32_t, int *, DB_COMPACT *, int *));
  */
-static int
+int
 __bam_compact_int(dbc, start, stop, factor, spanp, c_data, donep)
 	DBC *dbc;
 	DBT *start, *stop;
@@ -428,9 +164,9 @@ __bam_compact_int(dbc, start, stop, factor, spanp, c_data, donep)
 	db_pgno_t metapgno, npgno, nnext_pgno;
 	db_pgno_t pgno, prev_pgno, ppgno, saved_pgno;
 	db_recno_t next_recno;
-	u_int32_t sflag, pgs_free;
-	int check_dups, check_trunc, clear_root, isdone;
-	int merged, nentry, next_p, pgs_done, ret, t_ret, tdone;
+	u_int32_t nentry, sflag, pgs_free;
+	int check_dups, check_trunc, clear_root, do_commit, isdone;
+	int merged, next_p, pgs_done, ret, t_ret, tdone;
 
 #ifdef	DEBUG
 #define	CTRACE(dbc, location, t, start, f) do {				\
@@ -457,10 +193,12 @@ __bam_compact_int(dbc, start, stop, factor, spanp, c_data, donep)
 	isdone = 0;
 	tdone = 0;
 	pgs_done = 0;
+	do_commit = 0;
 	next_recno = 0;
 	next_p = 0;
 	clear_root = 0;
 	metapgno = PGNO_BASE_MD;
+	ppgno = PGNO_INVALID;
 	LOCK_INIT(next_lock);
 	LOCK_INIT(nnext_lock);
 	LOCK_INIT(saved_lock);
@@ -678,7 +416,7 @@ retry:	pg = NULL;
 		else {
 			npgno = NEXT_PGNO(pg);
 			/* If this is now the root, we are very done. */
-			if (PGNO(pg) == cp->root)
+			if (PGNO(pg) == BAM_ROOT_PGNO(dbc))
 				isdone = 1;
 			else {
 				if (npgno != PGNO_INVALID) {
@@ -703,6 +441,7 @@ retry:	pg = NULL;
 				if ((ret = __TLPUT(dbc, next_lock)) != 0)
 					goto err;
 				LOCK_INIT(next_lock);
+				saved_pgno = PGNO_INVALID;
 				goto next_no_release;
 			}
 		}
@@ -723,6 +462,7 @@ retry:	pg = NULL;
 		 */
 		if (ndbc == NULL && (ret = __dbc_dup(dbc, &ndbc, 0)) != 0)
 			goto err;
+		DB_ASSERT(env, ndbc != NULL);
 		ncp = (BTREE_CURSOR *)ndbc->internal;
 
 		ncp->recno = cp->recno;
@@ -768,7 +508,7 @@ retry:	pg = NULL;
 		/*
 		 * If this is RECNO then we want to swap the stacks.
 		 */
-		if (dbp->type == DB_RECNO) {
+		if (dbc->dbtype == DB_RECNO) {
 			ndbc->internal = (DBC_INTERNAL *)cp;
 			dbc->internal = (DBC_INTERNAL *)ncp;
 			cp = ncp;
@@ -805,12 +545,14 @@ retry:	pg = NULL;
 			}
 			pgs_done++;
 			/* Get a fresh low numbered page. */
-			if ((ret = __bam_truncate_page(dbc,
-			    &pg, ncp->csp->page, 1)) != 0)
+			if ((ret = __db_exchange_page(dbc,
+			    &cp->csp->page, ncp->csp->page,
+			    PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 				goto err1;
 			if ((ret = __TLPUT(dbc, prev_lock)) != 0)
-				goto err;
+				goto err1;
 			LOCK_INIT(prev_lock);
+			pg = cp->csp->page;
 		}
 		*spanp = 0;
 		PTRACE(dbc, "SDups", PGNO(ncp->csp->page), start, 0);
@@ -818,8 +560,10 @@ retry:	pg = NULL;
 		     &ncp->csp->page, factor, 1, c_data, &pgs_done)) != 0)
 			goto err1;
 
+		DB_ASSERT(env, ndbc != NULL);
 		/* Check to see if the tree collapsed. */
-		if (PGNO(ncp->csp->page) == ncp->root)
+		/*lint -e{794} */
+		if (PGNO(ncp->csp->page) == BAM_ROOT_PGNO(ndbc))
 			goto done;
 
 		pg = cp->csp->page;
@@ -856,13 +600,13 @@ retry:	pg = NULL;
 		if (ret != 0 && ret != DB_LOCK_NOTGRANTED)
 			goto err1;
 		/*
-		 * If we merged the parent, then we no longer span.
+		 * If we merged the parent, then we nolonger span.
 		 * Otherwise if we tried to merge the parent but would
 		 * block on one of the other leaf pages try again.
 		 * If we did not merge any records of the parent,
 		 * exit to commit any local transactions and try again.
 		 */
-		if (merged || ret == DB_LOCK_NOTGRANTED) {
+		if (merged || (pgs_done > 0 && ret == DB_LOCK_NOTGRANTED)) {
 			if (merged)
 				pgs_done++;
 			else
@@ -883,6 +627,7 @@ retry:	pg = NULL;
 			if (ret != 0)
 				goto err1;
 		}
+		/*lint -e{794} */
 		if ((ret = __bam_merge(dbc,
 		     ndbc, factor, stop, c_data, &isdone)) != 0)
 			goto err1;
@@ -898,6 +643,7 @@ retry:	pg = NULL;
 		if ((ret = __TLPUT(dbc, nnext_lock)) != 0)
 			goto err1;
 		LOCK_INIT(nnext_lock);
+		nnext_pgno = PGNO_INVALID;
 
 		/* If we did not bump to the next page something did not fit. */
 		if (npgno != NEXT_PGNO(pg)) {
@@ -919,7 +665,15 @@ retry:	pg = NULL;
 		pg = cp->csp->page;
 		DB_ASSERT(env, IS_DIRTY(pg));
 		DB_ASSERT(env,
-		    PGNO(pg) == cp->root || IS_DIRTY(cp->csp[-1].page));
+		    PGNO(pg) == BAM_ROOT_PGNO(dbc) ||
+		    IS_DIRTY(cp->csp[-1].page));
+
+		/* Check to see if we moved to a new parent. */
+		if (PGNO(pg) != BAM_ROOT_PGNO(dbc) &&
+		    ppgno != PGNO(cp->csp[-1].page) && pgs_done != 0) {
+			do_commit = 1;
+			goto next_page;
+		}
 
 		/* We now have a write lock, recheck the page. */
 		if ((nentry = NUM_ENT(pg)) == 0) {
@@ -937,7 +691,7 @@ retry:	pg = NULL;
 		npgno = NEXT_PGNO(pg);
 
 		/* Check to see if the tree collapsed. */
-		if (PGNO(pg) == cp->root)
+		if (PGNO(pg) == BAM_ROOT_PGNO(dbc))
 			goto err1;
 		DB_ASSERT(env, cp->csp - cp->sp == 1);
 
@@ -957,18 +711,36 @@ retry:	pg = NULL;
 					if (ret != 0)
 						goto err1;
 				}
-				pgs_done++;
 				/* Get a fresh low numbered page. */
-				if ((ret = __bam_truncate_page(dbc,
-				    &pg, NULL, 1)) != 0)
+				pgno = PGNO(pg);
+				if ((ret = __db_exchange_page(dbc,
+				    &cp->csp->page, NULL,
+				    PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 					goto err1;
 				if ((ret = __TLPUT(dbc, prev_lock)) != 0)
 					goto err1;
 				LOCK_INIT(prev_lock);
+				prev_pgno = PGNO_INVALID;
 				if ((ret = __TLPUT(dbc, next_lock)) != 0)
 					goto err1;
 				LOCK_INIT(next_lock);
+				saved_pgno = PGNO_INVALID;
+				pg = cp->csp->page;
+				if (pgno != PGNO(pg)) {
+					pgs_done++;
+					pgno = PGNO(pg);
+				}
 			}
+			/*
+			 * If we are going to leave this parent commit
+			 * the current transaction before continuing.
+			 */
+			epg = &cp->csp[-1];
+			if ((ppgno != PGNO(epg->page) &&
+			    ppgno != PGNO_INVALID) ||
+			    epg->indx == NUM_ENT(epg->page) - 1)
+				do_commit = 1;
+			ppgno = PGNO(epg->page);
 			goto next_page;
 		}
 
@@ -1000,10 +772,18 @@ retry:	pg = NULL;
 			if ((ret = __memp_fput(dbmp, dbc->thread_info,
 			     cp->csp->page, dbc->priority)) != 0)
 				goto err1;
-			pg = NULL;
+			pg = cp->csp->page = NULL;
+			if (F_ISSET(dbc->dbp, DB_AM_READ_UNCOMMITTED) &&
+				(ret = __db_lget(dbc, 0, ppgno,
+				DB_LOCK_WRITE, 0, &epg->lock)) != 0)
+					goto err1;
 			if ((ret = __memp_fget(dbmp, &ppgno, dbc->thread_info,
 			    dbc->txn, DB_MPOOL_DIRTY, &ppg)) != 0)
 				goto err1;
+			if (F_ISSET(dbc->dbp, DB_AM_READ_UNCOMMITTED) &&
+				(ret = __db_lget(dbc, 0, pgno,
+				DB_LOCK_WRITE, 0, &cp->csp->lock)) != 0)
+					goto err1;
 			if ((ret = __memp_fget(dbmp, &pgno, dbc->thread_info,
 			    dbc->txn, DB_MPOOL_DIRTY, &pg)) != 0)
 				goto err1;
@@ -1021,6 +801,7 @@ retry:	pg = NULL;
 		 */
 		if (epg->indx == NUM_ENT(ppg) - 1) {
 			*spanp = 1;
+			do_commit = 1;
 			npgno = PGNO(pg);
 			next_recno = cp->recno;
 			epg->page = ppg;
@@ -1050,14 +831,20 @@ retry:	pg = NULL;
 				if (ret != 0)
 					goto err1;
 			}
-			pgs_done++;
+			pgno = PGNO(pg);
 			/* Get a fresh low numbered page. */
-			if ((ret = __bam_truncate_page(dbc, &pg, npg, 1)) != 0)
+			if ((ret = __db_exchange_page(dbc, &cp->csp->page,
+			    npg, PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 				goto err1;
 			if ((ret = __TLPUT(dbc, prev_lock)) != 0)
 				goto err1;
 			LOCK_INIT(prev_lock);
-			pgno = PGNO(pg);
+			prev_pgno = PGNO_INVALID;
+			pg = cp->csp->page;
+			if (pgno != PGNO(pg)) {
+				pgs_done++;
+				pgno = PGNO(pg);
+			}
 		}
 		c_data->compact_pages_examine++;
 
@@ -1100,6 +887,7 @@ retry:	pg = NULL;
 		if ((ret = __TLPUT(dbc, nnext_lock)) != 0)
 			goto err1;
 		LOCK_INIT(nnext_lock);
+		nnext_pgno = PGNO_INVALID;
 
 		/*
 		 * __bam_merge could have freed our stack if it
@@ -1136,7 +924,8 @@ next_page:
 	pg = NULL;
 	if ((ret = __bam_stkrel(dbc, STK_PGONLY)) != 0)
 		goto err;
-	if ((ret = __db_lget(dbc, 0, npgno, DB_LOCK_READ, 0, &next_lock)) != 0)
+	if (npgno != PGNO_INVALID &&
+	    (ret = __db_lget(dbc, 0, npgno, DB_LOCK_READ, 0, &next_lock)) != 0)
 		goto err;
 	if ((ret = __bam_stkrel(dbc, pgs_done == 0 ? STK_NOLOCK : 0)) != 0)
 		goto err;
@@ -1155,12 +944,13 @@ next_no_release:
 		 * If we are at the end of this parent commit the
 		 * transaction so we don't tie things up.
 		 */
-		if (pgs_done != 0 && *spanp) {
-deleted:		if (((ret = __bam_stkrel(ndbc, 0)) != 0 ||
+		if (do_commit && !F_ISSET(dbc, DBC_OPD) &&
+		   (dbp->mpf->mfp->multiversion != 0 || pgs_done != 0)) {
+deleted:		if (ndbc != NULL &&
+			     ((ret = __bam_stkrel(ndbc, 0)) != 0 ||
 			     (ret = __dbc_close(ndbc)) != 0))
 				goto err;
-			*donep = 0;
-			return (0);
+			goto out;
 		}
 
 		/* Reget the next page to look at. */
@@ -1171,6 +961,7 @@ deleted:		if (((ret = __bam_stkrel(ndbc, 0)) != 0 ||
 		cp->csp->lock = next_lock;
 		LOCK_INIT(next_lock);
 		next_p = 1;
+		do_commit = 0;
 		/* If we did not do anything we can drop the metalock. */
 		if (pgs_done == 0 && (ret = __LPUT(dbc, metalock)) != 0)
 			goto err;
@@ -1222,7 +1013,11 @@ err:	/*
 		  dbc->thread_info, npg, dbc->priority) != 0) && ret == 0)
 		ret = t_ret;
 
-	*donep = isdone;
+out:	*donep = isdone;
+
+	/* For OPD trees return if we did anything in the span variable. */
+	if (F_ISSET(dbc, DBC_OPD))
+		*spanp = pgs_done;
 
 	return (ret);
 }
@@ -1279,6 +1074,7 @@ __bam_merge(dbc, ndbc, factor, stop, c_data, donep)
 	    P_FREESPACE(dbp, npg))) < (int)factor)
 		ret = __bam_merge_records(dbc, ndbc, factor, c_data);
 	else
+		/*lint -e{794} */
 free_page:	ret = __bam_merge_pages(dbc, ndbc, c_data);
 
 	return (ret);
@@ -1311,23 +1107,25 @@ __bam_merge_records(dbc, ndbc, factor, c_data)
 	cp = (BTREE_CURSOR *)dbc->internal;
 	ncp = (BTREE_CURSOR *)ndbc->internal;
 	pg = cp->csp->page;
-	npg = ncp->csp->page;
 	memset(&hdr, 0, sizeof(hdr));
 	pind = NUM_ENT(pg);
 	n_ok = 0;
 	adjust = 0;
 	ret = 0;
-	nent = NUM_ENT(npg);
-
-	DB_ASSERT(env, nent != 0);
 
 	/* See if we want to swap out this page. */
 	if (c_data->compact_truncate != PGNO_INVALID &&
-	     PGNO(npg) > c_data->compact_truncate) {
+	     PGNO(ncp->csp->page) > c_data->compact_truncate) {
 		/* Get a fresh low numbered page. */
-		if ((ret = __bam_truncate_page(ndbc, &npg, pg, 1)) != 0)
+		if ((ret = __db_exchange_page(ndbc,
+		   &ncp->csp->page, pg, PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 			goto err;
 	}
+
+	npg = ncp->csp->page;
+	nent = NUM_ENT(npg);
+
+	DB_ASSERT(env, nent != 0);
 
 	ninp = P_INP(dbp, npg);
 
@@ -1591,14 +1389,16 @@ __bam_merge_pages(dbc, ndbc, c_data)
 	BTREE_CURSOR *cp, *ncp;
 	DB *dbp;
 	DBT data, hdr;
+	DB_LOCK root_lock;
 	DB_MPOOLFILE *dbmp;
 	PAGE *pg, *npg;
 	db_indx_t nent, *ninp, *pinp;
-	db_pgno_t ppgno;
+	db_pgno_t pgno, ppgno;
 	u_int8_t *bp;
 	u_int32_t len;
 	int i, level, ret;
 
+	LOCK_INIT(root_lock);
 	COMPQUIET(ppgno, PGNO_INVALID);
 	dbp = dbc->dbp;
 	dbmp = dbp->mpf;
@@ -1628,7 +1428,7 @@ __bam_merge_pages(dbc, ndbc, c_data)
 		memset(&data, 0, sizeof(data));
 		data.data = (u_int8_t *)npg + HOFFSET(npg);
 		data.size = len;
-		if ((ret = __bam_merge_log(dbp,
+		if ((ret = __db_merge_log(dbp,
 		     dbc->txn, &LSN(pg), 0, PGNO(pg),
 		     &LSN(pg), PGNO(npg), &LSN(npg), &hdr, &data, 0)) != 0)
 			goto err;
@@ -1676,13 +1476,13 @@ free_page:
 	 * must be done before hand because we cannot
 	 * hold a page pinned if it might be truncated.
 	 */
-	if ((ret = __bam_relink(dbc,
+	if ((ret = __db_relink(dbc,
 	    ncp->csp->page, cp->csp->page, PGNO_INVALID)) != 0)
 		goto err;
 	/* Drop the duplicate reference to the sub tree root. */
 	cp->sp->page = NULL;
 	LOCK_INIT(cp->sp->lock);
-	if (PGNO(ncp->sp->page) == ncp->root &&
+	if (PGNO(ncp->sp->page) == BAM_ROOT_PGNO(ndbc) &&
 	    NUM_ENT(ncp->sp->page) == 2) {
 		if ((ret = __bam_stkrel(dbc, STK_CLRDBC | STK_PGONLY)) != 0)
 			goto err;
@@ -1690,8 +1490,7 @@ free_page:
 		ppgno = PGNO(ncp->csp[-1].page);
 	} else
 		level = 0;
-	if (c_data->compact_truncate > PGNO(npg))
-		c_data->compact_truncate--;
+	COMPACT_TRUNCATE(c_data);
 	if ((ret = __bam_dpages(ndbc,
 	    0, ndbc->dbtype == DB_RECNO ? 0 : BTD_UPDATE)) != 0)
 		goto err;
@@ -1699,20 +1498,23 @@ free_page:
 	c_data->compact_pages_free++;
 	c_data->compact_pages--;
 	if (level != 0) {
-		if ((ret = __memp_fget(dbmp, &ncp->root,
-		    dbc->thread_info, dbc->txn, 0, &npg)) != 0)
+		pgno = PGNO_INVALID;
+		BAM_GET_ROOT(ndbc, pgno, npg, 0, DB_LOCK_READ, root_lock, ret);
+		if (ret != 0)
 			goto err;
+		DB_ASSERT(dbp->env, npg != NULL);
 		if (level == LEVEL(npg))
 			level = 0;
 		if ((ret = __memp_fput(dbmp,
 		     dbc->thread_info, npg, dbc->priority)) != 0)
 			goto err;
+		if ((ret = __LPUT(ndbc, root_lock)) != 0)
+			goto err;
 		npg = NULL;
 		if (level != 0) {
 			c_data->compact_levels++;
 			c_data->compact_pages_free++;
-			if (c_data->compact_truncate > ppgno)
-				c_data->compact_truncate--;
+			COMPACT_TRUNCATE(c_data);
 			if (c_data->compact_pages != 0)
 				c_data->compact_pages--;
 		}
@@ -1736,12 +1538,13 @@ __bam_merge_internal(dbc, ndbc, level, c_data, merged)
 	BTREE_CURSOR *cp, *ncp;
 	DB *dbp;
 	DBT data, hdr;
+	DB_LOCK root_lock;
 	DB_MPOOLFILE *dbmp;
 	EPG *epg, *save_csp, *nsave_csp;
 	PAGE *pg, *npg;
 	RINTERNAL *rk;
 	db_indx_t first, indx, pind;
-	db_pgno_t ppgno;
+	db_pgno_t pgno, ppgno;
 	int32_t nrecs, trecs;
 	u_int16_t size;
 	u_int32_t freespace, pfree;
@@ -1751,6 +1554,7 @@ __bam_merge_internal(dbc, ndbc, level, c_data, merged)
 	COMPQUIET(ppgno, PGNO_INVALID);
 	DB_ASSERT(NULL, dbc != NULL);
 	DB_ASSERT(NULL, ndbc != NULL);
+	LOCK_INIT(root_lock);
 
 	/*
 	 * ndbc will contain the the dominating parent of the subtree.
@@ -1988,7 +1792,7 @@ fits:	memset(&bi, 0, sizeof(bi));
 		cp->csp = save_csp;
 		cp->sp->page = NULL;
 		LOCK_INIT(cp->sp->lock);
-		if (PGNO(ncp->sp->page) == ncp->root &&
+		if (PGNO(ncp->sp->page) == BAM_ROOT_PGNO(ndbc) &&
 		    NUM_ENT(ncp->sp->page) == 2) {
 			if ((ret = __bam_stkrel(dbc, STK_CLRDBC)) != 0)
 				goto err;
@@ -1997,18 +1801,21 @@ fits:	memset(&bi, 0, sizeof(bi));
 		} else
 			level = 0;
 
-		if (c_data->compact_truncate > PGNO(npg))
-			c_data->compact_truncate--;
+		COMPACT_TRUNCATE(c_data);
 		ret = __bam_dpages(ndbc,
 		     0, ndbc->dbtype == DB_RECNO ?
 		     BTD_RELINK : BTD_UPDATE | BTD_RELINK);
 		c_data->compact_pages_free++;
 		if (ret == 0 && level != 0) {
-			if ((ret = __memp_fget(dbmp, &ncp->root,
-			    dbc->thread_info, dbc->txn, 0, &npg)) != 0)
+			pgno = PGNO_INVALID;
+			BAM_GET_ROOT(ndbc,
+			    pgno, npg, 0, DB_LOCK_READ, root_lock, ret);
+			if (ret != 0)
 				goto err;
 			if (level == LEVEL(npg))
 				level = 0;
+			if ((ret = __LPUT(ndbc, root_lock)) != 0)
+				goto err;
 			if ((ret = __memp_fput(dbmp,
 			    dbc->thread_info, npg, dbc->priority)) != 0)
 				goto err;
@@ -2016,8 +1823,7 @@ fits:	memset(&bi, 0, sizeof(bi));
 			if (level != 0) {
 				c_data->compact_levels++;
 				c_data->compact_pages_free++;
-				if (c_data->compact_truncate > ppgno)
-					c_data->compact_truncate--;
+				COMPACT_TRUNCATE(c_data);
 				if (c_data->compact_pages != 0)
 					c_data->compact_pages--;
 			}
@@ -2029,12 +1835,15 @@ fits:	memset(&bi, 0, sizeof(bi));
 		    c_data->compact_truncate != PGNO_INVALID &&
 		    PGNO(npg) > c_data->compact_truncate &&
 		    ncp->csp != ncp->sp) {
-			if ((ret = __bam_truncate_page(ndbc, &npg, pg, 1)) != 0)
+			if ((ret = __db_exchange_page(ndbc, &ncp->csp->page,
+			    pg, PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 				goto err;
 		}
 		if (c_data->compact_truncate != PGNO_INVALID &&
 		     PGNO(pg) > c_data->compact_truncate && cp->csp != cp->sp) {
-			if ((ret = __bam_truncate_page(dbc, &pg, npg, 1)) != 0)
+			if ((ret = __db_exchange_page(dbc, &cp->csp->page,
+			    ncp->csp->page,
+			    PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 				goto err;
 		}
 	}
@@ -2065,28 +1874,20 @@ __bam_compact_dups(dbc, ppg, factor, have_lock, c_data, donep)
 	BOVERFLOW *bo;
 	BTREE_CURSOR *cp;
 	DB *dbp;
-	DBC *opd;
-	DBT start;
 	DB_MPOOLFILE *dbmp;
-	ENV *env;
-	PAGE *dpg, *pg;
 	db_indx_t i;
 	db_pgno_t pgno;
-	int isdone, level, ret, span, t_ret;
+	int ret;
 
-	span = 0;
 	ret = 0;
-	opd = NULL;
 
 	DB_ASSERT(NULL, dbc != NULL);
 	dbp = dbc->dbp;
-	env = dbp->env;
 	dbmp = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
-	pg = *ppg;
 
-	for (i = 0; i <  NUM_ENT(pg); i++) {
-		bo = GET_BOVERFLOW(dbp, pg, i);
+	for (i = 0; i <  NUM_ENT(*ppg); i++) {
+		bo = GET_BOVERFLOW(dbp, *ppg, i);
 		if (B_TYPE(bo->type) == B_KEYDATA)
 			continue;
 		c_data->compact_pages_examine++;
@@ -2098,9 +1899,9 @@ __bam_compact_dups(dbc, ppg, factor, have_lock, c_data, donep)
 				 * least read locked.  Drop the buffer
 				 * and get the write lock.
 				 */
-				pgno = PGNO(pg);
+				pgno = PGNO(*ppg);
 				if ((ret = __memp_fput(dbmp, dbc->thread_info,
-				     pg, dbc->priority)) != 0)
+				     *ppg, dbc->priority)) != 0)
 					goto err;
 				*ppg = NULL;
 				if ((ret = __db_lget(dbc, 0, pgno,
@@ -2111,310 +1912,108 @@ __bam_compact_dups(dbc, ppg, factor, have_lock, c_data, donep)
 				    dbc->thread_info,
 				    dbc->txn, DB_MPOOL_DIRTY, ppg)) != 0)
 					goto err;
-				pg = *ppg;
 			}
-			if ((ret =
-			     __bam_truncate_root_page(dbc, pg, i, c_data)) != 0)
+			if ((ret = __bam_truncate_root_page(dbc,
+			     *ppg, i, c_data)) != 0)
 				goto err;
 			/* Just in case it should move.  Could it? */
-			bo = GET_BOVERFLOW(dbp, pg, i);
+			bo = GET_BOVERFLOW(dbp, *ppg, i);
 		}
 
 		if (B_TYPE(bo->type) == B_OVERFLOW) {
-			if ((ret = __bam_truncate_overflow(dbc,
+			if ((ret = __db_truncate_overflow(dbc,
 			    bo->pgno, have_lock ? NULL : ppg, c_data)) != 0)
 				goto err;
 			(*donep)++;
 			continue;
 		}
-		/*
-		 * Take a peek at the root.  If it's a leaf then
-		 * there is no tree here, avoid all the trouble.
-		 */
-		if ((ret = __memp_fget(dbmp, &bo->pgno,
-		     dbc->thread_info, dbc->txn, 0, &dpg)) != 0)
-			goto err;
-
-		level = dpg->level;
-		if ((ret = __memp_fput(dbmp,
-		     dbc->thread_info, dpg, dbc->priority)) != 0)
-			goto err;
-		if (level == LEAFLEVEL)
-			continue;
-		if ((ret = __dbc_newopd(dbc, bo->pgno, NULL, &opd)) != 0)
-			return (ret);
-		if (!have_lock) {
-			/*
-			 * The caller should have the page at
-			 * least read locked.  Drop the buffer
-			 * and get the write lock.
-			 */
-			pgno = PGNO(pg);
-			if ((ret = __memp_fput(dbmp, dbc->thread_info,
-			     pg, dbc->priority)) != 0)
-				goto err;
-			*ppg = NULL;
-			if ((ret = __db_lget(dbc, 0, pgno,
-			     DB_LOCK_WRITE, 0, &cp->csp->lock)) != 0)
-				goto err;
-			have_lock = 1;
-			if ((ret = __memp_fget(dbmp, &pgno,
-			    dbc->thread_info,
-			    dbc->txn, DB_MPOOL_DIRTY, ppg)) != 0)
-				goto err;
-			pg = *ppg;
-		}
-		(*donep)++;
-		memset(&start, 0, sizeof(start));
-		do {
-			if ((ret = __bam_compact_int(opd, &start,
-			     NULL, factor, &span, c_data, &isdone)) != 0)
-				break;
-		} while (!isdone);
-
-		if (start.data != NULL)
-			__os_free(env, start.data);
-
-		if (ret != 0)
-			goto err;
-
-		ret = __dbc_close(opd);
-		opd = NULL;
-		if (ret != 0)
+		if ((ret = __bam_compact_opd(dbc, bo->pgno,
+		    have_lock ? NULL : ppg, factor, c_data, donep)) != 0)
 			goto err;
 	}
 
-err:	if (opd != NULL && (t_ret = __dbc_close(opd)) != 0 && ret == 0)
-		ret = t_ret;
+err:
 	return (ret);
 }
 
 /*
- * __bam_truncate_page -- swap a page with a lower numbered page.
- *	The cusor has a stack which includes at least the
- * immediate parent of this page.
+ * __bam_compact_opd -- compact an off page duplicate tree.
+ *
+ * PUBLIC: int __bam_compact_opd __P((DBC *,
+ * PUBLIC:      db_pgno_t, PAGE **, u_int32_t, DB_COMPACT *, int *));
  */
-static int
-__bam_truncate_page(dbc, pgp, opg, update_parent)
+int
+__bam_compact_opd(dbc, root_pgno, ppg, factor, c_data, donep)
 	DBC *dbc;
-	PAGE **pgp, *opg;
-	int update_parent;
+	db_pgno_t root_pgno;
+	PAGE **ppg;
+	u_int32_t factor;
+	DB_COMPACT *c_data;
+	int *donep;
 {
 	BTREE_CURSOR *cp;
-	DB *dbp;
-	DBT data, hdr;
-	DB_LSN lsn;
-	DB_LOCK lock;
-	EPG *epg;
-	PAGE *newpage;
-	db_pgno_t newpgno, oldpgno, *pgnop;
-	int ret;
+	DBC *opd;
+	DBT start;
+	DB_MPOOLFILE *dbmp;
+	ENV *env;
+	PAGE *dpg;
+	int isdone, level, ret, span, t_ret;
+	db_pgno_t pgno;
 
-	DB_ASSERT(NULL, dbc != NULL);
-	dbp = dbc->dbp;
-	LOCK_INIT(lock);
-
-	/*
-	 * We want to free a page that lives in the part of the file that
-	 * can be truncated, so we're going to move it onto a free page
-	 * that is in the part of the file that need not be truncated.
-	 * Since the freelist is ordered now, we can simply call __db_new
-	 * which will grab the first element off the freelist; we know this
-	 * is the lowest numbered free page.
-	 */
-	if ((ret = __db_new(dbc, P_DONTEXTEND | TYPE(*pgp),
-	     TYPE(*pgp) == P_LBTREE ? &lock : NULL, &newpage)) != 0)
-		return (ret);
-
-	/*
-	 * If newpage is null then __db_new would have had to allocate
-	 * a new page from the filesystem, so there is no reason
-	 * to continue this action.
-	 */
-	if (newpage == NULL)
-		return (0);
-
-	/*
-	 * It is possible that a higher page is allocated if other threads
-	 * are allocating at the same time, if so, just put it back.
-	 */
-	if (PGNO(newpage) > PGNO(*pgp)) {
-		/* Its unfortunate but you can't just free a new overflow. */
-		if (TYPE(newpage) == P_OVERFLOW)
-			OV_LEN(newpage) = 0;
-		if ((ret = __LPUT(dbc, lock)) != 0)
-			return (ret);
-		return (__db_free(dbc, newpage));
-	}
-
-	/* Log if necessary. */
-	if (DBC_LOGGING(dbc)) {
-		memset(&hdr, 0, sizeof(hdr));
-		hdr.data = *pgp;
-		hdr.size = P_OVERHEAD(dbp);
-		memset(&data, 0, sizeof(data));
-		if (TYPE(*pgp) == P_OVERFLOW) {
-			data.data = (u_int8_t *)*pgp + P_OVERHEAD(dbp);
-			data.size = OV_LEN(*pgp);
-		} else {
-			data.data = (u_int8_t *)*pgp + HOFFSET(*pgp);
-			data.size = dbp->pgsize - HOFFSET(*pgp);
-			hdr.size += NUM_ENT(*pgp) * sizeof(db_indx_t);
-		}
-		if ((ret = __bam_merge_log(dbp, dbc->txn,
-		      &LSN(newpage), 0, PGNO(newpage), &LSN(newpage),
-		      PGNO(*pgp), &LSN(*pgp), &hdr, &data, 1)) != 0)
-			goto err;
-	} else
-		LSN_NOT_LOGGED(LSN(newpage));
-
-	oldpgno = PGNO(*pgp);
-	newpgno = PGNO(newpage);
-	lsn = LSN(newpage);
-	memcpy(newpage, *pgp, dbp->pgsize);
-	PGNO(newpage) = newpgno;
-	LSN(newpage) = lsn;
-
-	/* Empty the old page. */
-	if ((ret = __memp_dirty(dbp->mpf,
-	    pgp, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
-		goto err;
-	if (TYPE(*pgp) == P_OVERFLOW)
-		OV_LEN(*pgp) = 0;
-	else {
-		HOFFSET(*pgp) = dbp->pgsize;
-		NUM_ENT(*pgp) = 0;
-	}
-	LSN(*pgp) = lsn;
-
-	/* Update siblings. */
-	switch (TYPE(newpage)) {
-	case P_OVERFLOW:
-	case P_LBTREE:
-	case P_LRECNO:
-	case P_LDUP:
-		if (NEXT_PGNO(newpage) == PGNO_INVALID &&
-		    PREV_PGNO(newpage) == PGNO_INVALID)
-			break;
-		if ((ret = __bam_relink(dbc, *pgp, opg, PGNO(newpage))) != 0)
-			goto err;
-		break;
-	default:
-		break;
-	}
+	opd = NULL;
+	env = dbc->dbp->env;
+	dbmp = dbc->dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/*
-	 * Now, if we free this page, it will get truncated, when we free
-	 * all the pages after it in the file.
+	 * Take a peek at the root.  If it's a leaf then
+	 * there is no tree here, avoid all the trouble.
 	 */
-	ret = __db_free(dbc, *pgp);
-	/* db_free always puts the page. */
-	*pgp = newpage;
+	if ((ret = __memp_fget(dbmp, &root_pgno,
+	     dbc->thread_info, dbc->txn, 0, &dpg)) != 0)
+		goto err;
 
-	if (ret != 0)
-		return (ret);
-
-	if (!update_parent)
-		goto done;
-
-	/* Update the parent. */
-	epg = &cp->csp[-1];
-
-	switch (TYPE(epg->page)) {
-	case P_IBTREE:
-		pgnop = &GET_BINTERNAL(dbp, epg->page, epg->indx)->pgno;
-		break;
-	case P_IRECNO:
-		pgnop = &GET_RINTERNAL(dbp, epg->page, epg->indx)->pgno;
-		break;
-	default:
-		pgnop = &GET_BOVERFLOW(dbp, epg->page, epg->indx)->pgno;
-		break;
+	level = dpg->level;
+	if ((ret = __memp_fput(dbmp,
+	     dbc->thread_info, dpg, dbc->priority)) != 0)
+		goto err;
+	if (level == LEAFLEVEL)
+		return (0);
+	if ((ret = __dbc_newopd(dbc, root_pgno, NULL, &opd)) != 0)
+		goto err;
+	if (ppg != NULL) {
+		/*
+		 * The caller should have the page at
+		 * least read locked.  Drop the buffer
+		 * and get the write lock.
+		 */
+		pgno = PGNO(*ppg);
+		if ((ret = __memp_fput(dbmp, dbc->thread_info,
+		     *ppg, dbc->priority)) != 0)
+			goto err;
+		*ppg = NULL;
+		if ((ret = __db_lget(dbc, 0, pgno,
+		     DB_LOCK_WRITE, 0, &cp->csp->lock)) != 0)
+			goto err;
+		if ((ret = __memp_fget(dbmp, &pgno,
+		    dbc->thread_info,
+		    dbc->txn, DB_MPOOL_DIRTY, ppg)) != 0)
+			goto err;
 	}
-	DB_ASSERT(dbp->env, oldpgno == *pgnop);
-	if (DBC_LOGGING(dbc)) {
-		if ((ret = __bam_pgno_log(dbp, dbc->txn, &LSN(epg->page),
-		    0, PGNO(epg->page), &LSN(epg->page), (u_int32_t)epg->indx,
-		    *pgnop, PGNO(newpage))) != 0)
-			return (ret);
-	} else
-		LSN_NOT_LOGGED(LSN(epg->page));
-
-	*pgnop = PGNO(newpage);
-	cp->csp->page = newpage;
-	if ((ret = __TLPUT(dbc, lock)) != 0)
-		return (ret);
-
-done:	return (0);
-
-err:	(void)__memp_fput(dbp->mpf, dbc->thread_info, newpage, dbc->priority);
-	(void)__TLPUT(dbc, lock);
-	return (ret);
-}
-
-/*
- * __bam_truncate_overflow -- find overflow pages to truncate.
- *	Walk the pages of an overflow chain and swap out
- * high numbered pages.  We are passed the first page
- * but only deal with the second and subsequent pages.
- */
-
-static int
-__bam_truncate_overflow(dbc, pgno, ppg, c_data)
-	DBC *dbc;
-	db_pgno_t pgno;
-	PAGE **ppg;
-	DB_COMPACT *c_data;
-{
-	DB *dbp;
-	DB_LOCK lock;
-	PAGE *page;
-	db_pgno_t ppgno;
-	int have_lock, ret, t_ret;
-
-	dbp = dbc->dbp;
-	page = NULL;
-	LOCK_INIT(lock);
-	have_lock = ppg == NULL;
-
-	if ((ret = __memp_fget(dbp->mpf, &pgno,
-	     dbc->thread_info, dbc->txn, 0, &page)) != 0)
-		return (ret);
-
-	while ((pgno = NEXT_PGNO(page)) != PGNO_INVALID) {
-		if ((ret = __memp_fput(dbp->mpf,
-		     dbc->thread_info, page, dbc->priority)) != 0)
-			return (ret);
-		if ((ret = __memp_fget(dbp->mpf, &pgno,
-		    dbc->thread_info, dbc->txn, 0, &page)) != 0)
-			return (ret);
-		if (pgno <= c_data->compact_truncate)
-			continue;
-		if (have_lock == 0) {
-			ppgno = PGNO(*ppg);
-			if ((ret = __memp_fput(dbp->mpf, dbc->thread_info,
-			     *ppg, dbc->priority)) != 0)
-				goto err;
-			*ppg = NULL;
-			if ((ret = __db_lget(dbc, 0, ppgno,
-			     DB_LOCK_WRITE, 0, &lock)) != 0)
-				goto err;
-			if ((ret = __memp_fget(dbp->mpf, &ppgno,
-			    dbc->thread_info,
-			    dbc->txn, DB_MPOOL_DIRTY, ppg)) != 0)
-				goto err;
-			have_lock = 1;
-		}
-		if ((ret = __bam_truncate_page(dbc, &page, NULL, 0)) != 0)
+	memset(&start, 0, sizeof(start));
+	do {
+		span = 0;
+		if ((ret = __bam_compact_int(opd, &start,
+		     NULL, factor, &span, c_data, &isdone)) != 0)
 			break;
-	}
+		/* For OPD the number of pages dirtied is returned in span. */
+		*donep += span;
+	} while (!isdone);
 
-err:	if (page != NULL &&
-	    (t_ret = __memp_fput( dbp->mpf,
-	    dbc->thread_info, page, dbc->priority)) != 0 && ret == 0)
-		ret = t_ret;
-	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
+	if (start.data != NULL)
+		__os_free(env, start.data);
+
+err:	if (opd != NULL && (t_ret = __dbc_close(opd)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
@@ -2434,16 +2033,11 @@ __bam_truncate_root_page(dbc, pg, indx, c_data)
 	BINTERNAL *bi;
 	BOVERFLOW *bo;
 	DB *dbp;
-	DBT orig;
-	PAGE *page;
-	db_pgno_t newpgno, *pgnop;
-	int ret, t_ret;
+	db_pgno_t *pgnop;
 
 	COMPQUIET(c_data, NULL);
 	COMPQUIET(bo, NULL);
-	COMPQUIET(newpgno, PGNO_INVALID);
 	dbp = dbc->dbp;
-	page = NULL;
 	if (TYPE(pg) == P_IBTREE) {
 		bi = GET_BINTERNAL(dbp, pg, indx);
 		if (B_TYPE(bi->type) == B_OVERFLOW) {
@@ -2458,51 +2052,7 @@ __bam_truncate_root_page(dbc, pg, indx, c_data)
 
 	DB_ASSERT(dbp->env, IS_DIRTY(pg));
 
-	if ((ret = __memp_fget(dbp->mpf, pgnop,
-	     dbc->thread_info, dbc->txn, 0, &page)) != 0)
-		goto err;
-
-	/*
-	 * If this is a multiply reference overflow key, then we will just
-	 * copy it and decrement the reference count.  This is part of a
-	 * fix to get rid of multiple references.
-	 */
-	if (TYPE(page) == P_OVERFLOW && OV_REF(page) > 1) {
-		if ((ret = __db_ovref(dbc, bo->pgno)) != 0)
-			goto err;
-		memset(&orig, 0, sizeof(orig));
-		if ((ret = __db_goff(dbc, &orig, bo->tlen, bo->pgno,
-		    &orig.data, &orig.size)) == 0)
-			ret = __db_poff(dbc, &orig, &newpgno);
-		if (orig.data != NULL)
-			__os_free(dbp->env, orig.data);
-		if (ret != 0)
-			goto err;
-	} else {
-		if ((ret = __bam_truncate_page(dbc, &page, NULL, 0)) != 0)
-			goto err;
-		newpgno = PGNO(page);
-		/* If we could not allocate from the free list, give up.*/
-		if (newpgno == *pgnop)
-			goto err;
-	}
-
-	/* Update the reference. */
-	if (DBC_LOGGING(dbc)) {
-		if ((ret = __bam_pgno_log(dbp,
-		     dbc->txn, &LSN(pg), 0, PGNO(pg),
-		     &LSN(pg), (u_int32_t)indx, *pgnop, newpgno)) != 0)
-			goto err;
-	} else
-		LSN_NOT_LOGGED(LSN(pg));
-
-	*pgnop = newpgno;
-
-err:	if (page != NULL && (t_ret =
-	      __memp_fput(dbp->mpf, dbc->thread_info,
-		  page, dbc->priority)) != 0 && ret == 0)
-		ret = t_ret;
-	return (ret);
+	return (__db_truncate_root(dbc, pg, indx, pgnop, bo->tlen));
 }
 
 /*
@@ -2533,7 +2083,7 @@ __bam_truncate_internal_overflow(dbc, page, c_data)
 		if (bo->pgno > c_data->compact_truncate && (ret =
 		     __bam_truncate_root_page(dbc, page, indx, c_data)) != 0)
 			break;
-		if ((ret = __bam_truncate_overflow(
+		if ((ret = __db_truncate_overflow(
 		     dbc, bo->pgno, NULL, c_data)) != 0)
 			break;
 	}
@@ -2710,7 +2260,7 @@ __bam_savekey(dbc, next, start)
 		     sizeof(cp->recno), &start->data, &start->ulen));
 
 	}
-	
+
 	bi = GET_BINTERNAL(dbp, pg, NUM_ENT(pg) - 1);
 	data = bi->data;
 	len = bi->len;
@@ -2732,6 +2282,7 @@ __bam_savekey(dbc, next, start)
 			pg = NULL;
 			goto err;
 		}
+		pg = NULL;
 		if (level - 1 == LEAFLEVEL) {
 			TRY_LOCK(dbc, pgno, saved_pgno,
 			    lock, DB_LOCK_READ, retry);
@@ -2782,28 +2333,35 @@ retry:	return (DB_LOCK_NOTGRANTED);
 }
 
 /*
- * bam_truncate_internal --
+ * bam_truncate_ipages --
  *	Find high numbered pages in the internal nodes of a tree and
- *	swap them.
+ *	swap them for lower numbered pages.
+ * PUBLIC:  int __bam_truncate_ipages __P((DB *,
+ * PUBLIC:    DB_THREAD_INFO *, DB_TXN *, DB_COMPACT *));
  */
-static int
-__bam_truncate_internal(dbp, ip, txn, c_data)
+int
+__bam_truncate_ipages(dbp, ip, txn, c_data)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	DB_COMPACT *c_data;
 {
+	BTMETA *meta;
+	BTREE *bt;
 	BTREE_CURSOR *cp;
 	DBC *dbc;
+	DBMETA *dbmeta;
 	DBT start;
-	DB_LOCK meta_lock;
-	PAGE *pg;
+	DB_LOCK meta_lock, root_lock;
+	PAGE *pg, *root;
 	db_pgno_t pgno;
 	u_int32_t sflag;
 	int level, local_txn, ret, t_ret;
 
+	COMPQUIET(pg, NULL);
 	dbc = NULL;
 	memset(&start, 0, sizeof(start));
+	LOCK_INIT(root_lock);
 
 	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
 		local_txn = 1;
@@ -2814,6 +2372,9 @@ __bam_truncate_internal(dbp, ip, txn, c_data)
 	level = LEAFLEVEL + 1;
 	sflag = CS_READ | CS_GETRECNO;
 	LOCK_INIT(meta_lock);
+	bt = dbp->bt_internal;
+	meta = NULL;
+	root = NULL;
 
 new_txn:
 	if (local_txn &&
@@ -2828,14 +2389,16 @@ new_txn:
 	 * If the the root is a leaf we have nothing to do.
 	 * Searching an empty RECNO tree will return NOTFOUND below and loop.
 	 */
-	if ((ret = __memp_fget(dbp->mpf, &cp->root, ip, txn, 0, &pg)) != 0)
+	pgno = PGNO_INVALID;
+	BAM_GET_ROOT(dbc, pgno, root, 0, DB_LOCK_READ, root_lock, ret);
+	if (ret != 0)
 		goto err;
-	if (LEVEL(pg) == LEAFLEVEL) {
-		ret = __memp_fput(dbp->mpf, ip, pg, dbp->priority);
+
+	if (LEVEL(root) == LEAFLEVEL)
 		goto err;
-	}
-	if ((ret = __memp_fput(dbp->mpf, ip, pg, dbp->priority)) != 0)
+	if ((ret = __memp_fput(dbp->mpf, ip, root, dbp->priority)) != 0)
 		goto err;
+	root = NULL;
 
 	pgno = PGNO_INVALID;
 	do {
@@ -2858,16 +2421,17 @@ new_txn:
 
 		sflag = CS_NEXT | CS_GETRECNO;
 		/* Grab info about the page and drop the stack. */
-		if (pgno != cp->root && (ret = __bam_savekey(dbc,
+		if (pgno != BAM_ROOT_PGNO(dbc) && (ret = __bam_savekey(dbc,
 		    pgno <= c_data->compact_truncate, &start)) != 0) {
-		    	if (ret == DB_LOCK_NOTGRANTED)
+			if (ret == DB_LOCK_NOTGRANTED)
 				continue;
 			goto err;
 		}
 
+		/* We only got read locks so we can drop them. */
 		if ((ret = __bam_stkrel(dbc, STK_NOLOCK)) != 0)
 			goto err;
-		if (pgno == cp->root)
+		if (pgno == BAM_ROOT_PGNO(dbc))
 			break;
 
 		if (pgno <= c_data->compact_truncate)
@@ -2886,27 +2450,27 @@ new_txn:
 			}
 			goto err;
 		}
-		pg = cp->csp->page;
-		pgno = PGNO(pg);
+		pgno = PGNO(cp->csp->page);
 
 		if (pgno > c_data->compact_truncate) {
-			if ((ret = __bam_truncate_page(dbc, &pg, NULL, 1)) != 0)
+			if ((ret = __db_exchange_page(dbc, &cp->csp->page,
+			    NULL, PGNO_INVALID, DB_EXCH_DEFAULT)) != 0)
 				goto err;
-			if (pgno == PGNO(pg)) {
-				/* We could not allocate.  Give up. */
-				pgno = cp->root;
-			}
 		}
 
+		pg = cp->csp->page;
 		if ((ret = __bam_stkrel(dbc,
-		     pgno > c_data->compact_truncate ? 0 : STK_NOLOCK)) != 0)
+		     pgno != PGNO(pg) ? 0 : STK_NOLOCK)) != 0)
 			goto err;
 
 		/* We are locking subtrees, so drop the write locks asap. */
-		if (local_txn && pgno > c_data->compact_truncate)
+		if (local_txn && pgno != PGNO(pg))
 			break;
-	} while (pgno != cp->root);
+		/* We really break from the loop above on this condition. */
+	} while (pgno != BAM_ROOT_PGNO(dbc));
 
+	if ((ret = __LPUT(dbc, root_lock)) != 0)
+		goto err;
 	if ((ret = __dbc_close(dbc)) != 0)
 		goto err;
 	dbc = NULL;
@@ -2916,16 +2480,124 @@ new_txn:
 		txn = NULL;
 		LOCK_INIT(meta_lock);
 	}
-	if (pgno != ((BTREE *)dbp->bt_internal)->bt_root)
+	if (pgno != bt->bt_root)
 		goto new_txn;
+
+	/*
+	 * Attempt to move the subdatabase metadata and/or root pages.
+	 * Grab the metadata page and verify the revision, if its out
+	 * of date reopen and try again.
+	 */
+again:	if (F_ISSET(dbp, DB_AM_SUBDB) &&
+	    (bt->bt_root > c_data->compact_truncate ||
+	    bt->bt_meta > c_data->compact_truncate)) {
+		if (local_txn &&
+		    (ret = __txn_begin(dbp->env, ip, NULL, &txn, 0)) != 0)
+			goto err;
+		if (dbc == NULL &&
+		    (ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
+			goto err;
+		if ((ret = __db_lget(dbc,
+		     0, bt->bt_meta, DB_LOCK_WRITE, 0, &meta_lock)) != 0)
+			goto err;
+		if ((ret = __memp_fget(dbp->mpf, &bt->bt_meta,
+		     dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &meta)) != 0)
+			goto err;
+		if (bt->revision != dbp->mpf->mfp->revision) {
+			if ((ret = __memp_fput(dbp->mpf,
+			    ip, meta, dbp->priority)) != 0)
+				goto err;
+			meta = NULL;
+			if (local_txn) {
+				if ((ret = __dbc_close(dbc)) != 0)
+					goto err;
+				dbc = NULL;
+				if ((ret = __txn_abort(txn)) != 0)
+					goto err;
+			} else {
+				if ((ret = __LPUT(dbc, meta_lock)) != 0)
+					goto err;
+			}
+			if ((ret = __db_reopen(dbc)) != 0)
+				goto err;
+			goto again;
+		}
+		if (PGNO(meta) > c_data->compact_truncate) {
+			dbmeta = (DBMETA *)meta;
+			if ((ret = __db_move_metadata(dbc,
+			    &dbmeta, c_data)) != 0)
+				goto err;
+			meta = (BTMETA *)dbmeta;
+		}
+		if (bt->bt_root > c_data->compact_truncate) {
+			if ((ret = __db_lget(dbc, 0,
+			   bt->bt_root, DB_LOCK_WRITE, 0, &root_lock)) != 0)
+				goto err;
+			if ((ret = __memp_fget(dbp->mpf,
+			     &bt->bt_root, dbc->thread_info,
+			     dbc->txn, DB_MPOOL_DIRTY, &root)) != 0)
+				goto err;
+			c_data->compact_pages_examine++;
+			/*
+			 * Bump the revision first since any reader will be
+			 * blocked on the latch on the old page.  That latch
+			 * will get dropped when we free the page and the
+			 * reader will do a __db_reopen and wait till the meta
+			 * page latch is released.
+			 */
+			++dbp->mpf->mfp->revision;
+			if ((ret = __db_exchange_page(dbc,
+			    &root, NULL, PGNO_INVALID, DB_EXCH_FREE)) != 0)
+				goto err;
+			if (PGNO(root) == bt->bt_root)
+				goto err;
+			if (DBC_LOGGING(dbc)) {
+				if ((ret =
+				    __bam_root_log(dbp, txn, &LSN(meta), 0,
+				    PGNO(meta), PGNO(root), &LSN(meta))) != 0)
+					goto err;
+			} else
+				LSN_NOT_LOGGED(LSN(meta));
+			bt->bt_root = meta->root = PGNO(root);
+			bt->revision = dbp->mpf->mfp->revision;
+			if ((ret = __memp_fput(dbp->mpf,
+			    ip, root, dbp->priority)) != 0)
+				goto err;
+			root = NULL;
+			if (txn == NULL && (ret = __LPUT(dbc, root_lock)) != 0)
+				goto err;
+
+		}
+		if ((ret = __memp_fput(dbp->mpf, ip, meta, dbp->priority)) != 0)
+			goto err;
+		meta = NULL;
+		if ((ret = __dbc_close(dbc)) != 0)
+			goto err;
+		dbc = NULL;
+		if (local_txn) {
+			ret = __txn_commit(txn, DB_TXN_NOSYNC);
+			txn = NULL;
+			LOCK_INIT(meta_lock);
+			LOCK_INIT(root_lock);
+		}
+	}
 
 err:	if (txn != NULL && ret != 0)
 		sflag = STK_PGONLY;
 	else
 		sflag = 0;
-	if (txn == NULL)
+	if (txn == NULL) {
 		if ((t_ret = __LPUT(dbc, meta_lock)) != 0 && ret == 0)
 			ret = t_ret;
+		if ((t_ret = __LPUT(dbc, root_lock)) != 0 && ret == 0)
+			ret = t_ret;
+	}
+	if (meta != NULL && (t_ret = __memp_fput(dbp->mpf,
+	    ip, meta, dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if (root != NULL && (t_ret = __memp_fput(dbp->mpf,
+	    ip, root, dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
 	if (dbc != NULL && (t_ret = __bam_stkrel(dbc, sflag)) != 0 && ret == 0)
 		ret = t_ret;
 	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0 && ret == 0)
@@ -2938,81 +2610,4 @@ err:	if (txn != NULL && ret != 0)
 	return (ret);
 }
 
-static int
-__bam_setup_freelist(dbp, list, nelems)
-	DB *dbp;
-	db_pglist_t *list;
-	u_int32_t nelems;
-{
-	DB_MPOOLFILE *mpf;
-	db_pgno_t *plist;
-	int ret;
-
-	mpf = dbp->mpf;
-
-	if ((ret = __memp_alloc_freelist(mpf, nelems, &plist)) != 0)
-		return (ret);
-
-	while (nelems-- != 0)
-		*plist++ = list++->pgno;
-
-	return (0);
-}
-
-static int
-__bam_free_freelist(dbp, ip, txn)
-	DB *dbp;
-	DB_THREAD_INFO *ip;
-	DB_TXN *txn;
-{
-	DBC *dbc;
-	DB_LOCK lock;
-	int auto_commit, ret, t_ret;
-
-	LOCK_INIT(lock);
-	auto_commit = ret = 0;
-
-	/*
-	 * If we are not in a transaction then we need to get
-	 * a lock on the meta page, otherwise we should already
-	 * have the lock.
-	 */
-
-	dbc = NULL;
-	if (IS_DB_AUTO_COMMIT(dbp, txn)) {
-		/*
-		 * We must not timeout the lock or we will not free the list.
-		 * We ignore errors from txn_begin as there is little that
-		 * the application can do with the error and we want to
-		 * get the lock and free the list if at all possible.
-		 */
-		if (__txn_begin(dbp->env, ip, NULL, &txn, 0) == 0) {
-			(void)__lock_set_timeout(dbp->env,
-			    txn->locker, 0, DB_SET_TXN_TIMEOUT);
-			(void)__lock_set_timeout(dbp->env,
-			    txn->locker, 0, DB_SET_LOCK_TIMEOUT);
-			auto_commit = 1;
-		}
-		/* Get a cursor so we can call __db_lget. */
-		if ((ret = __db_cursor(dbp, ip, txn, &dbc, 0)) != 0)
-			return (ret);
-
-		if ((ret = __db_lget(dbc,
-		     0, PGNO_BASE_MD, DB_LOCK_WRITE, 0, &lock)) != 0)
-			goto err;
-	}
-
-	ret = __memp_free_freelist(dbp->mpf);
-
-err:	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-		ret = t_ret;
-
-	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0 && ret == 0)
-		ret = t_ret;
-
-	if (auto_commit && __txn_abort(txn) != 0 && ret == 0)
-		ret = t_ret;
-
-	return (ret);
-}
 #endif

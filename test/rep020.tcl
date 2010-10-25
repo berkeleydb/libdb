@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -14,10 +14,6 @@ proc rep020 { method args } {
 	global repfiles_in_memory
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 	set tnum "020"
 
 	# Run for btree only.
@@ -103,7 +99,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 $verbargs \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -113,7 +109,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 	for { set i 0 } { $i < $nclients } { incr i } {
 		set envid [expr $i + 2]
 		repladd $envid
-		set env_cmd($i) "berkdb_env_noerr -create -event rep_event \
+		set env_cmd($i) "berkdb_env_noerr -create -event \
 		    $verbargs -home $clientdir($i) $repmemargs \
 		    $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
@@ -169,7 +165,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash $qdir \
+		run_election envlist err_cmd pri crash $qdir \
 		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 	}
 	process_msgs $envlist
@@ -201,7 +197,7 @@ proc rep020_sub { method nclients tnum logset largs } {
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash $qdir \
+		run_election envlist err_cmd pri crash $qdir \
 		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 	}
 	process_msgs $envlist
@@ -239,18 +235,8 @@ proc rep020_sub { method nclients tnum logset largs } {
 	set nclients $orig_nclients
 	set elector [expr $nclients - 1]
 	setpriority pri $nclients $winner
-	run_election env_cmd envlist err_cmd pri crash $qdir \
+	run_election envlist err_cmd pri crash $qdir \
 	    $msg $elector $nsites $nvotes $nclients $winner 0 $dbname
-
-	set newegen($i) \
-	    [stat_field $clientenv($i) rep_stat "Election generation number"]
-	foreach pair $envlist {
-		set i [expr [lindex $pair 1] - 2]
-		set clientenv($i) [lindex $pair 0]
-		set egen($i) [stat_field \
-		    $clientenv($i) rep_stat "Election generation number"]
-	}
-	error_check_good egen_catchup $egen(4) $egen(3)
 
 	# Skip this part of the test for mixed-mode logging,
 	# since we can't recover with in-memory logs.
@@ -282,27 +268,25 @@ proc rep020_sub { method nclients tnum logset largs } {
 			set clientenv($i) [eval $env_cmd($i) -recover]
 			set envlist [lreplace \
 			    $envlist $i $i "$clientenv($i) [expr $i + 2]"]
-		}
-		process_msgs $envlist
-		foreach pair $envlist {
-			set i [expr [lindex $pair 1] - 2]
+
 			set newegen($i) [stat_field $clientenv($i) \
 			    rep_stat "Election generation number"]
 			if { $repfiles_in_memory == 0 } {
-				error_check_good egen_recovery $egen($i) \
-				    $newegen($i)
+				error_check_good egen_recovery$i $newegen($i) \
+				    $egen($i)
 			} else {
 				# For rep in-memory, egen expected to start
 				# over at 1 after close/reopen environment.
 				error_check_good egen_recovery $newegen($i) 1
 			}
 		}
+		process_msgs $envlist
 
 		# Run an election.  Now the egens should go forward.
 		set winner [berkdb random_int 0 [expr $nclients - 1]]
 		setpriority pri $nclients $winner
 		set elector [berkdb random_int 0 [expr $nclients - 1]]
-		run_election env_cmd envlist err_cmd pri crash $qdir \
+		run_election envlist err_cmd pri crash $qdir \
 		    $msg $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 		foreach pair $envlist {

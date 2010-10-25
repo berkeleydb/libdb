@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep082
 # TEST  Sending replication requests to correct master site.
@@ -11,11 +11,6 @@
 proc rep082 { method { niter 200 } { tnum "082" } args } {
 	source ./include.tcl
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	if { $checking_valid_methods } {
 		return "ALL"

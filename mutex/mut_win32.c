@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -77,9 +77,10 @@ static __inline int get_handle(env, mutexp, eventp)
  *
  */
 static __inline int
-__db_win32_mutex_lock_int(env, mutex, wait)
+__db_win32_mutex_lock_int(env, mutex, timeout, wait)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 	int wait;
 {
 	DB_ENV *dbenv;
@@ -88,8 +89,10 @@ __db_win32_mutex_lock_int(env, mutex, wait)
 	DB_MUTEXREGION *mtxregion;
 	DB_THREAD_INFO *ip;
 	HANDLE event;
-	u_int32_t nspins;
-	int ms, ret;
+	u_int32_t ms, nspins;
+	db_timespec now, tempspec, timeoutspec;
+	db_timeout_t time_left;
+	int ret;
 #ifdef MUTEX_DIAG
 	LARGE_INTEGER now;
 #endif
@@ -103,6 +106,11 @@ __db_win32_mutex_lock_int(env, mutex, wait)
 	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
 	CHECK_MTX_THREAD(env, mutexp);
+
+	if (timeout != 0) {
+		timespecclear(&timeoutspec);
+		__clock_set_expires(env, &timeoutspec, timeout);
+	}
 
 	/*
 	 * See WINCE_ATOMIC_MAGIC definition for details.
@@ -173,10 +181,10 @@ loop:	/* Attempt to acquire the mutex mutex_tas_spins times, if waiting. */
 			InterlockedDecrement(&mutexp->nwaiters);
 #ifdef MUTEX_DIAG
 			if (ret != WAIT_OBJECT_0) {
-				QueryPerformanceCounter(&now);
+				QueryPerformanceCounter(&diag_now);
 				printf("[%I64d]: Lost signal on mutex %p, "
 				    "id %d, ms %d\n",
-				    now.QuadPart, mutexp, mutexp->id, ms);
+				    diag_now.QuadPart, mutexp, mutexp->id, ms);
 			}
 #endif
 		}
@@ -199,11 +207,28 @@ loop:	/* Attempt to acquire the mutex mutex_tas_spins times, if waiting. */
 	 * unlocking thread gets lost.  We start at 50 ms because it's unlikely
 	 * to happen often and we want to avoid wasting CPU.
 	 */
+	if (timeout != 0) {
+		timespecclear(&now);
+		if (__clock_expired(env, &now, &timeoutspec)) {
+			if (event != NULL) {
+				CloseHandle(event);
+				InterlockedDecrement(&mutexp->nwaiters);
+			}
+			return (DB_TIMEOUT);
+		}
+		/* Reduce the event wait if the timeout would happen first. */
+		tempspec = timeoutspec;
+		timespecsub(&tempspec, &now);
+		DB_TIMESPEC_TO_TIMEOUT(time_left, &tempspec, 0);
+		time_left /= US_PER_MS;
+		if (ms > time_left)
+			ms = time_left;
+	}
 	if (event == NULL) {
 #ifdef MUTEX_DIAG
-		QueryPerformanceCounter(&now);
+		QueryPerformanceCounter(&diag_now);
 		printf("[%I64d]: Waiting on mutex %p, id %d\n",
-		    now.QuadPart, mutexp, mutexp->id);
+		    diag_now.QuadPart, mutexp, mutexp->id);
 #endif
 		InterlockedIncrement(&mutexp->nwaiters);
 		if ((ret = get_handle(env, mutexp, &event)) != 0)
@@ -248,14 +273,15 @@ __db_win32_mutex_init(env, mutex, flags)
  * __db_win32_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_win32_mutex_lock __P((ENV *, db_mutex_t));
+ * PUBLIC: int __db_win32_mutex_lock __P((ENV *, db_mutex_t, db_timeout_t));
  */
 int
-__db_win32_mutex_lock(env, mutex)
+__db_win32_mutex_lock(env, mutex, timeout)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 {
-	return (__db_win32_mutex_lock_int(env, mutex, 1));
+	return (__db_win32_mutex_lock_int(env, mutex, timeout, 1));
 }
 
 /*
@@ -292,7 +318,7 @@ __db_win32_mutex_readlock_int(env, mutex, nowait)
 	int ms, ret;
 	long exch_ret, mtx_val;
 #ifdef MUTEX_DIAG
-	LARGE_INTEGER now;
+	LARGE_INTEGER diag_now;
 #endif
 	dbenv = env->dbenv;
 
@@ -355,10 +381,10 @@ retry:		mtx_val = atomic_read(&mutexp->sharecount);
 			InterlockedDecrement(&mutexp->nwaiters);
 #ifdef MUTEX_DIAG
 			if (ret != WAIT_OBJECT_0) {
-				QueryPerformanceCounter(&now);
+				QueryPerformanceCounter(&diag_now);
 				printf("[%I64d]: Lost signal on mutex %p, "
 				    "id %d, ms %d\n",
-				    now.QuadPart, mutexp, mutexp->id, ms);
+				    diag_now.QuadPart, mutexp, mutexp->id, ms);
 			}
 #endif
 		}
@@ -383,9 +409,9 @@ retry:		mtx_val = atomic_read(&mutexp->sharecount);
 	 */
 	if (event == NULL) {
 #ifdef MUTEX_DIAG
-		QueryPerformanceCounter(&now);
+		QueryPerformanceCounter(&diag_now);
 		printf("[%I64d]: Waiting on mutex %p, id %d\n",
-		    now.QuadPart, mutexp, mutexp->id);
+		    diag_now.QuadPart, mutexp, mutexp->id);
 #endif
 		InterlockedIncrement(&mutexp->nwaiters);
 		if ((ret = get_handle(env, mutexp, &event)) != 0)
@@ -455,7 +481,7 @@ __db_win32_mutex_unlock(env, mutex)
 	HANDLE event;
 	int ret;
 #ifdef MUTEX_DIAG
-	LARGE_INTEGER now;
+	LARGE_INTEGER diag_now;
 #endif
 	dbenv = env->dbenv;
 
@@ -506,9 +532,9 @@ __db_win32_mutex_unlock(env, mutex)
 			goto err;
 
 #ifdef MUTEX_DIAG
-		QueryPerformanceCounter(&now);
+		QueryPerformanceCounter(&diag_now);
 		printf("[%I64d]: Signalling mutex %p, id %d\n",
-		    now.QuadPart, mutexp, mutexp->id);
+		    diag_now.QuadPart, mutexp, mutexp->id);
 #endif
 		if (!PulseEvent(event)) {
 			ret = __os_get_syserr();

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -49,6 +49,7 @@ __memp_fget_pp(dbmfp, pgnoaddr, txnp, flags, addrp)
 	 * is to keep database files small.  It's sleazy as hell, but we catch
 	 * any attempt to actually write the file in memp_fput().
 	 */
+#undef	OKFLAGS
 #define	OKFLAGS		(DB_MPOOL_CREATE | DB_MPOOL_DIRTY | \
 	    DB_MPOOL_EDIT | DB_MPOOL_LAST | DB_MPOOL_NEW)
 	if (flags != 0) {
@@ -71,7 +72,7 @@ __memp_fget_pp(dbmfp, pgnoaddr, txnp, flags, addrp)
 
 	rep_blocked = 0;
 	if (txnp == NULL && IS_ENV_REPLICATED(env)) {
-		if ((ret = __op_rep_enter(env)) != 0)
+		if ((ret = __op_rep_enter(env, 0)) != 0)
 			goto err;
 		rep_blocked = 1;
 	}
@@ -222,8 +223,8 @@ __memp_fget(dbmfp, pgnoaddr, ip, txn, flags, addrp)
 	if (dbmfp->addr != NULL &&
 	    F_ISSET(mfp, MP_CAN_MMAP) && *pgnoaddr <= mfp->orig_last_pgno) {
 		*(void **)addrp = (u_int8_t *)dbmfp->addr +
-		    (*pgnoaddr * mfp->stat.st_pagesize);
-		STAT(++mfp->stat.st_map);
+		    (*pgnoaddr * mfp->pagesize);
+		STAT_INC(env, mpool, map, mfp->stat.st_map);
 		return (0);
 	}
 
@@ -256,11 +257,11 @@ retry:		MUTEX_LOCK(env, hp->mtx_hash);
 			    !BH_OWNED_BY(env, bhp, txn) &&
 			    !BH_VISIBLE(env, bhp, read_lsnp, vlsn))
 				bhp = SH_CHAIN_PREV(bhp, vc, __bh);
-	
-			/* 
-			 * We can get a null bhp if we are looking for a 
+
+			/*
+			 * We can get a null bhp if we are looking for a
 			 * page that was created after the transaction was
-			 * started so its not visible  (i.e. page added to 
+			 * started so its not visible  (i.e. page added to
 			 * the BTREE in a subsequent txn).
 			 */
 			if (bhp == NULL) {
@@ -371,7 +372,7 @@ thawed:			need_free = (atomic_dec(env, &bhp->ref) == 0);
 			goto err;
 		}
 
-		STAT(++mfp->stat.st_cache_hit);
+		STAT_INC(env, mpool, hits, mfp->stat.st_cache_hit);
 		break;
 	}
 
@@ -380,10 +381,11 @@ thawed:			need_free = (atomic_dec(env, &bhp->ref) == 0);
 	 * Update the hash bucket search statistics -- do now because our next
 	 * search may be for a different bucket.
 	 */
-	++c_mp->stat.st_hash_searches;
+	STAT_INC(env, mpool, hash_search, c_mp->stat.st_hash_searches);
 	if (st_hsearch > c_mp->stat.st_hash_longest)
 		c_mp->stat.st_hash_longest = st_hsearch;
-	c_mp->stat.st_hash_examined += st_hsearch;
+	STAT_ADJUST(env, mpool,
+	    hash_examined, c_mp->stat.st_hash_searches, st_hsearch);
 #endif
 
 	/*
@@ -677,6 +679,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 				 * and we're holding the mfp locked.
 				 */
 				MUTEX_UNLOCK(env, mfp->mutex);
+				hp = NULL;
 				goto newpg;
 			}
 		}
@@ -733,6 +736,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 			MUTEX_UNLOCK(env, bhp->mtx_buf);
 			b_lock = 0;
 			bhp = NULL;
+			hp = NULL;
 			goto newpg;
 		}
 
@@ -802,15 +806,15 @@ alloc:		/* Allocate a new buffer header and data space. */
 		 * if DB_MPOOL_CREATE is set.
 		 */
 		if (extending) {
-			MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize,
+			MVCC_MPROTECT(bhp->buf, mfp->pagesize,
 			    PROT_READ | PROT_WRITE);
 			memset(bhp->buf, 0,
 			    (mfp->clear_len == DB_CLEARLEN_NOTSET) ?
-			    mfp->stat.st_pagesize : mfp->clear_len);
+			    mfp->pagesize : mfp->clear_len);
 #if defined(DIAGNOSTIC) || defined(UMRW)
 			if (mfp->clear_len != DB_CLEARLEN_NOTSET)
 				memset(bhp->buf + mfp->clear_len, CLEAR_BYTE,
-				    mfp->stat.st_pagesize - mfp->clear_len);
+				    mfp->pagesize - mfp->clear_len);
 #endif
 
 			if (flags == DB_MPOOL_CREATE && mfp->ftype != 0 &&
@@ -818,10 +822,11 @@ alloc:		/* Allocate a new buffer header and data space. */
 			    bhp->pgno, bhp->buf, 1)) != 0)
 				goto err;
 
-			STAT(++mfp->stat.st_page_create);
+			STAT_INC(env, mpool,
+			    page_create, mfp->stat.st_page_create);
 		} else {
 			F_SET(bhp, BH_TRASH);
-			STAT(++mfp->stat.st_cache_miss);
+			STAT_INC(env, mpool, miss, mfp->stat.st_cache_miss);
 		}
 
 		makecopy = mvcc && dirty && !extending;
@@ -900,6 +905,8 @@ alloc:		/* Allocate a new buffer header and data space. */
 			goto reuse;
 
 		DB_ASSERT(env, bhp != NULL && alloc_bhp != bhp);
+		DB_ASSERT(env, bhp->td_off == INVALID_ROFF ||
+		    !IS_MAX_LSN(*VISIBLE_LSN(env, bhp)));
 		DB_ASSERT(env, txn != NULL ||
 		    (F_ISSET(bhp, BH_FROZEN) && F_ISSET(bhp, BH_FREED)));
 		DB_ASSERT(env, (extending || flags == DB_MPOOL_FREE ||
@@ -908,7 +915,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		MUTEX_REQUIRED(env, bhp->mtx_buf);
 
 		if (BH_REFCOUNT(bhp) == 1)
-			MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize,
+			MVCC_MPROTECT(bhp->buf, mfp->pagesize,
 			    PROT_READ);
 
 		atomic_init(&alloc_bhp->ref, 1);
@@ -929,22 +936,22 @@ alloc:		/* Allocate a new buffer header and data space. */
 		} else if ((ret =
 		    __memp_bh_settxn(dbmp, mfp, alloc_bhp, td)) != 0)
 			goto err;
-		MVCC_MPROTECT(alloc_bhp->buf, mfp->stat.st_pagesize,
+		MVCC_MPROTECT(alloc_bhp->buf, mfp->pagesize,
 		    PROT_READ | PROT_WRITE);
 		if (extending ||
 		    F_ISSET(bhp, BH_FREED) || flags == DB_MPOOL_FREE) {
 			memset(alloc_bhp->buf, 0,
 			    (mfp->clear_len == DB_CLEARLEN_NOTSET) ?
-			    mfp->stat.st_pagesize : mfp->clear_len);
+			    mfp->pagesize : mfp->clear_len);
 #if defined(DIAGNOSTIC) || defined(UMRW)
 			if (mfp->clear_len != DB_CLEARLEN_NOTSET)
 				memset(alloc_bhp->buf + mfp->clear_len,
 				    CLEAR_BYTE,
-				    mfp->stat.st_pagesize - mfp->clear_len);
+				    mfp->pagesize - mfp->clear_len);
 #endif
 		} else
-			memcpy(alloc_bhp->buf, bhp->buf, mfp->stat.st_pagesize);
-		MVCC_MPROTECT(alloc_bhp->buf, mfp->stat.st_pagesize, 0);
+			memcpy(alloc_bhp->buf, bhp->buf, mfp->pagesize);
+		MVCC_MPROTECT(alloc_bhp->buf, mfp->pagesize, 0);
 
 		if (h_locked == 0)
 			MUTEX_LOCK(env, hp->mtx_hash);
@@ -967,7 +974,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		DB_ASSERT(env, b_incr && BH_REFCOUNT(bhp) > 0);
 		if (atomic_dec(env, &bhp->ref) == 0) {
 			bhp->priority = c_mp->lru_count;
-			MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize, 0);
+			MVCC_MPROTECT(bhp->buf, mfp->pagesize, 0);
 		}
 		F_CLR(bhp, BH_EXCLUSIVE);
 		MUTEX_UNLOCK(env, bhp->mtx_buf);
@@ -1014,7 +1021,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		if (F_ISSET(bhp, BH_FREED)) {
 			memset(bhp->buf, 0,
 			    (mfp->clear_len == DB_CLEARLEN_NOTSET) ?
-			    mfp->stat.st_pagesize : mfp->clear_len);
+			    mfp->pagesize : mfp->clear_len);
 			F_CLR(bhp, BH_FREED);
 		}
 		if (!F_ISSET(bhp, BH_DIRTY)) {
@@ -1048,7 +1055,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 #endif
 	}
 
-	MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize, PROT_READ |
+	MVCC_MPROTECT(bhp->buf, mfp->pagesize, PROT_READ |
 	    (dirty || extending || F_ISSET(bhp, BH_DIRTY) ?
 	    PROT_WRITE : 0));
 

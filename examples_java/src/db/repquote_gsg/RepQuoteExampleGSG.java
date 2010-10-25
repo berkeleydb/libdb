@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -338,6 +338,29 @@ public class RepQuoteExampleGSG implements EventHandler
     public void handleRepElectedEvent()
     {
         // Safely ignored for Replication Manager applications.
+    }
+
+    public void handleRepElectionFailedEvent()
+    {
+        // Safely ignored for Replication Manager applications that do
+        // not manage their own master selection.
+    }
+	
+    public void handleRepJoinFailureEvent()
+    {
+        // Safely ignored since this application did not turn off AUTOINIT.
+    }
+
+    public void handleRepMasterFailureEvent()
+    {
+        // Safely ignored for Replication Manager applications that do
+        // not manage their own master selection.
+    }
+
+    public void handleRepDupmasterEvent()
+    {
+        // Safely ignored for Replication Manager applications that do
+        // not manage their own master selection.
     }
 
     public void handlePanicEvent()

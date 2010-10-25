@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -22,6 +22,8 @@ namespace BerkeleyDB {
         /// </summary>
         public ReplicationConfig() {
             remoteAddrs = new Dictionary<ReplicationHostAddress, bool>();
+            AutoInit = true;
+            Elections = true;
         }
 
         #region Config Flags
@@ -48,10 +50,10 @@ namespace BerkeleyDB {
         /// </remarks>
         public bool UseMasterLeases;
         /// <summary>
-        /// If true, the replication master will not automatically re-initialize
-        /// outdated clients (defaults to false). 
+        /// If true, the replication master will automatically re-initialize
+        /// outdated clients (defaults to true). 
         /// </summary>
-        public bool NoAutoInit;
+        public bool AutoInit;
         /// <summary>
         /// If true, Berkeley DB method calls that would normally block while
         /// clients are in recovery will return errors immediately (defaults to
@@ -68,6 +70,12 @@ namespace BerkeleyDB {
         /// same value for this parameter.
         /// </summary>
         public bool Strict2Site;
+        /// <summary>
+        /// If true, Replication Manager automatically runs elections to
+        /// choose a new master when the old master appears to
+        /// have become disconnected (defaults to true).
+        /// </summary>
+        public bool Elections;
         #endregion Config Flags
 
         #region Timeout Values
@@ -340,13 +348,15 @@ namespace BerkeleyDB {
         /// maximum threshold of <paramref name="max"/> microseconds.
         /// </para>
         /// <para>
-        /// These values are thresholds only. Since Berkeley DB has no thread
-        /// available in the library as a timer, the threshold is only checked
-        /// when a thread enters the Berkeley DB library to process an incoming
-        /// replication message. Any amount of time may have passed since the
-        /// last message arrived and Berkeley DB only checks whether the amount
-        /// of time since a request was made is beyond the threshold value or
-        /// not.
+        /// These values are thresholds only. Replication Manager applications 
+        /// use these values to determine when to automatically request 
+        /// retransmission of missing messages. For Base API applications, 
+        /// Berkeley DB has no thread available in the library as a timer, the 
+        /// threshold is only checked when a thread enters the Berkeley DB
+        /// library to process an incoming replication message. Any amount of
+        /// time may have passed since the last message arrived and Berkeley DB
+        /// only checks whether the amount of time since a request was made is 
+        /// beyond the threshold value or not.
         /// </para>
         /// <para>
         /// By default the minimum is 40000 and the maximum is 1280000 (1.28

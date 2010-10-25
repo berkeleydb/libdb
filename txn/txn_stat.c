@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,7 +11,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 #include "dbinc/txn.h"
 
 #ifdef HAVE_STATISTICS
@@ -114,6 +113,8 @@ __txn_stat(env, statp, flags)
 		stats->st_txnarray[ndx].read_lsn = td->read_lsn;
 		stats->st_txnarray[ndx].mvcc_ref = td->mvcc_ref;
 		stats->st_txnarray[ndx].status = td->status;
+		stats->st_txnarray[ndx].priority = td->priority;
+
 		if (td->status == TXN_PREPARED)
 			memcpy(stats->st_txnarray[ndx].gid,
 			    td->gid, sizeof(td->gid));
@@ -286,6 +287,9 @@ __txn_print_stats(env, flags)
 		if (txn->mvcc_ref != 0)
 			__db_msgadd(env, &mb,
 			    "; mvcc refcount: %lu", (u_long)txn->mvcc_ref);
+		if (LOCKING_ON(env))
+			__db_msgadd(env, &mb,
+			    "; priority: %lu", (u_long)txn->priority);
 		if (txn->name[0] != '\0')
 			__db_msgadd(env, &mb, "; \"%s\"", txn->name);
 		if (txn->status == TXN_PREPARE)

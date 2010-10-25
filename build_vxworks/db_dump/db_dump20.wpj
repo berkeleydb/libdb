@@ -134,23 +134,7 @@ PENTIUMgnu
 <BEGIN> CORE_INFO_VERSION
 2.0
 <END>
-<BEGIN> FILE_db_dump.c_dependDone
-FALSE
-<END>
-
-<BEGIN> FILE_db_dump.c_dependencies
-<END>
-
-<BEGIN> FILE_db_dump.c_objects
-db_dump.o
-<END>
-
-<BEGIN> FILE_db_dump.c_tool
-C/C++ compiler
-<END>
-
 <BEGIN> PROJECT_FILES
-$(PRJ_DIR)/db_dump.c
 <END>
 
 <BEGIN> userComments

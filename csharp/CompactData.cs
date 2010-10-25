@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -28,6 +28,13 @@ namespace BerkeleyDB {
         /// </summary>
         public uint Deadlocks {
             get { return  cdata.compact_deadlock; }
+        }
+        /// <summary>
+        /// The number of empty hash buckets that were found the compaction
+        /// phase.
+        /// </summary>
+        public uint EmptyBuckets {
+            get { return cdata.compact_empty_buckets; }
         }
         /// <summary>
         /// The number of levels removed from the Btree or Recno database during

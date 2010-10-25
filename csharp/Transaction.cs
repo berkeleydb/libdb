@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -32,10 +32,10 @@ namespace BerkeleyDB {
     /// opened and closed within a single transaction.
     /// </para>
     /// <para>
-    /// A parent transaction may not issue any Berkeley DB operations —
+    /// A parent transaction may not issue any Berkeley DB operations
     /// except for <see cref="DatabaseEnvironment.BeginTransaction"/>, 
     /// <see cref="Transaction.Abort"/>and <see cref="Transaction.Commit"/>
-    /// — while it has active child transactions (child transactions that
+    /// while it has active child transactions (child transactions that
     /// have not yet been committed or aborted).
     /// </para>
     /// </remarks>
@@ -46,13 +46,23 @@ namespace BerkeleyDB {
         public static uint GlobalIdLength = DbConstants.DB_GID_SIZE;
 
         internal DB_TXN dbtxn;
+        internal DB_TXN_TOKEN dbtoken;
         
+        internal void SetCommitToken() {
+            if (dbtxn.is_commit_token_enabled()) {
+                dbtoken = new DB_TXN_TOKEN();
+                dbtxn.set_commit_token(dbtoken);
+            }            
+        }
+
         internal Transaction(DB_TXN txn) {
             dbtxn = txn;
+            dbtoken = null;            
         }
 
         private bool idCached = false;
         private uint _id;
+        private bool isCommitted = false;
         /// <summary>
         /// The unique transaction id associated with this transaction.
         /// </summary>
@@ -63,6 +73,43 @@ namespace BerkeleyDB {
                     idCached = true;
                 }
                 return _id;
+            }
+        }
+
+        /// <summary>
+        /// The commit token generated at the commit time of this transaction.
+        /// This operation can only be performed after this transaction has committed.
+        /// </summary>
+        public byte[] CommitToken {
+            /*
+             *If iscommitted is true, but dbtoken is null, then it's one
+             * of below cases:
+             * 1) either this transaction is a nested txn; or
+             * 2) this environment didn't enable logging; or
+             * 3) the user calls this function on a rep client node.\
+             */
+            get {
+                if (isCommitted)
+                    if (dbtoken != null)
+                        return dbtoken.buf;
+                    else throw new ArgumentException("Cannot get token because of improper environment settings.");
+                else throw new InvalidOperationException("Cannot get token before transaction commit.");
+            }
+        }
+
+        /// <summary>
+        /// The deadlock priority for this transaction.  The deadlock detector
+        /// will reject lock requests from lower priority transactions before
+        /// those from higher priority transactions.
+        /// </summary>
+        public uint Priority {
+            get {
+                uint ret = 0;
+                dbtxn.get_priority(ref ret);
+                return ret;
+            }
+            set {
+                dbtxn.set_priority(value);
             }
         }
 
@@ -80,8 +127,11 @@ namespace BerkeleyDB {
         /// be aborted.
         /// </para>
 		/// <para>
-        /// All cursors opened within the transaction must be closed before the
-        /// transaction is aborted.
+        /// All cursors opened within the transaction must be closed before the 
+        ///	transaction is aborted. This method closes all open cursor handles,
+        /// if any. And if a close operation fails, the rest of
+		///	the cursors are closed, and the database environment
+		/// is set to the panic state.
         /// </para>
         /// </remarks>
         public void Abort() {
@@ -106,11 +156,16 @@ namespace BerkeleyDB {
         /// </para>
 		/// <para>
         /// All cursors opened within the transaction must be closed before the
-        /// transaction is committed.
+        /// transaction is committed. If there are cursor handles
+	/// open when this method is called, they are all closed inside this 
+	/// method. And if there are errors when closing the cursor handles, 
+	/// the transaction is aborted and the first such error is returned.
         /// </para>
         /// </overloads>
         public void Commit() {
+            SetCommitToken();
             dbtxn.commit(0);
+            isCommitted = true;
         }
         /// <summary>
         /// End the transaction.
@@ -127,8 +182,10 @@ namespace BerkeleyDB {
         /// </remarks>
         /// <param name="syncLog">If true, synchronously flush the log.</param>
         public void Commit(bool syncLog) {
+            SetCommitToken();
             dbtxn.commit(
                 syncLog ? DbConstants.DB_TXN_SYNC : DbConstants.DB_TXN_NOSYNC);
+            isCommitted = true;
         }
 
         /// <summary>
@@ -137,6 +194,9 @@ namespace BerkeleyDB {
         /// transaction.
         /// </summary>
         /// <remarks>
+	/// If there are cursor handles open when this method is called, they 
+	/// are all closed inside this method. And if there are errors when 
+	/// closing the cursor handles, the first such error is returned.
         /// This call may be used only after calls to
         /// <see cref="DatabaseEnvironment.Recover"/> when there are multiple
         /// global transaction managers recovering transactions in a single
@@ -164,7 +224,7 @@ namespace BerkeleyDB {
         public string Name {
             get {
                 string ret = "";
-                dbtxn.get_name(ref ret);
+                dbtxn.get_name(out ret);
                 return ret;
             }
             set { dbtxn.set_name(value); }
@@ -190,6 +250,11 @@ namespace BerkeleyDB {
         /// transactions should never be explicitly prepared. Their fate will be
         /// resolved along with their parent's during global recovery.
         /// </para>
+        /// <para>
+	/// If there are cursor handles open when this method is called, they 
+	/// are all closed inside this method. And if there are errors when 
+	/// closing the cursor handles, the first such error is returned.
+	/// </para>
         /// </remarks>
         /// <param name="globalId">
         /// The global transaction ID by which this transaction will be known.

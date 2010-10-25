@@ -1,5 +1,29 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.42  13th March 2010
+
+        * Added $db->Env method to retrieve the environment object from a
+          database object.
+
+        * Get the tied interface to use truncate in the CLEAR method if
+          using a new enough version of Berkeley DB.
+
+0.41  8th January 2010
+
+        * Silence "UNIVERSAL->import is deprecated" in perl 5.11
+          RT# 53518
+
+0.40  7th January 2010
+
+        * Added support for set_tx_max, log_set_config, set_lk_max_lockers,
+          set_lk_max_locks, set_lk_max_objects via the Env constructor.
+          Parameter names are TxMax, LogConfig, MaxLockers, MaxLocks &
+          MaxObjects respectively.
+          RT# 50456
+
+        * seq->seq->close doesn't compile on win32.
+          RT# 49474
+
 0.39  6th June 2009 
 
         * Added support for BDB 4.8

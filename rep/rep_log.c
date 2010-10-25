@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -66,7 +66,10 @@ __rep_allreq(env, rp, eid)
 		goto err;
 	memset(&repth, 0, sizeof(repth));
 	REP_SYSTEM_LOCK(env);
-	F_SET(rep, REP_F_NOARCHIVE);
+	if ((ret = __rep_lockout_archive(env, rep)) != 0) {
+		REP_SYSTEM_UNLOCK(env);
+		goto err;
+	}
 	arch_flag = 1;
 	repth.gbytes = rep->gbytes;
 	repth.bytes = rep->bytes;
@@ -217,7 +220,7 @@ err:
 		ret = t_ret;
 	if (arch_flag) {
 		REP_SYSTEM_LOCK(env);
-		F_CLR(rep, REP_F_NOARCHIVE);
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_ARCHIVE);
 		REP_SYSTEM_UNLOCK(env);
 	}
 	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
@@ -416,7 +419,7 @@ __rep_logreq(env, rp, rec, eid)
 		else if ((ret = __rep_logreq_unmarshal(env, &lr_args,
 		    rec->data, rec->size, NULL)) != 0)
 			return (ret);
-		RPRINT(env, DB_VERB_REP_MISC, (env,
+		RPRINT(env, (env, DB_VERB_REP_MISC,
 		    "[%lu][%lu]: LOG_REQ max lsn: [%lu][%lu]",
 		    (u_long) rp->lsn.file, (u_long)rp->lsn.offset,
 		    (u_long)lr_args.endlsn.file,
@@ -442,7 +445,10 @@ __rep_logreq(env, rp, rec, eid)
 	if ((ret = __log_cursor(env, &logc)) != 0)
 		return (ret);
 	REP_SYSTEM_LOCK(env);
-	F_SET(rep, REP_F_NOARCHIVE);
+	if ((ret = __rep_lockout_archive(env, rep)) != 0) {
+		REP_SYSTEM_UNLOCK(env);
+		goto err;
+	}
 	REP_SYSTEM_UNLOCK(env);
 	if ((ret = __logc_get(logc, &lsn, &data_dbt, DB_SET)) == 0) {
 		/* Case 1 */
@@ -597,7 +603,7 @@ err:
 	if (ret == ENOENT)
 		ret = 0;
 	REP_SYSTEM_LOCK(env);
-	F_CLR(rep, REP_F_NOARCHIVE);
+	FLD_CLR(rep->lockout_flags, REP_LOCKOUT_ARCHIVE);
 	REP_SYSTEM_UNLOCK(env);
 	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -667,7 +673,7 @@ __rep_loggap_req(env, rep, lsnp, gapflags)
 		 */
 		if (FLD_ISSET(gapflags, REP_GAP_FORCE)) {
 			if (LOG_COMPARE(&lp->max_wait_lsn, lsnp) <= 0) {
-				if (F_ISSET(rep, REP_F_RECOVER_LOG)) {
+				if (rep->sync_state == SYNC_LOG) {
 					DB_ASSERT(env, LOG_COMPARE(lsnp,
 					    &rep->last_lsn) <= 0);
 					lp->max_wait_lsn = rep->last_lsn;
@@ -707,7 +713,7 @@ __rep_loggap_req(env, rep, lsnp, gapflags)
 	}
 	if ((master = rep->master_id) != DB_EID_INVALID) {
 		STAT(rep->stat.st_log_requested++);
-		if (F_ISSET(rep, REP_F_RECOVER_LOG))
+		if (rep->sync_state == SYNC_LOG)
 			ctlflags = REPCTL_INIT;
 		(void)__rep_send_message(env, master,
 		    type, &next_lsn, max_lsn_dbtp, ctlflags, flags);
@@ -735,27 +741,31 @@ __rep_logready(env, rep, savetime, last_lsnp)
 	int ret;
 
 	if ((ret = __log_flush(env, NULL)) != 0)
-		goto out;
-	if ((ret = __rep_verify_match(env, last_lsnp,
-	    savetime)) == 0) {
-		REP_SYSTEM_LOCK(env);
-		ZERO_LSN(rep->first_lsn);
+		goto err;
+	if ((ret = __rep_verify_match(env, last_lsnp, savetime)) != 0)
+		goto err;
 
-		if (rep->originfo != NULL) {
-			__os_free(env, rep->originfo);
-			rep->originfo = NULL;
-		}
+	REP_SYSTEM_LOCK(env);
+	ZERO_LSN(rep->first_lsn);
 
-		F_CLR(rep, REP_F_RECOVER_LOG);
-		F_SET(rep, REP_F_NIMDBS_LOADED);
-		REP_SYSTEM_UNLOCK(env);
-	} else {
-out:		__db_errx(env,
-	"Client initialization failed.  Need to manually restore client");
-		return (__env_panic(env, ret));
+	if (rep->originfo != NULL) {
+		__os_free(env, rep->originfo);
+		rep->originfo = NULL;
 	}
-	return (ret);
 
+	rep->sync_state = SYNC_OFF;
+	F_SET(rep, REP_F_NIMDBS_LOADED);
+	ret = __rep_notify_threads(env, AWAIT_NIMDB);
+	REP_SYSTEM_UNLOCK(env);
+	if (ret != 0)
+		goto err;
+
+	return (0);
+
+err:
+	__db_errx(env,
+	    "Client initialization failed.  Need to manually restore client");
+	return (__env_panic(env, ret));
 }
 
 /*
@@ -815,7 +825,7 @@ __rep_chk_newfile(env, logc, rep, rp, eid)
 		    &endlsn, &data_dbt, DB_SET)) != 0 ||
 		    (ret = __logc_get(logc,
 			&endlsn, &data_dbt, DB_PREV)) != 0) {
-			RPRINT(env, DB_VERB_REP_MISC, (env,
+			RPRINT(env, (env, DB_VERB_REP_MISC,
 			    "Unable to get prev of [%lu][%lu]",
 			    (u_long)rp->lsn.file,
 			    (u_long)rp->lsn.offset));

@@ -34,6 +34,7 @@ public class DbTxn {
     }
   }
 
+	public byte[] commitToken;
 	public void abort() throws DatabaseException {
 		try {
 			abort0();
@@ -44,7 +45,7 @@ public class DbTxn {
 
 	public void commit(int flags) throws DatabaseException {
 		try {
-			commit0(flags);
+			db_javaJNI.DbTxn_commit(swigCPtr, this, flags);
 		} finally {
 			swigCPtr = 0;
 		}
@@ -87,13 +88,13 @@ public class DbTxn {
 
   /* package */ void abort0() { db_javaJNI.DbTxn_abort0(swigCPtr, this); }
 
-  /* package */ void commit0(int flags) { db_javaJNI.DbTxn_commit0(swigCPtr, this, flags); }
-
   /* package */ void discard0(int flags) { db_javaJNI.DbTxn_discard0(swigCPtr, this, flags); }
 
   public String get_name() throws com.sleepycat.db.DatabaseException {
     return db_javaJNI.DbTxn_get_name(swigCPtr, this);
   }
+
+  public int get_priority() throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbTxn_get_priority(swigCPtr, this); }
 
   public int id() throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbTxn_id(swigCPtr, this); }
 
@@ -102,5 +103,7 @@ public class DbTxn {
   public void set_timeout(long timeout, int flags) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbTxn_set_timeout(swigCPtr, this, timeout, flags); }
 
   public void set_name(String name) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbTxn_set_name(swigCPtr, this, name); }
+
+  public void set_priority(int priority) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbTxn_set_priority(swigCPtr, this, priority); }
 
 }

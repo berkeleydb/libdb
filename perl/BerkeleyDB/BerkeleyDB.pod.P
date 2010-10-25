@@ -32,6 +32,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   keys %hash ;
   values %hash ;
 
+  $env = $db->Env()
   $status = $db->db_get()
   $status = $db->db_put() ;
   $status = $db->db_del() ;
@@ -161,6 +162,11 @@ with the C<Flags> parameter, described below.
              [ -Flags        => number, ]
              [ -SetFlags     => bitmask, ]
              [ -LockDetect   => number, ]
+             [ -TxMax        => number, ]
+             [ -LogConfig    => number, ]
+             [ -MaxLockers   => number, ]
+             [ -MaxLocks     => number, ]
+             [ -MaxObjects   => number, ]
              [ -SharedMemKey => number, ]
              [ -Verbose      => boolean, ]
              [ -Encrypt      => { Password => "string",
@@ -217,6 +223,31 @@ This option requires Berkeley DB 4.1 or better.
 
 If present, this parameter sets the size of the environments shared memory
 buffer pool.
+
+=item -TxMax
+
+If present, this parameter sets the number of simultaneous
+transactions that are allowed.  Default 100.  This default is
+definitely too low for programs using the MVCC capabilities.
+
+=item -LogConfig
+
+If present, this parameter is used to configure log options.
+
+=item -MaxLockers
+
+If present, this parameter is used to configure the maximum number of
+processes doing locking on the database.  Default 1000.
+
+=item -MaxLocks
+
+If present, this parameter is used to configure the maximum number of
+locks on the database.  Default 1000.  This is often lower than required.
+
+=item -MaxObjects
+
+If present, this parameter is used to configure the maximum number of
+locked objects.  Default 1000.  This is often lower than required.
 
 =item -SharedMemKey
 
@@ -1163,6 +1194,11 @@ All the database interfaces support the common set of methods defined
 below.
 
 All the methods below return 0 to indicate success.
+
+=head2 $env = $db->Env();
+
+Returns the environment object the database is associated with or C<undef>
+when no environment was used when opening the database.
 
 =head2 $status = $db->db_get($key, $value [, $flags])
 

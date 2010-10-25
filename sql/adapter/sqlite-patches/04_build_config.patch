@@ -1,0 +1,84 @@
+--- /dev/null
++++ build_config.h.in
+@@ -0,0 +1,54 @@
++
++/*
++** Build options detected by SQLite's configure script but not normally part
++** of config.h.  Accept what configure detected unless it was overridden on the
++** command line.
++*/
++#ifndef HAVE_EDITLINE
++#define HAVE_EDITLINE @TARGET_HAVE_EDITLINE@
++#endif
++#if !HAVE_EDITLINE
++#undef HAVE_EDITLINE
++#endif
++
++#ifndef HAVE_READLINE
++#define HAVE_READLINE @TARGET_HAVE_READLINE@
++#endif
++#if !HAVE_READLINE
++#undef HAVE_READLINE
++#endif
++
++#ifndef SQLITE_OS_UNIX
++#define SQLITE_OS_UNIX @SQLITE_OS_UNIX@
++#endif
++#if !SQLITE_OS_UNIX
++#undef SQLITE_OS_UNIX
++#endif
++
++#ifndef SQLITE_OS_WIN
++#define SQLITE_OS_WIN @SQLITE_OS_WIN@
++#endif
++#if !SQLITE_OS_WIN
++#undef SQLITE_OS_WIN
++#endif
++
++#ifndef SQLITE_THREADSAFE
++#define SQLITE_THREADSAFE @SQLITE_THREADSAFE@
++#endif
++#if !SQLITE_THREADSAVE
++#undef SQLITE_THREADSAVE
++#endif
++
++#ifndef SQLITE_THREAD_OVERRIDE_LOCK
++#define SQLITE_THREAD_OVERRIDE_LOCK @THREADSOVERRIDELOCKS@
++#endif
++#if !SQLITE_THREAD_OVERRIDE_LOCK
++#undef SQLITE_THREAD_OVERRIDE_LOCK
++#endif
++
++#ifndef SQLITE_TEMP_STORE
++#define SQLITE_TEMP_STORE @TEMP_STORE@
++#endif
++#if !SQLITE_THREAD_OVERRIDE_LOCK
++#undef SQLITE_THREAD_OVERRIDE_LOCK
++#endif
+--- configure
++++ configure
+@@ -13578,7 +13578,7 @@ ac_config_headers="$ac_config_headers co
+ # Generate the output files.
+ #
+ 
+-ac_config_files="$ac_config_files Makefile sqlite3.pc"
++ac_config_files="$ac_config_files Makefile sqlite3.pc build_config.h"
+ 
+ cat >confcache <<\_ACEOF
+ # This file is a shell script that caches the results of configure
+@@ -14432,6 +14432,7 @@ do
+     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+     "sqlite3.pc") CONFIG_FILES="$CONFIG_FILES sqlite3.pc" ;;
++    "build_config.h") CONFIG_FILES="$CONFIG_FILES build_config.h" ;;
+ 
+   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
+ $as_echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
+--- configure.ac
++++ configure.ac
+@@ -732,4 +732,5 @@ AC_SUBST(BUILD_CFLAGS)
+ AC_OUTPUT([
+ Makefile
+ sqlite3.pc
++build_config.h
+ ])

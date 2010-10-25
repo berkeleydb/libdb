@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
 typedef int (*HEARTBEAT_ACTION) __P((ENV *));
@@ -23,11 +22,10 @@ static int introduce_site __P((ENV *, char *, u_int, REPMGR_SITE**, u_int32_t));
 static int __repmgr_next_timeout __P((ENV *,
     db_timespec *, HEARTBEAT_ACTION *));
 static int dispatch_phase_completion __P((ENV *, REPMGR_CONNECTION *));
-static REPMGR_CONNECTION *__repmgr_master_connection __P((ENV *));
 static int process_parameters __P((ENV *,
     REPMGR_CONNECTION *, char *, u_int, u_int32_t, u_int32_t));
 static int read_version_response __P((ENV *, REPMGR_CONNECTION *));
-static int record_ack __P((ENV *, REPMGR_CONNECTION *));
+static int record_permlsn __P((ENV *, REPMGR_CONNECTION *));
 static int __repmgr_retry_connections __P((ENV *));
 static int send_handshake __P((ENV *, REPMGR_CONNECTION *, void *, size_t));
 static int __repmgr_send_heartbeat __P((ENV *));
@@ -48,11 +46,15 @@ static int __repmgr_try_one __P((ENV *, u_int));
  * PUBLIC: void *__repmgr_select_thread __P((void *));
  */
 void *
-__repmgr_select_thread(args)
-	void *args;
+__repmgr_select_thread(argsp)
+	void *argsp;
 {
-	ENV *env = args;
+	REPMGR_RUNNABLE *args;
+	ENV *env;
 	int ret;
+
+	args = argsp;
+	env = args->env;
 
 	if ((ret = __repmgr_select_loop(env)) != 0) {
 		__db_err(env, ret, "select loop failed");
@@ -109,7 +111,7 @@ __repmgr_accept(env)
 		case EOPNOTSUPP:
 		case ENETUNREACH:
 #endif
-			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			    "accept error %d considered innocuous", ret));
 			return (0);
 		default:
@@ -117,7 +119,7 @@ __repmgr_accept(env)
 			return (ret);
 		}
 	}
-	RPRINT(env, DB_VERB_REPMGR_MISC, (env, "accepted a new connection"));
+	RPRINT(env, (env, DB_VERB_REPMGR_MISC, "accepted a new connection"));
 
 	if ((ret = __repmgr_set_nonblocking(s)) != 0) {
 		__db_err(env, ret, "can't set nonblock after accept");
@@ -230,14 +232,16 @@ __repmgr_next_timeout(env, deadline, action)
 	HEARTBEAT_ACTION *action;
 {
 	DB_REP *db_rep;
+	REP *rep;
 	HEARTBEAT_ACTION my_action;
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
 	db_timespec t;
 
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
 
-	if (db_rep->master_eid == SELF_EID && db_rep->heartbeat_frequency > 0) {
+	if (rep->master_id == SELF_EID && db_rep->heartbeat_frequency > 0) {
 		t = db_rep->last_bcast;
 		TIMESPEC_ADD_DB_TIMEOUT(&t, db_rep->heartbeat_frequency);
 		my_action = __repmgr_send_heartbeat;
@@ -250,7 +254,7 @@ __repmgr_next_timeout(env, deadline, action)
 		 * let's monitor it.  Otherwise there's really nothing we can
 		 * do.
 		 */
-		site = SITE_FROM_EID(db_rep->master_eid);
+		site = SITE_FROM_EID(rep->master_id);
 		t = site->last_rcvd_timestamp;
 		TIMESPEC_ADD_DB_TIMEOUT(&t, db_rep->heartbeat_monitor_timeout);
 		my_action = __repmgr_call_election;
@@ -276,25 +280,29 @@ __repmgr_send_heartbeat(env)
 	    REPMGR_HEARTBEAT, &control, &rec, &unused1, &unused2));
 }
 
-static REPMGR_CONNECTION *
+/*
+ * PUBLIC: REPMGR_CONNECTION *__repmgr_master_connection __P((ENV *));
+
+ */
+REPMGR_CONNECTION *
 __repmgr_master_connection(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
-	REPMGR_CONNECTION *conn;
+	REP *rep;
 	REPMGR_SITE *master;
+	int master_id;
 
 	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	master_id = rep->master_id;
 
-	if (db_rep->master_eid == SELF_EID ||
-	    !IS_VALID_EID(db_rep->master_eid))
+	if (master_id == SELF_EID ||
+	    !IS_VALID_EID(master_id))
 		return (NULL);
-	master = SITE_FROM_EID(db_rep->master_eid);
-	if (master->state != SITE_CONNECTED)
-		return (NULL);
-	conn = master->ref.conn;
-	if (IS_READY_STATE(conn->state))
-		return (conn);
+	master = SITE_FROM_EID(master_id);
+	if (IS_SITE_HANDSHAKEN(master))
+		return master->ref.conn;
 	return (NULL);
 }
 
@@ -306,8 +314,8 @@ __repmgr_call_election(env)
 
 	conn = __repmgr_master_connection(env);
 	DB_ASSERT(env, conn != NULL);
-	RPRINT(env, DB_VERB_REPMGR_MISC,
-	    (env, "heartbeat monitor timeout expired"));
+	RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+	    "heartbeat monitor timeout expired"));
 	STAT(env->rep_handle->region->mstat.st_connection_drop++);
 	return (__repmgr_bust_connection(env, conn));
 }
@@ -561,7 +569,7 @@ __repmgr_connect(env, socket_result, site)
 
 		if (ret == 0 || ret == INPROGRESS) {
 			*socket_result = s;
-			RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+			VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			    "init connection to %s with result %d",
 			    __repmgr_format_site_loc(site, buffer), ret));
 			return (ret);
@@ -705,6 +713,10 @@ __repmgr_read_from_site(env, conn)
 #ifndef DB_WIN32
 			case EINTR:
 				continue;
+#endif
+
+#if defined(DB_REPMGR_EAGAIN) && DB_REPMGR_EAGAIN != WOULDBLOCK
+			case DB_REPMGR_EAGAIN:
 #endif
 			case WOULDBLOCK:
 				return (0);
@@ -922,8 +934,8 @@ dispatch_msgin(env, conn)
 		 * message thread pool.
 		 */
 		switch (conn->msg_type) {
-		case REPMGR_ACK:
-			if ((ret = record_ack(env, conn)) != 0)
+		case REPMGR_PERMLSN:
+			if ((ret = record_permlsn(env, conn)) != 0)
 				return (ret);
 			break;
 
@@ -1313,8 +1325,8 @@ process_parameters(env, conn, host, port, priority, flags)
 #endif
 			} else {
 				if (site->state == SITE_IDLE) {
-					RPRINT(env, DB_VERB_REPMGR_MISC, (env,
-					"handshake from idle site %s:%u EID %u",
+					RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+				"handshake from idle site %s:%u EID %u",
 					    host, port, eid));
 					retry = site->ref.retry;
 					TAILQ_REMOVE(&db_rep->retries,
@@ -1326,7 +1338,7 @@ process_parameters(env, conn, host, port, priority, flags)
 					 * site we were already connected to; at
 					 * least we thought we were.
 					 */
-					RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+					RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			     "connection from %s:%u EID %u supersedes existing",
 					    host, port, eid));
 
@@ -1347,7 +1359,7 @@ process_parameters(env, conn, host, port, priority, flags)
 		} else {
 			if ((ret = introduce_site(env,
 			    host, port, &site, flags)) == 0)
-				RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+				RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 			"handshake introduces unknown site %s:%u", host, port));
 			else if (ret != EEXIST)
 				return (ret);
@@ -1382,7 +1394,7 @@ process_parameters(env, conn, host, port, priority, flags)
 		 */
 		DB_ASSERT(env, IS_VALID_EID(conn->eid));
 		site = SITE_FROM_EID(conn->eid);
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "handshake from connection to %s:%lu EID %u",
 		    site->net_addr.host,
 		    (u_long)site->net_addr.port, conn->eid));
@@ -1394,19 +1406,15 @@ process_parameters(env, conn, host, port, priority, flags)
 	/*
 	 * If we're moping around wishing we knew who the master was, then
 	 * getting in touch with another site might finally provide sufficient
-	 * connectivity to find out.  But just do this once, because otherwise
-	 * we get messages while the subsequent rep_start operations are going
-	 * on, and rep tosses them in that case.
+	 * connectivity to find out.
 	 */
 	if (!IS_SUBORDINATE(db_rep) && /* us */
-	    db_rep->master_eid == DB_EID_INVALID &&
-	    db_rep->init_policy != DB_REP_MASTER &&
-	    !db_rep->done_one &&
+	    !__repmgr_master_is_known(env) &&
 	    !LF_ISSET(REPMGR_SUBORDINATE)) { /* the remote site */
-		db_rep->done_one = TRUE;
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "handshake with no known master to wake election thread"));
-		if ((ret = __repmgr_init_election(env, ELECT_REPSTART)) != 0)
+		db_rep->new_connection = TRUE;
+		if ((ret = __repmgr_signal(&db_rep->check_election)) != 0)
 			return (ret);
 	}
 
@@ -1431,17 +1439,18 @@ introduce_site(env, host, port, sitep, flags)
 	state = LF_ISSET(REPMGR_SUBORDINATE) ? SITE_IDLE : SITE_CONNECTED;
 	peer = FALSE;
 
-	return (__repmgr_add_site_int(env, host, port, sitep, peer, state));
+	return (__repmgr_add_site_int(env,
+	    host, port, sitep, peer, state, FALSE));
 }
 
 static int
-record_ack(env, conn)
+record_permlsn(env, conn)
 	ENV *env;
 	REPMGR_CONNECTION *conn;
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
-	__repmgr_ack_args *ackp, ack;
+	__repmgr_permlsn_args *ackp, ack;
 	SITE_STRING_BUFFER location;
 	u_int32_t gen;
 	int ret;
@@ -1465,7 +1474,7 @@ record_ack(env, conn)
 		}
 	} else {
 		ackp = &ack;
-		if ((ret = __repmgr_ack_unmarshal(env, ackp,
+		if ((ret = __repmgr_permlsn_unmarshal(env, ackp,
 			 conn->input.repmgr_msg.cntrl.data,
 			 conn->input.repmgr_msg.cntrl.size, NULL)) != 0)
 			return (DB_REP_UNAVAIL);
@@ -1474,13 +1483,13 @@ record_ack(env, conn)
 	/* Ignore stale acks. */
 	gen = db_rep->region->gen;
 	if (ackp->generation < gen) {
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "ignoring stale ack (%lu<%lu), from %s",
 		     (u_long)ackp->generation, (u_long)gen,
 		     __repmgr_format_site_loc(site, location)));
 		return (0);
 	}
-	RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+	VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 	    "got ack [%lu][%lu](%lu) from %s", (u_long)ackp->lsn.file,
 	    (u_long)ackp->lsn.offset, (u_long)ackp->generation,
 	    __repmgr_format_site_loc(site, location)));
@@ -1511,9 +1520,13 @@ __repmgr_write_some(env, conn)
 		msg = output->msg;
 		if ((bytes = send(conn->fd, &msg->data[output->offset],
 		    (size_t)msg->length - output->offset, 0)) == SOCKET_ERROR) {
-			if ((ret = net_errno) == WOULDBLOCK)
+			switch (ret = net_errno) {
+			case WOULDBLOCK:
+#if defined(DB_REPMGR_EAGAIN) && DB_REPMGR_EAGAIN != WOULDBLOCK
+			case DB_REPMGR_EAGAIN:
+#endif
 				return (0);
-			else {
+			default:
 				__db_err(env, ret, "writing data");
 				STAT(env->rep_handle->
 				    region->mstat.st_connection_drop++);

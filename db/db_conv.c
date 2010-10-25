@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -47,7 +47,6 @@
 #include "dbinc/db_swap.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
-#include "dbinc/log.h"
 #include "dbinc/qam.h"
 
 /*
@@ -162,8 +161,22 @@ __db_pgin(dbenv, pg, pp, cookie)
 	case P_INVALID:
 		if (pginfo->type == DB_QUEUE)
 			return (__qam_pgin_out(env, pg, pp, cookie));
-		else
-			return (__ham_pgin(dbp, pg, pp, cookie));
+		/*
+		 * This page is either newly allocated from the end of the
+		 * file, or from the free list, or it is an as-yet unwritten
+		 * hash bucket page. In this last case it needs to be
+		 * initialized, but never byte-swapped. Otherwise the header
+		 * may need swapping. It will not be a metadata page, so the
+		 * byte swapping code of __ham_pgin is adequate.  If hash
+		 * is not configured fall back to btree swapping.
+		 */
+#ifdef HAVE_HASH
+		return (__ham_pgin(dbp, pg, pp, cookie));
+#else
+		return (__bam_pgin(dbp, pg, pp, cookie));
+#endif
+		/* NOTREACHED. */
+		break;
 	case P_HASH_UNSORTED:
 	case P_HASH:
 	case P_HASHMETA:
@@ -217,10 +230,22 @@ __db_pgout(dbenv, pg, pp, cookie)
 	ret = 0;
 	switch (pagep->type) {
 	case P_INVALID:
-		if (pginfo->type == DB_QUEUE)
+		switch (pginfo->type) {
+		case DB_QUEUE:
 			ret = __qam_pgin_out(env, pg, pp, cookie);
-		else
+			break;
+#ifdef HAVE_HASH
+		case DB_HASH:
 			ret = __ham_pgout(dbp, pg, pp, cookie);
+			break;
+#endif
+		case DB_BTREE:
+		case DB_RECNO:
+			ret = __bam_pgout(dbp, pg, pp, cookie);
+			break;
+		default:
+			return (__db_pgfmt(env, pg));
+		}
 		break;
 	case P_HASH:
 	case P_HASH_UNSORTED:
@@ -450,8 +475,6 @@ __db_byteswap(dbp, pg, h, pagesize, pgin)
 	if (pagesize == 0)
 		return (0);
 
-	env = dbp->env;
-
 	if (pgin) {
 		M_32_SWAP(h->lsn.file);
 		M_32_SWAP(h->lsn.offset);
@@ -461,6 +484,10 @@ __db_byteswap(dbp, pg, h, pagesize, pgin)
 		M_16_SWAP(h->entries);
 		M_16_SWAP(h->hf_offset);
 	}
+
+	if (dbp == NULL)
+		return (0);
+	env = dbp->env;
 
 	pgend = (u_int8_t *)h + pagesize;
 
@@ -645,24 +672,22 @@ out:	if (!pgin) {
  *	that case, pdata is not NULL we reconsitute
  *
  * PUBLIC: int __db_pageswap
- * PUBLIC:         __P((DB *, void *, size_t, DBT *, int));
+ * PUBLIC:         __P((ENV *, DB *, void *, size_t, DBT *, int));
  */
 int
-__db_pageswap(dbp, pp, len, pdata, pgin)
+__db_pageswap(env, dbp, pp, len, pdata, pgin)
+	ENV *env;
 	DB *dbp;
 	void *pp;
 	size_t len;
 	DBT *pdata;
 	int pgin;
 {
-	ENV *env;
 	db_pgno_t pg;
 	size_t pgsize;
 	void *pgcopy;
 	int ret;
 	u_int16_t hoffset;
-
-	env = dbp->env;
 
 	switch (TYPE(pp)) {
 	case P_BTREEMETA:
@@ -730,4 +755,113 @@ __db_pageswap(dbp, pp, len, pdata, pgin)
 	}
 
 	return (ret);
+}
+
+/*
+ * __db_recordswap --
+ *	Byteswap any database record.
+ *
+ * PUBLIC: void __db_recordswap __P((u_int32_t,
+ * PUBLIC:     u_int32_t, void *, void *, u_int32_t));
+ */
+void
+__db_recordswap(op, size, hdr, data, pgin)
+	u_int32_t op;
+	u_int32_t size;
+	void *hdr, *data;
+	u_int32_t pgin;
+{
+	BKEYDATA *bk;
+	BOVERFLOW *bo;
+	BINTERNAL *bi;
+	RINTERNAL *ri;
+	db_indx_t tmp;
+	u_int8_t *p, *end;
+
+	if (size == 0)
+		return;
+	switch (OP_PAGE_GET(op)) {
+	case P_LDUP:
+	case P_LBTREE:
+	case P_LRECNO:
+		bk = (BKEYDATA *)hdr;
+		switch (B_TYPE(bk->type)) {
+		case B_KEYDATA:
+			M_16_SWAP(bk->len);
+			break;
+		case B_DUPLICATE:
+		case B_OVERFLOW:
+			bo = (BOVERFLOW *)hdr;
+			M_32_SWAP(bo->pgno);
+			M_32_SWAP(bo->tlen);
+			break;
+		default:
+			DB_ASSERT(NULL, bk->type != bk->type);
+		}
+		break;
+	case P_IBTREE:
+		bi = (BINTERNAL *)hdr;
+		M_16_SWAP(bi->len);
+		M_32_SWAP(bi->pgno);
+		M_32_SWAP(bi->nrecs);
+		if (B_TYPE(bi->type) == B_OVERFLOW) {
+			if (data == NULL) {
+				DB_ASSERT(NULL,
+				    size == BINTERNAL_SIZE(BOVERFLOW_SIZE));
+				bo = (BOVERFLOW *)bi->data;
+			} else
+				bo = (BOVERFLOW *)data;
+			M_32_SWAP(bo->pgno);
+		}
+		break;
+	case P_IRECNO:
+		ri = (RINTERNAL *)hdr;
+		M_32_SWAP(ri->pgno);
+		M_32_SWAP(ri->nrecs);
+		break;
+	case P_OVERFLOW:
+		break;
+	case P_HASH:
+	case P_HASH_UNSORTED:
+		switch (OP_MODE_GET(op)) {
+		/* KEYDATA and DUPLICATE records do not inclued the header. */
+		case H_KEYDATA:
+			break;
+		case H_DUPLICATE:
+			p = (u_int8_t *)hdr;
+			for (end = p + size; p < end;) {
+				if (pgin) {
+					P_16_SWAP(p);
+					memcpy(&tmp,
+					    p, sizeof(db_indx_t));
+					p += sizeof(db_indx_t);
+				} else {
+					memcpy(&tmp,
+					    p, sizeof(db_indx_t));
+					SWAP16(p);
+				}
+				p += tmp;
+				SWAP16(p);
+			}
+			break;
+		/* These two record types include the full header. */
+		case H_OFFDUP:
+			p = (u_int8_t *)hdr;
+			p += SSZ(HOFFPAGE, pgno);
+			SWAP32(p);			/* pgno */
+			break;
+		case H_OFFPAGE:
+			p = (u_int8_t *)hdr;
+			p += SSZ(HOFFPAGE, pgno);
+			SWAP32(p);			/* pgno */
+			SWAP32(p);			/* tlen */
+			break;
+		default:
+			DB_ASSERT(NULL, op != op);
+		}
+		break;
+
+	default:
+		DB_ASSERT(NULL, op != op);
+	}
 }

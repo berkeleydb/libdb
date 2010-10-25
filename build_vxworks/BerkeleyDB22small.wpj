@@ -739,6 +739,24 @@ strsep.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../common/clock.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/clock.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/clock.c_objects
+clock.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../common/clock.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../common/crypto_stub.c_dependDone
 TRUE
 <END>
@@ -1150,6 +1168,24 @@ db_cds.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../db/db_cds.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_compact.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_compact.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_compact.c_objects
+db_compact.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../db/db_compact.c_tool
 C/C++ compiler
 <END>
 
@@ -2323,6 +2359,24 @@ log_method.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_print.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_print.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_print.c_objects
+log_print.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_print.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_put.c_dependDone
 TRUE
 <END>
@@ -2356,6 +2410,24 @@ log_stat.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../log/log_stat.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_verify_stub.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_verify_stub.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_verify_stub.c_objects
+log_verify_stub.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../log/log_verify_stub.c_tool
 C/C++ compiler
 <END>
 
@@ -3536,6 +3608,7 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../clib/strcasecmp.c \
 	$(PRJ_DIR)/../clib/strdup.c \
 	$(PRJ_DIR)/../clib/strsep.c \
+	$(PRJ_DIR)/../common/clock.c \
 	$(PRJ_DIR)/../common/crypto_stub.c \
 	$(PRJ_DIR)/../common/db_byteorder.c \
 	$(PRJ_DIR)/../common/db_compint.c \
@@ -3559,6 +3632,7 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../db/db_auto.c \
 	$(PRJ_DIR)/../db/db_cam.c \
 	$(PRJ_DIR)/../db/db_cds.c \
+	$(PRJ_DIR)/../db/db_compact.c \
 	$(PRJ_DIR)/../db/db_conv.c \
 	$(PRJ_DIR)/../db/db_dispatch.c \
 	$(PRJ_DIR)/../db/db_dup.c \
@@ -3624,8 +3698,10 @@ $(PRJ_DIR)/../btree/bt_compact.c \
 	$(PRJ_DIR)/../log/log_debug.c \
 	$(PRJ_DIR)/../log/log_get.c \
 	$(PRJ_DIR)/../log/log_method.c \
+	$(PRJ_DIR)/../log/log_print.c \
 	$(PRJ_DIR)/../log/log_put.c \
 	$(PRJ_DIR)/../log/log_stat.c \
+	$(PRJ_DIR)/../log/log_verify_stub.c \
 	$(PRJ_DIR)/../mp/mp_alloc.c \
 	$(PRJ_DIR)/../mp/mp_bh.c \
 	$(PRJ_DIR)/../mp/mp_fget.c \

@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{433EAC30-1CEA-11DF-8A39-0800200C9A66}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\build_windows\$(Platform)\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">./$(OutDir)db_sql_jdbc\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\build_windows\$(Platform)\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">./$(OutDir)db_sql_jdbc\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\build_windows\$(Platform)\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./$(OutDir)db_sql_jdbc\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db_sql_jdbc\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sqlite_jni</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">sqlite_jni</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">sqlite_jni</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">sqlite_jni</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_jdbc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)sqlite_jni/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)sqlite_jni/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>$(OutDir)sqlite_jni.lib</ImportLibrary>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+mkdir "./$(OutDir)jdbc_classes/" 
+echo compiling JDBC classes
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+echo Building JNI header files
+javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+echo creating jar file
+jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
+echo JDBC build finished</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_jdbc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)sqlite_jni/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)sqlite_jni/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>$(OutDir)sqlite_jni.lib</ImportLibrary>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+mkdir "./$(OutDir)jdbc_classes/" 
+echo compiling JDBC classes
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+echo Building JNI header files
+javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+echo creating jar file
+jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
+echo JDBC build finished</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_jdbc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)sqlite_jni/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)sqlite_jni/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>$(OutDir)sqlite_jni.lib</ImportLibrary>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+mkdir "./$(OutDir)jdbc_classes/" 
+echo compiling JDBC classes
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+echo Building JNI header files
+javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+echo creating jar file
+jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
+echo JDBC build finished</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>./$(OutDir)db_sql_jdbc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)sqlite_jni/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)sqlite_jni/</ObjectFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>$(OutDir)sqlite_jni.lib</ImportLibrary>
+      <TargetMachine>NotSet</TargetMachine>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+mkdir "./$(OutDir)jdbc_classes/" 
+echo compiling JDBC classes
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+echo Building JNI header files
+javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+echo creating jar file
+jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
+echo JDBC build finished</Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\sql\jdbc\native\sqlite_jni.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

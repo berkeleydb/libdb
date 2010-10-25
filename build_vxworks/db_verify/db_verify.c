@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int db_verify_main __P((int, char *[]));
@@ -113,7 +113,7 @@ db_verify_main(argc, argv)
 retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		goto shutdown;
+		goto err;
 	}
 
 	if (!quiet) {
@@ -124,18 +124,18 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	if (nflag) {
 		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
-			goto shutdown;
+			goto err;
 		}
 		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
-			goto shutdown;
+			goto err;
 		}
 	}
 
 	if (passwd != NULL &&
 	    (ret = dbenv->set_encrypt(dbenv, passwd, DB_ENCRYPT_AES)) != 0) {
 		dbenv->err(dbenv, ret, "set_passwd");
-		goto shutdown;
+		goto err;
 	}
 	/*
 	 * Attach to an mpool if it exists, but if that fails, attach to a
@@ -149,7 +149,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			if ((ret =
 			    dbenv->set_cachesize(dbenv, 0, cache, 1)) != 0) {
 				dbenv->err(dbenv, ret, "set_cachesize");
-				goto shutdown;
+				goto err;
 			}
 			private = 1;
 			ret = dbenv->open(dbenv, home, DB_CREATE |
@@ -157,7 +157,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		}
 		if (ret != 0) {
 			dbenv->err(dbenv, ret, "DB_ENV->open");
-			goto shutdown;
+			goto err;
 		}
 	}
 
@@ -169,14 +169,14 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	for (; !__db_util_interrupted() && argv[0] != NULL; ++argv) {
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			dbenv->err(dbenv, ret, "%s: db_create", progname);
-			goto shutdown;
+			goto err;
 		}
 
 		if (TXN_ON(dbenv->env) &&
 		    (ret = dbp->set_flags(dbp, DB_TXN_NOT_DURABLE)) != 0) {
 			dbenv->err(
 			    dbenv, ret, "%s: db_set_flags", progname);
-			goto shutdown;
+			goto err;
 		}
 
 		/*
@@ -191,14 +191,14 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 			if ((ret = db_create(&dbp1, dbenv, 0)) != 0) {
 				dbenv->err(
 				    dbenv, ret, "%s: db_create", progname);
-				goto shutdown;
+				goto err;
 			}
 
 			if (TXN_ON(dbenv->env) && (ret =
 			    dbp1->set_flags(dbp1, DB_TXN_NOT_DURABLE)) != 0) {
 				dbenv->err(
 				    dbenv, ret, "%s: db_set_flags", progname);
-				goto shutdown;
+				goto err;
 			}
 
 			ret = dbp1->open(dbp1,
@@ -231,11 +231,14 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		ret = dbp->verify(dbp, argv[0], NULL, NULL, flags);
 		dbp = NULL;
 		if (ret != 0)
-			goto shutdown;
+			exitval = 1;
+		if (!quiet)
+			printf("Verification of %s %s.\n",
+				argv[0], ret == 0 ? "succeeded" : "failed");
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 
 	if (dbp != NULL && (ret = dbp->close(dbp, 0)) != 0) {

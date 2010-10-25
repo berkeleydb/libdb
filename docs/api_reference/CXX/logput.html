@@ -58,7 +58,7 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685860"></a>Parameters</h3>
+              <h3 class="title"><a id="id3674928"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -66,7 +66,21 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686164"></a>data</h4>
+                <h4 class="title"><a id="id3674917"></a>lsn</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>lsn</strong></span> parameter references memory
+                          into which  the <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  of
+                          the put record is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3674404"></a>data</h4>
               </div>
             </div>
           </div>
@@ -90,7 +104,7 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686357"></a>flags</h4>
+                <h4 class="title"><a id="id3674824"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -114,26 +128,12 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1686518"></a>lsn</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>lsn</strong></span> parameter references memory
-                          into which  the <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  of
-                          the put record is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686371"></a>Errors</h3>
+              <h3 class="title"><a id="id3675048"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -151,7 +151,7 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686403"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3675221"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -165,7 +165,7 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686404"></a>Class</h3>
+              <h3 class="title"><a id="id3675203"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -179,7 +179,7 @@ DbEnv::log_put(DbLsn *lsn, const Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686213"></a>See Also</h3>
+              <h3 class="title"><a id="id3674389"></a>See Also</h3>
             </div>
           </div>
         </div>

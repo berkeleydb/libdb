@@ -61,7 +61,7 @@ DB_ENV-&gt;rep_get_config(DB_ENV *env, u_int32_t which, int *onoffp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1696731"></a>Parameters</h3>
+              <h3 class="title"><a id="id4016409"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -69,7 +69,23 @@ DB_ENV-&gt;rep_get_config(DB_ENV *env, u_int32_t which, int *onoffp);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1696684"></a>onoffp</h4>
+                <h4 class="title"><a id="id4016402"></a>which</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>which</strong></span> parameter is the configuration flag
+                          which is being checked.
+                          See the <a class="xref" href="repconfig.html" title="DB_ENV-&gt;rep_set_config()">DB_ENV-&gt;rep_set_config()</a>
+                          method for a list of configuration flags that you can
+                          provide to this parameter.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4016113"></a>onoffp</h4>
               </div>
             </div>
           </div>
@@ -82,28 +98,12 @@ DB_ENV-&gt;rep_get_config(DB_ENV *env, u_int32_t which, int *onoffp);  </pre>
                              the parameter is off; otherwise it is on. 
                      </p>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1696884"></a>which</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>which</strong></span> parameter is the configuration flag
-                          which is being checked.
-                          See the <a class="xref" href="repconfig.html" title="DB_ENV-&gt;rep_set_config()">DB_ENV-&gt;rep_set_config()</a>
-                          method for a list of configuration flags that you can
-                          provide to this parameter.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1696912"></a>Class</h3>
+              <h3 class="title"><a id="id4015967"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -115,7 +115,7 @@ DB_ENV-&gt;rep_get_config(DB_ENV *env, u_int32_t which, int *onoffp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1696748"></a>See Also</h3>
+              <h3 class="title"><a id="id4016457"></a>See Also</h3>
             </div>
           </div>
         </div>

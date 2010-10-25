@@ -112,7 +112,7 @@
 #include &lt;iostream&gt;
 #include &lt;fstream&gt;
 #include &lt;cstdlib&gt;
-                                                                                                                                    
+
 #include "MyDb.hpp"
 #include "gettingStartedCommon.hpp"
 
@@ -189,7 +189,8 @@ show_all_records(MyDb &amp;inventoryDB, MyDb &amp;vendorDB)
             show_vendor(vendorDB, inventoryItem.getVendor().c_str());
         }
     } catch(DbException &amp;e) {
-        inventoryDB.getDb().err(e.get_errno(), "Error in show_all_records");
+        inventoryDB.getDb().err(e.get_errno(), 
+                                "Error in show_all_records");
         cursorp-&gt;close();
         throw e;
     } catch(std::exception &amp;e) {

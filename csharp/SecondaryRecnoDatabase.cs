@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -286,7 +286,7 @@ namespace BerkeleyDB {
         public string BackingFile {
             get {
                 string ret = "";
-                db.get_re_source(ref ret);
+                db.get_re_source(out ret);
                 return ret;
             }
         }

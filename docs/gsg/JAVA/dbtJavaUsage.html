@@ -329,7 +329,7 @@ public class InventoryBinding extends TupleBinding {
           <a id="java_dbt19"></a>
           <pre class="programlisting">// File: MyDbs.java
 package db.GettingStarted;
-                                                                                                                                  
+
 <strong class="userinput"><code>import com.sleepycat.bind.serial.StoredClassCatalog;</code></strong>
 
 import com.sleepycat.db.Database;
@@ -472,7 +472,7 @@ import java.io.FileNotFoundException; </pre>
           <a id="java_dbt24"></a>
           <pre class="programlisting">// File: ExampleDatabaseLoad.java
 package db.GettingStarted;
-                                                                                                                                       
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -530,7 +530,8 @@ import com.sleepycat.db.DatabaseException; </pre>
           <a id="java_dbt26"></a>
           <pre class="programlisting">    private static void usage() {
         System.out.println("ExampleDatabaseLoad [-h &lt;database home&gt;]");
-        System.out.println("      [-s &lt;selections file&gt;] [-v &lt;vendors file&gt;]");
+        System.out.println("      [-s &lt;selections file&gt;]");
+        System.out.println("      [-v &lt;vendors file&gt;]");
         System.exit(-1);
     }
 

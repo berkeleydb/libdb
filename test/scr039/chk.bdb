@@ -1,0 +1,3 @@
+mkdir -p TESTDIR
+g++ -I../../build_unix  ResMgr.cpp  ../../build_unix/libdb_cxx.a  -lpthread -o ResMgr
+./ResMgr < data

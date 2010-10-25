@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -78,6 +78,11 @@ namespace BerkeleyDB {
         /// </summary>
         public bool ReplicationSync;
         /// <summary>
+        /// Saves replication system information to a system-owned file. This
+        /// value is on by default. 
+        /// </summary>
+        public bool ReplicationSystemInfo;
+        /// <summary>
         /// 
         /// </summary>
         public bool ReplicationTest;
@@ -102,6 +107,7 @@ namespace BerkeleyDB {
                 ret |= ReplicationMisc ? DbConstants.DB_VERB_REP_MISC : 0;
                 ret |= ReplicationMessages ? DbConstants.DB_VERB_REP_MSGS : 0;
                 ret |= ReplicationSync ? DbConstants.DB_VERB_REP_SYNC : 0;
+                ret |= ReplicationSystemInfo ? DbConstants.DB_VERB_REP_SYSTEM : 0;
                 ret |= ReplicationTest ? DbConstants.DB_VERB_REP_TEST : 0;
                 ret |= WaitsForTable ? DbConstants.DB_VERB_WAITSFOR : 0;
                 return ret;
@@ -123,6 +129,7 @@ namespace BerkeleyDB {
                 ret |= ReplicationMisc ? 0 : DbConstants.DB_VERB_REP_MISC;
                 ret |= ReplicationMessages ? 0 : DbConstants.DB_VERB_REP_MSGS;
                 ret |= ReplicationSync ? 0 : DbConstants.DB_VERB_REP_SYNC;
+                ret |= ReplicationSystemInfo ? 0 : DbConstants.DB_VERB_REP_SYSTEM;
                 ret |= ReplicationTest ? 0 : DbConstants.DB_VERB_REP_TEST;
                 ret |= WaitsForTable ? 0 : DbConstants.DB_VERB_WAITSFOR;
                 return ret;
@@ -145,6 +152,7 @@ namespace BerkeleyDB {
             ret.ReplicationMisc = ((flags & DbConstants.DB_VERB_REP_MISC) != 0);
             ret.ReplicationMessages = ((flags & DbConstants.DB_VERB_REP_MSGS) != 0);
             ret.ReplicationSync = ((flags & DbConstants.DB_VERB_REP_SYNC) != 0);
+            ret.ReplicationSystemInfo = ((flags & DbConstants.DB_VERB_REP_SYSTEM) != 0);
             ret.ReplicationTest = ((flags & DbConstants.DB_VERB_REP_TEST) != 0);
             ret.WaitsForTable = ((flags & DbConstants.DB_VERB_WAITSFOR) != 0);
             

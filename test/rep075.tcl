@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -17,11 +17,6 @@ proc rep075 { method { tnum "075" } args } {
 	global mixed_mode_logging
 	global repfiles_in_memory
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
-
 	# Run for all access methods.
 	if { $checking_valid_methods } {
 		set test_methods { btree }
@@ -37,12 +32,12 @@ proc rep075 { method { tnum "075" } args } {
 
 	# Swapping the envs is the only thing that should
 	# work for:
-	#   HP, old Windows: can't open two handles on same env.
+	#   HP: can't open two handles on same env.
 	#   in-memory logs: prepared txns don't survive recovery
 	#   NIM databases: can't be recovered
 	#
-	if { $is_hp_test == 1  || $is_windows9x_test == 1 ||
-	     $mixed_mode_logging > 0 || $databases_in_memory == 1 } {
+	if { $is_hp_test == 1  || $mixed_mode_logging > 0 ||
+	    $databases_in_memory == 1 } {
 		set prep {swap}
 	} else {
 		set prep {dbrecover swap resolve recover envrecover}

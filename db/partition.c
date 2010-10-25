@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -16,7 +16,6 @@
 #include "dbinc/hash.h"
 #endif
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/txn.h"
@@ -165,13 +164,13 @@ bad:		__db_errx(env, "May not specify both keys and a callback.");
 		return (EINVAL);
 	}
 
-	if ((part = dbp->p_internal) == NULL) {
-		if ((ret = __partition_init(dbp,
-		    keys != NULL ?
-		    DBMETA_PART_RANGE : DBMETA_PART_CALLBACK)) != 0)
-			return (ret);
-		part = dbp->p_internal;
-	} else if ((part->keys != NULL && callback != NULL) ||
+	if ((ret = __partition_init(dbp,
+	    keys != NULL ?
+	    DBMETA_PART_RANGE : DBMETA_PART_CALLBACK)) != 0)
+		return (ret);
+	part = dbp->p_internal;
+	
+	if ((part->keys != NULL && callback != NULL) ||
 	    (part->callback != NULL && keys != NULL))
 		goto bad;
 
@@ -1396,17 +1395,14 @@ __part_compact(dbp, ip, txn, start, stop, c_data, flags, end)
 	for (i = 0; ret == 0 && i < part->nparts; i++, pdbp++) {
 		switch (dbp->type) {
 		case DB_HASH:
-			if (!LF_ISSET(DB_FREELIST_ONLY))
-				goto err;
-			/* FALLTHROUGH */
 		case DB_BTREE:
 		case DB_RECNO:
-			ret = __bam_compact(*pdbp,
+			ret = __db_compact_int(*pdbp,
 			     ip, txn, start, stop, c_data, flags, end);
 			break;
 
 		default:
-	err:		ret = __dbh_am_chk(dbp, DB_OK_BTREE);
+			ret = __dbh_am_chk(dbp, DB_OK_BTREE);
 			break;
 		}
 	}
@@ -1504,6 +1500,7 @@ __part_key_range(dbc, dbt, kp, flags)
 	u_int32_t id, part_id;
 	u_int32_t elems, empty, less_elems, my_elems, greater_elems;
 	u_int32_t levels, max_levels, my_levels;
+	db_pgno_t root_pgno;
 	int ret;
 	double total_elems;
 
@@ -1526,8 +1523,9 @@ __part_key_range(dbc, dbt, kp, flags)
 
 	cp = (BTREE_CURSOR *)new_dbc->internal;
 
-	if ((ret = __memp_fget(new_dbc->dbp->mpf,
-	     &cp->root, new_dbc->thread_info, new_dbc->txn, 0, &h)) != 0)
+	root_pgno = BAM_ROOT_PGNO(new_dbc);
+	if ((ret = __memp_fget(new_dbc->dbp->mpf, &root_pgno,
+	     new_dbc->thread_info, new_dbc->txn, 0, &h)) != 0)
 		goto c_err;
 
 	my_elems = NUM_ENT(h);
@@ -1745,12 +1743,12 @@ __part_rr(dbp, ip, txn, name, subdb, newname, flags)
 		ptmpdbp->locker = (*pdbp)->locker;
 		if (newname == NULL)
 			ret = __db_remove_int(ptmpdbp,
-			     ip, txn, (*pdbp)->fname, NULL,  flags);
+			     ip, txn, (*pdbp)->fname, NULL, flags);
 		else {
 			DB_ASSERT(env, np != NULL);
 			(void)sprintf(np, PART_NAME, newname, i);
 			ret = __db_rename_int(ptmpdbp,
-			     ip, txn, (*pdbp)->fname, NULL, np);
+			     ip, txn, (*pdbp)->fname, NULL, np, flags);
 		}
 		ptmpdbp->locker = NULL;
 		(void)__db_close(ptmpdbp, NULL, DB_NOSYNC);
@@ -1811,13 +1809,13 @@ __part_verify(dbp, vdp, fname, handle, callback, flags)
 	dbc = NULL;
 	ip = vdp->thread_info;
 
-	if (dbp->type == DB_BTREE) { 
-		if ((ret = __bam_open(dbp, ip, 
+	if (dbp->type == DB_BTREE) {
+		if ((ret = __bam_open(dbp, ip,
 		    NULL, fname, PGNO_BASE_MD, flags)) != 0)
 			goto err;
 	}
 #ifdef HAVE_HASH
-	else if ((ret = __ham_open(dbp, ip, 
+	else if ((ret = __ham_open(dbp, ip,
 	    NULL, fname, PGNO_BASE_MD, flags)) != 0)
 		goto err;
 #endif

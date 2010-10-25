@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="apiReference.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
-    <link rel="up" href="utilities.html" title="Appendix 1.  Berkeley DB Command Line Utilities" />
+    <link rel="up" href="utilities.html" title="Appendix A.  Berkeley DB Command Line Utilities" />
     <link rel="prev" href="db_archive.html" title="db_archive" />
     <link rel="next" href="db_deadlock.html" title="db_deadlock" />
   </head>
@@ -19,7 +19,7 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="db_archive.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix 1. 
+          <th width="60%" align="center">Appendix A. 
                 Berkeley DB Command Line Utilities
         </th>
           <td width="20%" align="right"> <a accesskey="n" href="db_deadlock.html">Next</a></td>
@@ -40,7 +40,7 @@
       <p>
          The <span class="command"><strong>db_checkpoint</strong></span> utility is a daemon process that monitors the
          database log, and periodically calls 
-         <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a>
+            <a class="xref" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()">DbEnv::txn_checkpoint()</a>
          to checkpoint it.
     </p>
       <p>
@@ -139,10 +139,12 @@
          options must be specified.
     </p>
       <p>
-         The <span class="command"><strong>db_checkpoint</strong></span> utility uses a Berkeley DB environment (as described
-         for the <span class="bold"><strong>-h</strong></span> option, the environment
-         variable <span class="bold"><strong>DB_HOME</strong></span>, or because the
-         utility was run in a directory containing a Berkeley DB environment). 
+         The <span class="command"><strong>db_checkpoint</strong></span> utility uses a Berkeley DB
+                environment (as described for the <span class="bold"><strong>-h</strong></span>
+                option, the environment variable 
+                <span class="bold"><strong>DB_HOME</strong></span>, or because the utility
+                was run in a directory containing a Berkeley DB
+                environment). 
          In order to avoid environment corruption when using a Berkeley DB
          environment, <span class="command"><strong>db_checkpoint</strong></span> should always be given the chance to detach
          from the environment and exit gracefully.  To cause <span class="command"><strong>db_checkpoint</strong></span> to
@@ -163,7 +165,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1716885"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id3707030"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -171,7 +173,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1717074"></a>DB_HOME</h4>
+                <h4 class="title"><a id="id3708248"></a>DB_HOME</h4>
               </div>
             </div>
           </div>

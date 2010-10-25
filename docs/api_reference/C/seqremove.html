@@ -61,7 +61,7 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1705937"></a>Parameters</h3>
+              <h3 class="title"><a id="id4026443"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -69,7 +69,27 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1706075"></a>flags</h4>
+                <h4 class="title"><a id="id4026638"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the
+                          operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4026339"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -93,32 +113,12 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1706397"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the
-                          operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706385"></a>Errors</h3>
+              <h3 class="title"><a id="id4026748"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1705980"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4026386"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -147,7 +147,7 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706298"></a>Class</h3>
+              <h3 class="title"><a id="id4026320"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@ DB_SEQUENCE-&gt;remove(DB_SEQUENCE *seq, DB_TXN *txnid, u_int32_t flags);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706080"></a>See Also</h3>
+              <h3 class="title"><a id="id4026260"></a>See Also</h3>
             </div>
           </div>
         </div>

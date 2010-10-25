@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -116,7 +116,7 @@ namespace CsharpAPITest
 			cfg.RepSystemCfg.HeartbeatMonitor = 100;
 			cfg.RepSystemCfg.HeartbeatSend = 10;
 			cfg.RepSystemCfg.LeaseTimeout = 1300;
-			cfg.RepSystemCfg.NoAutoInit = false;
+			cfg.RepSystemCfg.AutoInit = true;
 			cfg.RepSystemCfg.NoBlocking = false;
 			cfg.RepSystemCfg.RepMgrAckPolicy = 
 			    AckPolicy.ALL_PEERS;
@@ -474,6 +474,7 @@ namespace CsharpAPITest
 				Assert.IsTrue(ports.Contains(site.Address.Port));
 				Assert.Greater(4, site.EId);
 				Assert.IsTrue(site.isConnected);
+				Assert.IsFalse(site.isPeer);
 			}
 
 			// After all of them are ready, close the current master.
@@ -532,6 +533,14 @@ namespace CsharpAPITest
 
 			// The current client site is fully initialized.
 			client1ReadySignal.Set();
+
+			foreach (RepMgrSite site in env.RepMgrRemoteSites)
+			{
+				if (site.Address.Port == 5888)
+					Assert.IsTrue(site.isPeer);
+				else
+					Assert.IsFalse(site.isPeer);
+			}
 
 			// Wait for master's leave signal.
 			masterLeaveSignal.WaitOne();

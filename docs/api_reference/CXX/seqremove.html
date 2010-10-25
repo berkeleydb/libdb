@@ -63,7 +63,7 @@ DbSequence::remove(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710245"></a>Parameters</h3>
+              <h3 class="title"><a id="id3701047"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -71,7 +71,27 @@ DbSequence::remove(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1710727"></a>flags</h4>
+                <h4 class="title"><a id="id3701240"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
+                          operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3700620"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -95,32 +115,12 @@ DbSequence::remove(u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1710728"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
-                          operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1711046"></a>Errors</h3>
+              <h3 class="title"><a id="id3701350"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ DbSequence::remove(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1711058"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3701512"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ DbSequence::remove(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710562"></a>Class</h3>
+              <h3 class="title"><a id="id3701491"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@ DbSequence::remove(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710893"></a>See Also</h3>
+              <h3 class="title"><a id="id3701438"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -20,11 +20,6 @@ proc rep061 { method { niter 500 } { tnum "061" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree and queue only.
 	if { $checking_valid_methods } {
@@ -104,7 +99,6 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	global testdir
 	global util_path
 	global drop drop_msg
-	global startup_done
 	global databases_in_memory
 	global repfiles_in_memory
 	global rep_verbose
@@ -172,7 +166,16 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	# Set to 200/800 usecs.  An average ping to localhost should
 	# be a few 10s usecs.
 	#
-	$clientenv rep_request 200 800
+	set conf [berkdb getconfig]
+	set small_rereq 1
+	if { [is_substr $conf "debug_rop"] && [is_queue $method] } {
+		set small_rereq 0
+	}
+	if { $small_rereq } {
+		$clientenv rep_request 200 800
+	} else {
+		$clientenv rep_request 20000 80000
+	}
 	# Bring the clients online by processing the startup messages.
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist
@@ -319,8 +322,14 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 	#
 	# Since we are dropping frequent messages, we set the
 	# rerequest rate low to make sure the test finishes.
+	# Only do this for non-debug_rop because that generates
+	# so much traffic, it hangs the test with rerequests.
 	#
-	$clientenv rep_request 200 800
+	if { $small_rereq } {
+		$clientenv rep_request 200 800
+	} else {
+		$clientenv rep_request 20000 80000
+	}
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist 0 NONE err
 	set done 0
@@ -342,7 +351,11 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 		# loop more times to allow rerequests to get through.
 		#
 		set max_drop_iter [expr $max_drop_iter * 2]
-		$clientenv rep_request 100 400
+		if { $small_rereq } {
+			$clientenv rep_request 100 400
+		} else {
+			$clientenv rep_request 10000 40000
+		}
 	}
 	while { $done == 0 } {
 		puts "\tRep$tnum.e.1.$iter: Trigger log request"
@@ -357,9 +370,9 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 		process_msgs $envlist 0 NONE err
 		set stat [exec $util_path/db_stat -N -r -R A -h $clientdir]
 		#
-		# Loop until we are done with the RECOVER_PAGE phase.
+		# Loop until we are done with the SYNC_PAGE phase.
 		#
-		set in_page [is_substr $stat "REP_F_RECOVER_PAGE"]
+		set in_page [is_substr $stat "SYNC_PAGE"]
 		if { !$in_page || $iter >= $max_drop_iter } {
 			#
 			# If we're dropping, stop doing so.
@@ -427,8 +440,9 @@ proc rep061_sub { method niter tnum logset recargs opts dpct largs } {
 
 	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
 	for { set i 0 } { $i < $nfiles } { incr i } {
+		set dbname "test.$i.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv \
-		    1 1 0
+		    1 1 0 $dbname
 	}
 	set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	if { $opts == "bulk" } {

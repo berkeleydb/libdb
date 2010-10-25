@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Configuring the In-Memory Cache</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="configure.html" title="Chapter 3. Configuring the Berkeley DB SQL interface" />
+    <link rel="prev" href="dbfilesize.html" title="Selecting the Database File Size" />
+    <link rel="next" href="admin-logfile.html" title="Administering Log Files" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Configuring the In-Memory Cache</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="dbfilesize.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 3. Configuring the Berkeley DB SQL interface</th>
+          <td width="20%" align="right"> <a accesskey="n" href="admin-logfile.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="configcache"></a>Configuring the In-Memory Cache</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+                SQLite provides an in-memory cache which you
+                size according to the maximum number of database pages that
+                you want to hold in memory at any given time.
+            </p>
+      <p>
+                 Berkeley DB also provides an in-memory cache that performs the
+                 same function as SQLite. You can configure this
+                 cache using the exact same PRAGMAs as you are used to
+                 using with SQLite. See
+     <a class="ulink" href="http://www.sqlite.org/pragma.html#pragma_cache_size" target="_top">PRAGMA cache_size</a>
+                 and
+     <a class="ulink" href="http://www.sqlite.org/pragma.html#pragma_default_cache_size" target="_top">PRAGMA default_cache_size</a>
+                 for details. As is the case with SQLite, you use these
+                 PRAGMAs to describe the total number of pages that you
+                 want in the cache.
+             </p>
+      <p>
+                 Note that you can change the cache size only if no table
+                 operations have been executed on the database. In other
+                 words, to change your cache size:
+             </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                         Open a handle to your database.
+                     </p>
+          </li>
+          <li>
+            <p>
+                         Execute <code class="literal">PRAGMA cache_size</code>
+                     </p>
+          </li>
+          <li>
+            <p>
+                         Proceed with any table modification operations
+                         (<code class="literal">CREATE</code>, <code class="literal">UPDATE</code>, <code class="literal">INSERT</code>,
+                         <code class="literal">SELECT</code>) that you might want to
+                         perform.
+                     </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+                 Alternatively, you can set you cache size with your
+                 <code class="literal">DB_CONFIG</code> file, and so skip the
+                 necessity of executing the PRAGMA. See
+                 <a class="xref" href="configuration_reference.html#set_cachesize_parameter" title="set_cachesize">set_cachesize</a>
+                 for details.
+             </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="dbfilesize.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="configure.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="admin-logfile.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Selecting the Database File Size </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Administering Log Files</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

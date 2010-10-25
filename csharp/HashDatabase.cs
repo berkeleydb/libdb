@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -340,6 +340,70 @@ namespace BerkeleyDB {
         #endregion Properties
 
         #region Methods
+        /// <summary>
+        /// Compact the database, and optionally return unused database pages to
+        /// the underlying filesystem. 
+        /// </summary>
+        /// <remarks>
+        /// If the operation occurs in a transactional database, the operation
+        /// will be implicitly transaction protected using multiple
+        /// transactions. These transactions will be periodically committed to
+        /// avoid locking large sections of the tree. Any deadlocks encountered
+        /// cause the compaction operation to be retried from the point of the
+        /// last transaction commit.
+        /// </remarks>
+        /// <param name="cdata">Compact configuration parameters</param>
+        /// <returns>
+        /// Compact operation statistics, where <see cref="CompactData.End"/>
+        /// holds the integer value representing which bucket the compaction
+        /// stopped in.
+        /// </returns>
+        public CompactData Compact(CompactConfig cdata) {
+            return Compact(cdata, null);
+        }
+        /// <summary>
+        /// Compact the database, and optionally return unused database pages to
+        /// the underlying filesystem. 
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If <paramref name="txn"/> is non-null, then the operation is
+        /// performed using that transaction. In this event, large sections of
+        /// the tree may be locked during the course of the transaction.
+        /// </para>
+        /// <para>
+        /// If <paramref name="txn"/> is null, but the operation occurs in a
+        /// transactional database, the operation will be implicitly transaction
+        /// protected using multiple transactions. These transactions will be
+        /// periodically committed to avoid locking large sections of the tree.
+        /// Any deadlocks encountered cause the compaction operation to be
+        /// retried from the point of the last transaction commit.
+        /// </para>
+        /// </remarks>
+        /// <param name="cdata">Compact configuration parameters</param>
+        /// <param name="txn">
+        /// If the operation is part of an application-specified transaction,
+        /// <paramref name="txn"/> is a Transaction object returned from
+        /// <see cref="DatabaseEnvironment.BeginTransaction"/>; if
+        /// the operation is part of a Berkeley DB Concurrent Data Store group,
+        /// <paramref name="txn"/> is a handle returned from
+        /// <see cref="DatabaseEnvironment.BeginCDSGroup"/>; otherwise null.
+        /// </param>
+        /// <returns>
+        /// Compact operation statistics, where <see cref="CompactData.End"/>
+        /// holds the integer value representing which bucket the compaction
+        /// stopped in.
+        /// </returns>
+        public CompactData Compact(CompactConfig cdata, Transaction txn) {
+            DatabaseEntry end = null;
+            if (cdata.returnEnd)
+                end = new DatabaseEntry();
+
+            db.compact(Transaction.getDB_TXN(txn), cdata.start, cdata.stop,
+                CompactConfig.getDB_COMPACT(cdata), cdata.flags, end);
+            return new CompactData(CompactConfig.getDB_COMPACT(cdata), end);
+        }
+
         /// <summary>
         /// Create a database cursor.
         /// </summary>

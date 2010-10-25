@@ -52,7 +52,7 @@ sed \
     -e '/^db185\//d' \
     -e '/^db_archive\//d' \
     -e '/^db_checkpoint\//d' \
-    -e '/^db_codegen\//d' \
+    -e '/^db_sql_codegen\//d' \
     -e '/^db_deadlock\//d' \
     -e '/^db_dump185\//d' \
     -e '/^db_dump\//d' \
@@ -96,7 +96,7 @@ sed \
     -e '/dbenv->thread_id(/d' \
     -e '/dbenv->thread_id_string(/d' \
     -e '/rep_util.c:.*ret = dbenv->rep_send(/d' \
-    -e '/test_mutex.c:/d'
+    -e '/test_mutex.c:/d' \
 >$t
 
 test -s $t && {

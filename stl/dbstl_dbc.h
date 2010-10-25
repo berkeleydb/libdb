@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -9,8 +9,9 @@
 #ifndef _DB_STL_DBC_H
 #define _DB_STL_DBC_H
 
-#include <set>
 #include <errno.h>
+
+#include <set>
 
 #include "dbstl_common.h"
 #include "dbstl_dbt.h"

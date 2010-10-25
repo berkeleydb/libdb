@@ -92,20 +92,22 @@ controller and bus can have as much to do with the disk performance as
 the disk itself.  It is also important to remember that throughput is
 rarely the limiting factor, and that disk seek times are normally the true
 performance issue for Berkeley DB.</li>
-          <li>Turn on the <a href="../api_reference/C/envset_flags.html#envset_flags_DB_TXN_NOSYNC" class="olink">DB_TXN_NOSYNC</a> or <a href="../api_reference/C/envset_flags.html#envset_flags_DB_TXN_NOSYNC" class="olink">DB_TXN_NOSYNC</a>flags.
-This changes the Berkeley DB behavior so that the log files are not written
-and/or flushed when transactions are committed.  Although this change
-will greatly increase your transaction throughput, it means that
-transactions will exhibit the ACI (atomicity, consistency, and
-isolation) properties, but not D (durability).  Database integrity will
-be maintained, but it is possible that some number of the most recently
-committed transactions may be undone during recovery instead of being
-redone.</li>
+          <li>
+    Turn on the <a href="../api_reference/C/envset_flags.html#envset_flags_DB_TXN_NOSYNC" class="olink">DB_TXN_NOSYNC</a> or <a href="../api_reference/C/envset_flags.html#set_flags_DB_TXN_WRITE_NOSYNC" class="olink">DB_TXN_WRITE_NOSYNC</a> flags.  This
+    changes the Berkeley DB behavior so that the log files are not written
+    and/or flushed when transactions are committed.  Although this change
+    will greatly increase your transaction throughput, it means that
+    transactions will exhibit the ACI (atomicity, consistency, and
+    isolation) properties, but not D (durability).  Database integrity will
+    be maintained, but it is possible that some number of the most recently
+    committed transactions may be undone during recovery instead of being
+    redone.
+</li>
         </ul>
       </div>
       <p>If you are bottlenecked on logging, the following test will help you
 confirm that the number of transactions per second that your application
-does is reasonable for the hardware on which you're running.  Your test
+does is reasonable for the hardware on which you are running.  Your test
 program should repeatedly perform the following operations:</p>
       <div class="itemizedlist">
         <ul type="disc">
@@ -139,7 +141,7 @@ the <a href="../api_reference/C/db_stat.html" class="olink">db_stat utility</a> 
 particular disk, and the average latency is 4.17 msec.  That results in
 a minimum requirement for a data transfer to the disk of 13.57 msec, or
 a maximum of 74 transfers per second.  This is close enough to the
-previous 60 operations per second (which wasn't done on a quiescent
+previous 60 operations per second (which was not done on a quiescent
 disk) that the number is believable.</p>
       <p>An implementation of the previous <a class="ulink" href="writetest.cs" target="_top">example test
 program</a> for IEEE/ANSI Std 1003.1 (POSIX) standard systems is included in the Berkeley DB

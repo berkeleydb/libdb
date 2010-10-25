@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -271,10 +271,6 @@ proc create_tests { op1 op2 exists noexist open retval { end1 "" } } {
 				set noexist [lreplace $noexist 0 0]
 				set open [list $from]
 			}
-
-			# Eliminate the 1st element in exists: it is
-			# equivalent to the 2nd element (both already exist).
-			set exists [lreplace $exists 0 0]
 		}
 	}
 
@@ -343,6 +339,7 @@ proc create_badtests { op1 op2 exists noexist open retval {end1 ""} } {
 
 proc create_op2 { op2 exists noexist open retval } {
 	set retlist {}
+	set existing [concat $exists $open]
 	switch $op2 {
 		rename {
 			# Successful renames arise from renaming existing
@@ -351,7 +348,7 @@ proc create_op2 { op2 exists noexist open retval } {
 				set old $exists
 				set new $noexist
 				set retlist \
-				    [build_retlist $op2 $old $new $retval]
+				    [build_retlist $op2 $old $new $retval $existing]
 			}
 			# "File exists" errors arise from renaming existing
 			# to existing files.
@@ -359,7 +356,7 @@ proc create_op2 { op2 exists noexist open retval } {
 				set old $exists
 				set new $exists
 				set retlist \
-				    [build_retlist $op2 $old $new $retval]
+				    [build_retlist $op2 $old $new $retval $existing]
 			}
 			# "No such file" errors arise from renaming files
 			# that don't exist.
@@ -367,12 +364,12 @@ proc create_op2 { op2 exists noexist open retval } {
 				set old $noexist
 				set new $exists
 				set retlist1 \
-				    [build_retlist $op2 $old $new $retval]
+				    [build_retlist $op2 $old $new $retval $existing]
 
 				set old $noexist
 				set new $noexist
 				set retlist2 \
-				    [build_retlist $op2 $old $new $retval]
+				    [build_retlist $op2 $old $new $retval $existing]
 
 				set retlist [concat $retlist1 $retlist2]
 			}
@@ -392,7 +389,7 @@ proc create_op2 { op2 exists noexist open retval } {
 			if { $retval == "no such file" } {
 				set file $noexist
 			}
-			set retlist [build_retlist $op2 $file "" $retval]
+			set retlist [build_retlist $op2 $file "" $retval $existing]
 		}
 		open_create {
 			# Open_create should be successful with existing,
@@ -406,7 +403,7 @@ proc create_op2 { op2 exists noexist open retval } {
 			    $retval == "no such file" } {
 				return
 			}
-			set retlist [build_retlist $op2 $file "" $retval]
+			set retlist [build_retlist $op2 $file "" $retval $existing]
 		}
 		open {
 			# Open should be successful with existing or open files.
@@ -422,7 +419,7 @@ proc create_op2 { op2 exists noexist open retval } {
 			if { $retval == "file exists" } {
 				return
 			}
-			set retlist [build_retlist $op2 $file "" $retval]
+			set retlist [build_retlist $op2 $file "" $retval $existing]
 		}
 		open_excl {
 			# Open_excl should be successful with non-existent files.
@@ -438,7 +435,7 @@ proc create_op2 { op2 exists noexist open retval } {
 			if { $retval == "no such file" } {
 				return
 			}
-			set retlist [build_retlist $op2 $file "" $retval]
+			set retlist [build_retlist $op2 $file "" $retval $existing]
 		}
 		truncate {
 			# Truncate should be successful with existing files.
@@ -452,22 +449,51 @@ proc create_op2 { op2 exists noexist open retval } {
 			    $retval == "file exists" } {
 				return
 			}
-			set retlist [build_retlist $op2 $file "" $retval]
+			set retlist [build_retlist $op2 $file "" $retval $existing]
 		}
 	}
 	return $retlist
 }
 
-proc build_retlist { op2 file1 file2 retval } {
+proc build_retlist { op2 file1 file2 retval existing } {
 	set retlist {}
+
 	if { $file2 == "" } {
 		foreach f1 $file1 {
-			lappend retlist [list $op2 $f1 $retval]
+			# If we're expecting a successful operation, we have
+			# adjust the list of files that remain after the op
+			# in certain cases.
+			set remaining $existing
+			if { $retval == 0 } {
+				switch $op2 {
+					remove {
+						set idx [lsearch -exact $remaining $f1]
+						set remaining \
+						    [lreplace $remaining $idx $idx]
+					} 
+					open_create -
+					open -
+					open_excl {
+						set idx [lsearch -exact $remaining $f1]
+						if { $idx == -1 } {
+							set remaining \
+							    [lappend remaining $f1]
+						}
+					}
+				}
+			}
+			lappend retlist [list $op2 $f1 $retval $remaining]
 		}
 	} else {
 		foreach f1 $file1 {
 			foreach f2 $file2 {
-				lappend retlist [list $op2 "$f1 $f2" $retval]
+				set remaining $existing
+				if { $op2 == "rename" && $retval == 0 } {
+					set idx [lsearch -exact $remaining $f1]
+					set remaining [lreplace $remaining $idx $idx]
+					set remaining [lappend remaining $f2]
+				}
+				lappend retlist [list $op2 "$f1 $f2" $retval $remaining]
 			}
 		}
 	}

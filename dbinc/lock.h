@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -22,6 +22,14 @@ extern "C" {
  */
 #define	DB_LOCK_INVALIDID	0
 #define	DB_LOCK_MAXID		0x7fffffff
+
+/*
+ * A locker's deadlock resolution priority is stored as a 32 bit unsigned
+ * integer.  The maximum priority is DB_LOCK_MAXPRIORITY and the default
+ * priorit is DB_LOCK_DEFPRIORITY.
+ */
+#define	DB_LOCK_DEFPRIORITY	100
+#define DB_LOCK_MAXPRIORITY	UINT32_MAX
 
 /*
  * Out of band value for a lock.  Locks contain an offset into a lock region,
@@ -130,7 +138,8 @@ struct __db_locker {
 
 	u_int32_t nlocks;		/* Number of locks held. */
 	u_int32_t nwrites;		/* Number of write locks held. */
-
+	u_int32_t priority;		/* Deadlock resolution priority. */
+	
 	roff_t  master_locker;		/* Locker of master transaction. */
 	roff_t  parent_locker;		/* Parent of this child. */
 	SH_LIST_HEAD(_child) child_locker;	/* List of descendant txns;
@@ -149,6 +158,7 @@ struct __db_locker {
 #define	DB_LOCKER_DIRTY		0x0001
 #define	DB_LOCKER_INABORT	0x0002
 #define	DB_LOCKER_TIMEOUT	0x0004
+#define DB_LOCKER_FAMILY_LOCKER 0x0008
 	u_int32_t flags;
 };
 

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -61,6 +61,7 @@ struct __fname {
 #define	DB_FNAME_NOTLOGGED	0x08	/* Log of close failed. */
 #define	DB_FNAME_RECOVER	0x10	/* File was opened by recovery code. */
 #define	DB_FNAME_RESTORED	0x20	/* File may be in restored txn. */
+#define	DB_FNAME_DBREG_MASK	0xf000	/* These bits come from DBREG below. */
 	u_int32_t flags;
 };
 
@@ -71,6 +72,12 @@ struct __fname {
 #define	DBREG_PREOPEN	4		/* Open in mpool only. */
 #define	DBREG_RCLOSE	5		/* File close after recovery. */
 #define	DBREG_REOPEN	6		/* Open for in-memory database. */
+
+/* These bits are logged so db_printlog can handle page data. */
+#define	DBREG_OP_MASK	0xf		/* Opcode mask */
+#define	DBREG_BIGEND	0x1000		/* Db Big endian. */
+#define	DBREG_CHKSUM	0x2000		/* Db is checksummed. */
+#define	DBREG_ENCRYPT	0x4000		/* Db is encrypted. */
 
 /*******************************************************
  * LOG:
@@ -134,6 +141,7 @@ struct __db_log {
 #define	DBLOG_OPENFILES		0x20	/* Prepared files need to be open. */
 #define	DBLOG_RECOVER		0x40	/* We are in recovery. */
 #define	DBLOG_ZERO		0x80	/* Zero fill the log. */
+#define	DBLOG_VERIFYING		0x100	/* The log is being verified. */
 	u_int32_t flags;
 };
 
@@ -438,11 +446,20 @@ typedef enum {
 	DB_LV_OLD_UNREADABLE
 } logfile_validity;
 
+/*
+ * All log records have these fields.
+ */
+typedef struct __log_rec_hdr {
+	u_int32_t type;
+	DB_TXN *txnp;
+	DB_LSN prev_lsn;
+} LOG_REC_HEADER;
+
 #if defined(__cplusplus)
 }
 #endif
 
+#include "dbinc_auto/log_ext.h"
 #include "dbinc_auto/dbreg_auto.h"
 #include "dbinc_auto/dbreg_ext.h"
-#include "dbinc_auto/log_ext.h"
 #endif /* !_DB_LOG_H_ */

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@ proc rep038 { method { niter 200 } { tnum "038" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -182,7 +177,7 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 	# for several iterations and then let the messages finish
 	# all their processing.
 	#
-	set loop 10
+	set loop 15
 	set i 0
 	set entries 100
 	set archived 0
@@ -208,12 +203,12 @@ proc rep038_sub { method niter tnum logset recargs testopt largs } {
 			set clstat [exec $util_path/db_stat \
 			    -N -r -R A -h $clientdir]
 			if { $init == 0 && \
-			    [is_substr $clstat "REP_F_RECOVER_PAGE"] } {
+			    [is_substr $clstat "SYNC_PAGE"] } {
 				set init_log [get_logfile $masterenv last]
 				set init 1
 			}
 			if { $init == 0 && \
-			    [is_substr $clstat "REP_F_RECOVER_LOG"] } {
+			    [is_substr $clstat "SYNC_LOG"] } {
 				set init_log [get_logfile $masterenv last]
 				set init 1
 			}

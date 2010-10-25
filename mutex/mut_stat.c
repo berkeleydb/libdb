@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -435,10 +435,14 @@ __mutex_print_id(alloc_id)
 	case MTX_REPMGR:		return ("replication manager");
 	case MTX_REP_CHKPT:		return ("replication checkpoint");
 	case MTX_REP_DATABASE:		return ("replication database");
+	case MTX_REP_DIAG:		return ("replication diagnostics");
 	case MTX_REP_EVENT:		return ("replication event");
 	case MTX_REP_REGION:		return ("replication region");
+	case MTX_REP_START:		return ("replication role config");
+	case MTX_REP_WAITER:		return ("replication txn apply");
 	case MTX_SEQUENCE:		return ("sequence");
 	case MTX_TWISTER:		return ("twister");
+	case MTX_TCL_EVENTS:		return ("Tcl events");
 	case MTX_TXN_ACTIVE:		return ("txn active list");
 	case MTX_TXN_CHKPT:		return ("transaction checkpoint");
 	case MTX_TXN_COMMIT:		return ("txn commit");

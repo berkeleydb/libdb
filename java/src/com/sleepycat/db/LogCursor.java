@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -31,6 +31,10 @@ public class LogCursor {
         return (logc == null) ? null : new LogCursor(logc);
     }
 
+    /**
+    Discard the log cursor. After close() has been called, regardless of its
+    return, the cursor handle may not be used again.
+    */
     public synchronized void close()
         throws DatabaseException {
 

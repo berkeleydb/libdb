@@ -67,7 +67,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1632636"></a>Parameters</h3>
+              <h3 class="title"><a id="id3950149"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -75,7 +75,39 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633401"></a>flags</h4>
+                <h4 class="title"><a id="id3949006"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                If the operation is part of an application-specified transaction, the
+                <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
+                if the operation is part of a Berkeley DB Concurrent Data Store group, the
+                <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                otherwise NULL. If no transaction handle is specified, but the
+                operation occurs in a transactional database, the operation will be
+                implicitly transaction protected.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3950003"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3949477"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -158,44 +190,12 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1633548"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
-            </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1633772"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                If the operation is part of an application-specified transaction, the
-                <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
-                if the operation is part of a Berkeley DB Concurrent Data Store group, the
-                <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                otherwise NULL. If no transaction handle is specified, but the
-                operation occurs in a transactional database, the operation will be
-                implicitly transaction protected.
-            </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1633398"></a>Errors</h3>
+              <h3 class="title"><a id="id3950345"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -211,7 +211,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633662"></a>DB_FOREIGN_CONFLICT</h4>
+                <h4 class="title"><a id="id3948834"></a>DB_FOREIGN_CONFLICT</h4>
               </div>
             </div>
           </div>
@@ -245,7 +245,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633801"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3949166"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -258,7 +258,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633512"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3949213"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1634013"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3950046"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -290,7 +290,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633743"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3950770"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -302,7 +302,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633540"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="id3949441"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633536"></a>EACCES</h4>
+                <h4 class="title"><a id="id3950892"></a>EACCES</h4>
               </div>
             </div>
           </div>
@@ -326,7 +326,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633560"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3950899"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -339,7 +339,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1633193"></a>Class</h3>
+              <h3 class="title"><a id="id3950464"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -351,7 +351,7 @@ DB-&gt;del(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1633555"></a>See Also</h3>
+              <h3 class="title"><a id="id3950396"></a>See Also</h3>
             </div>
           </div>
         </div>

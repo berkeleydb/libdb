@@ -51,6 +51,12 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
     </p>
       <p>
+	 When Replication Manager is in use, log archiving is
+	 performed in a replication group-aware manner such that the
+	 log file status of other sites in the group is considered to
+	 determine if a log file is in use.
+    </p>
+      <p>
 
          Arrays of log filenames are stored in allocated memory.  If application-specific allocation
          routines have been declared (see <a class="xref" href="envset_alloc.html" title="DbEnv::set_alloc()">DbEnv::set_alloc()</a> 
@@ -92,7 +98,7 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1683585"></a>Parameters</h3>
+              <h3 class="title"><a id="id3673403"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -100,7 +106,22 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1684900"></a>flags</h4>
+                <h4 class="title"><a id="id3673392"></a>listp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>listp</strong></span> parameter references memory
+                          into which the allocated array of log or database filenames is copied.
+                           If there are no filenames to return, the memory location to which
+                          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3673143"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -164,27 +185,12 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1685187"></a>listp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>listp</strong></span> parameter references memory
-                          into which the allocated array of log or database filenames is copied.
-                           If there are no filenames to return, the memory location to which
-                          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685016"></a>Errors</h3>
+              <h3 class="title"><a id="id3673728"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -202,7 +208,7 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1685024"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3673638"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -215,7 +221,7 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685189"></a>Class</h3>
+              <h3 class="title"><a id="id3673805"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -229,7 +235,7 @@ DbEnv::log_archive(char *(*listp)[], u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1684720"></a>See Also</h3>
+              <h3 class="title"><a id="id3673390"></a>See Also</h3>
             </div>
           </div>
         </div>

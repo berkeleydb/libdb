@@ -272,7 +272,7 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687173"></a>Parameters</h3>
+              <h3 class="title"><a id="id3675927"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -280,7 +280,20 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1687028"></a>flags</h4>
+                <h4 class="title"><a id="id3674658"></a>statp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>statp</strong></span> parameter references memory
+                          into which a pointer to the allocated statistics structure is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3676111"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -291,7 +304,7 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                <p><a id="stat_DB_STAT_CLEAR"></a>
+                <p><a id="logstat_DB_STAT_CLEAR"></a>
                         <code class="literal">DB_STAT_CLEAR</code>
                     </p>
                 <p>
@@ -301,25 +314,12 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1687584"></a>statp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>statp</strong></span> parameter references memory
-                          into which a pointer to the allocated statistics structure is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686879"></a>Errors</h3>
+              <h3 class="title"><a id="id3674756"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -337,7 +337,7 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1687504"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3676318"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -350,7 +350,7 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686412"></a>Class</h3>
+              <h3 class="title"><a id="id3676296"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -364,7 +364,7 @@ DbEnv::log_stat(DB_LOG_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687580"></a>See Also</h3>
+              <h3 class="title"><a id="id3676195"></a>See Also</h3>
             </div>
           </div>
         </div>

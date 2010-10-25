@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               BerkeleyDB
-version:            0.39
+version:            0.42
 abstract:           Perl extension for Berkeley DB version 2, 3 or 4
 author:
     - Paul Marquess <pmqs@cpan.org>
@@ -15,7 +15,7 @@ no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.52
+generated_by:       ExtUtils::MakeMaker version 6.54
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

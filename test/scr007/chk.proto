@@ -18,6 +18,7 @@ t3=__3
 egrep '__P' $d/dbinc_auto/*.h |
     sed -e 's/[	 ][	 ]*__P.*//' \
     -e 's/^.*[	 *]//' \
+    -e 's/HANDLER)/HANDLER/' \
     -e '/__db_cprint/d' \
     -e '/__db_lprint/d' \
     -e '/__db_noop_log/d' \

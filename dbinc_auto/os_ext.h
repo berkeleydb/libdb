@@ -59,7 +59,7 @@ int __os_io __P((ENV *, int, DB_FH *, db_pgno_t, u_int32_t, u_int32_t, u_int32_t
 int __os_read __P((ENV *, DB_FH *, void *, size_t, size_t *));
 int __os_write __P((ENV *, DB_FH *, void *, size_t, size_t *));
 int __os_physwrite __P((ENV *, DB_FH *, void *, size_t, size_t *));
-int __os_seek __P((ENV *, DB_FH *, db_pgno_t, u_int32_t, u_int32_t));
+int __os_seek __P((ENV *, DB_FH *, db_pgno_t, u_int32_t, off_t));
 void __os_stack __P((ENV *));
 int __os_exists __P((ENV *, const char *, int *));
 int __os_ioinfo __P((ENV *, const char *, DB_FH *, u_int32_t *, u_int32_t *, u_int32_t *));

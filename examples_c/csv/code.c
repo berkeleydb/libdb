@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -157,7 +157,8 @@ desc_load()
 
 		/* Allocate a new field structure as necessary. */
 		if (field_cnt == field_alloc &&
-		    (fields = realloc(fields, field_alloc += 100)) == NULL) {
+		    (fields = realloc(fields,
+		        (field_alloc += 10) * sizeof(FIELD))) == NULL) {
 			fprintf(stderr, "%s: %s\n", progname, strerror(errno));
 			return (1);
 		}

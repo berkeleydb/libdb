@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,14 +13,13 @@
 #include "dbinc/fop.h"
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 static int	__db_log_corrupt __P((ENV *, DB_LSN *));
@@ -28,6 +27,7 @@ static int	__env_init_rec_42 __P((ENV *));
 static int	__env_init_rec_43 __P((ENV *));
 static int	__env_init_rec_46 __P((ENV *));
 static int	__env_init_rec_47 __P((ENV *));
+static int	__env_init_rec_48 __P((ENV *));
 static int	__log_earliest __P((ENV *, DB_LOGC *, int32_t *, DB_LSN *));
 
 #ifndef HAVE_BREW
@@ -56,6 +56,7 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 	DB_ENV *dbenv;
 	DB_LOGC *logc;
 	DB_LSN ckp_lsn, first_lsn, last_lsn, lowlsn, lsn, stop_lsn, tlsn;
+	DB_LSN *vtrunc_ckp, *vtrunc_lsn;
 	DB_TXNHEAD *txninfo;
 	DB_TXNREGION *region;
 	REGENV *renv;
@@ -65,7 +66,7 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 	double nfiles;
 	u_int32_t hi_txn, log_size, txnid;
 	int32_t low;
-	int have_rec, progress, ret, t_ret;
+	int all_recovered, have_rec, progress, ret, t_ret;
 	char *p, *pass;
 	char t1[CTIME_BUFLEN], t2[CTIME_BUFLEN], time_buf[CTIME_BUFLEN];
 
@@ -372,8 +373,10 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 		goto err;
 
 	/* If there were no transactions, then we can bail out early. */
-	if (hi_txn == 0 && max_lsn == NULL)
+	if (hi_txn == 0 && max_lsn == NULL) {
+		lsn = last_lsn;
 		goto done;
+	}
 
 	/*
 	 * Pass #2.
@@ -467,14 +470,26 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 	if (max_lsn == NULL)
 		region->last_txnid = ((DB_TXNHEAD *)txninfo)->maxid;
 
+done:
+	/* We are going to truncate, so we'd best close the cursor. */
+	if (logc != NULL) {
+		if ((ret = __logc_close(logc)) != 0)
+			goto err;
+		logc = NULL;
+	}
+	/*
+	 * Also flush the cache before truncating the log. It's recovery,
+	 * ignore any application max-write configuration.
+	 */
+	if ((ret = __memp_sync_int(env,
+	    NULL, 0, DB_SYNC_CACHE | DB_SYNC_SUPPRESS_WRITE, NULL, NULL)) != 0)
+		goto err;
 	if (dbenv->tx_timestamp != 0) {
-		/* We are going to truncate, so we'd best close the cursor. */
-		if (logc != NULL) {
-			if ((ret = __logc_close(logc)) != 0)
-				goto err;
-			logc = NULL;
-		}
-
+		/* Run recovery up to this timestamp. */
+		region->last_ckp = ((DB_TXNHEAD *)txninfo)->ckplsn;
+		vtrunc_lsn = &((DB_TXNHEAD *)txninfo)->maxlsn;
+		vtrunc_ckp = &((DB_TXNHEAD *)txninfo)->ckplsn;
+	} else if (max_lsn != NULL) {
 		/*
 		 * Flush everything to disk, we are losing the log.  It's
 		 * recovery, ignore any application max-write configuration.
@@ -482,30 +497,56 @@ __db_apprec(env, ip, max_lsn, trunclsn, update, flags)
 		if ((ret = __memp_sync_int(env, NULL, 0,
 		    DB_SYNC_CACHE | DB_SYNC_SUPPRESS_WRITE, NULL, NULL)) != 0)
 			goto err;
-		region->last_ckp = ((DB_TXNHEAD *)txninfo)->ckplsn;
-		if ((ret = __log_vtruncate(env,
-		    &((DB_TXNHEAD *)txninfo)->maxlsn,
-		    &((DB_TXNHEAD *)txninfo)->ckplsn, trunclsn)) != 0)
+		/* This is a HA client syncing to the master. */
+		if (!IS_ZERO_LSN(((DB_TXNHEAD *)txninfo)->ckplsn))
+			region->last_ckp = ((DB_TXNHEAD *)txninfo)->ckplsn;
+		else if ((ret =
+		    __txn_findlastckp(env, &region->last_ckp, max_lsn)) != 0)
 			goto err;
-	}
-
-done:
-	/* Take a checkpoint here to force any dirty data pages to disk. */
-	if ((ret = __txn_checkpoint(env, 0, 0,
-	    DB_CKP_INTERNAL | DB_FORCE)) != 0) {
+		vtrunc_lsn = max_lsn;
+		vtrunc_ckp = &((DB_TXNHEAD *)txninfo)->ckplsn;
+	} else {
 		/*
-		 * If there was no space for the checkpoint we can
-		 * still bring the environment up.  No updates will
-		 * be able to commit either, but the environment can
-		 * be used read only.
+		 * The usual case: we recovered the whole (valid) log; clear
+		 * out any partial record after the recovery point.
 		 */
-		if (max_lsn == NULL && ret == ENOSPC)
-			ret = 0;
+		vtrunc_lsn = &lsn;
+		vtrunc_ckp = &region->last_ckp;
+	}
+	if ((ret = __log_vtruncate(env, vtrunc_lsn, vtrunc_ckp, trunclsn)) != 0)
+		goto err;
+
+	/*
+	 * Usually we close all files at the end of recovery, unless there are
+	 * prepared transactions or errors in the checkpoint.
+	 */
+	all_recovered = region->stat.st_nrestores == 0;
+	/*
+	 * Log a checkpoint here so subsequent recoveries can skip what's been
+	 * done; this is unnecessary for HA rep clients, as they do not write
+	 * log records.
+	 */
+	if (max_lsn == NULL && (ret = __txn_checkpoint(env,
+	    0, 0, DB_CKP_INTERNAL | DB_FORCE)) != 0) {
+		/*
+		 * If there was no space for the checkpoint or flushng db
+		 * pages we can still bring the environment up, if only for
+		 * read-only access. We must not close the open files because a
+		 * subsequent recovery might still need to redo this portion
+		 * of the log [#18590].
+		 */
+		if (max_lsn == NULL && ret == ENOSPC) {
+			if (FLD_ISSET(dbenv->verbose, DB_VERB_RECOVERY))
+				__db_msg(env,
+		    "Recovery continuing after non-fatal checkpoint error: %s",
+				    db_strerror(ret));
+			all_recovered = 0;
+		}
 		else
 			goto err;
 	}
 
-	if (region->stat.st_nrestores == 0) {
+	if (all_recovered ) {
 		/* Close all the db files that are open. */
 		if ((ret = __dbreg_close_files(env, 0)) != 0)
 			goto err;
@@ -516,20 +557,6 @@ done:
 	}
 
 	if (max_lsn != NULL) {
-		if (!IS_ZERO_LSN(((DB_TXNHEAD *)txninfo)->ckplsn))
-			region->last_ckp = ((DB_TXNHEAD *)txninfo)->ckplsn;
-		else if ((ret =
-		    __txn_findlastckp(env, &region->last_ckp, max_lsn)) != 0)
-			goto err;
-
-		/* We are going to truncate, so we'd best close the cursor. */
-		if (logc != NULL && (ret = __logc_close(logc)) != 0)
-			goto err;
-		logc = NULL;
-		if ((ret = __log_vtruncate(env,
-		    max_lsn, &((DB_TXNHEAD *)txninfo)->ckplsn, trunclsn)) != 0)
-			goto err;
-
 		/*
 		 * Now we need to open files that should be open in order for
 		 * client processing to continue.  However, since we've
@@ -565,35 +592,17 @@ done:
 		if ((ret = __env_openfiles(env, logc,
 		    txninfo, &data, &first_lsn, max_lsn, nfiles, 1)) != 0)
 			goto err;
-	} else if (region->stat.st_nrestores == 0) {
+	} else if (all_recovered) {
 		/*
-		 * If there are no prepared transactions that need resolution,
-		 * we need to reset the transaction ID space and log this fact.
+		 * If there are no transactions that need resolution, whether
+		 * because they are prepared or because recovery will need to
+		 * process them, we need to reset the transaction ID space and
+		 * log this fact.
 		 */
 		if ((ret = __txn_reset(env)) != 0)
 			goto err;
 	} else {
 		if ((ret = __txn_recycle_id(env)) != 0)
-			goto err;
-	}
-
-	/*
-	 * We must be sure to zero the tail of the log.  Otherwise a partial
-	 * record may be at the end of the log and it may never be fully
-	 * overwritten.
-	 */
-	if (max_lsn == NULL && dbenv->tx_timestamp == 0) {
-		/* We are going to truncate, so we'd best close the cursor. */
-		if (logc != NULL && (ret = __logc_close(logc)) != 0)
-			goto err;
-		logc = NULL;
-
-		/* Truncate from beyond the last record in the log. */
-		if ((ret =
-		    __log_current_lsn(env, &last_lsn, NULL, NULL)) != 0)
-			goto err;
-		if ((ret = __log_vtruncate(env,
-		    &last_lsn, &region->last_ckp, NULL)) != 0)
 			goto err;
 	}
 
@@ -934,40 +943,51 @@ __env_init_rec(env, version)
 	if ((ret = __txn_init_recover(env, &env->recover_dtab)) != 0)
 		goto err;
 
-	switch (version) {
-	case DB_LOGVERSION:
-		ret = 0;
-		break;
-	case DB_LOGVERSION_48:
-		if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-		    __db_pg_sort_44_recover, DB___db_pg_sort_44)) != 0)
-			goto err;
-		break;
-	case DB_LOGVERSION_47:
-		ret = __env_init_rec_47(env);
-		break;
+	/*
+	 * After installing all the current recovery routines, we want to
+	 * override them with older versions if we are reading a down rev
+	 * log (from a downrev replication master).  If a log record is
+	 * changed then we must use the previous version for all older
+	 * logs.  If a record is changed in multiple revisions then the
+	 * oldest revision that applies must be used.  Therefore we override
+	 * the recovery functions in reverse log version order.
+	 */
+	if (version == DB_LOGVERSION)
+		goto done;
+	if ((ret = __env_init_rec_48(env)) != 0)
+		goto err;
+	/*
+	 * Patch 2 added __db_pg_trunc but did not replace any log records
+	 * so we want to override the same functions as in the original release.
+	 */
+	if (version >= DB_LOGVERSION_48)
+		goto done;
+	if ((ret = __env_init_rec_47(env)) != 0)
+		goto err;
+	if (version == DB_LOGVERSION_47)
+		goto done;
+	if ((ret = __env_init_rec_46(env)) != 0)
+		goto err;
 	/*
 	 * There are no log record/recovery differences between 4.4 and 4.5.
 	 * The log version changed due to checksum.  There are no log recovery
 	 * differences between 4.5 and 4.6.  The name of the rep_gen in
 	 * txn_checkpoint changed (to spare, since we don't use it anymore).
 	 */
-	case DB_LOGVERSION_46:
-	case DB_LOGVERSION_45:
-	case DB_LOGVERSION_44:
-		ret = __env_init_rec_46(env);
-		break;
-	case DB_LOGVERSION_43:
-		ret = __env_init_rec_43(env);
-		break;
-	case DB_LOGVERSION_42:
-		ret = __env_init_rec_42(env);
-		break;
-	default:
+	if (version >= DB_LOGVERSION_44)
+		goto done;
+	if ((ret = __env_init_rec_43(env)) != 0)
+		goto err;
+	if (version == DB_LOGVERSION_43)
+		goto done;
+	if (version != DB_LOGVERSION_42) {
 		__db_errx(env, "Unknown version %lu", (u_long)version);
 		ret = EINVAL;
-		break;
+		goto err;
 	}
+	ret = __env_init_rec_42(env);
+
+done:
 err:	return (ret);
 }
 
@@ -977,9 +997,6 @@ __env_init_rec_42(env)
 {
 	int ret;
 
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __bam_split_42_recover, DB___bam_split_42)) != 0)
-		goto err;
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __db_relink_42_recover, DB___db_relink_42)) != 0)
 		goto err;
@@ -992,26 +1009,16 @@ __env_init_rec_42(env)
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __db_pg_freedata_42_recover, DB___db_pg_freedata_42)) != 0)
 		goto err;
+#ifdef HAVE_HASH
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __ham_metagroup_42_recover, DB___ham_metagroup_42)) != 0)
 		goto err;
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __ham_groupalloc_42_recover, DB___ham_groupalloc_42)) != 0)
 		goto err;
+#endif
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __txn_ckp_42_recover, DB___txn_ckp_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __txn_regop_42_recover, DB___txn_regop_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_create_42_recover, DB___fop_create_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_write_42_recover, DB___fop_write_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
 err:
 	return (ret);
@@ -1024,9 +1031,6 @@ __env_init_rec_43(env)
 	int ret;
 
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __bam_split_42_recover, DB___bam_split_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __bam_relink_43_recover, DB___bam_relink_43)) != 0)
 		goto err;
 	/*
@@ -1034,15 +1038,6 @@ __env_init_rec_43(env)
 	 */
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __txn_regop_42_recover, DB___txn_regop_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_create_42_recover, DB___fop_create_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_write_42_recover, DB___fop_write_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
 err:
 	return (ret);
@@ -1055,19 +1050,7 @@ __env_init_rec_46(env)
 	int ret;
 
 	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __bam_split_42_recover, DB___bam_split_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
 	    __bam_merge_44_recover, DB___bam_merge_44)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_create_42_recover, DB___fop_create_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_write_42_recover, DB___fop_write_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
-	    __fop_rename_42_recover, DB___fop_rename_42)) != 0)
 		goto err;
 
 err:	return (ret);
@@ -1098,6 +1081,35 @@ __env_init_rec_47(env)
 	    __fop_rename_noundo_46_recover, DB___fop_rename_noundo_46)) != 0)
 		goto err;
 
+err:
+	return (ret);
+}
+
+static int
+__env_init_rec_48(env)
+	ENV *env;
+{
+	int ret;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __db_pg_sort_44_recover, DB___db_pg_sort_44)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __db_addrem_42_recover, DB___db_addrem_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __db_big_42_recover, DB___db_big_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __bam_split_48_recover, DB___bam_split_48)) != 0)
+		goto err;
+#ifdef HAVE_HASH
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __ham_insdel_42_recover, DB___ham_insdel_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, &env->recover_dtab,
+	    __ham_replace_42_recover, DB___ham_replace_42)) != 0)
+		goto err;
+#endif
 err:
 	return (ret);
 }

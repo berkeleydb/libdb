@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using BerkeleyDB.Internal;
@@ -152,6 +152,11 @@ namespace BerkeleyDB {
         /// </summary>
         REP_CLIENT = DbConstants.DB_EVENT_REP_CLIENT,
         /// <summary>
+        /// A duplicate master site has been discovered in the replication
+        /// group.
+        /// </summary>
+        REP_DUPMASTER = DbConstants.DB_EVENT_REP_DUPMASTER,
+        /// <summary>
         /// The local replication site has just won an election.
         /// </summary>
         /// <remarks>
@@ -172,11 +177,27 @@ namespace BerkeleyDB {
         /// </remarks>
         REP_ELECTED = DbConstants.DB_EVENT_REP_ELECTED,
         /// <summary>
+        /// The local site's attempt to initiate or participate in a
+        /// replication master election failed, due to the lack of timely
+        /// message response from a sufficient number of remote sites.
+        /// </summary>
+        REP_ELECTION_FAILED = DbConstants.DB_EVENT_REP_ELECTION_FAILED,
+        /// <summary>
+        /// The local site could not synchronize with the master because an
+        /// internal initialization was required, but internal initialization
+        /// has been turned off by <see cref="DatabaseEnvironment.RepAutoInit"/>.
+        /// </summary>
+        REP_JOIN_FAILURE = DbConstants.DB_EVENT_REP_JOIN_FAILURE,
+        /// <summary>
         /// The local site is now the master site of its replication group. It
         /// is the application's responsibility to begin acting as the master
         /// environment.
         /// </summary>
         REP_MASTER = DbConstants.DB_EVENT_REP_MASTER,
+        /// <summary>
+        /// The connection to the remote master replication site has failed.
+        /// </summary>
+        REP_MASTER_FAILURE = DbConstants.DB_EVENT_REP_MASTER_FAILURE,
         /// <summary>
         /// The replication group of which this site is a member has just
         /// established a new master; the local site is not the new master. The
@@ -206,5 +227,28 @@ namespace BerkeleyDB {
         /// A Berkeley DB write to stable storage failed. 
         /// </summary>
         WRITE_FAILED = DbConstants.DB_EVENT_WRITE_FAILED
+    };
+
+    /// <summary>
+    /// Status values from transaction application checking operations.
+    /// </summary>
+    public enum TransactionAppliedStatus : int
+    {
+        /// <summary>
+        /// The transaction has been applied on the current replica node. 
+        /// </summary>
+        APPLIED = 0,
+        /// <summary>
+        /// The transaction has not yet been applied on this replica node. 
+        /// </summary>
+        TIMEOUT = DbConstants.DB_TIMEOUT,
+        /// <summary>
+        /// The transaction did not update the database. 
+        /// </summary>
+        EMPTY_TRANSACTION = DbConstants.DB_KEYEMPTY,
+        /// <summary>
+        /// No such transaction found in the replication group.
+        /// </summary>
+        NOTFOUND = DbConstants.DB_NOTFOUND
     };
 }

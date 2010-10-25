@@ -62,11 +62,11 @@ clean up shared objects in the paging file automatically.  In addition,
 the default access permissions for shared objects are different from
 files, which may cause problems when an environment is accessed by
 multiple processes running as different users.  See
-<a class="xref" href="build_win_notes.html" title="Windows notes">Windows notes</a> for more
-information.</p>
+the <a href="../installation/build_win_notes.html" class="olink">Windows Notes</a> section in the Berkeley DB Installation and Build Guide for more information.
+</p>
         <ol type="1">
           <li>
-            <p>If the <a href="../api_reference/C/envopen.html#open_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag is specified to the <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method,
+            <p>If the <a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag is specified to the <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method,
 regions are created in per-process heap memory; that is, memory returned
 by <code class="literal">malloc</code>(3).</p>
             <p>This flag should not be specified if more than a single process is
@@ -74,7 +74,7 @@ accessing the environment because it is likely to cause database
 corruption and unpredictable behavior.  For example, if both a server
 application and Berkeley DB utilities (for example, the <a href="../api_reference/C/db_archive.html" class="olink">db_archive utility</a>, 
 the <a href="../api_reference/C/db_checkpoint.html" class="olink">db_checkpoint utility</a> or the <a href="../api_reference/C/db_stat.html" class="olink">db_stat utility</a>) are expected to access the environment, 
-the <a href="../api_reference/C/envopen.html#open_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag should not be specified.</p>
+the <a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag should not be specified.</p>
           </li>
           <li>If the <a href="../api_reference/C/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flag is specified to <a href="../api_reference/C/dbopen.html" class="olink">DB-&gt;open()</a>,
 shared regions are created in system memory rather than files.  This is

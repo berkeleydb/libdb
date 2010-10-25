@@ -1,109 +1,177 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# TEST repmgr023
-# TEST Repmgr support for multi-process master.
+# TEST	repmgr023
+# TEST	Test of JOIN_FAILURE event for repmgr applications.
 # TEST
-# TEST Start two processes at the master.
-# TEST Add a client site (not previously known to the master 
-# TEST processes), and make sure
-# TEST both master processes connect to it.
+# TEST	Run for btree only because access method shouldn't matter.
 
-proc repmgr023 {  } {
+proc repmgr023 { { niter 50 } { tnum 023 } args } {
+
 	source ./include.tcl
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
+	}
 
-	set tnum "023"
-	puts "Repmgr$tnum: Two master processes both connect to a client."
-	set site_prog [setup_site_prog]
+	set method "btree"
+	set args [convert_args $method $args]
+
+	puts "Repmgr$tnum ($method): Test of JOIN_FAILURE event."
+	repmgr023_sub $method $niter $tnum $args
+}
+
+proc repmgr023_sub { method niter tnum  largs } {
+	global testdir
+	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
+	global rep_verbose
+	global verbose_type
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
 	env_cleanup $testdir
+	file mkdir [set dira $testdir/SITE_A]
+	file mkdir [set dirb $testdir/SITE_B]
+	file mkdir [set dirc $testdir/SITE_C]
+	foreach { porta portb portc } [available_ports 3] {}
 
-	set masterdir $testdir/MASTERDIR
-	set clientdir $testdir/CLIENTDIR
+	# Log size is small so we quickly create more than one.
+	# The documentation says that the log file must be at least
+	# four times the size of the in-memory log buffer.
+	set pagesize 4096
+	append largs " -pagesize $pagesize "
+	set log_buf [expr $pagesize * 2]
+	set log_max [expr $log_buf * 4]
 
-	file mkdir $masterdir
-	file mkdir $clientdir
+	set cmda "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_A \
+	    -home $dira"
+	set enva [eval $cmda]
+	$enva repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $porta] -start master
 
-	set ports [available_ports 2]
-	set master_port [lindex $ports 0]
-	set client_port [lindex $ports 1]
+	set cmdb "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_B \
+	    -home $dirb"
+	set envb [eval $cmdb]
+	$envb repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $portb] -start client \
+	    -remote [list localhost $porta]
+	puts "\tRepmgr$tnum.a: wait for client B to sync with master."
+	await_startup_done $envb
 
-	puts "\tRepmgr$tnum.a: Set up the master (on TCP port $master_port)."
-	set master [open "| $site_prog" "r+"]
-	fconfigure $master -buffering line
-	puts $master "home $masterdir"
-	puts $master "local $master_port"
-	make_dbconfig $masterdir {{rep_set_nsites 3}}
-	puts $master "output $testdir/m1output"
-	puts $master "open_env"
-	puts $master "start master"
-	set ignored [gets $master]
-	puts $master "open_db test.db"
-	puts $master "put myKey myValue"
+	set cmdc "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_C \
+	    -home $dirc"
+	set envc [eval $cmdc]
+	$envc repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $portc] -start client \
+	    -remote [list localhost $porta]
+	puts "\tRepmgr$tnum.b: wait for client C to sync with master."
+	await_startup_done $envc
 
-	# sync.
-	puts $master "echo setup"
-	set sentinel [gets $master]
-	error_check_good echo_setup $sentinel "setup"
-	
-	puts "\tRepmgr$tnum.b: Start a second process at master."
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "output $testdir/m2output"
-	puts $m2 "open_env"
-	puts $m2 "open_db test.db"
-	puts $m2 "put sub1 abc"
-	puts $m2 "echo firstputted"
-	set sentinel [gets $m2]
-	error_check_good m2_firstputted $sentinel "firstputted"
 
-	puts "\tRepmgr$tnum.c: Set up the client (on TCP port $client_port)."
-	set client [open "| $site_prog" "r+"]
-	fconfigure $client -buffering line
-	puts $client "home $clientdir"
-	puts $client "local $client_port"
-	make_dbconfig $clientdir {{rep_set_nsites 3}}
-	puts $client "output $testdir/coutput"
-	puts $client "open_env"
-	puts $client "remote localhost $master_port"
-	puts $client "start client"
-	error_check_match start_client [gets $client] "*Successful*"
+	# Clobber replication's 30-second anti-archive timer, which will have
+	# been started by client sync-up internal init, so that we can do a
+	# log_archive in a moment.
+	#
+	$enva test force noarchive_timeout
 
-	puts "\tRepmgr$tnum.d: Wait for STARTUPDONE."
-	set clientenv [berkdb_env -home $clientdir]
-	await_startup_done $clientenv
-	  
-	# Initially there should be no rerequests.
-	set pfs1 [stat_field $clientenv rep_stat "Log records requested"]
-	error_check_good rerequest_count $pfs1 0
+	# Run rep_test in the master.
+	puts "\tRepmgr$tnum.c: Running rep_test in replicated env."
+	set start 0
+	eval rep_test $method $enva NULL $niter $start 0 0 $largs
+	incr start $niter
 
-	puts $m2 "put sub2 xyz"
-	puts $m2 "put sub3 ijk"
-	puts $m2 "put sub4 pqr"
-	puts $m2 "echo putted"
-	set sentinel [gets $m2]
-	error_check_good m2_putted $sentinel "putted"
-	puts $master "put another record"
-	puts $master "put and again"
-	puts $master "echo m1putted"
-	set sentinel [gets $master]
-	error_check_good m1_putted $sentinel "m1putted"
+	puts "\tRepmgr$tnum.d: Close client."
+	$envc close
 
-	puts "\tRepmgr$tnum.e: Check that replicated data is visible at client."
-	puts $client "open_db test.db"
-	set expected {{myKey myValue} {sub1 abc} {sub2 xyz} {another record}}
-	verify_client_data $clientenv test.db $expected
+	set res [eval exec $util_path/db_archive -l -h $dirc]
+	set last_client_log [lindex [lsort $res] end]
 
-	# make sure there weren't too many rerequests
-	puts "\tRepmgr$tnum.f: Check rerequest stats"
-	set pfs [stat_field $clientenv rep_stat "Log records requested"]
-	error_check_good rerequest_count [expr $pfs <= 1] 1
+	set stop 0
+	while { $stop == 0 } {
+		# Run rep_test in the master.
+		puts "\tRepmgr$tnum.e: Running rep_test in replicated env."
+		eval rep_test $method $enva NULL $niter $start 0 0 $largs
+		incr start $niter
 
-	puts "\tRepmgr$tnum.g: Clean up."
-	$clientenv close
-	close $client
-	close $master
-	close $m2
+		puts "\tRepmgr$tnum.f: Run db_archive on master."
+		set res [eval exec $util_path/db_archive -d -h $dira]
+		set res [eval exec $util_path/db_archive -l -h $dira]
+		if { [lsearch -exact $res $last_client_log] == -1 } {
+			set stop 1
+		}
+	}
+
+	puts "\tRepmgr$tnum.g: Restart client."
+	set envc [eval $cmdc -recover -event]
+	$envc rep_config {autoinit off}
+	$envc repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $portc] -start client \
+	    -remote [list localhost $porta]
+
+	# Since we've turned off auto-init, but are too far behind to sync, we
+	# expect a join_failure event.
+	# 
+	await_condition {[expr [stat_field $envc rep_stat "Startup complete"] \
+			      || [is_event_present $envc join_failure]]}
+
+	error_check_good failed [is_event_present $envc join_failure] 1
+
+	# Do a few more transactions at the master, and see that the client is
+	# still OK (i.e., simply that it's still accessible, that we can read
+	# data there), although of course it can't receive the new data.
+	# 
+	puts "\tRepmgr$tnum.h: Put more new transactions, which won't\
+		get to client C"
+	eval rep_test $method $enva NULL $niter $start 0 0 $largs
+	incr start $niter
+
+	# Env a (the master) will match env b, but env c will not match.
+	rep_verify $dira $enva $dirb $envb 0 1 1
+	rep_verify $dira $enva $dirc $envc 0 0 1
+
+	if {$databases_in_memory} {
+		set dbname { "" "test.db" }
+	} else {
+		set dbname  "test.db"
+	}
+	set dbp [eval berkdb open \
+		     -env $envc [convert_method $method] $largs $dbname]
+	set dbc [$dbp cursor]
+	$dbc get -first
+	$dbc get -next
+	$dbc get -next
+	set result [$dbc get -next]
+	error_check_good got_data [llength $result] 1
+	error_check_good got_data [llength [lindex $result 0]] 2
+	$dbc close
+	$dbp close
+
+	# Shut down the master, so as to force client B to take over.  Since we
+	# didn't do any log archiving at B, client C should now be able to sync
+	# up again.
+	# 
+	puts "\tRepmgr$tnum.i: Shut down master, client C should sync up."
+	$enva close
+	await_startup_done $envc
+
+	$envc close
+	$envb close
+	set test_be_quiet ""
 }

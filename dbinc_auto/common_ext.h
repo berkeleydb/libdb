@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+void __clock_set_expires __P((ENV *, db_timespec *, db_timeout_t));
+int __clock_expired __P((ENV *, db_timespec *, db_timespec *));
 int __crypto_region_init __P((ENV *));
 int __db_isbigendian __P((void));
 int __db_byteorder __P((ENV *, int));
@@ -34,6 +36,7 @@ void __db_errfile __P((const DB_ENV *, int, db_error_set_t, const char *, va_lis
 void __db_msgadd __P((ENV *, DB_MSGBUF *, const char *, ...)) __attribute__ ((__format__ (__printf__, 3, 4)));
 void __db_msgadd_ap __P((ENV *, DB_MSGBUF *, const char *, va_list));
 void __db_msg __P((const ENV *, const char *, ...)) __attribute__ ((__format__ (__printf__, 2, 3)));
+void __db_repmsg __P((const ENV *, const char *, ...)) __attribute__ ((__format__ (__printf__, 2, 3)));
 int __db_unknown_flag __P((ENV *, char *, u_int32_t));
 int __db_unknown_type __P((ENV *, char *, DBTYPE));
 int __db_unknown_path __P((ENV *, char *));

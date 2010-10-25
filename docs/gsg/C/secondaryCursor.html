@@ -105,12 +105,12 @@
 #include &lt;string.h&gt;
 
 ...
-                                                                                                                                     
+
 DB *sdbp;          /* Secondary DB handle */
 DBC *cursorp;      /* Cursor */
 DBT key, data;     /* DBTs used for the delete */
 char *search_name = "John Doe"; /* Name to delete */
-                                                                                                                                     
+
 /* Primary and secondary database opens omitted for brevity. */
 
 /* Get a cursor on the secondary database */

@@ -71,7 +71,7 @@ encrypted.  For this reason, it may be possible for an attacker to read
 some or all of an encrypted database by reading the on-disk files that
 back these shared memory regions.  To prevent such attacks, applications
 may want to use in-memory filesystem support (on systems that support
-it), or the <a href="../api_reference/C/envopen.html#open_DB_PRIVATE" class="olink">DB_PRIVATE</a> or <a href="../api_reference/C/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flags to the
+it), or the <a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> or <a href="../api_reference/C/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flags to the
 <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method, to place the shared memory regions in memory that
 is never written to a disk.  As some systems page system memory to a
 backing disk, it is important to consider the specific operating system
@@ -106,6 +106,12 @@ code used in Berkeley DB.</li>
 Mersenne Twister code into Berkeley DB.</li>
         </ul>
       </div>
+      <p>
+Berkeley DB 11g Release 2 supports encryption using Intel's Performance Primitive (IPP) on Linux. This works only on Intel processors.
+To use Berkeley DB with IPP encryption, you must have IPP installed along with the cryptography extension. The IPP performance is higher in most cases compared to the current AES implementation.
+See <a href="../installation/build_unix_conf.html#build_unix_conf.--with-cryptography" class="olink">--with-cryptography </a>for more information.
+See the <a class="ulink" href="http://software.intel.com/en-us/articles/intel-integrated-performance-primitives-documentation/" target="_top"> Intel Documenation</a> for more information on IPP.
+</p>
     </div>
     <div class="navfooter">
       <hr />

@@ -13,14 +13,13 @@
 #include "dbinc/db_am.h"
 #include "dbinc/fop.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
 static int __db_rename __P((DB *, DB_THREAD_INFO *,
-	     DB_TXN *, const char *, const char *, const char *));
+	     DB_TXN *, const char *, const char *, const char *, u_int32_t));
 static int __db_subdb_rename __P((DB *, DB_THREAD_INFO *,
-	     DB_TXN *, const char *, const char *, const char *));
+	     DB_TXN *, const char *, const char *, const char *, u_int32_t));
 
 /*
  * __env_dbrename_pp
@@ -51,7 +50,8 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 	 * The actual argument checking is simple, do it inline, outside of
 	 * the replication block.
 	 */
-	if ((ret = __db_fchk(env, "DB->rename", flags, DB_AUTO_COMMIT)) != 0)
+	if ((ret = __db_fchk(env, "DB->rename", flags,
+	    DB_AUTO_COMMIT | DB_NOSYNC)) != 0)
 		return (ret);
 
 	ENV_ENTER(env, ip);
@@ -73,7 +73,7 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 		txn_local = 1;
 	} else
 		if (txn != NULL && !TXN_ON(env) &&
-		    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_CDSGROUP))) {
+		    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_FAMILY))) {
 			ret = __db_not_txn_env(env);
 			goto err;
 		}
@@ -83,7 +83,7 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		goto err;
 
-	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname);
+	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname, flags);
 
 	if (txn_local) {
 		/*
@@ -93,7 +93,7 @@ __env_dbrename_pp(dbenv, txn, name, subdb, newname, flags)
 		 */
 		LOCK_INIT(dbp->handle_lock);
 		dbp->locker = NULL;
-	} else if (txn != NULL) {
+	} else if (IS_REAL_TXN(txn)) {
 		/*
 		 * We created this handle locally so we need to close it and
 		 * clean it up.  Unfortunately, it's holding transactional
@@ -162,7 +162,7 @@ __db_rename_pp(dbp, name, subdb, newname, flags)
 		return (__db_mi_open(env, "DB->rename", 1));
 
 	/* Validate arguments. */
-	if ((ret = __db_fchk(env, "DB->rename", flags, 0)) != 0)
+	if ((ret = __db_fchk(env, "DB->rename", flags, DB_NOSYNC)) != 0)
 		return (ret);
 
 	/* Check for consistent transaction usage. */
@@ -178,7 +178,7 @@ __db_rename_pp(dbp, name, subdb, newname, flags)
 	}
 
 	/* Rename the file. */
-	ret = __db_rename(dbp, ip, NULL, name, subdb, newname);
+	ret = __db_rename(dbp, ip, NULL, name, subdb, newname, flags);
 
 	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
 		ret = t_ret;
@@ -192,15 +192,16 @@ err:	ENV_LEAVE(env, ip);
  *
  */
 static int
-__db_rename(dbp, ip, txn, name, subdb, newname)
+__db_rename(dbp, ip, txn, name, subdb, newname, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
+	u_int32_t flags;
 {
 	int ret, t_ret;
 
-	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname);
+	ret = __db_rename_int(dbp, ip, txn, name, subdb, newname, flags);
 
 	if ((t_ret = __db_close(dbp, txn, DB_NOSYNC)) != 0 && ret == 0)
 		ret = t_ret;
@@ -214,14 +215,15 @@ __db_rename(dbp, ip, txn, name, subdb, newname)
  * left in the wrapper routine.
  *
  * PUBLIC: int __db_rename_int __P((DB *, DB_THREAD_INFO *,
- * PUBLIC:      DB_TXN *, const char *, const char *, const char *));
+ * PUBLIC:      DB_TXN *, const char *, const char *, const char *, u_int32_t));
  */
 int
-__db_rename_int(dbp, ip, txn, name, subdb, newname)
+__db_rename_int(dbp, ip, txn, name, subdb, newname, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
+	u_int32_t flags;
 {
 	ENV *env;
 	int ret;
@@ -241,7 +243,8 @@ __db_rename_int(dbp, ip, txn, name, subdb, newname)
 	if (name == NULL)
 		MAKE_INMEM(dbp);
 	else if (subdb != NULL) {
-		ret = __db_subdb_rename(dbp, ip, txn, name, subdb, newname);
+		ret =
+		    __db_subdb_rename(dbp, ip, txn, name, subdb, newname, flags);
 		goto err;
 	}
 
@@ -305,11 +308,12 @@ err:	if (!F_ISSET(dbp, DB_AM_INMEM) && real_name != NULL)
  *	Rename a subdatabase.
  */
 static int
-__db_subdb_rename(dbp, ip, txn, name, subdb, newname)
+__db_subdb_rename(dbp, ip, txn, name, subdb, newname, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb, *newname;
+	u_int32_t flags;
 {
 	DB *mdbp;
 	ENV *env;
@@ -364,8 +368,9 @@ err:
 	    __memp_fput(mdbp->mpf, ip, meta, dbp->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
-	if (mdbp != NULL &&
-	    (t_ret = __db_close(mdbp, txn, DB_NOSYNC)) != 0 && ret == 0)
+	if (mdbp != NULL && (t_ret = __db_close(mdbp, txn,
+	    (LF_ISSET(DB_NOSYNC) || txn != NULL) ? DB_NOSYNC : 0)) != 0 &&
+	    ret == 0)
 		ret = t_ret;
 
 	return (ret);

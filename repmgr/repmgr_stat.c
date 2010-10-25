@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
 #ifdef HAVE_STATISTICS
@@ -56,22 +55,27 @@ __repmgr_stat(env, statp, flags)
 	u_int32_t flags;
 {
 	DB_REP *db_rep;
-	DB_REPMGR_STAT *stats;
+	DB_REPMGR_STAT *copy, *stats;
+	uintmax_t tmp;
 	int ret;
 
 	db_rep = env->rep_handle;
+	stats = &db_rep->region->mstat;
 
 	*statp = NULL;
 
 	/* Allocate a stat struct to return to the user. */
-	if ((ret = __os_umalloc(env, sizeof(DB_REPMGR_STAT), &stats)) != 0)
+	if ((ret = __os_umalloc(env, sizeof(DB_REPMGR_STAT), &copy)) != 0)
 		return (ret);
 
-	memcpy(stats, &db_rep->region->mstat, sizeof(*stats));
-	if (LF_ISSET(DB_STAT_CLEAR))
-		memset(&db_rep->region->mstat, 0, sizeof(DB_REPMGR_STAT));
+	memcpy(copy, stats, sizeof(*stats));
+	if (LF_ISSET(DB_STAT_CLEAR)) {
+		tmp = stats->st_max_elect_threads;
+		memset(stats, 0, sizeof(DB_REPMGR_STAT));
+		stats->st_max_elect_threads = tmp;
+	}
 
-	*statp = stats;
+	*statp = copy;
 	return (0);
 }
 
@@ -146,6 +150,10 @@ __repmgr_print_stats(env, flags)
 	    (u_long)sp->st_connection_drop);
 	__db_dl(env, "Number of failed new connection attempts",
 	    (u_long)sp->st_connect_fail);
+	__db_dl(env, "Number of currently active election threads",
+	    (u_long)sp->st_elect_threads);
+	__db_dl(env, "Election threads for which space is reserved",
+	    (u_long)sp->st_max_elect_threads);
 
 	__os_ufree(env, sp);
 
@@ -177,6 +185,8 @@ __repmgr_print_sites(env)
 		if (list[i].status != 0)
 			__db_msgadd(env, &mb, ", %sconnected",
 			    list[i].status == DB_REPMGR_CONNECTED ? "" : "dis");
+		__db_msgadd(env, &mb, ", %speer",
+		    F_ISSET(&list[i], DB_REPMGR_ISPEER) ? "" : "non-");
 		__db_msgadd(env, &mb, ")");
 		DB_MSGBUF_FLUSH(env, &mb);
 	}
@@ -258,13 +268,15 @@ __repmgr_site_list(dbenv, countp, listp)
 		locked = TRUE;
 
 		ENV_ENTER(env, ip);
-		if (rep->siteaddr_seq > db_rep->siteaddr_seq)
+		if (rep->siteinfo_seq > db_rep->siteinfo_seq)
 			ret = __repmgr_sync_siteaddr(env);
 		ENV_LEAVE(env, ip);
 		if (ret != 0)
 			goto err;
-	} else
+	} else {
+		rep = NULL;
 		locked = FALSE;
+	}
 
 	/* Initialize for empty list or error return. */
 	*countp = 0;
@@ -294,13 +306,18 @@ __repmgr_site_list(dbenv, countp, listp)
 	for (i = 0; i < count; i++) {
 		site = &db_rep->sites[i];
 
-		status[i].eid = EID_FROM_SITE(site);
+		/* If we don't have rep, we can't really know EID yet. */
+		status[i].eid = rep ? EID_FROM_SITE(site) : DB_EID_INVALID;
 
 		status[i].host = name;
 		(void)strcpy(name, site->net_addr.host);
 		name += strlen(name) + 1;
 
 		status[i].port = site->net_addr.port;
+
+		status[i].flags = 0;
+		if (F_ISSET(site, SITE_IS_PEER))
+			F_SET(&status[i], DB_REPMGR_ISPEER);
 
 		/*
 		 * If we haven't started a communications thread, connection
@@ -312,7 +329,8 @@ __repmgr_site_list(dbenv, countp, listp)
 		 * that).
 		 */
 		status[i].status = db_rep->selector == NULL ? 0 :
-		    (site->state == SITE_CONNECTED ?
+		    (site->state == SITE_CONNECTED &&
+		    IS_READY_STATE(site->ref.conn->state) ?
 		    DB_REPMGR_CONNECTED : DB_REPMGR_DISCONNECTED);
 	}
 

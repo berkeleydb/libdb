@@ -62,7 +62,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1657787"></a>Parameters</h3>
+              <h3 class="title"><a id="id3645123"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -70,7 +70,19 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1657829"></a>data</h4>
+                <h4 class="title"><a id="id3645126"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3644702"></a>data</h4>
               </div>
             </div>
           </div>
@@ -83,7 +95,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658018"></a>flags</h4>
+                <h4 class="title"><a id="id3644914"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -94,7 +106,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                <p><a id="put_DB_AFTER"></a>
+                <p><a id="dbcput_DB_AFTER"></a>
                   <code class="literal">DB_AFTER</code>
             </p>
                 <p>
@@ -127,7 +139,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </p>
               </li>
               <li>
-                <p><a id="put_DB_BEFORE"></a>
+                <p><a id="dbcput_DB_BEFORE"></a>
                   <code class="literal">DB_BEFORE</code>
             </p>
                 <p>
@@ -160,7 +172,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </p>
               </li>
               <li>
-                <p><a id="put_DB_CURRENT"></a>
+                <p><a id="dbcput_DB_CURRENT"></a>
                   <code class="literal">DB_CURRENT</code>
             </p>
                 <p>
@@ -173,7 +185,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </p>
               </li>
               <li>
-                <p><a id="put_DB_KEYFIRST"></a>
+                <p><a id="dbcput_DB_KEYFIRST"></a>
                   <code class="literal">DB_KEYFIRST</code>
             </p>
                 <p>
@@ -189,7 +201,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </p>
               </li>
               <li>
-                <p><a id="put_DB_KEYLAST"></a>
+                <p><a id="dbcput_DB_KEYLAST"></a>
                   <code class="literal">DB_KEYLAST</code>
             </p>
                 <p>
@@ -205,7 +217,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </p>
               </li>
               <li>
-                <p><a id="put_DB_NODUPDATA"></a>
+                <p><a id="dbcput_DB_NODUPDATA"></a>
                   <code class="literal">DB_NODUPDATA</code>
             </p>
                 <p>
@@ -226,24 +238,12 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1658169"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1658165"></a>Errors</h3>
+              <h3 class="title"><a id="id3645278"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -275,7 +275,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658328"></a>DB_FOREIGN_CONFLICT</h4>
+                <h4 class="title"><a id="id3645584"></a>DB_FOREIGN_CONFLICT</h4>
               </div>
             </div>
           </div>
@@ -309,7 +309,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658469"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3644692"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -327,7 +327,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1657933"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3645063"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -345,7 +345,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658264"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3644896"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -367,7 +367,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658480"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3645683"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -384,7 +384,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1657928"></a>EACCES</h4>
+                <h4 class="title"><a id="id3645428"></a>EACCES</h4>
               </div>
             </div>
           </div>
@@ -396,7 +396,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658561"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3645047"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -418,7 +418,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1658578"></a>EPERM</h4>
+                <h4 class="title"><a id="id3645719"></a>EPERM</h4>
               </div>
             </div>
           </div>
@@ -433,7 +433,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1658102"></a>Class</h3>
+              <h3 class="title"><a id="id3645277"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -445,7 +445,7 @@ Dbc::put(Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1658093"></a>See Also</h3>
+              <h3 class="title"><a id="id3645286"></a>See Also</h3>
             </div>
           </div>
         </div>

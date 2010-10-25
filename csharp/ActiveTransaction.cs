@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -95,5 +95,9 @@ namespace BerkeleyDB {
         /// bytes of that name. 
         /// </summary>
         public string Name { get { return txnname; } }
+        /// <summary>
+        /// Assigned priority used when resolving deadlocks.
+        /// </summary>
+        public uint Priority { get { return txn.priority; } }
     }
 }

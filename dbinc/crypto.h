@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,6 +11,10 @@
 
 #if defined(__cplusplus)
 extern "C" {
+#endif
+
+#ifdef HAVE_CRYPTO_IPP
+#include <ippcp.h>
 #endif
 
 /*
@@ -71,8 +75,12 @@ typedef struct __cipher {
 #define	DB_AES_CHUNK	16	/* AES byte unit size */
 
 typedef struct __aes_cipher {
+#ifdef	HAVE_CRYPTO_IPP
+	void		*ipp_ctx;	/* IPP key instance */
+#else
 	keyInstance	decrypt_ki;	/* Decryption key instance */
 	keyInstance	encrypt_ki;	/* Encryption key instance */
+#endif
 	u_int32_t	flags;		/* AES-specific flags */
 } AES_CIPHER;
 

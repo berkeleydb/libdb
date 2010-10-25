@@ -59,6 +59,29 @@
                     locate a master. If a master cannot be found, then the
                     environment should initiate an election.
             </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                    In some rare situations, it is desireable for the
+                    application to manually select its master. For these
+                    cases, elections can be turned off. 
+                </p>
+        <p>
+                    Manually selecting a master is an activity that should
+                    be performed infrequently, if ever. You turn elections
+                    off by using the 
+                    <span>
+                        <code class="methodname">DB_ENV-&gt;rep_set_config()</code>
+                        
+                        and 
+                        <code class="methodname">DB_ENV-&gt;repmgr_start()</code>
+                        
+                        methods.
+                    </span>
+
+                    
+                </p>
+      </div>
       <p>
                 How elections are held depends upon the API that you use to
                 implement replication. For example, if you are using the

@@ -603,7 +603,7 @@
 			<HeartbeatMonitor>100</HeartbeatMonitor>
 			<HeartbeatSend>50</HeartbeatSend>
 			<LeaseTimeout>1025</LeaseTimeout>
-			<NoAutoInit>True</NoAutoInit>
+			<AutoInit>False</AutoInit>
 			<NoBlocking>True</NoBlocking>
 			<NSites>7</NSites>
 			<Priority>1</Priority>
@@ -745,7 +745,7 @@
 				<HeartbeatMonitor>100</HeartbeatMonitor>
 				<HeartbeatSend>50</HeartbeatSend>
 				<LeaseTimeout>1025</LeaseTimeout>
-				<NoAutoInit>True</NoAutoInit>
+				<AutoInit>False</AutoInit>
 				<NoBlocking>True</NoBlocking>
 				<NSites>7</NSites>
 				<Priority>1</Priority>
@@ -780,7 +780,7 @@
 			<HeartbeatMonitor>100</HeartbeatMonitor>
 			<HeartbeatSend>50</HeartbeatSend>
 			<LeaseTimeout>1025</LeaseTimeout>
-			<NoAutoInit>True</NoAutoInit>
+			<AutoInit>False</AutoInit>
 			<NoBlocking>True</NoBlocking>
 			<NSites>7</NSites>
 			<Priority>1</Priority>

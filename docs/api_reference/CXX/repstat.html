@@ -562,7 +562,7 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1705537"></a>Parameters</h3>
+              <h3 class="title"><a id="id3695567"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -570,7 +570,20 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1705411"></a>flags</h4>
+                <h4 class="title"><a id="id3695181"></a>statp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>statp</strong></span> parameter references memory
+                          into which a pointer to the allocated statistics structure is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3696215"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -591,25 +604,12 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1706745"></a>statp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>statp</strong></span> parameter references memory
-                          into which a pointer to the allocated statistics structure is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706599"></a>Errors</h3>
+              <h3 class="title"><a id="id3696305"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -627,7 +627,7 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1705312"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3696432"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -641,7 +641,7 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706356"></a>Class</h3>
+              <h3 class="title"><a id="id3696414"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -653,7 +653,7 @@ DbEnv::rep_stat(DB_REP_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706380"></a>See Also</h3>
+              <h3 class="title"><a id="id3696173"></a>See Also</h3>
             </div>
           </div>
         </div>

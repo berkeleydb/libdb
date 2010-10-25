@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -17,139 +17,186 @@ public class LogStats {
     /* package */ LogStats() {}
 
     private int st_magic;
-    /** TODO */
+    /**
+    The magic number that identifies a file as a log file.
+    */
     public int getMagic() {
         return st_magic;
     }
 
     private int st_version;
-    /** TODO */
+    /**
+    The version of the log file type.
+    */
     public int getVersion() {
         return st_version;
     }
 
     private int st_mode;
-    /** TODO */
+    /**
+    The mode of any created log files.
+    */
     public int getMode() {
         return st_mode;
     }
 
     private int st_lg_bsize;
-    /** TODO */
+    /**
+    The in-memory log record cache size.
+    */
     public int getLgBSize() {
         return st_lg_bsize;
     }
 
     private int st_lg_size;
-    /** TODO */
+    /**
+    The current log file size.
+    */
     public int getLgSize() {
         return st_lg_size;
     }
 
     private int st_wc_bytes;
-    /** TODO */
+    /**
+    The number of bytes over and above {@link com.sleepycat.db.LogStats#getWcMbytes LogStats.getWcMbytes}
+    written to this log since the last checkpoint.
+    */
     public int getWcBytes() {
         return st_wc_bytes;
     }
 
     private int st_wc_mbytes;
-    /** TODO */
+    /**
+    The number of megabytes written to this log since the last checkpoint.
+    */
     public int getWcMbytes() {
         return st_wc_mbytes;
     }
 
     private long st_record;
-    /** TODO */
+    /** The number of records written to this log. **/
     public long getRecord() {
         return st_record;
     }
 
     private int st_w_bytes;
-    /** TODO */
+    /**
+    The number of bytes over and above {@link #getWMbytes} written to this log.
+    */
     public int getWBytes() {
         return st_w_bytes;
     }
 
     private int st_w_mbytes;
-    /** TODO */
+    /**
+    The number of megabytes written to this log.
+    */
     public int getWMbytes() {
         return st_w_mbytes;
     }
 
     private long st_wcount;
-    /** TODO */
+    /**
+    The number of times the log has been written to disk.
+    */
     public long getWCount() {
         return st_wcount;
     }
 
     private long st_wcount_fill;
-    /** TODO */
+    /**
+    The number of times the log has been written to disk because the
+    in-memory log record cache filled up.
+    */
     public long getWCountFill() {
         return st_wcount_fill;
     }
 
     private long st_rcount;
-    /** TODO */
+    /** The number of times the log has been read from disk. **/
     public long getRCount() {
         return st_rcount;
     }
 
     private long st_scount;
-    /** TODO */
+    /**
+    The number of times the log has been flushed to disk.
+    */
     public long getSCount() {
         return st_scount;
     }
 
     private long st_region_wait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was forced to wait
+    before obtaining the region lock.
+    */
     public long getRegionWait() {
         return st_region_wait;
     }
 
     private long st_region_nowait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was able to obtain the
+    region lock without waiting.
+    */
     public long getRegionNowait() {
         return st_region_nowait;
     }
 
     private int st_cur_file;
-    /** TODO */
+    /**
+    The current log file number.
+    */
     public int getCurFile() {
         return st_cur_file;
     }
 
     private int st_cur_offset;
-    /** TODO */
+    /**
+    The byte offset in the current log file.
+    */
     public int getCurOffset() {
         return st_cur_offset;
     }
 
     private int st_disk_file;
-    /** TODO */
+    /**
+    The log file number of the last record known to be on disk.
+    */
     public int getDiskFile() {
         return st_disk_file;
     }
 
     private int st_disk_offset;
-    /** TODO */
+    /**
+    The byte offset of the last record known to be on disk.
+    */
     public int getDiskOffset() {
         return st_disk_offset;
     }
 
     private int st_maxcommitperflush;
-    /** TODO */
+    /**
+    The maximum number of commits contained in a single log flush.
+    */
     public int getMaxCommitperflush() {
         return st_maxcommitperflush;
     }
 
     private int st_mincommitperflush;
-    /** TODO */
+    /**
+    The minimum number of commits contained in a single log flush that
+    contained a commit.
+    */
     public int getMinCommitperflush() {
         return st_mincommitperflush;
     }
 
     private int st_regsize;
-    /** TODO */
+    /**
+    The size of the region.
+    */
     public int getRegSize() {
         return st_regsize;
     }

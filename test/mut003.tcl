@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -33,27 +33,6 @@ proc mut003 { } {
 	error_check_good \
 	    already_unlocked [is_substr $res "lock already unlocked"] 1
 	env_cleanup $testdir
-	
-	# Allocate and free a mutex.  Then try to lock it.
-	puts "\tMut003.c: Try to lock a freed mutex."
-	set env [berkdb_env_noerr -create -home $testdir]
-	set mutex [$env mutex]
-	error_check_good mutex_free [$env mutex_free $mutex] 0
-	catch { $env mutex_lock $mutex } res
 
-#	error_check_good \
-#	    allocation_error [is_substr $res "lock already unlocked"] 1
-	env_cleanup $testdir
-
-	# Allocate and lock a mutex.  Try to free it before it's unlocked. 
-	puts "\tMut003.d: Try to free a still-locked mutex."
-	set env [berkdb_env_noerr -create -home $testdir]
-	set mutex [$env mutex]
-	error_check_good mutex_lock [$env mutex_lock $mutex] 0
-	catch { $env mutex_free $mutex } res
-
-#	error_check_good \
-#	    allocation_error [is_substr $res "lock already unlocked"] 1
-	env_cleanup $testdir
 }
 

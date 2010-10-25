@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -25,9 +25,15 @@ namespace BerkeleyDB {
         /// impossible.
         /// </para>
         /// <para>
-        /// Replication applications will rarely want to configure automatic log
-        /// file removal as it increases the likelihood a master will be unable
-        /// to satisfy a client's request for a recent log record.
+        /// Replication Manager applications operate in a group-aware manner for
+        /// log file removal, and automatic log file removal simplifies the
+        /// application. 
+        /// </para>
+        /// <para>
+        /// Replication Base API applications will rarely want to configure
+        /// automatic log file removal as it increases the likelihood a master
+        /// will be unable to satisfy a client's request for a recent log
+        /// record.
         /// </para>
         /// </remarks>
         public bool AutoRemove;

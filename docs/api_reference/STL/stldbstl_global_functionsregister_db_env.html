@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-register_db_env
-</th>
+          <th colspan="3" align="center">register_db_env</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsregister_db.html">Prev</a> </td>
@@ -32,9 +30,7 @@ register_db_env
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsregister_db_env"></a>
-register_db_env
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsregister_db_env"></a>register_db_env</h2>
           </div>
         </div>
       </div>
@@ -42,26 +38,21 @@ register_db_env
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsregister_db_env_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- void register_db_env(DbEnv *env1)
+ void register_db_env(DbEnv *env1)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Register a DbEnv handle env1, this handle and handles opened in it will be closed by ResourceManager
+        <p>Register a DbEnv handle env1, this handle and handles opened in it will be closed by ResourceManager
 . </p>
-          <p>Application code must not try to close or delete it. Users can do enough config before opening the DbEnv and then register it via this function. All environment handles should be registered via this function in each thread using the handle. The only exception is the environment handle opened by dbstl::open_db_env should not be registered in the thread of the dbstl::open_db_env call. </p>
-        </div>
+        <p>Application code must not try to close or delete it. Users can do enough config before opening the DbEnv and then register it via this function. All environment handles should be registered via this function in each thread using the handle. The only exception is the environment handle opened by dbstl::open_db_env should not be registered in the thread of the dbstl::open_db_env call. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1542868"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3482697"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -69,8 +60,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542828"></a>
- env1 </h5>
+                  <h5 class="title"><a id="id3482700"></a>env1</h5>
                 </div>
               </div>
             </div>
@@ -82,14 +72,12 @@ Parameters</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1542776"></a>
-Class</h3>
+              <h3 class="title"><a id="id3482610"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -104,15 +92,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsopen_db.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-register_db
- </td>
+          <td width="40%" align="left" valign="top">register_db </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-open_db
-</td>
+          <td width="40%" align="right" valign="top"> open_db</td>
         </tr>
       </table>
     </div>

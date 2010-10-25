@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -57,13 +57,16 @@ proc fop001 { method { inmem 0 } args } {
 	}
 
 	# The structure of each case is:
-	# {{op1 {names1} result end1} {op2 {names2} result}}
+	# {{op1 {names1} result end1} {op2 {names2} result} {remaining}}
 	# A result of "0" indicates no error is expected.
 	# Otherwise, the result is the expected error message.
 	#
 	# The "end1" variable indicates whether the first txn
 	# ended with an abort or a commit, and is not used
 	# in this test.
+	#
+	# The "remaining" variable lists the files that should 
+	# exist at the end of the test case.
 	#
 	# Comment this loop out to remove the list of cases.
 #	set i 1
@@ -87,8 +90,21 @@ proc fop001 { method { inmem 0 } args } {
 		set op2 [lindex [lindex $case 1] 0]
 		set names2 [lindex [lindex $case 1] 1]
 		set res2 [lindex [lindex $case 1] 2]
+		set remaining [lindex [lindex $case 1] 3]
 
-		puts "\tFop$tnum.$testid: $op1 ($names1), then $op2 ($names2)."
+		# Use the list of remaining files to derive
+		# the list of files that should be gone.
+		set allnames { a b foo bar }
+		set gone {}
+		foreach f $allnames {
+			set idx [lsearch -exact $remaining $f]
+			if { $idx == -1 } {
+				lappend gone $f
+			}
+		}
+
+		puts -nonewline "\tFop$tnum.$testid: $op1 ($names1), " 
+		puts "then $op2 ($names2)."
 
 		# The variable 'when' describes when to resolve a txn -- 
 		# before or after closing any open databases. 
@@ -161,22 +177,52 @@ proc fop001 { method { inmem 0 } args } {
 		
 					# If the txn was aborted, we still
 					# have the original two databases.
+					# Otherwise check for the expected
+					# remaining files.
 					if { $end == "abort" } {
-						database_exists \
-						    $inmem $testdir a
-						database_exists \
-						    $inmem $testdir b
+						error_check_good db_exists \
+						    [database_exists \
+						    $inmem $testdir a] 1
+						error_check_good db_exists \
+						    [database_exists \
+						    $inmem $testdir b] 1
+					} else {
+						foreach db $remaining {
+							error_check_good db_exists \
+							    [database_exists \
+							    $inmem $testdir $db] 1
+						}
+						foreach db $gone {
+							error_check_good db_gone \
+							    [database_exists \
+							    $inmem $testdir $db] 0
+						}
 					}
+
 					close_db_handles 
 				} else {
 					close_db_handles
 					error_check_good txn_$end [$txn $end] 0
 	
 					if { $end == "abort" } {
-						database_exists \
-						    $inmem $testdir a
-						database_exists \
-						    $inmem $testdir b
+						error_check_good db_exists \
+						    [database_exists \
+						    $inmem $testdir a] 1
+						error_check_good db_exists \
+						    [database_exists \
+						    $inmem $testdir b] 1
+					} else {
+						foreach db $remaining {
+							error_check_good db_exists \
+							    [database_exists \
+							    $inmem $testdir $db] 1
+						}
+						foreach db $gone {
+							error_check_good db_gone \
+							    [database_exists \
+							    $inmem $testdir $db] 0
+						}
+
 					}
 				}		
 			}
@@ -192,10 +238,11 @@ proc fop001 { method { inmem 0 } args } {
 
 proc database_exists { inmem testdir name } {
 	if { $inmem == 1 } {
-		error_check_good db_exists [inmem_exists $testdir $name] 1
+		return [inmem_exists $testdir $name]
 	} else {
-		error_check_good db_exists [file exists $testdir/$name] 1
+		return [file exists $testdir/$name]
 	}	
+
 }
 
 # This is a real hack.  We need to figure out if an in-memory named
@@ -208,36 +255,37 @@ proc database_exists { inmem testdir name } {
 # The last field printed for a file is Flags
 # If the file is dead, deadfile will show up in the flags
 proc inmem_exists { dir filename } {
-      source ./include.tcl
-      set infile 0
-      set islive 0
-      set name ""
-      set s [exec $util_path/db_stat -MA -h $dir]
-      foreach i $s {
-              if { $i == "File" } {
-                      set infile 1
-                      set islive 1
-                      set name ""
-              } elseif { $i == "Flags" } {
-                      set infile 0
-                      if { $name != "" && $islive } {
-                              return 1
-                      }
-              } elseif { $infile != 0 } {
-                      incr infile
-              }
+	source ./include.tcl
+	set infile 0
+	set islive 0
+	set name ""
+	set s [exec $util_path/db_stat -MA -h $dir]
+	foreach i $s {
+		if { $i == "File" } {
+			set infile 1
+			set islive 1
+			set name ""
+		} elseif { $i == "Flags" } {
+			set infile 0
+			if { $name != "" && $islive } {
+				return 1
+			}
+		} elseif { $infile != 0 } {
+			incr infile
+		}
 
-              if { $islive && $i == "deadfile" } {
-                      set islive 0
-              }
+		if { $islive } {
+			if { $i == "deadfile," || $i == "deadfile" } {
+				set islive 0
+			}
+		}
 
-              if { $infile == 3 } {
-                      if { $i == $filename } {
-                              set name $filename
-                      }
-              }
-      }
-
-      return 0
+		if { $infile == 3 } {
+			if { $i == $filename } {
+				set name $filename
+			}
+		}
+	}
+	return 0
 }
 

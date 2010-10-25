@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-open_db
-</th>
+          <th colspan="3" align="center">open_db</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsregister_db_env.html">Prev</a> </td>
@@ -32,9 +30,7 @@ open_db
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsopen_db"></a>
-open_db
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsopen_db"></a>open_db</h2>
           </div>
         </div>
       </div>
@@ -42,30 +38,25 @@ open_db
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsopen_db_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- Db* open_db(DbEnv *penv, const char *filename, DBTYPE dbtype,
-    u_int32_t oflags, u_int32_t set_flags, int mode=0644, DbTxn *txn=NULL,
-    u_int32_t cflags=0,
-    const char *dbname=NULL)
+ Db* open_db(DbEnv *penv, const char *filename, DBTYPE dbtype,
+    u_int32_t oflags, u_int32_t set_flags, int mode=0644, DbTxn *txn=NULL,
+    u_int32_t cflags=0,
+    const char *dbname=NULL)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Helper function to open a database and register it into dbstl for the calling thread. </p>
-          <p>Users still need to register it in any other thread using it if it is shared by multiple threads, via <a class="link" href="stldbstl_global_functionsregister_db.html" title="register_db">register_db()</a>
+        <p>Helper function to open a database and register it into dbstl for the calling thread. </p>
+        <p>Users still need to register it in any other thread using it if it is shared by multiple threads, via <a class="link" href="stldbstl_global_functionsregister_db.html" title="register_db">register_db()</a>
  function. Users don't need to delete or free the memory of the returned object, dbstl will take care of that. When you don't use <a class="link" href="stldbstl_global_functionsopen_db.html" title="open_db">dbstl::open_db()</a>
  but explicitly call DB C++ API to open a database, you must new the Db object, rather than create it on stack, and you must delete the Db object by yourself. </p>
-        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1542946"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3482768"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -73,8 +64,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542748"></a>
- penv </h5>
+                  <h5 class="title"><a id="id3482772"></a>penv</h5>
                 </div>
               </div>
             </div>
@@ -84,8 +74,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543077"></a>
- txn </h5>
+                  <h5 class="title"><a id="id3482810"></a>txn</h5>
                 </div>
               </div>
             </div>
@@ -95,8 +84,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542870"></a>
- dbtype </h5>
+                  <h5 class="title"><a id="id3482817"></a>dbtype</h5>
                 </div>
               </div>
             </div>
@@ -106,8 +94,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542746"></a>
- oflags </h5>
+                  <h5 class="title"><a id="id3482822"></a>oflags</h5>
                 </div>
               </div>
             </div>
@@ -117,8 +104,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543072"></a>
- filename </h5>
+                  <h5 class="title"><a id="id3482828"></a>filename</h5>
                 </div>
               </div>
             </div>
@@ -128,8 +114,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543151"></a>
- mode </h5>
+                  <h5 class="title"><a id="id3482835"></a>mode</h5>
                 </div>
               </div>
             </div>
@@ -139,8 +124,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542621"></a>
- cflags </h5>
+                  <h5 class="title"><a id="id3482841"></a>cflags</h5>
                 </div>
               </div>
             </div>
@@ -150,8 +134,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543074"></a>
- dbname </h5>
+                  <h5 class="title"><a id="id3482847"></a>dbname</h5>
                 </div>
               </div>
             </div>
@@ -161,8 +144,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542783"></a>
- set_flags </h5>
+                  <h5 class="title"><a id="id3482853"></a>set_flags</h5>
                 </div>
               </div>
             </div>
@@ -173,8 +155,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1543148"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3482731"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -184,8 +165,7 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1543107"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3482721"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -193,22 +173,23 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldbstl_global_functionsregister_db.html" title="register_db">register_db(Db *)</a>
 ; </p>
+          <p>
+</p>
           <p>open_db_env; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1542747"></a>
-Class</h3>
+              <h3 class="title"><a id="id3482616"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -223,15 +204,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsopen_env.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-register_db_env
- </td>
+          <td width="40%" align="left" valign="top">register_db_env </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-open_env
-</td>
+          <td width="40%" align="right" valign="top"> open_env</td>
         </tr>
       </table>
     </div>

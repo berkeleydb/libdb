@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,7 +11,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 #include "dbinc/txn.h"
 
 static int __rep_internal_init __P((ENV *, u_int32_t));
@@ -48,8 +47,8 @@ __rep_verify(env, rp, rec, eid, savetime)
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 
-	/* Do nothing if VERIFY flag is not set. */
-	if (!F_ISSET(rep, REP_F_RECOVER_VERIFY))
+	/* Do nothing if VERIFY is not set. */
+	if (rep->sync_state != SYNC_VERIFY)
 		return (ret);
 
 #ifdef DIAGNOSTIC
@@ -173,8 +172,11 @@ __rep_verify(env, rp, rec, eid, savetime)
 		 * can't load NIMDBs from a very old-version master.  So, fib to
 		 * ourselves that they're already loaded, so that we don't try.
 		 */
-		if (rep->version == DB_REPVERSION_44)
+		if (rep->version == DB_REPVERSION_44) {
+			REP_SYSTEM_LOCK(env);
 			F_SET(rep, REP_F_NIMDBS_LOADED);
+			REP_SYSTEM_UNLOCK(env);
+		}
 		if (F_ISSET(rep, REP_F_NIMDBS_LOADED))
 			ret = __rep_verify_match(env, &rp->lsn, savetime);
 		else {
@@ -213,16 +215,15 @@ __rep_internal_init(env, abbrev)
 
 	/*
 	 * What we call "abbreviated internal init" is really just NIMDB
-	 * materialization, and we always do that even if NOAUTOINIT has been
-	 * configured.
+	 * materialization, and we always do that even if AUTOINIT has been
+	 * turned off.
 	 */
-	if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT) && !abbrev)
+	if (!FLD_ISSET(rep->config, REP_C_AUTOINIT) && !abbrev)
 		ret = DB_REP_JOIN_FAILURE;
 	else {
-		F_CLR(rep, REP_F_RECOVER_VERIFY);
-		F_SET(rep, REP_F_RECOVER_UPDATE);
+		rep->sync_state = SYNC_UPDATE;
 		if (abbrev) {
-			RPRINT(env, DB_VERB_REP_SYNC, (env,
+			RPRINT(env, (env, DB_VERB_REP_SYNC,
 			 "send UPDATE_REQ, merely to check for NIMDB refresh"));
 			F_SET(rep, REP_F_ABBREVIATED);
 		} else
@@ -264,12 +265,10 @@ __rep_verify_fail(env, rp)
 	lp = dblp->reginfo.primary;
 
 	/*
-	 * If any recovery flags are set, but not LOG or VERIFY,
-	 * then we ignore this message.  We are already
-	 * in the middle of updating.
+	 * If we are already in the middle of updating (PAGE or UPDATE state),
+	 * then we ignore this message.
 	 */
-	if (F_ISSET(rep, REP_F_RECOVER_MASK) &&
-	    !F_ISSET(rep, REP_F_RECOVER_LOG | REP_F_RECOVER_VERIFY))
+	if (rep->sync_state == SYNC_PAGE || rep->sync_state == SYNC_UPDATE)
 		return (0);
 	REP_SYSTEM_LOCK(env);
 	/*
@@ -280,16 +279,16 @@ __rep_verify_fail(env, rp)
 
 	/*
 	 * Clean up old internal init in progress if:
-	 * REP_C_NOAUTOINIT is not configured and
+	 * REP_C_AUTOINIT is configured and
 	 * we are recovering LOG and this LSN is in the range we need.
 	 */
-	if (F_ISSET(rep, REP_F_RECOVER_LOG) &&
+	if (rep->sync_state == SYNC_LOG &&
 	    LOG_COMPARE(&rep->first_lsn, &rp->lsn) <= 0 &&
 	    LOG_COMPARE(&rep->last_lsn, &rp->lsn) >= 0) {
 		/*
 		 * Already locking out messages, give up.
 		 */
-		if (F_ISSET(rep, REP_F_READY_MSG))
+		if (FLD_ISSET(rep->lockout_flags, REP_LOCKOUT_MSG))
 			goto unlock;
 
 		/*
@@ -302,18 +301,18 @@ __rep_verify_fail(env, rp)
 		/*
 		 * Clean up internal init if one was in progress.
 		 */
-		if (F_ISSET(rep, REP_F_READY_API | REP_F_READY_OP)) {
-			RPRINT(env, DB_VERB_REP_SYNC, (env,
+		if (ISSET_LOCKOUT_BDB(rep)) {
+			RPRINT(env, (env, DB_VERB_REP_SYNC,
     "VERIFY_FAIL is cleaning up old internal init for missing log"));
 			if ((ret =
 			    __rep_init_cleanup(env, rep, DB_FORCE)) != 0) {
-				RPRINT(env, DB_VERB_REP_SYNC, (env,
+				RPRINT(env, (env, DB_VERB_REP_SYNC,
     "VERIFY_FAIL error cleaning up internal init for missing log: %d", ret));
 				goto msglck;
 			}
-			F_CLR(rep, REP_F_RECOVER_MASK);
+			CLR_RECOVERY_SETTINGS(rep);
 		}
-		F_CLR(rep, REP_F_READY_MSG);
+		FLD_CLR(rep->lockout_flags, REP_LOCKOUT_MSG);
 		lockout = 0;
 	}
 
@@ -332,12 +331,12 @@ __rep_verify_fail(env, rp)
 	 * We don't want an old or delayed VERIFY_FAIL message to throw us
 	 * into internal initialization when we shouldn't be.
 	 */
-	if (((F_ISSET(rep, REP_F_RECOVER_VERIFY)) &&
+	if ((rep->sync_state == SYNC_VERIFY &&
 	    LOG_COMPARE(&rp->lsn, &lp->verify_lsn) == 0) ||
-	    (F_ISSET(rep, REP_F_RECOVER_LOG) &&
+	    (rep->sync_state == SYNC_LOG &&
 	    LOG_COMPARE(&rep->first_lsn, &rp->lsn) <= 0 &&
 	    LOG_COMPARE(&rep->last_lsn, &rp->lsn) >= 0) ||
-	    (F_ISSET(rep, REP_F_RECOVER_MASK) == 0 &&
+	    (rep->sync_state == SYNC_OFF &&
 	    LOG_COMPARE(&rp->lsn, &lp->ready_lsn) >= 0)) {
 		/*
 		 * Update stats.
@@ -345,10 +344,10 @@ __rep_verify_fail(env, rp)
 		STAT(rep->stat.st_outdated++);
 
 		/*
-		 * If REP_C_NOAUTOINIT is configured, return
+		 * If REP_C_AUTOINIT is turned off, return
 		 * DB_REP_JOIN_FAILURE instead of doing internal init.
 		 */
-		if (FLD_ISSET(rep->config, REP_C_NOAUTOINIT)) {
+		if (!FLD_ISSET(rep->config, REP_C_AUTOINIT)) {
 			ret = DB_REP_JOIN_FAILURE;
 			goto unlock;
 		}
@@ -356,8 +355,7 @@ __rep_verify_fail(env, rp)
 		/*
 		 * Do the internal init.
 		 */
-		F_CLR(rep, REP_F_RECOVER_VERIFY);
-		F_SET(rep, REP_F_RECOVER_UPDATE);
+		rep->sync_state = SYNC_UPDATE;
 		ZERO_LSN(rep->first_lsn);
 		ZERO_LSN(rep->ckp_lsn);
 		lp->wait_ts = rep->request_gap;
@@ -372,7 +370,7 @@ __rep_verify_fail(env, rp)
 		 * Otherwise ignore this message.
 		 */
 msglck:		if (lockout)
-			F_CLR(rep, REP_F_READY_MSG);
+			FLD_CLR(rep->lockout_flags, REP_LOCKOUT_MSG);
 unlock:		REP_SYSTEM_UNLOCK(env);
 		if (clnt_lock_held)
 			MUTEX_UNLOCK(env, rep->mtx_clientdb);
@@ -467,7 +465,7 @@ __rep_dorecovery(env, lsnp, trunclsnp)
 		return (ret);
 
 	memset(&mylog, 0, sizeof(mylog));
-	if (F_ISSET(rep, REP_F_RECOVER_LOG)) {
+	if (rep->sync_state == SYNC_LOG) {
 		/*
 		 * Internal init can never skip recovery.
 		 * Internal init must always update the timestamp and
@@ -537,12 +535,12 @@ __rep_dorecovery(env, lsnp, trunclsnp)
 	 * is necessary.
 	 */
 	if (skip_rec) {
-		if ((ret = __log_get_stable_lsn(env, &last_ckp)) != 0) {
+		if ((ret = __log_get_stable_lsn(env, &last_ckp, 0)) != 0) {
 			if (ret != DB_NOTFOUND)
 				goto err;
 			ZERO_LSN(last_ckp);
 		}
-		RPRINT(env, DB_VERB_REP_SYNC, (env,
+		RPRINT(env, (env, DB_VERB_REP_SYNC,
     "Skip sync-up rec.  Truncate log to [%lu][%lu], ckp [%lu][%lu]",
     (u_long)lsnp->file, (u_long)lsnp->offset,
     (u_long)last_ckp.file, (u_long)last_ckp.offset));
@@ -553,6 +551,17 @@ __rep_dorecovery(env, lsnp, trunclsnp)
 	if (ret != 0)
 		goto err;
 	F_SET(db_rep, DBREP_OPENFILES);
+
+	/*
+	 * If we've just updated the env handle timestamp, then we would get
+	 * HANDLE_DEAD next time we tried to use our LSN history database.  So,
+	 * close it here now, to save ourselves the trouble of worrying about it
+	 * later.
+	 */
+	if (update && db_rep->lsn_db != NULL) {
+		ret = __db_close(db_rep->lsn_db, NULL, DB_NOSYNC);
+		db_rep->lsn_db = NULL;
+	}
 
 err:	if ((t_ret = __logc_close(logc)) != 0 && ret == 0)
 		ret = t_ret;
@@ -615,9 +624,9 @@ __rep_verify_match(env, reclsnp, savetime)
 	 * operations out of DB and run recovery.
 	 */
 	REP_SYSTEM_LOCK(env);
-	if (F_ISSET(rep, REP_F_READY_MSG) ||
-	    (!F_ISSET(rep, REP_F_RECOVER_LOG) &&
-	    F_ISSET(rep, REP_F_READY_API | REP_F_READY_OP))) {
+	if (FLD_ISSET(rep->lockout_flags, REP_LOCKOUT_MSG) ||
+	    (rep->sync_state != SYNC_LOG &&
+	    ISSET_LOCKOUT_BDB(rep))) {
 		/*
 		 * We lost.  The world changed and we should do nothing.
 		 */
@@ -643,7 +652,8 @@ __rep_verify_match(env, reclsnp, savetime)
 	if ((ret = __rep_dorecovery(env, reclsnp, &trunclsn)) != 0 ||
 	    (ret = __rep_remove_init_file(env)) != 0) {
 		REP_SYSTEM_LOCK(env);
-		F_CLR(rep, REP_F_READY_API | REP_F_READY_MSG | REP_F_READY_OP);
+		FLD_CLR(rep->lockout_flags,
+		    REP_LOCKOUT_API | REP_LOCKOUT_MSG | REP_LOCKOUT_OP);
 		goto errunlock;
 	}
 
@@ -681,8 +691,9 @@ __rep_verify_match(env, reclsnp, savetime)
 	F_CLR(db_rep->rep_db, DB_AM_RECOVER);
 
 	REP_SYSTEM_LOCK(env);
-	rep->stat.st_log_queued = 0;
-	F_CLR(rep, REP_F_NOARCHIVE | REP_F_RECOVER_MASK | REP_F_READY_MSG);
+	STAT(rep->stat.st_log_queued = 0);
+	CLR_RECOVERY_SETTINGS(rep);
+	FLD_CLR(rep->lockout_flags, REP_LOCKOUT_ARCHIVE | REP_LOCKOUT_MSG);
 	if (ret != 0)
 		goto errunlock2;
 

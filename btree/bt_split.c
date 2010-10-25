@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -69,7 +69,6 @@ __bam_split(dbc, arg, root_pgnop)
 	int exact, level, ret;
 
 	cp = (BTREE_CURSOR *)dbc->internal;
-	root_pgno = cp->root;
 	LOCK_INIT(next_lock);
 	next_pgno = PGNO_INVALID;
 
@@ -82,6 +81,7 @@ __bam_split(dbc, arg, root_pgnop)
 	if ((ret = __db_lget(dbc,
 	    0, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
+	root_pgno = BAM_ROOT_PGNO(dbc);
 
 	/*
 	 * The locking protocol we use to avoid deadlock to acquire locks by
@@ -146,7 +146,7 @@ retry:		if ((ret = (dbc->dbtype == DB_BTREE ?
 		 * We need to try to lock the next page so we can update
 		 * its PREV.
 		 */
-		if (dbc->dbtype == DB_BTREE && ISLEAF(cp->csp->page) &&
+		if (ISLEAF(cp->csp->page) &&
 		    (pgno = NEXT_PGNO(cp->csp->page)) != PGNO_INVALID) {
 			TRY_LOCK(dbc, pgno,
 			     next_pgno, next_lock, DB_LOCK_WRITE, retry);
@@ -183,8 +183,9 @@ no_split:		/* Once we've split the leaf page, we're done. */
 		}
 	}
 
-err:	if (root_pgnop != NULL)
-		*root_pgnop = cp->root;
+	if (root_pgnop != NULL)
+		*root_pgnop = BAM_ROOT_PGNO(dbc);
+err:
 done:	(void)__LPUT(dbc, metalock);
 	(void)__TLPUT(dbc, next_lock);
 	return (ret);
@@ -278,12 +279,15 @@ __bam_root(dbc, cp)
 		    (BTREE_CURSOR *)dbc->internal, C_RECNUM) ? SPL_NRECS : 0;
 		if (dbc->dbtype == DB_RECNO)
 			opflags |= SPL_RECNO;
-		ret = __bam_split_log(dbp,
-		    dbc->txn, &LSN(cp->page), 0, PGNO(lp), &LSN(lp), PGNO(rp),
-		    &LSN(rp), (u_int32_t)NUM_ENT(lp), PGNO_INVALID, &log_lsn,
-		    dbc->internal->root, &LSN(cp->page), 0,
-		    &log_dbt, &rootent[0], &rootent[1], opflags);
+		ret = __bam_split_log(dbp, dbc->txn, &LSN(cp->page), 0,
+		    OP_SET(opflags, cp->page), PGNO(lp), &LSN(lp),
+		    PGNO(rp), &LSN(rp), (u_int32_t)NUM_ENT(lp),
+		    PGNO_INVALID, &log_lsn, PGNO(cp->page),
+		    &LSN(cp->page), 0, &log_dbt, &rootent[0], &rootent[1]);
 
+		/* On failure, restore the page. */
+		if (ret != 0)
+			memcpy(cp->page, log_dbt.data, dbp->pgsize);
 		__os_free(dbp->env, log_dbt.data);
 
 		if (ret != 0)
@@ -431,11 +435,13 @@ __bam_page(dbc, pp, cp)
 	DB_ASSERT(dbp->env, IS_DIRTY(cp->page));
 	DB_ASSERT(dbp->env, IS_DIRTY(pp->page));
 
+	bc = (BTREE_CURSOR *)dbc->internal;
+
 	/* Actually update the parent page. */
-	if ((ret = __bam_pinsert(dbc, pp, split, lp, rp, BPI_NOLOGGING)) != 0)
+	if ((ret = __bam_pinsert(dbc,
+	    pp, split, lp, rp, F_ISSET(bc, C_RECNUM) ? 0 : BPI_NOLOGGING)) != 0)
 		goto err;
 
-	bc = (BTREE_CURSOR *)dbc->internal;
 	/* Log the change. */
 	if (DBC_LOGGING(dbc)) {
 		memset(&log_dbt, 0, sizeof(log_dbt));
@@ -452,19 +458,24 @@ __bam_page(dbc, pp, cp)
 			    BINTERNAL_SIZE(((BINTERNAL *)rentry.data)->len);
 		if (tp == NULL)
 			ZERO_LSN(log_lsn);
-		if ((ret = __bam_split_log(dbp, dbc->txn, &LSN(cp->page), 0,
-		    PGNO(cp->page), &LSN(cp->page), PGNO(alloc_rp),
-		    &LSN(alloc_rp), (u_int32_t)NUM_ENT(lp),
-		    tp == NULL ? 0 : PGNO(tp), tp == NULL ? &log_lsn : &LSN(tp),
-		    PGNO(pp->page), &LSN(pp->page), pp->indx,
-		    &log_dbt, NULL, &rentry, opflags)) != 0) {
+		if ((ret = __bam_split_log(dbp, dbc->txn, &LSN(cp->page),
+		    0, OP_SET(opflags, pp->page), PGNO(cp->page),
+		    &LSN(cp->page), PGNO(alloc_rp), &LSN(alloc_rp),
+		    (u_int32_t)NUM_ENT(lp), tp == NULL ? 0 : PGNO(tp),
+		    tp == NULL ? &log_lsn : &LSN(tp), PGNO(pp->page),
+		    &LSN(pp->page), pp->indx, &log_dbt, NULL, &rentry)) != 0) {
 			/*
-			 * Undo the update to the parent page, which has not
-			 * been logged yet. This must succeed.
+			 * If this is not RECNO then undo the update
+			 * to the parent page, which has not been
+			 * logged yet. This must succeed.  Renco
+			 * database trees are locked and therefore
+			 * the parent can be logged independently.
 			 */
-			t_ret = __db_ditem_nolog(dbc, pp->page,
-			    pp->indx + 1, rentry.size);
-			DB_ASSERT(dbp->env, t_ret == 0);
+			if (F_ISSET(bc, C_RECNUM) == 0) {
+				t_ret = __db_ditem_nolog(dbc, pp->page,
+				    pp->indx + 1, rentry.size);
+				DB_ASSERT(dbp->env, t_ret == 0);
+			}
 
 			goto err;
 		}
@@ -478,7 +489,7 @@ __bam_page(dbc, pp, cp)
 	LSN(rp) = LSN(cp->page);
 	LSN(pp->page) = LSN(cp->page);
 	if (tp != NULL) {
-		/* Log record has been written; now it is safe to update next page. */
+		/* Log record has been written; so safe to update next page. */
 		PREV_PGNO(tp) = PGNO(rp);
 		LSN(tp) = LSN(cp->page);
 	}
@@ -675,7 +686,7 @@ pgfmt:		return (__db_pgfmt(dbp->env, rp->pgno));
 	 * We copy the key we split on (but not the key's data, in the case of
 	 * a leaf page) to the new root page.
 	 */
-	root_pgno = cp->root;
+	root_pgno = BAM_ROOT_PGNO(dbc);
 	P_INIT(rootp, dbp->pgsize,
 	    root_pgno, PGNO_INVALID, PGNO_INVALID, lp->level + 1, P_IBTREE);
 
@@ -722,7 +733,7 @@ __ram_root(dbc, rootp, lp, rp)
 	int ret;
 
 	dbp = dbc->dbp;
-	root_pgno = dbc->internal->root;
+	root_pgno = BAM_ROOT_PGNO(dbc);
 
 	/* Initialize the page. */
 	P_INIT(rootp, dbp->pgsize,
@@ -997,8 +1008,7 @@ pgfmt:		return (__db_pgfmt(dbp->env, PGNO(child->page)));
 
 	if (LF_ISSET(BPI_REPLACE)) {
 		DB_ASSERT(dbp->env, !LF_ISSET(BPI_NOLOGGING));
-		if ((ret = __bam_irep(dbc, ppage,
-		    off, &hdr, data.size != 0 ? &data : NULL)) != 0)
+		if ((ret = __bam_irep(dbc, ppage, off, &hdr, &data)) != 0)
 			return (ret);
 	} else {
 		if (LF_ISSET(BPI_NOLOGGING))

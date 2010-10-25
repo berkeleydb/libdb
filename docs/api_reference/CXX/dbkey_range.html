@@ -101,7 +101,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639085"></a>Parameters</h3>
+              <h3 class="title"><a id="id3626116"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -109,36 +109,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1638672"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1638627"></a>key_range</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The estimates are returned in the <span class="bold"><strong>key_range</strong></span> parameter, which contains three
-                          elements of type double: <span class="bold"><strong>less</strong></span>,
-                          <span class="bold"><strong>equal</strong></span>, and <span class="bold"><strong>greater</strong></span>.  Values are in the range of 0 to 1;
-                          for example, if the field <span class="bold"><strong>less</strong></span> is
-                          0.05, 5% of the keys in the database are less than the <span class="bold"><strong>key</strong></span> parameter.  The value for <span class="bold"><strong>equal</strong></span> will be zero if there is no matching key,
-                          and will be non-zero otherwise.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1639433"></a>txnid</h4>
+                <h4 class="title"><a id="id3626013"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -160,7 +131,36 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1638576"></a>flags</h4>
+                <h4 class="title"><a id="id3626319"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3626274"></a>key_range</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The estimates are returned in the <span class="bold"><strong>key_range</strong></span> parameter, which contains three
+                          elements of type double: <span class="bold"><strong>less</strong></span>,
+                          <span class="bold"><strong>equal</strong></span>, and <span class="bold"><strong>greater</strong></span>.  Values are in the range of 0 to 1;
+                          for example, if the field <span class="bold"><strong>less</strong></span> is
+                          0.05, 5% of the keys in the database are less than the <span class="bold"><strong>key</strong></span> parameter.  The value for <span class="bold"><strong>equal</strong></span> will be zero if there is no matching key,
+                          and will be non-zero otherwise.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3626266"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -174,7 +174,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639547"></a>Errors</h3>
+              <h3 class="title"><a id="id3626304"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -192,7 +192,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1638957"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3626430"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -210,7 +210,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1638628"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3626236"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -228,7 +228,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639688"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3626214"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -250,7 +250,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1638673"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3626536"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -267,7 +267,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639715"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3625527"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -281,7 +281,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1638520"></a>Class</h3>
+              <h3 class="title"><a id="id3626539"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -293,7 +293,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639276"></a>See Also</h3>
+              <h3 class="title"><a id="id3626572"></a>See Also</h3>
             </div>
           </div>
         </div>

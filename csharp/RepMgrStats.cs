@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -38,5 +38,14 @@ namespace BerkeleyDB {
         /// # msgs queued for network delay. 
         /// </summary>
         public ulong QueuedMessages { get { return st.st_msgs_queued; } }
+        /// <summary>
+        /// Number of currently active election threads
+        /// </summary>
+        public ulong ElectionThreads { get { return st.st_elect_threads; } }
+        /// <summary>
+        /// Election threads for which space is reserved
+        /// </summary>
+        public ulong MaxElectionThreads { get { return st.st_max_elect_threads; } }
+
     }
 }

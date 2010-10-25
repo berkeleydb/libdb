@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -30,6 +30,22 @@ proc test093 { method {nentries 10000} {tnum "093"} args} {
 		puts "Test$tnum: skipping for method $method."
 		return
 	}
+
+	# Verification fails for 64k pages on some systems because
+	# verify's private mpool gets filled.  The Tcl API doesn't
+	# currently allow for resizing this cache.  Just skip the 
+	# test for 64k pages because it's not adding much anyway.
+	#
+	set pagesize 0
+        set pgindex [lsearch -exact $args "-pagesize"]
+        if { $pgindex != -1 } {
+                incr pgindex
+		set pagesize [lindex $args $pgindex]
+		if { $pagesize >= "65536" }  {
+			puts "Skipping test$tnum for 64k pages."
+			return 
+		}
+        }
 
 	set txnenv 0
 	set eindex [lsearch -exact $dbargs "-env"]

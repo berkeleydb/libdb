@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -18,7 +18,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "db.h"
 #include "db_int.h"
 #include "dbinc/db_swap.h"
 

@@ -5,7 +5,7 @@
 
 msgc="/* DO NOT EDIT: automatically built by dist/s_brew. */"
 
-. RELEASE
+. ./RELEASE
 
 s=/tmp/__db_a
 t=/tmp/__db_b
@@ -41,10 +41,13 @@ s/@ssize_t_decl@/typedef int ssize_t;/
 s/@time_t_decl@/typedef long time_t;/
 s/@db_seq_decl@/typedef int32_t db_seq_t;/
 s/@db_threadid_t_decl@/typedef uintmax_t db_threadid_t;/
+s/@DB_VERSION_FAMILY@/$DB_VERSION_FAMILY/
+s/@DB_VERSION_RELEASE@/$DB_VERSION_RELEASE/
 s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/
 s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
+s/@DB_VERSION_FULL_STRING@/"$DB_VERSION_FULL_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
 s/@DB_CONST@//
 s/@DB_PROTO1@/#undef __P/

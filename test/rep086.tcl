@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep086
 # TEST  Interrupted abbreviated internal init.
@@ -122,9 +122,9 @@ proc rep086_sub { method tnum largs } {
 	proc_msgs_once $envlist
 
 	# Just to make sure our test is working the way we think it should,
-	# verify that we are indeed in REP_F_RECOVER_PAGE state.
+	# verify that we are indeed in SYNC_PAGE state.
 	# 
-	assert_rep_flag $dirs(B) REP_F_RECOVER_PAGE 1
+	assert_rep_flag $dirs(B) SYNC_PAGE 1
 
 	# Now, with only a partial materialization of the NIMDB, downgrade the
 	# master, which should cause client to realize its internal init is

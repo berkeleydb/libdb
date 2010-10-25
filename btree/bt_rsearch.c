@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -98,7 +98,7 @@ __bam_rsearch(dbc, recnop, flags, stop, exactp)
 	 * Retrieve the root page.
 	 */
 
-	if ((ret = __bam_get_root(dbc, cp->root, stop, flags, &stack)) != 0)
+	if ((ret = __bam_get_root(dbc, PGNO_INVALID, stop, flags, &stack)) != 0)
 		return (ret);
 	lock_mode = cp->csp->lock_mode;
 	get_mode = lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0;
@@ -382,7 +382,7 @@ __bam_adjust(dbc, adjust)
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	cp = (BTREE_CURSOR *)dbc->internal;
-	root_pgno = cp->root;
+	root_pgno = BAM_ROOT_PGNO(dbc);
 
 	/* Update the record counts for the tree. */
 	for (epg = cp->sp; epg <= cp->csp; ++epg) {
@@ -435,20 +435,21 @@ __bam_nrecs(dbc, rep)
 	db_pgno_t pgno;
 	int ret, t_ret;
 
+	COMPQUIET(h, NULL);
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
+	LOCK_INIT(lock);
 
-	pgno = dbc->internal->root;
-	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
-		return (ret);
-	if ((ret = __memp_fget(mpf, &pgno,
-	     dbc->thread_info, dbc->txn, 0, &h)) != 0)
-		return (ret);
+	pgno = PGNO_INVALID;
+	BAM_GET_ROOT(dbc, pgno, h, 0, DB_LOCK_READ, lock, ret);
+	if (ret != 0)
+		goto err;
+	DB_ASSERT(dbp->env, h != NULL);
 
 	*rep = RE_NREC(h);
 
 	ret = __memp_fput(mpf, dbc->thread_info, h, dbc->priority);
-	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
+err:	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);

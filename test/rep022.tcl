@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -11,10 +11,6 @@
 proc rep022 { method args } {
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 	global rand_init
 	global mixed_mode_logging
 	global databases_in_memory
@@ -101,7 +97,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 $verbargs \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -112,7 +108,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -errpfx CLIENT.$i -event rep_event $repmemargs \
+		    -errpfx CLIENT.$i -event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -160,7 +156,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	set winner 0
 	setpriority pri $nclients $winner
 	set elector [berkdb random_int 0 [expr $nclients - 1]]
-	run_election env_cmd envlist err_cmd pri crash \
+	run_election envlist err_cmd pri crash \
 	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	set msg "Rep$tnum.c"
@@ -222,7 +218,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	set winner 4
 	setpriority pri $nclients $winner 2
 	set elector [berkdb random_int 2 4]
-	run_election env_cmd envlist err_cmd pri crash \
+	run_election envlist err_cmd pri crash \
 	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	# Note egens for all the clients.
@@ -284,7 +280,7 @@ proc rep022_sub { method nclients tnum logset largs } {
 	set winner 4
 	setpriority pri $nclients $winner
 	set elector [berkdb random_int 0 [expr $nclients - 1]]
-	run_election env_cmd envlist err_cmd pri crash \
+	run_election envlist err_cmd pri crash \
 	    $qdir $msg $elector $nsites $nvotes $nclients $winner 0 test.db
 
 	# Pull out new egens.

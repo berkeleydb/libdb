@@ -103,12 +103,28 @@ public class DbEnv {
 		event_notify_handler.handleRepClientEvent();
 	}
 
+	private final void handle_rep_dupmaster_event_notify() {
+		event_notify_handler.handleRepDupmasterEvent();
+	}
+
 	private final void handle_rep_elected_event_notify() {
 		event_notify_handler.handleRepElectedEvent();
 	}
 
+	private final void handle_rep_election_failed_event_notify() {
+		event_notify_handler.handleRepElectionFailedEvent();
+	}
+	
+	private final void handle_rep_join_failure_event_notify() {
+		event_notify_handler.handleRepJoinFailureEvent();
+	}
+
 	private final void handle_rep_master_event_notify() {
 		event_notify_handler.handleRepMasterEvent();
+	}
+
+	private final void handle_rep_master_failure_event_notify() {
+		event_notify_handler.handleRepMasterFailureEvent();
 	}
 
 	private final void handle_rep_new_master_event_notify(int envid) {
@@ -273,8 +289,8 @@ public class DbEnv {
 
   public void dbrename(DbTxn txnid, String file, String database, String newname, int flags) throws com.sleepycat.db.DatabaseException, java.io.FileNotFoundException { db_javaJNI.DbEnv_dbrename(swigCPtr, this, DbTxn.getCPtr(txnid), txnid, file, database, newname, flags); }
 
-  public void err(int error, String message) /* no exception */ {
-    db_javaJNI.DbEnv_err(swigCPtr, this, error, message);
+  public void err(int ret, String message) /* no exception */ {
+    db_javaJNI.DbEnv_err(swigCPtr, this, ret, message);
   }
 
   public void errx(String message) /* no exception */ {
@@ -346,9 +362,9 @@ public class DbEnv {
 
   public void set_mp_mmapsize(long mp_mmapsize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_mp_mmapsize(swigCPtr, this, mp_mmapsize); }
 
-  public void set_mp_pagesize(long mp_pagesize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_mp_pagesize(swigCPtr, this, mp_pagesize); }
+  public void set_mp_pagesize(int mp_pagesize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_mp_pagesize(swigCPtr, this, mp_pagesize); }
 
-  public void set_mp_tablesize(long mp_tablesize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_mp_tablesize(swigCPtr, this, mp_tablesize); }
+  public void set_mp_tablesize(int mp_tablesize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_mp_tablesize(swigCPtr, this, mp_tablesize); }
 
   public void set_msgcall(com.sleepycat.db.MessageHandler db_msgcall_fcn) /* no exception */ {
     db_javaJNI.DbEnv_set_msgcall(swigCPtr, this,  (message_handler = db_msgcall_fcn) != null );
@@ -386,6 +402,8 @@ public class DbEnv {
 
   public int get_lk_partitions() throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_get_lk_partitions(swigCPtr, this); }
 
+  public int get_lk_priority(int lockerid) throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_get_lk_priority(swigCPtr, this, lockerid); }
+
   public int lock_detect(int flags, int atype) throws com.sleepycat.db.DatabaseException {
     return db_javaJNI.DbEnv_lock_detect(swigCPtr, this, flags, atype);
   }
@@ -414,6 +432,8 @@ public class DbEnv {
   public void set_lk_max_objects(int max) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_lk_max_objects(swigCPtr, this, max); }
 
   public void set_lk_partitions(int partitions) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_lk_partitions(swigCPtr, this, partitions); }
+
+  public void set_lk_priority(int lockerid, int priority) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_lk_priority(swigCPtr, this, lockerid, priority); }
 
   public int get_lg_bsize() throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_get_lg_bsize(swigCPtr, this); }
 
@@ -455,6 +475,10 @@ public class DbEnv {
   public void log_set_config(int which, boolean onoff) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_log_set_config(swigCPtr, this, which, onoff); }
 
   public com.sleepycat.db.LogStats log_stat(int flags) throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_log_stat(swigCPtr, this, flags); }
+
+  public int log_verify(String envhome, int cachesz, String dbfile, String dbname, long stime, long etime, int stfile, int stoffset, int efile, int eoffset, int caf, int verbose) throws com.sleepycat.db.DatabaseException {
+    return db_javaJNI.DbEnv_log_verify(swigCPtr, this, envhome, cachesz, dbfile, dbname, stime, etime, stfile, stoffset, efile, eoffset, caf, verbose);
+  }
 
   public void set_lg_bsize(int lg_bsize) throws com.sleepycat.db.DatabaseException { db_javaJNI.DbEnv_set_lg_bsize(swigCPtr, this, lg_bsize); }
 
@@ -536,6 +560,10 @@ public class DbEnv {
 
   public long get_timeout(int flag) throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_get_timeout(swigCPtr, this, flag); }
 
+  public int txn_applied(byte[] token, int maxwait, int flags) throws com.sleepycat.db.DatabaseException {
+    return db_javaJNI.DbEnv_txn_applied(swigCPtr, this, token, maxwait, flags);
+  }
+
   public DbTxn txn_begin(DbTxn parent, int flags) throws com.sleepycat.db.DatabaseException {
     long cPtr = db_javaJNI.DbEnv_txn_begin(swigCPtr, this, DbTxn.getCPtr(parent), parent, flags);
     return (cPtr == 0) ? null : new DbTxn(cPtr, false);
@@ -613,8 +641,16 @@ public class DbEnv {
 
   public com.sleepycat.db.ReplicationManagerStats repmgr_stat(int flags) throws com.sleepycat.db.DatabaseException { return db_javaJNI.DbEnv_repmgr_stat(swigCPtr, this, flags); }
 
-  public static String strerror(int error) /* no exception */ {
-    return db_javaJNI.DbEnv_strerror(error);
+  public static String strerror(int ret) /* no exception */ {
+    return db_javaJNI.DbEnv_strerror(ret);
+  }
+
+  public static int get_version_family() /* no exception */ {
+    return db_javaJNI.DbEnv_get_version_family();
+  }
+
+  public static int get_version_release() /* no exception */ {
+    return db_javaJNI.DbEnv_get_version_release();
   }
 
   public static int get_version_major() /* no exception */ {
@@ -631,6 +667,10 @@ public class DbEnv {
 
   public static String get_version_string() /* no exception */ {
     return db_javaJNI.DbEnv_get_version_string();
+  }
+
+  public static String get_version_full_string() /* no exception */ {
+    return db_javaJNI.DbEnv_get_version_full_string();
   }
 
 }

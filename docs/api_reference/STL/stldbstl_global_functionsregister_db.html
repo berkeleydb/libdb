@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-register_db
-</th>
+          <th colspan="3" align="center">register_db</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsset_current_txn_handle.html">Prev</a> </td>
@@ -32,9 +30,7 @@ register_db
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsregister_db"></a>
-register_db
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsregister_db"></a>register_db</h2>
           </div>
         </div>
       </div>
@@ -42,28 +38,23 @@ register_db
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsregister_db_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- void register_db(Db *pdb1)
+ void register_db(Db *pdb1)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Register a Db handle "pdb1". </p>
-          <p>This handle and handles opened in it will be closed by ResourceManager
+        <p>Register a Db handle "pdb1". </p>
+        <p>This handle and handles opened in it will be closed by ResourceManager
 , so application code must not try to close or delete it. Users can do enough configuration before opening the Db then register it via this function. All database handles should be registered via this function in each thread using the handle. The only exception is the database handle opened by <a class="link" href="stldbstl_global_functionsopen_db.html" title="open_db">dbstl::open_db</a>
  should not be registered in the thread of the <a class="link" href="stldbstl_global_functionsopen_db.html" title="open_db">dbstl::open_db</a>
  call. </p>
-        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1542832"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3482638"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -71,8 +62,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542642"></a>
- pdb1 </h5>
+                  <h5 class="title"><a id="id3482641"></a>pdb1</h5>
                 </div>
               </div>
             </div>
@@ -84,14 +74,12 @@ Parameters</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1542841"></a>
-Class</h3>
+              <h3 class="title"><a id="id3482541"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -106,15 +94,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsregister_db_env.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-set_current_txn_handle
- </td>
+          <td width="40%" align="left" valign="top">set_current_txn_handle </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-register_db_env
-</td>
+          <td width="40%" align="right" valign="top"> register_db_env</td>
         </tr>
       </table>
     </div>

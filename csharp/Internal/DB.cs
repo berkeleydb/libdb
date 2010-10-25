@@ -72,6 +72,24 @@ internal class DB : IDisposable {
 		libdb_csharp.__os_ufree(null, ptr);
 		return ret;
 	}
+	
+	internal int get_dbname(out string filenamep, out string dbnamep) {
+		int ret;
+		IntPtr fp, dp;
+		filenamep = dbnamep = null;
+		ret = get_dbname(out fp, out dp);		
+		filenamep = Marshal.PtrToStringAnsi(fp);
+		dbnamep = Marshal.PtrToStringAnsi(dp);
+		return ret;
+	}
+	
+	internal int get_re_source(out string source) {
+		int ret;
+		IntPtr sp;
+		ret = get_re_source(out sp);
+		source = Marshal.PtrToStringAnsi(sp);		
+		return ret;
+	}
 
   internal BaseDatabase api_internal {
     set {
@@ -181,9 +199,9 @@ internal class DB : IDisposable {
 		return ret;
 }
 
-  internal int get_dbname(ref string filenamep, ref string dbnamep) {
+  internal int get_dbname(out IntPtr filenamep, out IntPtr dbnamep) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_get_dbname(swigCPtr, ref filenamep, ref dbnamep);
+		ret = libdb_csharpPINVOKE.DB_get_dbname(swigCPtr, out filenamep, out dbnamep);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }
@@ -527,9 +545,9 @@ internal class DB : IDisposable {
 		return ret;
 }
 
-  internal int get_re_source(ref string source) {
+  internal int get_re_source(out IntPtr source) {
 		int ret;
-		ret = libdb_csharpPINVOKE.DB_get_re_source(swigCPtr, ref source);
+		ret = libdb_csharpPINVOKE.DB_get_re_source(swigCPtr, out source);
 		DatabaseException.ThrowException(ret);
 		return ret;
 }

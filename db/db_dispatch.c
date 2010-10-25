@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -44,9 +44,9 @@
 #include "dbinc/hash.h"
 #include "dbinc/fop.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
+#include "dbinc/log_verify.h"
 
 static int __db_txnlist_find_internal __P((ENV *, DB_TXNHEAD *,
 		db_txnlist_type, u_int32_t,  DB_TXNLIST **,
@@ -62,27 +62,39 @@ static int __db_txnlist_find_internal __P((ENV *, DB_TXNHEAD *,
  * recovery paradigm will supply a different dispatch function to txn_open.
  *
  * PUBLIC: int __db_dispatch __P((ENV *,
- * PUBLIC:     DB_DISTAB *, DBT *, DB_LSN *, db_recops, DB_TXNHEAD *));
+ * PUBLIC:     DB_DISTAB *, DBT *, DB_LSN *, db_recops, void *));
  */
 int
-__db_dispatch(env, dtab, db, lsnp, redo, info)
+__db_dispatch(env, dtab, db, lsnp, redo, params)
 	ENV *env;		/* The environment. */
 	DB_DISTAB *dtab;
 	DBT *db;		/* The log record upon which to dispatch. */
 	DB_LSN *lsnp;		/* The lsn of the record being dispatched. */
 	db_recops redo;		/* Redo this op (or undo it). */
-	DB_TXNHEAD *info;	/* Transaction list. */
+	void *params;
 {
 	DB_ENV *dbenv;
+	DB_TXNHEAD *info;	/* Transaction list. */
+	DB_LOG_VRFY_INFO *lvh;
 	DB_LSN prev_lsn;
 	u_int32_t rectype, status, txnid, urectype;
 	int make_call, ret;
 
 	dbenv = env->dbenv;
+	make_call = ret = 0;
+	lvh = NULL;
+	info = NULL;
 	LOGCOPY_32(env, &rectype, db->data);
 	LOGCOPY_32(env, &txnid, (u_int8_t *)db->data + sizeof(rectype));
 
-	make_call = ret = 0;
+	/*
+	 * Log verification passes a DB_LOG_VRFY_INFO structure, others
+	 * pass a DB_TXNHEAD structure.
+	 */
+	if (redo != DB_TXN_LOG_VERIFY)
+		info = (DB_TXNHEAD *)params;
+	else
+		lvh = (DB_LOG_VRFY_INFO *)params;
 
 	/* If we don't have a dispatch table, it's hard to dispatch. */
 	DB_ASSERT(env, dtab != NULL);
@@ -96,6 +108,7 @@ __db_dispatch(env, dtab, db, lsnp, redo, info)
 	switch (redo) {
 	case DB_TXN_ABORT:
 	case DB_TXN_APPLY:
+	case DB_TXN_LOG_VERIFY:
 	case DB_TXN_PRINT:
 		make_call = 1;
 		break;
@@ -263,6 +276,12 @@ __db_dispatch(env, dtab, db, lsnp, redo, info)
 			}
 		}
 		if (rectype >= DB_user_BEGIN) {
+			/*
+			 * Increment user log count, we can't pass any extra
+			 * args into app_dispatch, so this has to be done here.
+			 */
+			if (redo == DB_TXN_LOG_VERIFY)
+				lvh->external_logrec_cnt++;
 			if (dbenv->app_dispatch != NULL)
 				return (dbenv->app_dispatch(dbenv,
 				    db, lsnp, redo));
@@ -276,6 +295,7 @@ __db_dispatch(env, dtab, db, lsnp, redo, info)
 				    (u_long)rectype);
 				return (EINVAL);
 			}
+
 			return ((dtab->ext_dispatch[urectype])(dbenv,
 			    db, lsnp, redo));
 		} else {
@@ -284,10 +304,14 @@ __db_dispatch(env, dtab, db, lsnp, redo, info)
 				__db_errx(env,
 				    "Illegal record type %lu in log",
 				    (u_long)rectype);
+				if (redo == DB_TXN_LOG_VERIFY)
+					lvh->unknown_logrec_cnt++;
+
 				return (EINVAL);
 			}
+
 			return ((dtab->int_dispatch[rectype])(env,
-			    db, lsnp, redo, info));
+			    db, lsnp, redo, params));
 		}
 	}
 
@@ -674,13 +698,13 @@ __db_txnlist_update(env, hp, txnid, status, lsn, ret_status, add_ok)
  */
 static int
 __db_txnlist_find_internal(env,
-    hp, type, txnid, txnlistp, delete, statusp)
+    hp, type, txnid, txnlistp, del, statusp)
 	ENV *env;
 	DB_TXNHEAD *hp;
 	db_txnlist_type type;
 	u_int32_t  txnid;
 	DB_TXNLIST **txnlistp;
-	int delete;
+	int del;
 	u_int32_t *statusp;
 {
 	struct __db_headlink *head;
@@ -721,7 +745,7 @@ __db_txnlist_find_internal(env,
 		default:
 			return (__env_panic(env, EINVAL));
 		}
-		if (delete == 1) {
+		if (del == 1) {
 			LIST_REMOVE(p, links);
 			__os_free(env, p);
 			*txnlistp = NULL;

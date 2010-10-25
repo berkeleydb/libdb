@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -20,7 +20,7 @@ __os_seek(env, fhp, pgno, pgsize, relative)
 	DB_FH *fhp;
 	db_pgno_t pgno;
 	u_int32_t pgsize;
-	u_int32_t relative;
+	off_t relative;
 {
 	/* Yes, this really is how Microsoft designed their API. */
 	union {

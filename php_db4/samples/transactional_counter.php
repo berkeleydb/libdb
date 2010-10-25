@@ -5,12 +5,11 @@ $dbenv = new Db4Env();
 $dbenv->set_data_dir("/var/tmp/dbhome");
 $dbenv->open("/var/tmp/dbhome");
 
-// Open a database in $dbenv.  Note that even though
-// we pass null in as the transaction, db4 forces this
-// operation to be transactionally protected, so PHP
-// will force auto-commit internally.
+// Open a database in $dbenv.
 $db = new Db4($dbenv);
-$db->open(null, 'a', 'foo');
+$txn = $dbenv->txn_begin();
+$db->open($txn, 'a', 'foo');
+$txn->commit();
 
 $counter = $db->get("counter");
 // Create a new transaction

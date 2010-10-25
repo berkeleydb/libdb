@@ -89,7 +89,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1656028"></a>Parameters</h3>
+              <h3 class="title"><a id="id3642935"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -97,7 +97,31 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656268"></a>data</h4>
+                <h4 class="title"><a id="id3643518"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3643319"></a>pkey</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The secondary index key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3642504"></a>data</h4>
               </div>
             </div>
           </div>
@@ -109,7 +133,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656406"></a>flags</h4>
+                <h4 class="title"><a id="id3643460"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -187,7 +211,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
                 to the value provided by the data parameter (as determined by the comparison
                 function). If this flag is specified on a database
                 configured without sorted duplicate support, the behavior
-                is identical to the DB_GET_BOTH flag. Returns the datum
+                is identical to the <code class="literal">DB_GET_BOTH</code> flag. Returns the datum
                 associated with the given key/data pair.
             </p>
                 <p>
@@ -599,36 +623,12 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1657366"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1657221"></a>pkey</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The secondary index key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1656339"></a>Errors</h3>
+              <h3 class="title"><a id="id3644671"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -646,7 +646,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656914"></a><span>DbMemoryException or </span>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="id3644805"></a><span>DbMemoryException or </span>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -663,7 +663,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656950"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3644743"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -681,7 +681,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656995"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3643489"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -699,7 +699,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656669"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3643213"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -721,7 +721,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656787"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="id3644313"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -733,7 +733,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656738"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3642850"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -750,7 +750,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1656725"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="id3643481"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -762,7 +762,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1657746"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3643162"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -778,7 +778,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1656479"></a>Class</h3>
+              <h3 class="title"><a id="id3644775"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -790,7 +790,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1656474"></a>See Also</h3>
+              <h3 class="title"><a id="id3643483"></a>See Also</h3>
             </div>
           </div>
         </div>

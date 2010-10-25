@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -247,8 +247,8 @@ namespace BerkeleyDB {
                     RepHeartbeatSend = cfg.RepSystemCfg.HeartbeatSend;
                 if (cfg.RepSystemCfg.leaseTimeoutIsSet)
                     RepLeaseTimeout = cfg.RepSystemCfg.LeaseTimeout;
-                if (cfg.RepSystemCfg.NoAutoInit)
-                    RepNoAutoInit = true;
+                if (!cfg.RepSystemCfg.AutoInit)
+                    RepAutoInit = false;
                 if (cfg.RepSystemCfg.NoBlocking)
                     RepNoBlocking = true;
                 if (cfg.RepSystemCfg.nsitesIsSet)
@@ -276,6 +276,8 @@ namespace BerkeleyDB {
                         cfg.RepSystemCfg.TransmitLimitBytes);
                 if (cfg.RepSystemCfg.UseMasterLeases)
                     RepUseMasterLeases = true;
+                if (!cfg.RepSystemCfg.Elections)
+                    RepMgrRunElections = false;
             }
 
         }
@@ -535,7 +537,7 @@ namespace BerkeleyDB {
         public string Home {
             get {
                 string dir = "";
-                dbenv.get_home(ref dir);
+                dbenv.get_home(out dir);
                 return dir;
             }
         }
@@ -573,8 +575,8 @@ namespace BerkeleyDB {
         /// </summary>
         public string IntermediateDirMode {
             get {
-                string ret = "";
-                dbenv.get_intermediate_dir_mode(ref ret);
+                string ret;
+                dbenv.get_intermediate_dir_mode(out ret);
                 return ret;
             }
             private set {
@@ -670,8 +672,8 @@ namespace BerkeleyDB {
         /// </summary>
         public string LogDir {
             get {
-                string ret = "";
-                dbenv.get_lg_dir(ref ret);
+                string ret;
+                dbenv.get_lg_dir(out ret);
                 return ret;
             }
             private set {
@@ -1348,6 +1350,18 @@ namespace BerkeleyDB {
             set { dbenv.repmgr_set_ack_policy(value.Policy); }
         }
         /// <summary>
+        /// If true, Replication Manager automatically runs elections to
+        /// choose a new master when the old master appears to
+        /// have become disconnected (defaults to true).
+        /// </summary>
+        public bool RepMgrRunElections {
+            get { return getRepConfig(DbConstants.DB_REPMGR_CONF_ELECTIONS); }
+            set { 
+                dbenv.rep_set_config(
+                    DbConstants.DB_REPMGR_CONF_ELECTIONS, value ? 1 : 0);
+            }
+        }
+        /// <summary>
         /// The host information for the local system. 
         /// </summary>
         public ReplicationHostAddress RepMgrLocalSite {
@@ -1360,14 +1374,14 @@ namespace BerkeleyDB {
             get { return dbenv.repmgr_site_list(); }
         }
         /// <summary>
-        /// If true, the replication master will not automatically re-initialize
-        /// outdated clients (defaults to false). 
+        /// If true, the replication master will automatically re-initialize
+        /// outdated clients (defaults to true). 
         /// </summary>
-        public bool RepNoAutoInit {
-            get { return getRepConfig(DbConstants.DB_REP_CONF_NOAUTOINIT); }
+        public bool RepAutoInit {
+            get { return getRepConfig(DbConstants.DB_REP_CONF_AUTOINIT); }
             set {
                 dbenv.rep_set_config(
-                    DbConstants.DB_REP_CONF_NOAUTOINIT, value ? 1 : 0);
+                    DbConstants.DB_REP_CONF_AUTOINIT, value ? 1 : 0);
             }
         }
         /// <summary>
@@ -1729,8 +1743,8 @@ namespace BerkeleyDB {
         /// </remarks>
         public string TempDir {
             get {
-                string ret = "";
-                dbenv.get_tmp_dir(ref ret);
+                string ret;
+                dbenv.get_tmp_dir(out ret);
                 return ret;
             }
             set { dbenv.set_tmp_dir(value); }
@@ -2578,6 +2592,12 @@ namespace BerkeleyDB {
         /// file in which transactions are being logged or aborted.)
         /// </para>
         /// <para>
+        /// When Replication Manager is in use, log archiving will be performed
+        /// in a replication group-aware manner such that the log file status of
+        /// other sites in the group will be considered to determine if a log
+        /// file could be in use. 
+        /// </para>
+        /// <para>
         /// See the db_archive utility for more information on database archival
         /// procedures.
         /// </para>
@@ -2603,6 +2623,12 @@ namespace BerkeleyDB {
         /// system. 
         /// </summary>
         /// <remarks>
+        /// <para>
+        /// When Replication Manager is in use, log archiving will be performed
+        /// in a replication group-aware manner such that the log file status of
+        /// other sites in the group will be considered to determine if a log
+        /// file could be in use. 
+        /// </para>
         /// <para>
         /// See the db_archive utility for more information on database archival
         /// procedures.
@@ -2661,6 +2687,14 @@ namespace BerkeleyDB {
         /// Remove log files that are no longer needed. Automatic log file
         /// removal is likely to make catastrophic recovery impossible. 
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When Replication Manager is in use, log archiving will be performed
+        /// in a replication group-aware manner such that the log file status of
+        /// other sites in the group will be considered to determine if a log
+        /// file could be in use. 
+        /// </para>
+        /// </remarks>
         public void RemoveUnusedLogFiles() {
             dbenv.log_archive(DbConstants.DB_ARCH_REMOVE);
         }
@@ -2764,37 +2798,78 @@ namespace BerkeleyDB {
         }
 
         /// <summary>
-        /// Close the Berkeley DB environment, freeing any allocated resources
-        /// and closing any underlying subsystems. 
+        /// By closing the Berkeley DB environment you can free allocated resources 
+        /// and close any open databases along with the underlying subsystems.
         /// </summary>
         /// <remarks>
         /// <para>
         /// The object should not be closed while any other handle that refers
         /// to it is not yet closed; for example, database environment handles
-        /// must not be closed while database objects remain open, or
-        /// transactions in the environment have not yet been committed or
-        /// aborted.
+        /// must not be closed while transactions in the environment have 
+        /// not yet been committed or aborted. 
+        /// When you close each database handle, by default, the database is not synchronized.
+		///	To synchronize all open databases ensure that the last environment object is closed by the CloseForceSync() method. 
+		///	When the close operation fails, the method returns a non-zero error value for the first instance of such error, 
+        /// and continues to close the rest of the environment objects.
         /// </para>
         /// <para>
         /// Where the environment was configured with
-        /// <see cref="DatabaseEnvironmentConfig.UseTxns"/>, calling Close
+        /// <see cref="DatabaseEnvironmentConfig.UseTxns"/>, calling CloseForceSync
         /// aborts any unresolved transactions. Applications should not depend
         /// on this behavior for transactions involving Berkeley DB databases;
         /// all such transactions should be explicitly resolved. The problem
         /// with depending on this semantic is that aborting an unresolved
         /// transaction involving database operations requires a database
         /// handle. Because the database handles should have been closed before
-        /// calling Close, it will not be possible to abort the transaction, and
-        /// recovery will have to be run on the Berkeley DB environment before
-        /// further operations are done.
+        /// calling CloseForceSync, it will not be possible to abort the 
+        /// transaction, and recovery will have to be run on the Berkeley DB 
+        /// environment before further operations are done.
         /// </para>
         /// <para>
-        /// In multithreaded applications, only a single thread may call Close.
+        /// In multithreaded applications, only a single thread may call 
+        /// CloseForceSync.
         /// </para>
         /// </remarks>
         public void Close() {
             dbenv.close(0);
         }
+
+        /// <summary>
+        /// Close the Berkeley DB environment, freeing any allocated resources,
+        /// closing any open databases as well as underlying subsystems. 
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The object should not be closed while any other handle that refers
+        /// to it is not yet closed; for example, database environment handles
+        /// must not be closed while transactions in the environment have 
+        /// not yet been committed or aborted. If there are open database 
+        /// handles, they are all closed, and each of them will be synced on
+        /// close. The first error in the close operations, if any, is 
+        /// returned at last, and the environment close procedures will 
+        /// carry on anyway.
+        /// </para>
+        /// <para>
+        /// Where the environment was configured with
+        /// <see cref="DatabaseEnvironmentConfig.UseTxns"/>, calling CloseForceSync
+        /// aborts any unresolved transactions. Applications should not depend
+        /// on this behavior for transactions involving Berkeley DB databases;
+        /// all such transactions should be explicitly resolved. The problem
+        /// with depending on this semantic is that aborting an unresolved
+        /// transaction involving database operations requires a database
+        /// handle. Because the database handles should have been closed before
+        /// calling CloseForceSync, it will not be possible to abort the 
+        /// transaction, and recovery will have to be run on the Berkeley DB 
+        /// environment before further operations are done.
+        /// </para>
+        /// <para>
+        /// In multithreaded applications, only a single thread may call 
+        /// CloseForceSync.
+        /// </para>
+        /// </remarks>
+	public void CloseForceSync() {
+		dbenv.close(DbConstants.DB_FORCESYNC);
+	}
 
         /// <summary>
         /// Run one iteration of the deadlock detector. The deadlock detector
@@ -2863,6 +2938,58 @@ namespace BerkeleyDB {
         }
 
         /// <summary>
+        /// This method checks to see if a specified transaction has been replicated from 
+        /// the master of a replication group. It may be called by applications using either
+        /// the Base API or the Replication Manager.
+        /// </summary>
+        /// <param name="token">
+        /// The commit token from a transaction previously written at a master
+        /// site in the replication group.  Commit tokens are retrieved using
+        /// the <see cref="Transaction.CommitToken"/> method.
+        /// </param>
+        /// <param name="timeout">
+        /// The maximum time to wait for the transaction to arrive by replication, expressed in 
+        /// microseconds.  To check the status of the transaction without waiting, the timeout 
+        /// may be specified as 0.
+        /// </param>
+        /// <returns>
+        /// This method returns TransactionAppliedStatus.APPLIED to indicate that the specified 
+        /// transaction has indeed been applied at the local site. TransactionAppliedStatus.TIMEOUT
+        /// will be returned if the specified transaction has not yet arrived at the calling site, 
+        /// but can be expected to arrive soon. TransactionAppliedStatus.NOTFOUND will be returned 
+        /// if the transaction has not been applied at the local site, and it can be determined that
+        /// the transaction has been rolled back due to a master takeover, and is therefore never 
+        /// expected to arrive. TransactionAppliedStatus.EMPTY_TRANSACTION will be return if the specified
+        /// token was generated by a transaction that did not modify the database environment 
+        /// (e.g., a read-only transaction).
+        /// </returns>
+        public TransactionAppliedStatus IsTransactionApplied(byte[] token, uint timeout)
+        {
+            if (token == null)
+                throw new ArgumentNullException("The token cannot be null.");
+            if (token.Length != DbConstants.DB_TXN_TOKEN_SIZE)
+            {
+                throw new ArgumentOutOfRangeException("The token size must be "
+                    + DbConstants.DB_TXN_TOKEN_SIZE);
+            }
+            DB_TXN_TOKEN txn_token = new DB_TXN_TOKEN(token);
+            int ret = dbenv.is_transaction_applied(txn_token, timeout, 0);
+            switch (ret)
+            {
+                case 0:
+                    return TransactionAppliedStatus.APPLIED;
+                case DbConstants.DB_TIMEOUT:
+                    return TransactionAppliedStatus.TIMEOUT;                
+                case DbConstants.DB_NOTFOUND:
+                    return TransactionAppliedStatus.NOTFOUND;
+                case DbConstants.DB_KEYEMPTY:
+                    return TransactionAppliedStatus.EMPTY_TRANSACTION;
+                default:
+                    throw new DatabaseException(ret);
+            }
+        }
+
+        /// <summary>
         /// Map an LSN object to a log filename
         /// </summary>
         /// <param name="logSeqNum">
@@ -2892,6 +3019,46 @@ namespace BerkeleyDB {
         /// </param>
         public void LogFlush(LSN logSeqNum) {
             dbenv.log_flush(LSN.getDB_LSN(logSeqNum));
+        }
+
+        /// <summary>
+        /// Verify log records of this environment.
+        /// </summary>
+        /// <param name="config">
+        /// Log verification configuration object.
+        /// </param>
+        public int LogVerify(LogVerifyConfig config) {
+            String dbfile, dbname, home;
+            int etime, stime;
+            uint cachesize;
+            uint efile, eoffset, sfile, soffset;
+            int caf, ret, verbose;
+
+            caf = ret = verbose = 0;
+            etime = stime = 0;
+            home = config.EnvHome;
+            dbfile = config.DbFile;
+            dbname = config.DbName;
+            try {
+                etime = (int)config.EndTime.ToFileTimeUtc();
+                stime = (int)config.StartTime.ToFileTimeUtc();
+            } catch (Exception){}
+
+            efile = config.EndLsn.LogFileNumber;
+            eoffset = config.EndLsn.Offset;
+            sfile = config.StartLsn.LogFileNumber;
+            soffset = config.StartLsn.Offset;
+            cachesize = config.CacheSize;
+            if (config.Verbose)
+                verbose = 1;
+            if (config.ContinueAfterFail)
+                caf = 1;
+            try {
+                ret = dbenv.log_verify(home, cachesize, dbfile, dbname, 
+                    stime, etime, sfile, soffset, efile, eoffset, caf, verbose);
+            } catch (Exception){}
+
+            return (ret);
         }
 
         /// <summary>

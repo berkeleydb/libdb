@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2009 Oracle.  All rights reserved.
+# Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -17,10 +17,6 @@ proc rep016 { method args } {
 	global repfiles_in_memory
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 	set tnum "016"
 
 	# Skip for all methods except btree.
@@ -115,7 +111,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master $verbargs \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -128,7 +124,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create -home $clientdir($i) \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    $c_txnargs($i) $c_logargs($i) -rep_client $verbargs \
 		    -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i) $recargs]
@@ -233,7 +229,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set elector 0
 	set winner 0
 	setpriority pri $nclients $winner
-	run_election env_cmd envlist err_cmd pri crash\
+	run_election envlist err_cmd pri crash\
 	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 	#
@@ -249,7 +245,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 	set nvotes $nclients
 	set winner [rep016_selectwinner $nsites $nvotes $nclients]
 	setpriority pri $nclients $winner
-	run_election env_cmd envlist err_cmd pri crash\
+	run_election envlist err_cmd pri crash\
 	    $qdir $m $elector $nsites $nvotes $nclients $winner 1 $dbname
 
 	#
@@ -265,7 +261,7 @@ proc rep016_sub { method nclients tnum logset recargs largs } {
 		set m "Rep$tnum.e.$count"
 		set winner [rep016_selectwinner $nsites $n $n]
 		setpriority pri $nclients $winner
-		run_election env_cmd envlist err_cmd pri crash\
+		run_election envlist err_cmd pri crash\
 		    $qdir $m $elector $nsites $n $n $winner 1 $dbname
 		incr count
 	}

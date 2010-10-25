@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -129,11 +129,8 @@ proc t83_test { db nitems env txnenv args} {
 	if { [is_compressed $args] == 1 } {
 		set tolerance 0.5
 		set sumtol 0.3
-	} elseif { $nitems < 500 || [is_partitioned $args] } {
+	} else {
 		set tolerance 0.3
-		set sumtol 0.05
-	} elseif { $nitems > 500 } {
-		set tolerance 0.2
 		set sumtol 0.05
 	}
 

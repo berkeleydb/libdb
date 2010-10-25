@@ -1,15 +1,16 @@
 /*-
- * $Id$
+ * Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * The following provides the information necessary to build Berkeley
  * DB on native Windows, and other Windows environments such as MinGW.
  */
 
 /*
- * Windows NT 4.0 and later required for the replication manager.
+ * Berkeley DB requires at least Windows 2000, tell Visual Studio of the
+ * requirement.
  */
 #ifdef HAVE_REPLICATION_THREADS
-#define	_WIN32_WINNT 0x0400
+#define	_WIN32_WINNT 0x0500
 #endif
 
 #ifndef DB_WINCE

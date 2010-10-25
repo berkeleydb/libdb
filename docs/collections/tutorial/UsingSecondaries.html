@@ -197,7 +197,8 @@ import com.sleepycat.db.SecondaryDatabase;</code></strong>
 public class SampleDatabase
 {
     ...
-<strong class="userinput"><code>    private static final String SUPPLIER_CITY_INDEX = "supplier_city_index";
+<strong class="userinput"><code>    private static final String SUPPLIER_CITY_INDEX = 
+        "supplier_city_index";
     ...
     private SecondaryDatabase supplierByCityDb;
     ...</code></strong>
@@ -313,10 +314,10 @@ public class SampleDatabase
 <strong class="userinput"><code>    private static class SupplierByCityKeyCreator
         extends SerialSerialKeyCreator
     {
-        private SupplierByCityKeyCreator(StoredClassCatalog catalog,
-                                         Class primaryKeyClass,
-                                         Class valueClass,
-                                         Class indexKeyClass)
+        private SupplierByCityKeyCreator(ClassCatalog catalog,
+                                      Class primaryKeyClass,
+                                      Class valueClass,
+                                      Class indexKeyClass)
         {
             super(catalog, primaryKeyClass, valueClass, indexKeyClass);
         }

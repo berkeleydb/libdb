@@ -43,8 +43,9 @@ sync with the master.</p>
     However, depending on the network and infrastructure, it can be
     advantageous in a few instances to use a "hot backup" to initialize a
     client into a replication group.  Clients not wanting to automatically
-    perform internal initialization should call the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method with
-    the <a href="../api_reference/C/repconfig.html#config_DB_REP_CONF_NOAUTOINIT" class="olink">DB_REP_CONF_NOAUTOINIT</a> flag.  This configuration flag causes Berkeley DB to
+    perform internal initialization should call the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method to
+    turn off the <a href="../api_reference/C/repconfig.html#config_DB_REP_CONF_AUTOINIT" class="olink">DB_REP_CONF_AUTOINIT</a> flag.  Turning off this
+    configuration flag causes Berkeley DB to
     return <a href="../api_reference/C/repmessage.html#repmsg_DB_REP_JOIN_FAILURE" class="olink">DB_REP_JOIN_FAILURE</a> to the application's <a href="../api_reference/C/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> method instead of
     performing internal initialization.
 

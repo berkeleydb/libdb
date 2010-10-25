@@ -196,21 +196,21 @@ public:
     // and a database name.
     MyDb(std::string &amp;path, std::string &amp;dbName,
          <strong class="userinput"><code>bool isSecondary = false</code></strong>);
-                                                                                                                                    
+
     // Our destructor just calls our private close method.
     ~MyDb() { close(); }
-                                                                                                                                    
+
     inline Db &amp;getDb() {return db_;}
-                                                                                                                                    
+
 private:
     Db db_;
     std::string dbFileName_;
     u_int32_t cFlags_;
-                                                                                                                                    
+
     // Make sure the default constructor is private
     // We don't want it used.
     MyDb() : db_(0, 0) {}
-                                                                                                                                    
+
     // We put our database close activity here.
     // This is called from our destructor. In
     // a more complicated example, we might want
@@ -240,12 +240,12 @@ MyDb::MyDb(std::string &amp;path, std::string &amp;dbName,
     {
         // Redirect debugging information to std::cerr
         db_.set_error_stream(&amp;std::cerr);
-                                                                                                                                    
+
         <strong class="userinput"><code>// If this is a secondary database, support
         // sorted duplicates
         if (isSecondary)
             db_.set_flags(DB_DUPSORT);</code></strong>
-                                                                                                                                    
+
         // Open the database
         db_.open(NULL, dbFileName_.c_str(), NULL, DB_BTREE, cFlags_, 0);
     }
@@ -283,21 +283,21 @@ main(int argc, char *argv[])
     // Initialize the path to the database files
     std::string basename("./");
     std::string databaseHome("./");
-                                                                                                                                         
+
     // Database names
     std::string vDbName("vendordb.db");
     std::string iDbName("inventorydb.db");
     <strong class="userinput"><code>std::string itemSDbName("itemname.sdb");</code></strong>
-                                                                                                                                         
+
     // Parse the command line arguments here and determine
     // the location of the flat text files containing the
     // inventory data here. This step is omitted for clarity.
-                                                                                                                                         
+
     //  Identify the full name for our input files, which should
     //  also include some path information.
     std::string inventoryFile = basename + "inventory.txt";
     std::string vendorFile = basename + "vendors.txt";
-                                                                                                                                         
+
     try
     {
         // Open all databases.
@@ -313,7 +313,7 @@ main(int argc, char *argv[])
 
         // Load the vendor database
         loadVendorDB(vendorDB, vendorFile);
-                                                                                                                                         
+
         // Load the inventory database
         loadInventoryDB(inventoryDB, inventoryFile);
     } catch(DbException &amp;e) {
@@ -325,7 +325,7 @@ main(int argc, char *argv[])
         std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
         return(-1);
     }
-                                                                                                                                         
+
     return(0);
 } // End main </pre>
         <p>
@@ -382,10 +382,10 @@ main(int argc, char *argv[])
 #include &lt;iostream&gt;
 #include &lt;fstream&gt;
 #include &lt;cstdlib&gt;
-                                                                                                                                         
+
 #include "MyDb.hpp"
 #include "gettingStartedCommon.hpp"
-                                                                                                                                         
+
 // Forward declarations
 int show_all_records(MyDb &amp;inventoryDB, MyDb &amp;vendorDB);
 <strong class="userinput"><code>int show_item(MyDb &amp;itemnameSDB, MyDb &amp;vendorDB, std::string &amp;itemName);</code></strong>
@@ -410,22 +410,22 @@ main (int argc, char *argv[])
     // Initialize the path to the database files
     std::string databaseHome("./");
     <strong class="userinput"><code>std::string itemName;</code></strong>
-                                                                                                                                         
+
     // Database names
     std::string vDbName("vendordb.db");
     std::string iDbName("inventorydb.db");
     <strong class="userinput"><code>std::string itemSDbName("itemname.sdb");</code></strong>
-                                                                                                                                         
+
     // Parse the command line arguments
     // Omitted for brevity
-                                                                                                                                         
+
     try
     {
         // Open all databases.
         MyDb inventoryDB(databaseHome, iDbName);
         MyDb vendorDB(databaseHome, vDbName);
         <strong class="userinput"><code>MyDb itemnameSDB(databaseHome, itemSDbName, true);
-                                                                                                                                    
+
         // Associate the secondary to the primary
         inventoryDB.getDb().associate(NULL,
                                       &amp;(itemnameSDB.getDb()),
@@ -447,7 +447,7 @@ main (int argc, char *argv[])
         std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
         return(-1);
     }
-                                                                                                                                         
+
     return(0);
 } // End main </pre>
         <p>
@@ -482,16 +482,16 @@ show_item(MyDb &amp;itemnameSDB, MyDb &amp;vendorDB, std::string &amp;itemName)
 {
     // Get a cursor to the itemname secondary db
     Dbc *cursorp;
-                                                                                                                                    
+
     try {
         itemnameSDB.getDb().cursor(NULL, &amp;cursorp, 0);
-                                                                                                                                    
+
         // Get the search key. This is the name on the inventory
         // record that we want to examine.
         std::cout &lt;&lt; "Looking for " &lt;&lt; itemName &lt;&lt; std::endl;
         Dbt key((void *)itemName.c_str(), itemName.length() + 1);
         Dbt data;
-                                                                                                                                    
+
         // Position the cursor to the first record in the secondary
         // database that has the appropriate key.
         int ret = cursorp-&gt;get(&amp;key, &amp;data, DB_SET);
@@ -499,9 +499,9 @@ show_item(MyDb &amp;itemnameSDB, MyDb &amp;vendorDB, std::string &amp;itemName)
             do {
                 InventoryData inventoryItem(data.get_data());
                 inventoryItem.show();
-                                                                                                                                    
+
                 show_vendor(vendorDB, inventoryItem.getVendor().c_str());
-                                                                                                                                    
+
             } while(cursorp-&gt;get(&amp;key, &amp;data, DB_NEXT_DUP) == 0);
         } else {
             std::cerr &lt;&lt; "No records found for '" &lt;&lt; itemName
@@ -516,7 +516,7 @@ show_item(MyDb &amp;itemnameSDB, MyDb &amp;vendorDB, std::string &amp;itemName)
         cursorp-&gt;close();
         throw e;
     }
-                                                                                                                                    
+
     cursorp-&gt;close();
     return (0);
 }

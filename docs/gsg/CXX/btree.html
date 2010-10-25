@@ -322,7 +322,10 @@
                     
                 </p>
                 <p>
-                    The database supports sorted duplicate records.
+                    The database supports sorted duplicate records. Note
+                    that this flag also sets the 
+                    <code class="literal">DB_DUP</code> flag for
+                    you.
                 </p>
               </li>
             </ul>
@@ -521,7 +524,7 @@ compare_int(Db *dbp, const Dbt *a, const Dbt *b)
 #include &lt;string.h&gt;
 
 ...
-                                                                                                                                      
+
 Db db(NULL, 0);
 
 // Set up the btree comparison function for this database

@@ -625,9 +625,10 @@ public class StoreWriter extends Thread
         so that it knows to perform uncommitted reads.
     </p>
         <pre class="programlisting">                    // commit
-                    System.out.println(getName() + " : committing txn : " + i);
+                    System.out.println(getName() + " : committing txn : "
+                                       + i);
                     System.out.println(getName() + " : Found " +
-                        countObjects(txn) + " objects in the store."); </pre>
+                        countObjects(txn) + " objects in the store.");</pre>
         <p>
     Having performed this somewhat inelegant counting of the objects in the
     database, we can now commit the transaction.

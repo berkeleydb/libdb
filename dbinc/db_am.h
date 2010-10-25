@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,12 +11,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-/*
- * Temporary for the patch release, define this bit here so it
- * does not renumber the other bits for DB->open.
- */
-#define DB_NOERROR	0x10000000
 
 struct __db_foreign_info; \
 			typedef struct __db_foreign_info DB_FOREIGN_INFO;
@@ -48,7 +42,8 @@ struct __db_foreign_info {
  *	Auto-commit test for enviroment operations: DbEnv::{open,remove,rename}
  */
 #define	IS_ENV_AUTO_COMMIT(env, txn, flags)				\
-	(LF_ISSET(DB_AUTO_COMMIT) || ((txn) == NULL &&			\
+	(LF_ISSET(DB_AUTO_COMMIT) ||					\
+	    (((txn) == NULL || F_ISSET((txn), TXN_FAMILY)) &&		\
 	    F_ISSET((env)->dbenv, DB_ENV_AUTO_COMMIT) &&		\
 	    !LF_ISSET(DB_NO_AUTO_COMMIT)))
 
@@ -57,7 +52,8 @@ struct __db_foreign_info {
  *	Auto-commit test for database operations.
  */
 #define	IS_DB_AUTO_COMMIT(dbp, txn)					\
-	    ((txn) == NULL && F_ISSET((dbp), DB_AM_TXN))
+	(((txn) == NULL || F_ISSET((txn), TXN_FAMILY)) &&		\
+	    F_ISSET((dbp), DB_AM_TXN))
 
 /*
  * STRIP_AUTO_COMMIT --
@@ -74,6 +70,14 @@ struct __db_foreign_info {
 #define	DB_ADD_PAGE_COMPAT	5	/* Compatibility for 4.2 db_relink */
 #define	DB_REM_PAGE_COMPAT	6	/* Compatibility for 4.2 db_relink */
 #define	DB_APPEND_BIG	7
+
+#define OP_MODE_SHIFT   8
+#define OP_PAGE_MASK    0xff
+
+#define OP_SET(mode, page)	(((mode) << OP_MODE_SHIFT) | (TYPE(page)))
+#define OP_MODE_GET(mode)	((mode) >> OP_MODE_SHIFT)
+#define OP_PAGE_GET(mode)	((mode) & OP_PAGE_MASK)
+
 
 /*
  * Standard initialization and shutdown macros for all recovery functions.
@@ -299,6 +303,15 @@ struct __db_foreign_info {
  */
 #define	DB_CHK_META	0x01	/* Checksum the meta page. */
 #define	DB_CHK_NOLSN	0x02	/* Don't check the LSN. */
+
+/*
+ * Flags to __db_truncate_page.
+ */
+#define DB_EXCH_FREE		0x01	/* Free the old page. */
+#define DB_EXCH_PARENT		0x02	/* There is a parent to update. */
+
+/* We usually want to do these operations. */
+#define DB_EXCH_DEFAULT		(DB_EXCH_FREE | DB_EXCH_PARENT)
 
 #if defined(__cplusplus)
 }

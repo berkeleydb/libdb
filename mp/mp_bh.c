@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -149,7 +149,7 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 	if ((ret = __memp_fcreate(env, &dbmfp)) != 0)
 		return (ret);
 	if ((ret = __memp_fopen(dbmfp, mfp,
-	    NULL, NULL, DB_DURABLE_UNKNOWN, 0, mfp->stat.st_pagesize)) != 0) {
+	    NULL, NULL, DB_DURABLE_UNKNOWN, 0, mfp->pagesize)) != 0) {
 		(void)__memp_fclose(dbmfp, 0);
 
 		/*
@@ -163,7 +163,7 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 	}
 
 pgwrite:
-	MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize,
+	MVCC_MPROTECT(bhp->buf, mfp->pagesize,
 	    PROT_READ | PROT_WRITE | PROT_EXEC);
 	ret = __memp_pgwrite(env, dbmfp, hp, bhp);
 	if (dbmfp == NULL)
@@ -203,11 +203,12 @@ __memp_pgread(dbmfp, bhp, can_create)
 
 	env = dbmfp->env;
 	mfp = dbmfp->mfp;
-	pagesize = mfp->stat.st_pagesize;
+	pagesize = mfp->pagesize;
 
 	/* We should never be called with a dirty or unlocked buffer. */
 	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY_CREATE | BH_FROZEN));
-	DB_ASSERT(env, can_create || !F_ISSET(bhp, BH_DIRTY));
+	DB_ASSERT(env, can_create ||
+	    F_ISSET(bhp, BH_TRASH) || !F_ISSET(bhp, BH_DIRTY));
 	DB_ASSERT(env, F_ISSET(bhp, BH_EXCLUSIVE));
 
 	/* Mark the buffer as in transistion. */
@@ -254,13 +255,9 @@ __memp_pgread(dbmfp, bhp, can_create)
 		if (len < pagesize)
 			memset(bhp->buf + len, CLEAR_BYTE, pagesize - len);
 #endif
-#ifdef HAVE_STATISTICS
-		++mfp->stat.st_page_create;
+		STAT_INC(env, mpool, page_create, mfp->stat.st_page_create);
 	} else
-		++mfp->stat.st_page_in;
-#else
-	}
-#endif
+		STAT_INC(env, mpool, page_in, mfp->stat.st_page_in);
 
 	/* Call any pgin function. */
 	ret = mfp->ftype == 0 ? 0 : __memp_pg(dbmfp, bhp->pgno, bhp->buf, 1);
@@ -364,7 +361,7 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 		if (!lp->db_log_inmemory &&
 		    LOG_COMPARE(&lp->s_lsn, &LSN(bhp->buf)) <= 0) {
 			MUTEX_LOCK(env, lp->mtx_flush);
-			DB_ASSERT(env,
+			DB_ASSERT(env, F_ISSET(env->dbenv, DB_ENV_NOLOCKING) ||
 			    LOG_COMPARE(&lp->s_lsn, &LSN(bhp->buf)) > 0);
 			MUTEX_UNLOCK(env, lp->mtx_flush);
 		}
@@ -381,19 +378,17 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 		if (F_ISSET(bhp, BH_EXCLUSIVE))
 			F_SET(bhp, BH_TRASH);
 		else {
-			if ((ret =
-			    __os_malloc(env, mfp->stat.st_pagesize, &buf)) != 0)
+			if ((ret = __os_malloc(env, mfp->pagesize, &buf)) != 0)
 				goto err;
-			memcpy(buf, bhp->buf, mfp->stat.st_pagesize);
+			memcpy(buf, bhp->buf, mfp->pagesize);
 		}
 		if ((ret = __memp_pg(dbmfp, bhp->pgno, buf, 0)) != 0)
 			goto err;
 	}
 
 	/* Write the page. */
-	if ((ret = __os_io(
-	    env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno, mfp->stat.st_pagesize,
-	    0, mfp->stat.st_pagesize, buf, &nw)) != 0) {
+	if ((ret = __os_io( env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
+	    mfp->pagesize, 0, mfp->pagesize, buf, &nw)) != 0) {
 		__db_errx(env, "%s: write failed for page %lu",
 		    __memp_fn(dbmfp), (u_long)bhp->pgno);
 		goto err;
@@ -541,7 +536,7 @@ __memp_bhfree(dbmp, infop, mfp, hp, bhp, flags)
 	env = dbmp->env;
 #ifdef DIAG_MVCC
 	if (mfp != NULL)
-		pagesize = mfp->stat.st_pagesize;
+		pagesize = mfp->pagesize;
 #endif
 
 	DB_ASSERT(env, LF_ISSET(BH_FREE_UNLOCKED) ||
@@ -616,7 +611,7 @@ no_hp:	MVCC_MPROTECT(bhp->buf, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);
 		MVCC_BHUNALIGN(bhp);
 		__memp_free(infop, bhp);
 		c_mp = infop->primary;
-		c_mp->stat.st_pages--;
+		c_mp->pages--;
 
 		MPOOL_REGION_UNLOCK(env, infop);
 	}
@@ -630,7 +625,7 @@ no_hp:	MVCC_MPROTECT(bhp->buf, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);
 	 */
 	MUTEX_LOCK(env, mfp->mutex);
 	if (--mfp->block_cnt == 0 && mfp->mpf_cnt == 0) {
-		if ((t_ret = __memp_mf_discard(dbmp, mfp)) != 0 && ret == 0)
+		if ((t_ret = __memp_mf_discard(dbmp, mfp, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	} else
 		MUTEX_UNLOCK(env, mfp->mutex);

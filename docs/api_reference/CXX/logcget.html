@@ -56,7 +56,7 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1688799"></a>Parameters</h3>
+              <h3 class="title"><a id="id3677887"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -64,7 +64,25 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1688610"></a>data</h4>
+                <h4 class="title"><a id="id3677876"></a>lsn</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          When the <span class="bold"><strong>flag</strong></span> parameter is set to
+                          DB_CURRENT, DB_FIRST, DB_LAST, DB_NEXT or DB_PREV, the <span class="bold"><strong>lsn</strong></span> parameter is overwritten with the 
+                          <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  value of the record
+                          retrieved.  When <span class="bold"><strong>flag</strong></span> is set to
+                          DB_SET, the <span class="bold"><strong>lsn</strong></span> parameter is the
+                          <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  value of the
+                          record to be retrieved.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3677824"></a>data</h4>
               </div>
             </div>
           </div>
@@ -85,7 +103,7 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1689100"></a>flags</h4>
+                <h4 class="title"><a id="id3677450"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -183,30 +201,12 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1688800"></a>lsn</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          When the <span class="bold"><strong>flag</strong></span> parameter is set to
-                          DB_CURRENT, DB_FIRST, DB_LAST, DB_NEXT or DB_PREV, the <span class="bold"><strong>lsn</strong></span> parameter is overwritten with the 
-                          <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  value of the record
-                          retrieved.  When <span class="bold"><strong>flag</strong></span> is set to
-                          DB_SET, the <span class="bold"><strong>lsn</strong></span> parameter is the
-                          <a class="link" href="lsn.html" title="Chapter 8.  The DbLsn Handle">DbLsn</a>  value of the
-                          record to be retrieved.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689364"></a>Errors</h3>
+              <h3 class="title"><a id="id3678172"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -224,7 +224,7 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1688834"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3678122"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -241,7 +241,7 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1688803"></a>Class</h3>
+              <h3 class="title"><a id="id3678005"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -255,7 +255,7 @@ DbLogc::get(DbLsn *lsn, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689410"></a>See Also</h3>
+              <h3 class="title"><a id="id3678140"></a>See Also</h3>
             </div>
           </div>
         </div>

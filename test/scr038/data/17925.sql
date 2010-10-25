@@ -1,8 +1,8 @@
-CREATE DATABASE numismatics;  
+CREATE DATABASE numismatics; /*+ MODE = TRANSACTIONAL */ 
 
 CREATE TABLE coin (cid INT(8) PRIMARY KEY,
                        unit VARCHAR2(20),
-                       value NUMERIC(8,2),  
+                       value NUMERIC(8,2),  /*+ MODE = TRANSACTIONAL */
                        mintage_year INT(8),
                        mint_id INT(8),
                        CONSTRAINT mint_id_fk FOREIGN KEY(mint_id)
@@ -12,7 +12,7 @@ CREATE INDEX unit_index ON coin(unit);
 
 CREATE TABLE mint (mid INT(8) PRIMARY KEY,
        country VARCHAR2(20),
-       city VARCHAR2(20)); 
+       city VARCHAR2(20));   /*+ MODE = TRANSACTIONAL */
 
 CREATE INDEX mid_index ON mint(mid); 
 
@@ -44,4 +44,4 @@ CREATE TABLE table5(att_bin bin(10) PRIMARY KEY,
 			att_bit BIT);
 
 CREATE TABLE table6(att_bin bin(10),
-                        att_bit BIT PRIMARY KEY); 
+                        att_bit BIT PRIMARY KEY); /*+ MODE = TRANSACTIONAL */

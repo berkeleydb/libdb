@@ -84,16 +84,16 @@ try {
     DatabaseEntry foundKey = new DatabaseEntry();
     DatabaseEntry foundData = new DatabaseEntry();
 
-    // To iterate, just call getNext() until the last database record has been 
-    // read. All cursor operations return an OperationStatus, so just read 
-    // until we no longer see OperationStatus.SUCCESS
+    // To iterate, just call getNext() until the last database record has 
+    // been read. All cursor operations return an OperationStatus, so just
+    // read until we no longer see OperationStatus.SUCCESS
     while (cursor.getNext(foundKey, foundData, LockMode.DEFAULT) ==
         OperationStatus.SUCCESS) {
         // getData() on the DatabaseEntry objects returns the byte array
         // held by that object. We use this to get a String value. If the
-        // DatabaseEntry held a byte array representation of some other data
-        // type (such as a complex object) then this operation would look 
-        // considerably different.
+        // DatabaseEntry held a byte array representation of some other 
+        // data type (such as a complex object) then this operation would
+        // look considerably different.
         String keyString = new String(foundKey.getData(), "UTF-8");
         String dataString = new String(foundData.getData(), "UTF-8");
         System.out.println("Key | Data : " + keyString + " | " + 
@@ -143,7 +143,8 @@ try {
 
         String theKey = new String(foundKey.getData(), "UTF-8");
         String theData = new String(foundData.getData(), "UTF-8");
-        System.out.println("Key | Data : " +  theKey + " | " + theData + "");
+        System.out.println("Key | Data : " +  theKey + " | " + 
+                           theData + "");
     }
 } catch (DatabaseException de) {
     System.err.println("Error accessing database." + de);

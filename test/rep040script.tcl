@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -22,7 +22,7 @@ source $test_path/testutils.tcl
 source $test_path/reputils.tcl
 global databases_in_memory
 
-set usage "repscript masterdir"
+set usage "repscript masterdir inmemdbflag"
 
 # Verify usage
 if { $argc != 2 } {

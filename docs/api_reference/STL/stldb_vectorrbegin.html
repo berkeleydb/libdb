@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-rbegin
-</th>
+          <th colspan="3" align="center">rbegin</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldb_vectorend.html">Prev</a> </td>
@@ -32,9 +30,7 @@ rbegin
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldb_vectorrbegin"></a>
-rbegin
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldb_vectorrbegin"></a>rbegin</h2>
           </div>
         </div>
       </div>
@@ -42,28 +38,23 @@ rbegin
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldb_vectorrbegin_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
-reverse_iterator rbegin(ReadModifyWriteOption rmw=
-    ReadModifyWriteOption::no_read_modify_write(), bool readonly=false,
-    BulkRetrievalOption bulk_read=BulkRetrievalOption::no_bulk_retrieval(),
-    bool directdb_get=true)
+reverse_iterator rbegin(ReadModifyWriteOption rmw=
+    ReadModifyWriteOption::no_read_modify_write(), bool readonly=false,
+    BulkRetrievalOption bulk_read=BulkRetrievalOption::no_bulk_retrieval(),
+    bool directdb_get=true)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Create a reverse iterator. </p>
-          <p>This function creates a reverse iterator initialized to sit on the last element in the underlying database, and can be used to read/write. The meaning and usage of its parameters are identical to the above begin function. </p>
-        </div>
+        <p>Create a reverse iterator. </p>
+        <p>This function creates a reverse iterator initialized to sit on the last element in the underlying database, and can be used to read/write. The meaning and usage of its parameters are identical to the above begin function. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1546339"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3486321"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -71,8 +62,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546484"></a>
- directdb_get </h5>
+                  <h5 class="title"><a id="id3486350"></a>directdb_get</h5>
                 </div>
               </div>
             </div>
@@ -82,8 +72,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546480"></a>
- bulk_read </h5>
+                  <h5 class="title"><a id="id3486382"></a>bulk_read</h5>
                 </div>
               </div>
             </div>
@@ -93,8 +82,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546560"></a>
- rmw </h5>
+                  <h5 class="title"><a id="id3486389"></a>rmw</h5>
                 </div>
               </div>
             </div>
@@ -104,8 +92,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546580"></a>
- readonly </h5>
+                  <h5 class="title"><a id="id3486396"></a>readonly</h5>
                 </div>
               </div>
             </div>
@@ -116,8 +103,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1546487"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3486274"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -127,33 +113,29 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1546573"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3486280"></a>See Also</h4>
               </div>
             </div>
           </div>
           <p>
     </p>
           <p>begin(ReadModifyWrite, bool, BulkRetrievalOption, bool); </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-const_reverse_iterator rbegin(BulkRetrievalOption bulkretrieval=
-    BulkRetrievalOption(BulkRetrievalOption::no_bulk_retrieval()),
-    bool directdb_get=true) const
+const_reverse_iterator rbegin(BulkRetrievalOption bulkretrieval=
+    BulkRetrievalOption(BulkRetrievalOption::no_bulk_retrieval()),
+    bool directdb_get=true) const
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Create a const reverse iterator. </p>
-          <p>This function creates a const reverse iterator initialized to sit on the last element in the backing database, and can only read the element, it is only available to const <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">db_vector</a>
+        <p>Create a const reverse iterator. </p>
+        <p>This function creates a const reverse iterator initialized to sit on the last element in the backing database, and can only read the element, it is only available to const <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">db_vector</a>
  containers. The meaning and usage of its parameters are identical as above. </p>
-        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1546629"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3486430"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -161,8 +143,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546495"></a>
- directdb_get </h5>
+                  <h5 class="title"><a id="id3486433"></a>directdb_get</h5>
                 </div>
               </div>
             </div>
@@ -172,8 +153,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1546056"></a>
- bulkretrieval </h5>
+                  <h5 class="title"><a id="id3486448"></a>bulkretrieval</h5>
                 </div>
               </div>
             </div>
@@ -184,8 +164,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1546496"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3486223"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -195,29 +174,27 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1544960"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3486228"></a>See Also</h4>
               </div>
             </div>
           </div>
           <p>
     </p>
           <p>begin(ReadModifyWrite, bool, BulkRetrievalOption, bool); </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1546270"></a>
-Class</h3>
+              <h3 class="title"><a id="id3486218"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">
-  db_vector</a>
+  <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">db_vector</a>
      </p>
       </div>
     </div>
@@ -232,15 +209,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldb_vectorrend.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-end
- </td>
+          <td width="40%" align="left" valign="top">end </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-rend
-</td>
+          <td width="40%" align="right" valign="top"> rend</td>
         </tr>
       </table>
     </div>

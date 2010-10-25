@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -941,8 +941,8 @@ struct __db_mutex_t {			/* Mutex. */
 	 * > 0 is the number of shared readers.
 	 * Pthreads shared latches use pthread_rwlock instead.
 	 */
-	db_atomic_t	sharecount;
 	tsl_t		tas;
+	db_atomic_t	sharecount;
 #elif !defined(MUTEX_FIELDS)
 	/*
 	 * This is the Test and Set flag for exclusive latches (mutexes):

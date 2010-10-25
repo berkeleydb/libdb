@@ -1,173 +1,148 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-
-# TEST repmgr025
-# TEST Repmgr site address discovery via handshakes.
+# $Id$
+#
+# TEST	repmgr025
+# TEST	repmgr rerequest thread test.
 # TEST
-# TEST Master with 2 processes, does not know client's address.
-# TEST Client processes start in either order, connect to master.
-# TEST Master learns of client's address via handshake message.
+# TEST	Start an appointed master site and one client.  Generate some
+# TEST 	uncommitted updates on the master to lock some database pages.
+# TEST	Start a second client that gets stuck in internal init.  Wait
+# TEST	long enough to rely on the rerequest thread to request the
+# TEST	missing pages, commit the master updates and verify that all
+# TEST	data appears on both clients.
+# TEST
+# TEST	Run for btree only because access method shouldn't matter.
+# TEST
+proc repmgr025 { { niter 100 } { tnum "025" } args } {
 
-proc repmgr025 { } {
-	repmgr025_sub yes
-	repmgr025_sub no
-}
-
-# We can either have the master's subordinate process discover the client
-# address "on the fly" (i.e., in the course of doing a transaction), or more
-# delicately by not starting it until we know that the address is in the
-# shared region ready to be discovered.  In the delicate case, we expect no perm
-# failures, but otherwise there's almost always one.
-#
-proc repmgr025_sub { on_the_fly } {
 	source ./include.tcl
 
-	set tnum "025"
-	if { $on_the_fly } { 
-		set msg "on the fly"
-	} else { 
-		set msg "regular"
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
 	}
-	puts "Repmgr$tnum: Site address discovery via handshakes ($msg)"
-	set site_prog [setup_site_prog]
+
+	set method "btree"
+	set args [convert_args $method $args]
+
+	puts "Repmgr$tnum ($method): repmgr rerequest thread test."
+	repmgr025_sub $method $niter $tnum $args
+}
+
+proc repmgr025_sub { method niter tnum largs } {
+	global testdir
+	global rep_verbose
+	global verbose_type
+	set nsites 3
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
 
 	env_cleanup $testdir
-
-	foreach {master_port client_port} [available_ports 2] {
-		puts "\tRepmgr$tnum.a:\
-		    Using ports $master_port, $client_port"
-	}
+	set ports [available_ports $nsites]
+	set omethod [convert_method $method]
 
 	set masterdir $testdir/MASTERDIR
 	set clientdir $testdir/CLIENTDIR
+	set clientdir2 $testdir/CLIENTDIR2
+
 	file mkdir $masterdir
 	file mkdir $clientdir
-	
-	puts "\tRepmgr$tnum.b: Start 2 processes at master."
-	make_dbconfig $masterdir {{rep_set_nsites 3}}
-	set m1 [open "| $site_prog" "r+"]
-	fconfigure $m1 -buffering line
-	puts $m1 "home $masterdir"
-	puts $m1 "local $master_port"
-	puts $m1 "output $testdir/m1output"
-	puts $m1 "open_env"
-	puts $m1 "start master"
-	gets $m1
+	file mkdir $clientdir2
 
-	if {$on_the_fly} {
-		set m2 [open "| $site_prog 2>erroutp" "r+"]
-		fconfigure $m2 -buffering line
-		puts $m2 "home $masterdir"
-		puts $m2 "local $master_port"
-		puts $m2 "output $testdir/m2output"
-		puts $m2 "open_env"
-		puts $m2 "start master"
-		gets $m2
-	}
+	# Use different connection retry timeout values to handle any
+	# collisions from starting sites at the same time by retrying
+	# at different times.
 
-	puts "\tRepmgr$tnum.c: Start 1st client process, but not connected."
-	make_dbconfig $clientdir {{rep_set_nsites 3}}
-	set c1 [open "| $site_prog 2> c1stderr" "r+"]
-	fconfigure $c1 -buffering line
-	puts $c1 "home $clientdir"
-	puts $c1 "local $client_port"
-	puts $c1 "output $testdir/c1output"
-	puts $c1 "open_env"
-	puts $c1 "start client"
-	gets $c1
+	# Open a master.
+	puts "\tRepmgr$tnum.a: Start a master."
+	set ma_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx MASTER -home $masterdir -txn -rep -thread"
+	set masterenv [eval $ma_envcmd]
+	$masterenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -start master
 
-	# Obviously, at this point the two sites aren't connected, since neither
-	# one has been told about the other.
-
-	puts "\tRepmgr$tnum.d: Start 2nd client process, connecting to master."
-	set c2 [open "| $site_prog" "r+"]
-	fconfigure $c2 -buffering line
-	puts $c2 "home $clientdir"
-	puts $c2 "local $client_port"
-	puts $c2 "remote localhost $master_port"
-	puts $c2 "output $testdir/c2output"
-	puts $c2 "open_env"
-	puts $c2 "start client"
-	gets $c2
-	
-	# At this point, c2 will connect to the master.  (The truly observant
-	# reader will notice that there's essentially no point to this
-	# connection, at least as long as this site remains a client.  But if it
-	# ever becomes master, this connection will be ready to go, for sending
-	# log records from live updates originating at that process.)
-	#
-	# The master should extract the site address from the handshake,
-	# recognize that this is a subordinate connection, and therefore
-	# initiate an outgoing connection to the client.  It also of course
-	# stashes the site's address in the shared region, so that any
-	# subordinate processes (m2) can find it.
-	# 
-	# Check site list, to make sure A discovers B's network address.  Then
-	# wait for startup-done. 
-	#
-	set cond {
-		set masterenv [berkdb_env -home $masterdir]
-		set msl [$masterenv repmgr_site_list]
-		$masterenv close
-		expr {[llength $msl] == 1 && [lindex $msl 0 2] == $client_port}
-	}
-	await_condition {[eval $cond]} 20
-
-	set clientenv [berkdb_env -home $clientdir]
+	# Open first client
+	puts "\tRepmgr$tnum.b: Start first client."
+	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT -home $clientdir -txn -rep -thread"
+	set clientenv [eval $cl_envcmd]
+	$clientenv repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 10000000} \
+	    -local [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -start client
 	await_startup_done $clientenv
 
-	if {!$on_the_fly} {
-		set m2 [open "| $site_prog 2>erroutp" "r+"]
-		fconfigure $m2 -buffering line
-		puts $m2 "home $masterdir"
-		puts $m2 "local $master_port"
-		puts $m2 "output $testdir/m2output"
-		puts $m2 "open_env"
-		puts $m2 "start master"
-		gets $m2
-		tclsleep 2
+	puts "\tRepmgr$tnum.c: Add some data to master and commit."
+	set dbname test.db
+	set mdb [eval {berkdb_open_noerr -create $omethod -auto_commit \
+	    -env $masterenv} $largs {$dbname}]
+	set numtxns 3
+	set t [$masterenv txn]
+	for { set i 1 } { $i <= $numtxns } { incr i } {
+		error_check_good db_put \
+		    [eval $mdb put -txn $t $i [chop_data $method data$i]] 0
+	}
+	error_check_good init_txn_commit [$t commit] 0
+
+	puts "\tRepmgr$tnum.d: Start updates on master but don't commit."
+	# This locks some database pages on the master until these updates
+	# are committed later in the test.
+	set t2 [$masterenv txn]
+	for { set i 1 } { $i <= $numtxns } { incr i } {
+		set ret \
+		    [$mdb get -get_both -txn $t2 $i [pad_data $method data$i]]
+		error_check_good db_put \
+		    [$mdb put -txn $t2 $i [chop_data $method newdata$i]] 0
 	}
 
-	puts $m2 "open_db test.db"
-	puts $m2 "put k1 v1"
-	puts $m2 "echo done"
-	gets $m2
+	# Open second client.  The uncommitted master updates will cause
+	# this client to be stuck in internal init until the updates
+	# are committed, so do not await_startup_done here.
+	puts "\tRepmgr$tnum.e: Start second client."
+	set cl2_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread"
+	set clientenv2 [eval $cl2_envcmd]
+	# Set client retransmission max time to 1 second.
+	$clientenv2 rep_request 40000 1000000
+	$clientenv2 repmgr -ack all -nsites $nsites \
+	    -timeout {conn_retry 5000000} \
+	    -local [list localhost [lindex $ports 2]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -start client
 
-	# make sure there weren't too many perm failures
-	puts "\tRepmgr$tnum.e: Check stats"
-	set get_pfs { expr [stat_field \
-			    $clientenv repmgr_stat "Acknowledgement failures"] }
-	set pfs [eval $get_pfs]
+	puts "\tRepmgr$tnum.f: Test for page requests from rerequest thread."
+	# Wait 5 seconds (significantly longer than client retransmission
+	# max time) to process all page requests resulting from master
+	# transactions.
+	set max_wait 5
+	tclsleep $max_wait
+	set init_pagereq [stat_field $clientenv2 rep_stat "Pages requested"]
+	# Any further page requests can only be from the rerequest thread
+	# because we processed all other lingering page requests above.
+	await_condition {[stat_field $clientenv2 rep_stat \
+	    "Pages requested"] > $init_pagereq} $max_wait
 
-	if {$on_the_fly} {
-		set max 1
-	} else {
-		set max 0
-	}
-	if {$pfs > $max} {
-		error "FAIL: too many perm failures"
-	}
+	puts "\tRepmgr$tnum.g: Commit master updates, finish client startup."
+	error_check_good update_txn_commit [$t2 commit] 0
+	await_startup_done $clientenv2
 
-	puts $m1 "open_db test.db"
-	puts $m1 "put k2 v2"
-	puts $m1 "echo done"
-	gets $m1
-	
-	puts "\tRepmgr$tnum.f: Check that replicated data is visible at client."
-	set expected {{k1 v1} {k2 v2}}
-	verify_client_data $clientenv test.db $expected
+	puts "\tRepmgr$tnum.h: Verifying client database contents."
+	rep_verify $masterdir $masterenv $clientdir $clientenv 1 1 1
+	rep_verify $masterdir $masterenv $clientdir2 $clientenv2 1 1 1
 
-	# make sure there were no additional perm failures
-	puts "\tRepmgr$tnum.g: Check stats again"
-	set pfs2 [eval $get_pfs]
-	error_check_good subsequent $pfs2 $pfs
-
-	puts "\tRepmgr$tnum.h: Clean up."
-	$clientenv close
-	close $c1
-	close $c2
-	close $m1
-	close $m2
+	error_check_good mdb_close [$mdb close] 0
+	error_check_good client2_close [$clientenv2 close] 0
+	error_check_good client_close [$clientenv close] 0
+	error_check_good masterenv_close [$masterenv close] 0
 }

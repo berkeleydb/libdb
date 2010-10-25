@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -196,6 +196,7 @@ __db_init(dbp, flags)
 	int ret;
 
 	dbp->locker = NULL;
+	dbp->alt_close = NULL;
 	LOCK_INIT(dbp->handle_lock);
 
 	TAILQ_INIT(&dbp->free_queue);

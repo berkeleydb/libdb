@@ -6,6 +6,7 @@
 #include "db.h"
 %}
 
+typedef long time_t;
 typedef unsigned int u_int;
 typedef unsigned long u_int32_t;
 typedef u_int32_t size_t;
@@ -86,10 +87,11 @@ struct __dbenv;			typedef struct __dbenv DB_ENV;
 struct __dbt;			typedef struct __dbt DBT;
 struct __dbtxn;			typedef struct __dbtxn DB_TXN;
 struct __key_range;		typedef struct __key_range DB_KEY_RANGE;
+struct __db_txn_token;	typedef struct __db_txn_token DB_TXN_TOKEN;
 
-%typemap(cstype) char ** "ref string"
-%typemap(imtype) char ** "ref string"
-%typemap(csin) char ** "ref $csinput"
+%typemap(cstype) char ** "out IntPtr"
+%typemap(imtype) char ** "out IntPtr"
+%typemap(csin) char ** "out $csinput"
 %typemap(cstype) char *** "ref string[]"
 %typemap(imtype) char *** "ref string[]"
 %typemap(csin) char *** "ref $csinput"
@@ -105,6 +107,9 @@ struct __key_range;		typedef struct __key_range DB_KEY_RANGE;
 %typemap(cstype) db_pgno_t * "ref uint"
 %typemap(imtype) db_pgno_t * "ref uint"
 %typemap(csin) db_pgno_t * "ref $csinput"
+%typemap(cstype) time_t "long"
+%typemap(imtype) time_t "long"
+%typemap(csin) time_t  "$csinput"
 %typemap(cstype) time_t * "ref long"
 %typemap(imtype) time_t * "ref long"
 %typemap(csin) time_t * "ref $csinput"
@@ -186,6 +191,9 @@ struct __key_range;		typedef struct __key_range DB_KEY_RANGE;
 	return ret;
 }
 		
+%typemap(csout) int is_transaction_applied{
+		return $imcall;
+}
 %typemap(csout) int log_compare{
 		return $imcall;
 }
@@ -296,10 +304,12 @@ struct __key_range;		typedef struct __key_range DB_KEY_RANGE;
 }
 
 typedef struct __db_compact {
+	/* Input Parameters. */
 	u_int32_t	compact_fillpercent;	/* Desired fillfactor: 1-100 */
 	db_timeout_t	compact_timeout;	/* Lock timeout. */
 	u_int32_t	compact_pages;		/* Max pages to process. */
 	/* Output Stats. */
+	u_int32_t	compact_empty_buckets;	/* Empty hash buckets found. */
 	u_int32_t	compact_pages_free;	/* Number of pages freed. */
 	u_int32_t	compact_pages_examine;	/* Number of pages examine. */
 	u_int32_t	compact_levels;		/* Number of levels removed. */
@@ -351,6 +361,24 @@ typedef struct __db_lsn {
 		DatabaseException.ThrowException(err);
 		QueueStatStruct ret = (QueueStatStruct)Marshal.PtrToStructure(ptr, typeof(QueueStatStruct));
 		libdb_csharp.__os_ufree(null, ptr);
+		return ret;
+	}
+	
+	internal int get_dbname(out string filenamep, out string dbnamep) {
+		int ret;
+		IntPtr fp, dp;
+		filenamep = dbnamep = null;
+		ret = get_dbname(out fp, out dp);		
+		filenamep = Marshal.PtrToStringAnsi(fp);
+		dbnamep = Marshal.PtrToStringAnsi(dp);
+		return ret;
+	}
+	
+	internal int get_re_source(out string source) {
+		int ret;
+		IntPtr sp;
+		ret = get_re_source(out sp);
+		source = Marshal.PtrToStringAnsi(sp);		
 		return ret;
 	}
 %}
@@ -745,6 +773,28 @@ typedef struct __dbc
 }
 } DBC;
 
+%typemap (cscode) DB_TXN_TOKEN %{
+	internal DB_TXN_TOKEN(byte[] token) : this() {
+		buf = token;
+}
+%}
+
+typedef struct __db_txn_token
+{
+%typemap(cstype) u_int8_t [DB_TXN_TOKEN_SIZE] "byte[]"
+%typemap(imtype, out = "IntPtr") u_int8_t [DB_TXN_TOKEN_SIZE] "byte[]"
+%typemap(csin) u_int8_t [DB_TXN_TOKEN_SIZE] "$csinput"
+%typemap(csvarout) u_int8_t [DB_TXN_TOKEN_SIZE] %{
+	get {
+		byte[] ret = new byte[DbConstants.DB_TXN_TOKEN_SIZE];
+		IntPtr cPtr = $imcall;
+		Marshal.Copy(cPtr, ret, 0, ret.Length);
+		return ret;
+	}
+%}
+u_int8_t buf[DB_TXN_TOKEN_SIZE];
+} DB_TXN_TOKEN;
+
 %typemap(cscode) DBT %{
 	internal IntPtr dataPtr {
 		get {
@@ -809,7 +859,18 @@ typedef struct __db_repmgrsite
 	char host[];
 	u_int port;
 	u_int32_t status;
+	u_int32_t flags;
 } DB_REPMGR_SITE;
+
+%typemap(cscode) DB_TXN %{
+	internal int get_name(out string name) {
+		int ret;
+		IntPtr namep;
+		ret = get_name(out namep);		
+		name = Marshal.PtrToStringAnsi(namep);		
+		return ret;
+	}	
+%}
 
 typedef struct __dbtxn
 {
@@ -818,6 +879,27 @@ typedef struct __dbtxn
 		return self->abort(self);
 	}
 	
+	%typemap(cstype) int is_commit_token_enabled "bool"
+	%typemap(csout) int is_commit_token_enabled {
+		int ret;
+		ret = $imcall;
+		return (ret > 0 ? true : false);
+	}
+	int is_commit_token_enabled() {
+		int is_nested, is_logging_enabled, is_rep_client;
+		ENV *env = self->mgrp->env;
+		is_nested = self->parent != NULL;
+		is_logging_enabled = env->lg_handle != NULL;
+		is_rep_client = (env->rep_handle != NULL && 
+                    env->rep_handle->region != NULL &&
+                    F_ISSET((env->rep_handle->region), REP_F_CLIENT));
+		return (!is_nested && is_logging_enabled && !is_rep_client);
+	}
+	
+	int set_commit_token(DB_TXN_TOKEN* token) {
+		return self->set_commit_token(self, token);
+	}
+
 	int commit(u_int32_t flags) {
 		return self->commit(self, flags);
 	}
@@ -839,6 +921,13 @@ typedef struct __dbtxn
 	}
 	int set_name(const char *name) {
 		return self->set_name(self, name);
+	}
+
+	int get_priority(u_int32_t *priorityp) {
+		return self->get_priority(self, priorityp);
+	}
+	int set_priority(u_int32_t priority) {
+		return self->set_priority(self, priority);
 	}
 
 	int set_timeout(db_timeout_t timeout, u_int32_t flags) {
@@ -1005,6 +1094,34 @@ typedef struct __dbtxn
         
 		return ret;
 	}
+	internal int get_home(out string file) {
+		int ret;
+		IntPtr fp;
+		ret = get_home(out fp);
+		file = Marshal.PtrToStringAnsi(fp);
+		return ret;
+	}	
+	internal int get_intermediate_dir_mode(out string mode) {
+		int ret;
+		IntPtr mp;
+		ret = get_intermediate_dir_mode(out mp);
+		mode = Marshal.PtrToStringAnsi(mp);	
+		return ret;
+	}
+	internal int get_lg_dir(out string dir) {
+		int ret;
+		IntPtr dirp;
+		ret = get_lg_dir(out dirp);
+		dir = Marshal.PtrToStringAnsi(dirp);
+		return ret;
+	}
+	internal int get_tmp_dir(out string dir) {
+		int ret;
+		IntPtr dirp;
+		ret = get_tmp_dir(out dirp);
+		dir = Marshal.PtrToStringAnsi(dirp);
+		return ret;
+	}
 	
 %}
 %typemap(csimports) DB_ENV "using System;
@@ -1070,6 +1187,10 @@ typedef struct __dbenv
 		return self->get_home(self, file);
 	}
 	
+	int is_transaction_applied(DB_TXN_TOKEN *token, db_timeout_t timeout, u_int32_t flags) {
+		return self->txn_applied(self, token, timeout, flags);
+	}
+
 	int lock_detect(u_int32_t flags, u_int32_t atype, u_int32_t *rejected) {
 		return self->lock_detect(self, flags, atype, rejected);
 	}
@@ -1500,9 +1621,9 @@ typedef struct __dbenv
 		return self->set_flags(self, flags, onoff);
 	}
 	
-	%typemap(cstype) char ** "ref string"
-	%typemap(imtype) char ** "ref string"
-	%typemap(csin) char ** "ref $csinput"
+	%typemap(cstype) char ** "out IntPtr"
+	%typemap(imtype) char ** "out IntPtr"
+	%typemap(csin) char ** "out $csinput"
 	%csmethodmodifiers get_data_dirs "private"
 	int get_intermediate_dir_mode(const char **mode) {
 		return self->get_intermediate_dir_mode(self, mode);
@@ -1548,6 +1669,16 @@ typedef struct __dbenv
 	int set_lg_regionmax(u_int32_t max){
 		return self->set_lg_regionmax(self, max);
 	}
+        int log_verify(const char *envhome, u_int32_t cachesz, 
+            const char *dbfile, const char *dbname, 
+            time_t stime, time_t etime,
+            u_int32_t stfile, u_int32_t stoffset, 
+            u_int32_t efile, u_int32_t eoffset, 
+            int caf, int verbose) {
+                return self->env->log_verify_wrap(self->env, envhome, cachesz,
+                    dbfile, dbname, stime, etime, stfile, stoffset, efile, 
+                    eoffset, caf, verbose);
+        }
 	
 	int get_lk_conflicts_nmodes(int *nmodes) {
 		return self->get_lk_conflicts(self, NULL, nmodes);

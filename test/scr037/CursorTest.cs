@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -110,6 +110,74 @@ namespace CsharpAPITest
 			    out db, out cursor);
 			cursor.Close();
 			db.Close();
+		}
+
+		[Test]
+		public void TestCloseResmgr()
+		{
+			TestCloseResmgr_int(true);
+			TestCloseResmgr_int(false);
+		}
+		void TestCloseResmgr_int(bool havetxn)
+		{
+			BTreeDatabase db;
+			BTreeCursor cursor, csr;
+			CursorConfig cursorConfig;
+			DatabaseEnvironment env;
+			Transaction txn;
+
+			DatabaseEntry key, data;
+			KeyValuePair<DatabaseEntry, DatabaseEntry> pair;
+
+			txn = null;
+			testName = "TestCloseResmgr";
+			testHome = testFixtureHome + "/" + testName;
+
+			Configuration.ClearDir(testHome);
+			cursorConfig = new CursorConfig();
+			// Open an environment, a database and a cursor.
+			if (havetxn)
+				GetCursorInBtreeDBInTDS(testHome, testName, 
+				    cursorConfig, out env, out db, 
+				    out cursor, out txn);
+			else
+				GetCursorInBtreeDB(testHome, testName, 
+				    cursorConfig, out env, out db, 
+				    out cursor);
+
+			// Add a record to db via cursor.
+			key = new DatabaseEntry(
+			    ASCIIEncoding.ASCII.GetBytes("key"));
+			data = new DatabaseEntry(
+			    ASCIIEncoding.ASCII.GetBytes("data"));
+			pair = new KeyValuePair<DatabaseEntry,DatabaseEntry>
+			    (key, data);
+			byte []kbytes;
+			byte []dbytes;
+
+			for (int i = 0; i < 100; i++) {
+				kbytes = ASCIIEncoding.ASCII.
+				    GetBytes("key" + i);
+				dbytes = ASCIIEncoding.ASCII.
+				    GetBytes("data" + i);
+				key.Data = kbytes;
+				
+				data.Data = dbytes;
+				
+				cursor.Add(pair);
+			}
+			// Do not close cursor.
+
+			csr = db.Cursor(cursorConfig, txn);
+
+			while (csr.MoveNext()) {
+				// Do nothing for now.
+			}
+			// Do not close csr.
+			if (havetxn && txn != null)
+				txn.Commit();
+			env.CloseForceSync();
+			
 		}
 
 		[Test]
@@ -1072,6 +1140,42 @@ namespace CsharpAPITest
 			cursor = db.Cursor(cursorConfig, txn);
 		}
 
+		public static void GetCursorInBtreeDB(
+		    string home, string name,
+		    CursorConfig cursorConfig,
+		    out DatabaseEnvironment env, out BTreeDatabase db,
+		    out BTreeCursor cursor)
+		{
+			string dbFileName = name + ".db";
+
+			Configuration.ClearDir(home);
+
+			// Open an environment.
+			DatabaseEnvironmentConfig envConfig =
+			    new DatabaseEnvironmentConfig();
+			envConfig.Create = true;
+			envConfig.UseMPool = true;
+			envConfig.UseTxns = true;
+			envConfig.NoMMap = false;
+			envConfig.UseLocking = true;
+			env = DatabaseEnvironment.Open(home, envConfig);
+
+			/*
+			 * Open an btree database. The underlying database
+			 * should be opened with ReadUncommitted if the
+			 * cursor's isolation degree will be set to be 1.
+			 */
+			BTreeDatabaseConfig dbConfig = new BTreeDatabaseConfig();
+			dbConfig.Creation = CreatePolicy.IF_NEEDED;
+			dbConfig.Env = env;
+			if (cursorConfig.IsolationDegree == Isolation.DEGREE_ONE)
+				dbConfig.ReadUncommitted = true;
+
+			db = BTreeDatabase.Open(dbFileName, dbConfig, null);
+
+			// Get a cursor in the transaction.
+			cursor = db.Cursor(cursorConfig, null);
+		}
 		// Get a cursor in CDS.
 		public static void GetCursorInBtreeDBInCDS(
 		    string home, string name,

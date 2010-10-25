@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -8,9 +8,17 @@
 # TEST	Same test as dead001, but use "detect on every collision" instead
 # TEST	of separate deadlock detector.
 proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
-    {timeout 0} {tnum 002} } {
+    {timeout 0} {tnum 002} {pri 0} } {
 	source ./include.tcl
 
+	if {$timeout > 0 && $pri > 0} {
+		puts "Dead$tnum: Both timeout and priority cannot be set."
+		return
+	}
+	set msg ""
+	if { $pri == 1 } {
+		set msg " with priority"
+	}
 	puts "Dead$tnum: Deadlock detector tests (detect on every collision)"
 
 	env_cleanup $testdir
@@ -32,9 +40,12 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
 			sentinel_init
 
 			# Fire off the tests
-			puts "\tDead$tnum: $n procs of test $t"
+			puts "\tDead$tnum: $n procs of test $t $msg"
 			for { set i 0 } { $i < $n } { incr i } {
 				set locker [$env lock_id]
+				if {$pri == 1} {
+					$env lock_set_priority $locker $i
+				}      
 				puts "$tclsh_path $test_path/wrap.tcl \
 				    ddscript.tcl $testdir/dead$tnum.log.$i \
 				    $testdir $t $locker $i $n"
@@ -51,15 +62,37 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
 			watch_procs $pidlist 5
 
 			# Now check output
+			# dead: the number of aborted lockers
+			# clean: the number of non-aborted lockers
+			# killed: the highest aborted locker
+			# kept: the highest non-aborted locker
+			# In a ring, only one locker is aborted.  If testing
+			# priorities, it should be 0, the lowest priority.
+			# In a clump, only one locker is not aborted. If testing
+			# priorities, it should be n, the highest priority.
 			set dead 0
 			set clean 0
 			set other 0
+			set killed $n
+		 	set kept $n
 			for { set i 0 } { $i < $n } { incr i } {
 				set did [open $testdir/dead$tnum.log.$i]
 				while { [gets $did val] != -1 } {
+					# If the line comes from the 
+					# profiling tool, ignore it. 
+					if { [string first \
+					    "profiling:" $val] == 0 } { 
+						continue
+					}
 					switch $val {
-						DEADLOCK { incr dead }
-						1 { incr clean }
+						DEADLOCK { 
+							incr dead
+							set killed $i
+						}
+						1 {
+							incr clean
+							set kept $i
+						}
 						default { incr other }
 					}
 				}
@@ -68,6 +101,19 @@ proc dead002 { { procs "2 4 10" } {tests "ring clump" } \
 
 			puts "\tDead$tnum: dead check ..."
 			dead_check $t $n $timeout $dead $clean $other
+			if { $pri == 1 } {
+				if { $t == "ring" } {
+					# Only the lowest priority killed in a
+	       				# ring
+	       				error_check_good low_priority_killed \
+			       		    $killed 0
+				} elseif { $t == "clump" } {
+					# All but the highest priority killed in a
+	       				# clump
+			       		error_check_good high_priority_kept \
+			       		    $kept [expr $n - 1]
+				}
+			}
 		}
 	}
 

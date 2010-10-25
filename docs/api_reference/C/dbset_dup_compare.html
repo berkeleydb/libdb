@@ -39,7 +39,7 @@
 
 int
 DB-&gt;set_dup_compare(DB *db,
-    int (*dup_compare_fcn)(DB *db, const DBT *dbt, const DBT *dbt2));  </pre>
+    int (*dup_compare_fcn)(DB *db, const DBT *dbt1, const DBT *dbt2));  </pre>
       <p>
          Set the duplicate data item comparison function.  The comparison
          function is called whenever it is necessary to compare a data item
@@ -72,7 +72,7 @@ DB-&gt;set_dup_compare(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1644878"></a>Parameters</h3>
+              <h3 class="title"><a id="id3961675"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ DB-&gt;set_dup_compare(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1644937"></a>dup_compare_fcn</h4>
+                <h4 class="title"><a id="id3961811"></a>dup_compare_fcn</h4>
               </div>
             </div>
           </div>
@@ -142,7 +142,7 @@ DB-&gt;set_dup_compare(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1645136"></a>Errors</h3>
+              <h3 class="title"><a id="id3962013"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -158,7 +158,7 @@ DB-&gt;set_dup_compare(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1645069"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3962058"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -171,7 +171,7 @@ DB-&gt;set_dup_compare(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1645070"></a>Class</h3>
+              <h3 class="title"><a id="id3962198"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -183,7 +183,7 @@ DB-&gt;set_dup_compare(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1645144"></a>See Also</h3>
+              <h3 class="title"><a id="id3962145"></a>See Also</h3>
             </div>
           </div>
         </div>

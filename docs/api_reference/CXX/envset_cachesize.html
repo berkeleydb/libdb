@@ -40,7 +40,7 @@
 int
 DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
       <p>
-         Set the size of the shared memory buffer pool — that is, the cache.
+         Sets the size of the shared memory buffer pool — that is, the cache.
          The cache should be the size of the normal working data set of the
          application, with some small amount of additional memory for unusual
          situations.  (Note: the working set is not the same as the number of
@@ -108,7 +108,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692821"></a>Parameters</h3>
+              <h3 class="title"><a id="id3681969"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692785"></a>bytes</h4>
+                <h4 class="title"><a id="id3681958"></a>gbytes</h4>
               </div>
             </div>
           </div>
@@ -128,7 +128,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692788"></a>gbytes</h4>
+                <h4 class="title"><a id="id3681533"></a>bytes</h4>
               </div>
             </div>
           </div>
@@ -140,7 +140,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1693004"></a>ncache</h4>
+                <h4 class="title"><a id="id3681892"></a>ncache</h4>
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1693014"></a>Errors</h3>
+              <h3 class="title"><a id="id3682077"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1692980"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3682215"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692981"></a>Class</h3>
+              <h3 class="title"><a id="id3682187"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -198,7 +198,7 @@ DbEnv::set_cachesize(u_int32_t gbytes, u_int32_t bytes, int ncache); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1692783"></a>See Also</h3>
+              <h3 class="title"><a id="id3682110"></a>See Also</h3>
             </div>
           </div>
         </div>

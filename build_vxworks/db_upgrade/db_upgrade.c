@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int db_upgrade_main __P((int, char *[]));
@@ -107,7 +107,7 @@ db_upgrade_main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: db_env_create: %s\n",
 		    progname, db_strerror(ret));
-		goto shutdown;
+		goto err;
 	}
 
 	dbenv->set_errfile(dbenv, stderr);
@@ -116,18 +116,18 @@ db_upgrade_main(argc, argv)
 	if (nflag) {
 		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
-			goto shutdown;
+			goto err;
 		}
 		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
-			goto shutdown;
+			goto err;
 		}
 	}
 
 	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
 	    passwd, DB_ENCRYPT_AES)) != 0) {
 		dbenv->err(dbenv, ret, "set_passwd");
-		goto shutdown;
+		goto err;
 	}
 
 	/*
@@ -140,14 +140,14 @@ db_upgrade_main(argc, argv)
 	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON,
 	    0)) != 0)) {
 		dbenv->err(dbenv, ret, "DB_ENV->open");
-		goto shutdown;
+		goto err;
 	}
 
 	for (; !__db_util_interrupted() && argv[0] != NULL; ++argv) {
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			fprintf(stderr,
 			    "%s: db_create: %s\n", progname, db_strerror(ret));
-			goto shutdown;
+			goto err;
 		}
 		dbp->set_errfile(dbp, stderr);
 		dbp->set_errpfx(dbp, progname);
@@ -158,7 +158,7 @@ db_upgrade_main(argc, argv)
 			ret = t_ret;
 		}
 		if (ret != 0)
-			goto shutdown;
+			goto err;
 		/*
 		 * People get concerned if they don't see a success message.
 		 * If verbose is set, give them one.
@@ -169,7 +169,7 @@ db_upgrade_main(argc, argv)
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 	if (dbenv != NULL && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;

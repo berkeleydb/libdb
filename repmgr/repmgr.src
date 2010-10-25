@@ -15,7 +15,7 @@ ARG	port		u_int16_t
 ARG	priority	u_int32_t
 END
 
-BEGIN_MSG ack
+BEGIN_MSG permlsn
 ARG	generation	u_int32_t
 ARG	lsn		DB_LSN
 END

@@ -21,11 +21,11 @@ typedef struct ___repmgr_v2handshake_args {
 	u_int32_t	priority;
 } __repmgr_v2handshake_args;
 
-#define	__REPMGR_ACK_SIZE	12
-typedef struct ___repmgr_ack_args {
+#define	__REPMGR_PERMLSN_SIZE	12
+typedef struct ___repmgr_permlsn_args {
 	u_int32_t	generation;
 	DB_LSN		lsn;
-} __repmgr_ack_args;
+} __repmgr_permlsn_args;
 
 #define	__REPMGR_VERSION_PROPOSAL_SIZE	8
 typedef struct ___repmgr_version_proposal_args {

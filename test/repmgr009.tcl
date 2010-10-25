@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -13,7 +13,7 @@
 # TEST
 # TEST	Run for btree only because access method shouldn't matter.
 # TEST
-proc repmgr009 { method { niter 10 } { tnum "009" } args } {
+proc repmgr009 { { niter 10 } { tnum "009" } args } {
 
 	source ./include.tcl
 
@@ -22,20 +22,7 @@ proc repmgr009 { method { niter 10 } { tnum "009" } args } {
 		return
 	}
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
-
-	# Skip for all methods except btree.
-	if { $checking_valid_methods } {
-		return btree
-	}
-	if { [is_btree $method] == 0 } {
-		puts "Repmgr$tnum: skipping for non-btree method $method."
-		return
-	}
-
+	set method "btree"
 	set args [convert_args $method $args]
 
 	puts "Repmgr$tnum ($method): repmgr API error test."
@@ -61,10 +48,12 @@ proc repmgr009_sub { method niter tnum largs } {
 	set masterdir $testdir/MASTERDIR
 	set masterdir2 $testdir/MASTERDIR2
 	set clientdir $testdir/CLIENTDIR
+	set norepdir $testdir/NOREPDIR
 
 	file mkdir $masterdir
 	file mkdir $masterdir2
 	file mkdir $clientdir
+	file mkdir $norepdir
 
 	# Use different connection retry timeout values to handle any
 	# collisions from starting sites at the same time by retrying
@@ -136,10 +125,9 @@ proc repmgr009_sub { method niter tnum largs } {
 	error_check_good errchk [is_substr $res "must be called before"] 1
 
 	puts "\tRepmgr$tnum.i: Call rep_start after starting repmgr (error)."
-	catch {set clientenv [eval $cl_envcmd -rep_client -rep_transport \
-	    \[list 2 replsend\]]} res
+	catch {$clientenv rep_start -client} res
 	error_check_good errchk [is_substr $res \
-	    "type mismatch for a replication process"] 1
+	    "cannot call from Replication Manager application"] 1
 
 	puts "\tRepmgr$tnum.j: Call rep_process_message (error)."
 	set envlist "{$masterenv 1} {$clientenv 2}"
@@ -180,5 +168,19 @@ proc repmgr009_sub { method niter tnum largs } {
 	error_check_good errchk [is_substr $res "invalid argument"] 1
 
 	error_check_good masterenv_close [$masterenv2 close] 0
+
+	puts "\tRepmgr$tnum.p: Start an env without starting rep or repmgr."
+	set norep_envcmd "berkdb_env_noerr -create $verbargs \
+	    -home $norepdir -errpfx NOREP -txn -thread \
+	    -rep_transport \[list 1 replsend\]"
+	set norepenv [eval $norep_envcmd]
+
+	puts "\tRepmgr$tnum.q: Call rep_elect before rep_start (error)."
+	catch {$norepenv rep_elect 2 2 2 5000000} res
+	# Internal rep_elect call returns EINVAL if rep_start has not 
+	# been called first.
+	error_check_good errchk [is_substr $res "invalid argument"] 1
+
+	error_check_good norepenv_close [$norepenv close] 0
 	replclose $testdir/MSGQUEUEDIR
 }

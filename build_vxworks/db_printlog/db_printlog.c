@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,13 +13,12 @@
 #include "dbinc/btree.h"
 #include "dbinc/fop.h"
 #include "dbinc/hash.h"
-#include "dbinc/log.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int db_printlog_print_app_record __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
@@ -27,6 +26,7 @@ int db_printlog_env_init_print __P((ENV *, u_int32_t, DB_DISTAB *));
 int db_printlog_env_init_print_42 __P((ENV *, DB_DISTAB *));
 int db_printlog_env_init_print_43 __P((ENV *, DB_DISTAB *));
 int db_printlog_env_init_print_47 __P((ENV *, DB_DISTAB *));
+int db_printlog_env_init_print_48 __P((ENV *, DB_DISTAB *));
 int db_printlog_lsn_arg __P((char *, DB_LSN *));
 int db_printlog_main __P((int, char *[]));
 int db_printlog_open_rep_db __P((DB_ENV *, DB **, DBC **));
@@ -61,11 +61,12 @@ db_printlog_main(argc, argv)
 	DBT data, keydbt;
 	DB_DISTAB dtab;
 	DB_ENV	*dbenv;
+	DB_LOG dblog;
 	DB_LOGC *logc;
 	DB_LSN key, start, stop, verslsn;
 	ENV *env;
 	u_int32_t logcflag, newversion, version;
-	int ch, cmp, exitval, nflag, rflag, ret, repflag;
+	int ch, cmp, exitval, i, nflag, rflag, ret, repflag;
 	char *home, *passwd;
 
 	if ((progname = __db_rpath(argv[0])) == NULL)
@@ -79,6 +80,7 @@ db_printlog_main(argc, argv)
 	dbp = NULL;
 	dbc = NULL;
 	dbenv = NULL;
+	env = NULL;
 	logc = NULL;
 	ZERO_LSN(start);
 	ZERO_LSN(stop);
@@ -86,6 +88,7 @@ db_printlog_main(argc, argv)
 	home = passwd = NULL;
 
 	memset(&dtab, 0, sizeof(dtab));
+	memset(&dblog, 0, sizeof(dblog));
 
 	__db_getopt_reset = 1;
 	while ((ch = getopt(argc, argv, "b:e:h:NP:rRV")) != EOF)
@@ -144,7 +147,7 @@ db_printlog_main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		goto shutdown;
+		goto err;
 	}
 
 	dbenv->set_errfile(dbenv, stderr);
@@ -153,18 +156,18 @@ db_printlog_main(argc, argv)
 	if (nflag) {
 		if ((ret = dbenv->set_flags(dbenv, DB_NOLOCKING, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOLOCKING");
-			goto shutdown;
+			goto err;
 		}
 		if ((ret = dbenv->set_flags(dbenv, DB_NOPANIC, 1)) != 0) {
 			dbenv->err(dbenv, ret, "set_flags: DB_NOPANIC");
-			goto shutdown;
+			goto err;
 		}
 	}
 
 	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
 	    passwd, DB_ENCRYPT_AES)) != 0) {
 		dbenv->err(dbenv, ret, "set_passwd");
-		goto shutdown;
+		goto err;
 	}
 
 	/*
@@ -174,7 +177,7 @@ db_printlog_main(argc, argv)
 	if ((ret = dbenv->set_app_dispatch(
 	    dbenv, db_printlog_print_app_record)) != 0) {
 		dbenv->err(dbenv, ret, "app_dispatch");
-		goto shutdown;
+		goto err;
 	}
 
 	/*
@@ -192,24 +195,24 @@ db_printlog_main(argc, argv)
 		    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_USE_ENVIRON, 0))
 		    != 0)) {
 			dbenv->err(dbenv, ret, "DB_ENV->open");
-			goto shutdown;
+			goto err;
 		}
 	} else if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON, 0)) != 0 &&
 	    (ret == DB_VERSION_MISMATCH ||
 	    (ret = dbenv->open(dbenv, home,
 	    DB_CREATE | DB_INIT_LOG | DB_PRIVATE | DB_USE_ENVIRON, 0)) != 0)) {
 		dbenv->err(dbenv, ret, "DB_ENV->open");
-		goto shutdown;
+		goto err;
 	}
 	env = dbenv->env;
 
 	/* Allocate a log cursor. */
 	if (repflag) {
 		if ((ret = db_printlog_open_rep_db(dbenv, &dbp, &dbc)) != 0)
-			goto shutdown;
+			goto err;
 	} else if ((ret = dbenv->log_cursor(dbenv, &logc, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->log_cursor");
-		goto shutdown;
+		goto err;
 	}
 
 	if (IS_ZERO_LSN(start)) {
@@ -237,7 +240,7 @@ db_printlog_main(argc, argv)
 	if (repflag &&
 	    (ret = db_printlog_env_init_print(env, version, &dtab)) != 0) {
 		dbenv->err(dbenv, ret, "callback: initialization");
-		goto shutdown;
+		goto err;
 	}
 	for (; !__db_util_interrupted(); logcflag = rflag ? DB_PREV : DB_NEXT) {
 		if (repflag) {
@@ -251,7 +254,7 @@ db_printlog_main(argc, argv)
 				break;
 			dbenv->err(dbenv,
 			    ret, repflag ? "DBC->get" : "DB_LOGC->get");
-			goto shutdown;
+			goto err;
 		}
 
 		/*
@@ -270,7 +273,7 @@ db_printlog_main(argc, argv)
 			 */
 			if ((ret = logc->version(logc, &newversion, 0)) != 0) {
 				dbenv->err(dbenv, ret, "DB_LOGC->version");
-				goto shutdown;
+				goto err;
 			}
 			if (version != newversion) {
 				version = newversion;
@@ -278,13 +281,13 @@ db_printlog_main(argc, argv)
 				    &dtab)) != 0) {
 					dbenv->err(dbenv, ret,
 					    "callback: initialization");
-					goto shutdown;
+					goto err;
 				}
 			}
 		}
 
-		ret = __db_dispatch(dbenv->env,
-		    &dtab, &data, &key, DB_TXN_PRINT, NULL);
+		ret = __db_dispatch(env,
+		    &dtab, &data, &key, DB_TXN_PRINT, (void*)&dblog);
 
 		/*
 		 * XXX
@@ -294,13 +297,23 @@ db_printlog_main(argc, argv)
 
 		if (ret != 0) {
 			dbenv->err(dbenv, ret, "tx: dispatch");
-			goto shutdown;
+			goto err;
 		}
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
+
+	/*
+	 * Call __db_close to free the dummy DB handles that were used
+	 * by the print routines.
+	 */
+	for (i = 0; i < dblog.dbentry_cnt; i++)
+		if (dblog.dbentry[i].dbp != NULL)
+			(void)__db_close(dblog.dbentry[i].dbp, NULL, DB_NOSYNC);
+	if (env != NULL && dblog.dbentry != NULL)
+		__os_free(env, dblog.dbentry);
 	if (logc != NULL && (ret = logc->close(logc, 0)) != 0)
 		exitval = 1;
 
@@ -362,41 +375,35 @@ db_printlog_env_init_print(env, version, dtabp)
 	if ((ret = __txn_init_print(env, dtabp)) != 0)
 		goto err;
 
-	switch (version) {
-	case DB_LOGVERSION:
-		ret = 0;
-		break;
-
+	if (version == DB_LOGVERSION)
+		goto done;
+	if ((ret = db_printlog_env_init_print_48(env, dtabp)) != 0)
+		goto err;
+	if (version >= DB_LOGVERSION_48)
+		goto done;
+	if ((ret = db_printlog_env_init_print_47(env, dtabp)) != 0)
+		goto err;
+	if (version == DB_LOGVERSION_47)
+		goto done;
 	/*
-	 * There are no log record/recovery differences between
-	 * 4.4 and 4.5.  The log version changed due to checksum.
-	 * There are no log recovery differences between
-	 * 4.5 and 4.6.  The name of the rep_gen in txn_checkpoint
-	 * changed (to spare, since we don't use it anymore).
+	 * There are no log record/recovery differences between 4.4 and 4.5.
+	 * The log version changed due to checksum.  There are no log recovery
+	 * differences between 4.5 and 4.6.  The name of the rep_gen in
+	 * txn_checkpoint changed (to spare, since we don't use it anymore).
 	 */
-	case DB_LOGVERSION_48:
-		if ((ret = __db_add_recovery_int(env, dtabp,
-		    __db_pg_sort_44_print, DB___db_pg_sort_44)) != 0)
-			goto err;
-		break;
-	case DB_LOGVERSION_47:
-	case DB_LOGVERSION_46:
-	case DB_LOGVERSION_45:
-	case DB_LOGVERSION_44:
-		ret = db_printlog_env_init_print_47(env, dtabp);
-		break;
-	case DB_LOGVERSION_43:
-		ret = db_printlog_env_init_print_43(env, dtabp);
-		break;
-	case DB_LOGVERSION_42:
-		ret = db_printlog_env_init_print_42(env, dtabp);
-		break;
-	default:
-		env->dbenv->errx(env->dbenv,
-		    "Unknown version %lu", (u_long)version);
+	if (version >= DB_LOGVERSION_44)
+		goto done;
+	if ((ret = db_printlog_env_init_print_43(env, dtabp)) != 0)
+		goto err;
+	if (version == DB_LOGVERSION_43)
+		goto done;
+	if (version != DB_LOGVERSION_42) {
+		__db_errx(env, "Unknown version %lu", (u_long)version);
 		ret = EINVAL;
-		break;
+		goto err;
 	}
+	ret = db_printlog_env_init_print_42(env, dtabp);
+done:
 err:	return (ret);
 }
 
@@ -407,9 +414,6 @@ db_printlog_env_init_print_42(env, dtabp)
 {
 	int ret;
 
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	   __bam_split_42_print, DB___bam_split_42)) != 0)
-		goto err;
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __db_relink_42_print, DB___db_relink_42)) != 0)
 		goto err;
@@ -433,24 +437,6 @@ db_printlog_env_init_print_42(env, dtabp)
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_ckp_42_print, DB___txn_ckp_42)) != 0)
 		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __txn_regop_42_print, DB___txn_regop_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_create_42_print, DB___fop_create_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_write_42_print, DB___fop_write_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_rename_42_print, DB___fop_rename_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_rename_42_print, DB___fop_rename_noundo_46)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
-		goto err;
 err:
 	return (ret);
 }
@@ -465,9 +451,6 @@ db_printlog_env_init_print_43(env, dtabp)
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __bam_relink_43_print, DB___bam_relink_43)) != 0)
 		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	   __bam_split_42_print, DB___bam_split_42)) != 0)
-		goto err;
 	/*
 	 * We want to use the 4.2-based txn_regop record.
 	 */
@@ -475,21 +458,6 @@ db_printlog_env_init_print_43(env, dtabp)
 	    __txn_regop_42_print, DB___txn_regop_42)) != 0)
 		goto err;
 
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_create_42_print, DB___fop_create_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_write_42_print, DB___fop_write_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_rename_42_print, DB___fop_rename_42)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __fop_rename_42_print, DB___fop_rename_noundo_46)) != 0)
-		goto err;
-	if ((ret = __db_add_recovery_int(env, dtabp,
-	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
-		goto err;
 err:
 	return (ret);
 }
@@ -529,6 +497,37 @@ db_printlog_env_init_print_47(env, dtabp)
 	if ((ret = __db_add_recovery_int(env, dtabp,
 	    __txn_xa_regop_42_print, DB___txn_xa_regop_42)) != 0)
 		goto err;
+
+err:
+	return (ret);
+}
+
+int
+db_printlog_env_init_print_48(env, dtabp)
+	ENV *env;
+	DB_DISTAB *dtabp;
+{
+	int ret;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __db_pg_sort_44_print, DB___db_pg_sort_44)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __db_addrem_42_print, DB___db_addrem_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __db_big_42_print, DB___db_big_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __bam_split_48_print, DB___bam_split_48)) != 0)
+		goto err;
+#ifdef HAVE_HASH
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __ham_insdel_42_print, DB___ham_insdel_42)) != 0)
+		goto err;
+	if ((ret = __db_add_recovery_int(env, dtabp,
+	    __ham_replace_42_print, DB___ham_replace_42)) != 0)
+		goto err;
+#endif
 
 err:
 	return (ret);

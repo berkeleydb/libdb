@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -62,18 +62,30 @@ extern "C" {
 #define	MTX_MUTEX_TEST		21
 #define	MTX_REP_CHKPT		22
 #define	MTX_REP_DATABASE	23
-#define	MTX_REP_EVENT		24
-#define	MTX_REP_REGION		25
-#define	MTX_REPMGR		26
-#define	MTX_SEQUENCE		27
-#define	MTX_TWISTER		28
-#define	MTX_TXN_ACTIVE		29
-#define	MTX_TXN_CHKPT		30
-#define	MTX_TXN_COMMIT		31
-#define	MTX_TXN_MVCC		32
-#define	MTX_TXN_REGION		33
+#define	MTX_REP_DIAG		24
+#define	MTX_REP_EVENT		25
+#define	MTX_REP_REGION		26
+#define	MTX_REP_START		27
+#define	MTX_REP_WAITER		28
+#define	MTX_REPMGR		29
+#define	MTX_SEQUENCE		30
+#define	MTX_TWISTER		31
+#define	MTX_TCL_EVENTS		32
+#define	MTX_TXN_ACTIVE		33
+#define	MTX_TXN_CHKPT		34
+#define	MTX_TXN_COMMIT		35
+#define	MTX_TXN_MVCC		36
+#define	MTX_TXN_REGION		37
 
-#define	MTX_MAX_ENTRY		33
+#define	MTX_MAX_ENTRY		37
+
+/* The following macros are defined on some platforms, e.g. QNX. */
+#undef __mutex_init
+#undef __mutex_lock
+#undef __mutex_timedlock
+#undef __mutex_unlock
+#undef __mutex_destroy
+#undef __mutex_trylock
 
 /* Redirect mutex calls to the correct functions. */
 #if !defined(HAVE_MUTEX_HYBRID) && (					\
@@ -81,7 +93,8 @@ extern "C" {
     defined(HAVE_MUTEX_SOLARIS_LWP) ||					\
     defined(HAVE_MUTEX_UI_THREADS))
 #define	__mutex_init(a, b, c)		__db_pthread_mutex_init(a, b, c)
-#define	__mutex_lock(a, b)		__db_pthread_mutex_lock(a, b)
+#define	__mutex_lock(a, b)		__db_pthread_mutex_lock(a, b, 0)
+#define	__mutex_timedlock(a, b, c)	__db_pthread_mutex_lock(a, b, c)
 #define	__mutex_unlock(a, b)		__db_pthread_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_pthread_mutex_destroy(a, b)
 #define	__mutex_trylock(a, b)		__db_pthread_mutex_trylock(a, b)
@@ -138,7 +151,8 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 #endif
 #elif defined(HAVE_MUTEX_WIN32) || defined(HAVE_MUTEX_WIN32_GCC)
 #define	__mutex_init(a, b, c)		__db_win32_mutex_init(a, b, c)
-#define	__mutex_lock(a, b)		__db_win32_mutex_lock(a, b)
+#define	__mutex_lock(a, b)		__db_win32_mutex_lock(a, b, 0)
+#define	__mutex_timedlock(a, b, c)	__db_win32_mutex_lock(a, b, c)
 #define	__mutex_trylock(a, b)		__db_win32_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_win32_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_win32_mutex_destroy(a, b)
@@ -148,13 +162,15 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 #endif
 #elif defined(HAVE_MUTEX_FCNTL)
 #define	__mutex_init(a, b, c)		__db_fcntl_mutex_init(a, b, c)
-#define	__mutex_lock(a, b)		__db_fcntl_mutex_lock(a, b)
+#define	__mutex_lock(a, b)		__db_fcntl_mutex_lock(a, b, 0)
+#define	__mutex_timedlock(a, b, c)	__db_fcntl_lock(a, b, c)
 #define	__mutex_trylock(a, b)		__db_fcntl_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_fcntl_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_fcntl_mutex_destroy(a, b)
 #else
 #define	__mutex_init(a, b, c)		__db_tas_mutex_init(a, b, c)
-#define	__mutex_lock(a, b)		__db_tas_mutex_lock(a, b)
+#define	__mutex_lock(a, b)		__db_tas_mutex_lock(a, b, 0)
+#define	__mutex_timedlock(a, b, c)	__db_tas_mutex_lock(a, b, c)
 #define	__mutex_trylock(a, b)		__db_tas_mutex_trylock(a, b)
 #define	__mutex_unlock(a, b)		__db_tas_mutex_unlock(a, b)
 #define	__mutex_destroy(a, b)		__db_tas_mutex_destroy(a, b)
@@ -214,6 +230,14 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 	    __mutex_unlock(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
+
+#define	MUTEX_WAIT(env, mutex, duration) do {			      \
+	int __ret;						      \
+	if ((mutex) != MUTEX_INVALID &&				      \
+	    (__ret = __mutex_timedlock(env, mutex, duration)) != 0 && \
+	    __ret != DB_TIMEOUT)				      \
+		return (DB_RUNRECOVERY);			      \
+} while (0)
 #else
 /*
  * There are calls to lock/unlock mutexes outside of #ifdef's -- replace
@@ -227,6 +251,7 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 #define	MUTEX_UNLOCK(env, mutex)	(mutex) = (mutex)
 #define	MUTEX_REQUIRED(env, mutex)	(mutex) = (mutex)
 #define	MUTEX_REQUIRED_READ(env, mutex)	(mutex) = (mutex)
+#define	MUTEX_WAIT(env, mutex, duration) (mutex) = (mutex)
 #endif
 
 /*

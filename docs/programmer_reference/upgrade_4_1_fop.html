@@ -49,7 +49,7 @@ serve as a secondary index, where again there was no way to group the
 creation of both databases in a single atomic operation.</p>
       <p>In the 4.1 release of Berkeley DB, this is no longer the case.  The
 <a href="../api_reference/C/dbopen.html" class="olink">DB-&gt;open()</a> and <a href="../api_reference/C/dbassociate.html" class="olink">DB-&gt;associate()</a> methods now take a <a href="../api_reference/C/txn.html" class="olink">TXN</a>
-handle returned by <a href="../api_reference/C/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a> as an optional argument.  New
+handle returned by <a href="../api_reference/C/txnbegin.html" class="olink">DB_TXN-&gt;begin()</a> as an optional argument.  New
 <a href="../api_reference/C/envdbremove.html" class="olink">DB_ENV-&gt;dbremove()</a> and <a href="../api_reference/C/envdbrename.html" class="olink">DB_ENV-&gt;dbrename()</a> methods taking a
 <a href="../api_reference/C/txn.html" class="olink">TXN</a> handle as an optional argument have been added.</p>
       <p>To upgrade, applications must add a <a href="../api_reference/C/txn.html" class="olink">TXN</a> parameter in the

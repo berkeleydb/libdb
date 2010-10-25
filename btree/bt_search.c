@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -57,9 +57,9 @@
  * PUBLIC: int __bam_get_root __P((DBC *, db_pgno_t, int, u_int32_t, int *));
  */
 int
-__bam_get_root(dbc, pg, slevel, flags, stack)
+__bam_get_root(dbc, root_pgno, slevel, flags, stack)
 	DBC *dbc;
-	db_pgno_t pg;
+	db_pgno_t root_pgno;
 	int slevel;
 	u_int32_t flags;
 	int *stack;
@@ -73,6 +73,7 @@ __bam_get_root(dbc, pg, slevel, flags, stack)
 	u_int32_t get_mode;
 	int ret, t_ret;
 
+	COMPQUIET(h, NULL);
 	LOCK_INIT(lock);
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
@@ -93,11 +94,6 @@ try_again:
 	if (*stack ||
 	    LF_ISSET(SR_DEL) || (LF_ISSET(SR_NEXT) && LF_ISSET(SR_WRITE)))
 		lock_mode = DB_LOCK_WRITE;
-	if ((lock_mode == DB_LOCK_WRITE || F_ISSET(dbc, DBC_DOWNREV) ||
-	    dbc->dbtype == DB_RECNO || F_ISSET(cp, C_RECNUM))) {
-lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
-			return (ret);
-	}
 
 	/*
 	 * Get the root.  If the root happens to be a leaf page then
@@ -106,21 +102,31 @@ lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 	 * If we can't get the root shared, then get a lock on it and
 	 * then wait for the latch.
 	 */
-	if (lock_mode == DB_LOCK_WRITE)
+retry:	if (lock_mode == DB_LOCK_WRITE)
 		get_mode = DB_MPOOL_DIRTY;
-	else if (LOCK_ISSET(lock) || !STD_LOCKING(dbc))
+	else if (LOCK_ISSET(lock) || !STD_LOCKING(dbc) ||
+	    F_ISSET(dbc, DBC_DOWNREV) ||
+	    dbc->dbtype == DB_RECNO || F_ISSET(cp, C_RECNUM))
 		get_mode = 0;
 	else
 		get_mode = DB_MPOOL_TRY;
 
-	if ((ret = __memp_fget(mpf, &pg,
-	    dbc->thread_info, dbc->txn, get_mode, &h)) != 0) {
-		if (ret == DB_LOCK_NOTGRANTED)
-			goto lock_it;
+	BAM_GET_ROOT(dbc, root_pgno, h, get_mode, lock_mode, lock, ret);
+	if (ret == DB_LOCK_NOTGRANTED && get_mode == DB_MPOOL_TRY) {
+		DB_ASSERT(dbp->env, !LOCK_ISSET(lock));
+		if ((ret = __db_lget(dbc, 0,
+		    root_pgno == PGNO_INVALID ? BAM_ROOT_PGNO(dbc) : root_pgno,
+		    lock_mode, 0, &lock)) != 0)
+			return (ret);
+		goto retry;
+	}
+	if (ret != 0) {
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
 	}
+	DB_ASSERT(dbp->env, TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO ||
+	    TYPE(h) == P_LBTREE || TYPE(h) == P_LRECNO || TYPE(h) == P_LDUP);
 
 	/*
 	 * Decide if we need to dirty and/or lock this page.
@@ -141,7 +147,7 @@ lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 
 		/*
 		 * Now that we know what level the root is at, do we need a
-		 * write lock?  If not and we got the lock before latching
+		 * write lock?  If not or we got the lock before latching
 		 * we are done.
 		 */
 		if (LEVEL(h) != LEAFLEVEL || LF_ISSET(SR_WRITE)) {
@@ -163,8 +169,8 @@ lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 			}
 		} else {
 			/* Try to lock the page without waiting first. */
-			if ((ret = __db_lget(dbc,
-			    0, pg, lock_mode, DB_LOCK_NOWAIT, &lock)) == 0) {
+			if ((ret = __db_lget(dbc, 0, root_pgno,
+			    lock_mode, DB_LOCK_NOWAIT, &lock)) == 0) {
 				if (lock_mode == DB_LOCK_WRITE && (ret =
 				    __memp_dirty(mpf, &h, dbc->thread_info,
 				    dbc->txn, dbc->priority, 0)) != 0) {
@@ -188,12 +194,15 @@ lock_it:	if ((ret = __db_lget(dbc, 0, pg, lock_mode, 0, &lock)) != 0)
 
 			if (ret != 0)
 				return (ret);
+			get_mode = 0;
+			if (lock_mode == DB_LOCK_WRITE)
+				get_mode = DB_MPOOL_DIRTY;
 
 			if ((ret = __db_lget(dbc,
-			     0, pg, lock_mode, 0, &lock)) != 0)
+			     0, root_pgno, lock_mode, 0, &lock)) != 0)
 				return (ret);
 			if ((ret = __memp_fget(mpf,
-			     &pg, dbc->thread_info, dbc->txn,
+			     &root_pgno, dbc->thread_info, dbc->txn,
 			     lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0,
 			     &h)) != 0) {
 				/* Did not read it, release the lock */
@@ -250,7 +259,7 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	PAGE *h, *parent_h;
 	db_indx_t base, i, indx, *inp, lim;
 	db_lockmode_t lock_mode;
-	db_pgno_t pg, saved_pg;
+	db_pgno_t pg, saved_pg, start_pgno;
 	db_recno_t recno;
 	int adjust, cmp, deloffset, ret, set_stack, stack, t_ret;
 	int getlock, was_next;
@@ -283,16 +292,14 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	 * regardless.  See btree.h for more details.
 	 */
 
-	if (root_pgno == PGNO_INVALID)
-		root_pgno = cp->root;
-	saved_pg = root_pgno;
+	start_pgno = saved_pg = root_pgno;
 	saved_level = MAXBTREELEVEL;
-retry:	if ((ret = __bam_get_root(dbc, root_pgno, slevel, flags, &stack)) != 0)
+retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 		goto err;
 	lock_mode = cp->csp->lock_mode;
 	get_mode = lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0;
 	h = cp->csp->page;
-	pg = PGNO(h);
+	root_pgno = pg = PGNO(h);
 	lock = cp->csp->lock;
 	set_stack = stack;
 	/*
@@ -558,6 +565,7 @@ next:		if (recnop != NULL)
 			LOCK_INIT(lock);
 			get_mode = DB_MPOOL_DIRTY;
 			lock_mode = DB_LOCK_WRITE;
+			getlock = 1;
 			goto lock_next;
 		} else {
 			/*
@@ -675,8 +683,7 @@ lock_next:		h = NULL;
 				 * again or exit without actually looking
 				 * at the data.
 				 */
-				if ((t_ret = __LPUT(dbc, lock)) != 0 &&
-				    ret == 0)
+				if ((t_ret = __LPUT(dbc, lock)) != 0)
 					ret = t_ret;
 				/*
 				 * If we blocked at a different level release
@@ -708,20 +715,52 @@ lock_next:		h = NULL;
 				 * the lock on it while we reget the root
 				 * latch because allocation is one place
 				 * we lock while holding a latch.
-				 * Noone can have a free page locked, so
-				 * check for that case.  We do this by
-				 * checking the level, since it will be 0
-				 * if free and we might as well see if this
-				 * page moved and drop the lock in that case.
+				 * We want to hold the lock but must ensure
+				 * that the page is not free or cannot become
+				 * free.  If we are at the LEAF level we can
+				 * hold on to the lock if the page is still
+				 * of the right type.  Otherwise we need to
+				 * besure this page cannot move to an off page
+				 * duplicate tree (which are not locked) and
+				 * masquerade as the page we want.
+				 */
+
+				/*
+				 * If the page is not at leaf level
+				 * then see if OPD trees are around.
+				 * If the page could appear as an
+				 * interior offpage duplicate node
+				 * at the right level the it will
+				 * not be locked and subsequently be
+				 * freed. If there are multiple
+				 * databases in the file then they
+				 * could have OPDs.
+				 */
+				if (level - 1 > LEAFLEVEL &&
+				    (F_ISSET(dbp, DB_AM_SUBDB) ||
+				    (dbp->type == DB_BTREE &&
+				    F_ISSET(dbp, DB_AM_DUPSORT))))
+				    	goto drop_lock;
+
+				/*
+				 * Take a look at the page.  If it got 
+				 * freed it could be very gone.
 				 */
 				if ((ret = __memp_fget(mpf, &pg,
-				     dbc->thread_info,
-				     dbc->txn, get_mode, &h)) != 0 &&
+				     dbc->thread_info, dbc->txn, 0, &h)) != 0 &&
 				     ret != DB_PAGE_NOTFOUND)
 					goto err;
 
-				if (ret != 0 || LEVEL(h) != level - 1) {
-					ret = __LPUT(dbc, saved_lock);
+				/*
+				 * Check for right level and page type.
+				 */
+				if (ret != 0 || LEVEL(h) != level - 1 ||
+				    (LEVEL(h) == LEAFLEVEL ?
+				    TYPE(h) != (dbc->dbtype == DB_BTREE ?
+				    P_LBTREE : P_LRECNO) :
+				    TYPE(h) != (dbc->dbtype == DB_BTREE ?
+				    P_IBTREE : P_IRECNO))) {
+drop_lock:				ret = __LPUT(dbc, saved_lock);
 					if (ret != 0)
 						goto err;
 					pg = root_pgno;
@@ -921,7 +960,9 @@ __bam_stkrel(dbc, flags)
 		 */
 		if (LF_ISSET(STK_PGONLY))
 			continue;
-		if (LF_ISSET(STK_NOLOCK)) {
+		if (LF_ISSET(STK_NOLOCK) &&
+		    (epg->lock.mode == DB_LOCK_READ ||
+		    mpf->mfp->multiversion == 0)) {
 			if ((t_ret = __LPUT(dbc, epg->lock)) != 0 && ret == 0)
 				ret = t_ret;
 		} else

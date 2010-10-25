@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -303,9 +303,12 @@ proc env017_repmgr_stat { } {
 		{ "Messages discarded"	    st_msgs_dropped}
 		{ "Connections dropped"	    st_connection_drop}
 		{ "Failed re-connects"	    st_connect_fail}
+		{ "Election threads"	    st_elect_threads}
+		{ "Max elect threads"	    st_max_elect_threads}
 	}
 	set doc_list [list st_perm_failed st_msgs_queued st_msgs_dropped \
-	    st_connection_drop st_connect_fail ]
+	    st_connection_drop st_connect_fail st_elect_threads \
+	    st_max_elect_threads ]
 	env017_stat_check \
 	    $map_list $doc_list $check_type $stat_method $envargs
 }

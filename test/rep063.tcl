@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2009 Oracle.  All rights reserved.
+# Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -20,10 +20,6 @@ proc rep063 { method args } {
 	global databases_in_memory
 	global repfiles_in_memory
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 	set tnum "063"
 
 	# Skip for all methods except btree.
@@ -121,7 +117,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master $verbargs \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -133,7 +129,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create -home $clientdir($i) \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    $c_txnargs($i) $c_logargs($i) -rep_client \
 		    -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i) $recargs]
@@ -237,7 +233,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	} else { 
 		set dbname "test.db"
 	} 
-	run_election env_cmd envlist err_cmd pri crash\
+	run_election envlist err_cmd pri crash\
 	    $qdir $m $elector $nsites $nvotes $nclients $winner 0 $dbname
 
 	#
@@ -266,7 +262,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set winner 0
 	setpriority pri $nclients $winner 0 1
 	set pri(1) 0
-	run_election env_cmd envlist err_cmd pri crash $qdir \
+	run_election envlist err_cmd pri crash $qdir \
 	    $m $elector $nsites $nvotes $nclients $winner 0 $dbname
 	error_check_bad old_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
@@ -285,7 +281,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	set winner 1
 	setpriority pri $nclients $winner 0 1
 	set pri(2) [expr $pri(1) / 2]
-	run_election env_cmd envlist err_cmd pri crash $qdir \
+	run_election envlist err_cmd pri crash $qdir \
 	    $m $elector $nsites $nvotes $nclients $winner 0 $dbname
 	error_check_bad old_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
@@ -314,7 +310,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	#
 	# Winner should be zero priority.
 	#
-	run_election env_cmd envlist err_cmd pri crash $qdir \
+	run_election envlist err_cmd pri crash $qdir \
 	    $m $elector $nsites $nvotes $nclients $winner 0 $dbname
 	error_check_good elect_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0
@@ -341,7 +337,7 @@ proc rep063_sub { method nclients tnum logset recargs largs } {
 	# Client 4 has biggest LSN and should now win, but winner should
 	# be zero priority.
 	#
-	run_election env_cmd envlist err_cmd pri crash $qdir \
+	run_election envlist err_cmd pri crash $qdir \
 	    $m $elector $nsites $nvotes $nclients $winner 0 $dbname
 	error_check_good elect_pri [stat_field $clientenv(2) rep_stat \
 	    "Election priority"] 0

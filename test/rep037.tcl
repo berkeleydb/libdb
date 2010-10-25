@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -19,11 +19,6 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -59,15 +54,20 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 	}
 
 	# Run the body of the test with and without recovery,
-	# and with and without cleaning.
-	set cleanopts { bulk clean noclean }
+	# and with various configurations.
+	set configopts { dup bulk clean noclean }
 	foreach r $test_recopts {
-		foreach c $cleanopts {
+		foreach c $configopts {
 			foreach l $logsets {
 				set logindex [lsearch -exact $l "in-memory"]
 				if { $r == "-recover" && $logindex != -1 } {
 					puts "Skipping rep$tnum for -recover\
 					    with in-memory logs."
+					continue
+				}
+				if { $c == "dup" && $databases_in_memory } {
+					puts "Skipping rep$tnum for dup\
+					    with in-memory databases."
 					continue
 				}
 				set args $saved_args
@@ -81,7 +81,7 @@ proc rep037 { method { niter 1500 } { tnum "037" } args } {
 	}
 }
 
-proc rep037_sub { method niter tnum logset recargs clean largs } {
+proc rep037_sub { method niter tnum logset recargs config largs } {
 	global testdir
 	global util_path
 	global databases_in_memory
@@ -131,9 +131,19 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 	# but that seems like overkill.
 	#
 	set bulk 0
-	if { $clean == "bulk" } {
+	set clean $config
+	if { $config == "bulk" } {
 		set bulk 1
 		set clean "clean"
+	}
+	#
+	# If using dups do not clean the env.  We want to keep the
+	# database around to a dbp and cursor to open.
+	#
+	set dup 0
+	if { $config == "dup" } {
+		set dup 1
+		set clean "noclean"
 	}
 	# Open a master.
 	repladd 1
@@ -165,6 +175,22 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 	#
 	$masterenv test force noarchive_timeout
 
+	if { $dup } {
+		#
+		# Create a known db for dup cursor testing.
+		#
+		puts "\tRep$tnum.a0: Creating dup db."
+		if { $databases_in_memory == 1 } {
+			set dupfile { "" "dup.db" }
+		} else {
+			set dupfile "dup.db"
+		}
+		set dargs [convert_args $method $largs]
+		set omethod [convert_method $method]
+		set dupdb [eval {berkdb_open_noerr} -env $masterenv \
+		    -auto_commit -create -mode 0644 $omethod $dargs $dupfile]
+		$dupdb close
+	}
 	# Run rep_test in the master (and update client).
 	puts "\tRep$tnum.a: Running rep_test in replicated env."
 	set start 0
@@ -207,6 +233,22 @@ proc rep037_sub { method niter tnum logset recargs clean largs } {
 	}
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
+
+	#
+	# If testing duplicate cursors, open and close a dup cursor now.  All
+	# we need to do is create a dup cursor and then close both
+	# cursors before internal init begins.  That will make sure
+	# that the lockout is working correctly.
+	#
+	if { $dup } {
+		puts "\tRep$tnum.e.1: Open/close dup cursor."
+		set dupdb [eval {berkdb_open_noerr} -env $clientenv $dupfile]
+		set dbc [$dupdb cursor]
+		set dbc2 [$dbc dup]
+		$dbc2 close
+		$dbc close
+		$dupdb close
+	}
 	set envlist "{$masterenv 1} {$clientenv 2}"
 	process_msgs $envlist 0 NONE err
 	if { $clean == "noclean" } {

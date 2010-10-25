@@ -1,12 +1,12 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
 # TEST	mut002
 # TEST	Two-process mutex test.
-#	
+# TEST
 # TEST	Allocate and lock a self-blocking mutex.  Start another process. 
 # TEST	Try to lock the mutex again -- it will block.  
 # TEST	Unlock the mutex from the other process, and the blocked 

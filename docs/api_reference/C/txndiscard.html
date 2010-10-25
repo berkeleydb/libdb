@@ -51,13 +51,58 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
          be discarded using <code class="methodname">DB_TXN-&gt;discard()</code>.
      </p>
       <p>
+     	All open cursors in the transaction are closed and the
+     	first cursor close error, if any, is returned.
+    </p>
+      <p>
          The <code class="methodname">DB_TXN-&gt;discard()</code> <span>
             <span>
                   method returns a non-zero error value on failure and 0 on success.
             </span>
             
         </span>
-    </p>
+         
+         The errors values that this method returns include the error values of <code class="methodname">DBcursor-&gt;close()</code> and the following:
+         
+         </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4031283"></a>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4031291"></a>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4031038"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <p>
          After <code class="methodname">DB_TXN-&gt;discard()</code> has been called, regardless of its return,
          the <a class="link" href="txn.html" title="Chapter 12.  The DB_TXN Handle">DB_TXN</a>  handle may not
@@ -67,7 +112,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709151"></a>Parameters</h3>
+              <h3 class="title"><a id="id4031446"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -75,7 +120,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1709205"></a>flags</h4>
+                <h4 class="title"><a id="id4031449"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -89,7 +134,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709344"></a>Errors</h3>
+              <h3 class="title"><a id="id4031187"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -105,7 +150,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1709281"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4030970"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -120,7 +165,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709296"></a>Class</h3>
+              <h3 class="title"><a id="id4030779"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -132,7 +177,7 @@ DB_TXN-&gt;discard(DB_TXN *tid, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709419"></a>See Also</h3>
+              <h3 class="title"><a id="id4030709"></a>See Also</h3>
             </div>
           </div>
         </div>

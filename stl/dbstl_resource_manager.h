@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -214,6 +214,10 @@ public:
 	static void global_startup();
 	// Delete registered DbstlGlobalInnerObject objects.
 	static void global_exit();
+
+	// Delete the ResourceManager singleton of current thread, and remove it 
+	// from glob_objs.
+	static void thread_exit();
 	static void register_global_object(DbstlGlobalInnerObject *gio);
 	static DbEnv *get_mutex_env() { return mtx_env_; }
 	// Lock mtx_handle_, if it is 0, allocate it first.

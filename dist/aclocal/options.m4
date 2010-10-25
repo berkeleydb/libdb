@@ -3,6 +3,27 @@
 # Process user-specified options.
 AC_DEFUN(AM_OPTIONS_SET, [
 
+AC_MSG_CHECKING(if --enable-smallbuild option specified)
+AC_ARG_ENABLE(smallbuild,
+	[AC_HELP_STRING([--enable-smallbuild],
+			[Build small footprint version of the library.])],
+	[db_cv_smallbuild="$enable_smallbuild"], [db_cv_smallbuild="no"])
+case "$db_cv_smallbuild" in
+yes) db_cv_build_full="no";;
+  *) db_cv_build_full="yes";;
+esac
+AC_MSG_RESULT($db_cv_smallbuild)
+
+AC_MSG_CHECKING(if --disable-atomicsupport option specified)
+AC_ARG_ENABLE(atomicsupport,
+	AC_HELP_STRING([--disable-atomicsupport],
+	    [Do not build any native atomic operation support.]),, enableval="yes")
+db_cv_build_atomicsupport="$enableval"
+case "$enableval" in
+ no) AC_MSG_RESULT(yes);;
+yes) AC_MSG_RESULT(no);;
+esac
+
 # --enable-bigfile was the configuration option that Berkeley DB used before
 # autoconf 2.50 was released (which had --enable-largefile integrated in).
 AC_ARG_ENABLE(bigfile,
@@ -11,11 +32,11 @@ AC_ARG_ENABLE(bigfile,
 	[AC_MSG_ERROR(
 	    [--enable-bigfile no longer supported, use --enable-largefile])])
 
-AC_MSG_CHECKING(if --disable-cryptography option specified)
-AC_ARG_ENABLE(cryptography,
-	AC_HELP_STRING([--disable-cryptography],
-	    [Do not build database cryptography support.]),, enableval="yes")
-db_cv_build_cryptography="$enableval"
+AC_MSG_CHECKING(if --disable-compression option specified)
+AC_ARG_ENABLE(compression,
+	AC_HELP_STRING([--disable-compression],
+	    [Do not build compression support.]),, enableval=$db_cv_build_full)
+db_cv_build_compression="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
 yes) AC_MSG_RESULT(no);;
@@ -24,28 +45,8 @@ esac
 AC_MSG_CHECKING(if --disable-hash option specified)
 AC_ARG_ENABLE(hash,
 	AC_HELP_STRING([--disable-hash],
-	    [Do not build Hash access method.]),, enableval="yes")
+	    [Do not build Hash access method.]),, enableval=$db_cv_build_full)
 db_cv_build_hash="$enableval"
-case "$enableval" in
- no) AC_MSG_RESULT(yes);;
-yes) AC_MSG_RESULT(no);;
-esac
-
-AC_MSG_CHECKING(if --disable-partition option specified)
-AC_ARG_ENABLE(partition,
-	AC_HELP_STRING([--disable-partition],
-	    [Do not build partitioned database support.]),, enableval="yes")
-db_cv_build_partition="$enableval"
-case "$enableval" in
- no) AC_MSG_RESULT(yes);;
-yes) AC_MSG_RESULT(no);;
-esac
-
-AC_MSG_CHECKING(if --disable-compression option specified)
-AC_ARG_ENABLE(compression,
-	AC_HELP_STRING([--disable-compression],
-	    [Do not build compression support.]),, enableval="yes")
-db_cv_build_compression="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
 yes) AC_MSG_RESULT(no);;
@@ -61,11 +62,12 @@ case "$enableval" in
 yes) AC_MSG_RESULT(no);;
 esac
 
-AC_MSG_CHECKING(if --disable-atomicsupport option specified)
-AC_ARG_ENABLE(atomicsupport,
-	AC_HELP_STRING([--disable-atomicsupport],
-	    [Do not build any native atomic operation support.]),, enableval="yes")
-db_cv_build_atomicsupport="$enableval"
+AC_MSG_CHECKING(if --disable-partition option specified)
+AC_ARG_ENABLE(partition,
+	AC_HELP_STRING([--disable-partition],
+	    [Do not build partitioned database support.]),,
+	enableval=$db_cv_build_full)
+db_cv_build_partition="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
 yes) AC_MSG_RESULT(no);;
@@ -74,7 +76,7 @@ esac
 AC_MSG_CHECKING(if --disable-queue option specified)
 AC_ARG_ENABLE(queue,
 	AC_HELP_STRING([--disable-queue],
-	    [Do not build Queue access method.]),, enableval="yes")
+	    [Do not build Queue access method.]),, enableval=$db_cv_build_full)
 db_cv_build_queue="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
@@ -84,7 +86,8 @@ esac
 AC_MSG_CHECKING(if --disable-replication option specified)
 AC_ARG_ENABLE(replication,
 	AC_HELP_STRING([--disable-replication],
-	    [Do not build database replication support.]),, enableval="yes")
+	    [Do not build database replication support.]),,
+	enableval=$db_cv_build_full)
 db_cv_build_replication="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
@@ -94,7 +97,7 @@ esac
 AC_MSG_CHECKING(if --disable-statistics option specified)
 AC_ARG_ENABLE(statistics,
 	AC_HELP_STRING([--disable-statistics],
-	    [Do not build statistics support.]),, enableval="yes")
+	    [Do not build statistics support.]),, enableval=$db_cv_build_full)
 db_cv_build_statistics="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
@@ -104,7 +107,8 @@ esac
 AC_MSG_CHECKING(if --disable-verify option specified)
 AC_ARG_ENABLE(verify,
 	AC_HELP_STRING([--disable-verify],
-	    [Do not build database verification support.]),, enableval="yes")
+	    [Do not build database verification support.]),,
+	enableval=$db_cv_build_full)
 db_cv_build_verify="$enableval"
 case "$enableval" in
  no) AC_MSG_RESULT(yes);;
@@ -216,22 +220,34 @@ AC_ARG_ENABLE(rpc,,
 	 fi], [db_cv_rpc="no"])
 AC_MSG_RESULT($db_cv_rpc)
 
-AC_MSG_CHECKING(if --enable-smallbuild option specified)
-AC_ARG_ENABLE(smallbuild,
-	[AC_HELP_STRING([--enable-smallbuild],
-			[Build small footprint version of the library.])],
-	[db_cv_smallbuild="$enable_smallbuild"], [db_cv_smallbuild="no"])
-if test "$db_cv_smallbuild" = "yes"; then
-	db_cv_build_cryptography="no"
-	db_cv_build_hash="no"
-	db_cv_build_queue="no"
-	db_cv_build_replication="no"
-	db_cv_build_statistics="no"
-	db_cv_build_verify="no"
-	db_cv_build_partition="no"
-	db_cv_build_compression="no"
-fi
-AC_MSG_RESULT($db_cv_smallbuild)
+AC_MSG_CHECKING(if --enable-sql option specified)
+AC_ARG_ENABLE(sql,
+	[AC_HELP_STRING([--enable-sql],
+			[Build the SQL API.])],
+	[db_cv_sql="$enable_sql"], [db_cv_sql="no"])
+AC_MSG_RESULT($db_cv_sql)
+
+AC_MSG_CHECKING(if --enable-sql_compat option specified)
+AC_ARG_ENABLE(sql_compat,
+	[AC_HELP_STRING([--enable-sql_compat],
+			[Build a drop-in replacement sqlite3 library.])],
+	[db_cv_sql_compat="$enable_sql_compat"], [db_cv_sql_compat="no"])
+AC_MSG_RESULT($db_cv_sql_compat)
+
+AC_MSG_CHECKING(if --enable-amalgamation option specified)
+AC_ARG_ENABLE(amalgamation,
+	AC_HELP_STRING([--enable-amalgamation],
+	    [Build a SQL amalgamation instead of building files separately.]),
+	[db_cv_sql_amalgamation="$enable_amalgamation"],
+	[db_cv_sql_amalgamation="no"])
+AC_MSG_RESULT($db_cv_sql_amalgamation)
+
+AC_MSG_CHECKING(if --enable-sql_codegen option specified)
+AC_ARG_ENABLE(sql_codegen,
+	[AC_HELP_STRING([--enable-sql_codegen],
+			[Build the SQL-to-C code generation tool.])],
+	[db_cv_sql_codegen="$enable_sql_codegen"], [db_cv_sql_codegen="no"])
+AC_MSG_RESULT($db_cv_sql_codegen)
 
 AC_MSG_CHECKING(if --enable-stl option specified)
 AC_ARG_ENABLE(stl,
@@ -257,6 +273,27 @@ AC_ARG_ENABLE(test,
 	[db_cv_test="$enable_test"], [db_cv_test="no"])
 AC_MSG_RESULT($db_cv_test)
 
+AC_MSG_CHECKING(if --enable-dbm option specified)
+AC_ARG_ENABLE(dbm,
+	[AC_HELP_STRING([--enable-dbm],
+			[Configure to enable the historic dbm interface.])],
+	[db_cv_dbm="$enable_dbm"], [db_cv_dbm="$db_cv_test"])
+AC_MSG_RESULT($db_cv_dbm)
+
+AC_MSG_CHECKING(if --enable-dtrace option specified)
+AC_ARG_ENABLE(dtrace,
+	[AC_HELP_STRING([--enable-dtrace],
+			[Configure to build in dtrace static probes under bdb])],
+	[db_cv_dtrace="$enable_dtrace"], [db_cv_dtrace="no"])
+AC_MSG_RESULT($db_cv_dtrace)
+
+AC_MSG_CHECKING(if --enable-systemtap option specified)
+AC_ARG_ENABLE(systemtap,
+	[AC_HELP_STRING([--enable-systemtap],
+			[Configure to build in systemtap userspace probes under bdb])],
+	[db_cv_systemtap="$enable_systemtap"], [db_cv_systemtap="no"])
+AC_MSG_RESULT($db_cv_systemtap)
+
 AC_MSG_CHECKING(if --enable-uimutexes option specified)
 AC_ARG_ENABLE(uimutexes,
 	[AC_HELP_STRING([--enable-uimutexes],
@@ -270,6 +307,30 @@ AC_ARG_ENABLE(umrw,
 			[Mask harmless uninitialized memory read/writes.])],
 	[db_cv_umrw="$enable_umrw"], [db_cv_umrw="no"])
 AC_MSG_RESULT($db_cv_umrw)
+
+# Cryptography support.
+# Until Berkeley DB 5.0, this was a simple yes/no decision.
+# With the addition of support for Intel Integrated Performance Primitives (ipp)
+# things are more complex.  There are now three options:
+#   1) don't build cryptography (no)
+#   2) build using the built-in software implementation (yes)
+#   3) build using the Intel IPP implementation (ipp)
+# We handle this by making the primary configuration method:
+#   --with-cryptography={yes|no|ipp}
+# which defaults to yes.  The old enable/disable-cryptography argument is still
+# supported for backwards compatibility.
+AC_MSG_CHECKING(if --with-cryptography option specified)
+AC_ARG_ENABLE(cryptography, [], [], enableval=$db_cv_build_full)
+enable_cryptography="$enableval"
+AC_ARG_WITH([cryptography],
+	AC_HELP_STRING([--with-cryptography=yes|no|ipp], [Build database cryptography support @<:@default=yes@:>@.]),
+	[], [with_cryptography=$enable_cryptography])
+case "$with_cryptography" in
+yes|no|ipp) ;;
+*) AC_MSG_ERROR([unknown --with-cryptography argument \'$with_cryptography\']) ;;
+esac
+db_cv_build_cryptography="$with_cryptography"
+AC_MSG_RESULT($db_cv_build_cryptography)
 
 AC_MSG_CHECKING(if --with-mutex=MUTEX option specified)
 AC_ARG_WITH(mutex,
@@ -291,6 +352,11 @@ AC_ARG_WITH(mutexalign,
 			[Obsolete; use DbEnv::mutex_set_align instead.])],
 	[AC_MSG_ERROR(
     [--with-mutexalign no longer supported, use DbEnv::mutex_set_align])])
+
+AC_ARG_WITH(stacksize,
+	[AC_HELP_STRING([--with-stacksize=SIZE],
+			[Set the stack size for Berkeley DB threads.])],
+	[with_stacksize="$withval"], [with_stacksize="no"])
 
 AC_MSG_CHECKING([if --with-tcl=DIR option specified])
 AC_ARG_WITH(tcl,
@@ -321,9 +387,16 @@ else
 	AC_MSG_RESULT($DB_VERSION_UNIQUE_NAME)
 fi
 
-# Test requires Tcl
-if test "$db_cv_test" = "yes"; then
-	if test "$db_cv_tcl" = "no"; then
-		AC_MSG_ERROR([--enable-test requires --enable-tcl])
-	fi
+# Undocumented option used for the dbsql command line tool (to match SQLite).
+AC_ARG_ENABLE(readline, [], [with_readline=$enableval], [with_readline=no])
+
+# --enable-sql_compat implies --enable-sql
+if test "$db_cv_sql_compat" = "yes" -a "$db_cv_sql" = "no"; then
+	db_cv_sql=$db_cv_sql_compat
+fi
+
+# Testing requires Tcl.
+if test "$db_cv_test" = "yes" -a "$db_cv_tcl" = "no"; then
+	AC_MSG_ERROR([--enable-test requires --enable-tcl])
 fi])
+

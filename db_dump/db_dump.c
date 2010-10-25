@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int	 db_init __P((DB_ENV *, char *, int, u_int32_t, int *));
@@ -35,6 +35,7 @@ main(argc, argv)
 	extern int optind;
 	DB_ENV	*dbenv;
 	DB *dbp;
+	db_pgno_t first, last;
 	u_int32_t cache;
 	int ch;
 	int exitval, keyflag, lflag, mflag, nflag, pflag, sflag, private;
@@ -52,11 +53,12 @@ main(argc, argv)
 	dbenv = NULL;
 	dbp = NULL;
 	exitval = lflag = mflag = nflag = pflag = rflag = Rflag = sflag = 0;
+	first = last = PGNO_INVALID;
 	keyflag = 0;
 	cache = MEGABYTE;
 	private = 0;
 	dbname = dopt = filename = home = passwd = NULL;
-	while ((ch = getopt(argc, argv, "d:f:h:klm:NpP:rRs:V")) != EOF)
+	while ((ch = getopt(argc, argv, "d:f:F:h:klL:m:NpP:rRs:V")) != EOF)
 		switch (ch) {
 		case 'd':
 			dopt = optarg;
@@ -68,6 +70,9 @@ main(argc, argv)
 				return (EXIT_FAILURE);
 			}
 			break;
+		case 'F':
+			first = strtoul(optarg, NULL, 10);
+			break;
 		case 'h':
 			home = optarg;
 			break;
@@ -76,6 +81,9 @@ main(argc, argv)
 			break;
 		case 'l':
 			lflag = 1;
+			break;
+		case 'L':
+			last = strtoul(optarg, NULL, 10);
 			break;
 		case 'm':
 			mflag = 1;
@@ -247,7 +255,8 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	}
 
 	if (dopt != NULL) {
-		if ((ret = __db_dumptree(dbp, NULL, dopt, NULL)) != 0) {
+		if ((ret =
+		    __db_dumptree(dbp, NULL, dopt, NULL, first, last)) != 0) {
 			dbp->err(dbp, ret, "__db_dumptree: %s", filename);
 			goto err;
 		}

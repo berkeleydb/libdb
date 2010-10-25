@@ -47,7 +47,7 @@
       <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     // Environment and database opens omitted
@@ -67,15 +67,17 @@ int main(void)
         DbTxn *txn = NULL;
         myEnv.txn_begin(NULL, &amp;txn, 0);
         try {
-            // Get our cursor. Note that we pass the transaction handle here.
+            // Get our cursor. Note that we pass the transaction handle 
+            // here.
             db.cursor(txn, &amp;cursorp, 0); 
 
-            // Perform our operations. Note that we do not pass a transaction
-            // handle here.
+            // Perform our operations. Note that we do not pass a 
+            // transaction handle here.
             char *replacementString = "new string";
             while (cursor-&gt;get(&amp;key, &amp;data, DB_NEXT) == 0) {
                 data.set_data(void *)replacementString);
-                data.set_size((strlen(replacementString) + 1) * sizeof(char));
+                data.set_size((strlen(replacementString) + 1) * 
+                    sizeof(char));
                 cursor-&gt;put(&amp;key, &amp;data, DB_CURRENT);
             }
 

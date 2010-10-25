@@ -9,7 +9,7 @@ use BerkeleyDB;
 use util ;
 use Test::More;
 
-plan tests => 225;
+plan tests => 228;
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -46,6 +46,8 @@ umask(0) ;
 
     ok my $db = new BerkeleyDB::Recno -Filename => $Dfile, 
 				    -Flags    => DB_CREATE ;
+
+    is $db->Env, undef;
 
     # Add a k/v pair
     my $value ;
@@ -99,6 +101,8 @@ umask(0) ;
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
+    isa_ok $db->Env, 'BerkeleyDB::Env';
+                    
     # Add a k/v pair
     my $value ;
     ok $db->db_put(1, "some value") == 0 ;
@@ -275,9 +279,11 @@ umask(0) ;
     ok (( $FA ? pop @array : $db->pop ) eq "the") ;
     ok (( $FA ? pop @array : $db->pop ) == 2000)  ;
 
+    undef $cursor;
     # now clear the array 
     $FA ? @array = () 
         : $db->clear() ;
+    ok $cursor = $db->db_cursor() ;
     ok $cursor->c_get($k, $v, DB_FIRST) == DB_NOTFOUND ;
 
     undef $cursor ;

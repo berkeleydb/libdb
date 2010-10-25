@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>dbsql</title>
+    <link rel="stylesheet" href="apiReference.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
+    <link rel="up" href="utilities.html" title="Appendix A.  Berkeley DB Command Line Utilities" />
+    <link rel="prev" href="db_sql_codegen.html" title="db_sql_codegen" />
+    <link rel="next" href="db_stat.html" title="db_stat" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">dbsql</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="db_sql_codegen.html">Prev</a> </td>
+          <th width="60%" align="center">Appendix A. 
+                Berkeley DB Command Line Utilities
+        </th>
+          <td width="20%" align="right"> <a accesskey="n" href="db_stat.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="dbsql"></a>dbsql</h2>
+          </div>
+        </div>
+      </div>
+      <pre class="programlisting">dbsql [OPTIONS] FILENAME SQL </pre>
+      <p>
+	dbsql is a command line tool that provides access to the Berkeley DB SQL interface. To build this tool, run the configure script with the <code class="literal">--enable-sql </code>option when you are building the Berkeley DB SQL interface. 
+	For more information on building this tool, see <a href="../../installation/build_unix.html#build_unix_intro" class="olink">"Building for UNIX/POSIX"</a>.
+ 
+ </p>
+      <p>FILENAME is the name of a Berkeley DB database file created with the SQL interface. A new database is created
+if the file does not exist.
+ The options are as follows:
+ </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+              <span class="bold"><strong>-init filename</strong></span>
+            </p>
+            <p>
+                 Reads/processes named file.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-echo</strong></span>
+            </p>
+            <p>
+                 Prints commands before execution.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-[no]header</strong></span>
+            </p>
+            <p>
+                 Turns headers on or off.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-bail</strong></span>
+            </p>
+            <p>
+                 Stops after hitting an error.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-interactive</strong></span>
+            </p>
+            <p>
+                 Forces interactive I/O.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-batch</strong></span>
+            </p>
+            <p>
+                 Forces batch I/O.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-column</strong></span>
+            </p>
+            <p>
+                 Sets output mode to column.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-csv</strong></span>
+            </p>
+            <p>
+                 Sets output mode to csv.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-html</strong></span>
+            </p>
+            <p>
+                 Sets output mode to HTML.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-line</strong></span>
+            </p>
+            <p>
+                 Sets output mode to line.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-list</strong></span>
+            </p>
+            <p>
+                 Sets output mode to list.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-separator 'x'</strong></span>
+            </p>
+            <p>
+                 Sets output field separator (|).
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-nullvalue 'text'</strong></span>
+            </p>
+            <p>
+                 Sets text string for NULL values.
+            </p>
+          </li>
+          <li>
+            <p>
+              <span class="bold"><strong>-version</strong></span>
+            </p>
+            <p>
+                 Shows SQLite version.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p> The dbsql executable provides the same interface as the sqlite3 executable that is part of SQLite. For more information on how to use dbsql see the <a class="ulink" href="http://www.sqlite.org/sqlite.html" target="_top">SQLite Documentation page.</a> </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="db_sql_codegen.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="utilities.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="db_stat.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">db_sql_codegen </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> db_stat</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

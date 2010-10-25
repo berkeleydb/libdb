@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -41,8 +41,6 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 	 * absolute offset and reading a specific database page.  All of
 	 * our absolute offsets are known to fit into a u_int32_t, while
 	 * our database pages might be at offsets larger than a u_int32_t.
-	 * We don't want to specify an absolute offset in our caller as we
-	 * aren't exactly sure what size an off_t might be.
 	 */
 	DB_ASSERT(env, F_ISSET(fhp, DB_FH_OPENED) && fhp->fd != -1);
 	DB_ASSERT(env, (pgno == 0 && pgsize == 0) || relative == 0);

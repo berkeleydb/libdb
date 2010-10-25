@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005-2009 Oracle.  All rights reserved.
+# Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -54,7 +54,7 @@ set dpid [exec $util_path/db_deadlock \
 # Initialize version number.  Don't try to open the first
 # version database until the master has completed setting it up.
 set version 0
-while {[catch {berkdb_open_noerr -env $clientenv -rdonly $vfile} vdb]} {
+while {[catch {eval {berkdb_open_noerr} -env $clientenv -rdonly $vfile} vdb]} {
 	puts "FAIL: vdb open failed: $vdb"
 	tclsleep 1
 }
@@ -70,7 +70,7 @@ while { $version == 0 } {
 		} elseif { [is_substr $res DB_REP_HANDLE_DEAD] == 1 } {
 			# Handle is dead.  Get a new handle.
 			error_check_good vdb_close [$vdb close] 0
-			set vdb [eval berkdb_open -env $clientenv\
+			set vdb [eval {berkdb_open} -env $clientenv\
 			    -rdonly $vfile]
 		} else {
 			# We got something we didn't expect.
@@ -83,10 +83,14 @@ while { $version == 0 } {
 	}
 }
 error_check_good close_vdb [$vdb close] 0
-set dbfile db.$version
+if { $databases_in_memory } {
+	set dbfile [concat \"\" db.$version]
+} else {
+	set dbfile db.$version
+}
 
 # Open completed database version $version.
-if {[catch {berkdb_open -rdonly -env $clientenv $dbfile} db]} {
+if {[catch {eval {berkdb_open} -rdonly -env $clientenv $dbfile} db]} {
 	puts "FAIL: db open failed: $db"
 }
 error_check_good db_open [is_valid_db $db] TRUE
@@ -104,7 +108,7 @@ while { 1 } {
 	}
 	error_check_good cursor_close [$dbc close] 0
 
-	while {[catch {berkdb_open -env $clientenv -rdonly $vfile} vdb]} {
+	while {[catch {eval {berkdb_open} -env $clientenv -rdonly $vfile} vdb]} {
 		puts "open failed: vdb is $vdb"
 		tclsleep 1
 	}
@@ -122,9 +126,13 @@ while { 1 } {
 		} else {
 			error_check_good db_close [$db close] 0
 			set version $newversion
-			set dbfile db.$version
-			while {[catch \
-			    {berkdb_open -env $clientenv -rdonly $dbfile} db]} {
+			if { $databases_in_memory } {
+				set dbfile [concat \"\" db.$version]
+			} else {
+				set dbfile db.$version
+			}
+		    while {[catch {eval \
+		        {berkdb_open} -env $clientenv -rdonly $dbfile} db]} {
 				puts "db open of new db failed: $db"
 				tclsleep 1
 			}

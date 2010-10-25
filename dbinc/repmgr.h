@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -28,9 +28,9 @@ extern "C" {
  * We still list them in alphabetical order, for ease of reference.  But this
  * generally does not correspond to numerical order.
  */
-#define	REPMGR_ACK		1	/* Acknowledgement. */
 #define	REPMGR_HANDSHAKE	2	/* Connection establishment sequence. */
 #define	REPMGR_HEARTBEAT	4	/* Monitor connection health. */
+#define	REPMGR_PERMLSN		1	/* My perm LSN. */
 #define	REPMGR_REP_MESSAGE	3	/* Normal replication message. */
 
 /* Heartbeats were introduced in version 2. */
@@ -107,7 +107,28 @@ struct __repmgr_runnable {
 	ENV *env;
 	thread_id_t thread_id;
 	void *(*run) __P((void *));
-	int finished;
+	int finished;		/* Boolean: thread is exiting, may be joined. */
+	int quit_requested;	/* Boolean: thread has been asked to quit. */
+#ifdef DB_WIN32
+	HANDLE quit_event;
+#endif
+	union {
+
+/*
+ * Options governing requested behavior of election thread.
+ */
+#define	ELECT_F_EVENT_NOTIFY	0x01 /* Notify application of master failure. */
+#define	ELECT_F_FAST		0x02 /* First election "fast" (n-1 trick). */
+#define	ELECT_F_IMMED		0x04 /* Start with immediate election. */
+#define	ELECT_F_INVITEE		0x08 /* Honor (remote) inviter's nsites. */
+#define	ELECT_F_STARTUP		0x10 /* Observe repmgr_start() policy. */
+		u_int32_t flags;
+
+		/*
+		 * Args for other thread types can be added here in the future
+		 * as needed.
+		 */
+	} args;
 };
 
 /*
@@ -311,12 +332,20 @@ typedef struct __addrinfo {
 #endif /* HAVE_GETADDRINFO */
 
 /*
- * Unprocessed network address configuration, as stored in shared region.
+ * Unprocessed network address configuration.
  */
 typedef struct {
 	roff_t host;		/* Separately allocated copy of string. */
 	u_int16_t port;		/* Stored in plain old host-byte-order. */
 } SITEADDR;
+
+/*
+ * Site information, as stored in shared region.
+ */
+typedef struct {
+	SITEADDR addr;		/* Unprocessed network address of site. */
+	int peer;		/* If TRUE, site is remote peer. */
+} SITEINFO;
 
 /*
  * Local copy of local and remote addresses, with resolved addrinfo.
@@ -363,6 +392,7 @@ struct __repmgr_site {
 	int state;
 
 #define	SITE_HAS_PRIO	0x01	/* Set if priority field has valid value. */
+#define	SITE_IS_PEER	0x02	/* Set if site is possible c2c peer. */
 	u_int32_t flags;
 };
 
@@ -462,6 +492,12 @@ typedef struct {
     (p) == DB_REPMGR_ACKS_QUORUM ||		\
     (p) == DB_REPMGR_ACKS_ONE_PEER)
 
+#define IS_SITE_AVAILABLE(s) ((s)->state == SITE_CONNECTED &&		\
+    (s)->ref.conn->state == CONN_READY)
+
+#define	IS_SITE_HANDSHAKEN(s) ((s)->state == SITE_CONNECTED &&		\
+	    IS_READY_STATE((s)->ref.conn->state))
+
 /*
  * Most of the code in repmgr runs while holding repmgr's main mutex, which
  * resides in db_rep->mutex.  This mutex is owned by a single repmgr process,
@@ -497,6 +533,7 @@ typedef struct {
 #ifdef DB_WIN32
 #define	WOULDBLOCK		WSAEWOULDBLOCK
 #define	INPROGRESS		WSAEWOULDBLOCK
+#undef	DB_REPMGR_EAGAIN
 
 #define	net_errno		WSAGetLastError()
 typedef int socklen_t;
@@ -514,6 +551,7 @@ typedef DWORD threadsync_timeout_t;
 #define	SOCKET_ERROR		-1
 #define	WOULDBLOCK		EWOULDBLOCK
 #define	INPROGRESS		EINPROGRESS
+#define	DB_REPMGR_EAGAIN	EAGAIN
 
 #define	net_errno		errno
 typedef void * sockopt_t;

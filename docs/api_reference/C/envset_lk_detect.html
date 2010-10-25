@@ -77,7 +77,7 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675359"></a>Parameters</h3>
+              <h3 class="title"><a id="id3994208"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -85,14 +85,17 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1675532"></a>detect</h4>
+                <h4 class="title"><a id="id3994191"></a>detect</h4>
               </div>
             </div>
           </div>
           <p>
                           The <span class="bold"><strong>detect</strong></span> parameter configures the
-                          deadlock detector.  The specified value must be one of the following
-                          list:
+                          deadlock detector.  The deadlock detector will reject the lock request
+			  with the lowest priority.  If multiple lock requests have the lowest
+			  priority, then the <span class="bold"><strong>detect</strong></span> parameter
+			  is used to select which of those lock requests to reject.  The
+			  specified value must be one of the following list:
                      </p>
           <div class="itemizedlist">
             <ul type="disc">
@@ -179,7 +182,7 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675723"></a>Errors</h3>
+              <h3 class="title"><a id="id3994619"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -195,7 +198,7 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1675912"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3994510"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -208,7 +211,7 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675958"></a>Class</h3>
+              <h3 class="title"><a id="id3994005"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -221,7 +224,7 @@ DB_ENV-&gt;set_lk_detect(DB_ENV *dbenv, u_int32_t detect);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1675530"></a>See Also</h3>
+              <h3 class="title"><a id="id3994105"></a>See Also</h3>
             </div>
           </div>
         </div>

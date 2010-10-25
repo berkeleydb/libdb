@@ -9,21 +9,19 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ Standard Template Library API Reference" />
     <link rel="up" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions" />
     <link rel="prev" href="stldbstl_global_functionsdbstl_startup.html" title="dbstl_startup" />
-    <link rel="next" href="stldbstl_global_functionsoperator_eq.html" title="operator==" />
+    <link rel="next" href="stldbstl_global_functionsdbstl_thread_exit.html" title="dbstl_thread_exit" />
   </head>
   <body>
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-dbstl_exit
-</th>
+          <th colspan="3" align="center">dbstl_exit</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsdbstl_startup.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 1. 
  Dbstl Global Public Functions  </th>
-          <td width="20%" align="right"> <a accesskey="n" href="stldbstl_global_functionsoperator_eq.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="stldbstl_global_functionsdbstl_thread_exit.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -32,9 +30,7 @@ dbstl_exit
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsdbstl_exit"></a>
-dbstl_exit
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsdbstl_exit"></a>dbstl_exit</h2>
           </div>
         </div>
       </div>
@@ -42,33 +38,27 @@ dbstl_exit
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsdbstl_exit_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- void dbstl_exit()
+ void dbstl_exit()
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>This function releases any memory allocated in the heap by code of dbstl. </p>
-          <p>So you can only call <a class="link" href="stldbstl_global_functionsdbstl_exit.html" title="dbstl_exit">dbstl_exit()</a>
- right before the entire process exits. It will release any memory allocated by dbstl that have to live during the entire process lifetime. </p>
-        </div>
+        <p>This function releases memory allocated by dbstl on the heap, and closes all Berkeley DB handles in the right order.</p>
+        <p> You can call <a class="link" href="stldbstl_global_functionsdbstl_exit.html" title="dbstl_exit">dbstl_exit()</a>
+ before the process exits to release any memory allocated by dbstl that has to persist during the entire process lifetime. </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1543607"></a>
-Class</h3>
+              <h3 class="title"><a id="id3483169"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -80,17 +70,15 @@ Class</h3>
           <td width="20%" align="center">
             <a accesskey="u" href="dbstl_global_functions.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsoperator_eq.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsdbstl_thread_exit.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-dbstl_startup
- </td>
+          <td width="40%" align="left" valign="top">dbstl_startup </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
           <td width="40%" align="right" valign="top"> 
-operator==
+dbstl_thread_exit
 </td>
         </tr>
       </table>

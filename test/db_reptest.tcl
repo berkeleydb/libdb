@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999,2009 Oracle.  All rights reserved.
+# Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -32,9 +32,7 @@ set last_nsites 0
 # an infinite loop.
 #
 proc db_reptest { {count -1} } {
-	global rand_init
-
-	berkdb srand $rand_init
+	berkdb srand [pid]
 	set cmd "db_reptest_int random"
 	db_reptest_loop $cmd $count
 }
@@ -81,9 +79,12 @@ proc db_reptest_loop { cmd count } {
 		return
 	}
 	set iteration 1
+	set start_time [clock format [clock seconds] -format "%H:%M %D"]
 	while { 1 } {
 		puts -nonewline "ITERATION $iteration: "
-		puts [clock format [clock seconds] -format "%H:%M %D"]
+		puts -nonewline \
+		    [clock format [clock seconds] -format "%H:%M %D"]
+		puts " (Started: $start_time)"
 
 		#
 		eval $cmd
@@ -142,6 +143,9 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 			set use_master [get_usemaster $cfgtype]
 		}
 		set master_site [get_mastersite $cfgtype $use_master $num_sites]
+		set noelect [get_noelect $use_master]
+		set master2_site [get_secondary_master \
+		    $noelect $master_site $kill $num_sites]
 		set workers [get_workers $cfgtype $use_lease]
 		set dbtype [get_dbtype $cfgtype]
 		set runtime [get_runtime $cfgtype]
@@ -153,7 +157,16 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 		if { $use_lease } {
 			puts "with leases"
 		} elseif { $use_master } {
-			puts "master site $master_site"
+			set master_text "master site $master_site"
+			if { $noelect } {
+				set master_text [concat $master_text \
+				    "no elections"]
+			}
+			if { $master2_site } {
+				set master_text [concat $master_text \
+				    "secondary master site $master2_site"]
+			}
+			puts "$master_text"
 		} else {
 			puts "no master"
 		}
@@ -213,6 +226,17 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 				}
 			}
 			#
+			# Add in if we are in no elections mode and if we are 
+			# the secondary master.
+			#
+			if { $noelect } {
+				set prog_args($i) [concat $prog_args($i) "-n"]
+				if { $i == $master2_site } {
+					set prog_args($i) \
+					    [concat $prog_args($i) "-s"]
+				}
+			}
+			#
 			# Add in host:port configuration, both this site's
 			# local address and any remote addresses it knows.
 			#
@@ -237,7 +261,7 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 
 	# Now make the DB_CONFIG file for each site.
 	reptest_make_config $savedir $num_sites envdirs state \
-	    $use_lease $cfgtype $restoredir
+	    $use_lease $kill $cfgtype $restoredir
 
 	# Run the test
 	run_db_reptest $savedir $num_sites $runtime
@@ -251,7 +275,8 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 #
 # Make a DB_CONFIG file for all sites in the group
 #
-proc reptest_make_config { savedir nsites edirs st lease cfgtype restoredir } {
+proc reptest_make_config { savedir nsites edirs st lease kill cfgtype \
+    restoredir } {
 	upvar $edirs envdirs
 	upvar $st state
 
@@ -278,11 +303,25 @@ proc reptest_make_config { savedir nsites edirs st lease cfgtype restoredir } {
 	    db_repmgr_acks_quorum }
 
 	#
-	# Ack policy must be the same on all sites.
+	# 2site strict and ack policy must be the same on all sites.
 	#
 	if { $cfgtype == "random" } {
+		if { $nsites == 2 } {
+			set strict [berkdb random_int 0 1]
+		} else {
+			set strict 0
+		}
 		if { $lease } {
-			set ackpolicy db_repmgr_acks_quorum
+			#
+			# 2site strict with leases must have ack policy of
+			# one because quorum acks are ignored in this case,
+			# resulting in lease expired panics on some platforms.
+			#
+			if { $strict } {
+				set ackpolicy db_repmgr_acks_one
+			} else {
+				set ackpolicy db_repmgr_acks_quorum
+			}
 		} else {
 			set done 0
 			while { $done == 0 } {
@@ -296,6 +335,19 @@ proc reptest_make_config { savedir nsites edirs st lease cfgtype restoredir } {
 				#
 				if { $ackpolicy == "db_repmgr_acks_none" && \
 				    $nsites > 2 } {
+					continue
+				}
+				#
+				# Only allow "all" or "all_peers" policies
+				# if not killing a site, otherwise the
+				# unavailable site will cause the master
+				# to ignore acks and blast the clients with
+				# log records.
+				#
+				if { $kill && \
+				    ($ackpolicy == "db_repmgr_acks_all" || \
+				    $ackpolicy == 
+				    "db_repmgr_acks_all_peers") } {
 					continue
 				}
 				set done 1
@@ -354,7 +406,7 @@ proc reptest_make_config { savedir nsites edirs st lease cfgtype restoredir } {
 			lappend cfglist { "rep_set_priority" $pri }
 		}
 		#
-		# Others: limit size, bulk, 2site strict,
+		# Others: limit size, bulk, 2site strict
 		#
 		if { $cfgtype == "random" } {
 			set limit_sz [berkdb random_int 15000 1000000]
@@ -363,12 +415,13 @@ proc reptest_make_config { savedir nsites edirs st lease cfgtype restoredir } {
 				lappend cfglist \
 				    { "rep_set_config" "db_rep_conf_bulk" }
 			}
-			if { $nsites == 2 } {
-				set strict [berkdb random_int 0 1]
-				if { $strict } {
-					lappend cfglist { "rep_set_config" \
-					    "db_repmgr_conf_2site_strict" }
-				}
+			#
+			# 2site strict was set above for all sites but
+			# should only be used for sites in random configs.
+			#
+			if { $strict } {
+				lappend cfglist { "rep_set_config" \
+				    "db_repmgr_conf_2site_strict" }
 			}
 		} else {
 			set limit_sz 100000
@@ -651,6 +704,36 @@ proc get_mastersite { cfgtype usemaster nsites } {
 	if { $cfgtype == "basic1" } {
 		return 0
 	}
+}
+
+#
+# If we are using a master, use no elections 20% of the time.
+#
+proc get_noelect { usemaster } {
+	if { $usemaster } {
+		set noelect { 0 0 1 0 0 }
+		set len [expr [llength $noelect] - 1]
+		set i [berkdb random_int 0 $len]
+		return [lindex $noelect $i]
+	} else {
+		return 0
+	}
+}
+
+#
+# If we are using no elections mode and we are going to kill the initial
+# master, select a different site to start up as master after the initial
+# master is killed.
+#
+proc get_secondary_master { noelect master_site kill nsites } {
+	if { $noelect == 0 || $kill != $master_site} {
+		return 0
+	}
+	set master2_site [berkdb random_int 1 $nsites]
+	while { $master2_site == $master_site } {
+		set master2_site [berkdb random_int 1 $nsites]		
+	}
+	return $master2_site
 }
 
 #

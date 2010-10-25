@@ -1,0 +1,44 @@
+--- test/tester.tcl
++++ test/tester.tcl
+@@ -166,6 +166,11 @@ if {![info exists speedTest]} {
+   set speedTest 0
+ }
+ 
++# Pull in the list of test cases that are ignored when running with the
++# Berkeley DB version of the tree.
++#
++source $testdir/../../adapter/bdb_excl.test
++
+ # Record the fact that a sequence of tests were omitted.
+ #
+ proc omit_test {name reason} {
+@@ -176,7 +181,7 @@ proc omit_test {name reason} {
+ # Invoke the do_test procedure to run a single test 
+ #
+ proc do_test {name cmd expected} {
+-  global argv nErr nTest skip_test maxErr
++  global argv nErr nTest skip_test maxErr EXCLUDE_CASES
+   sqlite3_memdebug_settitle $name
+   if {[info exists ::tester_do_binarylog]} {
+     sqlite3_instvfs marker binarylog "Start of $name"
+@@ -187,6 +192,12 @@ proc do_test {name cmd expected} {
+   }
+   if {[llength $argv]==0} { 
+     set go 1
++    foreach pattern $EXCLUDE_CASES {
++      if {[string match $pattern $name]} {
++        set go 0
++        break
++      }
++    }
+   } else {
+     set go 0
+     foreach pattern $argv {
+@@ -197,6 +208,7 @@ proc do_test {name cmd expected} {
+     }
+   }
+   if {!$go} return
++
+   incr nTest
+   puts -nonewline $name...
+   flush stdout

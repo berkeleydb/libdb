@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -279,6 +279,8 @@ ResourceManager::~ResourceManager(void)
 {
 	u_int32_t oflags;
 	int ret;
+	set<Db *> dbs2del;
+	set<DbEnv *> envs2del;
 
 	global_lock(mtx_handle_);
 
@@ -298,6 +300,7 @@ ResourceManager::~ResourceManager(void)
 				delete *itrdb;
 				deldbs.erase(itrdb);
 			}
+			dbs2del.insert(i->first);
 		}
 	}
 
@@ -320,8 +323,16 @@ ResourceManager::~ResourceManager(void)
 				delete *itrdb;
 				delenvs.erase(itrdb);
 			}
+			envs2del.insert(i->first);
 		}
 	}
+
+	// Erase db/env entries that are just closed.
+	for (set<Db *>::iterator i = dbs2del.begin(); i != dbs2del.end(); ++i)
+		open_dbs_.erase(*i);
+	for (set<DbEnv *>::iterator i = envs2del.begin(); 
+	    i != envs2del.end(); ++i)
+		open_envs_.erase(*i);
 
 	global_unlock(mtx_handle_);
 
@@ -429,6 +440,25 @@ DbTxn* ResourceManager::current_txn(DbEnv*env)
 
 	stack<DbTxn*> &pstk = env_txns_[env];
 	return pstk.size() != 0 ? pstk.top() : NULL;
+}
+
+void ResourceManager::thread_exit()
+{
+	ResourceManager *pinst;
+
+	pinst = ResourceManager::instance();
+	if (pinst == NULL) // Already deleted.
+		return;
+
+	global_lock(mtx_globj_);
+	glob_objs_.erase(pinst);
+	global_unlock(mtx_globj_);
+	TlsWrapper<ResourceManager>::set_tls_obj(NULL);
+
+	// Can't put this line between the lock and unlock pair above,
+	// because the destructor also locks the same mutex, there 
+	// would be a self lock.
+	delete pinst;
 }
 
 void ResourceManager::set_global_callbacks()

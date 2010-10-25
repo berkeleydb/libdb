@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -192,7 +192,7 @@ unpin:
 
 	/* The buffer should not be accessed again. */
 	if (BH_REFCOUNT(bhp) == 0)
-		MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize, 0);
+		MVCC_MPROTECT(bhp->buf, mfp->pagesize, 0);
 
 	/* Update priority values. */
 	if (priority == DB_PRIORITY_VERY_LOW ||
@@ -200,7 +200,7 @@ unpin:
 		bhp->priority = 0;
 	else {
 		/*
-		 * We don't lock the LRU counter or the stat.st_pages field, if
+		 * We don't lock the LRU counter or the pages field, if
 		 * we get garbage (which won't happen on a 32-bit machine), it
 		 * only means a buffer has the wrong priority.
 		 */
@@ -230,10 +230,10 @@ unpin:
 
 		adjust = 0;
 		if (pfactor != 0)
-			adjust = (int)c_mp->stat.st_pages / pfactor;
+			adjust = (int)c_mp->pages / pfactor;
 
 		if (F_ISSET(bhp, BH_DIRTY))
-			adjust += (int)c_mp->stat.st_pages / MPOOL_PRI_DIRTY;
+			adjust += (int)c_mp->pages / MPOOL_PRI_DIRTY;
 
 		if (adjust > 0) {
 			if (UINT32_MAX - bhp->priority >= (u_int32_t)adjust)

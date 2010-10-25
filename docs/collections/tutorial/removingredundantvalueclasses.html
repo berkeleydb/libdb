@@ -57,13 +57,14 @@
     {
         ...
         secConfig.setKeyCreator(new SupplierByCityKeyCreator(javaCatalog,
-                                                             <strong class="userinput"><code>Supplier</code></strong>.class));
+                                                     <strong class="userinput"><code>Supplier</code></strong>.class));
         ...
         secConfig.setKeyCreator(new ShipmentByPartKeyCreator(javaCatalog,
-                                                             <strong class="userinput"><code>Shipment</code></strong>.class));
+                                                     <strong class="userinput"><code>Shipment</code></strong>.class));
         ...
-        secConfig.setKeyCreator(new ShipmentBySupplierKeyCreator(javaCatalog,
-                                                             <strong class="userinput"><code>Shipment</code></strong>.class));
+        secConfig.setKeyCreator(new 
+                                ShipmentBySupplierKeyCreator(javaCatalog,
+                                                     <strong class="userinput"><code>Shipment</code></strong>.class));
         ...
     }
 } </pre>

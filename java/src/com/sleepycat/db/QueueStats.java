@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -17,79 +17,121 @@ public class QueueStats extends DatabaseStats {
     /* package */ QueueStats() {}
 
     private int qs_magic;
-    /** TODO */
+    /**
+    The magic number that identifies the file as a Queue file.
+    */
     public int getMagic() {
         return qs_magic;
     }
 
     private int qs_version;
-    /** TODO */
+    /**
+    The version of the Queue database.
+    */
     public int getVersion() {
         return qs_version;
     }
 
     private int qs_metaflags;
-    /** TODO */
+    /**
+    The metadata flags.
+    */
     public int getMetaFlags() {
         return qs_metaflags;
     }
 
     private int qs_nkeys;
-    /** TODO */
+    /**
+    The number of records in the database.
+    <p>
+    If the {@link com.sleepycat.db.Database#getStats Database.getStats} call was configured by the
+    {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method, the count will be the last
+    saved value unless it has never been calculated, in which case it
+    will be 0.
+    */
     public int getNumKeys() {
         return qs_nkeys;
     }
 
     private int qs_ndata;
-    /** TODO */
+    /**
+    The number of records in the database.
+    <p>
+    If the {@link com.sleepycat.db.Database#getStats Database.getStats} call was configured by the
+    {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method, the count will be the last
+    saved value unless it has never been calculated, in which case it
+    will be 0.
+    */
     public int getNumData() {
         return qs_ndata;
     }
 
     private int qs_pagesize;
-    /** TODO */
+    /**
+    The underlying database page size, in bytes.
+    */
     public int getPageSize() {
         return qs_pagesize;
     }
 
     private int qs_extentsize;
-    /** TODO */
+    /**
+    The underlying database extent size, in pages.
+    */
     public int getExtentSize() {
         return qs_extentsize;
     }
 
     private int qs_pages;
-    /** TODO */
+    /**
+    The number of pages in the database.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getPages() {
         return qs_pages;
     }
 
     private int qs_re_len;
-    /** TODO */
+    /**
+    The length of the records.
+    */
     public int getReLen() {
         return qs_re_len;
     }
 
     private int qs_re_pad;
-    /** TODO */
+    /**
+    The padding byte value for the records.
+    */
     public int getRePad() {
         return qs_re_pad;
     }
 
     private int qs_pgfree;
-    /** TODO */
+    /**
+    The number of bytes free in database pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getPagesFree() {
         return qs_pgfree;
     }
 
     private int qs_first_recno;
-    /** TODO */
+    /**
+    The first undeleted record in the database.
+    */
     public int getFirstRecno() {
         return qs_first_recno;
     }
 
     private int qs_cur_recno;
-    /** TODO */
+    /**
+    The next available record number.
+    */
     public int getCurRecno() {
         return qs_cur_recno;
     }

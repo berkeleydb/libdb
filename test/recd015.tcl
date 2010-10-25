@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2009 Oracle.  All rights reserved.
+# Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -23,7 +23,7 @@ proc recd015 { method args } {
 	set numtxns 1
 	set testfile NULL
 
-	set env_cmd "berkdb_env -create -txn -home $testdir"
+	set env_cmd "berkdb_env -create -txn wrnosync -home $testdir"
 	set msg "\tRecd015.a"
 	foreach op { abort commit discard } {
 		puts "$msg: Simple test to prepare $numtxns txn with $op "

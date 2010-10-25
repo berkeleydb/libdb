@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep088
 # TEST  Replication roll-back preserves checkpoint.
@@ -25,11 +25,6 @@
 
 proc rep088 { method { niter 20 } { tnum 088 } args } {
 	source ./include.tcl
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree only.
 	if { $checking_valid_methods } {
@@ -185,7 +180,7 @@ proc rep088_sub { method niter tnum archive ckpt result largs } {
 	# 
 
 	if { $result != "internal_init" } {
-		$envs(C) rep_config {noautoinit on}
+		$envs(C) rep_config {autoinit off}
 	}
 	puts "\tRep$tnum.f: Switch master to site B, try to sync client C"
 	$envs(A) close

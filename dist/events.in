@@ -1,0 +1,38 @@
+#
+# dist/events.in - This description of Oracle Berkeley DB's internal
+# events hierarchy is processes by dist/s_perfmon to generate the
+# platform-specific files needed by the configured operating system.
+#
+# DTrace
+#	dist/bdb_provider.d
+#	
+# Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
+#
+alloc
+    btree_split(char *db, unsigned pgno, struct __db_dbt *dbt);
+    hash_bucket_overflow(char *db, unsigned pgno, struct __db_dbt *dbt);
+    hash_table_split(char *db, unsigned pgno, struct __db_dbt *dbt);
+    offpage_duplicate(char *db, unsigned pgno, struct __db_dbt *dbt);
+    queue_extend(char *db, unsigned pgno, struct __db_dbt *dbt);
+    record_overflow(char *db, unsigned pgno, struct __db_dbt *dbt);
+lock
+    suspend(char *db, unsigned pgno, unsigned partition);
+    resume(char *db, unsigned pgno, unsigned partition);
+log
+    put(unsigned logfile, unsigned logoffset, unsigned type);
+    flush(unsigned logfile, unsigned logoffset);
+mpool
+    evict(char *db, unsigned pgno, struct __bh *buf);
+    hash_examined(unsigned examined);
+    hash_longest(unsigned longest);
+    hash_search	(unsigned searched);
+    hits(unsigned hits);
+    map(unsigned map);
+    miss(unsigned hits);
+    page_create(unsigned page_create);
+    page_in(unsigned page_in);
+    read(char *db, unsigned pgno, struct __bh *buf);
+    write(char *db, unsigned pgno, struct __bh *buf);
+mutex
+    suspend(unsigned mutex, unsigned alloc_id);
+    resume(unsigned mutex, unsigned alloc_id);

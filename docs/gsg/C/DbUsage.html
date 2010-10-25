@@ -80,7 +80,7 @@
 #include &lt;db.h&gt;
 
 ...
-                                                                                                                                     
+
 <strong class="userinput"><code>typedef struct vendor {
     char name[MAXFIELD];             /* Vendor name */
     char street[MAXFIELD];           /* Street name and number */
@@ -117,8 +117,7 @@
           <a id="c_dbt11"></a>
           <pre class="programlisting">/* example_database_load.c */
 #include "gettingstarted_common.h"
-                                                                                                                                
-                                                                                                                                
+
 /* Forward declarations */
 int load_vendors_database(STOCK_DBS, char *);
 int pack_string(char *, char *, int);
@@ -155,7 +154,7 @@ main(int argc, char *argv[])
      * the location of the flat text files containing the 
      * inventory data here. This step is omitted for clarity.
      */
-                                                                                                                               
+
     /* 
      * Identify the files that will hold our databases 
      * This function uses information obtained from the
@@ -163,16 +162,16 @@ main(int argc, char *argv[])
      * the database files reside.
      */
     set_db_filenames(&amp;my_stock);
-                                                                                                                                
+
     /* Find our input files */
     size = strlen(basename) + strlen(INVENTORY_FILE) + 1;
     inventory_file = malloc(size);
     snprintf(inventory_file, size, "%s%s", basename, INVENTORY_FILE);
-                                                                                                                                
+
     size = strlen(basename) + strlen(VENDORS_FILE) + 1;
     vendor_file = malloc(size);
     snprintf(vendor_file, size, "%s%s", basename, VENDORS_FILE);
-                                                                                                                                
+
     /* Open all databases */
     ret = databases_setup(&amp;my_stock, "example_database_load", stderr);
     if (ret != 0) {
@@ -180,7 +179,7 @@ main(int argc, char *argv[])
             databases_close(&amp;my_stock);
             return (ret);
     }
-                                                                                                                                
+
     ret = load_vendors_database(my_stock, vendor_file);
     if (!ret) {
         fprintf(stderr, "Error loading vendors database.\n");
@@ -196,7 +195,7 @@ main(int argc, char *argv[])
 
     /* close our environment and databases */
     databases_close(&amp;my_stock);
-                                                                                                                                
+
     printf("Done loading databases.\n");
     return (0);
 }</pre>
@@ -234,14 +233,14 @@ load_vendors_database(STOCK_DBS my_stock, char *vendor_file)
     FILE *ifp;
     VENDOR my_vendor;
     char buf[MAXLINE];
-                                                                                                                               
+
     /* Open the vendor file for read access */
     ifp = fopen(vendor_file, "r");
     if (ifp == NULL) {
         fprintf(stderr, "Error opening file '%s'\n", vendor_file);
         return(-1);
     }
-                                                                                                                               
+
     /* Iterate over the vendor file */
     while(fgets(buf, MAXLINE, ifp) != NULL) {
         /* zero out the structure */
@@ -257,25 +256,25 @@ load_vendors_database(STOCK_DBS my_stock, char *vendor_file)
          * defensive code here.
          */
         sscanf(buf,
-          "%20[^#]#%20[^#]#%20[^#]#%3[^#]#%6[^#]#%13[^#]#%20[^#]#%20[^\n]",
-          my_vendor.name, my_vendor.street,
-          my_vendor.city, my_vendor.state,
-          my_vendor.zipcode, my_vendor.phone_number,
-          my_vendor.sales_rep, my_vendor.sales_rep_phone);
-                                                                                                                               
+         "%20[^#]#%20[^#]#%20[^#]#%3[^#]#%6[^#]#%13[^#]#%20[^#]#%20[^\n]",
+         my_vendor.name, my_vendor.street,
+         my_vendor.city, my_vendor.state,
+         my_vendor.zipcode, my_vendor.phone_number,
+         my_vendor.sales_rep, my_vendor.sales_rep_phone);
+
         /* 
          * Now that we have our structure we can load it 
          * into the database. 
          */
-                                                                                                                               
+
         /* Set up the database record's key */
         key.data = my_vendor.name;
         key.size = strlen(my_vendor.name) + 1;
-                                                                                                                               
+
         /* Set up the database record's data */
         data.data = &amp;my_vendor;
         data.size = sizeof(my_vendor);
-                                                                                                                               
+
         /*
          * Note that given the way we built our struct, there are extra
          * bytes in it. Essentially we're using fixed-width fields with
@@ -284,13 +283,14 @@ load_vendors_database(STOCK_DBS my_stock, char *vendor_file)
          * database. Look at load_inventory_data() for an example of how
          * to avoid this.
          */
-                                                                                                                               
+
         /* Put the data into the database.
          * Omitting error handling for clarity.
          */
-        my_stock.vendor_dbp-&gt;put(my_stock.vendor_dbp, 0, &amp;key, &amp;data, 0);
+        my_stock.vendor_dbp-&gt;put(my_stock.vendor_dbp, 0, 
+                                   &amp;key, &amp;data, 0);
     } /* end vendors database while loop */
-                                                                                                                               
+
     /* Close the vendor.txt file */
     fclose(ifp);
     return(0);
@@ -333,7 +333,7 @@ pack_string(char *buffer, char *string, int start_pos)
     int string_size = strlen(string) + 1;
 
     memcpy(buffer+start_pos, string, string_size);
-                                                                                                                               
+
     return(start_pos + string_size);
 } </pre>
           <p>
@@ -352,7 +352,7 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
     void *databuf;
     int bufLen, dataLen;
     FILE *ifp;
-                                                                                                                               
+
     /*
      * Rather than lining everything up nicely in a struct, we're being
      * deliberately a bit sloppy here. This function illustrates how to
@@ -370,13 +370,13 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
         fprintf(stderr, "Error opening file '%s'\n", inventory_file);
         return(-1);
     }
-                                                                                                                               
+
     /* Get our buffer. MAXDATABUF is some suitably large number */
     databuf = malloc(MAXDATABUF);
 
     /* 
-     * Read the inventory.txt file line by line, saving each line off to the
-     * database as we go.
+     * Read the inventory.txt file line by line, saving each line off to 
+     * the database as we go.
      */
     while(fgets(buf, MAXLINE, ifp) != NULL) {
         /*
@@ -387,7 +387,7 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
         sscanf(buf,
           "%20[^#]#%20[^#]#%f#%i#%20[^#]#%20[^\n]",
           name, sku, &amp;price, &amp;quantity, category, vendor);
-                                                                                                                               
+
         /*
          * Now pack it into a single contiguous memory location for
          * storage.
@@ -395,10 +395,10 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
         memset(databuf, 0, MAXDATABUF);
         bufLen = 0;
         dataLen = 0;
-                                                                                                                               
+
         /* 
-         * We first store the fixed-length elements. This makes our code to
-         * retrieve this data from the database a little bit easier.
+         * We first store the fixed-length elements. This makes our code
+         * to retrieve this data from the database a little bit easier.
          */
 
         /* First discover how long the data element is. */
@@ -410,12 +410,12 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
          * We repeat this pattern for all the data we want to store.
          */
         bufLen += dataLen;
-                                                                                                                               
+
         /* Rinse, lather, repeat. */
         dataLen = sizeof(int);
         memcpy(databuf + bufLen, &amp;quantity, dataLen);
         bufLen += dataLen;
-                                                                                                                               
+
         bufLen = pack_string(databuf, name, bufLen);
         bufLen = pack_string(databuf, sku, bufLen);
         bufLen = pack_string(databuf, category, bufLen);
@@ -429,27 +429,28 @@ load_inventory_database(STOCK_DBS my_stock, char *inventory_file)
         /* Zero out the DBTs */
         memset(&amp;key, 0, sizeof(DBT));
         memset(&amp;data, 0, sizeof(DBT));
-                                                                                                                               
+
         /* 
-         * The key is the item's SKU. This is a unique value, so we need not
-         * support duplicates for this database. 
+         * The key is the item's SKU. This is a unique value, so we need 
+         * not support duplicates for this database. 
          */
         key.data = sku;
         key.size = strlen(sku) + 1;
-                                                                                                                               
+
         /* The data is the information that we packed into databuf. */
         data.data = databuf;
         data.size = bufLen;
-                                                                                                                               
+
         /* Put the data into the database */
-        my_stock.vendor_dbp-&gt;put(my_stock.inventory_dbp, 0, &amp;key, &amp;data, 0);
+        my_stock.vendor_dbp-&gt;put(my_stock.inventory_dbp, 0, 
+                                   &amp;key, &amp;data, 0);
     } /* end vendors database while loop */
-                                                                                                                               
+
     /* Cleanup */
     fclose(ifp);
     if (databuf != NULL)
         free(databuf);
-                                                                                                                               
+
     return(0);
 } </pre>
           <p>

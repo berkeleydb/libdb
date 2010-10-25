@@ -336,14 +336,15 @@ try {
 
     // Open the secondary.
     // Key creators are described in the next section.
-    FullNameKeyCreator keyCreator = new FullNameKeyCreator(myTupleBinding);
+    FullNameKeyCreator keyCreator = 
+        new FullNameKeyCreator(myTupleBinding);
 
     // Get a secondary object and set the key creator on it.
     mySecConfig.setKeyCreator(keyCreator);
 
     // Perform the actual open
     String secDbName = "mySecondaryDatabase";
-    mySecDb = new SecondaryDatabase(secDbName, null, myDb, mySecConfig); 
+    mySecDb = new SecondaryDatabase(secDbName, null, myDb, mySecConfig);
 } catch (DatabaseException de) {
     // Exception handling goes here ...
 } catch (FileNotFoundException fnfe) {

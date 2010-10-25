@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1998, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -43,7 +43,7 @@ __bam_reclaim(dbp, ip, txn)
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc,
-	    DB_LOCK_WRITE, dbc->internal->root, __db_reclaim_callback, NULL);
+	    DB_LOCK_WRITE, PGNO_INVALID, __db_reclaim_callback, NULL);
 
 	if ((t_ret = __TLPUT(dbc, meta_lock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -82,7 +82,7 @@ __bam_truncate(dbc, countp)
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc,
-	    DB_LOCK_WRITE, dbc->internal->root, __db_truncate_callback, &count);
+	    DB_LOCK_WRITE, PGNO_INVALID, __db_truncate_callback, &count);
 
 #ifdef HAVE_COMPRESSION
 	if (DB_IS_COMPRESSED(dbc->dbp)) {

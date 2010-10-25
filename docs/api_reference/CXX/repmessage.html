@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, DbLsn *ret_lsnp)</pre>
+DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, 
+                           DbLsn *ret_lsnp)</pre>
       <p>
          The <code class="methodname">DbEnv::rep_process_message()</code> method processes an incoming
          replication message sent by a member of the replication group to the
@@ -125,8 +126,8 @@ DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, DbLsn *ret_lsnp)</
                  <code class="literal">DB_REP_JOIN_FAILURE</code> if a new master has been chosen but the
                  client is unable to synchronize with the new master (possibly because the client
                  has been configured with the 
-                 <a class="link" href="repconfig.html#config_DB_REP_CONF_NOAUTOINIT">DB_REP_CONF_NOAUTOINIT</a> 
-                 flag to turn off automatic internal initialization).
+                 <a class="link" href="repconfig.html#config_DB_REP_CONF_AUTOINIT">DB_REP_CONF_AUTOINIT</a> 
+                 flag set to turn off automatic internal initialization).
             </p>
           </li>
           <li>
@@ -137,8 +138,8 @@ DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, DbLsn *ret_lsnp)</
                  The <code class="methodname">DbEnv::rep_process_message()</code> method will return
                  <code class="literal">DB_REP_NEWSITE</code> if the system received contact information from a
                  new environment. The <span class="bold"><strong>rec</strong></span> parameter contains the
-                 opaque data specified in the <span class="bold"><strong>cdata</strong></span> parameter to
-                 the <a class="xref" href="repstart.html" title="DbEnv::rep_start()">DbEnv::rep_start()</a>.  The application should
+                 opaque data specified to the <a class="xref" href="repstart.html" title="DbEnv::rep_start()">DbEnv::rep_start()</a>
+                 <span class="bold"><strong>cdata</strong></span> parameter.  The application should
                  take whatever action is needed to establish a communication channel with this new
                  environment.
             </p>
@@ -173,7 +174,7 @@ DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, DbLsn *ret_lsnp)</
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702130"></a>Parameters</h3>
+              <h3 class="title"><a id="id3691326"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -181,7 +182,7 @@ DbEnv::rep_process_message(Dbt *control, Dbt *rec, int envid, DbLsn *ret_lsnp)</
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702334"></a>control</h4>
+                <h4 class="title"><a id="id3691684"></a>control</h4>
               </div>
             </div>
           </div>
@@ -196,22 +197,7 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702336"></a>envid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>envid</strong></span> parameter should contain
-                          the local identifier that corresponds to the environment that sent the
-                          message to be processed (see <a href="../../programmer_reference/rep_id.html" class="olink">Replication environment IDs</a> for more
-                          information).
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1702360"></a>rec</h4>
+                <h4 class="title"><a id="id3691935"></a>rec</h4>
               </div>
             </div>
           </div>
@@ -226,7 +212,22 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1701874"></a>ret_lsnp</h4>
+                <h4 class="title"><a id="id3691962"></a>envid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>envid</strong></span> parameter should contain
+                          the local identifier that corresponds to the environment that sent the
+                          message to be processed (see <a href="../../programmer_reference/rep_id.html" class="olink">Replication environment IDs</a> for more
+                          information).
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3691999"></a>ret_lsnp</h4>
               </div>
             </div>
           </div>
@@ -249,7 +250,7 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702348"></a>Errors</h3>
+              <h3 class="title"><a id="id3691375"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -268,7 +269,7 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702289"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3692168"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -287,7 +288,7 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702624"></a>Class</h3>
+              <h3 class="title"><a id="id3691724"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -299,7 +300,7 @@ See the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702396"></a>See Also</h3>
+              <h3 class="title"><a id="id3691804"></a>See Also</h3>
             </div>
           </div>
         </div>

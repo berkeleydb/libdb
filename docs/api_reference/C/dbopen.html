@@ -80,7 +80,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639702"></a>Parameters</h3>
+              <h3 class="title"><a id="id3956654"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -88,7 +88,58 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639737"></a>database</h4>
+                <h4 class="title"><a id="id3956564"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
+                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          DB_AUTO_COMMIT flag is specified, the operation will be implicitly
+                          transaction protected. Note that transactionally protected operations
+                          on a <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a>  handle requires
+                          the <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a>  handle itself be
+                          transactionally protected during its open.  Also note that the
+                          transaction must be committed before the handle is closed; see <a href="../../programmer_reference/program_scope.html" class="olink">Berkeley DB handles</a> for more
+                          information.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3956977"></a>file</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>file</strong></span> parameter is used as the
+                          name of an underlying file that will be used to back the database; see
+                          <a href="../../programmer_reference/env_naming.html" class="olink">File naming</a> for more
+                          information.
+                     </p>
+          <p>
+                          In-memory databases never intended to be preserved on disk may be
+                          created by setting the <span class="bold"><strong>file</strong></span> parameter
+                          to NULL. Whether other threads of control can access this database is
+                          driven entirely by whether the <span class="bold"><strong>database</strong></span>
+                          parameter is set to NULL.
+                     </p>
+          <p>
+                             When using a Unicode build on Windows (the default), the <span class="bold"><strong>file</strong></span> argument will be interpreted as a UTF-8 
+                             string, which is equivalent to ASCII for Latin characters.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3956359"></a>database</h4>
               </div>
             </div>
           </div>
@@ -126,33 +177,30 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639952"></a>file</h4>
+                <h4 class="title"><a id="id3956900"></a>type</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>file</strong></span> parameter is used as the
-                          name of an underlying file that will be used to back the database; see
-                          <a href="../../programmer_reference/env_naming.html" class="olink">File naming</a> for more
-                          information.
+                          The <span class="bold"><strong>type</strong></span> parameter is of type DBTYPE,
+                          and must be set to one of <code class="literal">DB_BTREE</code>, 
+                          <code class="literal">DB_HASH</code>, <code class="literal">DB_QUEUE</code>,
+                          <code class="literal">DB_RECNO</code>, or <code class="literal">DB_UNKNOWN</code>.  If <span class="bold"><strong>type</strong></span> is DB_UNKNOWN, the database must already
+                          exist and <code class="methodname">DB-&gt;open()</code> will automatically determine its type.  The
+                          <a class="xref" href="dbget_type.html" title="DB-&gt;get_type()">DB-&gt;get_type()</a>  method
+                          may be used to determine the underlying type of databases opened using
+                          DB_UNKNOWN.
                      </p>
           <p>
-                          In-memory databases never intended to be preserved on disk may be
-                          created by setting the <span class="bold"><strong>file</strong></span> parameter
-                          to NULL. Whether other threads of control can access this database is
-                          driven entirely by whether the <span class="bold"><strong>database</strong></span>
-                          parameter is set to NULL.
-                     </p>
-          <p>
-                             When using a Unicode build on Windows (the default), the <span class="bold"><strong>file</strong></span> argument will be interpreted as a UTF-8 
-                             string, which is equivalent to ASCII for Latin characters.
+                         It is an error to specify the incorrect <span class="bold"><strong>type</strong></span> 
+                         for a database that already exists.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639713"></a>flags</h4>
+                <h4 class="title"><a id="id3956926"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -280,7 +328,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640280"></a>mode</h4>
+                <h4 class="title"><a id="id3957456"></a>mode</h4>
               </div>
             </div>
           </div>
@@ -299,60 +347,12 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
                           mode of readable and writable by both owner and group.
                      </p>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1640355"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
-                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          DB_AUTO_COMMIT flag is specified, the operation will be implicitly
-                          transaction protected. Note that transactionally protected operations
-                          on a <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a>  handle requires
-                          the <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a>  handle itself be
-                          transactionally protected during its open.  Also note that the
-                          transaction must be committed before the handle is closed; see <a href="../../programmer_reference/program_scope.html" class="olink">Berkeley DB handles</a> for more
-                          information.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1640243"></a>type</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>type</strong></span> parameter is of type DBTYPE,
-                          and must be set to one of <code class="literal">DB_BTREE</code>, 
-                          <code class="literal">DB_HASH</code>, <code class="literal">DB_QUEUE</code>,
-                          <code class="literal">DB_RECNO</code>, or <code class="literal">DB_UNKNOWN</code>.  If <span class="bold"><strong>type</strong></span> is DB_UNKNOWN, the database must already
-                          exist and <code class="methodname">DB-&gt;open()</code> will automatically determine its type.  The
-                          <a class="xref" href="dbget_type.html" title="DB-&gt;get_type()">DB-&gt;get_type()</a>  method
-                          may be used to determine the underlying type of databases opened using
-                          DB_UNKNOWN.
-                     </p>
-          <p>
-                         It is an error to specify the incorrect <span class="bold"><strong>type</strong></span> 
-                         for a database that already exists.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1640494"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id3956672"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -392,7 +392,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1640547"></a>Errors</h3>
+              <h3 class="title"><a id="id3957791"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -408,7 +408,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640178"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3956899"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -421,7 +421,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640657"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3956905"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -434,7 +434,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640651"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3957517"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -446,7 +446,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640521"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3957588"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -458,7 +458,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640549"></a>DB_OLD_VERSION</h4>
+                <h4 class="title"><a id="id3956992"></a>DB_OLD_VERSION</h4>
               </div>
             </div>
           </div>
@@ -470,7 +470,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640555"></a>EEXIST</h4>
+                <h4 class="title"><a id="id3957836"></a>EEXIST</h4>
               </div>
             </div>
           </div>
@@ -483,7 +483,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640602"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3957550"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -506,7 +506,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640610"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3957735"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -525,7 +525,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640680"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3957782"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -538,7 +538,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639733"></a>Class</h3>
+              <h3 class="title"><a id="id3957769"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -550,7 +550,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639785"></a>See Also</h3>
+              <h3 class="title"><a id="id3956914"></a>See Also</h3>
             </div>
           </div>
         </div>

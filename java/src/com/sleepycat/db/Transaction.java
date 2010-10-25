@@ -1,12 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 package com.sleepycat.db;
+
+import java.lang.IllegalStateException;
 
 import com.sleepycat.db.internal.DbConstants;
 import com.sleepycat.db.internal.DbTxn;
@@ -42,8 +44,40 @@ To customize the attributes of a transaction:
 public class Transaction {
     /*package */ final DbTxn txn;
 
+    /* If a transaction has committed. */
+    private boolean isCommitted = false;
+
     Transaction(final DbTxn txn) {
         this.txn = txn;
+    }
+
+    /**
+        Fetch the transaction's commit token.
+    <p>
+    This operation can only be performed after this transaction has committed.
+    @return
+    The commit token generated at the commit time of this transaction.
+    <p>
+    @throws DatabaseException if a failure occurs
+    */
+    public byte[] getCommitToken() throws IllegalStateException {
+
+        /* 
+         * If iscommitted is true, but txn.commitToken is null, then it's one
+         * of below cases:
+         * 1) either this transaction is a nested txn; or
+         * 2) this environment didn't enable logging; or
+         * 3) the user calls this function on a rep client node.
+         */
+        if (isCommitted && txn.commitToken == null) {
+            throw new IllegalArgumentException();
+        }
+        if (isCommitted &&
+            txn.commitToken.length == DbConstants.DB_TXN_TOKEN_SIZE) {
+            return txn.commitToken;
+        }
+
+        throw new IllegalStateException();
     }
 
     /**
@@ -59,6 +93,9 @@ public class Transaction {
     <p>
     All cursors opened within the transaction must be closed before the
     transaction is aborted.
+    This method closes all open {@link com.sleepycat.db.Cursor Cursor} handles. 
+    And if a close operation fails, the rest of
+	the cursors are closed, and the database environment is set to the panic state.
     <p>
     After Transaction.abort has been called, regardless of its return, the
     {@link com.sleepycat.db.Transaction Transaction} handle may not be accessed again.
@@ -98,6 +135,10 @@ committed; and if its parent transaction aborts, it will be aborted.
 <p>
 All cursors opened within the transaction must be closed before the
 transaction is committed.
+If there are {@link com.sleepycat.db.Cursor Cursor} handles
+open when this method is called, they are all closed inside this method. And
+if there are errors when closing the cursor handles, the transaction
+is aborted and the first such error is returned.
 <p>
 After this method returns the {@link com.sleepycat.db.Transaction Transaction} handle may not be
 accessed again, regardless of the method's success or failure. If the
@@ -111,6 +152,7 @@ of the transaction will have been aborted when the call returns.
         throws DatabaseException {
 
         txn.commit(0);
+        isCommitted = true;
     }
 
     /**
@@ -136,6 +178,10 @@ committed; and if its parent transaction aborts, it will be aborted.
 <p>
 All cursors opened within the transaction must be closed before the
 transaction is committed.
+If there are {@link com.sleepycat.db.Cursor Cursor} handles
+open when this method is called, they are all closed inside this method. And
+if there are errors when closing the cursor handles, the transaction
+is aborted and the first such error is returned.
 <p>
 After this method returns the {@link com.sleepycat.db.Transaction Transaction} handle may not be
 accessed again, regardless of the method's success or failure. If the
@@ -149,6 +195,7 @@ of the transaction will have been aborted when the call returns.
         throws DatabaseException {
 
         txn.commit(DbConstants.DB_TXN_SYNC);
+        isCommitted = true;
     }
 
     /**
@@ -176,6 +223,10 @@ committed; and if its parent transaction aborts, it will be aborted.
 <p>
 All cursors opened within the transaction must be closed before the
 transaction is committed.
+If there are {@link com.sleepycat.db.Cursor Cursor} handles
+open when this method is called, they are all closed inside this method. And
+if there are errors when closing the cursor handles, the transaction
+is aborted and the first such error is returned.
 <p>
 After this method returns the {@link com.sleepycat.db.Transaction Transaction} handle may not be
 accessed again, regardless of the method's success or failure. If the
@@ -189,6 +240,7 @@ of the transaction will have been aborted when the call returns.
         throws DatabaseException {
 
         txn.commit(DbConstants.DB_TXN_NOSYNC);
+        isCommitted = true;
     }
 
     /**
@@ -218,6 +270,10 @@ committed; and if its parent transaction aborts, it will be aborted.
 <p>
 All cursors opened within the transaction must be closed before the
 transaction is committed.
+If there are {@link com.sleepycat.db.Cursor Cursor} handles
+open when this method is called, they are all closed inside this method. And
+if there are errors when closing the cursor handles, the transaction
+is aborted and the first such error is returned.
 <p>
 After this method returns the {@link com.sleepycat.db.Transaction Transaction} handle may not be
 accessed again, regardless of the method's success or failure. If the
@@ -231,6 +287,7 @@ of the transaction will have been aborted when the call returns.
         throws DatabaseException {
 
         txn.commit(DbConstants.DB_TXN_WRITE_NOSYNC);
+        isCommitted = true;
     }
 
     /**
@@ -241,6 +298,9 @@ of the transaction will have been aborted when the call returns.
     transaction managers recovering transactions in a single database
     environment.  Any transactions returned by {@link com.sleepycat.db.Environment#recover Environment.recover} that are not handled by the current global transaction
     manager should be discarded using this method.
+    If there are {@link com.sleepycat.db.Cursor Cursor} handles
+    open when this method is called, they are all closed inside this method. And
+    if there are errors when closing the cursor handles, the first such error is returned.
     <p>
     The {@link com.sleepycat.db.Transaction Transaction} handle may not be accessed again after this
     method has been called, regardless of the method's success or failure.
@@ -288,6 +348,20 @@ of the transaction will have been aborted when the call returns.
     }
 
     /**
+    Get the transaction's deadlock priority.
+    <p>
+    @return
+    The deadlock priority for the transaction.
+    <p>
+    @throws DatabaseException if a failure occurs
+    */
+    public int getPriority() 
+        throws DatabaseException {
+
+	return txn.get_priority();
+    }
+    
+    /**
     Initiate the beginning of a two-phase commit.
     <p>
     In a distributed transaction environment, Berkeley DB can be used
@@ -304,6 +378,10 @@ of the transaction will have been aborted when the call returns.
     unresolved children of the parent transaction to be committed.
     Child transactions should never be explicitly prepared.  Their fate
     will be resolved along with their parent's during global recovery.
+    <p>
+    If there are {@link com.sleepycat.db.Cursor Cursor} handles
+    open when this method is called, they are all closed inside this method. And
+    if there are errors when closing the cursor handles, the first such error is returned.
     <p>
     @param gid
     The global transaction ID by which this transaction will be known.
@@ -333,6 +411,22 @@ of the transaction will have been aborted when the call returns.
         throws DatabaseException {
 
         txn.set_name(name);
+    }
+
+    /**
+    Set the deadlock priority for this transaction.  The deadlock detector will
+    reject lock requests from lower priority transactions before those from
+    higher priority transactions.
+    <p>
+    @param priority
+    The deadlock priority for the transaction.
+    <p>
+    @throws DatabaseException if a failure occurs.
+    */
+    public void setPriority(int priority)
+        throws DatabaseException {
+
+        txn.set_priority(priority);
     }
 
     /**

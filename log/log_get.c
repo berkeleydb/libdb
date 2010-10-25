@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -386,15 +386,20 @@ __logc_get_int(logc, alsn, dbt, flags)
 	LOG *lp;
 	RLOCK rlock;
 	logfile_validity status;
-	u_int32_t cnt, version;
-	u_int8_t *rp;
+	u_int32_t cnt, i, logfsz, logtype, orig_flags, version;
+	u_int8_t ch, *rp;
 	int eof, is_hmac, need_cksum, ret;
+	size_t blen;
+	char chksumbuf[256];
 
 	env = logc->env;
 	db_cipher = env->crypto_handle;
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
 	is_hmac = 0;
+	orig_flags = flags; /* flags may be altered later. */
+	blen = 0;
+	logfsz = lp->persist.log_size;
 
 	/*
 	 * We don't acquire the log region lock until we need it, and we
@@ -402,6 +407,7 @@ __logc_get_int(logc, alsn, dbt, flags)
 	 */
 	rlock = F_ISSET(logc, DB_LOG_LOCKED) ? L_ALREADY : L_NONE;
 
+nextrec:
 	nlsn = logc->lsn;
 	switch (flags) {
 	case DB_NEXT:				/* Next log record. */
@@ -644,6 +650,52 @@ cksum:	/*
 		    rp + hdr.size, hdr.len - hdr.size, is_hmac) == 0) {
 			logc->lsn = last_lsn;
 			goto from_memory;
+		}
+
+		/*
+		 * If we are iterating logs during log verification and basic
+		 * header info is correct, we can skip the failed log record
+		 * and goto next one.
+		 */
+		if (F_ISSET(logc->env->lg_handle, DBLOG_VERIFYING) &&
+		    (orig_flags == DB_FIRST || orig_flags == DB_LAST ||
+		    orig_flags == DB_PREV || orig_flags == DB_NEXT) &&
+		    hdr.size > 0 && hdr.len > hdr.size && hdr.len < logfsz &&
+		    (((flags == DB_FIRST || flags == DB_NEXT) &&
+		    hdr.prev == last_lsn.offset) ||
+		    ((flags == DB_PREV || flags == DB_LAST) &&
+		    last_lsn.offset - hdr.len == nlsn.offset))) {
+
+			flags = orig_flags;
+
+			logc->lsn = nlsn;
+			logc->len = hdr.len;
+			logc->prev = hdr.prev;
+
+			if (flags == DB_LAST)
+				flags = DB_PREV;
+			else if (flags == DB_FIRST)
+				flags = DB_NEXT;
+
+			memset(chksumbuf, 0, 256);
+			blen = 0;
+			for (i = 0; i < DB_MAC_KEY && blen < 256; i++) {
+				ch = hdr.chksum[i];
+				blen = strlen(chksumbuf);
+				snprintf(chksumbuf + blen, 255 - blen,
+				    isprint(ch) ||
+				    ch == 0x0a ? "%c" : "%#x ", ch);
+			}
+			/* Type field is always the first one in the record. */
+			memcpy(&logtype, rp + hdr.size, sizeof(logtype));
+			__db_errx(env, "DB_LOGC->get: log record LSN %lu/%lu: "
+			    "checksum mismatch, hdr.chksum: %s, hdr.prev: %u, "
+			    "hdr.len: %u, log type: %u. Skipping it and "
+			    "continuing with the %s one",
+			    (u_long)nlsn.file, (u_long)nlsn.offset, chksumbuf,
+			    hdr.prev, hdr.len, logtype,
+			    flags == DB_NEXT ? "next" : "previous");
+			goto nextrec;
 		}
 
 		if (F_ISSET(logc, DB_LOG_SILENT_ERR)) {
@@ -1416,10 +1468,10 @@ __log_rep_split(env, ip, rp, rec, ret_lsnp, last_lsnp)
 			logrec.data = b_args.bulkdata.data;
 			logrec.size = b_args.len;
 		}
-		RPRINT(env, DB_VERB_REP_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REP_MISC,
 		    "log_rep_split: Processing LSN [%lu][%lu]",
 		    (u_long)tmprp.lsn.file, (u_long)tmprp.lsn.offset));
-		RPRINT(env, DB_VERB_REP_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REP_MISC,
     "log_rep_split: p %#lx ep %#lx logrec data %#lx, size %lu (%#lx)",
 		    P_TO_ULONG(p), P_TO_ULONG(ep), P_TO_ULONG(logrec.data),
 		    (u_long)logrec.size, (u_long)logrec.size));
@@ -1427,7 +1479,7 @@ __log_rep_split(env, ip, rp, rec, ret_lsnp, last_lsnp)
 			F_SET(&tmprp, save_flags);
 		ret = __rep_apply(env, ip,
 		    &tmprp, &logrec, &tmp_lsn, NULL, last_lsnp);
-		RPRINT(env, DB_VERB_REP_MISC, (env,
+		VPRINT(env, (env, DB_VERB_REP_MISC,
 		    "log_split: rep_apply ret %d, tmp_lsn [%lu][%lu]",
 		    ret, (u_long)tmp_lsn.file, (u_long)tmp_lsn.offset));
 		switch (ret) {
@@ -1471,3 +1523,206 @@ out:
 	return (ret);
 }
 #endif
+/*
+ * PUBLIC: int __log_read_record_pp  __P((DB_ENV *, DB **, void *, void *,
+ * PUBLIC:     DB_LOG_RECSPEC *, u_int32_t, void **));
+ */
+int
+__log_read_record_pp(dbenv, dbpp, td, recbuf, spec, size, argpp)
+	DB_ENV *dbenv;
+	DB **dbpp;
+	void *td;
+	void *recbuf;
+	DB_LOG_RECSPEC *spec;
+	u_int32_t size;
+	void **argpp;
+{
+	DB_THREAD_INFO *ip;
+	int ret;
+
+	ENV_REQUIRES_CONFIG(dbenv->env,
+	    dbenv->env->lg_handle, "DB_ENV->log_read_record", DB_INIT_LOG);
+
+	*argpp = NULL;
+	ENV_ENTER(dbenv->env, ip);
+	if ((ret = __os_umalloc(dbenv->env, size + sizeof(DB_TXN), argpp)) != 0)
+		goto done;
+	REPLICATION_WRAP(dbenv->env, (__log_read_record(dbenv->env, dbpp,
+	    td, recbuf, spec, size, argpp)), 0, ret);
+	if (ret != 0) {
+		__os_ufree(dbenv->env, *argpp);
+		*argpp = NULL;
+	}
+done:	ENV_LEAVE(dbenv->env, ip);
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __log_read_record  __P((ENV *, DB **, void *, void *,
+ * PUBLIC:     DB_LOG_RECSPEC *, u_int32_t, void **));
+ */
+int
+__log_read_record(env, dbpp, td, recbuf, spec, size, argpp)
+	ENV *env;
+	DB **dbpp;
+	void *td;
+	void *recbuf;
+	DB_LOG_RECSPEC *spec;
+	u_int32_t size;
+	void **argpp;
+{
+	DB_LOG_RECSPEC *sp, *np;
+	DB_TXN *txnp;
+	LOG *lp;
+	PAGE *hdrstart;
+	u_int32_t hdrsize, op, uinttmp;
+	u_int8_t *ap, *bp;
+	int has_data, ret, downrev;
+
+	COMPQUIET(has_data, 0);
+	COMPQUIET(hdrsize, 0);
+	COMPQUIET(hdrstart, NULL);
+	COMPQUIET(op, 0);
+	ap = *argpp;
+	/*
+	 * Allocate space for the arg structure and a transaction
+	 * structure which will imeediately follow it.
+	 */
+	if (ap == NULL &&
+	    (ret = __os_malloc(env, size + sizeof(DB_TXN), &ap)) != 0)
+		return (ret);
+	txnp = (DB_TXN *)(ap + size);
+	memset(txnp, 0, sizeof(DB_TXN));
+	txnp->td = td;
+	lp = env->lg_handle->reginfo.primary;
+	downrev = lp->persist.version < DB_LOGVERSION_50;
+
+	bp = recbuf;
+
+	/*
+	 * The first three fields are always the same in every arg
+	 * struct so we know their offsets.
+	 */
+	/* type */
+	LOGCOPY_32(env, ap + SSZ(LOG_REC_HEADER, type), bp);
+	bp += sizeof(u_int32_t);
+
+	/* txnp */
+	LOGCOPY_32(env, &txnp->txnid, bp);
+	*(DB_TXN **)(ap + SSZ(LOG_REC_HEADER, txnp)) = txnp;
+	bp += sizeof(txnp->txnid);
+
+	/* Previous LSN */
+	LOGCOPY_TOLSN(env,
+	     (DB_LSN *)(ap +  SSZ(LOG_REC_HEADER, prev_lsn)), bp);
+	bp += sizeof(DB_LSN);
+
+	ret = 0;
+	for (sp = spec; sp->type != LOGREC_Done; sp++) {
+		switch (sp->type) {
+		case LOGREC_DB:
+			LOGCOPY_32(env, &uinttmp, bp);
+			*(u_int32_t*)(ap + sp->offset) = uinttmp;
+			bp += sizeof(uinttmp);
+			if (dbpp != NULL) {
+				*dbpp = NULL;
+				ret = __dbreg_id_to_db(env,
+				    txnp, dbpp, (int32_t)uinttmp, 1);
+			}
+			break;
+
+		case LOGREC_ARG:
+		case LOGREC_TIME:
+		case LOGREC_DBOP:
+			LOGCOPY_32(env, ap + sp->offset, bp);
+			bp += sizeof(uinttmp);
+			break;
+		case LOGREC_OP:
+			LOGCOPY_32(env, &op, bp);
+			*(u_int32_t *)(ap + sp->offset) = op;
+			bp += sizeof(uinttmp);
+			break;
+		case LOGREC_DBT:
+		case LOGREC_PGLIST:
+		case LOGREC_LOCKS:
+		case LOGREC_HDR:
+		case LOGREC_DATA:
+		case LOGREC_PGDBT:
+		case LOGREC_PGDDBT:
+			memset(ap + sp->offset, 0, sizeof(DBT));
+			LOGCOPY_32(env, &uinttmp, bp);
+			*(u_int32_t*)
+			     (ap + sp->offset + SSZ(DBT, size)) = uinttmp;
+			bp += sizeof(u_int32_t);
+			*(void **)(ap + sp->offset + SSZ(DBT, data)) = bp;
+
+			/* Process fields that need to be byte swapped. */
+			switch (sp->type) {
+			case LOGREC_DBT:
+			case LOGREC_PGLIST:
+			case LOGREC_LOCKS:
+				break;
+			case LOGREC_HDR:
+				if (uinttmp == 0)
+					break;
+				has_data = 0;
+				for (np = sp + 1; np->type != LOGREC_Done; np++)
+					if (np->type == LOGREC_DATA) {
+						has_data = 1;
+						break;
+					}
+				hdrstart = (PAGE *)bp;
+				hdrsize = uinttmp;
+				if (has_data == 1)
+					break;
+				/* FALLTHROUGH */
+			case LOGREC_DATA:
+				if (downrev ? LOG_SWAPPED(env) :
+				    (dbpp != NULL && *dbpp != NULL &&
+				    F_ISSET(*dbpp, DB_AM_SWAP)))
+					__db_recordswap(op, hdrsize,
+					    hdrstart, has_data ?
+					    ap + sp->offset : NULL, 1);
+				break;
+			case LOGREC_PGDBT:
+				has_data = 0;
+				for (np = sp + 1; np->type != LOGREC_Done; np++)
+					if (np->type == LOGREC_PGDDBT) {
+						has_data = 1;
+						break;
+					}
+
+				hdrstart = (PAGE *)bp;
+				hdrsize = uinttmp;
+				if (has_data == 1)
+					break;
+				/* FALLTHROUGH */
+			case LOGREC_PGDDBT:
+				if (dbpp != NULL && *dbpp != NULL &&
+				    (downrev ? LOG_SWAPPED(env) :
+				    F_ISSET(*dbpp, DB_AM_SWAP)) &&
+				    (ret = __db_pageswap(env, *dbpp, hdrstart,
+				    hdrsize, has_data == 0 ? NULL :
+				    (DBT *)(ap + sp->offset), 1)) != 0)
+					return (ret);
+				break;
+			default:
+				DB_ASSERT(env, sp->type != sp->type);
+			}
+
+			bp += uinttmp;
+			break;
+
+		case LOGREC_POINTER:
+			LOGCOPY_TOLSN(env, (DB_LSN *)(ap + sp->offset), bp);
+			bp += sizeof(DB_LSN);
+			break;
+
+		default:
+			DB_ASSERT(env, sp->type != sp->type);
+		}
+	}
+
+	*argpp = ap;
+	return (ret);
+}

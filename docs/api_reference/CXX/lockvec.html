@@ -70,7 +70,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1682308"></a>Parameters</h3>
+              <h3 class="title"><a id="id3671729"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -78,21 +78,21 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683110"></a>elistp</h4>
+                <h4 class="title"><a id="id3671439"></a>locker</h4>
               </div>
             </div>
           </div>
           <p>
-                          If an error occurs, and the <span class="bold"><strong>elistp</strong></span>
-                          parameter is non-NULL, it is set to point to the DB_LOCKREQ entry that
-                          was being processed when the error occurred.
+                          The <span class="bold"><strong>locker</strong></span> parameter is an unsigned
+                          32-bit integer quantity.  It represents the entity requesting or
+                          releasing the lock.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683423"></a>flags</h4>
+                <h4 class="title"><a id="id3670736"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -121,21 +121,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683577"></a>locker</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>locker</strong></span> parameter is an unsigned
-                          32-bit integer quantity.  It represents the entity requesting or
-                          releasing the lock.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1683037"></a>list</h4>
+                <h4 class="title"><a id="id3671975"></a>list</h4>
               </div>
             </div>
           </div>
@@ -341,7 +327,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683656"></a>nlist</h4>
+                <h4 class="title"><a id="id3672584"></a>nlist</h4>
               </div>
             </div>
           </div>
@@ -350,12 +336,26 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
                           number of elements in the <span class="bold"><strong>list</strong></span> array.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3672598"></a>elistp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If an error occurs, and the <span class="bold"><strong>elistp</strong></span>
+                          parameter is non-NULL, it is set to point to the DB_LOCKREQ entry that
+                          was being processed when the error occurred.
+                     </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1684036"></a>Errors</h3>
+              <h3 class="title"><a id="id3671538"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -373,7 +373,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683663"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3672082"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -391,7 +391,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683955"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3672270"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -409,7 +409,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683358"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3672601"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -428,7 +428,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683890"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3672084"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -440,7 +440,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1683561"></a>ENOMEM</h4>
+                <h4 class="title"><a id="id3672605"></a>ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -453,7 +453,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1683505"></a>Class</h3>
+              <h3 class="title"><a id="id3672115"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -466,7 +466,7 @@ DbEnv::lock_vec(u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1683383"></a>See Also</h3>
+              <h3 class="title"><a id="id3672635"></a>See Also</h3>
             </div>
           </div>
         </div>

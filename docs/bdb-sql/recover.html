@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Recovering from a Backup</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="admin.html" title="Chapter 4. Administrating Berkeley DB SQL" />
+    <link rel="prev" href="admin.html" title="Chapter 4. Administrating Berkeley DB SQL" />
+    <link rel="next" href="sync.html" title="Syncing with Oracle Databases" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Recovering from a Backup</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="admin.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Administrating Berkeley DB SQL</th>
+          <td width="20%" align="right"> <a accesskey="n" href="sync.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="recover"></a>Recovering from a Backup</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="recover.html#catastrophicrecovery">Catastrophic Recovery</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+                If you used standard Berkeley DB backup procedures to backup your
+                database, then you can restore your database using the
+                procedures described in this section.
+            </p>
+      <p>
+               Note that Berkeley DB supports two types of recovery: 
+            </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                        Normal recovery, which examines only those
+                        log records needed to bring the database to a consistent
+                        state since the last checkpoint.  Normal recovery
+                        starts with any logs used by any transactions active at
+                        the time of the last checkpoint, and examines all logs
+                        from then to the current logs.
+                    </p>
+            <p>
+                        Normal recovery is automatically run (if necessary) when you open
+                        your database. It is necessary to run recovery if a
+                        thread or process shuts down without properly closing
+                        the database.
+                    </p>
+          </li>
+          <li>
+            <p>
+                        Catastrophic recovery examines all available log files.
+                        You use catastrophic recovery to restore your database
+                        from a previously created backup.
+                    </p>
+          </li>
+        </ul>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="catastrophicrecovery"></a>Catastrophic Recovery</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    Use catastrophic recovery when you are
+                    recovering your database from a previously created backup.
+                    Note that to restore your database from a previous backup, you
+                    should copy the backup to a new environment directory, and
+                    then run catastrophic recovery.  Failure to do so can lead to 
+                    the internal database structures being out of sync with your log files.
+                </p>
+        <p>
+                    To run catastrophic recovery:
+                </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                            Shutdown all database operations.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Restore the backup to an empty directory. This means
+                            you need your database file, as well as the
+                            <code class="literal">-journal</code> directory, and any
+                            available log files that the backup contains.
+                        </p>
+              <p>
+                            Note that the backup database file and the journal
+                            directory must have the same name as the database 
+                            and journal directory that you are restoring.
+                            You can put the backup in a different location
+                            on disk, but the name of the file and directory
+                            must remain the same.
+                        </p>
+            </li>
+            <li>
+              <p>
+                            Make sure that a <code class="literal">DB_CONFIG</code>
+                            file exists in the journal directory that you
+                            are using to restore your database. This file
+                            must contain a the following line:
+                        </p>
+              <pre class="programlisting">set_data_dir ..</pre>
+            </li>
+            <li>
+              <p>
+                            Run the <a href="../api_reference/C/db_recover.html" class="olink">db_recover</a> command line
+                            utility with the <code class="literal">-c</code> option.
+                        </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+                    Note that catastrophic recovery examines every available
+                    log file — not just those log files created since the
+                    last checkpoint as is the case for normal recovery. For this reason, 
+                    catastrophic recovery is likely to take longer than does
+                    normal recovery.
+                </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="admin.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="admin.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="sync.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 4. Administrating Berkeley DB SQL </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Syncing with Oracle Databases</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

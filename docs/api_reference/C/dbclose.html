@@ -40,9 +40,11 @@
 int
 DB-&gt;close(DB *db, u_int32_t flags);  </pre>
       <p>
-         The <code class="methodname">DB-&gt;close()</code> method flushes any cached database information to
-         disk, closes any open cursors, frees any allocated resources, and
-         closes any underlying files.
+         The <code class="methodname">DB-&gt;close()</code> method flushes cached database information to
+         disk, closes any open cursors, frees allocated resources, and
+         closes underlying files. When the close operation for a cursor fails, 
+         the method returns a non-zero error value for the first instance of such an error, 
+         and continues to close the rest of the cursors and database handles.
     </p>
       <p>
          Although closing a database handle will close any open cursors, it
@@ -80,18 +82,61 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
          accessed again after <code class="methodname">DB-&gt;close()</code> is called, regardless of its return.
     </p>
       <p>
+     	If you do not close the <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a> handle explicitly, it will be closed when
+     	the environment handle that owns the <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a> handle is closed.
+    </p>
+      <p>
          The <code class="methodname">DB-&gt;close()</code> <span>
             <span>
                   method returns a non-zero error value on failure and 0 on success.
             </span>
             
         </span>
+         The error values that <code class="methodname">DB-&gt;close()</code> method returns include the error values of <code class="methodname">DBcursor-&gt;close()</code> and the following:
     </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3948812"></a>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3948977"></a>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3948911"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631977"></a>Parameters</h3>
+              <h3 class="title"><a id="id3949075"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -99,7 +144,7 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1632317"></a>flags</h4>
+                <h4 class="title"><a id="id3949079"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -146,7 +191,7 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1632318"></a>Errors</h3>
+              <h3 class="title"><a id="id3948692"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -162,7 +207,7 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1630003"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3949306"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -170,12 +215,53 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
                 An invalid flag value or parameter was specified.
             </p>
         </div>
+        <p>
+	The error messages returned for the first error encountered when <code class="methodname">DB-&gt;close()</code> method closes any open cursors include:
+	</p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3947849"></a>DB_LOCK_DEADLOCK</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3949146"></a>DB_LOCK_NOTGRANTED</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3949141"></a>EINVAL</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631853"></a>Class</h3>
+              <h3 class="title"><a id="id3947520"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -187,7 +273,7 @@ DB-&gt;close(DB *db, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1632104"></a>See Also</h3>
+              <h3 class="title"><a id="id3949250"></a>See Also</h3>
             </div>
           </div>
         </div>

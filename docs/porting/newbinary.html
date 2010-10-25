@@ -88,6 +88,11 @@ Do Changes Need to be Made to the Operating System Functionality?
               <a href="buildtarget.html"> Building on the Target Platform</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect1">
+              <a href="layout.html">Source Code Layout</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -148,6 +153,17 @@ Build Berkeley DB.
             </li>
           </ol>
         </div>
+        <p>Berkeley DB uses the GNU autoconf tools for configuration on almost all of
+the platforms it supports.  Specifically, the include file
+<code class="filename">db_config.h</code> configures the Berkeley DB build.  The simplest way to
+begin a port is to configure and build Berkeley DB on a UNIX or UNIX-like
+system, and then take the <code class="filename">Makefile</code> and <code class="filename">db_config.h</code>
+file created by that configuration, and modify it by hand to reflect
+the needs of the new architecture.  Unless you are already familiar with
+the GNU autoconf toolset, we do not recommend you take the time to
+integrate your changes back into the Berkeley DB autoconfiguration framework.
+Instead, send us context diffs of your changes and any new source files
+you created, and we can integrate the changes into our source tree.</p>
       </div>
     </div>
     <div class="navfooter">

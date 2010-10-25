@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,12 +11,8 @@
 
 #include "ex_apprec_auto.h"
 
-int ex_apprec_mkdir_log
-    __P((DB_ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *));
 int ex_apprec_mkdir_print
     __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
-int ex_apprec_mkdir_read
-    __P((DB_ENV *, void *, ex_apprec_mkdir_args **));
 int ex_apprec_mkdir_recover
     __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
 int ex_apprec_init_print __P((DB_ENV *, DB_DISTAB *));

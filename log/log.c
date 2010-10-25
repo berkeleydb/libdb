@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,6 +13,8 @@
 #include "dbinc/hmac.h"
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
+#include "dbinc/db_page.h"
+#include "dbinc/db_am.h"
 
 static int	__log_init __P((ENV *, DB_LOG *));
 static int	__log_recover __P((DB_LOG *));
@@ -162,6 +164,10 @@ __log_open(env, create_ok)
 
 		LOG_SYSTEM_UNLOCK(env);
 		region_locked = 0;
+
+		if (dbenv->lg_flags != 0 && (ret =
+		    __log_set_config_int(dbenv, dbenv->lg_flags, 1, 0)) != 0)
+			return (ret);
 	}
 
 	return (0);
@@ -316,8 +322,11 @@ __log_recover(dblp)
 	 */
 	if ((ret = __log_find(dblp, 0, &cnt, &status)) != 0)
 		return (ret);
-	if (cnt == 0)
+	if (cnt == 0) {
+		if (FLD_ISSET(dbenv->verbose, DB_VERB_RECOVERY))
+			__db_msg(env, "No log files found");
 		return (0);
+	}
 
 	/*
 	 * If the last file is an old, unreadable version, start a new
@@ -899,7 +908,7 @@ __log_env_refresh(env)
 			__env_alloc_free(reginfo, filestart);
 		}
 
-		/* Discord commit queue elements. */
+		/* Discard commit queue elements. */
 		while ((commit = SH_TAILQ_FIRST(&lp->free_commits,
 		    __db_commit)) != NULL) {
 			SH_TAILQ_REMOVE(&lp->free_commits, commit, links,

@@ -5,7 +5,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
@@ -674,6 +673,94 @@ __rep_vote_info_unmarshal(env, argp, bp, max, nextp)
 too_few:
 	__db_errx(env,
 	    "Not enough input bytes to fill a __rep_vote_info message");
+	return (EINVAL);
+}
+
+/*
+ * PUBLIC: void __rep_lsn_hist_key_marshal __P((ENV *,
+ * PUBLIC:	 __rep_lsn_hist_key_args *, u_int8_t *));
+ */
+void
+__rep_lsn_hist_key_marshal(env, argp, bp)
+	ENV *env;
+	__rep_lsn_hist_key_args *argp;
+	u_int8_t *bp;
+{
+	DB_HTONL_COPYOUT(env, bp, argp->version);
+	DB_HTONL_COPYOUT(env, bp, argp->gen);
+}
+
+/*
+ * PUBLIC: int __rep_lsn_hist_key_unmarshal __P((ENV *,
+ * PUBLIC:	 __rep_lsn_hist_key_args *, u_int8_t *, size_t, u_int8_t **));
+ */
+int
+__rep_lsn_hist_key_unmarshal(env, argp, bp, max, nextp)
+	ENV *env;
+	__rep_lsn_hist_key_args *argp;
+	u_int8_t *bp;
+	size_t max;
+	u_int8_t **nextp;
+{
+	if (max < __REP_LSN_HIST_KEY_SIZE)
+		goto too_few;
+	DB_NTOHL_COPYIN(env, argp->version, bp);
+	DB_NTOHL_COPYIN(env, argp->gen, bp);
+
+	if (nextp != NULL)
+		*nextp = bp;
+	return (0);
+
+too_few:
+	__db_errx(env,
+	    "Not enough input bytes to fill a __rep_lsn_hist_key message");
+	return (EINVAL);
+}
+
+/*
+ * PUBLIC: void __rep_lsn_hist_data_marshal __P((ENV *,
+ * PUBLIC:	 __rep_lsn_hist_data_args *, u_int8_t *));
+ */
+void
+__rep_lsn_hist_data_marshal(env, argp, bp)
+	ENV *env;
+	__rep_lsn_hist_data_args *argp;
+	u_int8_t *bp;
+{
+	DB_HTONL_COPYOUT(env, bp, argp->envid);
+	DB_HTONL_COPYOUT(env, bp, argp->lsn.file);
+	DB_HTONL_COPYOUT(env, bp, argp->lsn.offset);
+	DB_HTONL_COPYOUT(env, bp, argp->hist_sec);
+	DB_HTONL_COPYOUT(env, bp, argp->hist_nsec);
+}
+
+/*
+ * PUBLIC: int __rep_lsn_hist_data_unmarshal __P((ENV *,
+ * PUBLIC:	 __rep_lsn_hist_data_args *, u_int8_t *, size_t, u_int8_t **));
+ */
+int
+__rep_lsn_hist_data_unmarshal(env, argp, bp, max, nextp)
+	ENV *env;
+	__rep_lsn_hist_data_args *argp;
+	u_int8_t *bp;
+	size_t max;
+	u_int8_t **nextp;
+{
+	if (max < __REP_LSN_HIST_DATA_SIZE)
+		goto too_few;
+	DB_NTOHL_COPYIN(env, argp->envid, bp);
+	DB_NTOHL_COPYIN(env, argp->lsn.file, bp);
+	DB_NTOHL_COPYIN(env, argp->lsn.offset, bp);
+	DB_NTOHL_COPYIN(env, argp->hist_sec, bp);
+	DB_NTOHL_COPYIN(env, argp->hist_nsec, bp);
+
+	if (nextp != NULL)
+		*nextp = bp;
+	return (0);
+
+too_few:
+	__db_errx(env,
+	    "Not enough input bytes to fill a __rep_lsn_hist_data message");
 	return (EINVAL);
 }
 

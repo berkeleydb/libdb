@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -31,17 +31,21 @@ namespace BerkeleyDB {
         /// </summary>
         public bool returnEnd;
         /// <summary>
-        /// If non-null, the starting point for compaction. Compaction will
-        /// start at the smallest key greater than or equal to
-        /// <paramref name="start"/>. If null, compaction will start at the
+        /// If non-null, the starting point for compaction.  For a Btree or
+        /// Recno database compaction will start at the smallest key greater
+        /// than or equal to <paramref name="start"/>.  For a Hash database the
+        /// compaction will start in the bucket specified by the integer stored
+        /// in <paramref name="start"/>.  If null, compaction will start at the
         /// beginning of the database. 
         /// </summary>
         public DatabaseEntry start;
         /// <summary>
-        /// If non-null, the stopping point for compaction. Compaction will stop
-        /// at the page with the smallest key greater than
-        /// <paramref name="stop"/>. If null, compaction will stop at the end of
-        /// the database. 
+        /// If non-null, the stopping point for compaction.  For a Btree or
+        /// Recno database compaction will stop at the page with the smallest
+        /// key greater than <paramref name="stop"/>.  For a Hash database
+        /// compaction will stop in the bucked specified by the integer stored
+        /// in <paramref name="stop"/>.  If null, compaction will stop at the
+        /// end of the database. 
         /// </summary>
         public DatabaseEntry stop;
         /// <summary>

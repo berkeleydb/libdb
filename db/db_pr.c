@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -16,6 +16,17 @@
 #include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/db_verify.h"
+
+static int	 __db_bmeta __P((ENV *, DB *, BTMETA *, u_int32_t));
+static int	 __db_hmeta __P((ENV *, DB *, HMETA *, u_int32_t));
+static void	 __db_meta __P((ENV *, DB *, DBMETA *, FN const *, u_int32_t));
+static void	 __db_proff __P((ENV *, DB_MSGBUF *, void *));
+static int	 __db_qmeta __P((ENV *, DB *, QMETA *, u_int32_t));
+#ifdef HAVE_STATISTICS
+static void	 __db_prdb __P((DB *, u_int32_t));
+static int	 __db_prtree __P((DB *, DB_TXN *,
+		    u_int32_t, db_pgno_t, db_pgno_t));
+#endif
 
 /*
  * __db_loadme --
@@ -32,26 +43,19 @@ __db_loadme()
 }
 
 #ifdef HAVE_STATISTICS
-static int	 __db_bmeta __P((DB *, BTMETA *, u_int32_t));
-static int	 __db_hmeta __P((DB *, HMETA *, u_int32_t));
-static void	 __db_meta __P((DB *, DBMETA *, FN const *, u_int32_t));
-static const char *__db_pagetype_to_string __P((u_int32_t));
-static void	 __db_prdb __P((DB *, u_int32_t));
-static void	 __db_proff __P((ENV *, DB_MSGBUF *, void *));
-static int	 __db_prtree __P((DB *, DB_TXN *, u_int32_t));
-static int	 __db_qmeta __P((DB *, QMETA *, u_int32_t));
-
 /*
  * __db_dumptree --
  *	Dump the tree to a file.
  *
- * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
+ * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *,
+ * PUBLIC:     char *, char *, db_pgno_t, db_pgno_t));
  */
 int
-__db_dumptree(dbp, txn, op, name)
+__db_dumptree(dbp, txn, op, name, first, last)
 	DB *dbp;
 	DB_TXN *txn;
 	char *op, *name;
+	db_pgno_t first, last;
 {
 	ENV *env;
 	FILE *fp, *orig_fp;
@@ -87,7 +91,7 @@ __db_dumptree(dbp, txn, op, name)
 
 	__db_msg(env, "%s", DB_GLOBAL(db_line));
 
-	ret = __db_prtree(dbp, txn, flags);
+	ret = __db_prtree(dbp, txn, flags, first, last);
 
 	if (fp != NULL) {
 		(void)fclose(fp);
@@ -223,14 +227,15 @@ __db_prdb(dbp, flags)
  *	Print out the entire tree.
  */
 static int
-__db_prtree(dbp, txn, flags)
+__db_prtree(dbp, txn, flags, first, last)
 	DB *dbp;
 	DB_TXN *txn;
 	u_int32_t flags;
+	db_pgno_t first, last;
 {
 	DB_MPOOLFILE *mpf;
 	PAGE *h;
-	db_pgno_t i, last;
+	db_pgno_t i;
 	int ret;
 
 	mpf = dbp->mpf;
@@ -242,9 +247,10 @@ __db_prtree(dbp, txn, flags)
 	 * Find out the page number of the last page in the database, then
 	 * dump each page.
 	 */
-	if ((ret = __memp_get_last_pgno(mpf, &last)) != 0)
+	if (last == PGNO_INVALID &&
+	    (ret = __memp_get_last_pgno(mpf, &last)) != 0)
 		return (ret);
-	for (i = 0; i <= last; ++i) {
+	for (i = first; i <= last; ++i) {
 		if ((ret = __memp_fget(mpf, &i, NULL, txn, 0, &h)) != 0)
 			return (ret);
 		(void)__db_prpage(dbp, h, flags);
@@ -256,27 +262,153 @@ __db_prtree(dbp, txn, flags)
 }
 
 /*
+ * __db_prnpage
+ *	-- Print out a specific page.
+ *
+ * PUBLIC: int __db_prnpage __P((DB *, DB_TXN *, db_pgno_t));
+ */
+int
+__db_prnpage(dbp, txn, pgno)
+	DB *dbp;
+	DB_TXN *txn;
+	db_pgno_t pgno;
+{
+	DB_MPOOLFILE *mpf;
+	PAGE *h;
+	int ret, t_ret;
+
+	mpf = dbp->mpf;
+
+	if ((ret = __memp_fget(mpf, &pgno, NULL, txn, 0, &h)) != 0)
+		return (ret);
+
+	ret = __db_prpage(dbp, h, DB_PR_PAGE);
+
+	if ((t_ret = __memp_fput(mpf, NULL, h, dbp->priority)) != 0 && ret == 0)
+		ret = t_ret;
+
+	return (ret);
+}
+
+/*
+ * __db_prpage
+ *	-- Print out a page.
+ *
+ * PUBLIC: int __db_prpage __P((DB *, PAGE *, u_int32_t));
+ */
+int
+__db_prpage(dbp, h, flags)
+	DB *dbp;
+	PAGE *h;
+	u_int32_t flags;
+{
+	u_int32_t pagesize;
+	/*
+	 * !!!
+	 * Find out the page size.  We don't want to do it the "right" way,
+	 * by reading the value from the meta-data page, that's going to be
+	 * slow.  Reach down into the mpool region.
+	 */
+	pagesize = (u_int32_t)dbp->mpf->mfp->pagesize;
+	return (__db_prpage_int(dbp->env, dbp, "", h, pagesize, NULL, flags));
+}
+
+/*
+ * __db_lockmode_to_string --
+ *	Return the name of the lock mode.
+ *
+ * PUBLIC: const char * __db_lockmode_to_string __P((db_lockmode_t));
+ */
+const char *
+__db_lockmode_to_string(mode)
+	db_lockmode_t mode;
+{
+	switch (mode) {
+	case DB_LOCK_NG:
+		return ("Not granted");
+	case DB_LOCK_READ:
+		return ("Shared/read");
+	case DB_LOCK_WRITE:
+		return ("Exclusive/write");
+	case DB_LOCK_WAIT:
+		return ("Wait for event");
+	case DB_LOCK_IWRITE:
+		return ("Intent exclusive/write");
+	case DB_LOCK_IREAD:
+		return ("Intent shared/read");
+	case DB_LOCK_IWR:
+		return ("Intent to read/write");
+	case DB_LOCK_READ_UNCOMMITTED:
+		return ("Read uncommitted");
+	case DB_LOCK_WWRITE:
+		return ("Was written");
+	default:
+		break;
+	}
+	return ("UNKNOWN LOCK MODE");
+}
+
+#else /* !HAVE_STATISTICS */
+
+/*
+ * __db_dumptree --
+ *	Dump the tree to a file.
+ *
+ * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *,
+ * PUBLIC:     char *, char *, db_pgno_t, db_pgno_t));
+ */
+int
+__db_dumptree(dbp, txn, op, name, first, last)
+	DB *dbp;
+	DB_TXN *txn;
+	char *op, *name;
+	db_pgno_t first, last;
+{
+	COMPQUIET(txn, NULL);
+	COMPQUIET(op, NULL);
+	COMPQUIET(name, NULL);
+	COMPQUIET(first, last);
+
+	return (__db_stat_not_built(dbp->env));
+}
+
+/*
+ * __db_get_flags_fn --
+ *	Return the __db_flags_fn array.
+ *
+ * PUBLIC: const FN * __db_get_flags_fn __P((void));
+ */
+const FN *
+__db_get_flags_fn()
+{
+	/*
+	 * !!!
+	 * The Tcl API uses this interface, stub it off.
+	 */
+	return (NULL);
+}
+#endif
+
+/*
  * __db_meta --
  *	Print out common metadata information.
  */
 static void
-__db_meta(dbp, dbmeta, fn, flags)
+__db_meta(env, dbp, dbmeta, fn, flags)
 	DB *dbp;
+	ENV *env;
 	DBMETA *dbmeta;
 	FN const *fn;
 	u_int32_t flags;
 {
 	DB_MPOOLFILE *mpf;
 	DB_MSGBUF mb;
-	ENV *env;
 	PAGE *h;
 	db_pgno_t pgno;
 	u_int8_t *p;
 	int cnt, ret;
 	const char *sep;
 
-	env = dbp->env;
-	mpf = dbp->mpf;
 	DB_MSGBUF_INIT(&mb);
 
 	__db_msg(env, "\tmagic: %#lx", (u_long)dbmeta->magic);
@@ -293,7 +425,8 @@ __db_meta(dbp, dbmeta, fn, flags)
 	 * If we're doing recovery testing, don't display the free list,
 	 * it may have changed and that makes the dump diff not work.
 	 */
-	if (!LF_ISSET(DB_PR_RECOVERYTEST)) {
+	if (dbp != NULL && !LF_ISSET(DB_PR_RECOVERYTEST)) {
+		mpf = dbp->mpf;
 		__db_msgadd(
 		    env, &mb, "\tfree list: %lu", (u_long)dbmeta->free);
 		for (pgno = dbmeta->free,
@@ -342,7 +475,8 @@ __db_meta(dbp, dbmeta, fn, flags)
  *	Print out the btree meta-data page.
  */
 static int
-__db_bmeta(dbp, h, flags)
+__db_bmeta(env, dbp, h, flags)
+	ENV *env;
 	DB *dbp;
 	BTMETA *h;
 	u_int32_t flags;
@@ -358,14 +492,11 @@ __db_bmeta(dbp, h, flags)
 		{ BTM_COMPRESS,	"compressed" },
 		{ 0,		NULL }
 	};
-	ENV *env;
 
-	env = dbp->env;
-
-	__db_meta(dbp, (DBMETA *)h, fn, flags);
+	__db_meta(env, dbp, (DBMETA *)h, fn, flags);
 
 	__db_msg(env, "\tminkey: %lu", (u_long)h->minkey);
-	if (dbp->type == DB_RECNO)
+	if (F_ISSET(&h->dbmeta, BTM_RECNO))
 		__db_msg(env, "\tre_len: %#lx re_pad: %#lx",
 		    (u_long)h->re_len, (u_long)h->re_pad);
 	__db_msg(env, "\troot: %lu", (u_long)h->root);
@@ -378,7 +509,8 @@ __db_bmeta(dbp, h, flags)
  *	Print out the hash meta-data page.
  */
 static int
-__db_hmeta(dbp, h, flags)
+__db_hmeta(env, dbp, h, flags)
+	ENV *env;
 	DB *dbp;
 	HMETA *h;
 	u_int32_t flags;
@@ -389,14 +521,12 @@ __db_hmeta(dbp, h, flags)
 		{ DB_HASH_DUPSORT,	"sorted duplicates" },
 		{ 0,			NULL }
 	};
-	ENV *env;
 	DB_MSGBUF mb;
 	int i;
 
-	env = dbp->env;
 	DB_MSGBUF_INIT(&mb);
 
-	__db_meta(dbp, (DBMETA *)h, fn, flags);
+	__db_meta(env, dbp, (DBMETA *)h, fn, flags);
 
 	__db_msg(env, "\tmax_bucket: %lu", (u_long)h->max_bucket);
 	__db_msg(env, "\thigh_mask: %#lx", (u_long)h->high_mask);
@@ -404,9 +534,14 @@ __db_hmeta(dbp, h, flags)
 	__db_msg(env, "\tffactor: %lu", (u_long)h->ffactor);
 	__db_msg(env, "\tnelem: %lu", (u_long)h->nelem);
 	__db_msg(env, "\th_charkey: %#lx", (u_long)h->h_charkey);
-	__db_msgadd(env, &mb, "\tspare points: ");
-	for (i = 0; i < NCACHED; i++)
-		__db_msgadd(env, &mb, "%lu ", (u_long)h->spares[i]);
+	__db_msgadd(env, &mb, "\tspare points:\n\t");
+	for (i = 0; i < NCACHED; i++) {
+		__db_msgadd(env, &mb, "%lu (%lu) ", (u_long)h->spares[i],
+		    (u_long)(h->spares[i] == 0 ?
+		    0 : h->spares[i] + (i == 0 ? 0 : 1 << (i-1))));
+		if ((i + 1) % 8 == 0)
+			__db_msgadd(env, &mb, "\n\t");
+	}
 	DB_MSGBUF_FLUSH(env, &mb);
 
 	return (0);
@@ -417,16 +552,14 @@ __db_hmeta(dbp, h, flags)
  *	Print out the queue meta-data page.
  */
 static int
-__db_qmeta(dbp, h, flags)
+__db_qmeta(env, dbp, h, flags)
+	ENV *env;
 	DB *dbp;
 	QMETA *h;
 	u_int32_t flags;
 {
-	ENV *env;
 
-	env = dbp->env;
-
-	__db_meta(dbp, (DBMETA *)h, NULL, flags);
+	__db_meta(env, dbp, (DBMETA *)h, NULL, flags);
 
 	__db_msg(env, "\tfirst_recno: %lu", (u_long)h->first_recno);
 	__db_msg(env, "\tcur_recno: %lu", (u_long)h->cur_recno);
@@ -439,63 +572,44 @@ __db_qmeta(dbp, h, flags)
 }
 
 /*
- * __db_prnpage
- *	-- Print out a specific page.
- *
- * PUBLIC: int __db_prnpage __P((DB *, DB_TXN *, db_pgno_t));
+ * For printing pages from the log we may be passed the data segment
+ * separate from the header, if so then it starts at HOFFSET.
  */
-int
-__db_prnpage(dbp, txn, pgno)
-	DB *dbp;
-	DB_TXN *txn;
-	db_pgno_t pgno;
-{
-	DB_MPOOLFILE *mpf;
-	PAGE *h;
-	int ret, t_ret;
-
-	mpf = dbp->mpf;
-
-	if ((ret = __memp_fget(mpf, &pgno, NULL, txn, 0, &h)) != 0)
-		return (ret);
-
-	ret = __db_prpage(dbp, h, DB_PR_PAGE);
-
-	if ((t_ret = __memp_fput(mpf, NULL, h, dbp->priority)) != 0 && ret == 0)
-		ret = t_ret;
-
-	return (ret);
-}
-
+#define	PR_ENTRY(dbp, h, i, data)				\
+	(data == NULL ? P_ENTRY(dbp, h, i) :			\
+	    (u_int8_t *)data + P_INP(dbp, h)[i] - HOFFSET(h))
 /*
- * __db_prpage
+ * __db_prpage_int
  *	-- Print out a page.
  *
- * PUBLIC: int __db_prpage __P((DB *, PAGE *, u_int32_t));
+ * PUBLIC: int __db_prpage_int __P((ENV *,
+ * PUBLIC:      DB *, char *, PAGE *, u_int32_t, u_int8_t *, u_int32_t));
  */
 int
-__db_prpage(dbp, h, flags)
+__db_prpage_int(env, dbp, lead, h, pagesize, data, flags)
+	ENV *env;
 	DB *dbp;
+	char *lead;
 	PAGE *h;
+	u_int32_t pagesize;
+	u_int8_t *data;
 	u_int32_t flags;
 {
 	BINTERNAL *bi;
 	BKEYDATA *bk;
 	DB_MSGBUF mb;
-	ENV *env;
 	HOFFPAGE a_hkd;
 	QAMDATA *qp, *qep;
 	RINTERNAL *ri;
 	db_indx_t dlen, len, i, *inp;
 	db_pgno_t pgno;
 	db_recno_t recno;
-	u_int32_t pagesize, qlen;
+	u_int32_t qlen;
 	u_int8_t *ep, *hk, *p;
 	int deleted, ret;
 	const char *s;
 	void *sp;
 
-	env = dbp->env;
 	DB_MSGBUF_INIT(&mb);
 
 	/*
@@ -506,21 +620,13 @@ __db_prpage(dbp, h, flags)
 		return (0);
 
 	if ((s = __db_pagetype_to_string(TYPE(h))) == NULL) {
-		__db_msg(env, "ILLEGAL PAGE TYPE: page: %lu type: %lu",
-		    (u_long)h->pgno, (u_long)TYPE(h));
+		__db_msg(env, "%sILLEGAL PAGE TYPE: page: %lu type: %lu",
+		    lead, (u_long)h->pgno, (u_long)TYPE(h));
 		return (EINVAL);
 	}
 
-	/*
-	 * !!!
-	 * Find out the page size.  We don't want to do it the "right" way,
-	 * by reading the value from the meta-data page, that's going to be
-	 * slow.  Reach down into the mpool region.
-	 */
-	pagesize = (u_int32_t)dbp->mpf->mfp->stat.st_pagesize;
-
 	/* Page number, page type. */
-	__db_msgadd(env, &mb, "page %lu: %s:", (u_long)h->pgno, s);
+	__db_msgadd(env, &mb, "%spage %lu: %s:", lead, (u_long)h->pgno, s);
 
 	/*
 	 * LSNs on a metadata page will be different from the original after an
@@ -539,21 +645,21 @@ __db_prpage(dbp, h, flags)
 	__db_msgadd(env, &mb, " level %lu", (u_long)h->level);
 
 	/* Record count. */
-	if (TYPE(h) == P_IBTREE ||
-	    TYPE(h) == P_IRECNO || (TYPE(h) == P_LRECNO &&
+	if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO ||
+	    (dbp != NULL && TYPE(h) == P_LRECNO &&
 	    h->pgno == ((BTREE *)dbp->bt_internal)->bt_root))
 		__db_msgadd(env, &mb, " records: %lu", (u_long)RE_NREC(h));
 	DB_MSGBUF_FLUSH(env, &mb);
 
 	switch (TYPE(h)) {
 	case P_BTREEMETA:
-		return (__db_bmeta(dbp, (BTMETA *)h, flags));
+		return (__db_bmeta(env, dbp, (BTMETA *)h, flags));
 	case P_HASHMETA:
-		return (__db_hmeta(dbp, (HMETA *)h, flags));
+		return (__db_hmeta(env, dbp, (HMETA *)h, flags));
 	case P_QAMMETA:
-		return (__db_qmeta(dbp, (QMETA *)h, flags));
+		return (__db_qmeta(env, dbp, (QMETA *)h, flags));
 	case P_QAMDATA:				/* Should be meta->start. */
-		if (!LF_ISSET(DB_PR_PAGE))
+		if (!LF_ISSET(DB_PR_PAGE) || dbp == NULL)
 			return (0);
 
 		qlen = ((QUEUE *)dbp->q_internal)->re_len;
@@ -585,16 +691,23 @@ __db_prpage(dbp, h, flags)
 	if (TYPE(h) == P_OVERFLOW) {
 		__db_msgadd(env, &mb,
 		    "%sref cnt: %4lu ", s, (u_long)OV_REF(h));
-		__db_prbytes(env,
-		    &mb, (u_int8_t *)h + P_OVERHEAD(dbp), OV_LEN(h));
+		if (dbp == NULL)
+			__db_msgadd(env, &mb,
+			    " len: %4lu ", (u_long)OV_LEN(h));
+		else
+			__db_prbytes(env,
+			    &mb, (u_int8_t *)h + P_OVERHEAD(dbp), OV_LEN(h));
 		return (0);
 	}
 	__db_msgadd(env, &mb, "%sentries: %4lu", s, (u_long)NUM_ENT(h));
 	__db_msgadd(env, &mb, " offset: %4lu", (u_long)HOFFSET(h));
 	DB_MSGBUF_FLUSH(env, &mb);
 
-	if (TYPE(h) == P_INVALID || !LF_ISSET(DB_PR_PAGE))
+	if (dbp == NULL || TYPE(h) == P_INVALID || !LF_ISSET(DB_PR_PAGE))
 		return (0);
+
+	if (data != NULL)
+		pagesize += HOFFSET(h);
 
 	ret = 0;
 	inp = P_INP(dbp, h);
@@ -614,16 +727,16 @@ __db_prpage(dbp, h, flags)
 		case P_HASH:
 		case P_IBTREE:
 		case P_IRECNO:
-			sp = P_ENTRY(dbp, h, i);
+			sp = PR_ENTRY(dbp, h, i, data);
 			break;
 		case P_LBTREE:
-			sp = P_ENTRY(dbp, h, i);
+			sp = PR_ENTRY(dbp, h, i, data);
 			deleted = i % 2 == 0 &&
 			    B_DISSET(GET_BKEYDATA(dbp, h, i + O_INDX)->type);
 			break;
 		case P_LDUP:
 		case P_LRECNO:
-			sp = P_ENTRY(dbp, h, i);
+			sp = PR_ENTRY(dbp, h, i, data);
 			deleted = B_DISSET(GET_BKEYDATA(dbp, h, i)->type);
 			break;
 		default:
@@ -783,7 +896,8 @@ __db_prbytes(env, mbp, bytes, len)
 		} else
 			msg_truncated = 0;
 		for (p = bytes, i = len; i > 0; --i, ++p)
-			if (!isprint((int)*p) && *p != '\t' && *p != '\n')
+			if (!isprint((int)*p) &&
+			    *p != '\t' && *p != '\n' && *p != '\0')
 				break;
 		if (i == 0)
 			for (p = bytes, i = len; i > 0; --i, ++p)
@@ -876,45 +990,11 @@ __db_prflags(env, mbp, flags, fn, prefix, suffix)
 }
 
 /*
- * __db_lockmode_to_string --
- *	Return the name of the lock mode.
- *
- * PUBLIC: const char * __db_lockmode_to_string __P((db_lockmode_t));
- */
-const char *
-__db_lockmode_to_string(mode)
-	db_lockmode_t mode;
-{
-	switch (mode) {
-	case DB_LOCK_NG:
-		return ("Not granted");
-	case DB_LOCK_READ:
-		return ("Shared/read");
-	case DB_LOCK_WRITE:
-		return ("Exclusive/write");
-	case DB_LOCK_WAIT:
-		return ("Wait for event");
-	case DB_LOCK_IWRITE:
-		return ("Intent exclusive/write");
-	case DB_LOCK_IREAD:
-		return ("Intent shared/read");
-	case DB_LOCK_IWR:
-		return ("Intent to read/write");
-	case DB_LOCK_READ_UNCOMMITTED:
-		return ("Read uncommitted");
-	case DB_LOCK_WWRITE:
-		return ("Was written");
-	default:
-		break;
-	}
-	return ("UNKNOWN LOCK MODE");
-}
-
-/*
  * __db_pagetype_to_string --
  *	Return the name of the specified page type.
+ * PUBLIC: const char *__db_pagetype_to_string __P((u_int32_t));
  */
-static const char *
+const char *
 __db_pagetype_to_string(type)
 	u_int32_t type;
 {
@@ -967,44 +1047,6 @@ __db_pagetype_to_string(type)
 	}
 	return (s);
 }
-
-#else /* !HAVE_STATISTICS */
-
-/*
- * __db_dumptree --
- *	Dump the tree to a file.
- *
- * PUBLIC: int __db_dumptree __P((DB *, DB_TXN *, char *, char *));
- */
-int
-__db_dumptree(dbp, txn, op, name)
-	DB *dbp;
-	DB_TXN *txn;
-	char *op, *name;
-{
-	COMPQUIET(txn, NULL);
-	COMPQUIET(op, NULL);
-	COMPQUIET(name, NULL);
-
-	return (__db_stat_not_built(dbp->env));
-}
-
-/*
- * __db_get_flags_fn --
- *	Return the __db_flags_fn array.
- *
- * PUBLIC: const FN * __db_get_flags_fn __P((void));
- */
-const FN *
-__db_get_flags_fn()
-{
-	/*
-	 * !!!
-	 * The Tcl API uses this interface, stub it off.
-	 */
-	return (NULL);
-}
-#endif
 
 /*
  * __db_dump_pp --

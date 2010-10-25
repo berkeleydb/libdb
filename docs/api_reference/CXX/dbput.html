@@ -63,7 +63,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1640671"></a>Parameters</h3>
+              <h3 class="title"><a id="id3627815"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -71,7 +71,51 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640979"></a>flags</h4>
+                <h4 class="title"><a id="id3627811"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
+                          operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3627637"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3627795"></a>data</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The data <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3627533"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -242,56 +286,12 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1641306"></a>data</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The data <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1641050"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1641464"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the
-                          operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1641532"></a>Errors</h3>
+              <h3 class="title"><a id="id3628067"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -309,7 +309,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641275"></a>DB_FOREIGN_CONFLICT</h4>
+                <h4 class="title"><a id="id3628004"></a>DB_FOREIGN_CONFLICT</h4>
               </div>
             </div>
           </div>
@@ -343,7 +343,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640951"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3627852"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -361,7 +361,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641727"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3627878"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -379,7 +379,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640646"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3627804"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -402,7 +402,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641683"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3628169"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -419,7 +419,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641697"></a>EACCES</h4>
+                <h4 class="title"><a id="id3628579"></a>EACCES</h4>
               </div>
             </div>
           </div>
@@ -431,7 +431,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641771"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3627928"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -447,7 +447,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1641578"></a>ENOSPC</h4>
+                <h4 class="title"><a id="id3626506"></a>ENOSPC</h4>
               </div>
             </div>
           </div>
@@ -460,7 +460,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1641164"></a>Class</h3>
+              <h3 class="title"><a id="id3628063"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -472,7 +472,7 @@ Db::put(DbTxn *txnid, Dbt *key, Dbt *data, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1641154"></a>See Also</h3>
+              <h3 class="title"><a id="id3628075"></a>See Also</h3>
             </div>
           </div>
         </div>

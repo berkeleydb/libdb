@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005-2009 Oracle.  All rights reserved.
+# Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,11 +16,6 @@ proc rep058 { method { tnum "058" } args } {
 
 	source ./include.tcl
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# There should be no difference with methods.  Just use btree.
 	if { $checking_valid_methods } {
@@ -125,11 +120,11 @@ proc rep058_sub { method tnum logset recargs largs } {
 	error_check_good master [$menv rep_start -master] 0
 	error_check_good client [$cenv rep_start -client] 0
 	#
-	# We'll only catch this error if we turn on no-autoinit.
+	# We'll only catch this error if we turn off autoinit.
 	# Otherwise, the system will throw away everything on the
 	# client and resync.
 	#
-	$cenv rep_config {noautoinit on}
+	$cenv rep_config {autoinit off}
 
 	set envlist "{$menv 1} {$cenv 2}"
 	process_msgs $envlist 0 NONE err

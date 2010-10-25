@@ -6,7 +6,7 @@
 msgc="/* DO NOT EDIT: automatically built by dist/s_windows. */"
 msgw="; DO NOT EDIT: automatically built by dist/s_windows."
 
-. RELEASE
+. ./RELEASE
 
 s=/tmp/__db_a$$
 t=/tmp/__db_b$$
@@ -114,10 +114,13 @@ typedef int64_t off_t;
 #endif
 	d
 }
+s/@DB_VERSION_FAMILY@/$DB_VERSION_FAMILY/
+s/@DB_VERSION_RELEASE@/$DB_VERSION_RELEASE/
 s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/
 s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
+s/@DB_VERSION_FULL_STRING@/"$DB_VERSION_FULL_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
 s/@DB_CONST@//
 s/@DB_PROTO1@/#undef __P/

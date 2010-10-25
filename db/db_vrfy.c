@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -968,8 +968,8 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, lp, rp, flags)
 
 	/*
 	 * Make sure no page has been missed and that no page is still marked
-	 * "all zeroes" (only certain hash pages can be, and they're unmarked
-	 * in __ham_vrfy_structure).
+	 * "all zeroes" unless we are looking at unused hash bucket pages or
+	 * pagesoff the end of database.
 	 */
 	for (i = 0; i < vdp->last_pgno + 1; i++) {
 		if ((ret = __db_vrfy_getpageinfo(vdp, i, &pip)) != 0)
@@ -990,7 +990,8 @@ __db_vrfy_structure(dbp, vdp, dbname, meta_pgno, lp, rp, flags)
 		    !(i > vdp->meta_last_pgno &&
 		    (F_ISSET(pip, VRFY_IS_ALLZEROES) || pip->type == P_HASH)) &&
 #endif
-		    !(dbp->type == DB_HASH && pip->type == P_INVALID)) {
+		    !(dbp->type == DB_HASH &&
+		    (pip->type == P_HASH || pip->type == P_INVALID))) {
 			/*
 			 * It is OK for unreferenced hash buckets to be
 			 * marked invalid and unreferenced.

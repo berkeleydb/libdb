@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -163,12 +163,16 @@ updated copy.
     Flush any cached database information to disk and discard the database
 handle.
 <p>
-The database handle should not be closed while any other handle that
-refers to it is not yet closed; for example, database handles should not
-be closed while cursor handles into the database remain open, or
-transactions that include operations on the database have not yet been
-committed or aborted.  Specifically, this includes {@link com.sleepycat.db.Cursor Cursor} and
+The database handle should not be closed unless all other handles that
+refer to it are closed; for example, do not close database handles while
+transactions that include operations on the database 
+are not yet committed or aborted.  This includes 
 {@link com.sleepycat.db.Transaction Transaction} handles.
+<p>
+If the {@link com.sleepycat.db.Cursor Cursor} handles to the database are open 
+when you call this method, they are closed inside this method automatically. 
+When the close operation fails, the method returns a non-zero error value 
+for the first instance of such an error, and continues to close the rest of the objects.
 <p>
 Because key/data pairs are cached in memory, failing to sync the file
 with the {@link com.sleepycat.db.Database#close Database.close} or {@link com.sleepycat.db.Database#sync Database.sync} methods

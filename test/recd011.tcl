@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -32,7 +32,7 @@ proc recd011 { method {niter 200} {ckpt_freq 15} {sleep_time 1} args } {
 	puts "\tRecd$tnum.a: Create environment and database."
 	set bufsize [expr 8 * 1024]
 	set maxsize [expr 8 * $bufsize]
-	set flags "-create -txn -home $testdir -log_buffer $bufsize \
+	set flags "-create -txn wrnosync -home $testdir -log_buffer $bufsize \
 	    -log_max $maxsize"
 
 	set env_cmd "berkdb_env $flags"

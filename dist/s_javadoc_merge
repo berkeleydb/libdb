@@ -4,8 +4,8 @@ from glob import glob
 import os, re, sys
 
 classre = re.compile(r'(?P<javadoc>(/\*\*([^/]|/[^*])*?\*/\s*)?)(?P<mods>public\s+((abstract)\s+)*)(?P<class_type>(class|interface)\s+)?(?P<class_name>\w+)\s*(?P<end>(extends|implements|{))', re.DOTALL)
-fieldre = re.compile(r'(?P<javadoc>(/\*\*([^/]|/[^*])*?\*/\s*)?)(?P<mods>public\s+((abstract|final|static)\s+)*)(?P<field_type>\w+\s+)?(?P<field_name>\w+)(?P<params>\s*(\(.*?\)|=|;))', re.DOTALL)
-paramre = re.compile(r'\s*(?:final\s*)?(?P<param_type>\w+(\[\])?)\s+(?P<param_name>\w+)\s*(?P<comma>,?)')
+fieldre = re.compile(r'(?P<javadoc>(/\*\*([^/]|/[^*])*?\*/\s*)?)(?P<mods>public\s+((abstract|final|static)\s+)*)(?P<field_type>[\w\[\]]+\s+)?(?P<field_name>\w+)(?P<params>\s*(\(.*?\)|=|;))', re.DOTALL)
+paramre = re.compile(r'\s*(?:final\s*)?(?P<param_type>[\w\[\]]+)\s+(?P<param_name>\w+)\s*(?P<comma>,?)')
 
 def fieldsig(m):
 	return '%s%s' % (m.group('field_name'), paramre.sub('\g<param_type>\g<comma>', m.group('params') or ''))

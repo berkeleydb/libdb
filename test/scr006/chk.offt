@@ -3,6 +3,8 @@
 # $Id$
 #
 # Make sure that no off_t's have snuck into the release.
+# off_t check is done at runtime in env_sig.c   We add a declaration for 
+# off_t to db.h, so it is always guaranteed to be available.
 
 d=../..
 

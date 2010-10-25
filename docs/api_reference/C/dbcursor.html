@@ -58,7 +58,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653048"></a>Parameters</h3>
+              <h3 class="title"><a id="id3970497"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -66,7 +66,32 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1653224"></a>cursorp</h4>
+                <h4 class="title"><a id="id3970246"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          To transaction-protect cursor operations, cursors must be
+                          opened and closed within the context of a transaction. The
+                          <span class="bold"><strong>txnid</strong></span> parameter specifies the
+                          transaction context in which the cursor may be used.
+                     </p>
+          <p>
+                          Cursor operations are not automatically transaction-protected, even if the 
+                          <a class="link" href="envset_flags.html#envset_flags_DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> 
+                          flag is specified to the 
+                          <a class="xref" href="envset_flags.html" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a>  or
+                          <a class="xref" href="dbopen.html" title="DB-&gt;open()">DB-&gt;open()</a>  methods.  If
+                          cursor operations are to be transaction-protected, the <span class="bold"><strong>txnid</strong></span> parameter must be a transaction handle
+                          returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; otherwise,
+                          NULL.
+                      </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3970817"></a>cursorp</h4>
               </div>
             </div>
           </div>
@@ -79,7 +104,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1653442"></a>flags</h4>
+                <h4 class="title"><a id="id3947373"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -163,37 +188,12 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1653602"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          To transaction-protect cursor operations, cursors must be
-                          opened and closed within the context of a transaction. The
-                          <span class="bold"><strong>txnid</strong></span> parameter specifies the
-                          transaction context in which the cursor may be used.
-                     </p>
-          <p>
-                          Cursor operations are not automatically transaction-protected, even if the 
-                          <a class="link" href="envset_flags.html#envset_flags_DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> 
-                          flag is specified to the 
-                          <a class="xref" href="envset_flags.html" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a>  or
-                          <a class="xref" href="dbopen.html" title="DB-&gt;open()">DB-&gt;open()</a>  methods.  If
-                          cursor operations are to be transaction-protected, the <span class="bold"><strong>txnid</strong></span> parameter must be a transaction handle
-                          returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; otherwise,
-                          NULL.
-                      </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653677"></a>Errors</h3>
+              <h3 class="title"><a id="id3970927"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -209,7 +209,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1630409"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3969963"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -228,7 +228,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1652890"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3970760"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -240,7 +240,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1653570"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3970914"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -253,7 +253,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653468"></a>Class</h3>
+              <h3 class="title"><a id="id3970787"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ DB-&gt;cursor(DB *db, DB_TXN *txnid, DBC **cursorp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653508"></a>See Also</h3>
+              <h3 class="title"><a id="id3970934"></a>See Also</h3>
             </div>
           </div>
         </div>

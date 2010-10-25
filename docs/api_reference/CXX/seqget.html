@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, u_int32_t flags);</pre>
+DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, 
+                u_int32_t flags);</pre>
       <p>
          The <code class="methodname">DbSequence::get()</code> method returns the next available element in
          the sequence and changes the sequence value by <span class="bold"><strong>delta</strong></span>.  The value of <span class="bold"><strong>delta</strong></span> must be greater than zero.  If there are
@@ -68,7 +69,7 @@ DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, u_int32_t flags);</
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709500"></a>Parameters</h3>
+              <h3 class="title"><a id="id3699805"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -76,60 +77,7 @@ DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, u_int32_t flags);</
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1709522"></a>delta</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          Specifies the amount to increment or decrement the sequence.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1709514"></a>flags</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
-                          or by bitwise inclusively <span class="bold"><strong>OR</strong></span>'ing
-                          together one or more of the following values:
-                     </p>
-          <div class="itemizedlist">
-            <ul type="disc">
-              <li>
-                <p>
-                  <code class="literal">DB_TXN_NOSYNC</code>
-            </p>
-                <p>
-                 If the operation is implicitly transaction protected (the <span class="bold"><strong>txnid</strong></span> argument is NULL but the operation occurs
-                 to a transactional database), do not synchronously flush the log when
-                 the transaction commits.
-            </p>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1709478"></a>retp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          <span class="bold"><strong>retp</strong></span> points to the memory to hold the
-                          return value from the sequence.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1709750"></a>txnid</h4>
+                <h4 class="title"><a id="id3699811"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -158,12 +106,65 @@ DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, u_int32_t flags);</
                           for sequence objects to be stored in their own database.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3699491"></a>delta</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          Specifies the amount to increment or decrement the sequence.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3700172"></a>retp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          <span class="bold"><strong>retp</strong></span> points to the memory to hold the
+                          return value from the sequence.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3690052"></a>flags</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>flags</strong></span> parameter must be set to 0
+                          or by bitwise inclusively <span class="bold"><strong>OR</strong></span>'ing
+                          together one or more of the following values:
+                     </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                  <code class="literal">DB_TXN_NOSYNC</code>
+            </p>
+                <p>
+                 If the operation is implicitly transaction protected (the <span class="bold"><strong>txnid</strong></span> argument is NULL but the operation occurs
+                 to a transactional database), do not synchronously flush the log when
+                 the transaction commits.
+            </p>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709820"></a>Class</h3>
+              <h3 class="title"><a id="id3700100"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -175,7 +176,7 @@ DbSequence::get(DbTxn *txnid, int32_t delta, db_seq_t *retp, u_int32_t flags);</
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709664"></a>See Also</h3>
+              <h3 class="title"><a id="id3700034"></a>See Also</h3>
             </div>
           </div>
         </div>

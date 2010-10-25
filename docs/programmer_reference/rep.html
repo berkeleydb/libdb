@@ -91,27 +91,27 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mgrmulti.html#id1614081">One replication process and multiple subordinate processes</a>
+                  <a href="rep_mgrmulti.html#id3664636">One replication process and multiple subordinate processes</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mgrmulti.html#id1614595">Persistence of network address configuration</a>
+                  <a href="rep_mgrmulti.html#id3664239">Persistence of network address configuration</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mgrmulti.html#id1614238">Programming considerations</a>
+                  <a href="rep_mgrmulti.html#id3664290">Programming considerations</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mgrmulti.html#id1614244">Handling failure</a>
+                  <a href="rep_mgrmulti.html#id3664427">Handling failure</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mgrmulti.html#id1614767">Other miscellaneous rules</a>
+                  <a href="rep_mgrmulti.html#id3664686">Other miscellaneous rules</a>
                 </span>
               </dt>
             </dl>
@@ -140,12 +140,12 @@
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mastersync.html#id1615013">Blocked client operations</a>
+                  <a href="rep_mastersync.html#id3664561">Blocked client operations</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="rep_mastersync.html#id1615125">Clients too far out-of-date to synchronize</a>
+                  <a href="rep_mastersync.html#id3665198">Clients too far out-of-date to synchronize</a>
                 </span>
               </dt>
             </dl>
@@ -170,6 +170,30 @@
               <a href="rep_lease.html">Master Leases</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect1">
+              <a href="rep_ryw.html">Read your writes consistency</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="rep_ryw.html#gettoken">Getting a token</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="rep_ryw.html#tokenhandling">Token handling</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="rep_ryw.html#usingtoken">Using a token to check or wait for a transaction</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
           <dt>
             <span class="sect1">
               <a href="rep_clock_skew.html">Clock Skew</a>
@@ -232,14 +256,13 @@ transactions, but doing so may incur a significant performance penalty.
 Higher performance solutions sacrifice total consistency, allowing the
 clients to be out of date for an application-controlled amount of
 time.</p>
-        <p>There are two ways to build replicated applications.  The simpler way
-is to use the Berkeley DB Replication Manager.  The Replication Manager
-provides a standard communications infrastructure, and it creates and
-manages the background threads needed for processing replication
-messages.  (Note that in Replication Manager applications, all updates
-to databases at the master environment must be done through a single
-DB_ENV environment handle, though they may occur in multiple threads.
-This of course means that only a single process may update data.)</p>
+        <p>
+    There are two ways to build replicated applications.  The simpler way
+    is to use the Berkeley DB Replication Manager.  The Replication Manager
+    provides a standard communications infrastructure, and it creates and
+    manages the background threads needed for processing replication
+    messages.
+</p>
         <p>The Replication Manager implementation is based on TCP/IP sockets, and
 uses POSIX 1003.1 style networking and thread support.  (On Windows
 systems, it uses standard Windows thread support.)  As a result, it is

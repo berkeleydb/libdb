@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/mp.h"
+#include "dbinc/log.h"
 #include "dbinc/db_am.h"
 
 /*
@@ -89,8 +90,8 @@ __db_ditem(dbc, pagep, indx, nbytes)
 	if (DBC_LOGGING(dbc)) {
 		ldbt.data = P_ENTRY(dbp, pagep, indx);
 		ldbt.size = nbytes;
-		if ((ret = __db_addrem_log(dbp, dbc->txn,
-		    &LSN(pagep), 0, DB_REM_DUP, PGNO(pagep),
+		if ((ret = __db_addrem_log(dbp, dbc->txn, &LSN(pagep), 0,
+		    OP_SET(DB_REM_DUP, pagep), PGNO(pagep),
 		    (u_int32_t)indx, nbytes, &ldbt, NULL, &LSN(pagep))) != 0)
 			return (ret);
 	} else
@@ -192,8 +193,8 @@ __db_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	 * placeholder for the trailing variable-length data field.
 	 */
 	if (DBC_LOGGING(dbc)) {
-		if ((ret = __db_addrem_log(dbp, dbc->txn,
-		    &LSN(pagep), 0, DB_ADD_DUP, PGNO(pagep),
+		if ((ret = __db_addrem_log(dbp, dbc->txn, &LSN(pagep), 0,
+		    OP_SET(DB_ADD_DUP, pagep), PGNO(pagep),
 		    (u_int32_t)indx, nbytes, hdr, data, &LSN(pagep))) != 0)
 			return (ret);
 	} else

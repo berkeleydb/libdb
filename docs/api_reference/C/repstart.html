@@ -79,7 +79,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700577"></a>Parameters</h3>
+              <h3 class="title"><a id="id4019977"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -87,7 +87,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700596"></a>cdata</h4>
+                <h4 class="title"><a id="id4019569"></a>cdata</h4>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700457"></a>flags</h4>
+                <h4 class="title"><a id="id4019337"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -136,7 +136,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700132"></a>Errors</h3>
+              <h3 class="title"><a id="id4020720"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -152,17 +152,26 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700088"></a>DB_REP_UNAVAIL</h4>
-              </div>
-              <div>
-                <h4 class="title"><a id="id1700088"></a>DB_REP_UNAVAIL</h4>
+                <h4 class="title"><a id="id4020787"></a>DB_REP_UNAVAIL</h4>
               </div>
             </div>
           </div>
           <p>
-			      If the flags parameter was passed as DB_REP_MASTER but the database
-			      environment cannot currently become the replication master because it is temporarily initializing and is incomplete.
+                            If the flags parameter was passed as
+                            DB_REP_MASTER but the database environment
+                            cannot currently become the replication master
+                            because it is temporarily initializing and is
+                            incomplete.
                          </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4020800"></a>EINVAL</h4>
+              </div>
+            </div>
+          </div>
           <p>
                               If the database environment was not already configured to communicate
                               with a replication group by a call to 
@@ -178,7 +187,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699914"></a>Class</h3>
+              <h3 class="title"><a id="id4020830"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -190,7 +199,7 @@ DB_ENV-&gt;rep_start(DB_ENV *env, DBT *cdata, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700594"></a>See Also</h3>
+              <h3 class="title"><a id="id4019194"></a>See Also</h3>
             </div>
           </div>
         </div>

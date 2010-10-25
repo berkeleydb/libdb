@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
     <link rel="prev" href="envset_tx_max.html" title="DB_ENV-&gt;set_tx_max()" />
-    <link rel="next" href="txnabort.html" title="DB_TXN-&gt;abort()" />
+    <link rel="next" href="txnrecover.html" title="DB_ENV-&gt;txn_recover()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txnabort.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -45,7 +45,9 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
     </p>
       <p>
          Once a database environment has been upgraded to a new version of
-         Berkeley DB involving a log format change (see <a href="../../programmer_reference/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a>), it is no longer possible to recover to a
+         Berkeley DB involving a log format change 
+         (see <a href="../../installation/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a>), 
+         it is no longer possible to recover to a
          specific time before that upgrade.
     </p>
       <p>
@@ -70,7 +72,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707989"></a>Parameters</h3>
+              <h3 class="title"><a id="id4028373"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -78,7 +80,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708103"></a>timestamp</h4>
+                <h4 class="title"><a id="id4028260"></a>timestamp</h4>
               </div>
             </div>
           </div>
@@ -97,7 +99,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708260"></a>Errors</h3>
+              <h3 class="title"><a id="id4028504"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -113,7 +115,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1707705"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4028761"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -128,7 +130,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708163"></a>Class</h3>
+              <h3 class="title"><a id="id4028743"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -141,7 +143,7 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707990"></a>See Also</h3>
+              <h3 class="title"><a id="id4028269"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -158,14 +160,14 @@ DB_ENV-&gt;set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);  </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txnabort.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DB_ENV-&gt;set_tx_max() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DB_TXN-&gt;abort()</td>
+          <td width="40%" align="right" valign="top"> DB_ENV-&gt;txn_recover()</td>
         </tr>
       </table>
     </div>

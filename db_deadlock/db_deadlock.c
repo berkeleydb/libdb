@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int main __P((int, char *[]));
@@ -130,7 +130,7 @@ main(argc, argv)
 
 	/* Log our process ID. */
 	if (logfile != NULL && __db_util_logset(progname, logfile))
-		goto shutdown;
+		goto err;
 
 	/*
 	 * Create an environment object and initialize it for error
@@ -139,7 +139,7 @@ main(argc, argv)
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: db_env_create: %s\n", progname, db_strerror(ret));
-		goto shutdown;
+		goto err;
 	}
 
 	dbenv->set_errfile(dbenv, stderr);
@@ -148,7 +148,7 @@ main(argc, argv)
 	if (passwd != NULL && (ret = dbenv->set_encrypt(dbenv,
 	    passwd, DB_ENCRYPT_AES)) != 0) {
 		dbenv->err(dbenv, ret, "set_passwd");
-		goto shutdown;
+		goto err;
 	}
 
 	if (verbose) {
@@ -159,7 +159,7 @@ main(argc, argv)
 	/* An environment is required. */
 	if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON, 0)) != 0) {
 		dbenv->err(dbenv, ret, "open");
-		goto shutdown;
+		goto err;
 	}
 
 	while (!__db_util_interrupted()) {
@@ -172,7 +172,7 @@ main(argc, argv)
 		if ((ret =
 		    dbenv->lock_detect(dbenv, 0, atype, &rejected)) != 0) {
 			dbenv->err(dbenv, ret, "DB_ENV->lock_detect");
-			goto shutdown;
+			goto err;
 		}
 		if (verbose)
 			dbenv->errx(dbenv, "rejected %d locks", rejected);
@@ -184,7 +184,7 @@ main(argc, argv)
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 
 	/* Clean up the logfile. */

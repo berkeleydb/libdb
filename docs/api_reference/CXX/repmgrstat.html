@@ -111,6 +111,22 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
                     timeout.
                 </p>
           </li>
+          <li>
+            <p>
+                    <span class="bold"><strong>uintmax_t st_elect_threads;</strong></span>
+                </p>
+            <p>
+                    The number of currently active election threads.
+                </p>
+          </li>
+          <li>
+            <p>
+                    <span class="bold"><strong>uintmax_t st_max_elect_threads;</strong></span>
+                </p>
+            <p>
+                    The number of election threads for which space is reserved.
+                </p>
+          </li>
         </ul>
       </div>
       <p>
@@ -131,7 +147,7 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708459"></a>Parameters</h3>
+              <h3 class="title"><a id="id3698417"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -139,7 +155,20 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708577"></a>flags</h4>
+                <h4 class="title"><a id="id3698525"></a>statp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>statp</strong></span> parameter references memory
+                          into which a pointer to the allocated statistics structure is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3698025"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -160,25 +189,12 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1708789"></a>statp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>statp</strong></span> parameter references memory
-                          into which a pointer to the allocated statistics structure is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708927"></a>Errors</h3>
+              <h3 class="title"><a id="id3698693"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -196,7 +212,7 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708321"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3698820"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -210,7 +226,7 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708322"></a>Class</h3>
+              <h3 class="title"><a id="id3698095"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -222,7 +238,7 @@ DbEnv::repmgr_stat(DB_REPMGR_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708389"></a>See Also</h3>
+              <h3 class="title"><a id="id3698736"></a>See Also</h3>
             </div>
           </div>
         </div>

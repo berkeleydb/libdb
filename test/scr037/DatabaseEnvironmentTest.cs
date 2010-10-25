@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -816,7 +816,7 @@ namespace CsharpAPITest
 			// Write 1000 records into database.
 			TransactionConfig writeTxnConfig = new TransactionConfig();
 			writeTxnConfig.Name = "WriteTxn";
-			Transaction writeTxn = env.BeginTransaction(writeTxnConfig);
+			Transaction writeTxn = env.BeginTransaction(writeTxnConfig, allTxn);
 			byte[] byteArr = new byte[1024];
 			for (int i = 0; i < 1000; i++)
 			{
@@ -1308,6 +1308,7 @@ namespace CsharpAPITest
 			envConfig.Create = true;
 			envConfig.MaxTransactions = 50;
 			envConfig.UseLogging = true;
+            envConfig.UseLocking = true;
 			envConfig.UseMPool = true;
 			envConfig.UseTxns = true;
 			envConfig.TxnNoSync = false;
@@ -1346,6 +1347,7 @@ namespace CsharpAPITest
 					TransactionConfig openTxnCfg = new TransactionConfig();
 					openTxnCfg.Name = "openTxn";
 					openTxn = env.BeginTransaction(openTxnCfg);
+					openTxn.Priority = 50;
 					BTreeDatabaseConfig dbConfig = new BTreeDatabaseConfig();
 					dbConfig.Creation = CreatePolicy.IF_NEEDED;
 					dbConfig.Env = env;
@@ -1377,6 +1379,7 @@ namespace CsharpAPITest
 					putTxnCfg.NoWait = false;
 					Transaction putTxn = env.BeginTransaction(
 					    putTxnCfg, openTxn);
+					putTxn.Priority = 50;
 
 					try
 					{
@@ -1419,6 +1422,9 @@ namespace CsharpAPITest
 						    stats.Transactions[0].Status);
 						Assert.AreEqual(ActiveTransaction.TransactionStatus.RUNNING,
 						    stats.Transactions[1].Status);
+
+						Assert.AreEqual(50, stats.Transactions[0].Priority);
+						Assert.AreEqual(50, stats.Transactions[1].Priority);
 
 						/*
 						 * Find the openTxn in active transactions, which is the
@@ -1759,7 +1765,7 @@ namespace CsharpAPITest
 				Configuration.ConfirmUint(childElem,
 				    "LeaseTimeout", env.RepLeaseTimeout, compulsory);
 				Configuration.ConfirmBool(childElem,
-				    "NoAutoInit", env.RepNoAutoInit, compulsory);
+				    "AutoInit", env.RepAutoInit, compulsory);
 				Configuration.ConfirmBool(childElem,
 				    "NoBlocking", env.RepNoBlocking, compulsory);
 				Configuration.ConfirmUint(childElem,

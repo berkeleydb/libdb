@@ -21,7 +21,12 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id387251"></a>Writing In-Memory Berkeley DB Applications</h1>
+            <h1 class="title"><a id="id2538866"></a>Writing In-Memory Berkeley DB Applications</h1>
+          </div>
+          <div>
+            <h3 class="subtitle">
+              <i>Writing In-Memory Applications</i>
+            </h3>
           </div>
           <div>
             <div class="legalnotice">
@@ -46,6 +51,9 @@
             express prior written consent of Oracle.
     </p>
               <p>
+        Other names may be trademarks of their respective owners.
+    </p>
+              <p>
         To obtain a copy of this document's original source code, please
         submit a request to the Oracle Technology Network forum at:
         <a href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
@@ -55,7 +63,7 @@
             </div>
           </div>
           <div>
-            <p class="pubdate">4/12/2010</p>
+            <p class="pubdate">11/8/2010</p>
           </div>
         </div>
         <div></div>
@@ -360,15 +368,21 @@
                         runtime; for example, only at application shutdown.
                 </p>
         <p>
-                        Another way to obtain a data durability guarantee
-                        for in-memory configurations is to use DB
-                        replication to commit data to the network. To support this
-                        strategy, the disk-less system is required to
-                        be the master server.  The use of replication in this 
-                        way actually results
-                        in a fairly high durability guarantee for your
-                        data while providing the benefit of avoiding disk
-                        I/O on transaction commit.
+                        Another way to improve data durability
+                        for in-memory configurations is to use
+                        DB replication to commit data to the network.
+                        This strategy takes advantage of the fact that
+                        running clients have in-memory copies of the data
+                        and can take over in the event of an outage at the
+                        master. The use of replication in this way
+                        increases durability for your data while providing
+                        the benefit of avoiding disk I/O on transaction
+                        commit.
+                </p>
+        <p>
+                    In-memory replicated applications are described in more
+                    detail in 
+                    <a href="index.html#in-mem-rep">In-Memory Replicated Applications</a>.
                 </p>
         <p>
                         The point here is to be aware that a great many
@@ -378,11 +392,6 @@
                         is, systems that provide no means by which 
                         data can be written to persistent media. 
                  </p>
-        <p>
-                        For an introductory description of 
-                        DB replication, please see the 
-                        <i class="citetitle">Berkeley DB Getting Started with Replicated Applications</i> guide.
-                </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -459,7 +468,8 @@
      */
     ret = dbp-&gt;open(dbp,        /* Pointer to the database */
                     NULL,       /* Txn pointer */
-                    <b class="userinput"><tt>NULL,</tt></b>       /* File name is not specified on purpose */
+                    <b class="userinput"><tt>NULL,</tt></b>       /* File name is not specified
+                                 * on purpose       */
                     db_name,    /* Logical db name. */
                     DB_BTREE,   /* Database type (using btree) */
                     db_flags,   /* Open flags */
@@ -566,14 +576,15 @@ err:
      * in-memory application.
      */
     env_flags =
-      DB_CREATE     |  /* Create the environment if it does not exist */ 
+      DB_CREATE     |  /* Create the environment if it does not exist */
       DB_INIT_LOCK  |  /* Initialize the locking subsystem */
       DB_INIT_LOG   |  /* Initialize the logging subsystem */
       DB_INIT_TXN   |  /* Initialize the transactional subsystem. This
                         * also turns on logging. */
       DB_INIT_MPOOL |  /* Initialize the memory pool (in-memory cache) */
-      <b class="userinput"><tt>DB_PRIVATE    |  /* Region files are not backed by the filesystem. 
-                        * Instead, they are backed by heap memory.  */</tt></b>
+      <b class="userinput"><tt>DB_PRIVATE    |  /* Region files are not backed by the
+                        * filesystem. Instead, they are backed by
+                        * heap memory.  */</tt></b>
 
    /* 
     * Now open the environment. Notice that we do not provide a location 
@@ -706,7 +717,8 @@ err:
     db_flags = DB_CREATE;       /* If it doesn't exist, create it */
     ret = dbp-&gt;open(dbp,        /* Pointer to the database */
                     NULL,       /* Txn pointer */
-                    NULL,       /* File name is not specified on purpose */
+                    NULL,       /* File name is not specified on
+                                 * purpose */
                     db_name,    /* Logical db name */
                     DB_BTREE,   /* Database type (using btree) */
                     db_flags,   /* Open flags */
@@ -886,7 +898,7 @@ err:
 
     if (ret != 0) {
         fprintf(stderr, 
-          "Attempt failed to configure for no backing of temp files: %s\n",
+         "Attempt failed to configure for no backing of temp files: %s\n",
                     db_strerror(ret));
         goto err;
     } </pre>
@@ -1028,69 +1040,103 @@ err:
           <div></div>
         </div>
         <p>
-                If you are unfamiliar with writing DB replicated applications, or if you are
-                simply uninterested in this topic, you can skip this section.
+                If you are unfamiliar with writing DB replicated
+                applications, or if you are simply uninterested in this
+                topic, you can skip this section.  For an introductory
+                description of DB replication, please see the
+                <i class="citetitle">Berkeley DB Getting Started with Replicated Applications</i> guide.
             </p>
         <p>
-                There are many internal resources used by the DB replication subsystem which are
-                by default backed by disk.  These internal resources help the DB subsystem
-                ensure election accuracy. While a complete description of these resources is beyond
-                the scope of this article, you should know that you can cause all of these resources
-                to be held entirely in-memory.  But you do so with some small chance of operational
-                errors in your replicated application.
+                In-memory replicated applications can improve transaction
+                throughput by avoiding disk I/O. Network connections are
+                often faster than local synchronous disk writes, so
+                in-memory replicated applications can provide significantly
+                improved performance without entirely sacrificing
+                reliability.
             </p>
         <p>
-                If you cause a replicated application to keep its internal replication resources
-                in-memory, you run a small risk that elections will fail or be unable to complete.
-                However, calling additional elections should eventually yield a winner.
+                All of your replication participants must be configured in
+                the same way. That is, they all must be configured for
+                in-memory storage of data, or they must all be configured
+                for on-disk storage of data.  As a result, in-memory
+                replicated applications can achieve improved throughput
+                performance, but they do so at the cost of reduced
+                durability guarantees.  This is because the transaction
+                commit is not backed by stable storage anywhere in the
+                replication group. However, this "commit to the network"
+                does not sacrifice all durability. Because running clients
+                should have in-memory copies of the data, a client can take
+                over in the event of an outage at the master and in this way
+                avoid the loss of data.
             </p>
         <p>
-                In addition, there is a slight possibility that the wrong site might win an
-                election, which could result in the loss of data. This can happen if you have a site
-                that is repeatedly crashing and trying to come back up. A site like this  might be
-                repeatedly sending out election information, and the repeated messages might confuse
-                other sites.  For replication applications that are not in-memory, these extra
-                messages would be ignored by other sites because they would also contain some state
-                information that allows other sites to know which election messages are relevant.
-                But strictly in-memory replicated applications cannot maintain this state
-                information, and so some other sites might become confused. The result might be that
-                the wrong site could be elected master due to the inconsistent information that is
-                available to them.
+                There are many internal resources used by the DB
+                replication subsystem which are by default backed by disk.
+                These internal resources help the DB subsystem ensure
+                election accuracy. While a complete description of these
+                resources is beyond the scope of this article, you should
+                know that you can cause all of these resources to be held
+                entirely in-memory.  But you do so with some small chance
+                of operational errors in your replicated application.
+            </p>
+        <p>
+                If you cause a replicated application to keep its internal
+                replication resources in-memory, you run a small risk that
+                elections will fail or be unable to complete.  However,
+                calling additional elections should eventually yield a
+                winner.
+            </p>
+        <p>
+                In addition, there is a slight possibility that the wrong
+                site might win an election, which could result in the loss
+                of data. This can happen if you have a site that is
+                repeatedly crashing and trying to come back up. A site like
+                this  might be repeatedly sending out election information,
+                and the repeated messages might confuse other sites.  For
+                replication applications that are not in-memory, these
+                extra messages would be ignored by other sites because they
+                would also contain some state information that allows other
+                sites to know which election messages are relevant.  But
+                strictly in-memory replicated applications cannot maintain
+                this state information, and so some other sites might
+                become confused. The result might be that the wrong site
+                could be elected master due to the inconsistent information
+                that is available to them.
             </p>
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>
           <p>
-                    This is very much a corner case that you probably will never see in your
-                    production systems, especially if your sites are all stable and well-behaved.
+                    This is very much a corner case that you probably will
+                    never see in your production systems, especially if
+                    your sites are all stable and well-behaved.
                 </p>
         </div>
         <p>
-                If an election is won by the wrong site (site A), then some other site (site B) probably has
-                more recent log files than the winner does. But since the wrong site A won the
-                election, site B will sync with the new master. This will cause site B (and
-                therefore, your entire replication group) to lose any log files it contains that are
-                more recent than the files contained by site A.
+                If an election is won by the wrong site (site A), then some
+                other site (site B) probably has more recent log files than
+                the winner does. But since the wrong site A won the
+                election, site B will sync with the new master. This will
+                cause site B (and therefore, your entire replication group)
+                to lose any log files it contains that are more recent than
+                the files contained by site A.
             </p>
         <p>
-                Also, when running an in-memory replicated application, it is often-times desireable for
-                the master to run in-memory and the clients to commit data to disk. This helps to
-                improve write through-put on the master by avoiding disk I/O. Instead, the master
-                simply "commits to the network," and then eliminates its message ackowledgement
-                expectations so that it is no longer waiting for clients to respond to the commit.
-            </p>
-        <p>
-                If you are running a master that is configured to run with internal
-                replication resources in-memory, you should never allow that site to
-                appoint itself master again immediately after crashing or rebooting.
-                Doing so results in a slightly higher risk of your client sites
-                crashing. To determine your next master, you should either hold an
+                If you are running a master that is configured to run with
+                internal replication resources in-memory, you should never
+                allow that site to appoint itself master again immediately
+                after crashing or rebooting.  Doing so results in a
+                slightly higher risk of your client sites crashing. To
+                determine your next master, you should either hold an
                 election or appoint a different site to be master.
             </p>
         <p>
-                In order to cause a replication site to run entire in-memory, do all of the things
-                described previously in this document to place all other DB resources in-memory.
-                Then, when configuring replication, specify <tt class="literal">DB_REP_CONF_INMEM</tt> to
-                the <tt class="methodname">DB_ENV-&gt;rep_set_config()</tt> method.
+                In order to cause a replication site to run entirely
+                in-memory, do all of the things described previously in
+                this document to place all other DB resources
+                in-memory.  Then, when configuring replication, specify
+                <tt class="literal">DB_REP_CONF_INMEM</tt> to the
+                <tt class="methodname">DB_ENV-&gt;rep_set_config()</tt>
+                method.
             </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">

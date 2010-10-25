@@ -322,7 +322,10 @@
                     
                 </p>
                 <p>
-                    The database supports sorted duplicate records.
+                    The database supports sorted duplicate records. Note
+                    that this flag also sets the 
+                    <code class="literal">DB_DUP</code> flag for
+                    you.
                 </p>
               </li>
             </ul>
@@ -354,7 +357,7 @@ if (ret != 0) {
 /* Set up error handling for this database */
 dbp-&gt;set_errfile(dbp, error_file_pointer);
 dbp-&gt;set_errpfx(dbp, program_name);
-                                                                                                                                  
+
 /*
  * Configure the database for sorted duplicates
  */
@@ -364,7 +367,7 @@ if (ret != 0) {
     dbp-&gt;close(dbp, 0);
     return(ret);
 }
-                                                                                                                                  
+
 /* Now open the database */
 ret = dbp-&gt;open(dbp,        /* Pointer to the database */
                 NULL,       /* Txn pointer */
@@ -537,10 +540,10 @@ compare_int(DB *dbp, const DBT *a, const DBT *b)
 #include &lt;string.h&gt;
 
 ...
-                                                                                                                                      
+
 DB *dbp;
 int ret;
-                                                                                                                                      
+
 /* Create a database */
 ret = db_create(&amp;dbp, NULL, 0);
 if (ret != 0) {
@@ -548,7 +551,7 @@ if (ret != 0) {
           db_strerror(ret));
         return(-1);
 }
-                                                                                                                                      
+
 /* Set up the btree comparison function for this database */
 dbp-&gt;set_bt_compare(dbp, compare_int);
 

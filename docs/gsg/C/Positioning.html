@@ -77,7 +77,7 @@ my_database-&gt;cursor(my_database, NULL, &amp;cursorp, 0);
 /* Initialize our DBTs. */
 memset(&amp;key, 0, sizeof(DBT));
 memset(&amp;data, 0, sizeof(DBT));
-                                                                                                                               
+
 /* Iterate over the database, retrieving each record in turn. */
 while ((ret = cursorp-&gt;get(cursorp, &amp;key, &amp;data, DB_NEXT)) == 0) {
         /* Do interesting things with the DBTs here. */
@@ -115,7 +115,7 @@ my_database-&gt;cursor(my_database, NULL, &amp;cursorp, 0);
 /* Initialize our DBTs. */
 memset(&amp;key, 0, sizeof(DBT));
 memset(&amp;data, 0, sizeof(DBT));
-                                                                                                                               
+
 /* Iterate over the database, retrieving each record in turn. */
 while ((ret = cursorp-&gt;get(cursorp, &amp;key,
       &amp;data, DB_PREV)) == 0) {

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005-2009 Oracle.  All rights reserved.
+# Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -17,9 +17,16 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 	source ./include.tcl
 	global alphabet
 
-	# Compaction is an option for btree and recno databases only.
-	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
-		puts "Skipping test$tnum for method $method."
+	# Compaction is an option for btree, recno, and hash databases.
+	if { [is_queue $method] == 1 } {
+		puts "Skipping compaction test$tnum for method $method."
+		return
+	}
+
+	# Skip for fixed-length methods because we won't encounter 
+	# overflows. 
+	if { [is_fixed_length $method] == 1 } {
+		puts "Skipping test$tnum for fixed-length method $method."
 		return
 	}
 
@@ -74,6 +81,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		set checkfunc test001.check
 	}
 
+	cleanup $testdir $env
 	foreach splitopt $splitopts {
 		set testfile $basename.db
 		if { $splitopt == "-revsplitoff" } {
@@ -88,7 +96,6 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		if { $env != "NULL" } {
 			set testdir [get_home $env]
 		}
-		cleanup $testdir $env
 
 		puts "\tTest$tnum.a: Create and populate database ($splitopt)."
 		set pagesize 512
@@ -129,7 +136,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 			set filename $testfile
 		}
 		set size1 [file size $filename]
-		set free1 [stat_field $db stat "Pages on freelist"]
+		set count1 [stat_field $db stat "Page count"]
 
 		puts "\tTest$tnum.b: Delete most entries from database."
 		set did [open $dict]
@@ -161,6 +168,14 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		}
 		error_check_good db_sync [$db sync] 0
 
+		# Now that the delete is done we ought to have a 
+		# lot of pages on the free list.
+		if { [is_hash $method] == 1 } { 
+			set free1 [stat_field $db stat "Free pages"]
+		} else {
+			set free1 [stat_field $db stat "Pages on freelist"]
+		}
+
 		puts "\tTest$tnum.c: Do a dump_file on contents."
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -179,7 +194,7 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 				error_check_good txn [is_valid_txn $t $env] TRUE
 				set txn "-txn $t"
 			}
-			set ret [eval $db compact $txn -freespace]
+			set ret [eval {$db compact} $txn {-freespace}]
 			if { $txnenv == 1 } {
 				if { $commit == 0 } {
 					puts "\tTest$tnum.d: Aborting."
@@ -195,7 +210,12 @@ proc test114 { method {nentries 10000} {tnum "114"} args } {
 		}
 
 		set size2 [file size $filename]
-		set free2 [stat_field $db stat "Pages on freelist"]
+		set count2 [stat_field $db stat "Page count"]
+		if { [is_hash $method] == 1 } { 
+			set free2 [stat_field $db stat "Free pages"]
+		} else {
+			set free2 [stat_field $db stat "Pages on freelist"]
+		}
 
 		# Reduction in on-disk size should be substantial.
 #### We should look at the partitioned files #####
@@ -205,14 +225,14 @@ if { [is_partitioned $args] == 0 } {
 		    file_size [expr [expr $size1 * $reduction] > $size2] 1
 }
 
-		# Pages should be freed for all methods except maybe
+		# The number of free pages should be reduced
+		# now that we've compacted with -freespace.
+		error_check_good pages_returned [expr $free1 > $free2] 1
+
+		# Page count should be reduced for all methods except maybe
 		# record-based non-queue methods.  Even with recno, the
-		# number of free pages may not decline.
-		if { [is_record_based $method] == 1 } {
-			error_check_good pages_freed [expr $free2 >= $free1] 1
-		} else {
-			error_check_good pages_freed [expr $free2 > $free1] 1
-		}
+		# page count may not increase.
+		error_check_good page_count_reduced [expr $count1 > $count2] 1
 
 		puts "\tTest$tnum.e: Contents are the same after compaction."
 		if { $txnenv == 1 } {
@@ -225,7 +245,13 @@ if { [is_partitioned $args] == 0 } {
 			error_check_good txn_commit [$t commit] 0
 		}
 
-		error_check_good filecmp [filecmp $t1 $t2] 0
+		if { [is_hash $method]  != 0 } {
+			filesort $t1 $t1.sort
+			filesort $t2 $t2.sort
+			error_check_good filecmp [filecmp $t1.sort $t2.sort] 0
+		} else {
+			error_check_good filecmp [filecmp $t1 $t2] 0
+		}
 
 		puts "\tTest$tnum.f: Add more entries to database."
 		# Use integers as keys instead of strings, just to mix it up
@@ -248,7 +274,7 @@ if { [is_partitioned $args] == 0 } {
 		error_check_good db_sync [$db sync] 0
 
 		set size3 [file size $filename]
-		set free3 [stat_field $db stat "Pages on freelist"]
+		set count3 [stat_field $db stat "Page count"]
 
 		puts "\tTest$tnum.g: Remove more entries, this time by cursor."
 		set count 0
@@ -272,6 +298,11 @@ if { [is_partitioned $args] == 0 } {
 			error_check_good t_commit [$t commit] 0
 		}
 		error_check_good db_sync [$db sync] 0
+		if { [is_hash $method] == 1 } { 
+			set free3 [stat_field $db stat "Free pages"]
+		} else {
+			set free3 [stat_field $db stat "Pages on freelist"]
+		}
 
 		puts "\tTest$tnum.h: Save contents."
 		if { $txnenv == 1 } {
@@ -291,13 +322,13 @@ if { [is_partitioned $args] == 0 } {
 				error_check_good txn [is_valid_txn $t $env] TRUE
 				set txn "-txn $t"
 			}
-			set ret [eval $db compact $txn -freespace]
+			set ret [eval {$db compact} $txn {-freespace}]
 			if { $txnenv == 1 } {
 				if { $commit == 0 } {
-					puts "\tTest$tnum.d: Aborting."
+					puts "\tTest$tnum.i: Aborting."
 					error_check_good txn_abort [$t abort] 0
 				} else {
-					puts "\tTest$tnum.d: Committing."
+					puts "\tTest$tnum.i: Committing."
 					error_check_good txn_commit [$t commit] 0
 				}
 			}
@@ -307,20 +338,22 @@ if { [is_partitioned $args] == 0 } {
 		}
 
 		set size4 [file size $filename]
-		set free4 [stat_field $db stat "Pages on freelist"]
+		set count4 [stat_field $db stat "Page count"]
+		if { [is_hash $method] == 1 } { 
+			set free4 [stat_field $db stat "Free pages"]
+		} else {
+			set free4 [stat_field $db stat "Pages on freelist"]
+		}
 
 #### We should look at the partitioned files #####
 if { [is_partitioned $args] == 0 } {
 		error_check_good \
 		    file_size [expr [expr $size3 * $reduction] > $size4] 1
-#### We are specifying -freespace why should there be more things on the free list? #######
-		if { [is_record_based $method] == 1 } {
-			error_check_good pages_freed [expr $free4 >= $free3] 1
-		} else {
-			error_check_good pages_freed [expr $free4 > $free3] 1
-		}
 }
 
+		error_check_good pages_returned [expr $free3 > $free4] 1
+		error_check_good \
+		    page_count_reduced [expr $count3 > $count4] 1
 		puts "\tTest$tnum.j: Contents are the same after compaction."
 		if { $txnenv == 1 } {
 			set t [$env txn]
@@ -331,7 +364,13 @@ if { [is_partitioned $args] == 0 } {
 		if { $txnenv == 1 } {
 			error_check_good t_commit [$t commit] 0
 		}
-		error_check_good filecmp [filecmp $t1 $t2] 0
+		if { [is_hash $method]  != 0 } {
+			filesort $t1 $t1.sort
+			filesort $t2 $t2.sort
+			error_check_good filecmp [filecmp $t1.sort $t2.sort] 0
+		} else {
+			error_check_good filecmp [filecmp $t1 $t2] 0
+		}
 
 		error_check_good db_close [$db close] 0
 		close $did

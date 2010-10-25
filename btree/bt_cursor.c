@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -248,9 +248,9 @@ __bamc_refresh(dbc)
 	/*
 	 * If our caller set the root page number, it's because the root was
 	 * known.  This is always the case for off page dup cursors.  Else,
-	 * pull it out of our internal information.
+	 * pull it out of our internal information, unless this is a subdb.
 	 */
-	if (cp->root == PGNO_INVALID)
+	if (cp->root == PGNO_INVALID && t->bt_meta == PGNO_BASE_MD)
 		cp->root = t->bt_root;
 
 	LOCK_INIT(cp->lock);
@@ -323,7 +323,8 @@ __bamc_close(dbc, root_pgno, rmroot)
 	DB_MPOOLFILE *mpf;
 	ENV *env;
 	PAGE *h;
-	int cdb_lock, count, ret;
+	int cdb_lock, ret;
+	u_int32_t count;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
@@ -479,7 +480,7 @@ lock:	cp_c = (BTREE_CURSOR *)dbc_c->internal;
 				goto err;
 			cdb_lock = 1;
 		}
-		goto delete;
+		goto do_del;
 	}
 
 	/*
@@ -492,7 +493,7 @@ lock:	cp_c = (BTREE_CURSOR *)dbc_c->internal;
 	 * is responsible for acquiring any necessary locks before calling us.
 	 */
 	if (F_ISSET(dbc, DBC_OPD))
-		goto delete;
+		goto do_del;
 
 	/*
 	 * Otherwise, acquire a write lock on the primary database's page.
@@ -530,7 +531,7 @@ lock:	cp_c = (BTREE_CURSOR *)dbc_c->internal;
 		    LCK_COUPLE, cp->pgno, DB_LOCK_WRITE, 0, &cp->lock)) != 0)
 			goto err;
 
-delete:	/*
+do_del:	/*
 	 * If the delete occurred in a Btree, we're going to look at the page
 	 * to see if the item has to be physically deleted.  Otherwise, we do
 	 * not need the actual page (and it may not even exist, it might have
@@ -785,7 +786,8 @@ __bamc_del(dbc, flags)
 	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_MPOOLFILE *mpf;
-	int count, ret, t_ret;
+	int ret, t_ret;
+	u_int32_t count;
 
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
@@ -1891,7 +1893,7 @@ __bam_getlte(dbc, key, data)
 				ret = __bam_get_prev(dbc);
 			}
 		}
-	} else if(data != NULL) {
+	} else if (data != NULL) {
 		/*
 		 * If we got an exact match with on-page duplicates, we need to
 		 * search in them.
@@ -2846,7 +2848,7 @@ __bamc_physdel(dbc)
 	 * the last leaf page of off-page duplicate trees, but that's handled
 	 * by our caller, not down here.)
 	 */
-	if (delete_page && cp->pgno == cp->root)
+	if (delete_page && cp->pgno == BAM_ROOT_PGNO(dbc))
 		delete_page = 0;
 
 	/*
@@ -2863,7 +2865,7 @@ __bamc_physdel(dbc)
 	if (delete_page) {
 		if ((ret = __db_ret(dbc, cp->page, 0, &key,
 		    &dbc->my_rkey.data, &dbc->my_rkey.ulen)) != 0)
-			return (ret);
+			goto err;
 	}
 
 	/*
@@ -2883,35 +2885,35 @@ __bamc_physdel(dbc)
 	 */
 	if ((ret = __memp_dirty(dbp->mpf,
 	    &cp->page, dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
-		return (ret);
+		goto err;
 	if (TYPE(cp->page) == P_LBTREE) {
 		if ((ret = __bam_ditem(dbc, cp->page, cp->indx)) != 0)
-			return (ret);
+			goto err;
 		if (!empty_page)
 			if ((ret = __bam_ca_di(dbc,
 			    PGNO(cp->page), cp->indx, -1)) != 0)
-				return (ret);
+				goto err;
 	}
 	if ((ret = __bam_ditem(dbc, cp->page, cp->indx)) != 0)
-		return (ret);
+		goto err;
 
 	/* Clear the deleted flag, the item is gone. */
 	F_CLR(cp, C_DELETED);
 
 	if (!empty_page)
 		if ((ret = __bam_ca_di(dbc, PGNO(cp->page), cp->indx, -1)) != 0)
-			return (ret);
+			goto err;
 
 	/*
 	 * Need to downgrade write locks here or non-txn locks will get stuck.
 	 */
 	if (F_ISSET(dbc->dbp, DB_AM_READ_UNCOMMITTED)) {
 		if ((ret = __TLPUT(dbc, cp->lock)) != 0)
-			return (ret);
+			goto err;
 		cp->lock_mode = DB_LOCK_WWRITE;
 		if (cp->page != NULL &&
 		    (ret = __memp_shared(dbp->mpf, cp->page)) != 0)
-			return (ret);
+			goto err;
 	}
 	/* If we're not going to try and delete the page, we're done. */
 	if (!delete_page)
@@ -2947,7 +2949,9 @@ __bamc_physdel(dbc)
 	else
 		(void)__bam_stkrel(dbc, 0);
 
-err:	(void)__TLPUT(dbc, prev_lock);
+err:	if (ret != 0)
+		F_SET(dbc, DBC_ERROR);
+	(void)__TLPUT(dbc, prev_lock);
 	(void)__TLPUT(dbc, next_lock);
 	return (ret);
 }

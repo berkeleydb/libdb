@@ -89,7 +89,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654795"></a>Parameters</h3>
+              <h3 class="title"><a id="id3972250"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -97,7 +97,31 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654700"></a>data</h4>
+                <h4 class="title"><a id="id3972253"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3971811"></a>pkey</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The secondary index key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3971322"></a>data</h4>
               </div>
             </div>
           </div>
@@ -109,7 +133,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654918"></a>flags</h4>
+                <h4 class="title"><a id="id3972109"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -187,7 +211,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
                 to the value provided by the data parameter (as determined by the comparison
                 function). If this flag is specified on a database
                 configured without sorted duplicate support, the behavior
-                is identical to the DB_GET_BOTH flag. Returns the datum
+                is identical to the <code class="literal">DB_GET_BOTH</code> flag. Returns the datum
                 associated with the given key/data pair.
             </p>
                 <p>
@@ -599,36 +623,12 @@ DBcursor-&gt;pget(DBC *DBcursor,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1655105"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1656133"></a>pkey</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The secondary index key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a>  operated on.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1655127"></a>Errors</h3>
+              <h3 class="title"><a id="id3973400"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -644,7 +644,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655380"></a>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="id3971823"></a>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -656,7 +656,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654944"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3972304"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -669,7 +669,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655417"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3973535"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -682,7 +682,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655246"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3972004"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -701,7 +701,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655444"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="id3973498"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -713,7 +713,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655515"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3973056"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -725,7 +725,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1655425"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="id3972920"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -737,7 +737,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654696"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3972842"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -753,7 +753,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654699"></a>Class</h3>
+              <h3 class="title"><a id="id3973520"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -765,7 +765,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654850"></a>See Also</h3>
+              <h3 class="title"><a id="id3972297"></a>See Also</h3>
             </div>
           </div>
         </div>

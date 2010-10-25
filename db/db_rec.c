@@ -11,7 +11,10 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/log.h"
+#include "dbinc/lock.h"
+#include "dbinc/fop.h"
 #include "dbinc/mp.h"
+#include "dbinc/btree.h"
 #include "dbinc/hash.h"
 
 static int __db_pg_free_recover_int __P((ENV *, DB_THREAD_INFO *,
@@ -42,11 +45,87 @@ __db_addrem_recover(env, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
+	u_int32_t opcode;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
 	REC_PRINT(__db_addrem_print);
 	REC_INTRO(__db_addrem_read, ip, 1);
+
+	REC_FGET(mpf, ip, argp->pgno, &pagep, done);
+	modified = 0;
+
+	opcode = OP_MODE_GET(argp->opcode);
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+	if ((cmp_p == 0 && DB_REDO(op) && opcode == DB_ADD_DUP) ||
+	    (cmp_n == 0 && DB_UNDO(op) && opcode == DB_REM_DUP)) {
+		/* Need to redo an add, or undo a delete. */
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if ((ret = __db_pitem(dbc, pagep, argp->indx, argp->nbytes,
+		    argp->hdr.size == 0 ? NULL : &argp->hdr,
+		    argp->dbt.size == 0 ? NULL : &argp->dbt)) != 0)
+			goto out;
+		modified = 1;
+
+	} else if ((cmp_n == 0 && DB_UNDO(op) && opcode == DB_ADD_DUP) ||
+	    (cmp_p == 0 && DB_REDO(op) && opcode == DB_REM_DUP)) {
+		/* Need to undo an add, or redo a delete. */
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if ((ret = __db_ditem(dbc,
+		    pagep, argp->indx, argp->nbytes)) != 0)
+			goto out;
+		modified = 1;
+	}
+
+	if (modified) {
+		if (DB_REDO(op))
+			LSN(pagep) = *lsnp;
+		else
+			LSN(pagep) = argp->pagelsn;
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)
+		goto out;
+	pagep = NULL;
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	if (pagep != NULL)
+		(void)__memp_fput(mpf, ip, pagep, dbc->priority);
+	REC_CLOSE;
+}
+
+/*
+ * PUBLIC: int __db_addrem_42_recover
+ * PUBLIC:    __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ *
+ * This log message is generated whenever we add or remove a duplicate
+ * to/from a duplicate page.  On recover, we just do the opposite.
+ */
+int
+__db_addrem_42_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_addrem_42_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	int cmp_n, cmp_p, modified, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	pagep = NULL;
+	REC_PRINT(__db_addrem_print);
+	REC_INTRO(__db_addrem_42_read, ip, 1);
 
 	REC_FGET(mpf, ip, argp->pgno, &pagep, done);
 	modified = 0;
@@ -113,11 +192,169 @@ __db_big_recover(env, dbtp, lsnp, op, info)
 	DB_MPOOLFILE *mpf;
 	PAGE *pagep;
 	int cmp_n, cmp_p, modified, ret;
+	u_int32_t opcode;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	pagep = NULL;
 	REC_PRINT(__db_big_print);
 	REC_INTRO(__db_big_read, ip, 0);
+
+	opcode = OP_MODE_GET(argp->opcode);
+	REC_FGET(mpf, ip, argp->pgno, &pagep, ppage);
+	modified = 0;
+
+	/*
+	 * There are three pages we need to check.  The one on which we are
+	 * adding data, the previous one whose next_pointer may have
+	 * been updated, and the next one whose prev_pointer may have
+	 * been updated.
+	 */
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->pagelsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->pagelsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+	if ((cmp_p == 0 && DB_REDO(op) && opcode == DB_ADD_BIG) ||
+	    (cmp_n == 0 && DB_UNDO(op) && opcode == DB_REM_BIG)) {
+		/* We are either redo-ing an add, or undoing a delete. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		P_INIT(pagep, file_dbp->pgsize, argp->pgno, argp->prev_pgno,
+			argp->next_pgno, 0, P_OVERFLOW);
+		OV_LEN(pagep) = argp->dbt.size;
+		OV_REF(pagep) = 1;
+		memcpy((u_int8_t *)pagep + P_OVERHEAD(file_dbp), argp->dbt.data,
+		    argp->dbt.size);
+		PREV_PGNO(pagep) = argp->prev_pgno;
+		modified = 1;
+	} else if ((cmp_n == 0 && DB_UNDO(op) && opcode == DB_ADD_BIG) ||
+	    (cmp_p == 0 && DB_REDO(op) && opcode == DB_REM_BIG)) {
+		/*
+		 * We are either undo-ing an add or redo-ing a delete.
+		 * The page is about to be reclaimed in either case, so
+		 * there really isn't anything to do here.
+		 */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		modified = 1;
+	} else if (cmp_p == 0 && DB_REDO(op) && opcode == DB_APPEND_BIG) {
+		/* We are redoing an append. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		memcpy((u_int8_t *)pagep + P_OVERHEAD(file_dbp) +
+		    OV_LEN(pagep), argp->dbt.data, argp->dbt.size);
+		OV_LEN(pagep) += argp->dbt.size;
+		modified = 1;
+	} else if (cmp_n == 0 && DB_UNDO(op) && opcode == DB_APPEND_BIG) {
+		/* We are undoing an append. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		OV_LEN(pagep) -= argp->dbt.size;
+		memset((u_int8_t *)pagep + P_OVERHEAD(file_dbp) +
+		    OV_LEN(pagep), 0, argp->dbt.size);
+		modified = 1;
+	}
+	if (modified)
+		LSN(pagep) = DB_REDO(op) ? *lsnp : argp->pagelsn;
+
+	ret = __memp_fput(mpf, ip, pagep, file_dbp->priority);
+	pagep = NULL;
+	if (ret != 0)
+		goto out;
+
+	/*
+	 * We only delete a whole chain of overflow items, and appends only
+	 * apply to a single page.  Adding a page is the only case that
+	 * needs to update the chain.
+	 */
+	if (opcode != DB_ADD_BIG)
+		goto done;
+
+	/* Now check the previous page. */
+ppage:	if (argp->prev_pgno != PGNO_INVALID) {
+		REC_FGET(mpf, ip, argp->prev_pgno, &pagep, npage);
+		modified = 0;
+
+		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->prevlsn);
+		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->prevlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+
+		if (cmp_p == 0 && DB_REDO(op) && opcode == DB_ADD_BIG) {
+			/* Redo add, undo delete. */
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			NEXT_PGNO(pagep) = argp->pgno;
+			modified = 1;
+		} else if (cmp_n == 0 &&
+		    DB_UNDO(op) && opcode == DB_ADD_BIG) {
+			/* Redo delete, undo add. */
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			NEXT_PGNO(pagep) = argp->next_pgno;
+			modified = 1;
+		}
+		if (modified)
+			LSN(pagep) = DB_REDO(op) ? *lsnp : argp->prevlsn;
+		ret = __memp_fput(mpf, ip, pagep, file_dbp->priority);
+		pagep = NULL;
+		if (ret != 0)
+			goto out;
+	}
+	pagep = NULL;
+
+	/* Now check the next page.  Can only be set on a delete. */
+npage:	if (argp->next_pgno != PGNO_INVALID) {
+		REC_FGET(mpf, ip, argp->next_pgno, &pagep, done);
+		modified = 0;
+
+		cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+		cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nextlsn);
+		CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->nextlsn);
+		CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+		if (cmp_p == 0 && DB_REDO(op)) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			PREV_PGNO(pagep) = PGNO_INVALID;
+			modified = 1;
+		} else if (cmp_n == 0 && DB_UNDO(op)) {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			PREV_PGNO(pagep) = argp->pgno;
+			modified = 1;
+		}
+		if (modified)
+			LSN(pagep) = DB_REDO(op) ? *lsnp : argp->nextlsn;
+		ret = __memp_fput(mpf, ip, pagep, file_dbp->priority);
+		pagep = NULL;
+		if (ret != 0)
+			goto out;
+	}
+	pagep = NULL;
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	if (pagep != NULL)
+		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
+	REC_CLOSE;
+}
+
+/*
+ * PUBLIC: int __db_big_42_recover
+ * PUBLIC:     __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_big_42_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_big_42_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	int cmp_n, cmp_p, modified, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	pagep = NULL;
+	REC_PRINT(__db_big_print);
+	REC_INTRO(__db_big_42_read, ip, 0);
 
 	REC_FGET(mpf, ip, argp->pgno, &pagep, ppage);
 	modified = 0;
@@ -249,7 +486,6 @@ out:	if (pagep != NULL)
 		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
 	REC_CLOSE;
 }
-
 /*
  * __db_ovref_recover --
  *	Recovery function for __db_ovref().
@@ -770,10 +1006,10 @@ trunc:			if ((ret = __memp_ftruncate(mpf, NULL, ip,
 			if (!is_meta) {
 				__db_freelist_pos(argp->pgno, lp, nelem, &pos);
 
-				/* 
+				/*
 				 * If we aborted after logging but before
 				 * updating the free list don't do anything.
-				*/
+				 */
 				if (argp->pgno != lp[pos]) {
 					DB_ASSERT(env,
 					    argp->meta_pgno == lp[pos]);
@@ -836,8 +1072,9 @@ __db_pg_free_recover(env, dbtp, lsnp, op, info)
 	REC_PRINT(__db_pg_free_print);
 	REC_INTRO(__db_pg_free_read, ip, 0);
 
-	ret = __db_pg_free_recover_int(env, ip,
-	     (__db_pg_freedata_args *)argp, file_dbp, lsnp, mpf, op, 0);
+	if ((ret = __db_pg_free_recover_int(env, ip,
+	     (__db_pg_freedata_args *)argp, file_dbp, lsnp, mpf, op, 0)) != 0)
+	     	goto out;
 
 done:	*lsnp = argp->prev_lsn;
 out:
@@ -870,8 +1107,9 @@ __db_pg_freedata_recover(env, dbtp, lsnp, op, info)
 	REC_PRINT(__db_pg_freedata_print);
 	REC_INTRO(__db_pg_freedata_read, ip, 0);
 
-	ret = __db_pg_free_recover_int(env,
-	    ip, argp, file_dbp, lsnp, mpf, op, 1);
+	if ((ret = __db_pg_free_recover_int(env,
+	    ip, argp, file_dbp, lsnp, mpf, op, 1)) != 0)
+	    	goto out;
 
 done:	*lsnp = argp->prev_lsn;
 out:
@@ -1049,7 +1287,7 @@ __db_pg_trunc_recover(env, dbtp, lsnp, op, info)
 			goto out;
 
 		if (argp->last_free != PGNO_INVALID) {
-			/* 
+			/*
 			 * Update the next pointer of the last page in
 			 * the freelist.  If the truncation point is
 			 * beyond next_free then this is still in the freelist
@@ -1165,7 +1403,7 @@ __db_pg_trunc_recover(env, dbtp, lsnp, op, info)
 			} else if (felem != 0 &&
 			    list[felem - 1] == pglist->pgno)
 				goto done;
-			else 
+			else
 				pos = felem;
 			if ((ret = __memp_extend_freelist(
 			    mpf, felem + nelem, &list)) != 0)
@@ -1194,6 +1432,120 @@ out:	REC_CLOSE;
 	COMPQUIET(info, NULL);
 	return (EINVAL);
 #endif
+}
+/*
+ * __db_realloc_recover --
+ *	Recovery function for realloc.
+ *
+ * PUBLIC: int __db_realloc_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_realloc_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_realloc_args *argp;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
+	PAGE *pagep;
+	db_pglist_t *pglist, *lp;
+	db_pgno_t *list;
+	u_int32_t felem, nelem, pos;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+
+	REC_PRINT(__db_realloc_print);
+	REC_INTRO(__db_realloc_read, ip, 1);
+	mpf = file_dbp->mpf;
+
+	/*
+	 * First, iterate over all the pages and make sure they are all in
+	 * their prior or new states (according to the op).
+	 */
+	pglist = (db_pglist_t *) argp->list.data;
+	nelem = argp->list.size / sizeof(db_pglist_t);
+	for (lp = pglist; lp < &pglist[nelem]; lp++) {
+		if ((ret = __memp_fget(mpf, &lp->pgno, ip,
+		    NULL, DB_MPOOL_CREATE, &pagep)) != 0)
+			goto out;
+		if (DB_REDO(op) && LOG_COMPARE(&LSN(pagep), &lp->lsn) == 0) {
+			REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+			P_INIT(pagep, file_dbp->pgsize, lp->pgno,
+			    PGNO_INVALID, PGNO_INVALID, 0, argp->ptype);
+			LSN(pagep) = *lsnp;
+		} else if (DB_UNDO(op) && (IS_ZERO_LSN(LSN(pagep)) ||
+		     LOG_COMPARE(&LSN(pagep), lsnp) == 0)) {
+			REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+			P_INIT(pagep, file_dbp->pgsize, lp->pgno,
+			    PGNO_INVALID, lp->next_pgno, 0, P_INVALID);
+			LSN(pagep) = lp->lsn;
+		}
+		if ((ret = __memp_fput(mpf,
+		    ip, pagep, file_dbp->priority)) != 0)
+			goto out;
+	}
+
+	/* Now, fix up the free list. */
+	if ((ret = __memp_fget(mpf,
+	    &argp->prev_pgno, ip, NULL, 0, &pagep)) != 0)
+		goto out;
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->page_lsn);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->page_lsn);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+
+	if (DB_REDO(op) && cmp_p == 0) {
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (argp->prev_pgno == PGNO_BASE_MD)
+			((DBMETA *)pagep)->free = argp->next_free;
+		else
+			NEXT_PGNO(pagep) = argp->next_free;
+		LSN(pagep) = *lsnp;
+	} else if (DB_UNDO(op) && cmp_n == 0) {
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (argp->prev_pgno == PGNO_BASE_MD)
+			((DBMETA *)pagep)->free = pglist->pgno;
+		else
+			NEXT_PGNO(pagep) = pglist->pgno;
+		LSN(pagep) = argp->page_lsn;
+	}
+	if ((ret = __memp_fput(mpf, ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+
+#ifdef HAVE_FTRUNCATE
+	if (op == DB_TXN_ABORT) {
+		/* Put the pages back in the sorted list. */
+		if ((ret = __memp_get_freelist(mpf, &felem, &list)) != 0)
+			goto out;
+		if (list != NULL) {
+			__db_freelist_pos(pglist->pgno, list, felem, &pos);
+			if (pglist->pgno == list[pos])
+				goto done;
+			if ((ret = __memp_extend_freelist(
+			    mpf, felem + nelem, &list)) != 0)
+				goto out;
+			pos++;
+			if (pos != felem)
+				memmove(&list[pos+nelem],
+				    &list[pos], nelem * sizeof(*list));
+			for (lp = pglist; lp < &pglist[nelem]; lp++)
+				list[pos++] = lp->pgno;
+		}
+	}
+#endif
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
 }
 /*
  * __db_pg_sort_44_recover --
@@ -1856,4 +2208,551 @@ done:	*lsnp = argp->prev_lsn;
 out:	if (pagep != NULL)
 		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
 	REC_CLOSE;
+}
+
+/*
+ * __db_relink_recover --
+ *	Recovery function for relink.
+ *
+ * PUBLIC: int __db_relink_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_relink_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_relink_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	pagep = NULL;
+	REC_PRINT(__db_relink_print);
+	REC_INTRO(__db_relink_read, ip, 0);
+
+	/*
+	 * There are up to three pages we need to check -- the page, and the
+	 * previous and next pages, if they existed.  For a page add operation,
+	 * the current page is the result of a split and is being recovered
+	 * elsewhere, so all we need do is recover the next page.
+	 */
+	if (argp->next_pgno == PGNO_INVALID)
+		goto prev;
+	if ((ret = __memp_fget(mpf,
+	    &argp->next_pgno, ip, NULL, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND) {
+			ret = __db_pgerr(file_dbp, argp->next_pgno, ret);
+			goto out;
+		} else
+			goto prev;
+	}
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn_next);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn_next);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Redo the remove or replace. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		if (argp->new_pgno == PGNO_INVALID)
+			pagep->prev_pgno = argp->prev_pgno;
+		else
+			pagep->prev_pgno = argp->new_pgno;
+
+		pagep->lsn = *lsnp;
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
+		/* Undo the remove or replace. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		pagep->prev_pgno = argp->pgno;
+
+		pagep->lsn = argp->lsn_next;
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+	pagep = NULL;
+
+prev:	if (argp->prev_pgno == PGNO_INVALID)
+		goto done;
+	if ((ret = __memp_fget(mpf,
+	    &argp->prev_pgno, ip, NULL, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND) {
+			ret = __db_pgerr(file_dbp, argp->prev_pgno, ret);
+			goto out;
+		} else
+			goto done;
+	}
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn_prev);
+	CHECK_LSN(env, op, cmp_p, &LSN(pagep), &argp->lsn_prev);
+	CHECK_ABORT(env, op, cmp_n, &LSN(pagep), lsnp);
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Redo the relink. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		if (argp->new_pgno == PGNO_INVALID)
+			pagep->next_pgno = argp->next_pgno;
+		else
+			pagep->next_pgno = argp->new_pgno;
+
+		pagep->lsn = *lsnp;
+	} else if (cmp_n == 0 && DB_UNDO(op)) {
+		/* Undo the relink. */
+		REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+		pagep->next_pgno = argp->pgno;
+		pagep->lsn = argp->lsn_prev;
+	}
+
+	if ((ret = __memp_fput(mpf,
+	     ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+	pagep = NULL;
+
+done:	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	if (pagep != NULL)
+		(void)__memp_fput(mpf, ip, pagep, file_dbp->priority);
+	REC_CLOSE;
+}
+
+/*
+ * __db_merge_recover --
+ *	Recovery function for merge.
+ *
+ * PUBLIC: int __db_merge_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_merge_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	__db_merge_args *argp;
+	BTREE *bt;
+	DB_THREAD_INFO *ip;
+	BKEYDATA *bk;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_LOCK handle_lock;
+	DB_LOCKREQ request;
+	DB_MPOOLFILE *mpf;
+	HASH *h;
+	PAGE *pagep;
+	db_indx_t indx, *ninp, *pinp;
+	u_int32_t size;
+	u_int8_t *bp;
+	int cmp_n, cmp_p, i, ret, t_ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	REC_PRINT(__db_merge_print);
+	REC_INTRO(__db_merge_read, ip, op != DB_TXN_APPLY);
+
+	/* Allocate our own cursor without DB_RECOVER as we need a locker. */
+	if (op == DB_TXN_APPLY && (ret = __db_cursor_int(file_dbp, ip, NULL,
+	    DB_QUEUE, PGNO_INVALID, 0, NULL, &dbc)) != 0)
+		goto out;
+	F_SET(dbc, DBC_RECOVER);
+
+	if ((ret = __memp_fget(mpf, &argp->pgno, ip, NULL, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND) {
+			ret = __db_pgerr(file_dbp, argp->pgno, ret);
+			goto out;
+		} else
+			goto next;
+	}
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
+	CHECK_LSN(file_dbp->env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(file_dbp->env, op, cmp_n, &LSN(pagep), lsnp);
+
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/*
+		 * When pg_copy is set, we are copying onto a new page.
+		 */
+		DB_ASSERT(env, !argp->pg_copy || NUM_ENT(pagep) == 0);
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (argp->pg_copy) {
+			if (argp->data.size == 0) {
+				memcpy(pagep, argp->hdr.data, argp->hdr.size);
+				pagep->pgno = argp->pgno;
+				goto do_lsn;
+			}
+			P_INIT(pagep, file_dbp->pgsize, pagep->pgno,
+			     PREV_PGNO(argp->hdr.data),
+			     NEXT_PGNO(argp->hdr.data),
+			     LEVEL(argp->hdr.data), TYPE(argp->hdr.data));
+		}
+		if (TYPE(pagep) == P_OVERFLOW) {
+			OV_REF(pagep) = OV_REF(argp->hdr.data);
+			OV_LEN(pagep) = OV_LEN(argp->hdr.data);
+			bp = (u_int8_t *)pagep + P_OVERHEAD(file_dbp);
+			memcpy(bp, argp->data.data, argp->data.size);
+		} else {
+			/* Copy the data segment. */
+			bp = (u_int8_t *)pagep +
+			     (db_indx_t)(HOFFSET(pagep) - argp->data.size);
+			memcpy(bp, argp->data.data, argp->data.size);
+
+			/* Copy index table offset past the current entries. */
+			pinp = P_INP(file_dbp, pagep) + NUM_ENT(pagep);
+			ninp = P_INP(file_dbp, argp->hdr.data);
+			for (i = 0; i < NUM_ENT(argp->hdr.data); i++)
+				*pinp++ = *ninp++
+				      - (file_dbp->pgsize - HOFFSET(pagep));
+			HOFFSET(pagep) -= argp->data.size;
+			NUM_ENT(pagep) += i;
+		}
+do_lsn:		pagep->lsn = *lsnp;
+		if (op == DB_TXN_APPLY) {
+			/*
+			 * If applying to an active system we must bump
+			 * the revision number so that the db will get
+			 * reopened.  We also need to move the handle
+			 * locks.  Note that the dbp will not have a
+			 * locker in a replication client apply thread.
+			 */
+			if (file_dbp->type == DB_HASH) {
+				h = file_dbp->h_internal;
+				if (argp->npgno == file_dbp->meta_pgno)
+					file_dbp->mpf->mfp->revision++;
+			} else {
+				bt = file_dbp->bt_internal;
+				if (argp->npgno == bt->bt_meta ||
+				    argp->npgno == bt->bt_root)
+				    	file_dbp->mpf->mfp->revision++;
+			}
+			if (argp->npgno == file_dbp->meta_pgno) {
+				F_CLR(file_dbp, DB_AM_RECOVER);
+				if ((ret = __fop_lock_handle(file_dbp->env,
+				    file_dbp, dbc->locker, DB_LOCK_READ,
+				    NULL, 0)) != 0)
+					goto err;
+				handle_lock = file_dbp->handle_lock;
+
+				file_dbp->meta_pgno = argp->pgno;
+				if ((ret = __fop_lock_handle(file_dbp->env,
+				    file_dbp, dbc->locker, DB_LOCK_READ,
+				    NULL, 0)) != 0)
+					goto err;
+
+				/* Move the other handles to the new lock. */
+				ret = __lock_change(file_dbp->env, 
+				    &handle_lock, &file_dbp->handle_lock);
+				
+err:				memset(&request, 0, sizeof (request));
+				request.op = DB_LOCK_PUT_ALL;
+				if ((t_ret = __lock_vec(
+				    file_dbp->env, dbc->locker,
+				    0, &request, 1, NULL)) != 0 && ret == 0)
+				    	ret = t_ret;
+				F_SET(file_dbp, DB_AM_RECOVER);
+				if (ret != 0)
+					goto out;
+			}
+		}
+
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (TYPE(pagep) == P_OVERFLOW) {
+			HOFFSET(pagep) = file_dbp->pgsize;
+			goto setlsn;
+		}
+
+		if (argp->pg_copy) {
+			/* The page was empty when we started. */
+			P_INIT(pagep, file_dbp->pgsize,
+			    pagep->pgno, PGNO_INVALID,
+			    PGNO_INVALID, 0, TYPE(argp->hdr.data));
+			goto setlsn;
+		}
+
+		/*
+		 * Since logging is logical at the page level we cannot just
+		 * truncate the data space.  Delete the proper number of items
+		 * from the logical end of the page.
+		 */
+		for (i = 0; i < NUM_ENT(argp->hdr.data); i++) {
+			indx = NUM_ENT(pagep) - 1;
+			if (TYPE(pagep) == P_LBTREE && indx != 0 &&
+			     P_INP(file_dbp, pagep)[indx] ==
+			     P_INP(file_dbp, pagep)[indx - P_INDX]) {
+				NUM_ENT(pagep)--;
+				continue;
+			}
+			switch (TYPE(pagep)) {
+			case P_LBTREE:
+			case P_LRECNO:
+			case P_LDUP:
+				bk = GET_BKEYDATA(file_dbp, pagep, indx);
+				size = BITEM_SIZE(bk);
+				break;
+
+			case P_IBTREE:
+				size = BINTERNAL_SIZE(
+				     GET_BINTERNAL(file_dbp, pagep, indx)->len);
+				break;
+			case P_IRECNO:
+				size = RINTERNAL_SIZE;
+				break;
+			case P_HASH:
+				size = LEN_HITEM(file_dbp,
+				    pagep, file_dbp->pgsize, indx);
+				break;
+			default:
+				ret = __db_pgfmt(env, PGNO(pagep));
+				goto out;
+			}
+			if ((ret = __db_ditem(dbc, pagep, indx, size)) != 0)
+				goto out;
+		}
+setlsn:		pagep->lsn = argp->lsn;
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)
+		goto out;
+
+next:	if ((ret = __memp_fget(mpf, &argp->npgno, ip, NULL, 0, &pagep)) != 0) {
+		if (ret != DB_PAGE_NOTFOUND) {
+			ret = __db_pgerr(file_dbp, argp->pgno, ret);
+			goto out;
+		} else
+			goto done;
+	}
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->nlsn);
+	CHECK_LSN(file_dbp->env, op, cmp_p, &LSN(pagep), &argp->nlsn);
+
+	if (cmp_p == 0 && DB_REDO(op)) {
+		/* Need to truncate the page. */
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		HOFFSET(pagep) = file_dbp->pgsize;
+		NUM_ENT(pagep) = 0;
+		pagep->lsn = *lsnp;
+	} else if (cmp_n == 0 && !DB_REDO(op)) {
+		/* Need to put the data back on the page. */
+		REC_DIRTY(mpf, ip, dbc->priority, &pagep);
+		if (TYPE(pagep) == P_OVERFLOW) {
+			OV_REF(pagep) = OV_REF(argp->hdr.data);
+			OV_LEN(pagep) = OV_LEN(argp->hdr.data);
+			bp = (u_int8_t *)pagep + P_OVERHEAD(file_dbp);
+			memcpy(bp, argp->data.data, argp->data.size);
+		} else {
+			bp = (u_int8_t *)pagep +
+			     (db_indx_t)(HOFFSET(pagep) - argp->data.size);
+			memcpy(bp, argp->data.data, argp->data.size);
+
+			if (argp->pg_copy)
+				memcpy(pagep, argp->hdr.data, argp->hdr.size);
+			else {
+				/* Copy index table. */
+				pinp = P_INP(file_dbp, pagep) + NUM_ENT(pagep);
+				ninp = P_INP(file_dbp, argp->hdr.data);
+				for (i = 0; i < NUM_ENT(argp->hdr.data); i++)
+					*pinp++ = *ninp++;
+				HOFFSET(pagep) -= argp->data.size;
+				NUM_ENT(pagep) += i;
+			}
+		}
+		pagep->lsn = argp->nlsn;
+		if (op == DB_TXN_ABORT) {
+			/*
+			 * If we are undoing a meta/root page move we must
+			 * bump the revision number and put the handle
+			 * locks back to their original state.
+			 */
+			if (file_dbp->type == DB_HASH) {
+				h = file_dbp->h_internal;
+				if (argp->pgno == file_dbp->meta_pgno)
+					file_dbp->mpf->mfp->revision++;
+			} else {
+				bt = file_dbp->bt_internal;
+				if (argp->pgno == bt->bt_meta ||
+				    argp->pgno == bt->bt_root)
+					file_dbp->mpf->mfp->revision++;
+			}
+			if (argp->pgno == file_dbp->meta_pgno) {
+				file_dbp->meta_pgno = argp->npgno;
+				handle_lock = file_dbp->handle_lock;
+				if ((ret = __fop_lock_handle(file_dbp->env,
+				    file_dbp, file_dbp->locker, DB_LOCK_READ,
+				    NULL, 0)) != 0)
+					goto out;
+
+				/* Move the other handles to the new lock. */
+				if ((ret = __lock_change(file_dbp->env,
+				    &handle_lock, &file_dbp->handle_lock)) != 0)
+					goto out;
+			}
+		}
+	}
+
+	if ((ret = __memp_fput(mpf,
+	     ip, pagep, dbc->priority)) != 0)
+		goto out;
+done:
+	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
+}
+
+/*
+ * __db_pgno_recover --
+ *	Recovery function for page number replacment.
+ *
+ * PUBLIC: int __db_pgno_recover
+ * PUBLIC:   __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
+ */
+int
+__db_pgno_recover(env, dbtp, lsnp, op, info)
+	ENV *env;
+	DBT *dbtp;
+	DB_LSN *lsnp;
+	db_recops op;
+	void *info;
+{
+	BINTERNAL *bi;
+	__db_pgno_args *argp;
+	DB_THREAD_INFO *ip;
+	DB *file_dbp;
+	DBC *dbc;
+	DB_MPOOLFILE *mpf;
+	PAGE *pagep, *npagep;
+	db_pgno_t pgno, *pgnop;
+	int cmp_n, cmp_p, ret;
+
+	ip = ((DB_TXNHEAD *)info)->thread_info;
+	REC_PRINT(__db_pgno_print);
+	REC_INTRO(__db_pgno_read, ip, 0);
+
+	REC_FGET(mpf, ip, argp->pgno, &pagep, done);
+
+	cmp_n = LOG_COMPARE(lsnp, &LSN(pagep));
+	cmp_p = LOG_COMPARE(&LSN(pagep), &argp->lsn);
+	CHECK_LSN(file_dbp->env, op, cmp_p, &LSN(pagep), &argp->lsn);
+	CHECK_ABORT(file_dbp->env, op, cmp_n, &LSN(pagep), lsnp);
+
+	if ((cmp_p == 0 && DB_REDO(op)) || (cmp_n == 0 && !DB_REDO(op))) {
+		switch (TYPE(pagep)) {
+		case P_IBTREE:
+			/*
+			 * An internal record can have both a overflow
+			 * and child pointer.  Fetch the page to see
+			 * which it is.
+			 */
+			bi = GET_BINTERNAL(file_dbp, pagep, argp->indx);
+			if (B_TYPE(bi->type) == B_OVERFLOW) {
+				REC_FGET(mpf, ip, argp->npgno, &npagep, out);
+
+				if (TYPE(npagep) == P_OVERFLOW)
+					pgnop =
+					     &((BOVERFLOW *)(bi->data))->pgno;
+				else
+					pgnop = &bi->pgno;
+				if ((ret = __memp_fput(mpf, ip,
+				    npagep, file_dbp->priority)) != 0)
+					goto out;
+				break;
+			}
+			pgnop = &bi->pgno;
+			break;
+		case P_IRECNO:
+			pgnop =
+			     &GET_RINTERNAL(file_dbp, pagep, argp->indx)->pgno;
+			break;
+		case P_HASH:
+			pgnop = &pgno;
+			break;
+		default:
+			pgnop =
+			     &GET_BOVERFLOW(file_dbp, pagep, argp->indx)->pgno;
+			break;
+		}
+
+		if (DB_REDO(op)) {
+			/* Need to redo update described. */
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			*pgnop = argp->npgno;
+			pagep->lsn = *lsnp;
+		} else {
+			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
+			*pgnop = argp->opgno;
+			pagep->lsn = argp->lsn;
+		}
+		if (TYPE(pagep) == P_HASH)
+			memcpy(HOFFDUP_PGNO(P_ENTRY(file_dbp,
+			    pagep, argp->indx)), pgnop, sizeof(db_pgno_t));
+	}
+
+	if ((ret = __memp_fput(mpf, ip, pagep, file_dbp->priority)) != 0)
+		goto out;
+
+done:
+	*lsnp = argp->prev_lsn;
+	ret = 0;
+
+out:	REC_CLOSE;
+}
+
+/*
+ * __db_pglist_swap -- swap a list of freelist pages.
+ * PUBLIC: void __db_pglist_swap __P((u_int32_t, void *));
+ */
+void
+__db_pglist_swap(size, list)
+	u_int32_t size;
+	void *list;
+{
+	db_pglist_t *lp;
+	u_int32_t nelem;
+
+	nelem = size / sizeof(db_pglist_t);
+
+	lp = (db_pglist_t *)list;
+	while (nelem-- > 0) {
+		P_32_SWAP(&lp->pgno);
+		P_32_SWAP(&lp->lsn.file);
+		P_32_SWAP(&lp->lsn.offset);
+		lp++;
+	}
+}
+
+/*
+ * __db_pglist_print -- print a list of freelist pages.
+ * PUBLIC: void __db_pglist_print __P((DBT *));
+ */
+void
+__db_pglist_print(list)
+	DBT *list;
+{
+	db_pglist_t *lp;
+	u_int32_t nelem;
+
+	nelem = list->size / sizeof(db_pglist_t);
+	lp = (db_pglist_t *)list->data;
+	printf("\t");
+	while (nelem-- > 0) {
+		printf("%lu [%lu][%lu]", (u_long)lp->pgno,
+		    (u_long)lp->lsn.file, (u_long)lp->lsn.offset);
+		if (nelem % 4 == 0)
+			printf("\n\t");
+		else
+			printf(" ");
+		lp++;
+	}
+	printf("\n");
 }

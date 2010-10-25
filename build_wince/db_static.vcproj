@@ -40,7 +40,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName="$(ConfigurationName)_Smartphone2003_ARMV4/libdb48s.tlb"
+				TypeLibraryName="$(ConfigurationName)_Smartphone2003_ARMV4/libdb50s.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -48,10 +48,11 @@
 				ExecutionBucket="7"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories=".,.."
+				AdditionalIncludeDirectories=".;..;"
 				PreprocessorDefinitions="DB_WIN32;DB_WINCE;_WIN32_WCE=$(CEVER);$(CePlatform);NDEBUG;ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;"
 				StringPooling="true"
 				RuntimeLibrary="0"
+				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(ConfigurationName)_Smartphone2003_ARMV4/db_static.pch"
@@ -73,7 +74,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4\libdb48s.lib"
+				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4\libdb50s.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -84,7 +85,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/libdb48s.bsc"
+				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/libdb50s.bsc"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -125,7 +126,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName="$(ConfigurationName)_PocketPC2003_ARMV4/libdb48s.tlb"
+				TypeLibraryName="$(ConfigurationName)_PocketPC2003_ARMV4/libdb50s.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -133,10 +134,11 @@
 				ExecutionBucket="7"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories=".,.."
+				AdditionalIncludeDirectories=".;..;"
 				PreprocessorDefinitions="DB_WIN32;DB_WINCE;_WIN32_WCE=$(CEVER);$(CePlatform);NDEBUG;ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;"
 				StringPooling="true"
 				RuntimeLibrary="0"
+				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(ConfigurationName)_PocketPC2003_ARMV4/db_static.pch"
@@ -158,7 +160,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4\libdb48s.lib"
+				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4\libdb50s.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -169,7 +171,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/libdb48s.bsc"
+				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/libdb50s.bsc"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -210,16 +212,17 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName="$(ConfigurationName)_Smartphone2003_ARMV4/libdb48sd.tlb"
+				TypeLibraryName="$(ConfigurationName)_Smartphone2003_ARMV4/libdb50sd.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				ExecutionBucket="7"
 				Optimization="0"
-				AdditionalIncludeDirectories=".,.."
-				PreprocessorDefinitions="DB_WIN32;DB_WINCE;DEBUG;_WIN32_WCE=$(CEVER);$(CePlatform);ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;"
+				AdditionalIncludeDirectories=".;..;"
+				PreprocessorDefinitions="DB_WIN32;DB_WINCE;DEBUG;_WIN32_WCE=$(CEVER);$(CePlatform);ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;;"
 				RuntimeLibrary="1"
+				BufferSecurityCheck="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(ConfigurationName)_Smartphone2003_ARMV4/db_static.pch"
 				AssemblerListingLocation="$(ConfigurationName)_Smartphone2003_ARMV4/"
@@ -241,7 +244,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4\libdb48sd.lib"
+				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4\libdb50sd.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -252,7 +255,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/libdb48sd.bsc"
+				OutputFile="$(ConfigurationName)_Smartphone2003_ARMV4/libdb50sd.bsc"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -293,16 +296,17 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName="$(ConfigurationName)_PocketPC2003_ARMV4/libdb48sd.tlb"
+				TypeLibraryName="$(ConfigurationName)_PocketPC2003_ARMV4/libdb50sd.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				ExecutionBucket="7"
 				Optimization="0"
-				AdditionalIncludeDirectories=".,.."
-				PreprocessorDefinitions="DB_WIN32;DB_WINCE;DEBUG;_WIN32_WCE=$(CEVER);$(CePlatform);ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;"
+				AdditionalIncludeDirectories=".;..;"
+				PreprocessorDefinitions="DB_WIN32;DB_WINCE;DEBUG;_WIN32_WCE=$(CEVER);$(CePlatform);ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_LIB;__NO_SYSTEM_INCLUDES;;"
 				RuntimeLibrary="1"
+				BufferSecurityCheck="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(ConfigurationName)_PocketPC2003_ARMV4/db_static.pch"
 				AssemblerListingLocation="$(ConfigurationName)_PocketPC2003_ARMV4/"
@@ -324,7 +328,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4\libdb48sd.lib"
+				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4\libdb50sd.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -335,7 +339,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/libdb48sd.bsc"
+				OutputFile="$(ConfigurationName)_PocketPC2003_ARMV4/libdb50sd.bsc"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -1037,46 +1041,6 @@
 			</FileConfiguration>
 		</File>
 		<File
-			RelativePath="..\btree\bt_upgrade.c"
-			>
-			<FileConfiguration
-				Name="Release|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Release|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
 			RelativePath="..\btree\bt_verify.c"
 			>
 			<FileConfiguration
@@ -1278,6 +1242,46 @@
 		</File>
 		<File
 			RelativePath="..\clib\time.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\common\clock.c"
 			>
 			<FileConfiguration
 				Name="Release|Smartphone 2003 (ARMV4)"
@@ -2277,6 +2281,46 @@
 			</FileConfiguration>
 		</File>
 		<File
+			RelativePath="..\db\db_compact.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
 			RelativePath="..\db\db_conv.c"
 			>
 			<FileConfiguration
@@ -3118,46 +3162,6 @@
 		</File>
 		<File
 			RelativePath="..\db\db_upg.c"
-			>
-			<FileConfiguration
-				Name="Release|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Release|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
-			RelativePath="..\db\db_upg_opd.c"
 			>
 			<FileConfiguration
 				Name="Release|Smartphone 2003 (ARMV4)"
@@ -4277,6 +4281,46 @@
 			</FileConfiguration>
 		</File>
 		<File
+			RelativePath="..\hash\hash_compact.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
 			RelativePath="..\hash\hash_conv.c"
 			>
 			<FileConfiguration
@@ -4638,46 +4682,6 @@
 		</File>
 		<File
 			RelativePath="..\hash\hash_stat.c"
-			>
-			<FileConfiguration
-				Name="Release|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Release|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Smartphone 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-			<FileConfiguration
-				Name="Debug|Pocket PC 2003 (ARMV4)"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					AdditionalIncludeDirectories=""
-					UsePrecompiledHeader="0"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
-			RelativePath="..\hash\hash_upgrade.c"
 			>
 			<FileConfiguration
 				Name="Release|Smartphone 2003 (ARMV4)"
@@ -5518,6 +5522,166 @@
 		</File>
 		<File
 			RelativePath="..\log\log_stat.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\log\log_verify.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\log\log_verify_util.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\log\log_verify_auto.c"
+			>
+			<FileConfiguration
+				Name="Release|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Smartphone 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Debug|Pocket PC 2003 (ARMV4)"
+				>
+				<Tool
+					Name="VCCLCompilerTool"
+					AdditionalIncludeDirectories=""
+					UsePrecompiledHeader="0"
+				/>
+			</FileConfiguration>
+		</File>
+		<File
+			RelativePath="..\log\log_verify_int.c"
 			>
 			<FileConfiguration
 				Name="Release|Smartphone 2003 (ARMV4)"

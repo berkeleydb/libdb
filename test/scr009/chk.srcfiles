@@ -35,6 +35,8 @@ find $d -type f |
         -e '/^rpc_server\/c\/gen_db_server.c/d' \
         -e '/^test\//d' \
 	-e '/^test_erlang/d' \
+	-e '/^test_repmgr/d' \
+	-e '/^test_stl/d' \
         -e '/^test_server/d' \
         -e '/^test_thread/d' \
         -e '/^test_vxworks/d' |

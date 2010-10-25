@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,11 +16,6 @@ proc rep047 { method { nentries 200 } { tnum "047" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -117,11 +112,18 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	    [expr { $m_logtype == "in-memory" || $c_logtype == "in-memory" || \
 	    $c2_logtype == "in-memory" }]
 
+	# If databases are in-memory we'll need a bigger cache.
+	set cacheargs ""
+	if { $databases_in_memory } {
+		set cachesize [expr 20 * (1024 * 1024)]
+		set cacheargs "-cachesize {0 $cachesize 1} "
+	}
+
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env -create $m_txnargs $m_logargs \
 	    $verbargs -errpfx MASTER -home $masterdir $repmemargs \
-	    -rep_master -rep_transport \[list 1 replsend\]"
+	    $cacheargs -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
 
@@ -129,14 +131,14 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 	repladd 2
 	set cl_envcmd "berkdb_env -create $c_txnargs $c_logargs \
 	    $verbargs -errpfx CLIENT -home $clientdir $repmemargs \
-	    -rep_client -rep_transport \[list 2 replsend\]"
+	    $cacheargs -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 
 	repladd 3
 	set cl2_envcmd "berkdb_env -create $c2_txnargs $c2_logargs \
 	    $verbargs -errpfx CLIENT2 -home $clientdir2 $repmemargs \
-	    -rep_client -rep_transport \[list 3 replsend\]"
+	    $cacheargs -rep_client -rep_transport \[list 3 replsend\]"
 
 	# Bring the client online by processing the startup messages.
 	set envlist "{$masterenv 1} {$clientenv 2}"
@@ -179,23 +181,13 @@ proc rep047_sub { method niter tnum logset recargs largs } {
 
 	puts "\tRep$tnum.c: Bring new client online"
 	replclear 3
-	set bulkrec1 [stat_field $masterenv rep_stat "Bulk records stored"]
 	set bulkxfer1 [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	set clientenv2 [eval $cl2_envcmd $recargs]
 	error_check_good client_env [is_valid_env $clientenv2] TRUE
 	set envlist "{$masterenv 1} {$clientenv 2} {$clientenv2 3}"
 	process_msgs $envlist
 
-	#
-	# We know we added $niter items to the database so there should be
-	# at least $niter records stored to the log.  Verify that
-	# when we brought client 2 online, we sent at least $niter more
-	# records via bulk.
-	#
-	set bulkrec2 [stat_field $masterenv rep_stat "Bulk records stored"]
 	set bulkxfer2 [stat_field $masterenv rep_stat "Bulk buffer transfers"]
-	set recstat [expr $bulkrec2 > [expr $bulkrec1 + $niter]]
-	error_check_good recstat $recstat 1
 	error_check_good xferstat [expr $bulkxfer2 > $bulkxfer1] 1
 	puts "\tRep$tnum.c.0: Take new client offline"
 

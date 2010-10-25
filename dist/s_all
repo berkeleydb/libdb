@@ -10,6 +10,8 @@ sh s_rpc		# RPC files.
 sh s_sig		# Structure signature.
 sh s_recover		# logging/recovery files.
 sh s_message		# replication and repmgr message files.
+sh s_sql		# regenerate sqlite3.c
+sh s_php                # PHP config files
 
 #############################################################
 # The following order is important, s_include must run after
@@ -38,3 +40,4 @@ sh s_s60_mmp		# S60 support: build environment.
 sh s_vxworks		# VxWorks support.
 sh s_windows		# Windows support.
 sh s_windows_dsp	# Windows support: build environment.
+sh s_android            # Android support: drop-in build environment.

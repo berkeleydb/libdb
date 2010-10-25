@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2009 Oracle.  All rights reserved.
+# Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -43,7 +43,7 @@ proc recd007 { method args } {
 	# Create the database and environment.
 
 	set testfile recd007.db
-	set flags "-create -txn -home $testdir $envargs"
+	set flags "-create -txn wrnosync -home $testdir $envargs"
 
 	puts "\tRecd007.a: creating environment"
 	set env_cmd "$dir_cmd berkdb_env $flags"
@@ -54,7 +54,8 @@ proc recd007 { method args } {
 	# the default or whatever might have been specified).
 	# Then remove it so we can compute fixed_len and create the
 	# real database.
-	set oflags "-create $omethod -mode 0644 -env $env $opts $testfile"
+	set oflags "-create \
+	    -auto_commit $omethod -mode 0644 -env $env $opts $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_good db_open [is_valid_db $db] TRUE
 	set stat [$db stat]

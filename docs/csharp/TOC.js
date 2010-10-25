@@ -2,8 +2,8 @@
 // System  : Sandcastle Help File Builder
 // File    : TOC.js
 // Author  : Eric Woodruff  (Eric@EWoodruff.us)
-// Updated : 04/11/2008
-// Note    : Copyright 2006-2008, Eric Woodruff, All rights reserved
+// Updated : 09/28/2009
+// Note    : Copyright 2006-2009, Eric Woodruff, All rights reserved
 // Compiler: JavaScript
 //
 // This file contains the methods necessary to implement a simple tree view
@@ -13,7 +13,7 @@
 //
 // This code is published under the Microsoft Public License (Ms-PL).  A copy
 // of the license should be distributed with the code.  It can also be found
-// at the project website: http://www.CodePlex.com/SHFB.   This notice, the
+// at the project website: http://SHFB.CodePlex.com.   This notice, the
 // author's name, and all copyright notices must remain intact in all
 // applications, documentation, and source files.
 //
@@ -454,7 +454,7 @@ function ResizeTree()
 function ResizeContent()
 {
     if(isIE)
-        maxWidth = docBody.clientWidth;
+        maxWidth = docBody.clientWidth - 1;
     else
         maxWidth = docBody.clientWidth - 4;
 
@@ -608,11 +608,11 @@ function PerformSearch()
 
             lastSearchNode = divSearchResults.childNodes[0].childNodes[1];
 
+            while(lastSearchNode != null && lastSearchNode.tagName != "A")
+                lastSearchNode = lastSearchNode.nextSibling;
+
             if(lastSearchNode != null)
             {
-                if(lastSearchNode.tagName != "A")
-                    lastSearchNode = lastSearchNode.nextSibling;
-
                 SelectSearchNode(lastSearchNode);
                 topicContent.src = lastSearchNode.href;
             }
@@ -691,11 +691,11 @@ function PopulateIndex(startIndex)
             if(firstNode != null)
                 lastIndexNode = firstNode.childNodes[0];
 
+            while(lastIndexNode != null && lastIndexNode.tagName != "A")
+                lastIndexNode = lastIndexNode.nextSibling;
+
             if(lastIndexNode != null)
             {
-                if(lastIndexNode.tagName != "A")
-                    lastIndexNode = lastIndexNode.nextSibling;
-
                 SelectIndexNode(lastIndexNode);
                 topicContent.src = lastIndexNode.href;
             }

@@ -44,10 +44,10 @@
     </p>
       <p>
         Much of this code can be written automatically (in C) by the 
-        <a href="../api_reference/C/db_sql.html" class="olink">db_sql utility</a>.  To use it, you first specify the schema of your Berkeley
+        db_sql_codegen utility.  To use it, you first specify the schema of your Berkeley
         DB environment in SQL Data Definition Language (DDL).  Then you
-        invoke the db_sql command, giving the DDL as input.  
-        <span class="command"><strong>db_sql</strong></span> reads the DDL, and writes C code that 
+        invoke the db_sql_codegen command, giving the DDL as input.  
+        <span class="command"><strong>db_sql_codegen</strong></span> reads the DDL, and writes C code that 
         implements a storage-layer API suggested by the DDL.
     </p>
       <p>
@@ -58,7 +58,7 @@
         functions for storing and retrieving those records.
     </p>
       <p>
-        <span class="command"><strong>db_sql</strong></span> can also produce a simple test program
+        <span class="command"><strong>db_sql_codegen</strong></span> can also produce a simple test program
         that exercises the generated API.  This program is useful as an
         example of how to use the API.  It contains calls to all of the
         interface functions, along with commentary explaining what the code
@@ -68,13 +68,13 @@
         Once the storage layer API is produced, your application may use it
         as is, or you may customize it as much as you like by editing the
         generated source code.  Be warned, however:
-        <span class="command"><strong>db_sql</strong></span> is a one-way process; there is no way to
+        <span class="command"><strong>db_sql_codegen</strong></span> is a one-way process; there is no way to
         automatically incorporate customizations into newly generated code,
-        if you decide to run <span class="command"><strong>db_sql</strong></span> again.
+        if you decide to run <span class="command"><strong>db_sql_codegen</strong></span> again.
     </p>
       <p>
-        To learn more about <span class="command"><strong>db_sql</strong></span>, please consult the
-        <a href="../api_reference/C/db_sql.html" class="olink">db_sql utility</a> manual page in the Berkeley DB C API guide.
+        To learn more about <span class="command"><strong>db_sql_codegen</strong></span>, please consult the
+        db_sql_codegen utility manual page in the Berkeley DB C API guide.
     </p>
     </div>
     <div class="navfooter">

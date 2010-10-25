@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@
 proc rep079 { method { tnum "079" } args } {
 	source ./include.tcl
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Valid for all access methods, but there is no difference
 	# running it with one method over any other.  Just use btree.
@@ -138,7 +133,7 @@ proc rep079_sub { method tnum logset largs } {
 	# quite yet.
 	set envcmd(0) "berkdb_env -create $m_txnargs $m_logargs \
 	    $repmemargs $verbargs -errpfx MASTER -home $masterdir \
-	    -event rep_event \
+	    -event \
 	    -rep_transport \[list 2 replsend\]"
 
 	#
@@ -191,7 +186,7 @@ proc rep079_sub { method tnum logset largs } {
 	set pri(1) 10
 	set envcmd(1) "berkdb_env -create $c_txnargs $c_logargs \
 	    $repmemargs $verbargs -errpfx CLIENT -home $clientdir \
-	    -event rep_event \
+	    -event \
 	    -rep_lease \[list $nsites $lease_to $clock_fast $clock_slow\] \
 	    -rep_client -rep_transport \[list 3 replsend\]"
 	set clientenv [eval $envcmd(1)]
@@ -202,7 +197,7 @@ proc rep079_sub { method tnum logset largs } {
 	set crash(2) 0
 	set pri(2) 10
 	set envcmd(2) "berkdb_env_noerr -create $c2_txnargs $c2_logargs \
-	    $repmemargs -home $clientdir2 -event rep_event \
+	    $repmemargs -home $clientdir2 -event \
 	    -rep_lease \[list $nsites $lease_to $clock_fast $clock_slow\] \
 	    -rep_client -rep_transport \[list 4 replsend\]"
 	set clientenv2 [eval $envcmd(2)]
@@ -256,7 +251,7 @@ proc rep079_sub { method tnum logset largs } {
 	set err_cmd(3) "none"
 	set crash(3) 0
 	set pri(3) 0
-	run_election envcmd envlist err_cmd pri crash $qdir $msg \
+	run_election envlist err_cmd pri crash $qdir $msg \
 	    $elector 0 $nvotes $nsites $winner 0 NULL
 
 	puts "\tRep$tnum.e: Write a checkpoint."
@@ -290,7 +285,7 @@ proc rep079_sub { method tnum logset largs } {
 	puts "\tRep$tnum.g: Add client3 that does not configure leases."
 	replclear 5
 	set envcmd(3) "berkdb_env_noerr -create $c3_txnargs $c3_logargs \
-	    -home $clientdir3 -event rep_event \
+	    -home $clientdir3 -event \
 	    $repmemargs $verbargs -errpfx CLIENT3 \
 	    -rep_client -rep_transport \[list 5 replsend\]"
 	set clientenv3 [eval $envcmd(3)]

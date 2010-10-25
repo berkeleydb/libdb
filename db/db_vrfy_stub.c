@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -98,13 +98,13 @@ __db_vrfy_putpageinfo(env, vdp, pip)
 
 int
 __db_vrfy_prdbt(dbtp, checkprint, prefix, handle, callback, is_recno, vdp)
-        DBT *dbtp;
-        int checkprint;
-        const char *prefix;
-        void *handle;
-        int (*callback) __P((void *, const void *));
-        int is_recno;
-        VRFY_DBINFO *vdp;
+	DBT *dbtp;
+	int checkprint;
+	const char *prefix;
+	void *handle;
+	int (*callback) __P((void *, const void *));
+	int is_recno;
+	VRFY_DBINFO *vdp;
 {
 	COMPQUIET(dbtp, NULL);
 	COMPQUIET(checkprint, 0);

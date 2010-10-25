@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,6 @@ INCLUDE #include "dbinc/crypto.h"
 INCLUDE #include "dbinc/db_page.h"
 INCLUDE #include "dbinc/db_dispatch.h"
 INCLUDE #include "dbinc/db_am.h"
-INCLUDE #include "dbinc/log.h"
 INCLUDE #include "dbinc/qam.h"
 INCLUDE #include "dbinc/txn.h"
 INCLUDE

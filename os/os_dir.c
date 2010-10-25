@@ -1,14 +1,30 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_DIRECTORY	1
+#if HAVE_DIRENT_H
+# include <dirent.h>
+# define NAMLEN(dirent) strlen((dirent)->d_name)
+#else
+# define dirent direct
+# define NAMLEN(dirent) (dirent)->d_namlen
+# if HAVE_SYS_NDIR_H
+#  include <sys/ndir.h>
+# endif
+# if HAVE_SYS_DIR_H
+#  include <sys/dir.h>
+# endif
+# if HAVE_NDIR_H
+#  include <ndir.h>
+# endif
+#endif
+
 #include "db_int.h"
 
 /*
@@ -52,6 +68,10 @@ __os_dirlist(env, dir, returndir, namesp, cntp)
 		RETRY_CHK(stat(buf, &sb), ret);
 		if (ret != 0) {
 			ret = __os_posix_err(ret);
+			/* Ignore entries that no longer exist. */
+			if (ret == ENOENT)
+				continue;
+
 			goto err;
 		}
 

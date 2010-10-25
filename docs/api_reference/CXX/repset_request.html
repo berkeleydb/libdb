@@ -49,8 +49,9 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
          maximum threshold of <span class="bold"><strong>max</strong></span> microseconds.
     </p>
       <p>
-         These values are thresholds only.  Since Berkeley DB has no thread
-         available in the library as a timer, the threshold is only checked
+         These values are thresholds only. Replication Manager applications use these values to determine 
+         when to automatically request retransmission of missing messages. For Base API applications, 
+         Berkeley DB has no thread available in the library as a timer, so the threshold is only checked
          when a thread enters the Berkeley DB library to process an incoming
          replication message. Any amount of time may have passed since the last
          message arrived and Berkeley DB only checks whether the amount of time
@@ -97,7 +98,7 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1703775"></a>Parameters</h3>
+              <h3 class="title"><a id="id3693717"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -105,20 +106,7 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1704071"></a>max</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The maximum number of microseconds a client waits before requesting
-                          retransmission.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1704142"></a>min</h4>
+                <h4 class="title"><a id="id3693714"></a>min</h4>
               </div>
             </div>
           </div>
@@ -127,12 +115,25 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
                           retransmission.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3693902"></a>max</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The maximum number of microseconds a client waits before requesting
+                          retransmission.
+                     </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1704143"></a>Errors</h3>
+              <h3 class="title"><a id="id3693735"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -150,7 +151,7 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1704138"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3693873"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -163,7 +164,7 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1704054"></a>Class</h3>
+              <h3 class="title"><a id="id3693852"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -175,7 +176,7 @@ DbEnv::rep_set_request(u_int32_t min, u_int32_t max); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1703778"></a>See Also</h3>
+              <h3 class="title"><a id="id3693706"></a>See Also</h3>
             </div>
           </div>
         </div>

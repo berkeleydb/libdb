@@ -61,7 +61,7 @@ int __env_open __P((DB_ENV *, const char *, u_int32_t, int));
 int __env_remove __P((DB_ENV *, const char *, u_int32_t));
 int __env_config __P((DB_ENV *, const char *, u_int32_t, int));
 int __env_close_pp __P((DB_ENV *, u_int32_t));
-int __env_close __P((DB_ENV *, int));
+int __env_close __P((DB_ENV *, u_int32_t));
 int __env_refresh __P((DB_ENV *, u_int32_t, int));
 int __env_get_open_flags __P((DB_ENV *, u_int32_t *));
 int __env_attach_regions __P((DB_ENV *,  u_int32_t, u_int32_t, int));

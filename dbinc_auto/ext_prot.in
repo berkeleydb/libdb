@@ -32,6 +32,7 @@ int db_env_set_func_write __P((ssize_t (*)(int, const void *, size_t)));
 int db_env_set_func_yield __P((int (*)(u_long, u_long)));
 int db_env_create __P((DB_ENV **, u_int32_t));
 char *db_version __P((int *, int *, int *));
+char *db_full_version __P((int *, int *, int *, int *, int *));
 int log_compare __P((const DB_LSN *, const DB_LSN *));
 int db_sequence_create __P((DB_SEQUENCE **, DB *, u_int32_t));
 #if DB_DBM_HSEARCH != 0

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -55,7 +55,7 @@ proc recd008 { method {breadth 4} {depth 4} args} {
 
 	set max_locks 2500
 	set eflags "-mode 0644 -create -lock_max_locks $max_locks \
-	    -lock_max_objects $max_locks -txn_max $txn_max -txn -home $testdir"
+	    -lock_max_objects $max_locks -txn_max $txn_max -txn wrnosync -home $testdir"
 	set env_cmd "berkdb_env $eflags"
 	set dbenv [eval $env_cmd]
 	error_check_good env_open [is_valid_env $dbenv] TRUE

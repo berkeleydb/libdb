@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 4. Administrating Berkeley DB SQL</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="prev" href="admin-locking.html" title="Managing the Locking Subsystem" />
+    <link rel="next" href="recover.html" title="Recovering from a Backup" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 4. Administrating Berkeley DB SQL</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="admin-locking.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="recover.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="admin"></a>Chapter 4. Administrating Berkeley DB SQL</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="admin.html#backup">Backing up</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="admin.html#standardbackup">Offline Backups</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="admin.html#hotbackup">Hot Backup</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="admin.html#incrementalbackups">Incremental Backups</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="admin.html#copyutilities">About Unix Copy Utilities</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="recover.html">Recovering from a Backup</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="recover.html#catastrophicrecovery">Catastrophic Recovery</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="sync.html">Syncing with Oracle Databases</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="sync.html#syncunix">Syncing on Unix Platforms</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="sync.html#syncwin">Syncing on Windows Platforms</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="sync.html#syncwinmobile">Syncing on Windows Mobile Platforms</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="datamigration.html">Data Migration</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="datamigration.html#shellmigrate">Migration Using the Shells</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="datamigration.html#migratedataschema">Supported Data and Schema</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+      <p>
+            This chapter provides administrative procedures that are unique
+            to the Berkeley DB SQL interface. 
+        </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="backup"></a>Backing up</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="admin.html#standardbackup">Offline Backups</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="admin.html#hotbackup">Hot Backup</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="admin.html#incrementalbackups">Incremental Backups</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="admin.html#copyutilities">About Unix Copy Utilities</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>
+                You can use the standard SQLite <code class="literal">.dump</code>
+                command to backup the data managed in by the  BDB SQL interface.
+                You can also use the standard Berkeley DB backup
+                mechanisms on the database. This section describes
+                the mechanisms that can be performed from the command line.
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                    The standard SQLite online backup API is not
+                    supported by the BDB SQL interface.
+                </p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="standardbackup"></a>Offline Backups</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                    To create an offline backup:
+                </p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>
+                <p>
+                            Commit or abort all on-going transactions.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Pause all database writes.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Force a checkpoint. See the <a href="../api_reference/C/db_checkpoint.html" class="olink">db_checkpoint</a> command line
+                            utility.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Copy your database file to the backup location. 
+                            Note that in order to perform recovery from
+                            this backup, do not change the name of the
+                            database file.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Copy the <span class="emphasis"><em>last</em></span> log file to your backup location.
+                            Your log files are named
+                            <code class="literal">log.<span class="emphasis"><em>xxxxxxxxxx</em></span></code>,
+                            where <span class="emphasis"><em>xxxxxxxxxx</em></span> is a
+                            sequential number. The last log file is the file
+                            with the highest number. 
+                        </p>
+                <p>
+                            Remember that your log
+                            files are placed in the environment directory,
+                            which is created on-disk next to your database
+                            file. It has the same name as your database
+                            file, but adds a <code class="literal">-journal</code>
+                            extension. For example, if your database is
+                            named <code class="literal">mydb.db</code>, then your
+                            environment directory is named
+                            <code class="literal">mydb.db-journal</code>  
+                        </p>
+              </li>
+            </ol>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="hotbackup"></a>Hot Backup</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                    To create a hot backup, you do not have to stop database
+                    operations. Transactions may be on-going and you can be writing
+                    to your database at the time of the backup. However, this means
+                    that you do not know exactly what the state of your database is
+                    at the time of the backup.
+                </p>
+          <p>
+                    You can use the <a href="../api_reference/C/db_hotbackup.html" class="olink">db_hotbackup</a> command line
+                    utility to create a hot backup for you. This utility will
+                    (optionally) run a checkpoint and then copy all necessary
+                    files to a target directory. To do this when you are
+                    using the BDB SQL interface:
+                </p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>
+                <p>
+                            Create a <code class="literal">DB_CONFIG</code> file in
+                            your environment directory.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Add a <code class="literal">set_data_dir</code> parameter
+                            to the <code class="literal">DB_CONFIG</code> file. This
+                            parameter indicates what directory contains the
+                            actual Berkeley DB database managed by this
+                            environment. That directory is one level up
+                            from you environment, so you want this
+                            parameter to be:
+                        </p>
+                <pre class="programlisting"> set_data_dir ..</pre>
+              </li>
+              <li>
+                <p>
+                            Add a <code class="literal">setl_lg_dir</code> parameter
+                            to the <code class="literal">DB_CONFIG</code> file. This
+                            parameter identifies the directory that
+                            contains the environment's log files. This
+                            parameter should be:
+                        </p>
+                <pre class="programlisting"> set_lg_dir .</pre>
+              </li>
+              <li>
+                <p>
+                            Run the <a href="../api_reference/C/db_hotbackup.html" class="olink">db_hotbackup</a> command:
+                        </p>
+                <pre class="programlisting"> db_hotbackup -h [environment directory] -b [target directory] -D</pre>
+                <p>
+                            The <code class="literal">-D</code> option tells the
+                            utility to read the <code class="literal">DB_CONFIG</code> file before running the backup.
+                        </p>
+              </li>
+            </ol>
+          </div>
+          <p>
+                    Alternatively, you can manually create a hot backup as follows:
+                </p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>
+                <p>
+                            Copy your database file to the backup location. 
+                            Note that in order to perform recovery from
+                            this backup, do not change the name of the
+                            database file.
+                        </p>
+              </li>
+              <li>
+                <p>
+                            Copy all logs to your backup location.
+                        </p>
+                <p>
+                            Remember that your log files are placed in the
+                            environment directory.
+                        </p>
+              </li>
+            </ol>
+          </div>
+          <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+            <h3 class="title">Note</h3>
+            <p>
+                        It is important to copy your database file <span class="emphasis"><em>and
+                            then</em></span> your logs. In this way, you can
+                        complete or roll back any database operations that were
+                        only partially completed when you copied the database. 
+                    </p>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="incrementalbackups"></a>Incremental Backups</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                    Once you have created a full backup (that is, either a
+                    offline or hot backup), you can create incremental backups.  
+                    To do this, simply copy all of your currently existing log
+                    files to your backup location. 
+                </p>
+          <p>
+                    Incremental backups do not require you to run a checkpoint
+                    or to cease database write operations. 
+                </p>
+          <p>
+                    When you are working with incremental backups, remember
+                    that the greater the number of log files contained in 
+                    your backup, the longer recovery will take.  
+                    You should run full backups
+                    on some interval, and then do incremental backups on a shorter interval.
+                    How frequently you need to run a full backup
+                    is determined by the rate at which your database changes and
+                    how sensitive your application is to lengthy recoveries
+                    (should one be required).
+                  </p>
+          <p>
+                    You can also shorten recovery time by running recovery
+                    against the backup as you take each incremental backup.
+                    Running recovery as you go means that there will be less
+                    work for the BDB SQL interface to do if you should ever need to restore
+                    your environment from the backup.
+                </p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="copyutilities"></a>About Unix Copy Utilities</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                   If you are copying database files you must copy databases
+                   atomically, in multiples of the database page size. In other
+                   words, the reads made by the copy program must not be interleaved
+                   with writes by other threads of control, and the copy program
+                   must read the databases in multiples of the underlying database
+                   page size.  Generally, this is not a problem because operating
+                   systems already make this guarantee and system utilities normally
+                   read in power-of-2 sized chunks, which are larger than the
+                   largest possible Berkeley DB database page size.
+                </p>
+          <p>
+                    On some platforms (most notably, some releases of Solaris), the
+                    copy utility (<code class="literal">cp</code>) was implemented using the
+                    <code class="function">mmap()</code> system call rather than the
+                    <code class="function">read()</code> system call. Because
+                    <code class="function">mmap()</code> did not make the same guarantee of
+                    read atomicity as did <code class="function">read()</code>, the
+                    <code class="literal">cp</code> utility could create corrupted copies of
+                    the databases.
+                </p>
+          <p>
+                    Also, some platforms have implementations of the
+                    <code class="literal">tar</code> utility that performs 10KB block reads by
+                    default. Even when an output block size is specified, the
+                    utility will still not read the underlying database in multiples of
+                    the specified block size. Again, the result can be a corrupted
+                    backup.
+                </p>
+          <p>
+                    To fix these problems, use the <code class="literal">dd</code> utility
+                    instead of <code class="literal">cp</code> or <code class="literal">tar</code>. When
+                    you use <code class="literal">dd</code>, make sure you specify a block
+                    size that is equal to, or an even multiple of, your database page
+                    size. Finally, if you plan to use a system utility to copy database
+                    files, you may want to use a system call trace utility (for
+                    example, <code class="literal">ktrace</code> or <code class="literal">truss</code>)
+                    to make sure you are not using a I/O size that is smaller than
+                    your database page size. You can also use these utilities to make
+                    sure the system utility is not using a system call other than
+                    <code class="function">read()</code>.
+                </p>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="admin-locking.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="recover.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Managing the Locking Subsystem </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Recovering from a Backup</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -42,28 +42,23 @@ begin
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldb_mapbegin_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
-iterator begin(ReadModifyWriteOption rmw=
-    ReadModifyWriteOption::no_read_modify_write(), bool readonly=false,
-    BulkRetrievalOption bulkretrieval=BulkRetrievalOption::no_bulk_retrieval(),
-    bool directdb_get=true)
+iterator begin(ReadModifyWriteOption rmw=
+    ReadModifyWriteOption::no_read_modify_write(), bool readonly=false,
+    BulkRetrievalOption bulkretrieval=
+        BulkRetrievalOption::no_bulk_retrieval(),
+    bool directdb_get=true)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Begin a read-write or readonly iterator which sits on the first key/data pair of the database. </p>
-          <p></p>
-        </div>
+        <p>Begin a read-write or readonly iterator which sits on the first key/data pair of the database. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550940"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490696"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -71,8 +66,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550954"></a>
- directdb_get </h5>
+                  <h5 class="title"><a id="id3490758"></a>directdb_get</h5>
                 </div>
               </div>
             </div>
@@ -82,8 +76,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551128"></a>
- readonly </h5>
+                  <h5 class="title"><a id="id3490957"></a>readonly</h5>
                 </div>
               </div>
             </div>
@@ -93,8 +86,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551121"></a>
- rmw </h5>
+                  <h5 class="title"><a id="id3490964"></a>rmw</h5>
                 </div>
               </div>
             </div>
@@ -104,8 +96,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551051"></a>
- bulkretrieval </h5>
+                  <h5 class="title"><a id="id3490971"></a>bulkretrieval</h5>
                 </div>
               </div>
             </div>
@@ -116,8 +107,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1551104"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3490920"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -127,8 +117,7 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1551116"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3490978"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -138,24 +127,20 @@ See Also</h4>
 (<a class="link" href="ReadModifyWriteOption.html" title="Chapter 28.  ReadModifyWriteOption">ReadModifyWriteOption</a>
 , bool, <a class="link" href="BulkRetrievalOption.html" title="Chapter 27.  BulkRetrievalOption">BulkRetrievalOption</a>
 , bool) </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-const_iterator begin(BulkRetrievalOption bulkretrieval=
-    BulkRetrievalOption::no_bulk_retrieval(),
-    bool directdb_get=true) const
+const_iterator begin(BulkRetrievalOption bulkretrieval=
+    BulkRetrievalOption::no_bulk_retrieval(),
+    bool directdb_get=true) const
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Begin a read-only iterator. </p>
-          <p></p>
-        </div>
+        <p>Begin a read-only iterator. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550956"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490683"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -163,8 +148,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551151"></a>
- directdb_get </h5>
+                  <h5 class="title"><a id="id3490787"></a>directdb_get</h5>
                 </div>
               </div>
             </div>
@@ -174,8 +158,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551175"></a>
- bulkretrieval </h5>
+                  <h5 class="title"><a id="id3490741"></a>bulkretrieval</h5>
                 </div>
               </div>
             </div>
@@ -186,8 +169,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1551192"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3490746"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -197,8 +179,7 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1551184"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3490751"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -207,15 +188,15 @@ See Also</h4>
           <p><a class="link" href="db_vector.html#stldb_vectorbegin" title="begin">db_vector::begin</a>
 (ReadModifyWrite, bool, <a class="link" href="BulkRetrievalOption.html" title="Chapter 27.  BulkRetrievalOption">BulkRetrievalOption</a>
 , bool); </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1550899"></a>
-Group: Iterator Functions</h3>
+              <h3 class="title"><a id="id3490729"></a>Group: Iterator Functions</h3>
             </div>
           </div>
         </div>
@@ -233,14 +214,12 @@ Group: Iterator Functions</h3>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1550902"></a>
-Class</h3>
+              <h3 class="title"><a id="id3491022"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="db_map.html" title="Chapter 5.  Db_map">
-  db_map</a>
+  <a class="link" href="db_map.html" title="Chapter 5.  Db_map">db_map</a>
      </p>
       </div>
     </div>
@@ -255,15 +234,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldb_mapend.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-insert
- </td>
+          <td width="40%" align="left" valign="top">insert </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-end
-</td>
+          <td width="40%" align="right" valign="top"> end</td>
         </tr>
       </table>
     </div>

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006-2009 Oracle.  All rights reserved.
+# Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -21,10 +21,6 @@ proc rep065 { method { nsites 3 } args } {
 	global noenv_messaging
 	set noenv_messaging 1
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 	#
 	# Skip all methods but btree - we don't use the method, as we
 	# run over all of them with varying versions.
@@ -389,7 +385,7 @@ proc method_version { } {
 	set midx [lsearch -exact $meth btree]
 	set meth [lreplace $meth $midx $midx]
 
-	set vers {db-4.4.20 db-4.5.20 db-4.6.21 db-4.7.25}
+	set vers {db-4.4.20 db-4.5.20 db-4.6.21 db-4.7.25 db-4.8.24}
 	set dbvlen [llength $vers]
 	#
 	# NOTE: The values in "vers_list" are indices into $vers above.
@@ -399,7 +395,7 @@ proc method_version { } {
 	# add some new items to $vers_list to choose that index.
 	# Also need to add an entry for 'vtest' below.
 	#
-	set vers_list { 0 0 1 1 2 2 2 3 3 3 }
+	set vers_list { 0 0 1 1 2 2 2 3 3 3 4 4 4}
 	set vers_len [expr [llength $vers_list] - 1]
 
 	# Walk through the list of remaining methods and randomly
@@ -415,6 +411,8 @@ proc method_version { } {
 		set vtest(2) 0
 		# 4.7.25
 		set vtest(3) 0
+		# 4.8.24
+		set vtest(4) 0
 		foreach m $meth {
 			# Index into distribution list.
 			set vidx [berkdb random_int 0 $vers_len]

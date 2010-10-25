@@ -74,7 +74,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631161"></a>Parameters</h3>
+              <h3 class="title"><a id="id3947443"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -82,7 +82,34 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1630956"></a>callback</h4>
+                <h4 class="title"><a id="id3948157"></a>foreign</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                         The <span class="bold"><strong>foreign</strong></span> parameter should be a
+                         database handle for the foreign database.
+                    </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3948080"></a>secondary</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                         The <span class="bold"><strong>secondary</strong></span> parameter should be an
+                         open database handle of a database that contains a secondary index who's
+                         keys also exist in the <span class="bold"><strong>foreign</strong></span> database.  
+                    </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3947774"></a>callback</h4>
               </div>
             </div>
           </div>
@@ -162,7 +189,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1632271"></a>flags</h4>
+                <h4 class="title"><a id="id3948747"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -203,39 +230,12 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1632009"></a>foreign</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                         The <span class="bold"><strong>foreign</strong></span> parameter should be a
-                         database handle for the foreign database.
-                    </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1631694"></a>secondary</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                         The <span class="bold"><strong>secondary</strong></span> parameter should be an
-                         open database handle of a database that contains a secondary index who's
-                         keys also exist in the <span class="bold"><strong>foreign</strong></span> database.  
-                    </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631353"></a>Errors</h3>
+              <h3 class="title"><a id="id3947634"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -251,7 +251,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631714"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3948869"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -270,7 +270,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631807"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3948465"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -282,7 +282,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1632034"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3949061"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -299,7 +299,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631953"></a>Class</h3>
+              <h3 class="title"><a id="id3947759"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@ DB-&gt;associate_foreign(DB *foreign, DB *secondary,,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1630442"></a>See Also</h3>
+              <h3 class="title"><a id="id3947681"></a>See Also</h3>
             </div>
           </div>
         </div>

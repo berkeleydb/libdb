@@ -50,6 +50,11 @@
               <a href="lockingsubsystem.html#deadlockresolve">Resolving Deadlocks</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#setpriority">Setting Transaction Priorities</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -174,16 +179,16 @@
                 environment can use:
             </p>
         <pre class="programlisting">package db.txn;
-                                                                                                                                     
+
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-                                                                                                                                     
+
 ...
-                                                                                                                                     
+
 Environment myEnv = null;
 try {
     EnvironmentConfig myEnvConfig = new EnvironmentConfig();
@@ -468,6 +473,85 @@ while (retry_count &lt; MAX_DEADLOCK_RETRIES) {
             return -1;    
         }
     }
+} </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="setpriority"></a>Setting Transaction Priorities</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                Normally when a thread of control must be selected to
+                resolve a deadlock, DB decides which thread will
+                perform the resolution; you have no way of knowing in
+                advance which thread will be selected to resolve the
+                deadlock.
+            </p>
+        <p>
+                However, there may be situations where you know it is
+                better for one thread to resolve a deadlock over another
+                thread. As an example, if you have a background thread
+                running data management activities, and another thread
+                responding to user requests, you might want deadlock
+                resolution to occur in the background thread because you
+                can better afford the throughput costs there. Under these
+                circumstances, you can identify which thread of control
+                will be selected for resolved deadlocks by setting a
+                transaction priorities.
+            </p>
+        <p>
+                When two transactions are deadlocked, DB will abort the
+                transaction with the lowest priority. By default, every
+                transaction is given a priority of 100. However, you can
+                set a different priority on a transaction-by-transaction
+                basis by using the
+                
+                
+                <code class="methodname">Transaction.setPriority()</code>
+                method.
+            </p>
+        <p>
+                When two or more transactions are tied for the lowest
+                priority, the tie is broken based on the policy provided to
+                
+                <span>
+                    the <code class="classname">LockDetectMode</code> class.
+                    You provide this configuration object to the
+                    environment using the
+                    <code class="methodname">EnvironmentConfig.setLockDetectMode()</code>
+                    method.
+                </span>
+            </p>
+        <p>
+                A transaction's priority can be changed at any time after
+                the transaction handle has been created and before the
+                transaction has been resolved (committed or aborted).
+                For example:
+            </p>
+        <pre class="programlisting">...
+
+try {
+
+    ...
+
+    Transaction txn = myEnv.beginTransaction(null, null);
+    <strong class="userinput"><code>txn.setPriority(200);</code></strong>
+        
+    try {
+        myDatabase.put(txn, key, data);
+        txn.commit();
+    } catch (Exception e) {
+        if (txn != null) {
+            txn.abort();
+            txn = null;
+        }
+    }
+    
+    ...
+
 } </pre>
       </div>
     </div>

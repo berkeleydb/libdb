@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -104,11 +104,18 @@ proc rep048_sub { method niter tnum logset recargs largs } {
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 
+	# If databases are in-memory we'll need a bigger cache.
+	set cacheargs ""
+	if { $databases_in_memory } {
+		set cachesize [expr 20 * (1024 * 1024)]
+		set cacheargs "-cachesize {0 $cachesize 1} "
+	}
+
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
 	    -errpfx MASTER $verbargs -home $masterdir $repmemargs \
-	    -rep_master -rep_transport \[list 1 replsend\]"
+	    $cacheargs -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs]
 	error_check_good master_env [is_valid_env $masterenv] TRUE
 
@@ -116,7 +123,7 @@ proc rep048_sub { method niter tnum logset recargs largs } {
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $c_logargs \
 	    -errpfx CLIENT $verbargs -home $clientdir $repmemargs \
-	    -rep_client -rep_transport \[list 2 replsend\]"
+	    $cacheargs -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 

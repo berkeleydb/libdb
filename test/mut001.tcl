@@ -1,13 +1,13 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
 #
 # TEST	mut001
 # TEST	Exercise the mutex API.
-# 
+# TEST
 # TEST	Allocate, lock, unlock, and free a bunch of mutexes. 
 # TEST	Set basic configuration options and check mutex_stat and 
 # TEST	the mutex getters for the correct values. 

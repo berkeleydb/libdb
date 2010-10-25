@@ -21,7 +21,9 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
          ../dbinc_auto/api_flags.in ../dbinc/db.in | \
      egrep -w "^#define[	 ]$i|^[	 ][	 ]*$i" ;
  done |
- sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
+ sed -e "s/@DB_VERSION_FAMILY@/$DB_VERSION_FAMILY/" \
+     -e "s/@DB_VERSION_RELEASE@/$DB_VERSION_RELEASE/" \
+     -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
      -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/" \
      -e "s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/" \
      -e 's/^#define[	 ][	 ]*//' \

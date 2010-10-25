@@ -57,11 +57,11 @@
 
 %{
 static jthrowable __dbj_get_except(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv) {
+    int ret, const char *msg, jobject obj, jobject jdbenv) {
 	jobject jmsg;
 
 	if (msg == NULL)
-		msg = db_strerror(err);
+		msg = db_strerror(ret);
 
 	jmsg = (*jenv)->NewStringUTF(jenv, msg);
 
@@ -71,7 +71,7 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 		    jdbenv, dbenv_class, get_err_msg_method, jmsg);
 	}
 
-	switch (err) {
+	switch (ret) {
 	case EINVAL:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    illegalargex_class, illegalargex_construct, jmsg);
@@ -86,78 +86,78 @@ static jthrowable __dbj_get_except(JNIEnv *jenv,
 
 	case DB_BUFFER_SMALL:
 		return (jthrowable)(*jenv)->NewObject(jenv, memex_class,
-		    memex_construct, jmsg, obj, err, jdbenv);
+		    memex_construct, jmsg, obj, ret, jdbenv);
 
 	case DB_REP_DUPMASTER:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repdupmasterex_class, repdupmasterex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_HANDLE_DEAD:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    rephandledeadex_class, rephandledeadex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_HOLDELECTION:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repholdelectionex_class, repholdelectionex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_JOIN_FAILURE:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repjoinfailex_class, repjoinfailex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LEASE_EXPIRED:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repleaseexpiredex_class, repleaseexpiredex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LEASE_TIMEOUT:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repleasetimeoutex_class, repleasetimeoutex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_LOCKOUT:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    replockoutex_class, replockoutex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_REP_UNAVAIL:
 		return (jthrowable)(*jenv)->NewObject(jenv,
 		    repunavailex_class, repunavailex_construct,
-		    jmsg, err, jdbenv);
+		    jmsg, ret, jdbenv);
 
 	case DB_RUNRECOVERY:
 		return (jthrowable)(*jenv)->NewObject(jenv, runrecex_class,
-		    runrecex_construct, jmsg, err, jdbenv);
+		    runrecex_construct, jmsg, ret, jdbenv);
 
 	case DB_LOCK_DEADLOCK:
 		return (jthrowable)(*jenv)->NewObject(jenv, deadex_class,
-		    deadex_construct, jmsg, err, jdbenv);
+		    deadex_construct, jmsg, ret, jdbenv);
 
 	case DB_LOCK_NOTGRANTED:
 		return (jthrowable)(*jenv)->NewObject(jenv, lockex_class,
-		    lockex_construct, jmsg, err, 0, NULL, NULL, 0, jdbenv);
+		    lockex_construct, jmsg, ret, 0, NULL, NULL, 0, jdbenv);
 
 	case DB_VERSION_MISMATCH:
 		return (jthrowable)(*jenv)->NewObject(jenv, versionex_class,
-		    versionex_construct, jmsg, err, jdbenv);
+		    versionex_construct, jmsg, ret, jdbenv);
 
 	default:
 		return (jthrowable)(*jenv)->NewObject(jenv, dbex_class,
-		    dbex_construct, jmsg, err, jdbenv);
+		    dbex_construct, jmsg, ret, jdbenv);
 	}
 }
 
 static int __dbj_throw(JNIEnv *jenv,
-    int err, const char *msg, jobject obj, jobject jdbenv)
+    int ret, const char *msg, jobject obj, jobject jdbenv)
 {
 	jthrowable t;
 
 	/* If an exception is pending, ignore requests to throw a new one. */
 	if ((*jenv)->ExceptionOccurred(jenv) == NULL) {
-		t = __dbj_get_except(jenv, err, msg, obj, jdbenv);
+		t = __dbj_get_except(jenv, ret, msg, obj, jdbenv);
 		if (t == NULL) {
 			/*
 			 * This is a problem - something went wrong creating an
@@ -167,7 +167,7 @@ static int __dbj_throw(JNIEnv *jenv,
 			 * this error, so we just call __db_errx here.
 			 */
 			if (msg == NULL)
-				msg = db_strerror(err);
+				msg = db_strerror(ret);
 
 			 __db_errx(NULL, "Couldn't create exception for: '%s'",
 			     msg);
@@ -175,6 +175,6 @@ static int __dbj_throw(JNIEnv *jenv,
 			(*jenv)->Throw(jenv, t);
 	}
 
-	return (err);
+	return (ret);
 }
 %}

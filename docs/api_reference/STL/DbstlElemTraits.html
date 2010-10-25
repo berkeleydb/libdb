@@ -45,7 +45,7 @@
       <p>The callbacks need not be set to every type explicitly. . dbstl will check if a needed callback function of this type is provided. If one is available, dbstl will use the registered callback. If the appropriate callback is not provided, dbstl will use reasonable defaults to do the job.</p>
       <p>For returning the size of an object, the default behavior is to use the sizeof() operator; For marshalling and unmarshalling, dbstl uses memcpy, so the default behavior is sufficient for simple types whose data reside in a contiguous chunk of memory; Dbstl uses uses &gt;, == and &lt; for comparison operations; For char* and wchar_t * strings, dbstl already provides the appropriate callbacks, so you do not need to register them. In general, if the default behavior is adequate, you don't need to register the corresponding callback.</p>
       <p>If you have registered proper callbacks, the DbstlElemTraits&lt;T&gt; can also be used as the char_traits&lt;T&gt; class for std::basic_string&lt;T, char_traits&lt;T&gt; &gt;, and you can enable your class T to form a basic_string&lt;T, DbstlElemTraits&lt;T&gt;&gt;, and use basic_string's functionality and the algorithms to manipulate it. </p>
-      <h4><a id="id1571000"></a> Public Members </h4>
+      <h4><a id="id3510436"></a> Public Members </h4>
       <div class="informaltable">
         <table border="1" width="80%">
           <colgroup>
@@ -61,306 +61,238 @@
           <tbody>
             <tr>
               <td>
-<a class="xref" href="DbstlElemTraits.html#stlDbstlElemTraitsassign" title="assign">
-assign
-</a>
+<a class="xref" href="DbstlElemTraits.html#stlDbstlElemTraitsassign" title="assign">assign</a>
 </td>
               <td>
    <p>Assignone object to another. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitseq.html" title="eq">
-eq
-</a>
+<a class="xref" href="stlDbstlElemTraitseq.html" title="eq">eq</a>
 </td>
               <td>
    <p>Check for equality of two objects. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitslt.html" title="lt">
-lt
-</a>
+<a class="xref" href="stlDbstlElemTraitslt.html" title="lt">lt</a>
 </td>
               <td>
    <p>Less than comparison. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitscompare.html" title="compare">
-compare
-</a>
+<a class="xref" href="stlDbstlElemTraitscompare.html" title="compare">compare</a>
 </td>
               <td>
    <p>Sequence comparison. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitslength.html" title="length">
-length
-</a>
+<a class="xref" href="stlDbstlElemTraitslength.html" title="length">length</a>
 </td>
               <td>
    <p>Returns the number of elements in sequence seq1. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitscopy.html" title="copy">
-copy
-</a>
+<a class="xref" href="stlDbstlElemTraitscopy.html" title="copy">copy</a>
 </td>
               <td>
    <p>Copy first cnt number of elements from seq2 to seq1. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsfind.html" title="find">
-find
-</a>
+<a class="xref" href="stlDbstlElemTraitsfind.html" title="find">find</a>
 </td>
               <td>
    <p>Find within the first cnt elements of sequence seq the position of element equal to elem. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsmove.html" title="move">
-move
-</a>
+<a class="xref" href="stlDbstlElemTraitsmove.html" title="move">move</a>
 </td>
               <td>
    <p>Sequence movement. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsto_char_type.html" title="to_char_type">
-to_char_type
-</a>
+<a class="xref" href="stlDbstlElemTraitsto_char_type.html" title="to_char_type">to_char_type</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsto_int_type.html" title="to_int_type">
-to_int_type
-</a>
+<a class="xref" href="stlDbstlElemTraitsto_int_type.html" title="to_int_type">to_int_type</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitseq_int_type.html" title="eq_int_type">
-eq_int_type
-</a>
+<a class="xref" href="stlDbstlElemTraitseq_int_type.html" title="eq_int_type">eq_int_type</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitseof.html" title="eof">
-eof
-</a>
+<a class="xref" href="stlDbstlElemTraitseof.html" title="eof">eof</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsnot_eof.html" title="not_eof">
-not_eof
-</a>
+<a class="xref" href="stlDbstlElemTraitsnot_eof.html" title="not_eof">not_eof</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_restore_function.html" title="set_restore_function">
-set_restore_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_restore_function.html" title="set_restore_function">set_restore_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_restore_function.html" title="get_restore_function">
-get_restore_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_restore_function.html" title="get_restore_function">get_restore_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_assign_function.html" title="set_assign_function">
-set_assign_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_assign_function.html" title="set_assign_function">set_assign_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_assign_function.html" title="get_assign_function">
-get_assign_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_assign_function.html" title="get_assign_function">get_assign_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_size_function.html" title="get_size_function">
-get_size_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_size_function.html" title="get_size_function">get_size_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_size_function.html" title="set_size_function">
-set_size_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_size_function.html" title="set_size_function">set_size_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_copy_function.html" title="get_copy_function">
-get_copy_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_copy_function.html" title="get_copy_function">get_copy_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_copy_function.html" title="set_copy_function">
-set_copy_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_copy_function.html" title="set_copy_function">set_copy_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_sequence_len_function.html" title="set_sequence_len_function">
-set_sequence_len_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_sequence_len_function.html" title="set_sequence_len_function">set_sequence_len_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_sequence_len_function.html" title="get_sequence_len_function">
-get_sequence_len_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_sequence_len_function.html" title="get_sequence_len_function">get_sequence_len_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_sequence_copy_function.html" title="get_sequence_copy_function">
-get_sequence_copy_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_sequence_copy_function.html" title="get_sequence_copy_function">get_sequence_copy_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_sequence_copy_function.html" title="set_sequence_copy_function">
-set_sequence_copy_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_sequence_copy_function.html" title="set_sequence_copy_function">set_sequence_copy_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_compare_function.html" title="set_compare_function">
-set_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_compare_function.html" title="set_compare_function">set_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_compare_function.html" title="get_compare_function">
-get_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_compare_function.html" title="get_compare_function">get_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_sequence_compare_function.html" title="set_sequence_compare_function">
-set_sequence_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_sequence_compare_function.html" title="set_sequence_compare_function">set_sequence_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_sequence_compare_function.html" title="get_sequence_compare_function">
-get_sequence_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_sequence_compare_function.html" title="get_sequence_compare_function">get_sequence_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsset_sequence_n_compare_function.html" title="set_sequence_n_compare_function">
-set_sequence_n_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsset_sequence_n_compare_function.html" title="set_sequence_n_compare_function">set_sequence_n_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsget_sequence_n_compare_function.html" title="get_sequence_n_compare_function">
-get_sequence_n_compare_function
-</a>
+<a class="xref" href="stlDbstlElemTraitsget_sequence_n_compare_function.html" title="get_sequence_n_compare_function">get_sequence_n_compare_function</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsinstance.html" title="instance">
-instance
-</a>
+<a class="xref" href="stlDbstlElemTraitsinstance.html" title="instance">instance</a>
 </td>
               <td>
    <p>Factory method to create a singeleton instance of this class. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsdstr_DbstlElemTraits.html" title="~DbstlElemTraits">
-~DbstlElemTraits
-</a>
+<a class="xref" href="stlDbstlElemTraitsdstr_DbstlElemTraits.html" title="~DbstlElemTraits">~DbstlElemTraits</a>
 </td>
               <td>
    </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stlDbstlElemTraitsDbstlElemTraits.html" title="DbstlElemTraits">
-DbstlElemTraits
-</a>
+<a class="xref" href="stlDbstlElemTraitsDbstlElemTraits.html" title="DbstlElemTraits">DbstlElemTraits</a>
 </td>
               <td>
    </td>
@@ -368,7 +300,7 @@ DbstlElemTraits
           </tbody>
         </table>
       </div>
-      <h4><a id="id1571342"></a>
+      <h4><a id="id3510315"></a>
 Group</h4>
       <p>
 <a class="xref" href="dbstl_helper_classes.html" title="Chapter 21.  Dbstl Helper Classes">
@@ -380,9 +312,7 @@ Group</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h2 class="title" style="clear: both"><a id="stlDbstlElemTraitsassign"></a>
-assign
-</h2>
+              <h2 class="title" style="clear: both"><a id="stlDbstlElemTraitsassign"></a>assign</h2>
             </div>
           </div>
         </div>
@@ -390,34 +320,26 @@ assign
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+                <h3 class="title"><a id="stlDbstlElemTraitsassign_details"></a>Function Details</h3>
               </div>
             </div>
           </div>
           <pre class="programlisting">
-static void assign(T &amp;left,
-    const T &amp;right)
+static void assign(T &amp;left,
+    const T &amp;right)
  </pre>
-          <div class="sect3" lang="en" xml:lang="en">
-            <div class="titlepage"></div>
-            <p>Assignone object to another. </p>
-          </div>
+          <p>Assignone object to another. </p>
           <pre class="programlisting">
-static T* assign(T *seq, size_t cnt,
-    T elem)
+static T* assign(T *seq, size_t cnt,
+    T elem)
  </pre>
-          <div class="sect3" lang="en" xml:lang="en">
-            <div class="titlepage"></div>
-            <p>Assign first cnt number of elements of sequence seq with the value of elem. </p>
-          </div>
+          <p>Assign first cnt number of elements of sequence seq with the value of elem. </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id1571733"></a>
-Group: Interface compatible with std::string's char_traits.</h3>
+                <h3 class="title"><a id="id3510558"></a>Group: Interface compatible with std::string's char_traits.</h3>
               </div>
             </div>
           </div>
@@ -427,14 +349,12 @@ Group: Interface compatible with std::string's char_traits.</h3>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id1570953"></a>
-Class</h3>
+                <h3 class="title"><a id="id3510568"></a>Class</h3>
               </div>
             </div>
           </div>
           <p>
-  <a class="link" href="DbstlElemTraits.html" title="Chapter 26.  DbstlElemTraits">
-  DbstlElemTraits</a>
+  <a class="link" href="DbstlElemTraits.html" title="Chapter 26.  DbstlElemTraits">DbstlElemTraits</a>
      </p>
         </div>
       </div>
@@ -448,15 +368,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stlDbstlElemTraitseq.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-operator=
- </td>
+          <td width="40%" align="left" valign="top">operator= </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-eq
-</td>
+          <td width="40%" align="right" valign="top"> eq</td>
         </tr>
       </table>
     </div>

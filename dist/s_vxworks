@@ -5,7 +5,7 @@
 
 msgc="/* DO NOT EDIT: automatically built by dist/s_vxworks. */"
 
-. RELEASE
+. ./RELEASE
 
 s=/tmp/__db_a
 t=/tmp/__db_b
@@ -32,7 +32,7 @@ i\\
 /@stddef_h_decl@/d
 /@stdint_h_decl@/d
 /@unistd_h_decl@/d
-/@thread_h_decl@/d
+s/@thread_h_decl@/#include <pthread.h>/
 s/@u_int8_decl@/typedef unsigned char u_int8_t;/
 /@int16_decl@/d
 s/@u_int16_decl@/typedef unsigned short u_int16_t;/
@@ -54,10 +54,13 @@ s/@uintptr_t_decl@/typedef unsigned long uintptr_t;/
 /@time_t_decl@/d
 s/@db_seq_decl@/typedef int db_seq_t;/
 s/@db_threadid_t_decl@/typedef uintmax_t db_threadid_t;/
+s/@DB_VERSION_FAMILY@/$DB_VERSION_FAMILY/
+s/@DB_VERSION_RELEASE@/$DB_VERSION_RELEASE/
 s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/
 s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/
 s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/
 s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
+s/@DB_VERSION_FULL_STRING@/"$DB_VERSION_FULL_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
 s/@DB_CONST@//
 s/@DB_PROTO1@/#undef __P/
@@ -212,6 +215,9 @@ ENDOFSEDTEXT
 	#	followed by " __P".
 	#	Matches starting at the beginning of the line, immediately
 	#	followed by an opening parenthesis.
+	#	Matches tokens starting with a space and ending in a comma
+	#	(i.e. ' token,')  to cover cases where token is used in a
+	#	procedure call.  Sequence could occur in a comment line.
 	#
 	# Skip any line that starts with the name we're using as a prefix,
 	# it's a case we can't handle very well here, and it's been done by
@@ -224,6 +230,7 @@ cat <<ENDOFSEDTEXT
 		s/\([^a-zA-Z0-9_]\)\($k(\)/\1$1_\2/g
 		s/\([^a-zA-Z0-9_]\)\($k[	 ]__P\)/\1$1_\2/g
 		s/^\($k(\)/$1_\1/g
+		s/\([ ]\)\($k,\)/\1$1_\2/g
 ENDOFSEDTEXT
 	done
 }
@@ -235,6 +242,7 @@ PROGRAM_LIST="\
 	db_dump
 	db_hotbackup
 	db_load
+	db_log_verify
 	db_printlog
 	db_recover
 	db_stat
@@ -255,6 +263,7 @@ FILE_LIST="\
 	db_stat/db_stat.c
 	db_upgrade/db_upgrade.c
 	db_verify/db_verify.c
+	db_log_verify/db_log_verify.c
 	examples_c/ex_access.c
 	test_micro/source/b_curalloc.c
 	test_micro/source/b_curwalk.c

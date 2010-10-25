@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="txn.html" title="Chapter 13.  The DbTxn Handle" />
-    <link rel="prev" href="txncheckpoint.html" title="DbEnv::txn_checkpoint()" />
+    <link rel="prev" href="txnabort.html" title="DbTxn::abort()" />
     <link rel="next" href="txndiscard.html" title="DbTxn::discard()" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">DbTxn::commit()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="txncheckpoint.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="txnabort.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 13. 
                 The DbTxn Handle 
         </th>
@@ -54,9 +54,14 @@ DbTxn::commit(u_int32_t flags);</pre>
          committed; and if its parent transaction aborts, it will be aborted.
     </p>
       <p>
-         All cursors opened within the transaction must be closed before the
-         transaction is committed.
-    </p>
+         All cursors opened within the transaction must be closed
+         before the transaction is committed. If they are not closed,
+         they will be closed by this function. When the close
+         operation for a cursor fails, the method returns a non-zero
+         error value for the first instance of such an error, closes
+         the rest of the cursors, and then aborts the transaction.
+         
+     </p>
       <p>
          After <code class="methodname">DbTxn::commit()</code> has been called, regardless of its return, the
          <a class="link" href="txn.html" title="Chapter 13.  The DbTxn Handle">DbTxn</a>  handle may not be
@@ -72,12 +77,63 @@ DbTxn::commit(u_int32_t flags);</pre>
                 failure, and returns 0 on success.
             </span>
         </span>
+         The errors values that this method returns include the error values of the 
+         <code class="methodname">Dbc::close()</code> method and the following:
+         
     </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3704815"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+        <p>
+                <a class="xref" href="dbdeadlock.html" title="DbDeadlockException">DbDeadlockException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_DEADLOCK</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3705683"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        <p>
+                <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_NOTGRANTED</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3705672"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714196"></a>Parameters</h3>
+              <h3 class="title"><a id="id3705260"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -85,7 +141,7 @@ DbTxn::commit(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1714197"></a>flags</h4>
+                <h4 class="title"><a id="id3705988"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -126,11 +182,43 @@ DbTxn::commit(u_int32_t flags);</pre>
                 <p>
                  This behavior is the default for Berkeley DB environments unless the
                  <a class="link" href="envset_flags.html#envset_flags_DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> 
-                 flag was specified to the <a class="xref" href="envset_flags.html" title="DbEnv::set_flags()">DbEnv::set_flags()</a>  method.
+                 flag was specified to the 
+                 <a class="xref" href="envset_flags.html" title="DbEnv::set_flags()">DbEnv::set_flags()</a>  method.
                   This behavior may also be set for a single transaction using the
                  <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a> 
                  method.  Any value specified to this method overrides both of those
                  settings.
+            </p>
+              </li>
+              <li>
+                <p>
+                  <code class="literal">DB_TXN_WRITE_NOSYNC</code>
+            </p>
+                <p>
+                 Write but do not synchronously flush the log on
+                 transaction commit. This means that transactions
+                 exhibit the ACI (atomicity, consistency, and
+                 isolation) properties, but not D (durability); that
+                 is, database integrity will be maintained, but if the
+                 system fails, it is possible some number of the most
+                 recently committed transactions may be undone during
+                 recovery.  The number of transactions at risk is
+                 governed by how often the system flushes dirty
+                 buffers to disk and how often the log is
+                 checkpointed.
+            </p>
+                <p>
+                This form of commit protects you against application
+                crashes, but not against OS crashes. This method
+                offers less room for the possiblity of data loss than
+                does <code class="literal">DB_TXN_NOSYNC</code>.
+            </p>
+                <p>
+                 This behavior may be set for a Berkeley DB environment using the
+                 <a class="xref" href="envset_flags.html" title="DbEnv::set_flags()">DbEnv::set_flags()</a> 
+                 method or for a single transaction using the 
+                 <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>  method. 
+                 Any value specified to this method overrides both of those settings.
             </p>
               </li>
             </ul>
@@ -141,7 +229,7 @@ DbTxn::commit(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714473"></a>Class</h3>
+              <h3 class="title"><a id="id3706054"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -153,7 +241,7 @@ DbTxn::commit(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714521"></a>See Also</h3>
+              <h3 class="title"><a id="id3704939"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -166,14 +254,14 @@ DbTxn::commit(u_int32_t flags);</pre>
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="txncheckpoint.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="txnabort.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="txndiscard.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DbEnv::txn_checkpoint() </td>
+          <td width="40%" align="left" valign="top">DbTxn::abort() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

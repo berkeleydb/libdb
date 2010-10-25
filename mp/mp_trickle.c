@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -78,7 +78,7 @@ __memp_trickle(env, pct, nwrotep)
 	 */
 	for (ret = 0, i = dirty = total = 0; i < mp->nreg; ++i) {
 		c_mp = dbmp->reginfo[i].primary;
-		total += c_mp->stat.st_pages;
+		total += c_mp->pages;
 		__memp_stat_hash(&dbmp->reginfo[i], c_mp, &dtmp);
 		dirty += dtmp;
 	}

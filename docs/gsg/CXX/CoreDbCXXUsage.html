@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="DB.html" title="Chapter 2. Databases" />
+    <link rel="up" href="databases.html" title="Chapter 2. Databases" />
     <link rel="prev" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
     <link rel="next" href="DBEntry.html" title="Chapter 3. Database Records" />
   </head>
@@ -72,28 +72,28 @@
           <a id="cxx_db11"></a>
           <pre class="programlisting">// File: MyDb.hpp
 #include &lt;db_cxx.h&gt;
-                                                                                                                                    
+
 class MyDb
 {
 public:
     // Constructor requires a path to the database,
     // and a database name.
     MyDb(std::string &amp;path, std::string &amp;dbName);
-                                                                                                                                    
+
     // Our destructor just calls our private close method.
     ~MyDb() { close(); }
-                                                                                                                                    
+
     inline Db &amp;getDb() {return db_;}
-                                                                                                                                    
+
 private:
     Db db_;
     std::string dbFileName_;
     u_int32_t cFlags_;
-                                                                                                                                    
+
     // Make sure the default constructor is private
     // We don't want it used.
     MyDb() : db_(NULL, 0) {}
-                                                                                                                                    
+
     // We put our database close activity here.
     // This is called from our destructor. In
     // a more complicated example, we might want
@@ -120,7 +120,7 @@ MyDb::MyDb(std::string &amp;path, std::string &amp;dbName)
     {
         // Redirect debugging information to std::cerr
         db_.set_error_stream(&amp;std::cerr);
-                                                                                                                                    
+
         // Open the database
         db_.open(NULL, dbFileName_.c_str(), NULL, DB_BTREE, cFlags_, 0);
     }
@@ -176,7 +176,7 @@ MyDb::close()
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="CoreEnvUsage.html">Prev</a> </td>
           <td width="20%" align="center">
-            <a accesskey="u" href="DB.html">Up</a>
+            <a accesskey="u" href="databases.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="DBEntry.html">Next</a></td>
         </tr>

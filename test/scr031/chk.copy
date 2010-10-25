@@ -32,6 +32,8 @@ COPYEXP='Copyright.*'`date +%C%y`
        -e '/sleepycat\/asm\//d' \
        -e '/perl\//d' \
        -e '/mod_db4\//d' \
+       -e '/test_stl\//d' \
+       -e '/dbinc_auto\//d' \
        -e '/sqlite\//d' > $t2
 
 

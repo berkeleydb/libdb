@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -17,11 +17,6 @@ proc rep021 { method { nclients 3 } { tnum "021" } args } {
 
 	source ./include.tcl
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for all access methods.
 	if { $checking_valid_methods } {
@@ -271,11 +266,11 @@ proc rep021_sub { method nclients tnum logset recargs largs } {
 	    -rep_client -rep_transport \[list $id($i) replsend\]"
 	set clenv($i) [eval $cl_envcmd($i) $recargs]
 	#
-	# We'll only catch an error if we turn on no-autoinit.
+	# We'll only catch an error if we turn off autoinit.
 	# Otherwise, the system will throw away everything on the
 	# client and resync.
 	#
-	$clenv($i) rep_config {noautoinit on}
+	$clenv($i) rep_config {autoinit off}
 
 	lappend envlist "$clenv($i) $id($i)"
 

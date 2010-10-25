@@ -54,6 +54,9 @@ creation.</li>
           <li>the log file is not the only log file in the environment.</li>
         </ul>
       </div>
+      <p>Additionally, when Replication Manager is running
+the log file is older than the most out of date active site in the 
+replication group.</p>
       <p>If you are preparing for catastrophic failure, you will want to copy
 the log files to archival media before you remove them as described in
 <a class="xref" href="transapp_archival.html" title="Database and log file archival">Database and log file archival</a>.</p>
@@ -68,7 +71,7 @@ the command is executed.</li>
 <a href="../api_reference/C/logarchive.html#archive_DB_ARCH_REMOVE" class="olink">DB_ARCH_REMOVE</a> flag, to remove any log files that are no longer
 needed at the time the call is made.</li>
           <li>Call the <a href="../api_reference/C/envlog_set_config.html" class="olink">DB_ENV-&gt;log_set_config()</a> method from the application, with the
-<a href="../api_reference/C/envlog_get_config.html#log_set_config_DB_LOG_AUTO_REMOVE" class="olink">DB_LOG_AUTO_REMOVE</a> flag, to remove any log files that are no
+<a href="../api_reference/C/envlog_set_config.html#log_set_config_DB_LOG_AUTO_REMOVE" class="olink">DB_LOG_AUTO_REMOVE</a> flag, to remove any log files that are no
 longer needed on an ongoing basis.  With this configuration, Berkeley DB will
 automatically remove log files, and the application will not have an
 opportunity to copy the log files to backup media.</li>

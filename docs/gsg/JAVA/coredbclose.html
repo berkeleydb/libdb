@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="prev" href="DB.html" title="Chapter 7. Databases" />
-    <link rel="next" href="DBConfig.html" title="Database Properties" />
+    <link rel="up" href="databases.html" title="Chapter 7. Databases" />
+    <link rel="prev" href="databases.html" title="Chapter 7. Databases" />
+    <link rel="next" href="dbprops.html" title="Database Properties" />
   </head>
   <body>
     <div class="navheader">
@@ -18,9 +18,9 @@
           <th colspan="3" align="center">Closing Databases</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="DB.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="databases.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 7. Databases</th>
-          <td width="20%" align="right"> <a accesskey="n" href="DBConfig.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="dbprops.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -41,8 +41,7 @@
     </p>
       <p>
         Closing a database causes it to become unusable until it is opened
-        again. Note that you should make sure that any open cursors are closed
-        before closing your database.  Active cursors during a database
+        again. It is recommended that you close any open cursors before closing your database. Active cursors during a database
         close can cause unexpected results, especially if any of those cursors are
         writing to the database. You should always make sure that all your
         database accesses have completed before closing your database.
@@ -83,11 +82,11 @@ try {
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="DB.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="databases.html">Prev</a> </td>
           <td width="20%" align="center">
-            <a accesskey="u" href="DB.html">Up</a>
+            <a accesskey="u" href="databases.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="DBConfig.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="dbprops.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Chapter 7. Databases </td>

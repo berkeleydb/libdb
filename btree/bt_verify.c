@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -2420,7 +2420,7 @@ __bam_salvage(dbp, vdp, pgno, pgtype, h, handle, callback, key, flags)
 				if (i % P_INDX == 0) {
 					if (t_ret == 0) {
 						if ((t_ret = __os_realloc(env,
-						        dbt.size,
+							dbt.size,
 							&repldbt.data)) != 0) {
 							if (ret == 0)
 								ret = t_ret;

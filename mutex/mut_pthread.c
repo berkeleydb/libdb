@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -9,6 +9,7 @@
 #include "db_config.h"
 
 #include "db_int.h"
+#include "dbinc/lock.h"
 
 /*
  * This is where we load in architecture/compiler specific mutex code.
@@ -222,24 +223,27 @@ err:	if (ret != 0) {
  *
  *	self-blocking shared latches are not supported
  *
- * PUBLIC: int __db_pthread_mutex_lock __P((ENV *, db_mutex_t));
+ * PUBLIC: int __db_pthread_mutex_lock __P((ENV *, db_mutex_t, db_timeout_t));
  */
 int
-__db_pthread_mutex_lock(env, mutex)
+__db_pthread_mutex_lock(env, mutex, timeout)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 {
 	DB_ENV *dbenv;
 	DB_MUTEX *mutexp;
 	DB_MUTEXMGR *mtxmgr;
 	DB_THREAD_INFO *ip;
-	int ret;
+	db_timespec timespec;
+	int ret, t_ret;
 
 	dbenv = env->dbenv;
 
 	if (!MUTEX_ON(env) || F_ISSET(dbenv, DB_ENV_NOLOCKING))
 		return (0);
 
+	t_ret = 0;
 	mtxmgr = env->mutex_handle;
 	mutexp = MUTEXP_SET(mtxmgr, mutex);
 
@@ -315,8 +319,21 @@ __db_pthread_mutex_lock(env, mutex)
 			    MUTEXP_BUSY_FIELD(mutexp), mutexp->wait);
 #endif
 
-			RET_SET((pthread_cond_wait(
-			    &mutexp->u.m.cond, &mutexp->u.m.mutex)), ret);
+			if (timeout != 0) {
+				timespecclear(&timespec);
+				__clock_set_expires(env, &timespec, timeout);
+				RET_SET((pthread_cond_timedwait(
+				    &mutexp->u.m.cond, &mutexp->u.m.mutex,
+				    (struct timespec *)&timespec)), t_ret);
+				if (t_ret == ETIMEDOUT) {
+					t_ret = DB_TIMEOUT;
+					goto out;
+				}
+				ret = t_ret;
+				t_ret = 0;
+			} else
+				RET_SET((pthread_cond_wait(&mutexp->u.m.cond,
+				    &mutexp->u.m.mutex)), ret);
 #ifdef MUTEX_DIAG
 			printf("block %d %x wait returns %d busy %x\n",
 			    mutex, pthread_self(),
@@ -345,6 +362,7 @@ __db_pthread_mutex_lock(env, mutex)
 #endif
 		}
 
+out:
 #ifdef HAVE_MUTEX_HYBRID
 		mutexp->wait--;
 #else
@@ -381,7 +399,7 @@ __db_pthread_mutex_lock(env, mutex)
 	if (F_ISSET(dbenv, DB_ENV_YIELDCPU))
 		__os_yield(env, 0, 0);
 #endif
-	return (0);
+	return (t_ret);
 
 err:	__db_err(env, ret, "pthread lock failed");
 	return (__env_panic(env, ret));
@@ -600,7 +618,7 @@ __db_pthread_mutex_destroy(env, mutex)
 		if (ip != NULL && ip->dbth_state == THREAD_FAILCHK)
 			failchk_thread = TRUE;
 	}
-		
+
 #ifndef HAVE_MUTEX_HYBRID
 	if (F_ISSET(mutexp, DB_MUTEX_SHARED)) {
 #if defined(HAVE_SHARED_LATCHES)
@@ -620,8 +638,8 @@ __db_pthread_mutex_destroy(env, mutex)
 	if (F_ISSET(mutexp, DB_MUTEX_SELF_BLOCK)) {
 		/*
 		 * If there were dead processes waiting on the condition
-		 * we may not be able to destroy it.  Let failchk thread 
-		 * skip this. 
+		 * we may not be able to destroy it.  Let failchk thread
+		 * skip this.
 		 */
 		if (!failchk_thread)
 			RET_SET((pthread_cond_destroy(&mutexp->u.m.cond)), ret);

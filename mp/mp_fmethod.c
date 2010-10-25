@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -330,10 +330,10 @@ __memp_get_maxsize(dbmfp, gbytesp, bytesp)
 
 		MUTEX_LOCK(env, mfp->mutex);
 		*gbytesp = (u_int32_t)
-		    (mfp->maxpgno / (GIGABYTE / mfp->stat.st_pagesize));
+		    (mfp->maxpgno / (GIGABYTE / mfp->pagesize));
 		*bytesp = (u_int32_t)
-		    ((mfp->maxpgno % (GIGABYTE / mfp->stat.st_pagesize)) *
-		    mfp->stat.st_pagesize);
+		    ((mfp->maxpgno % (GIGABYTE / mfp->pagesize)) *
+		    mfp->pagesize);
 		MUTEX_UNLOCK(env, mfp->mutex);
 	}
 
@@ -360,10 +360,9 @@ __memp_set_maxsize(dbmfp, gbytes, bytes)
 
 		MUTEX_LOCK(env, mfp->mutex);
 		mfp->maxpgno = (db_pgno_t)
-		    (gbytes * (GIGABYTE / mfp->stat.st_pagesize));
+		    (gbytes * (GIGABYTE / mfp->pagesize));
 		mfp->maxpgno += (db_pgno_t)
-		    ((bytes + mfp->stat.st_pagesize - 1) /
-		    mfp->stat.st_pagesize);
+		    ((bytes + mfp->pagesize - 1) / mfp->pagesize);
 		MUTEX_UNLOCK(env, mfp->mutex);
 	}
 

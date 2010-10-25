@@ -128,10 +128,10 @@ JAVA_TYPEMAP(DB_TXN_STAT *, com.sleepycat.db.TransactionStats, jobject)
 	else {
 		DB *db = (DB *)arg1;
 		DBTYPE dbtype;
-		int err;
+		int ret;
 
-		if ((err = db->get_type(db, &dbtype)) != 0) {
-			__dbj_throw(jenv, err, NULL, NULL, DB2JDBENV);
+		if ((ret = db->get_type(db, &dbtype)) != 0) {
+			__dbj_throw(jenv, ret, NULL, NULL, DB2JDBENV);
 			return $null;
 		}
 

@@ -172,7 +172,7 @@ customize retrieval.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1594258"></a>Cursor position flags</h4>
+                <h4 class="title"><a id="id3642992"></a>Cursor position flags</h4>
               </div>
             </div>
           </div>
@@ -211,7 +211,7 @@ duplicate data item for the current key.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1594936"></a>Retrieving specific key/data pairs</h4>
+                <h4 class="title"><a id="id3643003"></a>Retrieving specific key/data pairs</h4>
               </div>
             </div>
           </div>
@@ -249,8 +249,13 @@ a large set of duplicate records.</dd>
                   <a href="../api_reference/C/dbcget.html#dbcget_DB_GET_BOTH_RANGE" class="olink">DB_GET_BOTH_RANGE</a>
                 </span>
               </dt>
-              <dd>Return the smallest record in the database greater than or equal to the
-supplied key and data items.</dd>
+              <dd>
+        If used on a database configured for sorted duplicates, this
+        returns the smallest record in the database greater than or equal
+        to the supplied key and data items. If used on a database that is 
+        <span class="emphasis"><em>not</em></span> configured for sorted duplicates, this
+        flag behaves identically to <code class="literal">DB_GET_BOTH</code>.
+    </dd>
             </dl>
           </div>
         </div>
@@ -258,7 +263,7 @@ supplied key and data items.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1594955"></a>Retrieving based on record numbers</h4>
+                <h4 class="title"><a id="id3643114"></a>Retrieving based on record numbers</h4>
               </div>
             </div>
           </div>
@@ -287,7 +292,7 @@ for the record to which the cursor refers.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1595030"></a>Special-purpose flags</h4>
+                <h4 class="title"><a id="id3643017"></a>Special-purpose flags</h4>
               </div>
             </div>
           </div>
@@ -391,14 +396,14 @@ into the database, at a location controlled by a specified flag.</p>
           <dl>
             <dt>
               <span class="term">
-                <a href="../api_reference/C/dbcput.html#put_DB_AFTER" class="olink">DB_AFTER</a>
+                <a href="../api_reference/C/dbcput.html#dbcput_DB_AFTER" class="olink">DB_AFTER</a>
               </span>
             </dt>
             <dd>Create a new record, immediately after the record to which the cursor
 refers.</dd>
             <dt>
               <span class="term">
-                <a href="../api_reference/C/dbcput.html#put_DB_BEFORE" class="olink">DB_BEFORE</a>
+                <a href="../api_reference/C/dbcput.html#dbcput_DB_BEFORE" class="olink">DB_BEFORE</a>
               </span>
             </dt>
             <dd>Create a new record, immediately before the record to which the cursor
@@ -411,14 +416,14 @@ refers.</dd>
             <dd>Replace the data part of the record to which the cursor refers.</dd>
             <dt>
               <span class="term">
-                <a href="../api_reference/C/dbcput.html#put_DB_KEYFIRST" class="olink">DB_KEYFIRST</a>
+                <a href="../api_reference/C/dbcput.html#dbcput_DB_KEYFIRST" class="olink">DB_KEYFIRST</a>
               </span>
             </dt>
             <dd>Create a new record as the first of the duplicate records for the
 supplied key.</dd>
             <dt>
               <span class="term">
-                <a href="../api_reference/C/dbcput.html#put_DB_KEYLAST" class="olink">DB_KEYLAST</a>
+                <a href="../api_reference/C/dbcput.html#dbcput_DB_KEYLAST" class="olink">DB_KEYLAST</a>
               </span>
             </dt>
             <dd>Create a new record, as the last of the duplicate records for the supplied
@@ -701,7 +706,7 @@ then return the store where expensive, red fruit could be purchased.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1595662"></a>Example</h4>
+                <h4 class="title"><a id="id3643493"></a>Example</h4>
               </div>
             </div>
           </div>

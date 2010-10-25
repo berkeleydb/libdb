@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db.h&gt;
 
 int
-DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sleep);  </pre>
+DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, 
+                         db_timeout_t maxwrite_sleep); </pre>
       <p>
          The <code class="methodname">DB_ENV-&gt;set_mp_max_write()</code> method limits the number of sequential
          write operations scheduled by the library when flushing dirty pages
@@ -71,7 +72,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1688573"></a>Parameters</h3>
+              <h3 class="title"><a id="id4008320"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -79,7 +80,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1688741"></a>maxwrite</h4>
+                <h4 class="title"><a id="id4008327"></a>maxwrite</h4>
               </div>
             </div>
           </div>
@@ -93,7 +94,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1688973"></a>maxwrite_sleep</h4>
+                <h4 class="title"><a id="id4008478"></a>maxwrite_sleep</h4>
               </div>
             </div>
           </div>
@@ -109,7 +110,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1688855"></a>Errors</h3>
+              <h3 class="title"><a id="id4008346"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -125,7 +126,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1688945"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4008116"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -138,7 +139,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689013"></a>Class</h3>
+              <h3 class="title"><a id="id4008179"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -150,7 +151,7 @@ DB_ENV-&gt;set_mp_max_write(DB_ENV *env, int maxwrite, db_timeout_t maxwrite_sle
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1689017"></a>See Also</h3>
+              <h3 class="title"><a id="id4008407"></a>See Also</h3>
             </div>
           </div>
         </div>

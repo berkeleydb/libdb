@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -36,6 +36,9 @@ proc test042 { method {nentries 1000} args } {
 		puts "Test042 skipping for security"
 		return
 	}
+
+	# Don't 'eval' the args here -- we want them to stay in 
+	# a lump until we pass them to berkdb_open and mdbscript.
 	test042_body $method $nentries 0 $args
 	test042_body $method $nentries 1 $args
 }
@@ -67,8 +70,14 @@ proc test042_body { method nentries alldb args } {
 		}
 	}
 
+	# Eval the args into 'tempargs' so we can extract the 
+	# pageargs and readjust the number of mutexes.  However, 
+	# leave 'args' itself alone so it can be passed into 
+	# mdbscript.
+
+	eval set tempargs $args
 	set pageargs ""
-	set args [split_pageargs $args pageargs]
+	split_pageargs $tempargs pageargs
 
 	# Create the database and open the dictionary
 	set basename test042

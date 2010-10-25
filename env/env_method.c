@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,6 @@
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
@@ -223,6 +222,7 @@ __db_env_init(dbenv)
 	dbenv->get_lk_max_locks = __lock_get_lk_max_locks;
 	dbenv->get_lk_max_objects = __lock_get_lk_max_objects;
 	dbenv->get_lk_partitions = __lock_get_lk_partitions;
+	dbenv->get_lk_priority = __lock_get_lk_priority;
 	dbenv->get_mp_max_openfd = __memp_get_mp_max_openfd;
 	dbenv->get_mp_max_write = __memp_get_mp_max_write;
 	dbenv->get_mp_mmapsize = __memp_get_mp_mmapsize;
@@ -256,9 +256,12 @@ __db_env_init(dbenv)
 	dbenv->log_get_config = __log_get_config;
 	dbenv->log_printf = __log_printf_capi;
 	dbenv->log_put = __log_put_pp;
+	dbenv->log_put_record = __log_put_record_pp;
+	dbenv->log_read_record = __log_read_record_pp;
 	dbenv->log_set_config = __log_set_config;
 	dbenv->log_stat = __log_stat_pp;
 	dbenv->log_stat_print = __log_stat_print_pp;
+	dbenv->log_verify = __log_verify_pp;
 	dbenv->lsn_reset = __env_lsn_reset_pp;
 	dbenv->memp_fcreate = __memp_fcreate_pp;
 	dbenv->memp_register = __memp_register_pp;
@@ -338,6 +341,7 @@ __db_env_init(dbenv)
 	dbenv->set_lk_max_locks = __lock_set_lk_max_locks;
 	dbenv->set_lk_max_objects = __lock_set_lk_max_objects;
 	dbenv->set_lk_partitions = __lock_set_lk_partitions;
+	dbenv->set_lk_priority = __lock_set_lk_priority;
 	dbenv->set_mp_max_openfd = __memp_set_mp_max_openfd;
 	dbenv->set_mp_max_write = __memp_set_mp_max_write;
 	dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
@@ -357,6 +361,7 @@ __db_env_init(dbenv)
 	dbenv->set_tx_timestamp = __txn_set_tx_timestamp;
 	dbenv->set_verbose = __env_set_verbose;
 	dbenv->stat_print = __env_stat_print_pp;
+	dbenv->txn_applied = __txn_applied_pp;
 	dbenv->txn_begin = __txn_begin_pp;
 	dbenv->txn_checkpoint = __txn_checkpoint_pp;
 	dbenv->txn_recover = __txn_recover_pp;
@@ -376,6 +381,7 @@ __db_env_init(dbenv)
 	__os_id(NULL, &env->pid_cache, NULL);
 
 	env->db_ref = 0;
+	env->log_verify_wrap = __log_verify_wrap;
 	TAILQ_INIT(&env->fdlist);
 
 	if (!__db_isbigendian())
@@ -1404,6 +1410,7 @@ __env_get_verbose(dbenv, which, onoffp)
 	case DB_VERB_REP_MISC:
 	case DB_VERB_REP_MSGS:
 	case DB_VERB_REP_SYNC:
+	case DB_VERB_REP_SYSTEM:
 	case DB_VERB_REP_TEST:
 	case DB_VERB_REPMGR_CONNFAIL:
 	case DB_VERB_REPMGR_MISC:
@@ -1440,6 +1447,7 @@ __env_set_verbose(dbenv, which, on)
 	case DB_VERB_REP_MISC:
 	case DB_VERB_REP_MSGS:
 	case DB_VERB_REP_SYNC:
+	case DB_VERB_REP_SYSTEM:
 	case DB_VERB_REP_TEST:
 	case DB_VERB_REPMGR_CONNFAIL:
 	case DB_VERB_REPMGR_MISC:

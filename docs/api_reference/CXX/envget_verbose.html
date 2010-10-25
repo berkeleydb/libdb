@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="env.html" title="Chapter 5.  The DbEnv Handle" />
     <link rel="prev" href="envget_tmp_dir.html" title="DbEnv::get_tmp_dir()" />
-    <link rel="next" href="envlsn_reset.html" title="DbEnv::lsn_reset()" />
+    <link rel="next" href="envlog_verify.html" title="DbEnv::log_verify()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 5. 
                 The DbEnv Handle
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="envlsn_reset.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="envlog_verify.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -62,7 +62,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1666418"></a>Parameters</h3>
+              <h3 class="title"><a id="id3653863"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1666667"></a>which</h4>
+                <h4 class="title"><a id="id3653598"></a>which</h4>
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                <p><a id="set_verbose_DB_VERB_DEADLOCK"></a>
+                <p><a id="get_verbose_DB_VERB_DEADLOCK"></a>
                   <code class="literal">DB_VERB_DEADLOCK</code>
             </p>
                 <p>
@@ -89,7 +89,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_FILEOPS"></a>
+                <p><a id="get_verbose_DB_VERB_FILEOPS"></a>
                   <code class="literal">DB_VERB_FILEOPS</code>
             </p>
                 <p>
@@ -98,7 +98,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_FILEOPS_ALL"></a>
+                <p><a id="get_verbose_DB_VERB_FILEOPS_ALL"></a>
                   <code class="literal">DB_VERB_FILEOPS_ALL</code>
             </p>
                 <p>
@@ -108,7 +108,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_RECOVERY"></a>
+                <p><a id="get_verbose_DB_VERB_RECOVERY"></a>
                   <code class="literal">DB_VERB_RECOVERY</code>
             </p>
                 <p>
@@ -116,7 +116,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REGISTER"></a>
+                <p><a id="get_verbose_DB_VERB_REGISTER"></a>
                   <code class="literal">DB_VERB_REGISTER</code>
             </p>
                 <p>
@@ -127,7 +127,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REPLICATION"></a>
+                <p><a id="get_verbose_DB_VERB_REPLICATION"></a>
                   <code class="literal">DB_VERB_REPLICATION</code>
             </p>
                 <p>
@@ -137,7 +137,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REP_ELECT"></a>
+                <p><a id="get_verbose_DB_VERB_REP_ELECT"></a>
                   <code class="literal">DB_VERB_REP_ELECT</code>
             </p>
                 <p>
@@ -145,7 +145,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REP_LEASE"></a>
+                <p><a id="get_verbose_DB_VERB_REP_LEASE"></a>
                   <code class="literal">DB_VERB_REP_LEASE</code>
             </p>
                 <p>
@@ -153,7 +153,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REP_MISC"></a>
+                <p><a id="get_verbose_DB_VERB_REP_MISC"></a>
                   <code class="literal">DB_VERB_REP_MISC</code>
             </p>
                 <p>
@@ -162,7 +162,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REP_MSGS"></a>
+                <p><a id="get_verbose_DB_VERB_REP_MSGS"></a>
                   <code class="literal">DB_VERB_REP_MSGS</code>
             </p>
                 <p>
@@ -170,7 +170,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REP_SYNC"></a>
+                <p><a id="get_verbose_DB_VERB_REP_SYNC"></a>
                   <code class="literal">DB_VERB_REP_SYNC</code>
             </p>
                 <p>
@@ -178,7 +178,15 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REPMGR_CONNFAIL"></a>
+                <p><a id="get_verbose_DB_VERB_REP_SYSTEM"></a>
+                  <code class="literal">DB_VERB_REP_SYSTEM</code>
+            </p>
+                <p>
+		Saves replication system information to a system-owned file.  This value is on by default.
+            </p>
+              </li>
+              <li>
+                <p><a id="get_verbose_DB_VERB_REPMGR_CONNFAIL"></a>
                   <code class="literal">DB_VERB_REPMGR_CONNFAIL</code>
             </p>
                 <p>
@@ -187,7 +195,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_REPMGR_MISC"></a>
+                <p><a id="get_verbose_DB_VERB_REPMGR_MISC"></a>
                   <code class="literal">DB_VERB_REPMGR_MISC</code>
             </p>
                 <p>
@@ -196,7 +204,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
             </p>
               </li>
               <li>
-                <p><a id="set_verbose_DB_VERB_WAITSFOR"></a>
+                <p><a id="get_verbose_DB_VERB_WAITSFOR"></a>
                   <code class="literal">DB_VERB_WAITSFOR</code>
             </p>
                 <p>
@@ -210,7 +218,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1666409"></a>onoffp</h4>
+                <h4 class="title"><a id="id3654161"></a>onoffp</h4>
               </div>
             </div>
           </div>
@@ -224,7 +232,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1666888"></a>Class</h3>
+              <h3 class="title"><a id="id3653789"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -236,7 +244,7 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1667016"></a>See Also</h3>
+              <h3 class="title"><a id="id3653404"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -253,14 +261,14 @@ DbEnv::get_verbose(u_int32_t which, int *onoffp);</pre>
           <td width="20%" align="center">
             <a accesskey="u" href="env.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="envlsn_reset.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="envlog_verify.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DbEnv::get_tmp_dir() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DbEnv::lsn_reset()</td>
+          <td width="40%" align="right" valign="top"> DbEnv::log_verify()</td>
         </tr>
       </table>
     </div>

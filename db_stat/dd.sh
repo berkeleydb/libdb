@@ -1,5 +1,6 @@
 #! /bin/sh
-#	$Id$
+#
+# Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # Display environment's deadlocks based on "db_stat -Co" output.
 

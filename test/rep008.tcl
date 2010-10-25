@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@ proc rep008 { method { niter 10 } { tnum "008" } args } {
 	source ./include.tcl
 	global mixed_mode_logging
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree only.
 	if { $checking_valid_methods } {
@@ -127,11 +122,11 @@ proc rep008_sub { method niter tnum recargs largs } {
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 	#
-	# We'll only catch this error if we turn on no-autoinit.
+	# We'll only catch this error if we turn off autoinit.
 	# Otherwise, the system will throw away everything on the
 	# client and resync.
 	#
-	$clientenv rep_config {noautoinit on}
+	$clientenv rep_config {autoinit off}
 
 	# Process the messages to get them out of the db.
 	#

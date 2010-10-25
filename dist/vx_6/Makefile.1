@@ -10,6 +10,7 @@ WIND_HOME := $(subst \,/,$(WIND_HOME))
 WIND_BASE := $(subst \,/,$(WIND_BASE))
 WIND_USR := $(subst \,/,$(WIND_USR))
 BDB_ROOT := D:/Bdb_Source/db
+
 BDB_OBJECT_DIR := obj
 
 all : pre_build main_all post_build
@@ -48,11 +49,12 @@ CPU = SIMNT
 TOOL_FAMILY = diab
 TOOL = diabS
 TOOL_PATH =
-CC_ARCH_SPEC = -tX86LH:vxworks65
+CC_ARCH_SPEC = -tX86LH:vxworks66
+VXVER := vxworks-6.6
 LIBPATH =
 LIBS = -lstlstd
 
-IDE_INCLUDES = -I$(WIND_BASE)/target/h -I$(WIND_BASE)/vxworks-6.5/target/h -I$(WIND_BASE)/diab/5.5.1.0/include/ -I$(BDB_ROOT)/ -I$(BDB_ROOT)/build_vxworks -I$(BDB_ROOT)/dbinc -I$(BDB_ROOT)/dbinc_auto -I$(WIND_BASE)/target/h/wrn/coreip -I$(WIND_BASE)/vxworks-6.5/target/h/wrn/coreip
+IDE_INCLUDES = -I$(WIND_BASE)/target/h -I$(WIND_BASE)/$(VXVER)/target/h -I$(WIND_BASE)/diab/5.5.1.0/include/ -I$(BDB_ROOT)/ -I$(BDB_ROOT)/build_vxworks -I$(BDB_ROOT)/dbinc -I$(BDB_ROOT)/dbinc_auto -I$(WIND_BASE)/target/h/wrn/coreip -I$(WIND_BASE)/$(VXVER)/target/h/wrn/coreip
 
 
 
@@ -96,7 +98,7 @@ bdbvxw/$(MODE_DIR)/% : DEBUGFLAGS_Partial-Image-Linker =
 bdbvxw/$(MODE_DIR)/% : DEBUGFLAGS_Librarian =
 bdbvxw/$(MODE_DIR)/% : DEBUGFLAGS_Assembler = -XO -Xsize-opt
 endif
-bdbvxw/$(MODE_DIR)/% : IDE_INCLUDES = -I$(WIND_BASE)/target/h -I$(WIND_BASE)/vxworks-6.5/target/h -I$(WIND_BASE)/target/h -I$(WIND_BASE)/diab/5.5.1.0/include/ -I$(BDB_ROOT)/ -I$(BDB_ROOT)/build_vxworks -I$(BDB_ROOT)/dbinc -I$(BDB_ROOT)/dbinc_auto -I$(WIND_BASE)/target/h/wrn/coreip -I$(WIND_BASE)/vxworks-6.5/target/h/wrn/coreip
+bdbvxw/$(MODE_DIR)/% : IDE_INCLUDES = -I$(WIND_BASE)/target/h -I$(WIND_BASE)/$(VXVER)/target/h -I$(WIND_BASE)/target/h -I$(WIND_BASE)/diab/5.5.1.0/include/ -I$(BDB_ROOT)/ -I$(BDB_ROOT)/build_vxworks -I$(BDB_ROOT)/dbinc -I$(BDB_ROOT)/dbinc_auto -I$(WIND_BASE)/target/h/wrn/coreip -I$(WIND_BASE)/$(VXVER)/target/h/wrn/coreip
 bdbvxw/$(MODE_DIR)/% : PROJECT_TYPE = DKM
 bdbvxw/$(MODE_DIR)/% : DEFINES =
 bdbvxw/$(MODE_DIR)/% : EXPAND_DBG = 0
@@ -105,7 +107,7 @@ bdbvxw/$(MODE_DIR)/% : CPU = SIMNT
 bdbvxw/$(MODE_DIR)/% : TOOL_FAMILY = diab
 bdbvxw/$(MODE_DIR)/% : TOOL = diab
 bdbvxw/$(MODE_DIR)/% : TOOL_PATH =
-bdbvxw/$(MODE_DIR)/% : CC_ARCH_SPEC = -tX86LH:vxworks65
+bdbvxw/$(MODE_DIR)/% : CC_ARCH_SPEC = -tX86LH:vxworks66
 
 bdbvxw/$(MODE_DIR)/% : LIBPATH =
 

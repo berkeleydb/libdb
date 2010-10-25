@@ -40,13 +40,13 @@
 int
 DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
       <p>
-        Set the size of the in-memory log buffer, in bytes.
+        Sets the size of the in-memory log buffer, in bytes.
     </p>
       <p>
          When the logging subsystem is configured for on-disk logging, the
          default size of the in-memory log buffer is approximately 32KB.  Log
          information is stored in-memory until the storage space fills up or
-         transaction commit forces the information to be flushed to stable
+         s transaction commit forces the information to be flushed to stable
          storage.  In the presence of long-running transactions or transactions
          producing large amounts of data, larger buffer sizes can increase
          throughput.
@@ -100,7 +100,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687563"></a>Parameters</h3>
+              <h3 class="title"><a id="id3676543"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1687680"></a>lg_bsize</h4>
+                <h4 class="title"><a id="id3676541"></a>lg_bsize</h4>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687768"></a>Errors</h3>
+              <h3 class="title"><a id="id3676420"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -140,7 +140,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1687753"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3676678"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -153,7 +153,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687756"></a>Class</h3>
+              <h3 class="title"><a id="id3676656"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -167,7 +167,7 @@ DbEnv::set_lg_bsize(u_int32_t lg_bsize); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1687838"></a>See Also</h3>
+              <h3 class="title"><a id="id3676700"></a>See Also</h3>
             </div>
           </div>
         </div>

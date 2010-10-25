@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-open_env
-</th>
+          <th colspan="3" align="center">open_env</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldbstl_global_functionsopen_db.html">Prev</a> </td>
@@ -32,9 +30,7 @@ open_env
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsopen_env"></a>
-open_env
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldbstl_global_functionsopen_env"></a>open_env</h2>
           </div>
         </div>
       </div>
@@ -42,31 +38,26 @@ open_env
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldbstl_global_functionsopen_env_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
- DbEnv* open_env(const char *env_home, u_int32_t set_flags,
-    u_int32_t oflags=DB_CREATE|DB_INIT_MPOOL, u_int32_t cachesize=4 *1024 *1024,
-    int mode=0644,
-    u_int32_t cflags=0)
+ DbEnv* open_env(const char *env_home, u_int32_t set_flags,
+    u_int32_t oflags=DB_CREATE|DB_INIT_MPOOL, 
+    u_int32_t cachesize=4 *1024 *1024, int mode=0644,
+    u_int32_t cflags=0)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Helper function to open an environment and register it into dbstl for the calling thread. </p>
-          <p>Users still need to register it in any other thread if it is shared by multiple threads, via <a class="link" href="stldbstl_global_functionsregister_db_env.html" title="register_db_env">register_db_env()</a>
+        <p>Helper function to open an environment and register it into dbstl for the calling thread. </p>
+        <p>Users still need to register it in any other thread if it is shared by multiple threads, via <a class="link" href="stldbstl_global_functionsregister_db_env.html" title="register_db_env">register_db_env()</a>
  function above. Users don't need to delete or free the memory of the returned object, dbstl will take care of that.</p>
-          <p>When you don't use <a class="link" href="stldbstl_global_functionsopen_env.html" title="open_env">dbstl::open_env()</a>
+        <p>When you don't use <a class="link" href="stldbstl_global_functionsopen_env.html" title="open_env">dbstl::open_env()</a>
  but explicitly call DB C++ API to open an environment, you must new the DbEnv object, rather than create it on stack, and you must delete the DbEnv object by yourself. </p>
-        </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1543179"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3482951"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -74,8 +65,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542999"></a>
- oflags </h5>
+                  <h5 class="title"><a id="id3482954"></a>oflags</h5>
                 </div>
               </div>
             </div>
@@ -85,8 +75,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542532"></a>
- set_flags </h5>
+                  <h5 class="title"><a id="id3482986"></a>set_flags</h5>
                 </div>
               </div>
             </div>
@@ -96,8 +85,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543037"></a>
- mode </h5>
+                  <h5 class="title"><a id="id3482992"></a>mode</h5>
                 </div>
               </div>
             </div>
@@ -107,8 +95,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1542303"></a>
- cflags </h5>
+                  <h5 class="title"><a id="id3482998"></a>cflags</h5>
                 </div>
               </div>
             </div>
@@ -118,8 +105,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1543261"></a>
- cachesize </h5>
+                  <h5 class="title"><a id="id3483005"></a>cachesize</h5>
                 </div>
               </div>
             </div>
@@ -129,8 +115,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1541001"></a>
- env_home </h5>
+                  <h5 class="title"><a id="id3483010"></a>env_home</h5>
                 </div>
               </div>
             </div>
@@ -141,8 +126,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1543262"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3482930"></a>Return Value</h4>
               </div>
             </div>
           </div>
@@ -152,8 +136,7 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1543277"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3483017"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -161,23 +144,24 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldbstl_global_functionsregister_db_env.html" title="register_db_env">register_db_env(DbEnv *)</a>
 ; </p>
+          <p>
+</p>
           <p><a class="link" href="stldbstl_global_functionsopen_db.html" title="open_db">open_db</a>
 ; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1543305"></a>
-Class</h3>
+              <h3 class="title"><a id="id3482701"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">
-  dbstl_global_functions</a>
+  <a class="link" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions">dbstl_global_functions</a>
      </p>
       </div>
     </div>
@@ -192,15 +176,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldbstl_global_functionsalloc_mutex.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-open_db
- </td>
+          <td width="40%" align="left" valign="top">open_db </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-alloc_mutex
-</td>
+          <td width="40%" align="right" valign="top"> alloc_mutex</td>
         </tr>
       </table>
     </div>

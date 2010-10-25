@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -23,55 +23,64 @@ public class TransactionStats {
         /* package */ Active() {}
 
         private int txnid;
-        /** TODO */
+        /** The transaction ID of the transaction. */
     public int getTxnId() {
             return txnid;
         }
 
         private int parentid;
-        /** TODO */
+        /** The transaction ID of the parent transaction (or 0, if no parent). */
     public int getParentId() {
             return parentid;
         }
 
         private int pid;
-        /** TODO */
+        /** The process ID of the process that owns the transaction. */
     public int getPid() {
             return pid;
         }
 
         private LogSequenceNumber lsn;
-        /** TODO */
+        /** The log sequence number of the transaction's first log record. */
     public LogSequenceNumber getLsn() {
             return lsn;
         }
 
         private LogSequenceNumber read_lsn;
-        /** TODO */
+        /** The log sequence number of reads for snapshot transactions. */
     public LogSequenceNumber getReadLsn() {
             return read_lsn;
         }
 
         private int mvcc_ref;
-        /** TODO */
+        /** The number of buffer copies created by this transaction that remain in cache. */
     public int getMultiversionRef() {
             return mvcc_ref;
         }
 
+        private int priority;
+        /** Assigned priority used when resolving deadlocks. */
+    public int getPriority() {
+            return priority;
+        }
+
         private int status;
-        /** TODO */
+        /** The status of the transaction. */
     public int getStatus() {
             return status;
         }
 
         private byte[] gid;
+        /** Return the transaction's Global ID, if the transaction was prepared using {@link Transaction#prepare}. Otherwise, return an undefined value.  */
         public byte[] getGId() {
             return gid;
         }
 
         private String name;
-        /** TODO */
-    public String getName() {
+        /**
+        The transaction name, including the thread name if available.
+        */
+        public String getName() {
             return name;
         }
 
@@ -84,6 +93,7 @@ public class TransactionStats {
                 + "\n      lsn=" + lsn
                 + "\n      read_lsn=" + read_lsn
                 + "\n      mvcc_ref=" + mvcc_ref
+                + "\n      priority=" + priority
                 + "\n      status=" + status
                 + "\n      gid=" + DbUtil.byteArrayToString(gid)
                 + "\n      name=" + name
@@ -92,96 +102,136 @@ public class TransactionStats {
     };
 
     private int st_nrestores;
-    /** TODO */
+    /**
+    The number of transactions that have been restored.
+    */
     public int getNumRestores() {
         return st_nrestores;
     }
 
     private LogSequenceNumber st_last_ckp;
-    /** TODO */
+    /**
+    The LSN of the last checkpoint.
+    */
     public LogSequenceNumber getLastCkp() {
         return st_last_ckp;
     }
 
     private long st_time_ckp;
-    /** TODO */
+    /**
+    The time the last completed checkpoint finished (as the number of
+    seconds since the Epoch, returned by the IEEE/ANSI Std 1003.1
+    (POSIX) time interface).
+    */
     public long getTimeCkp() {
         return st_time_ckp;
     }
 
     private int st_last_txnid;
-    /** TODO */
+    /**
+    The last transaction ID allocated.
+    */
     public int getLastTxnId() {
         return st_last_txnid;
     }
 
     private int st_maxtxns;
-    /** TODO */
+    /**
+    The maximum number of active transactions configured.
+    */
     public int getMaxTxns() {
         return st_maxtxns;
     }
 
     private long st_naborts;
-    /** TODO */
+    /**
+    The number of transactions that have aborted.
+    */
     public long getNaborts() {
         return st_naborts;
     }
 
     private long st_nbegins;
-    /** TODO */
+    /**
+    The number of transactions that have begun.
+    */
     public long getNumBegins() {
         return st_nbegins;
     }
 
     private long st_ncommits;
-    /** TODO */
+    /**
+    The number of transactions that have committed.
+    */
     public long getNumCommits() {
         return st_ncommits;
     }
 
     private int st_nactive;
-    /** TODO */
+    /**
+    The number of transactions that are currently active.
+    */
     public int getNactive() {
         return st_nactive;
     }
 
     private int st_nsnapshot;
-    /** TODO */
+    /**
+    The number of transactions on the snapshot list.  These are transactions
+    which modified a database opened with {@link
+    DatabaseConfig#setMultiversion}, and which have committed or aborted, but
+    the copies of pages they created are still in the cache.
+    */
     public int getNumSnapshot() {
         return st_nsnapshot;
     }
 
     private int st_maxnactive;
-    /** TODO */
+    /**
+    The maximum number of active transactions at any one time.
+    */
     public int getMaxNactive() {
         return st_maxnactive;
     }
 
     private int st_maxnsnapshot;
-    /** TODO */
+    /**
+    The maximum number of transactions on the snapshot list at any one time.
+    */
     public int getMaxNsnapshot() {
         return st_maxnsnapshot;
     }
 
     private Active[] st_txnarray;
+    /**
+    An array of {@code Active} objects, describing the currently active transactions.
+    */
     public Active[] getTxnarray() {
         return st_txnarray;
     }
 
     private long st_region_wait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was forced to wait
+    before obtaining the region lock.
+    */
     public long getRegionWait() {
         return st_region_wait;
     }
 
     private long st_region_nowait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was able to obtain the
+    region lock without waiting.
+    */
     public long getRegionNowait() {
         return st_region_nowait;
     }
 
     private int st_regsize;
-    /** TODO */
+    /**
+    The size of the region.
+    */
     public int getRegSize() {
         return st_regsize;
     }

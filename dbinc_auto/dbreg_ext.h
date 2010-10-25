@@ -19,8 +19,6 @@ int __dbreg_close_id_int __P((ENV *, FNAME *, u_int32_t, int));
 int __dbreg_failchk __P((ENV *));
 int __dbreg_log_close __P((ENV *, FNAME *, DB_TXN *, u_int32_t));
 int __dbreg_log_id __P((DB *, DB_TXN *, int32_t, int));
-int __dbreg_register_read __P((ENV *, void *, __dbreg_register_args **));
-int __dbreg_register_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, u_int32_t, const DBT *, const DBT *, int32_t, DBTYPE, db_pgno_t, u_int32_t));
 int __dbreg_init_recover __P((ENV *, DB_DISTAB *));
 int __dbreg_register_print __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __dbreg_init_print __P((ENV *, DB_DISTAB *));

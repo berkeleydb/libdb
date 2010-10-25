@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -15,11 +15,6 @@ proc rep046 { method { nentries 200 } { tnum "046" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	if { $checking_valid_methods } {
 		return "ALL"
@@ -110,17 +105,25 @@ proc rep046_sub { method niter tnum logset recargs throttle largs } {
 	# and client.
 	# This test has a long transaction, allocate a larger log 
 	# buffer for in-memory test.
-	set m_logargs [adjust_logargs $m_logtype [expr 20 * 1024 * 1024]]
-	set c_logargs [adjust_logargs $c_logtype [expr 20 * 1024 * 1024]]
-	set c2_logargs [adjust_logargs $c2_logtype [expr 20 * 1024 * 1024]]
+	set m_logargs [adjust_logargs $m_logtype [expr 40 * 1024 * 1024]]
+	set c_logargs [adjust_logargs $c_logtype [expr 40 * 1024 * 1024]]
+	set c2_logargs [adjust_logargs $c2_logtype [expr 40 * 1024 * 1024]]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 	set c2_txnargs [adjust_txnargs $c2_logtype]
 
-	# If replication files are in-memory we'll need a bigger cache.
+	# If replication files or databases are in-memory we'll need a bigger 
+	# cache.
 	set cacheargs ""
+	set cacheadj 0
 	if { $repfiles_in_memory } {
-		set cachesize [expr 8 * (1024 * 1024)]
+		set cacheadj [expr $cacheadj + 8]
+	}
+	if { $databases_in_memory } {
+		set cacheadj [expr $cacheadj + 20]
+	}
+	if { $repfiles_in_memory || $databases_in_memory } {
+		set cachesize [expr $cacheadj * (1024 * 1024)]
 		set cacheargs "-cachesize {0 $cachesize 1} "
 	}
 

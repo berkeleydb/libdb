@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="memp.html" title="Chapter 8.  The DB_MPOOLFILE Handle" />
-    <link rel="prev" href="envget_mp_mmapsize.html" title="DB_ENV-&gt;get_mp_mmapsize()" />
+    <link rel="prev" href="envget_mp_tablesize.html" title="DB_ENV-&gt;get_mp_tablesize()" />
     <link rel="next" href="mempregister.html" title="DB_ENV-&gt;memp_register()" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">DB_ENV-&gt;memp_fcreate()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="envget_mp_mmapsize.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="envget_mp_tablesize.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 8. 
               The  DB_MPOOLFILE Handle
         </th>
@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db.h&gt;
 
 int
-DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags);  </pre>
+DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, 
+                     u_int32_t flags);  </pre>
       <p>
         The <code class="methodname">DB_ENV-&gt;memp_fcreate()</code> method creates a 
         <a class="link" href="memp.html" title="Chapter 8.  The DB_MPOOLFILE Handle">DB_MPOOLFILE</a>  structure that is the handle for a Berkeley DB
@@ -58,7 +59,7 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686020"></a>Parameters</h3>
+              <h3 class="title"><a id="id4005568"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -66,7 +67,7 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686261"></a>dbmfp</h4>
+                <h4 class="title"><a id="id4005557"></a>dbmfp</h4>
               </div>
             </div>
           </div>
@@ -80,7 +81,7 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686118"></a>flags</h4>
+                <h4 class="title"><a id="id4005632"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -94,7 +95,7 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686425"></a>Class</h3>
+              <h3 class="title"><a id="id4005604"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -106,7 +107,7 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685642"></a>See Also</h3>
+              <h3 class="title"><a id="id4005679"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -119,14 +120,14 @@ DB_ENV-&gt;memp_fcreate(DB_ENV *dbenvp, DB_MPOOLFILE **dbmfp, u_int32_t flags); 
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="envget_mp_mmapsize.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="envget_mp_tablesize.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="memp.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="mempregister.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DB_ENV-&gt;get_mp_mmapsize() </td>
+          <td width="40%" align="left" valign="top">DB_ENV-&gt;get_mp_tablesize() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

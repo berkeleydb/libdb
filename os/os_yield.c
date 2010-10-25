@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_SELECT_H	1
 #include "db_int.h"
 
 #if defined(HAVE_SYSTEM_INCLUDE_FILES) && defined(HAVE_SCHED_YIELD)

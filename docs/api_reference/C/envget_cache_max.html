@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db.h&gt;
 
 int
-DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, u_int32_t *bytesp);  </pre>
+DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, 
+                      u_int32_t *bytesp);  </pre>
       <p>
          The <code class="methodname">DB_ENV-&gt;get_cache_max()</code> method returns the maximum size of the
          cache as set using the 
@@ -61,7 +62,7 @@ DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, u_int32_t *bytesp); 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685514"></a>Parameters</h3>
+              <h3 class="title"><a id="id4004613"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -69,7 +70,20 @@ DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, u_int32_t *bytesp); 
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1685578"></a>bytesp</h4>
+                <h4 class="title"><a id="id4004602"></a>gbytesp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>gbytesp</strong></span> parameter references
+                          memory into which  the gigabytes of memory in the cache is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4004700"></a>bytesp</h4>
               </div>
             </div>
           </div>
@@ -79,25 +93,12 @@ DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, u_int32_t *bytesp); 
                           copied.
                      </p>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1685550"></a>gbytesp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>gbytesp</strong></span> parameter references
-                          memory into which  the gigabytes of memory in the cache is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685723"></a>Class</h3>
+              <h3 class="title"><a id="id4004516"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -109,7 +110,7 @@ DB_ENV-&gt;get_cache_max(DB_ENV *dbenv, u_int32_t *gbytesp, u_int32_t *bytesp); 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1685635"></a>See Also</h3>
+              <h3 class="title"><a id="id4004736"></a>See Also</h3>
             </div>
           </div>
         </div>

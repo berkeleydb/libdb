@@ -6,21 +6,6 @@
 extern "C" {
 #endif
 
-int __fop_create_42_read __P((ENV *, void *, __fop_create_42_args **));
-int __fop_create_read __P((ENV *, void *, __fop_create_args **));
-int __fop_create_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, u_int32_t, u_int32_t));
-int __fop_remove_read __P((ENV *, void *, __fop_remove_args **));
-int __fop_remove_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, u_int32_t));
-int __fop_write_42_read __P((ENV *, void *, __fop_write_42_args **));
-int __fop_write_read __P((ENV *, void *, __fop_write_args **));
-int __fop_write_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, u_int32_t, u_int32_t, db_pgno_t, u_int32_t, const DBT *, u_int32_t));
-int __fop_rename_42_read __P((ENV *, void *, __fop_rename_42_args **));
-int __fop_rename_read __P((ENV *, void *, __fop_rename_args **));
-int __fop_rename_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, const DBT *, const DBT *, u_int32_t));
-int __fop_rename_noundo_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, const DBT *, const DBT *, u_int32_t));
-int __fop_rename_int_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, const DBT *, const DBT *, u_int32_t, u_int32_t));
-int __fop_file_remove_read __P((ENV *, void *, __fop_file_remove_args **));
-int __fop_file_remove_log __P((ENV *, DB_TXN *, DB_LSN *, u_int32_t, const DBT *, const DBT *, const DBT *, u_int32_t, u_int32_t));
 int __fop_init_recover __P((ENV *, DB_DISTAB *));
 int __fop_create_42_print __P((ENV *, DBT *, DB_LSN *, db_recops, void *));
 int __fop_create_print __P((ENV *, DBT *, DB_LSN *, db_recops, void *));

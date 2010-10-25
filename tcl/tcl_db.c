@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -397,8 +397,10 @@ db_Cmd(clientData, interp, objc, objv)
 		ret = dbp->get_dbname(dbp, &filename, &dbname);
 		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "db get_dbname")) == TCL_OK) {
-			myobjv[0] = NewStringObj(filename, strlen(filename));
-			myobjv[1] = NewStringObj(dbname, strlen(dbname));
+			myobjv[0] = filename == NULL ? NewStringObj("", 0) : 
+			    NewStringObj(filename, strlen(filename));
+			myobjv[1] = dbname == NULL ? NewStringObj("", 0) : 
+			    NewStringObj(dbname, strlen(dbname));
 			res = Tcl_NewListObj(2, myobjv);
 		}
 		break;

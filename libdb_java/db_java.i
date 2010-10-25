@@ -45,7 +45,6 @@ import java.util.Comparator;
 %rename(rename0) rename;
 %rename(verify0) verify;
 %rename(abort0) abort;
-%rename(commit0) commit;
 %rename(discard0) discard;
 
 /* Special case methods */
@@ -122,12 +121,28 @@ import java.util.Comparator;
 		event_notify_handler.handleRepClientEvent();
 	}
 
+	private final void handle_rep_dupmaster_event_notify() {
+		event_notify_handler.handleRepDupmasterEvent();
+	}
+
 	private final void handle_rep_elected_event_notify() {
 		event_notify_handler.handleRepElectedEvent();
 	}
 
+	private final void handle_rep_election_failed_event_notify() {
+		event_notify_handler.handleRepElectionFailedEvent();
+	}
+	
+	private final void handle_rep_join_failure_event_notify() {
+		event_notify_handler.handleRepJoinFailureEvent();
+	}
+
 	private final void handle_rep_master_event_notify() {
 		event_notify_handler.handleRepMasterEvent();
+	}
+
+	private final void handle_rep_master_failure_event_notify() {
+		event_notify_handler.handleRepMasterFailureEvent();
 	}
 
 	private final void handle_rep_new_master_event_notify(int envid) {
@@ -616,6 +631,7 @@ import java.util.Comparator;
 %}
 
 %typemap(javacode) struct DbTxn %{
+	public byte[] commitToken;
 	public void abort() throws DatabaseException {
 		try {
 			abort0();
@@ -626,7 +642,7 @@ import java.util.Comparator;
 
 	public void commit(int flags) throws DatabaseException {
 		try {
-			commit0(flags);
+			db_javaJNI.DbTxn_commit(swigCPtr, this, flags);
 		} finally {
 			swigCPtr = 0;
 		}

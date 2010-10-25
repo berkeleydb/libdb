@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -30,7 +30,6 @@ __bam_stat(dbc, spp, flags)
 {
 	BTMETA *meta;
 	BTREE *t;
-	BTREE_CURSOR *cp;
 	DB *dbp;
 	DB_BTREE_STAT *sp;
 	DB_LOCK lock, metalock;
@@ -51,8 +50,6 @@ __bam_stat(dbc, spp, flags)
 	mpf = dbp->mpf;
 	h = NULL;
 	ret = write_meta = 0;
-
-	cp = (BTREE_CURSOR *)dbc->internal;
 
 	/* Allocate and clear the structure. */
 	if ((ret = __os_umalloc(env, sizeof(*sp), &sp)) != 0)
@@ -86,12 +83,10 @@ __bam_stat(dbc, spp, flags)
 	}
 
 	/* Get the root page. */
-	pgno = cp->root;
-	if ((ret = __db_lget(dbc, 0, pgno, DB_LOCK_READ, 0, &lock)) != 0)
+	BAM_GET_ROOT(dbc, pgno, h, 0, DB_LOCK_READ, lock, ret);
+	if (ret != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno,
-	     dbc->thread_info, dbc->txn, 0, &h)) != 0)
-		goto err;
+	DB_ASSERT(env, h != NULL);
 
 	/* Get the levels from the root page. */
 	sp->bt_levels = h->level;
@@ -106,7 +101,7 @@ __bam_stat(dbc, spp, flags)
 
 	/* Walk the tree. */
 	if ((ret = __bam_traverse(dbc,
-	    DB_LOCK_READ, cp->root, __bam_stat_callback, sp)) != 0)
+	    DB_LOCK_READ, PGNO_INVALID, __bam_stat_callback, sp)) != 0)
 		goto err;
 
 #ifdef HAVE_COMPRESSION
@@ -142,11 +137,8 @@ meta_only:
 	if (flags == DB_FAST_STAT) {
 		if (dbp->type == DB_RECNO ||
 		    (dbp->type == DB_BTREE && F_ISSET(dbp, DB_AM_RECNUM))) {
-			if ((ret = __db_lget(dbc, 0,
-			    cp->root, DB_LOCK_READ, 0, &lock)) != 0)
-				goto err;
-			if ((ret = __memp_fget(mpf, &cp->root,
-			     dbc->thread_info, dbc->txn, 0, &h)) != 0)
+			BAM_GET_ROOT(dbc, pgno, h, 0, DB_LOCK_READ, lock, ret);
+			if (ret != 0)
 				goto err;
 
 			sp->bt_nkeys = RE_NREC(h);
@@ -552,7 +544,8 @@ __bam_key_range(dbc, dbt, kp, flags)
 		kp->equal = 0;
 	}
 
-	BT_STK_CLR(cp);
+	if ((ret = __bam_stkrel(dbc, 0)) != 0)
+		return (ret);
 
 	return (0);
 }
@@ -586,14 +579,12 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 	dbp = dbc->dbp;
 	mpf = dbp->mpf;
 	already_put = 0;
+	LOCK_INIT(lock);
 
-	if ((ret = __db_lget(dbc, 0, root_pgno, mode, 0, &lock)) != 0)
-		return (ret);
-	if ((ret = __memp_fget(mpf, &root_pgno,
-	     dbc->thread_info, dbc->txn, 0, &h)) != 0) {
-		(void)__TLPUT(dbc, lock);
-		return (ret);
-	}
+	COMPQUIET(h, NULL);
+	BAM_GET_ROOT(dbc, root_pgno, h, 0, mode, lock, ret);
+	if (ret != 0)
+		goto err1;
 
 	switch (TYPE(h)) {
 	case P_IBTREE:
@@ -662,7 +653,7 @@ __bam_traverse(dbc, mode, root_pgno, callback, cookie)
 err:	if (!already_put && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
-	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
+err1:	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);

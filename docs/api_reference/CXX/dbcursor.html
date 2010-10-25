@@ -60,7 +60,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654455"></a>Parameters</h3>
+              <h3 class="title"><a id="id3641180"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -68,7 +68,32 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654350"></a>cursorp</h4>
+                <h4 class="title"><a id="id3640986"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          To transaction-protect cursor operations, cursors must be
+                          opened and closed within the context of a transaction. The
+                          <span class="bold"><strong>txnid</strong></span> parameter specifies the
+                          transaction context in which the cursor may be used.
+                     </p>
+          <p>
+                          Cursor operations are not automatically transaction-protected, even if the 
+                          <a class="link" href="envset_flags.html#envset_flags_DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> 
+                          flag is specified to the 
+                          <a class="xref" href="envset_flags.html" title="DbEnv::set_flags()">DbEnv::set_flags()</a>  or
+                          <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  methods.  If
+                          cursor operations are to be transaction-protected, the <span class="bold"><strong>txnid</strong></span> parameter must be a transaction handle
+                          returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; otherwise,
+                          NULL.
+                      </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3641761"></a>cursorp</h4>
               </div>
             </div>
           </div>
@@ -81,7 +106,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654639"></a>flags</h4>
+                <h4 class="title"><a id="id3641056"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -165,37 +190,12 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1654875"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          To transaction-protect cursor operations, cursors must be
-                          opened and closed within the context of a transaction. The
-                          <span class="bold"><strong>txnid</strong></span> parameter specifies the
-                          transaction context in which the cursor may be used.
-                     </p>
-          <p>
-                          Cursor operations are not automatically transaction-protected, even if the 
-                          <a class="link" href="envset_flags.html#envset_flags_DB_AUTO_COMMIT">DB_AUTO_COMMIT</a> 
-                          flag is specified to the 
-                          <a class="xref" href="envset_flags.html" title="DbEnv::set_flags()">DbEnv::set_flags()</a>  or
-                          <a class="xref" href="dbopen.html" title="Db::open()">Db::open()</a>  methods.  If
-                          cursor operations are to be transaction-protected, the <span class="bold"><strong>txnid</strong></span> parameter must be a transaction handle
-                          returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; otherwise,
-                          NULL.
-                      </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654799"></a>Errors</h3>
+              <h3 class="title"><a id="id3641877"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654466"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3641742"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -235,7 +235,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1630002"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3641530"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -252,7 +252,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1654776"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3641634"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -265,7 +265,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654707"></a>Class</h3>
+              <h3 class="title"><a id="id3641935"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -277,7 +277,7 @@ Db::cursor(DbTxn *txnid, Dbc **cursorp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1654698"></a>See Also</h3>
+              <h3 class="title"><a id="id3641670"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -67,6 +67,9 @@ namespace BerkeleyDB {
         /// <summary>
         /// <para>
         /// Discard the cursor.
+	/// If you do not close the cursor before closing the database handle or 
+	///the transaction handle that owns this cursor,
+	///then, closing a database handle or a transaction handle closes these open cursors.
         /// </para>
         /// <para>
         /// It is possible for the Close() method to throw a

@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="txn.html" title="Chapter 13.  The DbTxn Handle" />
     <link rel="prev" href="txnbegin.html" title="DbEnv::txn_begin()" />
-    <link rel="next" href="txncommit.html" title="DbTxn::commit()" />
+    <link rel="next" href="txnstat.html" title="DbEnv::txn_stat()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 13. 
                 The DbTxn Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txncommit.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnstat.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</pre>
+DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, 
+                      u_int32_t flags) const;</pre>
       <p>
          If there has been any logging activity in the database environment
          since the last checkpoint, the <code class="methodname">DbEnv::txn_checkpoint()</code> method
@@ -60,7 +61,7 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713916"></a>Parameters</h3>
+              <h3 class="title"><a id="id3704144"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -68,7 +69,35 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1713572"></a>flags</h4>
+                <h4 class="title"><a id="id3703994"></a>kbyte</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the <span class="bold"><strong>kbyte</strong></span> parameter is non-zero, a
+                          checkpoint will be done if more than <span class="bold"><strong>kbyte</strong></span> kilobytes of log data have been written
+                          since the last checkpoint.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3704166"></a>min</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the <span class="bold"><strong>min</strong></span> parameter is non-zero, a
+                          checkpoint will be done if more than <span class="bold"><strong>min</strong></span> minutes have passed since the last
+                          checkpoint.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3704148"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -90,40 +119,12 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1714256"></a>kbyte</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the <span class="bold"><strong>kbyte</strong></span> parameter is non-zero, a
-                          checkpoint will be done if more than <span class="bold"><strong>kbyte</strong></span> kilobytes of log data have been written
-                          since the last checkpoint.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1714393"></a>min</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the <span class="bold"><strong>min</strong></span> parameter is non-zero, a
-                          checkpoint will be done if more than <span class="bold"><strong>min</strong></span> minutes have passed since the last
-                          checkpoint.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714245"></a>Errors</h3>
+              <h3 class="title"><a id="id3704702"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -141,7 +142,7 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1713834"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3704843"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -154,7 +155,7 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714181"></a>Class</h3>
+              <h3 class="title"><a id="id3704821"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -166,7 +167,7 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714170"></a>See Also</h3>
+              <h3 class="title"><a id="id3704745"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -183,14 +184,14 @@ DbEnv::txn_checkpoint(u_int32_t kbyte, u_int32_t min, u_int32_t flags) const;</p
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txncommit.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnstat.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DbEnv::txn_begin() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DbTxn::commit()</td>
+          <td width="40%" align="right" valign="top"> DbEnv::txn_stat()</td>
         </tr>
       </table>
     </div>

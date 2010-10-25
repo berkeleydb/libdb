@@ -59,6 +59,10 @@
         looking for transactionally-protected backing of their Java collections.
         No prior experience with DB technologies is expected or required.
      </p>
+      <p>
+         This document reflects Berkeley DB 11<span class="emphasis"><em>g</em></span> Release 2, which
+         provides DB library version 11.2.5.0.
+     </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
@@ -88,7 +92,8 @@ import java.io.File;
 
 ...
 
-// Open the environment. Allow it to be created if it does not already exist.
+// Open the environment. Allow it to be created if it does not already 
+// exist.
 Environment myDbEnvironment;</pre>
         <p>
         In situations in this book, programming examples are updated from one chapter to the next in this book. When
@@ -100,7 +105,8 @@ import java.io.File;
 
 ...
 
-// Open the environment. Allow it to be created if it does not already exist.
+// Open the environment. Allow it to be created if it does not already 
+// exist.
 <strong class="userinput"><code>Environment myDbEnv;
 EnvironmentConfig envConfig = new EnvironmentConfig();
 envConfig.setAllowCreate(true);

@@ -69,6 +69,16 @@ internal class DB_COMPACT : IDisposable {
     } 
   }
 
+  internal uint compact_empty_buckets {
+    set {
+      libdb_csharpPINVOKE.DB_COMPACT_compact_empty_buckets_set(swigCPtr, value);
+    }
+    get {
+      uint ret = libdb_csharpPINVOKE.DB_COMPACT_compact_empty_buckets_get(swigCPtr);
+      return ret;
+    }
+  }
+
   internal uint compact_pages_free {
     set {
       libdb_csharpPINVOKE.DB_COMPACT_compact_pages_free_set(swigCPtr, value);

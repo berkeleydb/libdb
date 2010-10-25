@@ -1,92 +1,77 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2009 Oracle.  All rights reserved.
+# Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# $Id$
-#
-# TEST  rep067
-# TEST	Replication election test with large timeouts.
+# TEST	rep067
+# TEST	Full election timeout test.
 # TEST
-# TEST	Test replication elections among clients with widely varying
-# TEST	timeouts.  This test is used to simulate a customer that
-# TEST	wants to force full participation in an election, but only
-# TEST	if all sites are present (i.e. if all sites are restarted
-# TEST	together).  If any site has already been part of the group,
-# TEST	then we want to be able to elect a master based on majority.
-# TEST	Using varied timeouts, we can force full participation if
-# TEST	all sites are present with "long_timeout" amount of time and
-# TEST	then revert to majority.
+# TEST	Verify that elections use a separate "full election timeout" (if such
+# TEST	configuration is in use) instead of the normal timeout, when the
+# TEST	replication group is "cold-booted" (all sites starting with recovery).
 # TEST
-# TEST	A long_timeout would be several minutes whereas a normal
-# TEST	short timeout would be a few seconds.
-#
+
 proc rep067 { method args } {
-
 	source ./include.tcl
-	global databases_in_memory
-	global repfiles_in_memory
 
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
+	set tnum "067"
 
-	# Skip for all methods except btree.
+	# Run for btree only.
 	if { $checking_valid_methods } {
 		set test_methods { btree }
 		return $test_methods
 	}
 	if { [is_btree $method] == 0 } {
-		puts "Rep067: Skipping for method $method."
+		puts "Rep$tnum: Skipping for method $method."
 		return
 	}
 
-	set tnum "067"
-	set niter 10
-	set nclients 3
-	set logsets [create_logsets [expr $nclients + 1]]
+	puts "Rep$tnum: Full election timeout test."
 
-	# Set up for on-disk or in-memory databases.
-	set msg "using on-disk databases"
-	if { $databases_in_memory } {
-		set msg "using named in-memory databases"
-		if { [is_queueext $method] } { 
-			puts -nonewline "Skipping rep$tnum for method "
-			puts "$method with named in-memory databases."
-			return
-		}
-	}
-
-	set msg2 "and on-disk replication files"
-	if { $repfiles_in_memory } {
-		set msg2 "and in-memory replication files"
-	}
-
-	# We don't want to run this with -recover - it takes too
-	# long and doesn't cover any new ground.
-	set recargs ""
-	foreach l $logsets {
-		puts "Rep$tnum ($recargs): Replication election mixed\
-		    long timeouts with $nclients clients $msg $msg2."
-		puts -nonewline "Rep$tnum: Started at: "
-		puts [clock format [clock seconds] -format "%H:%M %D"]
-		puts "Rep$tnum: Master logs are [lindex $l 0]"
-		for { set i 0 } { $i < $nclients } { incr i } {
-			puts "Rep$tnum: Client $i logs are\
-			    [lindex $l [expr $i + 1]]"
-		}
-		rep067_sub $method $tnum \
-		    $niter $nclients $l $recargs $args
-	}
+	# This test consists of three cases, two of which can be handled by
+	# script that is similar enough to be handled by a single proc
+	# (rep067a_sub), with a parameter to determine whether a client is
+	# down.  The other case is different enough to warrant its own proc
+	# (rep067b_sub).
+	# 
+	rep067a_sub $tnum yes
+	rep067a_sub $tnum no
+	rep067b_sub $tnum
 }
 
-proc rep067_sub { method tnum niter nclients logset recargs largs } {
+# Cold boot the group.  Sites A and B come up just fine, but site C might not
+# come up (depending on the client_down flag).  Hold an election.  (The amount
+# of time it takes depends on whether site C is running.)  Then, shut down site
+# A, start site C if it isn't already running, and hold another election.
+# 
+proc rep067a_sub { tnum client_down } {
 	source ./include.tcl
 	global rand_init
 	error_check_good set_random_seed [berkdb srand $rand_init] 0
 	global repfiles_in_memory
 	global rep_verbose
 	global verbose_type
+
+	# Set up some arbitrary timeout values for this test.  The only
+	# constraint is that they should be large enough, and different enough,
+	# so as to allow for some amount of measurement imprecision introduced
+	# by the overhead of the test mechnism.  Timeout values themselves
+	# expressed in microseconds, since they'll be passed to DB; leeway
+	# values in seconds, so that we can measure the result here in Tcl.
+	# 
+	set elect_to 15000000
+	set elect_secs_leeway 13
+	set full_elect_to 30000000
+	set full_secs_leeway 27
+
+	puts -nonewline "Rep$tnum.a: Full election test, "
+	if { $client_down } {
+		puts "with one client missing"
+		puts -nonewline "\tRep$tnum.b: First election" 
+		puts " expected to take [expr $full_elect_to / 1000000] seconds"
+	} else {
+		puts "with all clients initially present"
+		puts "\tRep$tnum.b: First election expected to complete quickly"
+	}
 
 	set verbargs ""
 	if { $rep_verbose == 1 } {
@@ -103,293 +88,236 @@ proc rep067_sub { method tnum niter nclients logset recargs largs } {
 	set qdir $testdir/MSGQUEUEDIR
 	replsetup $qdir
 
-	set masterdir $testdir/MASTERDIR
-	file mkdir $masterdir
-	set m_logtype [lindex $logset 0]
-	set m_logargs [adjust_logargs $m_logtype]
-	set m_txnargs [adjust_txnargs $m_logtype]
-
-	for { set i 0 } { $i < $nclients } { incr i } {
+	# Configure all three clients.  Use EID's starting at 2, because that's
+	# what run_election expects.
+	# 
+	set nsites 3
+	foreach i { 0 1 2 } eid { 2 3 4 } p { 20 50 100 } {
 		set clientdir($i) $testdir/CLIENTDIR.$i
 		file mkdir $clientdir($i)
-		set c_logtype($i) [lindex $logset [expr $i + 1]]
-		set c_logargs($i) [adjust_logargs $c_logtype($i)]
-		set c_txnargs($i) [adjust_txnargs $c_logtype($i)]
-	}
 
-	# Open a master.
-	repladd 1
-	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event $repmemargs \
-	    -home $masterdir $m_logargs $verbargs -errpfx MASTER \
-	    $m_txnargs -rep_master -rep_transport \[list 1 replsend\]"
-	set masterenv [eval $env_cmd(M) $recargs]
-
-	set envlist {}
-	lappend envlist "$masterenv 1"
-
-	# Open the clients.
-	for { set i 0 } { $i < $nclients } { incr i } {
-		set envid [expr $i + 2]
-		repladd $envid
+		repladd $eid
 		set env_cmd($i) "berkdb_env_noerr -create \
-		    -event rep_event $repmemargs -home $clientdir($i) \
-		    $c_logargs($i) $c_txnargs($i) -rep_client $verbargs \
-		    -errpfx CLIENT.$i -rep_transport \[list $envid replsend\]"
-		set clientenv($i) [eval $env_cmd($i) $recargs]
-		lappend envlist "$clientenv($i) $envid"
+		    -event $repmemargs -home $clientdir($i) \
+		    -txn -rep_client $verbargs \
+		    -errpfx CLIENT.$i -rep_transport \[list $eid replsend\]"
+
+		set errcmd($i) "none"
+		set crash($i) 0
+		set pri($i) $p
+	}
+	set elect_timeout [list $elect_to $full_elect_to]
+
+	# Start the clients, but perhaps not all of them.
+	# 
+	set envlist {}
+	if { $client_down } {
+		set participants 2
+	} else {
+		set participants 3
+	}
+	for { set i 0 } { $i < $participants } { incr i } {
+		set clientenv($i) [eval $env_cmd($i)]
+		set eid [expr $i + 2]
+		lappend envlist "$clientenv($i) $eid"
 	}
 
-	# Process startup messages
 	process_msgs $envlist
 
-	# Run a modified test001 in the master.
-	puts "\tRep$tnum.a: Running test001 in replicated env."
-	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
+	# In this test, the expected winner is always the last one in the
+	# array.  We made sure of that by arranging the priorities that way.
+	# This is convenient so that we can remove the winner (master) in the
+	# second phase, without leaving a hole in the arrays that the
+	# run_election proc wouldn't cope with.
+	# 
+	set winner [expr $participants - 1]
+	set initiator 0
+	set nvotes 2
+	set reopen_flag 0
+	run_election envlist errcmd pri crash \
+	    $qdir "Rep$tnum.c" $initiator $nsites $nvotes $participants \
+	    $winner $reopen_flag NULL 0 0 $elect_timeout
+	set duration [rep067_max_duration $envlist]
+	puts "\tRep$tnum.d: the election took about $duration seconds"
 
-	# Process all the messages and close the master.
+	if { $client_down } {
+		# Case #2.
+		#
+		# Without full participation on a cold boot, the election should
+		# take the full long timeout.  In any case it should be way more
+		# than the "normal" timeout.
+		# 
+		error_check_good duration1a \
+		    [expr $duration > $full_secs_leeway] 1
+	} else {
+		# Case #1.
+		#
+		# With full participation, the election should complete "right
+		# away".  At least it should be way less than the "normal"
+		# election timeout.
+		error_check_good duration1b \
+		    [expr $duration < $elect_secs_leeway] 1
+	}
+
 	process_msgs $envlist
-	error_check_good masterenv_close [$masterenv close] 0
-	set envlist [lreplace $envlist 0 0]
 
-	#
-	# Make sure all clients are starting with no pending messages.
-	#
-	for { set i 0 } { $i < $nclients } { incr i } {
-		replclear [expr $i + 2]
-	}
+	if { !$client_down } {
+		# Shut down the master and hold another election between the
+		# remaining two sites.
+		#
+		puts "\tRep$tnum.e: Shut down elected master, and run another election"
+		puts "\tRep$tnum.g: (expected to take [expr $elect_to / 1000000] seconds)"
+		$clientenv($winner) close
+		set envlist [lreplace $envlist $winner $winner]
 
-	#
-	# Run the test for all different timoeut combinations.
-	#
-	set c0to { long medium }
-	set c1to { medium short }
-	set c2to { short long }
-	set numtests [expr [llength $c0to] * [llength $c1to] * \
-	    [llength $c2to]]
-	set m "Rep$tnum"
-	set count 0
-	set last_win -1
-	set win -1
-	set quorum { majority all }
-	foreach q $quorum {
-		puts "\t$m.b: Starting $numtests election with\
-		    timeout tests: $q must participate"
-		foreach c0 $c0to {
-			foreach c1 $c1to {
-				foreach c2 $c2to {
-					set elist [list $c0 $c1 $c2]
-					rep067_elect env_cmd envlist $qdir \
-					    $m $count win last_win $elist \
-					    $q $logset
-					incr count
-				}
-			}
-		}
-	}
+		set winner 1
+		set participants 2
+		run_election envlist errcmd pri crash \
+		    $qdir "Rep$tnum.b" $initiator $nsites $nvotes \
+		    $participants $winner $reopen_flag NULL 0 0 $elect_timeout
+		set duration [rep067_max_duration $envlist]
 
-	foreach pair $envlist {
-		set cenv [lindex $pair 0]
-		error_check_good cenv_close [$cenv close] 0
+		# We don't have full participation, so the election can only be
+		# won after a timeout.  But these clients have seen a master, so
+		# we shouldn't have to wait for the full-election timeout.
+		# 
+		puts "\tRep$tnum.g: the election took about $duration seconds"
+		error_check_good duration2 \
+		    [expr $duration > $elect_secs_leeway && \
+		    $duration < $full_secs_leeway] 1
 	}
+	$clientenv(0) close
+	$clientenv(1) close
 
 	replclose $testdir/MSGQUEUEDIR
-	puts -nonewline \
-	    "Rep$tnum: Completed at: "
-	puts [clock format [clock seconds] -format "%H:%M %D"]
 }
 
-proc rep067_elect { ecmd celist qdir msg count \
-    winner lsn_lose elist quorum logset} {
-	global elect_timeout elect_serial
-	global timeout_ok
-	global databases_in_memory
-	upvar $ecmd env_cmd
-	upvar $celist envlist
-	upvar $winner win
-	upvar $lsn_lose last_win
+# Run an election where one of the clients has seen a master, but the other has
+# not.  Verify that the first client learns from the second that a master has
+# been seen, and allows the election to complete after the normal timeout,
+# rather than the full election timeout.
+# 
+proc rep067b_sub { tnum } {
+	source ./include.tcl
+	global rand_init
+	global repfiles_in_memory
+	global rep_verbose
+	global verbose_type
 
-	# Set the proper value for the first time through the 
-	# loop.  On subsequent passes, timeout_ok will already 
-	# be set. 
-	if { [info exists timeout_ok] == 0 } {
-		set timeout_ok 0
+	error_check_good set_random_seed [berkdb srand $rand_init] 0
+
+	set elect_to 10000000
+	set elect_secs_leeway 10
+	set full_elect_to 180000000
+	set full_secs_leeway 100
+
+	puts "Rep$tnum.a: Mixed full election test"
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
 	}
 
-	set nclients [llength $elist]
-	set nsites [expr $nclients + 1]
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
+	env_cleanup $testdir
+
+	set qdir $testdir/MSGQUEUEDIR
+	replsetup $qdir
+
+	# Start a master and one client.  This first step is just setup, for the
+	# purpose of creating a client that has heard from a master.
+	# 
+	file mkdir $testdir/MASTERDIR
+	set mcmd "berkdb_env_noerr -create \
+		    -event $repmemargs -home $testdir/MASTERDIR \
+		    -txn -rep_master $verbargs \
+		    -errpfx MASTER -rep_transport \[list 1 replsend\]"
+	file mkdir $testdir/CLIENTDIR
+	set ccmd "berkdb_env_noerr -create \
+		    -event $repmemargs -home $testdir/CLIENTDIR \
+		    -txn -rep_client $verbargs \
+		    -errpfx CLIENT.0 -rep_transport \[list 2 replsend\]"
+
+	puts "\tRep$tnum.b: Start master and first client"
+	repladd 1
+	set menv [eval $mcmd]
+	repladd 2
+	set cenv [eval $ccmd]
+	process_msgs [list [list $menv 1] [list $cenv 2]]
+
+	puts "\tRep$tnum.c: Shut down master; start other client"
+	$menv close
+
+	# Now set up for the election test we're really interested in.  We'll
+	# need $ccmd in array position 0 of env_cmd, for passing to
+	# run_election.  Then, start the second client.  We now have a mixture
+	# of clients: one who's seen a master, and the other who hasn't.
 	#
-	# Set long timeout to 3 minutes (180 sec).
-	# Set medium timeout to half the long timeout.
-	# Set short timeout to 10 seconds.
-	set long_timeout 180000000
-	set med_timeout [expr $long_timeout / 2]
-	set short_timeout 10000000
-	set cl_list {}
-	foreach pair $envlist {
-		set id [lindex $pair 1]
-		set i [expr $id - 2]
-		set clientenv($i) [lindex $pair 0]
-		set to [lindex $elist $i]
-		if { $to == "long" } {
-			set elect_timeout($i) $long_timeout
-		} elseif { $to == "medium" } {
-			set elect_timeout($i) $med_timeout
-		} elseif { $to == "short" } {
-			set elect_timeout($i) $short_timeout
-		}
-		set elect_pipe($i) INVALID
-		set err_cmd($i) "none"
-		replclear $id
-		lappend cl_list $i
-	}
+	# The run_election proc assumes an offset of 2 between the array index
+	# and the EID.  Thus EID 3 has to correspond to array index 1, etc.
+	# 
+	set env_cmd(0) $ccmd
+	repladd 3
+	file mkdir $testdir/CLIENTDIR2
+	set env_cmd(1) "berkdb_env_noerr -create \
+		    -event $repmemargs -home $testdir/CLIENTDIR2 \
+		    -txn -rep_client $verbargs \
+		    -errpfx CLIENT.1 -rep_transport \[list 3 replsend\]"
+	set c2env [eval $env_cmd(1)]
 
-	# Select winner.  We want to test biggest LSN wins, and secondarily
-	# highest priority wins.  If we already have a master, make sure
-	# we don't start a client in that master.
-	set elector 0
-	if { $win == -1 } {
-		if { $last_win != -1 } {
-			set cl_list [lreplace $cl_list $last_win $last_win]
-			set elector $last_win
-		}
-		set windex [berkdb random_int 0 [expr [llength $cl_list] - 1]]
-		set win [lindex $cl_list $windex]
-	} else {
-		# Easy case, if we have a master, the winner must be the
-		# same one as last time, just use $win.
-		# If client0 is the current existing master, start the
-		# election in client 1.
-		if {$win == 0} {
-			set elector 1
-		}
-	}
-	# Winner has priority 100.  If we are testing LSN winning, the
-	# make sure the lowest LSN client has the highest priority.
-	# Everyone else has priority 10.
-	for { set i 0 } { $i < $nclients } { incr i } {
+	set envlist {}
+	foreach i { 0 1 } eid { 2 3 } p { 100 50 } e [list $cenv $c2env] {
+		set errcmd($i) "none"
 		set crash($i) 0
-		if { $i == $win } {
-			set pri($i) 100
-		} elseif { $i == $last_win } {
-			set pri($i) 200
-		} else {
-			set pri($i) 10
-		}
-	}
+		set pri($i) $p
 
-	puts "\t$msg.b.$count: Start election (win=client$win) $elist"
-	set msg $msg.c.$count
-	#
-	# If we want all sites, then set nsites and nvotes the same.
-	# otherwise, we need to increase nsites to account
-	# for the master that is "down".
-	#
-	if { $quorum == "all" } {
-		set nsites $nclients
-	} else {
-		set nsites [expr $nclients + 1]
+		lappend envlist [list $e $eid]
 	}
-	set nvotes $nclients
-	if { $databases_in_memory } {
-		set dbname { "" "test.db" }
-	} else { 
-		set dbname "test.db"
-	} 
-	
-	run_election env_cmd envlist err_cmd pri crash \
-	    $qdir $msg $elector $nsites $nvotes $nclients $win \
-	    0 $dbname 0 $timeout_ok
-	#
-	# Sometimes test elections with an existing master.
-	# Other times test elections without master by closing the
-	# master we just elected and creating a new client.
-	# We want to weight it to close the new master.  So, use
-	# a list to cause closing about 70% of the time.
-	#
-	set close_list { 0 0 0 1 1 1 1 1 1 1}
-	set close_len [expr [llength $close_list] - 1]
-	set close_index [berkdb random_int 0 $close_len]
+	set elect_timeout [list $elect_to $full_elect_to]
 
-	# Unless we close the master, the next election will time out.
-	set timeout_ok 1
-	
-	if { [lindex $close_list $close_index] == 1 } {
-		# Declare that we expect the next election to succeed.
-		set timeout_ok 0
-		puts -nonewline "\t\t$msg: Closing "
-		error_check_good newmaster_flush [$clientenv($win) log_flush] 0
-		error_check_good newmaster_close [$clientenv($win) close] 0
-		#
-		# If the next test should win via LSN then remove the
-		# env before starting the new client so that we
-		# can guarantee this client doesn't win the next one.
-		set lsn_win { 0 0 0 0 1 1 1 1 1 1 }
-		set lsn_len [expr [llength $lsn_win] - 1]
-		set lsn_index [berkdb random_int 0 $lsn_len]
-		set rec_arg ""
-		set win_inmem [expr [string compare [lindex $logset \
-		    [expr $win + 1]] in-memory] == 0]
-		if { [lindex $lsn_win $lsn_index] == 1 } {
-			set last_win $win
-			set dirindex [lsearch -exact $env_cmd($win) "-home"]
-			incr dirindex
-			set lsn_dir [lindex $env_cmd($win) $dirindex]
-			env_cleanup $lsn_dir
-			puts -nonewline "and cleaning "
-		} else {
-			#
-			# If we're not cleaning the env, decide if we should
-			# run recovery upon reopening the env.  This causes
-			# two things:
-			# 1. Removal of region files which forces the env
-			# to read its __db.rep.egen file.
-			# 2. Adding a couple log records, so this client must
-			# be the next winner as well since it'll have the
-			# biggest LSN.
-			#
-			set rec_win { 0 0 0 0 0 0 1 1 1 1 }
-			set rec_len [expr [llength $rec_win] - 1]
-			set rec_index [berkdb random_int 0 $rec_len]
-			if { [lindex $rec_win $rec_index] == 1 } {
-				puts -nonewline "and recovering "
-				set rec_arg "-recover"
-				#
-				# If we're in memory and about to run
-				# recovery, we force ourselves not to win
-				# the next election because recovery will
-				# blow away the entire log in memory.
-				# However, we don't skip this entirely
-				# because we still want to force reading
-				# of __db.rep.egen.
-				#
-				if { $win_inmem } {
-					set last_win $win
-				} else {
-					set last_win -1
-				}
-			} else {
-				set last_win -1
-			}
+	set nsites 3
+	set participants 2
+	process_msgs $envlist
+
+	puts "\tRep$tnum.d: Election expected to take [expr $elect_to / 1000000] seconds"
+	set winner 0
+	set initiator 0
+	set nvotes 2
+	set reopen_flag 0
+	run_election envlist errcmd pri crash \
+	    $qdir "Rep$tnum.e" $initiator $nsites $nvotes $participants \
+	    $winner $reopen_flag NULL 0 0 $elect_timeout
+	set duration [rep067_max_duration $envlist]
+	puts "\tRep$tnum.f: the election took about $duration seconds"
+
+	# We don't have full participation, so the election can only be won
+	# after a timeout.  But even if only one client has seen a master, we
+	# shouldn't have to wait for the full-election timeout.
+	# 
+	error_check_good duration3 \
+	    [expr $duration > $elect_secs_leeway && \
+	    $duration < $full_secs_leeway] 1
+
+	$cenv close
+	$c2env close
+
+	replclose $testdir/MSGQUEUEDIR
+}
+
+proc rep067_max_duration { envlist } {
+	set max 0.0
+	foreach pair $envlist {
+		set env [lindex $pair 0]
+		set s [stat_field $env rep_stat "Election seconds"]
+		set u [stat_field $env rep_stat "Election usecs"]
+		set d [expr ( $u / 1000000.0 ) + $s ]
+		if { $d > $max } {
+			set max $d
 		}
-		puts "new master, new client $win"
-		set clientenv($win) [eval $env_cmd($win) $rec_arg]
-		error_check_good cl($win) [is_valid_env $clientenv($win)] TRUE
-		#
-		# Since we started a new client, we need to replace it
-		# in the message processing list so that we get the
-		# new Tcl handle name in there.
-		set newelector "$clientenv($win) [expr $win + 2]"
-		set envlist [lreplace $envlist $win $win $newelector]
-		if { $rec_arg == "" || $win_inmem } {
-			set win -1
-		}
-		#
-		# Since we started a new client we want to give them
-		# all a chance to process everything outstanding before
-		# the election on the next iteration.
-		#
-		process_msgs $envlist
 	}
+	return $max
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * Standalone mutex tester for Berkeley DB mutexes.
  *
@@ -875,7 +875,7 @@ data_on(gm_addrp, tm_addrp, lm_addrp, fhpp, init)
 				exit(EXIT_FAILURE);
 			}
 
-			if ((err = 
+			if ((err =
 			    __os_seek(env, fhp, 0, 0, (u_int32_t)len)) != 0 ||
 			    (err =
 			    __os_write(env, fhp, &err, 1, &nwrite)) != 0 ||

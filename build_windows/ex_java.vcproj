@@ -1,0 +1,79 @@
+<VisualStudioProject ProjectType="Visual C++" Version="8.00" Name="ex_java" ProjectGUID="{ecfcd4d6-3063-11df-95b2-000d88a6f448}">
+  <Platforms>
+    <Platform Name="Win32"/>
+    <Platform Name="x64"/>
+    <Platform Name="IA64"/>
+  </Platforms>
+  <Configurations>
+    <Configuration Name="Debug|Win32" OutputDirectory="..\build_windows\$(PlatformName)\Debug" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="3" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:x86" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+    <Configuration Name="Release|Win32" OutputDirectory="..\build_windows\$(PlatformName)\Release" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="2" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:x86" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+    <Configuration Name="Debug|x64" OutputDirectory="..\build_windows\$(PlatformName)\Debug" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="3" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:x64" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+    <Configuration Name="Release|x64" OutputDirectory="..\build_windows\$(PlatformName)\Release" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="2" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:x64" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+    <Configuration Name="Debug|IA64" OutputDirectory="..\build_windows\$(PlatformName)\Debug" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="0" MinimalRebuild="TRUE" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="3" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" BasicRuntimeChecks="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:IA64" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+    <Configuration Name="Release|IA64" OutputDirectory="..\build_windows\$(PlatformName)\Release" IntermediateDirectory="./$(OutDir)/ex_java" ConfigurationType="1" UseOfMFC="0" ATLMinimizesCRunTimeLibraryUsage="FALSE" CharacterSet="2">
+      <Tool Name="VCPreLinkEventTool"/>
+      <Tool Name="VCResourceCompilerTool"/>
+      <Tool Name="VCXMLDataGeneratorTool"/>
+      <Tool Name="VCManagedWrapperGeneratorTool"/>
+      <Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+      <Tool Name="VCCLCompilerTool" Optimization="2" MinimalRebuild="TRUE" InlineFunctionExpansion="1" AdditionalIncludeDirectories="" PreprocessorDefinitions="WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;_CONSOLE" StringPooling="TRUE" RuntimeLibrary="2" EnableFunctionLevelLinking="TRUE" UsePrecompiledHeader="0" PrecompiledHeaderFile="./$(OutDir)/ex_java.pch" AssemblerListingLocation="$(OutDir)/ex_java/" ObjectFile="$(OutDir)/ex_java/" WarningLevel="3" SuppressStartupBanner="TRUE" DebugInformationFormat="3" CompileAs="0"/>
+      <Tool Name="VCLinkerTool" AdditionalOptions="/machine:IA64" AdditionalDependencies="" AdditionalLibraryDirectories="../lib" OutputFile="$(OutDir)/ex_java.exe" ProgramDatabaseFile="$(OutDir)/ex_java.pdb" LinkIncremental="1" GenerateDebugInformation="TRUE" SuppressStartupBanner="TRUE" OptimizeReferences="2" TargetMachine="0"/>
+      <Tool Name="VCPreBuildEventTool"/>
+      <Tool Name="VCPostBuildEventTool"/>
+      <Tool Name="VCCustomBuildTool" CommandLine="&#xA;echo compiling examples&#xA;mkdir &quot;$(OutDir)\classes.ex&quot;&#xA;javac -g -target 1.5 -d &quot;$(OutDir)\classes.ex&quot; -classpath &quot;$(OutDir)\classes;$(OutDir)\classes.ex&quot; ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java&#xA;echo creating jar files&#xA;jar cf &quot;$(OutDir)/dbexamples.jar&quot; -C &quot;$(OutDir)\classes.ex&quot; .&#xA;echo Java example build finished" Outputs="force_compilation.txt"/></Configuration>
+  </Configurations>
+  <References/>
+  <Files>
+  </Files>
+  <Globals/>
+</VisualStudioProject>

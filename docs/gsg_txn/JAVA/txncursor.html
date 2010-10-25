@@ -175,9 +175,9 @@ EntityStore store = null;
     try {
         for (Inventory ii : pi_cursor) {
             // do something with each object "ii"
-            // A transactional handle is not required for any write operations.
-            // All operations performed using this cursor will be done within
-            // the scope of the transaction, txn.
+            // A transactional handle is not required for any write
+            // operations. All operations performed using this cursor
+            // will be done within the scope of the transaction, txn.
         }
         pi_cursor.close();
         pi_cursor = null;

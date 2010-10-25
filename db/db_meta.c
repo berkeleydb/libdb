@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -107,7 +107,7 @@ __db_new(dbc, type, lockp, pagepp)
 	ENV *env;
 	PAGE *h;
 	db_pgno_t last, *list, pgno, newnext;
-	int extend, hash, ret, t_ret;
+	int extend, hash, ret;
 
 	meta = NULL;
 	dbp = dbc->dbp;
@@ -215,13 +215,10 @@ __db_new(dbc, type, lockp, pagepp)
 	}
 	LSN(h) = LSN(meta);
 
-	if (hash == 0)
-		ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
+	if (hash == 0 && (ret = __memp_fput(mpf,
+	    dbc->thread_info, meta, dbc->priority)) != 0)
+	    	goto err;
 	meta = NULL;
-	if ((t_ret = __TLPUT(dbc, metalock)) != 0 && ret == 0)
-		ret = t_ret;
-	if (ret != 0)
-		goto err;
 
 	switch (type) {
 		case P_BTREEMETA:
@@ -254,6 +251,8 @@ __db_new(dbc, type, lockp, pagepp)
 	COMPQUIET(list, NULL);
 #endif
 
+	if ((ret = __TLPUT(dbc, metalock)) != 0)
+		return (ret);
 	*pagepp = h;
 	return (0);
 
@@ -319,6 +318,10 @@ __db_free(dbc, h)
 	hash = 0;
 
 	pgno = PGNO_BASE_MD;
+	if ((ret = __db_lget(dbc,
+	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
+		goto err;
+
 #ifdef HAVE_HASH
 	if (dbp->type == DB_HASH) {
 		if ((ret = __ham_return_meta(dbc,
@@ -334,10 +337,6 @@ __db_free(dbc, h)
 	}
 #endif
 	if (meta == NULL) {
-		if ((ret = __db_lget(dbc,
-		    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
-			goto err;
-
 		/* If we support truncate, we might not dirty the meta page. */
 		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 #ifdef HAVE_FTRUNCATE
@@ -366,6 +365,7 @@ __db_free(dbc, h)
 	 * the list.  If it goes in the middle of the list, we will drop the
 	 * meta page and get the previous page.
 	 */
+	COMPQUIET(position, 0);
 	if ((ret = __memp_get_freelist(mpf, &nelem, &list)) != 0)
 		goto err1;
 	if (list == NULL)
@@ -373,9 +373,10 @@ __db_free(dbc, h)
 
 	if (h->pgno != last_pgno) {
 		/*
-		 * Put the page number in the sorted list.
-		 * Finds its position and the previous page,
-		 * extend the list, make room and insert.
+		 * Put the page number in the sorted list.  Find its
+		 * position and the previous page.  After logging we
+		 * will extend the list, make room and insert the page in
+		 * the list.
 		 */
 		position = 0;
 		if (nelem != 0) {
@@ -644,7 +645,7 @@ __db_freelist_sort(list, nelems)
  *
  * PUBLIC: #ifdef HAVE_FTRUNCATE
  * PUBLIC: int __db_pg_truncate __P((DBC *, DB_TXN *,
- * PUBLIC:    db_pglist_t *, DB_COMPACT *, u_int32_t *, 
+ * PUBLIC:    db_pglist_t *, DB_COMPACT *, u_int32_t *,
  * PUBLIC:    db_pgno_t , db_pgno_t *, DB_LSN *, int));
  * PUBLIC: #endif
  */
@@ -698,7 +699,7 @@ __db_pg_truncate(dbc, txn,
 	slp = &list[elems];
 	/*
 	 * Log the sorted list. We log the whole list so it can be rebuilt.
-	 * Don't overflow the log file.  
+	 * Don't overflow the log file.
 	 */
 again:	if (DBC_LOGGING(dbc)) {
 		last = 1;
@@ -725,10 +726,10 @@ again:	if (DBC_LOGGING(dbc)) {
 		 */
 		if (lp != list) {
 			if ((ret = __memp_fget(mpf, &lp[-1].pgno,
-			    dbc->thread_info, txn, 0, &h)) != 0) 
-			    	goto err;
+			    dbc->thread_info, txn, 0, &h)) != 0)
+				goto err;
 		}
-			
+
 		slp = &lp[elems];
 
 		ZERO_LSN(null_lsn);
@@ -767,7 +768,7 @@ again:	if (DBC_LOGGING(dbc)) {
 					    dbc->thread_info, h, dbp->priority);
 					goto err;
 				}
-			} else 
+			} else
 				goto skip;
 		}
 
@@ -819,7 +820,7 @@ err:		if (h != NULL)
 
 /*
  * __db_free_truncate --
- * 	  Build a sorted free list and truncate free pages at the end
+ *	  Build a sorted free list and truncate free pages at the end
  *	  of the file.
  *
  * PUBLIC: #ifdef HAVE_FTRUNCATE
@@ -931,9 +932,15 @@ done:	if (last_pgnop != NULL)
 	 * The truncate point is the number of pages in the free
 	 * list back from the last page.  The number of pages
 	 * in the free list are the number that we can swap in.
+	 * Adjust it down slightly so if we find higher numbered
+	 * pages early and then free other pages later we can
+	 * truncate them.
 	 */
-	if (c_data)
+	if (c_data) {
 		c_data->compact_truncate = (u_int32_t)meta->last_pgno - nelems;
+		if (c_data->compact_truncate > nelems >> 2)
+			c_data->compact_truncate -= nelems >> 2;
+	}
 
 	if (nelems != 0 && listp != NULL) {
 		*listp = list;
@@ -1023,12 +1030,12 @@ again:		ddbt.data = spp = pp;
 		 * Get the page which will link to this section if we abort.
 		 * If this is the first segment then its last_free.
 		 */
-		if (spp == plist) 
+		if (spp == plist)
 			pg = last_free;
 		else if ((ret = __memp_fget(mpf, &spp[-1].pgno,
 		     dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &pg)) != 0)
 			goto err;
-			
+
 		if ((ret = __db_pg_trunc_log(dbp, dbc->txn,
 		     &LSN(meta), last == 1 ? DB_FLUSH : 0,
 		     PGNO(meta), &LSN(meta),
@@ -1038,7 +1045,7 @@ again:		ddbt.data = spp = pp;
 			goto err;
 		if (pg != NULL) {
 			LSN(pg) = LSN(meta);
-			if (pg != last_free && (ret = __memp_fput(mpf, 
+			if (pg != last_free && (ret = __memp_fput(mpf,
 			    dbc->thread_info, pg, DB_PRIORITY_VERY_LOW)) != 0)
 				goto err;
 			pg = NULL;
@@ -1177,7 +1184,8 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	 * Hold on to the previous read lock only if we are in full isolation.
 	 * COUPLE_ALWAYS indicates we are holding an interior node which need
 	 *	not be isolated.
-	 * Downgrade write locks if we are supporting dirty readers.
+	 * Downgrade write locks if we are supporting dirty readers and the
+	 * update did not have an error.
 	 */
 	if ((action != LCK_COUPLE && action != LCK_COUPLE_ALWAYS) ||
 	    !LOCK_ISSET(*lockp))
@@ -1189,8 +1197,8 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 		action = LCK_COUPLE;
 	else if (lockp->mode == DB_LOCK_READ_UNCOMMITTED)
 		action = LCK_COUPLE;
-	else if (F_ISSET(dbc->dbp,
-	    DB_AM_READ_UNCOMMITTED) && lockp->mode == DB_LOCK_WRITE)
+	else if (F_ISSET(dbc->dbp, DB_AM_READ_UNCOMMITTED) && 
+	     !F_ISSET(dbc, DBC_ERROR) && lockp->mode == DB_LOCK_WRITE)
 		action = LCK_DOWNGRADE;
 	else
 		action = 0;
@@ -1258,10 +1266,11 @@ __db_lput(dbc, lockp)
 	/*
 	 * Transactional locking.
 	 * Hold on to the read locks only if we are in full isolation.
-	 * Downgrade write locks if we are supporting dirty readers.
+	 * Downgrade write locks if we are supporting dirty readers unless
+	 * there was an error.
 	 */
-	if (F_ISSET(dbc->dbp,
-	    DB_AM_READ_UNCOMMITTED) && lockp->mode == DB_LOCK_WRITE)
+	if (F_ISSET(dbc->dbp, DB_AM_READ_UNCOMMITTED) &&
+	    !F_ISSET(dbc, DBC_ERROR) && lockp->mode == DB_LOCK_WRITE)
 		action = LCK_DOWNGRADE;
 	else if (dbc->txn == NULL)
 		action = LCK_COUPLE;

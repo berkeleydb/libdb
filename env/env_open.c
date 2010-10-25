@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,7 +13,6 @@
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
@@ -21,7 +20,8 @@ static int __file_handle_cleanup __P((ENV *));
 
 /*
  * db_version --
- *	Return version information.
+ *	Return legacy version information, including DB Major Version,
+ *	DB Minor Version, and DB Patch/Build numbers.
  *
  * EXTERN: char *db_version __P((int *, int *, int *));
  */
@@ -36,6 +36,31 @@ db_version(majverp, minverp, patchp)
 	if (patchp != NULL)
 		*patchp = DB_VERSION_PATCH;
 	return ((char *)DB_VERSION_STRING);
+}
+
+/*
+ * db_full_version --
+ *	Return complete version information, including Oracle Family,
+ *	Oracle Release, DB Major Version, DB Minor Version, and DB
+ *	Patch/Build numbers.
+ *
+ * EXTERN: char *db_full_version __P((int *, int *, int *, int *, int *));
+ */
+char *
+db_full_version(familyp, releasep, majverp, minverp, patchp)
+	int *familyp, *releasep, *majverp, *minverp, *patchp;
+{
+	if (familyp != NULL)
+		*familyp = DB_VERSION_FAMILY;
+	if (releasep != NULL)
+		*releasep = DB_VERSION_RELEASE;
+	if (majverp != NULL)
+		*majverp = DB_VERSION_MAJOR;
+	if (minverp != NULL)
+		*minverp = DB_VERSION_MINOR;
+	if (patchp != NULL)
+		*patchp = DB_VERSION_PATCH;
+	return ((char *)DB_VERSION_FULL_STRING);
 }
 
 /*
@@ -401,18 +426,24 @@ __env_close_pp(dbenv, flags)
 	DB_THREAD_INFO *ip;
 	ENV *env;
 	int rep_check, ret, t_ret;
-	u_int32_t flags_orig;
+	u_int32_t close_flags, flags_orig;
 
 	env = dbenv->env;
-	ret = flags_orig = 0;
+	ret = 0;
+	close_flags = flags_orig = 0;
 
 	/*
 	 * Validate arguments, but as a DB_ENV handle destructor, we can't
 	 * fail.
 	 */
-	if (flags != 0 &&
+	if (flags != 0 && flags != DB_FORCESYNC &&
 	    (t_ret = __db_ferr(env, "DB_ENV->close", 0)) != 0 && ret == 0)
 		ret = t_ret;
+
+#define	DBENV_FORCESYNC		0x00000001
+#define	DBENV_CLOSE_REPCHECK	0x00000010
+	if (flags == DB_FORCESYNC)
+		close_flags |= DBENV_FORCESYNC;
 
 	/*
 	 * If the environment has panic'd, all we do is try and discard
@@ -421,8 +452,8 @@ __env_close_pp(dbenv, flags)
 	if (PANIC_ISSET(env)) {
 		/* clean up from registry file */
 		if (dbenv->registry != NULL) {
-			/* 
-			 * Temporarily set no panic so we do not trigger the 
+			/*
+			 * Temporarily set no panic so we do not trigger the
 			 * LAST_PANIC_CHECK_BEFORE_IO check in __os_physwrite
 			 * thus allowing the unregister to happen correctly.
 			 */
@@ -462,7 +493,9 @@ __env_close_pp(dbenv, flags)
 			ret = t_ret;
 	}
 
-	if ((t_ret = __env_close(dbenv, rep_check)) != 0 && ret == 0)
+	if (rep_check)
+		close_flags |= DBENV_CLOSE_REPCHECK;
+	if ((t_ret = __env_close(dbenv, close_flags)) != 0 && ret == 0)
 		ret = t_ret;
 
 	/* Don't ENV_LEAVE as we have already detached from the region. */
@@ -473,19 +506,23 @@ __env_close_pp(dbenv, flags)
  * __env_close --
  *	DB_ENV->close.
  *
- * PUBLIC: int __env_close __P((DB_ENV *, int));
+ * PUBLIC: int __env_close __P((DB_ENV *, u_int32_t));
  */
 int
-__env_close(dbenv, rep_check)
+__env_close(dbenv, flags)
 	DB_ENV *dbenv;
-	int rep_check;
+	u_int32_t flags;
 {
+	DB *dbp;
 	ENV *env;
-	int ret, t_ret;
+	int ret, rep_check, t_ret;
 	char **p;
+	u_int32_t close_flags;
 
 	env = dbenv->env;
 	ret = 0;
+	close_flags = LF_ISSET(DBENV_FORCESYNC) ? 0 : DB_NOSYNC;
+	rep_check = LF_ISSET(DBENV_CLOSE_REPCHECK);
 
 	/*
 	 * Check to see if we were in the middle of restoring transactions and
@@ -498,6 +535,26 @@ __env_close(dbenv, rep_check)
 	if ((t_ret = __rep_env_close(env)) != 0 && ret == 0)
 		ret = t_ret;
 #endif
+
+	/*
+	 * Close all databases opened in this environment after the rep region
+	 * is closed. Rep region's internal database is already closed now.
+	 */
+	while ((dbp = TAILQ_FIRST(&env->dblist)) != NULL) {
+		/*
+		 * Note down and ignore the error code. Since we can't do
+		 * anything about the dbp handle anyway if the close
+		 * operation fails. But we want to return the error to the
+		 * caller. This is how this function takes care of various
+		 * close operation errors.
+		 */
+		if (dbp->alt_close != NULL)
+			t_ret = dbp->alt_close(dbp, close_flags);
+		else
+			t_ret = __db_close(dbp, NULL, close_flags);
+		if (t_ret != 0 && ret == 0)
+			ret = t_ret;
+	}
 
 	/*
 	 * Detach from the regions and undo the allocations done by
@@ -1055,7 +1112,9 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 		 * If the application is running with transactions, initialize
 		 * the function tables.
 		 */
-		if ((ret = __env_init_rec(env, DB_LOGVERSION)) != 0)
+		if ((ret = __env_init_rec(env,
+		    ((LOG *)env->lg_handle->reginfo.primary)->persist.version))
+		    != 0)
 			goto err;
 	}
 

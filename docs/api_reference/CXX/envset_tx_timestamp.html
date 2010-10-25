@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="txn.html" title="Chapter 13.  The DbTxn Handle" />
     <link rel="prev" href="envset_tx_max.html" title="DbEnv::set_tx_max()" />
-    <link rel="next" href="txnabort.html" title="DbTxn::abort()" />
+    <link rel="next" href="txnrecover.html" title="DbEnv::txn_recover()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 13. 
                 The DbTxn Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txnabort.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -45,7 +45,9 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
     </p>
       <p>
          Once a database environment has been upgraded to a new version of
-         Berkeley DB involving a log format change (see <a href="../../programmer_reference/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a>), it is no longer possible to recover to a
+         Berkeley DB involving a log format change 
+         (see <a href="../../installation/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a>), 
+         it is no longer possible to recover to a
          specific time before that upgrade.
     </p>
       <p>
@@ -72,7 +74,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713046"></a>Parameters</h3>
+              <h3 class="title"><a id="id3703451"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -80,7 +82,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1713269"></a>timestamp</h4>
+                <h4 class="title"><a id="id3703461"></a>timestamp</h4>
               </div>
             </div>
           </div>
@@ -99,7 +101,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713249"></a>Errors</h3>
+              <h3 class="title"><a id="id3703171"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -117,7 +119,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1713058"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3703591"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -132,7 +134,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713313"></a>Class</h3>
+              <h3 class="title"><a id="id3703573"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -145,7 +147,7 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1712840"></a>See Also</h3>
+              <h3 class="title"><a id="id3703613"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -162,14 +164,14 @@ DbEnv::set_tx_timestamp(time_t *timestamp); </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txnabort.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DbEnv::set_tx_max() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DbTxn::abort()</td>
+          <td width="40%" align="right" valign="top"> DbEnv::txn_recover()</td>
         </tr>
       </table>
     </div>

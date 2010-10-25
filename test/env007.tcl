@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2009 Oracle.  All rights reserved.
+# Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -173,7 +173,7 @@ proc env007 { } {
 	# the config file code.  Also check with a getter that the
 	# expected value is returned.
 	#
-	puts "\tEnv007.b: Test berkdb env config options using getters\
+	puts "\tEnv007.b1: Test berkdb env config options using getters\
 	    and env open."
 
 	# The cfglist variable contains options that can be set in DB_CONFIG.
@@ -216,9 +216,6 @@ proc env007 { } {
 	{ "set_tx_max" "31" "get_tx_max" "31" }
 	{ "set_txn_timeout" "50" "get_timeout txn" "50" }
 	{ "set_verbose" "db_verb_deadlock" "get_verbose deadlock" "on" }
-	{ "set_verbose" "db_verb_fileops" "get_verbose fileops" "on" }
-	{ "set_verbose" "db_verb_fileops_all" "get_verbose fileops_all" "on" }
-	{ "set_verbose" "db_verb_recovery" "get_verbose recovery" "on" }
 	{ "set_verbose" "db_verb_register" "get_verbose register" "on" }
 	{ "set_verbose" "db_verb_replication" "get_verbose rep" "on" }
 	{ "set_verbose" "db_verb_waitsfor" "get_verbose wait" "on" }
@@ -238,7 +235,7 @@ proc env007 { } {
 		env007_make_config $configarg $configval
 
 		# Verify using config file
-		puts "\t\tEnv007.b: $configarg $configval"
+		puts "\t\tEnv007.b1: $configarg $configval"
 
 		# Unconfigured/unsupported direct I/O is not reported
 		# as a failure.
@@ -256,6 +253,51 @@ proc env007 { } {
 		error_check_good envvalid:1 [is_valid_env $env] TRUE
 		error_check_good getter:1 [eval $env $getter] $getval
 		error_check_good envclose:1 [$env close] 0
+	}
+
+	# Some verbose options send output to stdout that we want
+	# to inspect, or don't want to send to the screen -- handle
+	# these by running them in their own Tcl shell.
+	# 
+	# We use the same method as section .b1, but cfglist has one
+	# additional argument where we specify the message to look
+	# for in the log file.
+
+	puts "\tEnv007.b2: Test berkdb env config options using getters\
+	    and env open in a separate Tcl shell."
+
+	# The cfglist variable contains options that can be set in DB_CONFIG.
+	set cfglist {
+		{ "set_verbose" "db_verb_recovery" \
+		    "get_verbose recovery" "on" "No log files found"}
+		{ "set_verbose" "db_verb_fileops" \
+		    "get_verbose fileops" "on" "fileops" }
+		{ "set_verbose" "db_verb_fileops_all" \
+		     "get_verbose fileops_all" "on" "fileops: write" }
+	}
+
+	foreach item $cfglist {
+		env_cleanup $testdir
+
+		set configarg [lindex $item 0]
+		set configval [lindex $item 1]
+		set getter [lindex $item 2]
+		set getval [lindex $item 3]
+		set checkmsg [lindex $item 4]
+
+		puts "\t\tEnv007.b2: $configarg $configval"
+
+		set pid [exec $tclsh_path $test_path/wrap.tcl \
+		    env007script.tcl $testdir/env007.b2.output $configarg \
+		    $configval $getter $getval &]
+
+		tclsleep 2
+		watch_procs $pid 5
+		error_check_good found_message \
+		    [findstring $checkmsg $testdir/env007.b2.output] 1
+
+		# Clean up before the next part.
+		fileremove -f $testdir/DB_CONFIG
 	}
 
 	puts "\tEnv007.c: Test berkdb env options using getters and env open."
@@ -430,7 +472,7 @@ proc env007 { } {
 		#
 		# Unconfigured/unsupported direct I/O is not reported
 		# as a failure.
-		if {[catch { $env log_config "$flag on" } res ]} {
+		if {[catch { $env log_config $flag on } res ]} {
 			if { [lsearch $directlist $flag] != -1 && \
 			    [is_substr $res $directmsg] == 1 } {
 				error_check_good env_close [$env close] 0
@@ -453,7 +495,7 @@ proc env007 { } {
 		}
 		# Use set_flags to turn off env characteristics, make sure
 		# they are gone.
-		error_check_good "flag $flag off" [$env log_config "$flag off"] 0
+		error_check_good "flag $flag off" [$env log_config $flag off] 0
 		set get_retval [eval $env log_get_config $flag]
 		if { $get_retval == 1 } {
 			puts "FAIL: $flag should off"
@@ -698,4 +740,8 @@ proc env007_make_config { carg cval } {
 	set cid [open $testdir/DB_CONFIG w]
 	puts $cid "$carg $cval"
 	close $cid
+}
+
+proc env007_eval_env { e } {
+	eval $e 
 }

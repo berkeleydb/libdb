@@ -6,8 +6,6 @@
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
-#define __INCLUDE_SELECT_H      1
 #include "db_int.h"
 
 #include "dbinc/db_page.h"
@@ -17,13 +15,13 @@
 #include "dbinc/db_verify.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
+#include "dbinc/log_verify.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
 
-#define	__STRUCTURE_COUNT	114
+#define	__STRUCTURE_COUNT	130
 
 /*
  * __env_struct_sig --
@@ -53,14 +51,17 @@ __env_struct_sig()
 	__ADD(__db_lsn);
 	__ADD(__db_log_cursor);
 	__ADD(__db_log_stat);
+	__ADD(__log_rec_spec);
 	__ADD(__db_mpoolfile);
 	__ADD(__db_mpool_stat);
 	__ADD(__db_mpool_fstat);
 	__ADD(__db_txn);
 	__ADD(__kids);
+	__ADD(__my_cursors);
 	__ADD(__db_preplist);
 	__ADD(__db_txn_active);
 	__ADD(__db_txn_stat);
+	__ADD(__db_txn_token);
 	__ADD(__db_repmgr_site);
 	__ADD(__db_rep_stat);
 	__ADD(__db_repmgr_stat);
@@ -79,6 +80,7 @@ __env_struct_sig()
 	__ADD(__db_qam_stat);
 	__ADD(__db_env);
 	__ADD(__db_distab);
+	__ADD(__db_logvrfy_config);
 	__ADD(__fn);
 	__ADD(__db_msgbuf);
 	__ADD(__pin_list);
@@ -118,6 +120,16 @@ __env_struct_sig()
 	__ADD(__log);
 	__ADD(__db_commit);
 	__ADD(__db_filestart);
+	__ADD(__log_rec_hdr);
+	__ADD(__db_log_verify_info);
+	__ADD(__txn_verify_info);
+	__ADD(__lv_filereg_info);
+	__ADD(__lv_filelife);
+	__ADD(__lv_ckp_info);
+	__ADD(__lv_timestamp_info);
+	__ADD(__lv_txnrange);
+	__ADD(__add_recycle_params);
+	__ADD(__ckp_verify_params);
 	__ADD(__db_mpool);
 	__ADD(__db_mpreg);
 	__ADD(__mpool);
@@ -148,11 +160,13 @@ __env_struct_sig()
 	__ADD(__db_region);
 	__ADD(__db_reginfo_t);
 	__ADD(__rep);
+	__ADD(__rep_waiter);
 	__ADD(__db_rep);
 	__ADD(__rep_lease_entry);
 	__ADD(__txn_detail);
 	__ADD(__db_txnmgr);
 	__ADD(__db_txnregion);
+	__ADD(__db_commit_info);
 	__ADD(__txn_logrec);
 
 	return (__ham_func5(NULL, t, i * sizeof(t[0])));

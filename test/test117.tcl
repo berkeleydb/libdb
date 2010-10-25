@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005-2009 Oracle.  All rights reserved.
+# Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,7 +18,8 @@
 proc test117 { method {nentries 10000} {tnum "117"} args } {
 	source ./include.tcl
 
-	# Compaction is an option for btree and recno databases only.
+	# Compaction using a requested fill percentage is 
+	# an option for btree and recno databases only.
 	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
 		return
@@ -123,6 +124,10 @@ proc test117 { method {nentries 10000} {tnum "117"} args } {
 			set filename $testfile
 		}
 		set size1 [file size $filename]
+		set count1 [stat_field $db stat "Page count"]
+		set internal1 [stat_field $db stat "Internal pages"]
+		set leaf1 [stat_field $db stat "Leaf pages"]
+		set in_use1 [expr $internal1 + $leaf1]
 		set free1 [stat_field $db stat "Pages on freelist"]
 
 		puts "\tTest$tnum.b: Delete most entries from database."
@@ -178,11 +183,20 @@ proc test117 { method {nentries 10000} {tnum "117"} args } {
 			set size2 [file size $filename]
 			error_check_good verify_dir \
 			     [verify_dir $testdir "" 0 0 $nodump] 0
+			set count2 [stat_field $db stat "Page count"]
+			set internal2 [stat_field $db stat "Internal pages"]
+			set leaf2 [stat_field $db stat "Leaf pages"]
 			set free2 [stat_field $db stat "Pages on freelist"]
 
-			# The number of free pages should never decline.
-			error_check_good pages_freed [expr $free2 >= $free1] 1
+			# The page count and file size should never increase.
+			error_check_good page_count [expr $count2 <= $count1] 1
 			error_check_good file_size [expr $size2 <= $size1] 1
+
+			# Pages in use (leaf + internal) should never increase; 
+			# pages on free list should never decrease.
+			set in_use2 [expr $internal2 + $leaf2]
+			error_check_good pages_in_use [expr $in_use2 <= $in_use1] 1
+			error_check_good pages_on_freelist [expr $free2 >= $free1] 1
 
 			puts "\tTest$tnum.e:\
 			    Contents are the same after compaction."
@@ -196,8 +210,13 @@ proc test117 { method {nentries 10000} {tnum "117"} args } {
 				error_check_good txn_commit [$t commit] 0
 			}
 			error_check_good filecmp [filecmp $t1 $t2] 0
+
+			# Reset originals values to the post-compaction number
+			# for the next pass.
+			set count1 $count2
 			set free1 $free2
 			set size1 $size2
+			set in_use1 $in_use2
 		}
 		error_check_good db_close [$db close] 0
 		close $did

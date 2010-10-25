@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, int percent));</pre>
+Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, 
+                                         int percent));</pre>
       <p>
          Some operations performed by the Berkeley DB library can take non-trivial amounts of time.
          The <code class="methodname">Db::set_feedback()</code> method can be used by applications to
@@ -69,7 +70,7 @@ Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, int percent));</pr
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1646619"></a>Parameters</h3>
+              <h3 class="title"><a id="id3633403"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -77,7 +78,7 @@ Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, int percent));</pr
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1646855"></a>db_feedback_fcn</h4>
+                <h4 class="title"><a id="id3633408"></a>db_feedback_fcn</h4>
               </div>
             </div>
           </div>
@@ -145,7 +146,7 @@ Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, int percent));</pr
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1646999"></a>Class</h3>
+              <h3 class="title"><a id="id3634049"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -157,7 +158,7 @@ Db::set_feedback(void (*db_feedback_fcn)(DB *dbp, int opcode, int percent));</pr
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1647149"></a>See Also</h3>
+              <h3 class="title"><a id="id3633670"></a>See Also</h3>
             </div>
           </div>
         </div>

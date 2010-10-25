@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -15,7 +15,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 enum which_open { OPEN_ORIGINAL, OPEN_HOT_BACKUP };
@@ -214,13 +214,13 @@ db_hotbackup_main(argc, argv)
 	     (db_config || log_dir != NULL) ? &log_dir : NULL,
 	     db_config ? &data_dir : NULL,
 	     passwd, OPEN_ORIGINAL) != 0)
-		goto shutdown;
+		goto err;
 
 	if (db_config && __os_abspath(log_dir)) {
 		fprintf(stderr,
 	"%s: DB_CONFIG must not contain an absolute path for the log directory",
 		    progname);
-		goto shutdown;
+		goto err;
 	}
 
 	/*
@@ -233,7 +233,7 @@ db_hotbackup_main(argc, argv)
 		if ((ret =
 		    dbenv->txn_checkpoint(dbenv, 0, 0, DB_FORCE)) != 0) {
 			dbenv->err(dbenv, ret, "DB_ENV->txn_checkpoint");
-			goto shutdown;
+			goto err;
 		}
 		if (!update) {
 			if (verbose)
@@ -242,7 +242,7 @@ db_hotbackup_main(argc, argv)
 			if ((ret = dbenv->log_archive(dbenv,
 			     NULL, DB_ARCH_REMOVE)) != 0) {
 				dbenv->err(dbenv, ret, "DB_ENV->log_archive");
-				goto shutdown;
+				goto err;
 			}
 		}
 	}
@@ -267,10 +267,10 @@ db_hotbackup_main(argc, argv)
 	if (db_config && log_dir != NULL &&
 	    db_hotbackup_backup_dir_clean(
 	    dbenv, backup_dir, log_dir, &remove_max, update, verbose) != 0)
-		goto shutdown;
+		goto err;
 	if (db_hotbackup_backup_dir_clean(dbenv,
 	    backup_dir, NULL, &remove_max, update, verbose) != 0)
-		goto shutdown;
+		goto err;
 
 	/*
 	 * If the -u option was not specified, copy all database files found in
@@ -280,7 +280,7 @@ db_hotbackup_main(argc, argv)
 	if (!update) {
 		if (db_hotbackup_read_data_dir(dbenv, home,
 		     backup_dir, home, verbose, db_config) != 0)
-			goto shutdown;
+			goto err;
 		if (data_dir != NULL)
 			for (dir = data_dir; *dir != NULL; ++dir) {
 				/*
@@ -292,11 +292,11 @@ db_hotbackup_main(argc, argv)
 					fprintf(stderr,
      "%s: data directory '%s' is absolute path, not permitted with -D option\n",
 					     progname, *dir);
-					goto shutdown;
+					goto err;
 				}
 				if (db_hotbackup_read_data_dir(dbenv, home,
 				     backup_dir, *dir, verbose, db_config) != 0)
-					goto shutdown;
+					goto err;
 			}
 	}
 
@@ -309,7 +309,7 @@ db_hotbackup_main(argc, argv)
 	 */
 	if (db_hotbackup_read_log_dir(dbenv, db_config ? home : NULL, backup_dir,
 	     log_dir == NULL ? home : log_dir, &copy_min, update, verbose) != 0)
-		goto shutdown;
+		goto err;
 
 	/*
 	 * If we're updating a snapshot, the lowest-numbered log file copied
@@ -325,7 +325,7 @@ db_hotbackup_main(argc, argv)
 		fprintf(stderr,
 		    "%s: than or equal the smallest log file copied (%d)\n",
 		    progname, copy_min);
-		goto shutdown;
+		goto err;
 	}
 
 	/* Close the source environment. */
@@ -333,7 +333,7 @@ db_hotbackup_main(argc, argv)
 		fprintf(stderr,
 		    "%s: dbenv->close: %s\n", progname, db_strerror(ret));
 		dbenv = NULL;
-		goto shutdown;
+		goto err;
 	}
 	/* Perform catastrophic recovery on the hot backup. */
 	if (verbose)
@@ -341,7 +341,7 @@ db_hotbackup_main(argc, argv)
 		    progname, backup_dir);
 	if (db_hotbackup_env_init(
 	    &dbenv, backup_dir, NULL, NULL, passwd, OPEN_HOT_BACKUP) != 0)
-		goto shutdown;
+		goto err;
 
 	/*
 	 * Remove any unnecessary log files from the hot backup.
@@ -352,11 +352,11 @@ db_hotbackup_main(argc, argv)
 	if ((ret =
 	    dbenv->log_archive(dbenv, NULL, DB_ARCH_REMOVE)) != 0) {
 		dbenv->err(dbenv, ret, "DB_ENV->log_archive");
-		goto shutdown;
+		goto err;
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 	if (dbenv != NULL && (ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
@@ -601,15 +601,17 @@ db_hotbackup_read_data_dir(dbenv, home, backup_dir, dir, verbose, db_config)
 	}
 	for (cnt = fcnt; --cnt >= 0;) {
 		/*
-		 * Skip files in DB's name space (but not Queue
-		 * extent files, we need them).
+		 * Skip files in DB's name space (but not Queue extent files or
+		 * the replicated system database, we need them).
 		 */
 		if (!strncmp(names[cnt], LFPREFIX, sizeof(LFPREFIX) - 1))
 			continue;
 		if (!strncmp(names[cnt],
 		    DB_REGION_PREFIX, sizeof(DB_REGION_PREFIX) - 1) &&
 		    strncmp(names[cnt],
-		    QUEUE_EXTENT_PREFIX, sizeof(QUEUE_EXTENT_PREFIX) - 1))
+		    QUEUE_EXTENT_PREFIX, sizeof(QUEUE_EXTENT_PREFIX) - 1) &&
+		    strncmp(names[cnt],
+		    REPSYSDBNAME, sizeof(REPSYSDBNAME) - 1))
 			continue;
 
 		/*

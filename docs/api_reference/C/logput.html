@@ -57,7 +57,7 @@ DB_ENV-&gt;log_put(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1681935"></a>Parameters</h3>
+              <h3 class="title"><a id="id4000966"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -65,7 +65,21 @@ DB_ENV-&gt;log_put(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1682012"></a>data</h4>
+                <h4 class="title"><a id="id4000970"></a>lsn</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>lsn</strong></span> parameter references memory
+                          into which  the <a class="link" href="lsn.html" title="Chapter 7.  The DB_LSN Handle">DB_LSN</a>  of
+                          the put record is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4000737"></a>data</h4>
               </div>
             </div>
           </div>
@@ -89,7 +103,7 @@ DB_ENV-&gt;log_put(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1682095"></a>flags</h4>
+                <h4 class="title"><a id="id4000903"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -113,26 +127,12 @@ DB_ENV-&gt;log_put(DB_ENV *env,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1682220"></a>lsn</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>lsn</strong></span> parameter references memory
-                          into which  the <a class="link" href="lsn.html" title="Chapter 7.  The DB_LSN Handle">DB_LSN</a>  of
-                          the put record is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1682360"></a>Errors</h3>
+              <h3 class="title"><a id="id4000925"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ DB_ENV-&gt;log_put(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1681639"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4000120"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ DB_ENV-&gt;log_put(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1681640"></a>Class</h3>
+              <h3 class="title"><a id="id4000675"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ DB_ENV-&gt;log_put(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1682089"></a>See Also</h3>
+              <h3 class="title"><a id="id4001253"></a>See Also</h3>
             </div>
           </div>
         </div>

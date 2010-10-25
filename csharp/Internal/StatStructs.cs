@@ -3,7 +3,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 using System;
@@ -257,6 +257,8 @@ namespace BerkeleyDB.Internal {
 	internal ulong st_msgs_dropped;	
 	internal ulong st_connection_drop;	
 	internal ulong st_connect_fail;	
+	internal ulong st_elect_threads;	
+	internal ulong st_max_elect_threads;	
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -270,8 +272,8 @@ namespace BerkeleyDB.Internal {
 	 * off somewhat (or, on unreasonable architectures under unlucky
 	 * circumstances, garbaged).
 	 */
-	internal ulong st_log_queued;	
 	internal uint st_startup_complete;	
+	internal ulong st_log_queued;	
 	internal uint st_status;		
 	internal DB_LSN_STRUCT st_next_lsn;		
 	internal DB_LSN_STRUCT st_waiting_lsn;		
@@ -391,6 +393,8 @@ internal enum DB_TXN_ACTIVE_STATUS {
 
 	internal DB_LSN_STRUCT	  read_lsn;		
 	internal uint mvcc_ref;		
+
+	internal uint priority;		
 
 	internal DB_TXN_ACTIVE_STATUS status;		
 

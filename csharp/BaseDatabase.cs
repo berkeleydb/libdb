@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -150,9 +150,9 @@ namespace BerkeleyDB {
         /// </summary>
         public string DatabaseName {
             get {
-                string ret = "";
-                string tmp = "";
-                db.get_dbname(ref tmp, ref ret);
+                string tmp = null;
+                string ret = null;
+                db.get_dbname(out tmp, out ret);                
                 return ret;
             }
         }
@@ -300,7 +300,7 @@ namespace BerkeleyDB {
             get {
                 string ret = "";
                 string tmp = "";
-                db.get_dbname(ref ret, ref tmp);
+                db.get_dbname(out ret, out tmp);
                 return ret;
             }
         }

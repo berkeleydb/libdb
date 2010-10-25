@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -59,6 +59,15 @@ public interface EventHandler {
     public void handleRepClientEvent();
 
     /**
+    A callback function to be called when a Replication Client event is sent
+    from the Berkeley DB library.
+    <p>
+    This event callback is received when a duplicate master site has been
+    discovered in the replication group.
+    */
+    public void handleRepDupmasterEvent();
+
+    /**
     A callback function to be called when an event is sent from the
     Berkeley DB library.
     <p>
@@ -78,11 +87,41 @@ public interface EventHandler {
     A callback function to be called when an event is sent from the
     Berkeley DB library.
     <p>
+    This event callback is received when the local site's attempt to initiate
+    or participate in a replication master election failed, due to the lack
+    of timely message response from a sufficient number of remote sites.
+    */
+    public void handleRepElectionFailedEvent();
+
+    /**
+    A callback function to be called when an event is sent from the
+    Berkeley DB library.
+    <p>
+    This event callback is received when the local site could not synchronize
+    with the master because an internal initialization was required, but
+    internal initialization has been turned off by the {@link com.sleepycat.db.ReplicationConfig#AUTOINIT ReplicationConfig.AUTOINIT}
+    flag to {@link com.sleepycat.db.Environment#setReplicationConfig Environment.setReplicationConfig}
+    */
+    public void handleRepJoinFailureEvent();
+
+    /**
+    A callback function to be called when an event is sent from the
+    Berkeley DB library.
+    <p>
     This event callback is received when this site is now the master site of
     its replication group. It is the application's responsibility to begin
     acting as the master environment.
     */
     public void handleRepMasterEvent();
+
+    /**
+    A callback function to be called when an event is sent from the
+    Berkeley DB library.
+    <p>
+    This event callback is received when the connection to the remote master
+    replication site has failed.
+    */
+    public void handleRepMasterFailureEvent();
 
     /**
     A callback function to be called when an event is sent from the

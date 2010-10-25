@@ -38,30 +38,30 @@
         </div>
       </div>
       <p>
-                This chapter describes the APIs available to build Berkeley DB replicated
-                applications. There are two different ways to build replication into a Berkeley DB
-                application, and the APIs for both are described in this chapter.
+            This chapter describes the APIs available to build Berkeley DB replicated
+            applications. There are two different ways to build replication into a Berkeley DB
+            application, and the APIs for both are described in this chapter.
         </p>
       <p>
             For an overview of the two different ways to build a replicated
             application, see the <em class="citetitle">Berkeley DB Getting Started with Replicated Applications</em> guide.
         </p>
       <p>
-                The first, and simplest, way to build a replication Berkeley DB application is via
-                the <span class="emphasis"><em>Replication Manager</em></span>. If the Replication Manager does not
-                meet your application's architectural requirements, they you can write your own
-                replication implementation using the "Base APIs". 
+            The first, and simplest, way to build a replication Berkeley DB application is via
+            the <span class="emphasis"><em>Replication Manager</em></span>. If the Replication Manager does not
+            meet your application's architectural requirements, you can write your own
+            replication implementation using the "Base APIs". 
         </p>
       <p>
-                Note that the Replication Manager is written using the Base APIs.
+            Note that the Replication Manager is written using the Base APIs.
         </p>
       <p>
-                Note, also, that applications which make use of the Replication Manager 
-                use many of the Base APIs as the situation warrants. That said,
-                a few Base API methods cannot be used by applications that
-                are making use of the Replication Manager. Where this is
-                the case, this is noted in the following method
-                descriptions.
+            Note, also, that applications which make use of the Replication Manager 
+            use many of the Base APIs as the situation warrants. That said,
+            a few Base API methods cannot be used by applications that
+            are making use of the Replication Manager. Where this is
+            the case, this is noted in the following method
+            descriptions.
         </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -177,6 +177,12 @@
                 <td>Replication synchronization</td>
               </tr>
               <tr>
+                <td>
+                  <a class="xref" href="envtxn_applied.html" title="DB_ENV-&gt;txn_applied()">DB_ENV-&gt;txn_applied()</a>
+                </td>
+                <td>Check if a transaction has been replicated</td>
+              </tr>
+              <tr>
                 <td colspan="2">
                   <span class="bold">
                     <strong>Replication Configuration</strong>
@@ -210,6 +216,19 @@
               <tr>
                 <td><a class="xref" href="repset_timeout.html" title="DB_ENV-&gt;rep_set_timeout()">DB_ENV-&gt;rep_set_timeout()</a>, <a class="xref" href="repget_timeout.html" title="DB_ENV-&gt;rep_get_timeout()">DB_ENV-&gt;rep_get_timeout()</a></td>
                 <td>Configure replication timeouts</td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <span class="bold">
+                    <strong>Transaction Operations</strong>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <a class="xref" href="txnset_commit_token.html" title="DB_TXN-&gt;set_commit_token()">DB_TXN-&gt;set_commit_token()</a>
+                </td>
+                <td>Set a commit token</td>
               </tr>
             </tbody>
           </table>

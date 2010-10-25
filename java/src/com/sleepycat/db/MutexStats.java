@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -18,55 +18,61 @@ public class MutexStats {
     /* package */ MutexStats() {}
 
     private int st_mutex_align;
-    /** TODO */
+    /** The mutex alignment, in bytes. **/
     public int getMutexAlign() {
         return st_mutex_align;
     }
 
     private int st_mutex_tas_spins;
-    /** TODO */
+    /** The number of times test-and-set mutexes will spin without blocking. **/
     public int getMutexTasSpins() {
         return st_mutex_tas_spins;
     }
 
     private int st_mutex_cnt;
-    /** TODO */
+    /** The total number of mutexes configured. **/
     public int getMutexCount() {
         return st_mutex_cnt;
     }
 
     private int st_mutex_free;
-    /** TODO */
+    /** The number of mutexes currently available. **/
     public int getMutexFree() {
         return st_mutex_free;
     }
 
     private int st_mutex_inuse;
-    /** TODO */
+    /** The number of mutexes currently in use. **/
     public int getMutexInuse() {
         return st_mutex_inuse;
     }
 
     private int st_mutex_inuse_max;
-    /** TODO */
+    /** The maximum number of mutexes ever in use. **/
     public int getMutexInuseMax() {
         return st_mutex_inuse_max;
     }
 
     private long st_region_wait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was forced to wait before
+    obtaining the mutex region mutex.
+    **/
     public long getRegionWait() {
         return st_region_wait;
     }
 
     private long st_region_nowait;
-    /** TODO */
+    /**
+    The number of times that a thread of control was able to obtain
+    the mutex region mutex without waiting.
+    **/
     public long getRegionNowait() {
         return st_region_nowait;
     }
 
     private int st_regsize;
-    /** TODO */
+    /** The size of the mutex region, in bytes. **/
     public int getRegSize() {
         return st_regsize;
     }

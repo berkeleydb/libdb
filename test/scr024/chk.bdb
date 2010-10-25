@@ -22,6 +22,13 @@
 }
 
 case `uname` in
+	*CYGWIN*WOW64*)
+	d=../../build_windows/x64/Debug
+	DB_LIB_DIR="$d"
+	REQUIRED_JARS="`cygpath -m $JUNIT_JAR`"
+	CP_SEP=";"
+	PATH="../../build_windows/x64/Debug:$PATH"
+	export PATH;;
 	*CYGWIN*)
 	d=../../build_windows/Win32/Debug
 	DB_LIB_DIR="$d"

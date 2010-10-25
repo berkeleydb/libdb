@@ -51,6 +51,12 @@ class libdb_csharpPINVOKE {
   [DllImport(libname, EntryPoint="CSharp_DB_COMPACT_compact_pages_get")]
   public static extern uint DB_COMPACT_compact_pages_get(HandleRef jarg1);
 
+  [DllImport(libname, EntryPoint="CSharp_DB_COMPACT_compact_empty_buckets_set")]
+  public static extern void DB_COMPACT_compact_empty_buckets_set(HandleRef jarg1, uint jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_COMPACT_compact_empty_buckets_get")]
+  public static extern uint DB_COMPACT_compact_empty_buckets_get(HandleRef jarg1);
+
   [DllImport(libname, EntryPoint="CSharp_DB_COMPACT_compact_pages_free_set")]
   public static extern void DB_COMPACT_compact_pages_free_set(HandleRef jarg1, uint jarg2);
 
@@ -157,7 +163,7 @@ class libdb_csharpPINVOKE {
   public static extern int DB_get_byteswapped(HandleRef jarg1, ref int jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_get_dbname")]
-  public static extern int DB_get_dbname(HandleRef jarg1, ref string jarg2, ref string jarg3);
+  public static extern int DB_get_dbname(HandleRef jarg1, out IntPtr jarg2, out IntPtr jarg3);
 
   [DllImport(libname, EntryPoint="CSharp_DB_get_multiple")]
   public static extern int DB_get_multiple(HandleRef jarg1);
@@ -298,7 +304,7 @@ class libdb_csharpPINVOKE {
   public static extern int DB_set_re_pad(HandleRef jarg1, int jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_get_re_source")]
-  public static extern int DB_get_re_source(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_get_re_source(HandleRef jarg1, out IntPtr jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_set_re_source")]
   public static extern int DB_set_re_source(HandleRef jarg1, string jarg2);
@@ -353,6 +359,18 @@ class libdb_csharpPINVOKE {
 
   [DllImport(libname, EntryPoint="CSharp_delete_DBC")]
   public static extern void delete_DBC(HandleRef jarg1);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_TOKEN_buf_set")]
+  public static extern void DB_TXN_TOKEN_buf_set(HandleRef jarg1, byte[] jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_TOKEN_buf_get")]
+  public static extern IntPtr DB_TXN_TOKEN_buf_get(HandleRef jarg1);
+
+  [DllImport(libname, EntryPoint="CSharp_new_DB_TXN_TOKEN")]
+  public static extern IntPtr new_DB_TXN_TOKEN();
+
+  [DllImport(libname, EntryPoint="CSharp_delete_DB_TXN_TOKEN")]
+  public static extern void delete_DB_TXN_TOKEN(HandleRef jarg1);
 
   [DllImport(libname, EntryPoint="CSharp_DBT_dlen_set")]
   public static extern void DBT_dlen_set(HandleRef jarg1, uint jarg2);
@@ -426,6 +444,12 @@ class libdb_csharpPINVOKE {
   [DllImport(libname, EntryPoint="CSharp_DB_REPMGR_SITE_status_get")]
   public static extern uint DB_REPMGR_SITE_status_get(HandleRef jarg1);
 
+  [DllImport(libname, EntryPoint="CSharp_DB_REPMGR_SITE_flags_set")]
+  public static extern void DB_REPMGR_SITE_flags_set(HandleRef jarg1, uint jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_REPMGR_SITE_flags_get")]
+  public static extern uint DB_REPMGR_SITE_flags_get(HandleRef jarg1);
+
   [DllImport(libname, EntryPoint="CSharp_new_DB_REPMGR_SITE")]
   public static extern IntPtr new_DB_REPMGR_SITE();
 
@@ -434,6 +458,12 @@ class libdb_csharpPINVOKE {
 
   [DllImport(libname, EntryPoint="CSharp_DB_TXN_abort")]
   public static extern int DB_TXN_abort(HandleRef jarg1);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_is_commit_token_enabled")]
+  public static extern int DB_TXN_is_commit_token_enabled(HandleRef jarg1);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_set_commit_token")]
+  public static extern int DB_TXN_set_commit_token(HandleRef jarg1, HandleRef jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_TXN_commit")]
   public static extern int DB_TXN_commit(HandleRef jarg1, uint jarg2);
@@ -448,10 +478,16 @@ class libdb_csharpPINVOKE {
   public static extern int DB_TXN_prepare(HandleRef jarg1, byte[] jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_TXN_get_name")]
-  public static extern int DB_TXN_get_name(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_TXN_get_name(HandleRef jarg1, out IntPtr jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_TXN_set_name")]
   public static extern int DB_TXN_set_name(HandleRef jarg1, string jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_get_priority")]
+  public static extern int DB_TXN_get_priority(HandleRef jarg1, ref uint jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_TXN_set_priority")]
+  public static extern int DB_TXN_set_priority(HandleRef jarg1, uint jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_TXN_set_timeout")]
   public static extern int DB_TXN_set_timeout(HandleRef jarg1, uint jarg2, uint jarg3);
@@ -496,7 +532,10 @@ class libdb_csharpPINVOKE {
   public static extern int DB_ENV_fileid_reset(HandleRef jarg1, string jarg2, uint jarg3);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_get_home")]
-  public static extern int DB_ENV_get_home(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_ENV_get_home(HandleRef jarg1, out IntPtr jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_ENV_is_transaction_applied")]
+  public static extern int DB_ENV_is_transaction_applied(HandleRef jarg1, HandleRef jarg2, uint jarg3, uint jarg4);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_lock_detect")]
   public static extern int DB_ENV_lock_detect(HandleRef jarg1, uint jarg2, uint jarg3, ref uint jarg4);
@@ -745,7 +784,7 @@ class libdb_csharpPINVOKE {
   public static extern int DB_ENV_set_flags(HandleRef jarg1, uint jarg2, int jarg3);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_get_intermediate_dir_mode")]
-  public static extern int DB_ENV_get_intermediate_dir_mode(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_ENV_get_intermediate_dir_mode(HandleRef jarg1, out IntPtr jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_set_intermediate_dir_mode")]
   public static extern int DB_ENV_set_intermediate_dir_mode(HandleRef jarg1, string jarg2);
@@ -760,7 +799,7 @@ class libdb_csharpPINVOKE {
   public static extern int DB_ENV_set_lg_bsize(HandleRef jarg1, uint jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_get_lg_dir")]
-  public static extern int DB_ENV_get_lg_dir(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_ENV_get_lg_dir(HandleRef jarg1, out IntPtr jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_set_lg_dir")]
   public static extern int DB_ENV_set_lg_dir(HandleRef jarg1, string jarg2);
@@ -782,6 +821,9 @@ class libdb_csharpPINVOKE {
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_set_lg_regionmax")]
   public static extern int DB_ENV_set_lg_regionmax(HandleRef jarg1, uint jarg2);
+
+  [DllImport(libname, EntryPoint="CSharp_DB_ENV_log_verify")]
+  public static extern int DB_ENV_log_verify(HandleRef jarg1, string jarg2, uint jarg3, string jarg4, string jarg5, long jarg6, long jarg7, uint jarg8, uint jarg9, uint jarg10, uint jarg11, int jarg12, int jarg13);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_get_lk_conflicts_nmodes")]
   public static extern int DB_ENV_get_lk_conflicts_nmodes(HandleRef jarg1, ref int jarg2);
@@ -859,7 +901,7 @@ class libdb_csharpPINVOKE {
   public static extern int DB_ENV_set_timeout(HandleRef jarg1, uint jarg2, uint jarg3);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_get_tmp_dir")]
-  public static extern int DB_ENV_get_tmp_dir(HandleRef jarg1, ref string jarg2);
+  public static extern int DB_ENV_get_tmp_dir(HandleRef jarg1, out IntPtr jarg2);
 
   [DllImport(libname, EntryPoint="CSharp_DB_ENV_set_tmp_dir")]
   public static extern int DB_ENV_set_tmp_dir(HandleRef jarg1, string jarg2);

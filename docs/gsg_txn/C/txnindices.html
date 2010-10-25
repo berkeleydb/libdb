@@ -90,7 +90,8 @@ if (ret != 0) {
 /* open the secondary database */
 ret = sdbp-&gt;open(sdbp,          /* DB structure pointer */
                  NULL,            /* Transaction pointer */
-                 "my_secdb.db",   /* On-disk file that holds the database. */
+                 "my_secdb.db",   /* On-disk file that holds the 
+                                   * database. */
                  NULL,            /* Optional logical database name */
                  DB_BTREE,        /* Database access method */
                  DB_AUTO_COMMIT,  /* Open flags */

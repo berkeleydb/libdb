@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -45,7 +45,6 @@
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
@@ -67,7 +66,11 @@ typedef enum {
 } txnop_t;
 
 static int  __txn_abort_pp __P((DB_TXN *));
+static int  __txn_applied __P((ENV *,
+    DB_THREAD_INFO *, DB_COMMIT_INFO *, db_timeout_t));
+static void __txn_build_token __P((DB_TXN *, DB_LSN *));
 static int  __txn_begin_int __P((DB_TXN *));
+static int  __txn_close_cursors __P((DB_TXN *));
 static int  __txn_commit_pp __P((DB_TXN *, u_int32_t));
 static int  __txn_discard __P((DB_TXN *, u_int32_t));
 static int  __txn_dispatch_undo
@@ -75,9 +78,10 @@ static int  __txn_dispatch_undo
 static int  __txn_end __P((DB_TXN *, int));
 static int  __txn_isvalid __P((const DB_TXN *, txnop_t));
 static int  __txn_undo __P((DB_TXN *));
+static int __txn_set_commit_token __P((DB_TXN *txn, DB_TXN_TOKEN *));
 static void __txn_set_txn_lsnp __P((DB_TXN *, DB_LSN **, DB_LSN **));
 
-static char *TxnAlloc = "Unable to allocate a transaction handle";
+#define	TxnAlloc "Unable to allocate a transaction handle"
 
 /*
  * __txn_begin_pp --
@@ -101,8 +105,8 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 
 	if ((ret = __db_fchk(env,
 	    "txn_begin", flags,
-	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
-	    DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
+	    DB_IGNORE_LEASE |DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
+	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(env, "txn_begin", flags,
@@ -111,8 +115,11 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	if ((ret = __db_fcchk(env, "txn_begin",
 	    flags, DB_TXN_WRITE_NOSYNC, DB_TXN_NOSYNC)) != 0)
 		return (ret);
-	if (parent != NULL && !F_ISSET(parent, TXN_SNAPSHOT) &&
-	    LF_ISSET(DB_TXN_SNAPSHOT)) {
+	if (parent != NULL && LF_ISSET(DB_TXN_FAMILY)) {
+		__db_errx(env, "Family transactions cannot have parents");
+		return (EINVAL);
+	} else if (parent != NULL && !F_ISSET(parent, TXN_FAMILY) &&
+	    !F_ISSET(parent, TXN_SNAPSHOT) && LF_ISSET(DB_TXN_SNAPSHOT)) {
 		__db_errx(env,
 		    "Child transaction snapshot setting must match parent");
 		return (EINVAL);
@@ -120,9 +127,9 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 
 	ENV_ENTER(env, ip);
 
-	if (parent == NULL) {
+	if (parent == NULL || F_ISSET(parent, TXN_FAMILY)) {
 		rep_check = IS_ENV_REPLICATED(env) ? 1 : 0;
-		if (rep_check && (ret = __op_rep_enter(env)) != 0)
+		if (rep_check && (ret = __op_rep_enter(env, 0)) != 0)
 			goto err;
 	} else
 		rep_check = 0;
@@ -175,9 +182,12 @@ __txn_begin(env, ip, parent, txnpp, flags)
 	dbenv = env->dbenv;
 	txn->mgrp = env->tx_handle;
 	txn->parent = parent;
+	if (parent != NULL && F_ISSET(parent, TXN_FAMILY))
+		parent = NULL;
 	TAILQ_INIT(&txn->kids);
 	TAILQ_INIT(&txn->events);
 	STAILQ_INIT(&txn->logs);
+	TAILQ_INIT(&txn->my_cursors);
 	txn->flags = TXN_MALLOC;
 	txn->thread_info =
 	     ip != NULL ? ip : (parent != NULL ? parent->thread_info : NULL);
@@ -206,9 +216,13 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		F_SET(txn, TXN_READ_COMMITTED);
 	if (LF_ISSET(DB_READ_UNCOMMITTED))
 		F_SET(txn, TXN_READ_UNCOMMITTED);
+	if (LF_ISSET(DB_TXN_FAMILY))
+		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
 	if (LF_ISSET(DB_TXN_SNAPSHOT) || F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT)))
 		F_SET(txn, TXN_SNAPSHOT);
+	if (LF_ISSET(DB_IGNORE_LEASE))
+		F_SET(txn, TXN_IGNORE_LEASE);
 
 	if ((ret = __txn_begin_int(txn)) != 0)
 		goto err;
@@ -343,12 +357,14 @@ __txn_begin_int(txn)
 	ENV *env;
 	TXN_DETAIL *td;
 	u_int32_t id;
-	int ret;
+	int inserted, ret;
 
 	mgr = txn->mgrp;
 	env = mgr->env;
 	dbenv = env->dbenv;
 	region = mgr->reginfo.primary;
+	td = NULL;
+	inserted = 0;
 
 	TXN_SYSTEM_LOCK(env);
 	if (!F_ISSET(txn, TXN_COMPENSATE) && F_ISSET(region, TXN_IN_RECOVERY)) {
@@ -377,9 +393,6 @@ __txn_begin_int(txn)
 		goto err;
 	}
 
-	/* Place transaction on active transaction list. */
-	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
-
 	id = ++region->last_txnid;
 
 #ifdef HAVE_STATISTICS
@@ -391,15 +404,15 @@ __txn_begin_int(txn)
 	td->txnid = id;
 	dbenv->thread_id(dbenv, &td->pid, &td->tid);
 
-	/* allocate a locker for this txn */
+	/* Allocate a locker for this txn. */
 	if (LOCKING_ON(env) && (ret =
-	    __lock_getlocker(env->lk_handle, id, 1, &txn->locker)) != 0)
-		goto err;
+		__lock_getlocker(env->lk_handle, id, 1, &txn->locker)) != 0)
+			goto err;
 
 	ZERO_LSN(td->last_lsn);
 	ZERO_LSN(td->begin_lsn);
 	SH_TAILQ_INIT(&td->kids);
-	if (txn->parent != NULL)
+	if (txn->parent != NULL && !F_ISSET(txn->parent, TXN_FAMILY))
 		td->parent = R_OFFSET(&mgr->reginfo, txn->parent->td);
 	else
 		td->parent = INVALID_ROFF;
@@ -414,6 +427,10 @@ __txn_begin_int(txn)
 	td->nlog_slots = TXN_NSLOTS;
 	td->log_dbs = R_OFFSET(&mgr->reginfo, td->slots);
 
+	/* Place transaction on active transaction list. */
+	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
+	inserted = 1;
+
 	TXN_SYSTEM_UNLOCK(env);
 
 	txn->txnid = id;
@@ -423,20 +440,42 @@ __txn_begin_int(txn)
 	txn->commit = __txn_commit_pp;
 	txn->discard = __txn_discard;
 	txn->get_name = __txn_get_name;
+	txn->get_priority = __txn_get_priority;
 	txn->id = __txn_id;
 	txn->prepare = __txn_prepare;
+	txn->set_commit_token = __txn_set_commit_token;
 	txn->set_txn_lsnp = __txn_set_txn_lsnp;
 	txn->set_name = __txn_set_name;
+	txn->set_priority = __txn_set_priority;
 	txn->set_timeout = __txn_set_timeout;
+
+	/* We can't call __txn_set_priority until txn->td is set. */
+	if (LOCKING_ON(env) && (ret = __txn_set_priority(txn,
+		txn->parent == NULL ?
+		TXN_PRIORITY_DEFAULT : txn->parent->locker->priority)) != 0)
+		goto err;
+	else
+		td->priority = 0;
 
 	/*
 	 * If this is a transaction family, we must link the child to the
 	 * maximal grandparent in the lock table for deadlock detection.
 	 */
-	if (txn->parent != NULL && LOCKING_ON(env))
-		if ((ret = __lock_addfamilylocker(env,
-		    txn->parent->txnid, txn->txnid)) != 0)
-			return (ret);
+	if (txn->parent != NULL) {
+		if (LOCKING_ON(env) && (ret = __lock_addfamilylocker(env,
+		    txn->parent->txnid, txn->txnid,
+		    F_ISSET(txn->parent, TXN_FAMILY))) != 0)
+			goto err;
+
+		/*
+		 * If the parent is only used to establish compatability, do
+		 * not reference it again.
+		 */
+		if (F_ISSET(txn->parent, TXN_FAMILY)) {
+			txn->parent = NULL;
+			F_SET(txn, TXN_INFAMILY);
+		}
+	}
 
 	if (F_ISSET(txn, TXN_MALLOC)) {
 		MUTEX_LOCK(env, mgr->mutex);
@@ -446,7 +485,13 @@ __txn_begin_int(txn)
 
 	return (0);
 
-err:	TXN_SYSTEM_UNLOCK(env);
+err:	if (inserted) {
+		TXN_SYSTEM_LOCK(env);
+		SH_TAILQ_REMOVE(&region->active_txn, td, links, __txn_detail);
+	}
+	if (td != NULL)
+		__env_alloc_free(&mgr->reginfo, td);
+	TXN_SYSTEM_UNLOCK(env);
 	return (ret);
 }
 
@@ -476,9 +521,12 @@ __txn_continue(env, txn, td)
 	txn->commit = __txn_commit_pp;
 	txn->discard = __txn_discard;
 	txn->get_name = __txn_get_name;
+	txn->get_priority = __txn_get_priority;
 	txn->id = __txn_id;
 	txn->prepare = __txn_prepare;
+	txn->set_commit_token = __txn_set_commit_token;
 	txn->set_name = __txn_set_name;
+	txn->set_priority = __txn_set_priority;
 
 	txn->flags = 0;
 	/*
@@ -490,8 +538,9 @@ __txn_continue(env, txn, td)
 	if (F_ISSET(td, TXN_DTL_RESTORED))
 		F_SET(txn, TXN_RESTORED);
 	else
-		ret = __lock_getlocker(env->lk_handle,
-		    txn->txnid, 0, &txn->locker);
+		if ((ret = __lock_getlocker(env->lk_handle,
+		    txn->txnid, 0, &txn->locker)) == 0)
+			ret = __txn_set_priority(txn, td->priority);
 
 	return (ret);
 }
@@ -540,6 +589,7 @@ __txn_commit(txn, flags)
 	REGENV *renv;
 	REGINFO *infop;
 	TXN_DETAIL *td;
+	DB_LSN token_lsn;
 	u_int32_t id;
 	int ret, t_ret;
 
@@ -555,18 +605,23 @@ __txn_commit(txn, flags)
 		goto err;
 	}
 
+	/* Close registered cursors before committing. */
+	if ((ret = __txn_close_cursors(txn)) != 0)
+		goto err;
+
 	if ((ret = __txn_isvalid(txn, TXN_OP_COMMIT)) != 0)
 		return (ret);
 
 	/*
-	 * Check for master leases at the beginning.  If we are a
-	 * master and cannot have valid leases now, we error and
-	 * abort this txn.  There should always be a perm record
-	 * in the log because the master writes a checkpoint when it
-	 * becomes master if there isn't already a perm record in the log.
+	 * Check for master leases at the beginning.  If we are a master and
+	 * cannot have valid leases now, we error and abort this txn.  There
+	 * should always be a perm record in the log because the master updates
+	 * the LSN history system database in rep_start() (with IGNORE_LEASE
+	 * set).
 	 */
 	if (txn->parent == NULL && IS_REP_MASTER(env) &&
-	    IS_USING_LEASES(env) && (ret = __rep_lease_check(env, 1)) != 0) {
+	    IS_USING_LEASES(env) && !F_ISSET(txn, TXN_IGNORE_LEASE) &&
+	    (ret = __rep_lease_check(env, 1)) != 0) {
 		DB_ASSERT(env, ret != DB_NOTFOUND);
 		goto err;
 	}
@@ -625,6 +680,7 @@ __txn_commit(txn, flags)
 	 * abort (if its parent aborts), and otherwise its parent or ultimate
 	 * ancestor will write synchronously.
 	 */
+	ZERO_LSN(token_lsn);
 	if (DBENV_LOGGING(env) && (!IS_ZERO_LSN(td->last_lsn) ||
 	    STAILQ_FIRST(&txn->logs) != NULL)) {
 		if (txn->parent == NULL) {
@@ -637,7 +693,7 @@ __txn_commit(txn, flags)
 			 * release the locks below.
 			 */
 			if ((ret =
-			    __txn_doevents(env, txn, TXN_PREPARE, 1)) != 0)
+			    __txn_doevents(env, txn, TXN_COMMIT, 1)) != 0)
 				goto err;
 
 			memset(&request, 0, sizeof(request));
@@ -658,7 +714,8 @@ __txn_commit(txn, flags)
 				    TXN_COMMIT,
 				    (int32_t)time(NULL), id, request.obj);
 				if (ret == 0)
-					td->last_lsn = td->visible_lsn;
+					token_lsn = td->last_lsn =
+					    td->visible_lsn;
 #ifdef DIAGNOSTIC
 				if (ret == 0) {
 					DB_LSN s_lsn;
@@ -697,6 +754,8 @@ __txn_commit(txn, flags)
 			F_SET(txn->parent, TXN_CHILDCOMMIT);
 		}
 	}
+	if (txn->token_buffer != NULL && ret == 0 && DBENV_LOGGING(env))
+		__txn_build_token(txn, &token_lsn);
 
 	if (txn->txn_list != NULL) {
 		__db_txnlist_end(env, txn->txn_list);
@@ -712,7 +771,8 @@ __txn_commit(txn, flags)
 	 * master and cannot get valid leases now, something happened
 	 * during the commit.  The only thing to do is panic.
 	 */
-	if (txn->parent == NULL && IS_REP_MASTER(env) && IS_USING_LEASES(env) &&
+	if (txn->parent == NULL && IS_REP_MASTER(env) &&
+	    IS_USING_LEASES(env) && !F_ISSET(txn, TXN_IGNORE_LEASE) &&
 	    (ret = __rep_lease_check(env, 1)) != 0)
 		return (__env_panic(env, ret));
 
@@ -733,6 +793,123 @@ err:	/*
 	if ((t_ret = __txn_abort(txn)) != 0)
 		ret = t_ret;
 	return (ret);
+}
+
+/*
+ * __txn_close_cursors
+ *	Close a transaction's registered cursors, all its cursors are
+ *	guaranteed to be closed.
+ */
+static int
+__txn_close_cursors(txn)
+	DB_TXN *txn;
+{
+	int ret, tret;
+	DBC *dbc;
+
+	ret = tret = 0;
+	dbc = NULL;
+
+	if (txn == NULL)
+		return (0);
+
+	while ((dbc = TAILQ_FIRST(&txn->my_cursors)) != NULL) {
+
+		DB_ASSERT(dbc->env, txn == dbc->txn);
+
+		/*
+		 * Unregister the cursor from its transaction, regardless
+		 * of return.
+		 */
+		TAILQ_REMOVE(&(txn->my_cursors), dbc, txn_cursors);
+		dbc->txn_cursors.tqe_next = NULL;
+		dbc->txn_cursors.tqe_prev = NULL;
+
+		/* Removed from the active queue here. */
+		if (F_ISSET(dbc, DBC_ACTIVE))
+			ret = __dbc_close(dbc);
+
+		dbc->txn = NULL;
+
+		/* We have to close all cursors anyway, so continue on error. */
+		if (ret != 0) {
+			__db_err(dbc->env, ret, "__dbc_close");
+			if (tret == 0)
+				tret = ret;
+		}
+	}
+	txn->my_cursors.tqh_first = NULL;
+	txn->my_cursors.tqh_last = NULL;
+
+	return (tret);/* Return the first error if any. */
+}
+
+/*
+ * __txn_set_commit_token --
+ *	Store a pointer to user's commit token buffer, for later use.
+ */
+static int
+__txn_set_commit_token(txn, tokenp)
+	DB_TXN *txn;
+	DB_TXN_TOKEN *tokenp;
+{
+	ENV *env;
+
+	env = txn->mgrp->env;
+	ENV_REQUIRES_CONFIG(env,
+	    env->lg_handle, "DB_TXN->set_commit_token", DB_INIT_LOG);
+	if (txn->parent != NULL) {
+		__db_errx(env, "commit token unavailable for nested txn");
+		return (EINVAL);
+	}
+	if (IS_REP_CLIENT(env)) {
+		__db_errx(env, "may not be called on a replication client");
+		return (EINVAL);
+	}
+
+	txn->token_buffer = tokenp;
+
+#ifdef DIAGNOSTIC
+	/*
+	 * Applications may rely on the contents of the token buffer becoming
+	 * valid only after a successful commit().  So it is not strictly
+	 * necessary to initialize the buffer here.  But in case they get
+	 * confused we initialize it here to a recognizably invalid value.
+	 */
+	memset(tokenp, 0, DB_TXN_TOKEN_SIZE);
+#endif
+
+	return (0);
+}
+
+/*
+ * __txn_build_token --
+ *	Stash a token describing the committing transaction into the buffer
+ * previously designated by the user.  Called only in the case where the user
+ * has indeed supplied a buffer address.
+ */
+static void
+__txn_build_token(txn, lsnp)
+	DB_TXN *txn;
+	DB_LSN *lsnp;
+{
+	ENV *env;
+	REGENV *renv;
+	u_int8_t *bp;
+	u_int32_t gen, version;
+
+	bp = txn->token_buffer->buf;
+	env = txn->mgrp->env;
+	renv = env->reginfo->primary;
+
+	/* Marshal the information into external form. */
+	version = REP_COMMIT_TOKEN_FMT_VERSION;
+	gen = REP_ON(env) ? env->rep_handle->region->gen : 0;
+	DB_HTONL_COPYOUT(env, bp, version);
+	DB_HTONL_COPYOUT(env, bp, gen);
+	DB_HTONL_COPYOUT(env, bp, renv->envid);
+	DB_HTONL_COPYOUT(env, bp, lsnp->file);
+	DB_HTONL_COPYOUT(env, bp, lsnp->offset);
 }
 
 /*
@@ -781,6 +958,13 @@ __txn_abort(txn)
 
 	env = txn->mgrp->env;
 	td = txn->td;
+
+	/*
+	 * Close registered cursors before the abort. Even if the call fails,
+	 * all cursors are closed.
+	 */
+	if ((ret = __txn_close_cursors(txn)) != 0)
+		return (__env_panic(env, ret));
 
 	/* Ensure that abort always fails fatally. */
 	if ((ret = __txn_isvalid(txn, TXN_OP_ABORT)) != 0)
@@ -912,6 +1096,10 @@ __txn_discard_int(txn, flags)
 	env = mgr->env;
 	freep = NULL;
 
+	/* Close registered cursors. */
+	if ((ret = __txn_close_cursors(txn)) != 0)
+		return (ret);
+
 	if ((ret = __txn_isvalid(txn, TXN_OP_DISCARD)) != 0)
 		return (ret);
 
@@ -955,12 +1143,16 @@ __txn_prepare(txn, gid)
 	env = txn->mgrp->env;
 	td = txn->td;
 
+	ENV_ENTER(env, ip);
+
+	/* Close registered cursors. */
+	if ((ret = __txn_close_cursors(txn)) != 0)
+		return (ret);
+
 	if ((ret = __txn_isvalid(txn, TXN_OP_PREPARE)) != 0)
 		return (ret);
 	if (F_ISSET(txn, TXN_DEADLOCK))
 		return (__db_txn_deadlock_err(env, txn));
-
-	ENV_ENTER(env, ip);
 
 	/* Commit any unresolved children. */
 	while ((kid = TAILQ_FIRST(&txn->kids)) != NULL)
@@ -1099,6 +1291,42 @@ __txn_set_name(txn, name)
 
 	ENV_LEAVE(env, ip);
 	return (0);
+}
+
+/*
+ * __txn_get_priority --
+ *	Get a transaction's priority level
+ * PUBLIC: int __txn_get_priority __P((DB_TXN *, u_int32_t *));
+ */
+int
+__txn_get_priority(txn, priorityp)
+	DB_TXN *txn;
+	u_int32_t *priorityp;
+{
+	if (txn->locker == NULL)
+		return EINVAL;
+
+	*priorityp = txn->locker->priority;
+	return 0;
+}
+
+/*
+ * __txn_set_priority --
+ *	Assign a transaction a priority level
+ * PUBLIC: int __txn_set_priority __P((DB_TXN *, u_int32_t));
+ */
+int
+__txn_set_priority(txn, priority)
+	DB_TXN *txn;
+	u_int32_t priority;
+{
+	if (txn->locker == NULL)
+		return EINVAL;
+
+	txn->locker->priority = priority;
+	((TXN_DETAIL *)txn->td)->priority = priority;
+
+	return 0;
 }
 
 /*
@@ -1264,6 +1492,7 @@ __txn_end(txn, is_commit)
 	    txn, is_commit ? TXN_COMMIT : TXN_ABORT, 0)) != 0)
 		return (__env_panic(env, ret));
 
+
 	/*
 	 * Release the locks.
 	 *
@@ -1289,7 +1518,8 @@ __txn_end(txn, is_commit)
 
 	/* End the transaction. */
 	td = txn->td;
-	if (td->nlog_dbs != 0 && (ret = __txn_dref_fname(env, txn)) != 0)
+	if (td->nlog_dbs != 0 &&
+	     (ret = __txn_dref_fname(env, txn)) != 0 && ret != EIO)
 		return (__env_panic(env, ret));
 
 	if (td->mvcc_ref != 0 && IS_MAX_LSN(td->visible_lsn)) {
@@ -1373,7 +1603,7 @@ __txn_end(txn, is_commit)
 	 * if any.
 	 */
 	if (LOCKING_ON(env) && (ret =
-	    __lock_freefamilylocker(env->lk_handle, txn->locker)) != 0)
+	    __lock_freelocker(env->lk_handle, txn->locker)) != 0)
 		return (__env_panic(env, ret));
 	if (txn->parent != NULL)
 		TAILQ_REMOVE(&txn->parent->kids, txn, klinks);
@@ -1580,7 +1810,7 @@ __txn_force_abort(env, buffer)
 	DB_CIPHER *db_cipher;
 	HDR hdr, *hdrp;
 	u_int32_t offset, opcode, sum_len;
-	u_int8_t *bp, *key, chksum[DB_MAC_KEY];
+	u_int8_t *bp, *key;
 	size_t hdrsize, rec_len;
 	int ret;
 
@@ -1597,6 +1827,8 @@ __txn_force_abort(env, buffer)
 	hdrp = (HDR *)buffer;
 	memcpy(&hdr.prev, buffer + SSZ(HDR, prev), sizeof(hdr.prev));
 	memcpy(&hdr.len, buffer + SSZ(HDR, len), sizeof(hdr.len));
+	if (LOG_SWAPPED(env))
+		__log_hdrswap(&hdr, CRYPTO_ON(env));
 	rec_len = hdr.len - hdrsize;
 
 	offset = sizeof(u_int32_t) + sizeof(u_int32_t) + sizeof(DB_LSN);
@@ -1612,15 +1844,17 @@ __txn_force_abort(env, buffer)
 	}
 	bp = buffer + hdrsize + offset;
 	opcode = TXN_ABORT;
-	memcpy(bp, &opcode, sizeof(opcode));
+	LOGCOPY_32(env, bp, &opcode);
 
 	if (CRYPTO_ON(env) &&
 	    (ret = db_cipher->encrypt(env,
 	    db_cipher->data, &hdrp->iv[0], buffer + hdrsize, rec_len)) != 0)
 		return (__env_panic(env, ret));
 
-	__db_chksum(&hdr, buffer + hdrsize, rec_len, key, chksum);
-	memcpy(buffer + SSZA(HDR, chksum), chksum, sum_len);
+	__db_chksum(&hdr, buffer + hdrsize, rec_len, key, NULL);
+	if (LOG_SWAPPED(env))
+		__log_hdrswap(&hdr, CRYPTO_ON(env));
+	memcpy(buffer + SSZA(HDR, chksum), hdr.chksum, sum_len);
 
 	return (0);
 }
@@ -1709,4 +1943,93 @@ __txn_set_txn_lsnp(txn, blsnp, llsnp)
 	td = txn->td;
 	if (IS_ZERO_LSN(td->begin_lsn))
 		*blsnp = &td->begin_lsn;
+}
+
+/*
+ * PUBLIC: int __txn_applied_pp __P((DB_ENV *,
+ * PUBLIC:     DB_TXN_TOKEN *, db_timeout_t, u_int32_t));
+ */
+int
+__txn_applied_pp(dbenv, token, timeout, flags)
+	DB_ENV *dbenv;
+	DB_TXN_TOKEN *token;
+	db_timeout_t timeout;
+	u_int32_t flags;
+{
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_COMMIT_INFO commit_info;
+	u_int8_t *bp;
+	int ret;
+
+	env = dbenv->env;
+
+	if (flags != 0)
+		return (__db_ferr(env, "DB_ENV->txn_applied", 0));
+
+	/* Unmarshal the token from its stored form. */
+	bp = token->buf;
+	DB_NTOHL_COPYIN(env, commit_info.version, bp);
+	DB_ASSERT(env, commit_info.version == REP_COMMIT_TOKEN_FMT_VERSION);
+	DB_NTOHL_COPYIN(env, commit_info.gen, bp);
+	DB_NTOHL_COPYIN(env, commit_info.envid, bp);
+	DB_NTOHL_COPYIN(env, commit_info.lsn.file, bp);
+	DB_NTOHL_COPYIN(env, commit_info.lsn.offset, bp);
+
+	/*
+	 * Check for a token representing a transaction that committed without
+	 * any log records having been written.  Ideally an application should
+	 * be smart enough to avoid trying to use a token from such an "empty"
+	 * transaction.  But in some cases it might be difficult for them to
+	 * keep track, so we don't really forbid it.
+	 */
+	if (IS_ZERO_LSN(commit_info.lsn))
+		return (DB_KEYEMPTY);
+
+	ENV_REQUIRES_CONFIG(env,
+	    env->lg_handle, "DB_ENV->txn_applied", DB_INIT_LOG);
+
+	ENV_ENTER(env, ip);
+	ret = __txn_applied(env, ip, &commit_info, timeout);
+	ENV_LEAVE(env, ip);
+	return (ret);
+}
+
+static int
+__txn_applied(env, ip, commit_info, timeout)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	DB_COMMIT_INFO *commit_info;
+	db_timeout_t timeout;
+{
+	LOG *lp;
+	DB_LSN lsn;
+	REGENV *renv;
+
+	/*
+	 * The lockout protection scope between __op_handle_enter and
+	 * __env_db_rep_exit is handled within __rep_txn_applied, and is not
+	 * needed here since the rest of this function only runs in a
+	 * non-replication env.
+	 */
+	if (REP_ON(env))
+		return (__rep_txn_applied(env, ip, commit_info, timeout));
+
+	if (commit_info->gen != 0) {
+		__db_errx(env,
+		    "replication commit token in non-replication env");
+		return (EINVAL);
+	}
+
+	lp = env->lg_handle->reginfo.primary;
+	LOG_SYSTEM_LOCK(env);
+	lsn = lp->lsn;
+	LOG_SYSTEM_UNLOCK(env);
+
+	renv = env->reginfo->primary;
+
+	if (renv->envid == commit_info->envid &&
+	    LOG_COMPARE(&commit_info->lsn, &lsn) <= 0)
+		return (0);
+	return (DB_NOTFOUND);
 }

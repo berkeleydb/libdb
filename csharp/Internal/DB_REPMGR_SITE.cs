@@ -79,6 +79,16 @@ internal class DB_REPMGR_SITE : IDisposable {
     } 
   }
 
+  internal uint flags {
+    set {
+      libdb_csharpPINVOKE.DB_REPMGR_SITE_flags_set(swigCPtr, value);
+    } 
+    get {
+      uint ret = libdb_csharpPINVOKE.DB_REPMGR_SITE_flags_get(swigCPtr);
+      return ret;
+    } 
+  }
+
   internal DB_REPMGR_SITE() : this(libdb_csharpPINVOKE.new_DB_REPMGR_SITE(), true) {
   }
 

@@ -38,7 +38,7 @@
     <code class="methodname">Environment.close()</code>
     method. This method performs a checkpoint, so it is not necessary to perform a sync or a checkpoint explicitly
     before calling it. For information on checkpoints, see the
-    <em class="citetitle">Berkeley DB Java Edition Getting Started with Transaction Processing</em> guide.
+    <em class="citetitle">Berkeley DB, Java Edition Getting Started with Transaction Processing</em> guide.
     For information on syncs, see 
     
     
@@ -60,8 +60,8 @@ try {
     // Exception handling goes here
 } </pre>
       <p>You should close your environment(s) only after all other
-    database activities have completed and you have closed any databases
-    currently opened in the environment.</p>
+    database activities have completed. It is recommended that you close any databases
+    currently open in the environment prior to closing the environment.</p>
       <p>
     Closing the last environment handle in your application causes all
     internal data structures to be 
@@ -74,7 +74,7 @@ try {
     
     If there are any opened databases or stores, 
     then DB will complain before closing them as well. 
-    At this time, any open cursors are also closed, and any on-going transactions are aborted.
+    At this time, any open cursors are also closed, and any on-going transactions are aborted. However, it is recommended that you always close all cursor handles immediately after their use to ensure concurrency and to release resources such as page locks. 
     </p>
     </div>
     <div class="navfooter">

@@ -268,7 +268,7 @@
                 performed using uncommitted reads. 
             </p>
         <pre class="programlisting">package db.txn;
-                                                                                                                                     
+
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
@@ -280,9 +280,9 @@ import com.sleepycat.db.Transaction;
 import com.sleepycat.db.TransactionConfig;
 
 import java.io.File;
-                                                                                                                                     
+
 ...
-                                                                                                                                     
+
 Database myDatabase = null;
 Environment myEnv = null;
 try {
@@ -319,7 +319,7 @@ try {
         If you are using the DPL:
 </p>
         <pre class="programlisting">package persist.txn;
-                                                                                                                                     
+
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
@@ -335,7 +335,7 @@ import com.sleepycat.persist.StoreConfig;
 import java.io.File;
 
 ...
-                                                                                                                                     
+
 EntityStore myStore = null;
 Environment myEnv = null;
 try {
@@ -519,7 +519,7 @@ try {
                 For example, the following creates a transaction that allows committed reads:
             </p>
         <pre class="programlisting">package db.txn;
-                                                                                                                                     
+
 import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
@@ -530,9 +530,9 @@ import com.sleepycat.db.Transaction;
 import com.sleepycat.db.TransactionConfig;
 
 import java.io.File;
-                                                                                                                                     
+
 ...
-                                                                                                                                     
+
 Database myDatabase = null;
 Environment myEnv = null;
 try {
@@ -584,7 +584,7 @@ try {
     Using the DPL:
 </p>
         <pre class="programlisting">package persist.txn;
-                                                                                                                                     
+
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
 import com.sleepycat.db.Transaction;
@@ -594,9 +594,9 @@ import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.StoreConfig;
 
 import java.io.File;
-                                                                                                                                     
+
 ...
-                                                                                                                                     
+
 EntityStore myStore = null;
 Environment myEnv = null;
 try {

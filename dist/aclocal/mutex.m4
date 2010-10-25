@@ -501,10 +501,9 @@ AC_TRY_COMPILE(,[
 fi
 
 # UNIX fcntl system call mutexes.
-# Note that fcntl mutexes are no longer supported in 4.8.  This code has been
-# left in place in case there is some system that we are not aware of that uses
-# fcntl mutexes, in which case additional work will be required for DB 4.8 in
-# order to support shared latches.
+# Note that fcntl mutexes are no longer supported as of 4.8.  This code has been
+# left in place in case there is some system that we are not aware of that 
+# only uses fcntl mutexes.  In that case, contact Oracle for support.
 if test "$db_cv_mutex" = no; then
 	db_cv_mutex=UNIX/fcntl
 AC_TRY_LINK([
@@ -659,8 +658,8 @@ esac
 
 # Configure the remaining special cases.
 case "$db_cv_mutex" in
-UNIX/fcntl)		AC_MSG_WARN(
-			    [NO SHARED LATCH IMPLEMENTATION FOUND FOR THIS PLATFORM.])
+UNIX/fcntl)		AC_MSG_ERROR(
+			    [Support for FCNTL mutexes was removed in BDB 4.8.])
 			ADDITIONAL_OBJS="mut_fcntl${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_FCNTL)
 			AH_TEMPLATE(HAVE_MUTEX_FCNTL,

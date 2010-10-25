@@ -79,7 +79,8 @@ values for application-specific and Berkeley DB log records may not overlap.
 Further, because record numbers are stored in log files, which are
 usually portable across application and Berkeley DB releases, any change to
 the record numbers or log record format or should be handled as
-described in the <a class="xref" href="upgrade_process.html" title="Upgrading Berkeley DB installations">Upgrading Berkeley DB installations</a> section on log format changes.  The record number space
+described in the section on log format changes in
+the <a href="../installation/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a> chapter of the Berkeley DB Installation and Build Guide.  The record number space
 below 10,000 is reserved for Berkeley DB itself; applications should choose
 record number values equal to or greater than 10,000.</p>
       <p>Between the BEGIN and END keywords there should be one optional

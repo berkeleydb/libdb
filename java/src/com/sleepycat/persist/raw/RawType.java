@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -54,9 +54,9 @@ public interface RawType {
     int getId();
 
     /**
-     * Returns whether this is a {@link <a
-     * href="../model/Entity.html#simpleTypes">simple type</a>}: primitive,
-     * primitive wrapper, BigInteger, String or Date.
+     * Returns whether this is a 
+     * {@link <a href="{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes">simple type</a>}: 
+     * primitive, primitive wrapper, BigInteger, String or Date.
      * <!--
      * primitive wrapper, BigInteger, BigDecimal, String or Date.
      * -->

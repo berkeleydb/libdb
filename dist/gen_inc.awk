@@ -1,6 +1,8 @@
 # This awk script parses C input files looking for lines marked "PUBLIC:"
-# and "EXTERN:".  (PUBLIC lines are DB internal function prototypes and
-# #defines, EXTERN are DB external function prototypes and #defines.)
+# "EXTERN:", and "DB_LOG_RECSPEC".  (PUBLIC lines are DB internal function
+# prototypes and #defines, EXTERN lines are DB external function prototypes
+# and #defines, and DB_LOG_RECSPEC lines are the definition of log record
+# templates.)
 #
 # PUBLIC lines are put into two versions of per-directory include files:
 # one file that contains the prototypes, and one file that contains a
@@ -10,6 +12,8 @@
 # The EXTERN lines are put into two files: one of which contains prototypes
 # which are always appended to the db.h file, and one of which contains a
 # #define list for use when creating unique symbol names.
+#
+# DB_LOG_RECSPEC lines are put into PUBLIC's internal #define file.
 #
 # Four arguments:
 #	e_dfile		list of EXTERN #defines
@@ -56,4 +60,10 @@
 		}
 		eline = ""
 	}
+}
+
+/^DB_LOG_RECSPEC.*_desc\[\]/ {
+    sub("DB_LOG_RECSPEC[ 	]*", "");
+    sub("\[\][ 	]*=[ 	]*{.*$", "");
+    printf("#define\t%s %s@DB_VERSION_UNIQUE_NAME@\n", $0, $0) >> i_dfile
 }

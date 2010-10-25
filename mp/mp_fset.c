@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -129,7 +129,7 @@ __memp_dirty(dbmfp, addrp, ip, txn, priority, flags)
 
 #ifdef DIAG_MVCC
 	mfp = R_ADDR(env->mp_handle->reginfo, bhp->mf_offset);
-	MVCC_MPROTECT(bhp->buf, mfp->stat.st_pagesize, PROT_READ | PROT_WRITE);
+	MVCC_MPROTECT(bhp->buf, mfp->pagesize, PROT_READ | PROT_WRITE);
 #endif
 	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY) ||
 	    atomic_read(&hp->hash_page_dirty) != 0);

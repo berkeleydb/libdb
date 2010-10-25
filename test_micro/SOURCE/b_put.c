@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -107,7 +107,7 @@ b_put(int argc, char *argv[])
 	DB_BENCH_ASSERT(db_create(&dbp, dbenv, 0) == 0);
 	if (type == DB_QUEUE)
 		DB_BENCH_ASSERT(dbp->set_re_len(dbp, dsize) == 0);
-#if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1)
 	DB_BENCH_ASSERT(
 	    dbp->open(dbp, NULL, TESTFILE, NULL, type, DB_CREATE, 0666) == 0);
 #else
@@ -122,15 +122,14 @@ b_put(int argc, char *argv[])
 		for (i = 0; i < secondaries; ++i) {
 			DB_BENCH_ASSERT(db_create(&second[i], dbenv, 0) == 0);
 			(void)snprintf(buf, sizeof(buf), "%d.db", i);
-#if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1)
 			DB_BENCH_ASSERT(second[i]->open(second[i], NULL,
 			    buf, NULL, DB_BTREE, DB_CREATE, 0600) == 0);
 #else
 			DB_BENCH_ASSERT(second[i]->open(second[i],
 			    buf, NULL, DB_BTREE, DB_CREATE, 0600) == 0);
 #endif
-#if DB_VERSION_MAJOR > 3 || DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
-#if DB_VERSION_MAJOR > 3 && DB_VERSION_MINOR > 0
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1)
 			/*
 			 * The DB_TXN argument to Db.associate was added in
 			 * 4.1.25.
@@ -140,7 +139,6 @@ b_put(int argc, char *argv[])
 #else
 			DB_BENCH_ASSERT(dbp->associate(
 			    dbp, second[i], b_put_secondary, 0) == 0);
-#endif
 #endif
 		}
 	}

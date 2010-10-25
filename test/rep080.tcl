@@ -1,14 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
 # TEST	rep080
-# TEST	NOAUTOINIT with empty client logs.
+# TEST	AUTOINIT off with empty client logs.
 # TEST	
 # TEST	Verify that a fresh client trying to join the group for
-# TEST	the first time observes the setting of DELAY_SYNC and NOAUTOINIT
+# TEST	the first time observes the setting of DELAY_SYNC and !AUTOINIT
 # TEST	properly.
 # TEST	
 proc rep080 { method { niter 200 } { tnum "080" } args } {
@@ -17,11 +17,6 @@ proc rep080 { method { niter 200 } { tnum "080" } args } {
 	global mixed_mode_logging
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Skip for all methods except btree.
 	if { $checking_valid_methods } {
@@ -61,7 +56,7 @@ proc rep080 { method { niter 200 } { tnum "080" } args } {
 	# recovery, or without it.)  But this test never does that.
 	# 
 	puts "Rep$tnum ($method):\
-	    Test of NOAUTOINIT with empty client logs $msg $msg2."
+	    Test of AUTOINIT off with empty client logs $msg $msg2."
 	rep080_sub $method $niter $tnum $args
 }
 
@@ -123,15 +118,15 @@ proc rep080_sub { method niter tnum largs } {
 
 	rep_verify $masterdir $masterenv $clientdir1 $clientenv1 0 1 1
 
-	# Open a client with NOAUTOINIT
+	# Open a client with AUTOINIT turned off.
 	# 
-	puts "\tRep$tnum.c: Add a client with NOAUTOINIT (should fail)."
+	puts "\tRep$tnum.c: Add a client with AUTOINIT off (should fail)."
 	repladd 3
 	set cl_envcmd "berkdb_env_noerr -create $verbargs -errpfx CLIENT \
 	    $repmemargs \
 	    -home $clientdir2 -txn -rep_transport \[list 3 replsend\]"
 	set clientenv2 [eval $cl_envcmd -rep_client]
-	$clientenv2 rep_config {noautoinit on}
+	$clientenv2 rep_config {autoinit off}
 
 	lappend envlist [list $clientenv2 3]
 	process_msgs $envlist 0 NONE error
@@ -159,16 +154,16 @@ proc rep080_sub { method niter tnum largs } {
 	error_check_good errchk3 $error 0
 	rep_verify $masterdir $masterenv $clientdir3 $clientenv3
 
-	# Open a client with both DELAY_SYNC and NOAUTOINIT
+	# Open a client with both DELAY_SYNC and AUTOINIT off.
 	# 
-	puts "\tRep$tnum.f: Add a client with DELAY_SYNC and NOAUTOINIT."
+	puts "\tRep$tnum.f: Add a client with DELAY_SYNC and AUTOINIT off."
 	repladd 5
 	set cl_envcmd "berkdb_env_noerr -create $verbargs -errpfx CLIENT \
 	    $repmemargs \
 	    -home $clientdir4 -txn -rep_transport \[list 5 replsend\]"
 	set clientenv4 [eval $cl_envcmd -rep_client]
 	$clientenv4 rep_config {delayclient on}
-	$clientenv4 rep_config {noautoinit on}
+	$clientenv4 rep_config {autoinit off}
 
 	lappend envlist [list $clientenv4 5]
 	process_msgs $envlist 0 NONE error

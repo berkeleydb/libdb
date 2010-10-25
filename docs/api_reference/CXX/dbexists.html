@@ -54,7 +54,7 @@ Db::exists(DbTxn *txnid, Dbt *key, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1633737"></a>Parameters</h3>
+              <h3 class="title"><a id="id3620348"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -62,7 +62,38 @@ Db::exists(DbTxn *txnid, Dbt *key, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1633977"></a>flags</h4>
+                <h4 class="title"><a id="id3620221"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                If the operation is part of an application-specified transaction, the <span class="bold"><strong>txnid</strong></span> parameter is a transaction handle returned from
+                <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the operation is part of a
+                Berkeley DB Concurrent Data Store group, the <span class="bold"><strong>txnid</strong></span>
+                parameter is a handle returned from 
+                <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>; otherwise NULL.  
+                If no transaction handle is specified, but the
+                operation occurs in a transactional database, the operation will be
+                implicitly transaction protected.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3620302"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3620350"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -115,43 +146,12 @@ Db::exists(DbTxn *txnid, Dbt *key, u_int32_t flags);</pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1634154"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                The key <a class="link" href="dbt.html" title="Chapter 4.  The Dbt Handle">Dbt</a>  operated on.
-            </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1634129"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                If the operation is part of an application-specified transaction, the <span class="bold"><strong>txnid</strong></span> parameter is a transaction handle returned from
-                <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; if the operation is part of a
-                Berkeley DB Concurrent Data Store group, the <span class="bold"><strong>txnid</strong></span>
-                parameter is a handle returned from 
-                <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>; otherwise NULL.  
-                If no transaction handle is specified, but the
-                operation occurs in a transactional database, the operation will be
-                implicitly transaction protected.
-            </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1634003"></a>Class</h3>
+              <h3 class="title"><a id="id3620636"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@ Db::exists(DbTxn *txnid, Dbt *key, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1634296"></a>See Also</h3>
+              <h3 class="title"><a id="id3620507"></a>See Also</h3>
             </div>
           </div>
         </div>

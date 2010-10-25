@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000-2009 Oracle.  All rights reserved.
+# Copyright (c) 2000, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -31,7 +31,7 @@ proc recd018 { method {ndbs 10} args } {
 	}
 
 	puts "\tRecd$tnum.a: Create environment and database."
-	set flags "-create -txn -home $testdir"
+	set flags "-create -txn wrnosync -home $testdir"
 
 	set env_cmd "berkdb_env $flags"
 	set dbenv [eval $env_cmd]

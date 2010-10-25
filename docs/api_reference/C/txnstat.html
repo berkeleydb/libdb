@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
-    <link rel="prev" href="txnset_timeout.html" title="DB_TXN-&gt;set_timeout()" />
+    <link rel="prev" href="txncheckpoint.html" title="DB_ENV-&gt;txn_checkpoint()" />
     <link rel="next" href="txnstat_print.html" title="DB_ENV-&gt;txn_stat_print()" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">DB_ENV-&gt;txn_stat()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="txnset_timeout.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="txncheckpoint.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
@@ -263,6 +263,14 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
                 </li>
                 <li>
                   <p>
+                                <span class="bold"><strong>u_int32_t priority;</strong></span>
+                            </p>
+                  <p>
+                                This transaction's deadlock resolution priority.
+                            </p>
+                </li>
+                <li>
+                  <p>
                                 <span class="bold"><strong>u_int32_t status;</strong></span>
                             </p>
                   <p>
@@ -312,7 +320,7 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710809"></a>Parameters</h3>
+              <h3 class="title"><a id="id4030137"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -320,7 +328,20 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1711138"></a>flags</h4>
+                <h4 class="title"><a id="id4030116"></a>statp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>statp</strong></span> parameter references memory
+                          into which a pointer to the allocated statistics structure is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4030598"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -341,25 +362,12 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1711383"></a>statp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>statp</strong></span> parameter references memory
-                          into which a pointer to the allocated statistics structure is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710824"></a>Errors</h3>
+              <h3 class="title"><a id="id4030199"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -375,7 +383,7 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1711022"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4029584"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -388,7 +396,7 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1711278"></a>Class</h3>
+              <h3 class="title"><a id="id4029608"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -400,7 +408,7 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1710839"></a>See Also</h3>
+              <h3 class="title"><a id="id4029358"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -413,14 +421,14 @@ DB_ENV-&gt;txn_stat(DB_ENV *env, DB_TXN_STAT **statp, u_int32_t flags);  </pre>
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="txnset_timeout.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="txncheckpoint.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="txnstat_print.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DB_TXN-&gt;set_timeout() </td>
+          <td width="40%" align="left" valign="top">DB_ENV-&gt;txn_checkpoint() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

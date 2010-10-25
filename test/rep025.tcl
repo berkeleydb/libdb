@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -182,7 +182,7 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 	set envlist "{$masterenv 1} {$clientenv 2}"
 
 	# Set initialization to manual.
-	$clientenv rep_config {noautoinit on}
+	$clientenv rep_config {autoinit off}
 	process_msgs $envlist 0 NONE err
 	error_check_good error_on_right_env [lindex $err 0] $clientenv
 	error_check_good right_error [is_substr $err DB_REP_JOIN_FAILURE] 1
@@ -219,7 +219,7 @@ proc rep025_sub { method niter tnum logset recargs largs } {
 	} else {
 		puts "\tRep$tnum.g: Restart client forcing internal init."
 		set clientenv [eval $cl_envcmd -rep_client]
-		$clientenv rep_config {noautoinit off}
+		$clientenv rep_config {autoinit on}
 	}
 	error_check_good client_env [is_valid_env $clientenv] TRUE
 	set envlist "{$masterenv 1} {$clientenv 2}"

@@ -156,7 +156,7 @@
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 void *checkpoint_thread(void *);
 
 int main(void)
@@ -169,7 +169,7 @@ int main(void)
                           DB_INIT_TXN   |  // Initialize transactions
                           DB_THREAD     |  // Free-thread the env handle
                           DB_RECOVER;      // Run normal recovery
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 
@@ -246,7 +246,7 @@ int main(void)
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 void *checkpoint_thread(void *);
 
 int main(void)
@@ -259,7 +259,7 @@ int main(void)
                           DB_INIT_TXN   |  // Initialize transactions
                           DB_THREAD     |  // Free-thread the env handle
                           <strong class="userinput"><code>DB_RECOVER_FATAL;   // Run catastrophic recovery</code></strong>
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 

@@ -2,19 +2,6 @@
 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Allocate and lock a self-blocking mutex.  Start another process. 
-	Try to lock the mutex again -- it will block.  
-	Unlock the mutex from the other process, and the blocked 
-	lock should be obtained.  Clean up.
-	Do another test with a "-process-only" mutex.  The second 
-	process should not be able to unlock the mutex.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Allocate, lock, unlock, and free a bunch of mutexes. 
-	Set basic configuration options and check mutex_stat and 
-	the mutex getters for the correct values. 
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 backup
 	Test of hotbackup functionality. 
 
@@ -82,6 +69,26 @@ dead006
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dead007
 	Tests for locker and txn id wraparound.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+dead008
+	Run dead001 deadlock test using priorities
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+dead009
+	Run dead002 deadlock test using priorities
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+dead010
+
+	Same test as dead003, except the actual youngest and oldest will have
+	higher priorities.  Verify that the oldest/youngest of the lower
+	priority lockers gets killed.  Doesn't apply to 2 procs.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+dead011
+	Test out the minlocks, maxlocks, and minwrites options
+	to the deadlock detector when priorities are used.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 env001
@@ -437,9 +444,20 @@ memp004
 mut001
 	Exercise the mutex API.
 
+	Allocate, lock, unlock, and free a bunch of mutexes. 
+	Set basic configuration options and check mutex_stat and 
+	the mutex getters for the correct values. 
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 mut002
 	Two-process mutex test.
+
+	Allocate and lock a self-blocking mutex.  Start another process. 
+	Try to lock the mutex again -- it will block.  
+	Unlock the mutex from the other process, and the blocked 
+	lock should be obtained.  Clean up.
+	Do another test with a "-process-only" mutex.  The second 
+	process should not be able to unlock the mutex.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 mut003
@@ -1257,20 +1275,12 @@ rep066
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep067
-	Replication election test with large timeouts.
+	Full election timeout test.
 
-	Test replication elections among clients with widely varying
-	timeouts.  This test is used to simulate a customer that
-	wants to force full participation in an election, but only
-	if all sites are present (i.e. if all sites are restarted
-	together).  If any site has already been part of the group,
-	then we want to be able to elect a master based on majority.
-	Using varied timeouts, we can force full participation if
-	all sites are present with "long_timeout" amount of time and
-	then revert to majority.
+	Verify that elections use a separate "full election timeout" (if such
+	configuration is in use) instead of the normal timeout, when the
+	replication group is "cold-booted" (all sites starting with recovery).
 
-	A long_timeout would be several minutes whereas a normal
-	short timeout would be a few seconds.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep068
@@ -1392,10 +1402,10 @@ rep079
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 rep080
-	NOAUTOINIT with empty client logs.
+	AUTOINIT off with empty client logs.
 
 	Verify that a fresh client trying to join the group for
-	the first time observes the setting of DELAY_SYNC and NOAUTOINIT
+	the first time observes the setting of DELAY_SYNC and !AUTOINIT
 	properly.
 
 
@@ -1473,6 +1483,42 @@ rep088
 	3. (the normal case) Old log files archived, and a checkpoint
 	still exists in the portion of the log which will remain after
 	the roll-back: no internal-init/JOIN_FAILURE necessary.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep089
+	Test of proper clean-up of mpool during interrupted internal init.
+
+	Have a client in the middle of internal init when a new master
+	generation comes along, forcing the client to interrupt the internal
+	init, including doing the clean-up.  The client is in the middle of
+	retrieving database pages, so that we are forced to clean up mpool.
+	(Regression test for bug 17121)
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep090
+	Test of AUTO_REMOVE on both master and client sites.
+
+	One master, one client.  Set AUTO_REMOVE on the client env.
+	Generate several log files.
+	Verify the client has properly removed the log files.
+	Turn on AUTO_REMOVE on the master and generate more log files.
+	Confirm both envs have the same log files.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep091
+	Read-your-writes consistency.
+	Write transactions at the master, and then call the txn_applied()
+	method to see whether the client has received and applied them yet.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep092
+	Read-your-writes consistency.
+	Test events in one thread (process) waking up another sleeping thread,
+	before a timeout expires.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep093
+	Egen changes during election.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr001
@@ -1619,8 +1665,8 @@ repmgr014
 	Basic repmgr in-memory test. 
 
 	Create an appointed master and two clients, process some records and 
-	verify resulting databases. Put databases, logs and replication files
-	in-memory.
+	verify resulting databases. Put databases, logs, replication files,
+	and region files in-memory.
 
 	Run for btree only because access method shouldn't matter.
 
@@ -1687,7 +1733,107 @@ repmgr019
 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr020
+	Basic repmgr test with region files in memory.  This test is
+	identical to repmgr001 except the env is set up with "-private."
+
+	Create an appointed master and two clients, process some records and 
+	verify resulting databases.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr021
+	Basic repmgr election test with region files in memory. 
+	This is identical to repmgr002 except the env is opened with
+	"-private".
+
+	Open three clients of different priorities and make sure repmgr 
+	elects expected master. Shut master down, make sure repmgr elects 
+	expected remaining client master, make sure former master can join 
+	as client.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr022
+	Basic repmgr internal init test with region files in-memory.
+	This is the same as repmgr003 except the env is opened with 
+	"-private".
+
+	Start an appointed master site and two clients, processing 
+	transactions between each additional site. Verify all expected 
+	transactions are replicated.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr023
+	Test of JOIN_FAILURE event for repmgr applications.
+
+	Run for btree only because access method shouldn't matter.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr024
+	Test of group-wide log archiving awareness.
+	Verify that log archiving will use the ack from the clients in
+	its decisions about what log files are allowed to be archived.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr025
+	repmgr rerequest thread test.
+
+	Start an appointed master site and one client.  Generate some
+	uncommitted updates on the master to lock some database pages.
+	Start a second client that gets stuck in internal init.  Wait
+	long enough to rely on the rerequest thread to request the
+	missing pages, commit the master updates and verify that all
+	data appears on both clients.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr026
+	Test of "full election" timeouts.
+	1. Cold boot with all sites present.
+	2. Cold boot with some sites missing.
+	3. Partial-participation election with one client having seen a master,
+	but another just starting up fresh.
+	4. Partial participation, with all participants already having seen a
+	master.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr027
+	Test of "full election" timeouts, where a client starts up and joins the
+	group during the middle of an election.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr028
+	Repmgr allows applications to choose master explicitly, instead of
+	relying on elections.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr030
+	repmgr multiple client-to-client peer test.
+
+	Start an appointed master and three clients. The third client
+	configures the other two clients as peers and delays client
+	sync.  Add some data and confirm that the third client uses first
+	client as a peer.  Close the master so that the first client now
+	becomes the master.  Add some more data and confirm that the
+	third client now uses the second client as a peer.
+
+	Run for btree only because access method shouldn't matter.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr100
 	Basic test of repmgr's multi-process master support.
 
 	Set up a simple 2-site group, create data and replicate it.
@@ -1699,7 +1845,7 @@ repmgr022
 	should go directly.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr023
+repmgr101
 	Repmgr support for multi-process master.
 
 	Start two processes at the master.
@@ -1708,7 +1854,7 @@ repmgr023
 	both master processes connect to it.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr024
+repmgr102
 	Ensuring exactly one listener process.
 
 	Start a repmgr process with a listener.
@@ -1719,7 +1865,7 @@ repmgr024
 	recovery is necessary.  Run recovery and start a clean listener.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr025
+repmgr103
 	Repmgr site address discovery via handshakes.
 
 	Master with 2 processes, does not know client's address.
@@ -1727,7 +1873,7 @@ repmgr025
 	Master learns of client's address via handshake message.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr026
+repmgr104
 	Repmgr site address discovery via NEWSITE
 
 	New client, previously unknown to (main) master process, connects to an
@@ -1737,7 +1883,7 @@ repmgr026
 	the interim (via a subordinate master process).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr027
+repmgr105
 	Repmgr recognition of peer setting, across processes.
 
 	Set up a master and two clients, synchronized with some data.
@@ -1745,19 +1891,19 @@ repmgr027
 	clients.  Check stats to make sure the correct c2c peer was used.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr028
+repmgr106
 	Simple smoke test for repmgr elections with multi-process envs.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr029
+repmgr107
 	Repmgr combined with replication-unaware process at master.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr030
+repmgr108
 	Subordinate connections and processes should not trigger elections.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr031
+repmgr109
 	Test repmgr's internal juggling of peer EID's.
 
 	Set up master and 2 clients, A and B.
@@ -1768,7 +1914,7 @@ repmgr031
 	into a later position in the list, because A is already first.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-repmgr032
+repmgr110
 	Multi-process repmgr start-up policies.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -2448,8 +2594,9 @@ test034
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test035
-	Test033 with off-page duplicates
-	DB_GET_BOTH functionality with off-page duplicates.
+	Test033 with off-page non-duplicates and duplicates
+	DB_GET_BOTH functionality with off-page non-duplicates
+	and duplicates.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test036
@@ -3113,6 +3260,16 @@ test123
 	in both within the same txn.  This should succeed.  
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test124
+
+	Test db->verify with noorderchk and orderchkonly flags.
+
+	Create a db with a non-standard sort order.  Check that 
+	it fails a regular verify and succeeds with -noorderchk.
+	Do a similar test with a db containing subdbs, one with
+	the standard order and another with non-standard.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test125
 	Test cursor comparison API.
 
@@ -3126,6 +3283,16 @@ test125
 	4. Put two cursors in the same place, test for match.  Walk
 	them back and forth a bit, more matching. 
 	5. Two cursors in the same spot.  Delete through one.  
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test130
+	Test moving of subdatabase metadata pages.
+
+	Populate num_db sub-database. Open multiple handles on each.
+	Remove a high proportion of entries.
+	Dump and save contents.  Compact the database, dump again,
+	and make sure we still have the same contents.
+	Make sure handles and cursors still work after compaction.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001

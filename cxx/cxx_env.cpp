@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -320,8 +320,16 @@ DbEnv::~DbEnv()
 {
 	DB_ENV *dbenv = unwrap(this);
 
+	/* 
+	 * Specify DB_FORCESYNC to make sure databases are sync'ed to disk.
+	 * Users can call DbEnv::close with 0 as real parameter to close all
+	 * but the last environment object/handle. Doing so can avoid
+	 * unnecessary database syncs. The last environment object/handle
+	 * must be closed with DB_FORCESYNC parameter, or be closed via this
+	 * function.
+	 */
 	if (dbenv != NULL) {
-		(void)dbenv->close(dbenv, 0);
+		(void)dbenv->close(dbenv, DB_FORCESYNC);
 		cleanup();
 	}
 }
@@ -493,6 +501,14 @@ DBENV_METHOD(log_set_config, (u_int32_t which, int onoff),
 DBENV_METHOD(log_stat, (DB_LOG_STAT **spp, u_int32_t flags),
     (dbenv, spp, flags))
 DBENV_METHOD(log_stat_print, (u_int32_t flags), (dbenv, flags))
+
+int DbEnv::log_verify(DB_LOG_VERIFY_CONFIG *config)
+{
+	DB_ENV *dbenv = unwrap(this);
+
+	// Simply return the error, don't throw exceptions.
+	return dbenv->log_verify(dbenv, config);
+}
 
 DBENV_METHOD(lsn_reset, (const char *file, u_int32_t flags),
     (dbenv, file, flags))
@@ -745,6 +761,8 @@ DBENV_METHOD(get_lk_max_objects, (u_int32_t *max_objectsp),
 DBENV_METHOD(set_lk_max_objects, (u_int32_t max_objects), (dbenv, max_objects))
 DBENV_METHOD(get_lk_partitions, (u_int32_t *partitionsp), (dbenv, partitionsp))
 DBENV_METHOD(set_lk_partitions, (u_int32_t partitions), (dbenv, partitions))
+DBENV_METHOD(get_lk_priority, (u_int32_t lockerid, u_int32_t *priorityp), (dbenv, lockerid, priorityp))
+DBENV_METHOD(set_lk_priority, (u_int32_t lockerid, u_int32_t priority), (dbenv, lockerid, priority))
 DBENV_METHOD(get_mp_max_openfd, (int *maxopenfdp), (dbenv, maxopenfdp))
 DBENV_METHOD(set_mp_max_openfd, (int maxopenfd), (dbenv, maxopenfd))
 DBENV_METHOD(get_mp_max_write, (int *maxwritep, db_timeout_t *maxwrite_sleepp),
@@ -1207,6 +1225,13 @@ DBENV_METHOD(set_timeout,
 char *DbEnv::version(int *major, int *minor, int *patch)
 {
 	return (db_version(major, minor, patch));
+}
+
+// static method
+char *DbEnv::full_version(int *family, int *release,
+    int *major, int *minor, int *patch)
+{
+	return (db_full_version(family, release, major, minor, patch));
 }
 
 // static method

@@ -32,44 +32,6 @@ typedef	int db_lockmode_t;
 typedef	int DBTYPE;
 typedef	int DB_CACHE_PRIORITY;
 
-/* Fake typedefs for SWIG */
-typedef	int db_ret_t;    /* An int that is mapped to a void */
-typedef	int int_bool;    /* An int that is mapped to a boolean */
-
-%{
-typedef int db_ret_t;
-typedef int int_bool;
-
-struct __db_lk_conflicts {
-	u_int8_t *lk_conflicts;
-	int lk_modes;
-};
-
-struct __db_out_stream {
-	void *handle;
-	int (*callback) __P((void *, const void *));
-};
-
-struct __db_repmgr_sites {
-	DB_REPMGR_SITE *sites;
-	u_int32_t nsites;
-};
-
-#define	Db __db
-#define	Dbc __dbc
-#define	Dbt __db_dbt
-#define	DbEnv __db_env
-#define	DbLock __db_lock_u
-#define	DbLogc __db_log_cursor
-#define	DbLsn __db_lsn
-#define	DbMpoolFile __db_mpoolfile
-#define	DbSequence __db_sequence
-#define	DbTxn __db_txn
-
-/* Suppress a compilation warning for an unused symbol */
-void *unused = (void *)SWIG_JavaThrowException;
-%}
-
 struct Db;		typedef struct Db DB;
 struct Dbc;		typedef struct Dbc DBC;
 struct Dbt;	typedef struct Dbt DBT;
@@ -141,8 +103,8 @@ struct Db
 	}
 
 	JAVA_EXCEPT_NONE
-	void err(int error, const char *message) {
-		self->err(self, error, message);
+	void err(int ret, const char *message) {
+		self->err(self, ret, message);
 	}
 
 	void errx(const char *message) {
@@ -670,8 +632,8 @@ struct DbEnv
 	}
 
 	JAVA_EXCEPT_NONE
-	void err(int error, const char *message) {
-		self->err(self, error, message);
+	void err(int ret, const char *message) {
+		self->err(self, ret, message);
 	}
 
 	void errx(const char *message) {
@@ -879,11 +841,11 @@ struct DbEnv
 		return self->set_mp_mmapsize(self, mp_mmapsize);
 	}
 
-	db_ret_t set_mp_pagesize(size_t mp_pagesize) {
+	db_ret_t set_mp_pagesize(u_int32_t mp_pagesize) {
 		return self->set_mp_pagesize(self, mp_pagesize);
 	}
 
-	db_ret_t set_mp_tablesize(size_t mp_tablesize) {
+	db_ret_t set_mp_tablesize(u_int32_t mp_tablesize) {
 		return self->set_mp_tablesize(self, mp_tablesize);
 	}
 
@@ -976,6 +938,12 @@ struct DbEnv
 		return ret;
 	}
 
+	u_int32_t get_lk_priority(u_int32_t lockerid) {
+		u_int32_t ret;
+		errno = self->get_lk_priority(self, lockerid, &ret);
+		return ret;
+	}
+
 	int lock_detect(u_int32_t flags, u_int32_t atype) {
 		int aborted;
 		errno = self->lock_detect(self, flags, atype, &aborted);
@@ -1048,6 +1016,10 @@ struct DbEnv
 
 	db_ret_t set_lk_partitions(u_int32_t partitions) {
 		return self->set_lk_partitions(self, partitions);
+	}
+
+	db_ret_t set_lk_priority(u_int32_t lockerid, u_int32_t priority) {
+		return self->set_lk_priority(self, lockerid, priority);
 	}
 
 	/* Log functions */
@@ -1137,6 +1109,17 @@ struct DbEnv
 		errno = self->log_stat(self, &sp, flags);
 		return sp;
 	}
+
+        int log_verify(const char *envhome, u_int32_t cachesz, 
+            const char *dbfile, const char *dbname, 
+            time_t stime, time_t etime,
+            u_int32_t stfile, u_int32_t stoffset, 
+            u_int32_t efile, u_int32_t eoffset, 
+            int caf, int verbose) {
+                return self->env->log_verify_wrap(self->env, envhome, cachesz,
+                    dbfile, dbname, stime, etime, stfile, stoffset, efile, 
+                    eoffset, caf, verbose);
+        }
 
 	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
 	db_ret_t set_lg_bsize(u_int32_t lg_bsize) {
@@ -1315,6 +1298,12 @@ struct DbEnv
 		return ret;
 	}
 
+	JAVA_EXCEPT(DB_RETOK_TXNAPPLIED, JDBENV)
+	int txn_applied(DB_TXN_TOKEN *token, u_int32_t maxwait, u_int32_t flags) {
+		return self->txn_applied(self, token, maxwait, flags);
+	}
+
+	JAVA_EXCEPT_ERRNO(DB_RETOK_STD, JDBENV)
 	DB_TXN *txn_begin(DB_TXN *parent, u_int32_t flags) {
 		DB_TXN *tid = NULL;
 		errno = self->txn_begin(self, parent, &tid, flags);
@@ -1529,11 +1518,19 @@ struct DbEnv
 
 	/* Convert DB errors to strings */
 	JAVA_EXCEPT_NONE
-	static const char *strerror(int error) {
-		return db_strerror(error);
+	static const char *strerror(int ret) {
+		return db_strerror(ret);
 	}
 
 	/* Versioning information */
+	static int get_version_family() {
+		return DB_VERSION_FAMILY;
+	}
+
+	static int get_version_release() {
+		return DB_VERSION_RELEASE;
+	}
+
 	static int get_version_major() {
 		return DB_VERSION_MAJOR;
 	}
@@ -1548,6 +1545,10 @@ struct DbEnv
 
 	static const char *get_version_string() {
 		return DB_VERSION_STRING;
+	}
+
+	static const char *get_version_full_string() {
+		return DB_VERSION_FULL_STRING;
 	}
 }
 };
@@ -1758,9 +1759,12 @@ struct DbTxn
 		return self->abort(self);
 	}
 
+#ifndef SWIGJAVA
+	/* For Java, this is defined in native code */
 	db_ret_t commit(u_int32_t flags) {
 		return self->commit(self, flags);
 	}
+#endif /* SWIGJAVA */
 
 	db_ret_t discard(u_int32_t flags) {
 		return self->discard(self, flags);
@@ -1771,6 +1775,12 @@ struct DbTxn
 		const char *name = NULL;
 		errno = self->get_name(self, &name);
 		return name;
+	}
+
+	u_int32_t get_priority() {
+		u_int32_t priority;
+		errno = self->get_priority(self, &priority);
+		return priority;
 	}
 
 	JAVA_EXCEPT_NONE
@@ -1789,6 +1799,10 @@ struct DbTxn
 
 	db_ret_t set_name(const char *name) {
 		return self->set_name(self, name);
+	}
+
+	db_ret_t set_priority(u_int32_t priority) {
+		return self->set_priority(self, priority);
 	}
 }
 };

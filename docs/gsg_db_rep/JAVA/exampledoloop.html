@@ -210,7 +210,8 @@ public class RepQuoteExampleGSG <strong class="userinput"><code> implements Even
         envConfig.setTransactional(true);
         envConfig.setVerboseReplication(appConfig.verbose);
         try {
-            dbenv = new <strong class="userinput"><code>RepQuoteEnvironment</code></strong>(repConfig.getHome(), envConfig);
+            dbenv = new <strong class="userinput"><code>RepQuoteEnvironment</code></strong>(repConfig.getHome(), 
+                                                       envConfig);
         } catch(FileNotFoundException e) {
             System.err.println("FileNotFound exception: " + e.toString());
             System.err.println(

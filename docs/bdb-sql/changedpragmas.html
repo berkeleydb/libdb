@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Changed PRAGMAs</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="dbsqlbasics.html" title="Chapter 1. Berkeley DB SQL: The Absolute Basics" />
+    <link rel="prev" href="unsupportedpragmas.html" title="Unsupported PRAGMAs" />
+    <link rel="next" href="miscdiff.html" title="Miscellaneous Differences" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Changed PRAGMAs</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="unsupportedpragmas.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 1. Berkeley DB SQL: The Absolute Basics</th>
+          <td width="20%" align="right"> <a accesskey="n" href="miscdiff.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="changedpragmas"></a>Changed PRAGMAs</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="changedpragmas.html#journal_size_limit">PRAGMA journal_size_limit</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="changedpragmas.html#max_page_count">PRAGMA max_page_count</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+                The following PRAGMAs are available in the BDB SQL interface, but they
+                behave differently in some way.
+            </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="journal_size_limit"></a>PRAGMA journal_size_limit</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    For standard SQLite, this pragma identifies the
+                    maximum size that the journal file is allowed to be.
+                </p>
+        <p>
+                    Berkeley DB does not have a journal file, but it does write
+                    and use <span class="emphasis"><em>log files</em></span>. Over the course
+                    of the database's lifetime, Berkeley DB will probably create
+                    multiple log files. A new log file is created when the
+                    current log file has reached the defined maximum size
+                    for a log file.
+                </p>
+        <p>
+                    You use <code class="literal">PRAGMA journal_size_limit</code> to
+                    define this maximum size for a log file.
+                </p>
+        <p>
+                    For more information, see 
+                    <a class="xref" href="admin-logfile.html#logfilesize" title="Setting the Log File Size">Setting the Log File Size</a>.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="max_page_count"></a>PRAGMA max_page_count</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    For standard SQLite, this identifies the maximum
+                    number of pages allowed in the database. For the
+                    BDB SQL interface, this identifies the maximum size (in bytes)
+                    that the database file is allowed to be.
+                </p>
+        <p>
+                    For both interfaces, this pragma performs essentially
+                    the same function, but you express the upper bound in a
+                    slightly different way depending on which interface you
+                    are using.
+                </p>
+        <p>
+                    For more information, see
+                    <a class="xref" href="configpage.html" title="Configuring the Database Page Size">Configuring the Database Page Size</a>.
+                </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="unsupportedpragmas.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="dbsqlbasics.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="miscdiff.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Unsupported PRAGMAs </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Miscellaneous Differences</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -599,7 +599,7 @@ __qam_salvage(dbp, vdp, pgno, h, handle, callback, flags)
 
 	err_ret = ret = 0;
 
-	pagesize = (u_int32_t)dbp->mpf->mfp->stat.st_pagesize;
+	pagesize = (u_int32_t)dbp->mpf->mfp->pagesize;
 	qlen = ((QUEUE *)dbp->q_internal)->re_len;
 	dbt.size = qlen;
 	key.data = &recno;

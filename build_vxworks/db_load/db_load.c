@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996-2009 Oracle.  All rights reserved.\n";
+    "Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 typedef struct {			/* XXX: Globals. */
@@ -41,9 +41,10 @@ int	db_load_dbt_rprint __P((DB_ENV *, DBT *));
 int	db_load_dbt_rrecno __P((DB_ENV *, DBT *, int));
 int	db_load_dbt_to_recno __P((DB_ENV *, DBT *, db_recno_t *));
 int	db_load_env_create __P((DB_ENV **, LDG *));
+void	free_keys __P((DBT *part_keys));
 int	db_load_load __P((DB_ENV *, char *, DBTYPE, char **, u_int, LDG *, int *));
 int	db_load_main __P((int, char *[]));
-int	db_load_rheader __P((DB_ENV *, DB *, DBTYPE *, char **, int *, int *));
+int	db_load_rheader __P((DB_ENV *, DB *, DBTYPE *, char **, int *, int *, DBT **));
 int	db_load_usage __P((void));
 int	db_load_version_check __P((void));
 
@@ -243,7 +244,7 @@ db_load_main(argc, argv)
 	 * then open it.
 	 */
 	if (db_load_env_create(&dbenv, &ldg) != 0)
-		goto shutdown;
+		goto err;
 
 	/* If we're resetting the LSNs, that's an entirely separate path. */
 	switch (mode) {
@@ -260,12 +261,12 @@ db_load_main(argc, argv)
 		while (!ldg.endofile)
 			if (db_load_load(dbenv, argv[0], dbtype, clist, ldf,
 			    &ldg, &existed) != 0)
-				goto shutdown;
+				goto err;
 		break;
 	}
 
 	if (0) {
-shutdown:	exitval = 1;
+err:		exitval = 1;
 	}
 	if ((ret = dbenv->close(dbenv, 0)) != 0) {
 		exitval = 1;
@@ -305,7 +306,7 @@ db_load_load(dbenv, name, argtype, clist, flags, ldg, existedp)
 {
 	DB *dbp;
 	DBC *dbc;
-	DBT key, rkey, data, *readp, *writep;
+	DBT key, rkey, data, *part_keys, *readp, *writep;
 	DBTYPE dbtype;
 	DB_TXN *ctxn, *txn;
 	db_recno_t recno, datarecno;
@@ -319,6 +320,7 @@ db_load_load(dbenv, name, argtype, clist, flags, ldg, existedp)
 	dbc = NULL;
 	subdb = NULL;
 	ctxn = txn = NULL;
+	part_keys = NULL;
 	memset(&key, 0, sizeof(DBT));
 	memset(&data, 0, sizeof(DBT));
 	memset(&rkey, 0, sizeof(DBT));
@@ -341,7 +343,7 @@ retry_db:
 		dbtype = argtype;
 	} else {
 		if (db_load_rheader(dbenv,
-		    dbp, &dbtype, &subdb, &checkprint, &keys) != 0)
+		    dbp, &dbtype, &subdb, &checkprint, &keys, &part_keys) != 0)
 			goto err;
 		if (G(endofile))
 			goto done;
@@ -609,7 +611,7 @@ err:		rval = 1;
 	if (rkey.data != NULL)
 		free(rkey.data);
 	free(data.data);
-
+	free_keys(part_keys);
 	return (rval);
 }
 
@@ -827,12 +829,13 @@ err:	return (1);
  *	Read the header message.
  */
 int
-db_load_rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
+db_load_rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp, part_keyp)
 	DB_ENV *dbenv;
 	DB *dbp;
 	DBTYPE *dbtypep;
 	char **subdbp;
 	int *checkprintp, *keysp;
+	DBT **part_keyp;
 {
 	DBT *keys, *kp;
 	size_t buflen, linelen, start;
@@ -844,6 +847,8 @@ db_load_rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
 	*dbtypep = DB_UNKNOWN;
 	*checkprintp = 0;
 	name = NULL;
+	*part_keyp = NULL;
+	keys = NULL;
 
 	/*
 	 * We start with a smallish buffer;  most headers are small.
@@ -1004,10 +1009,11 @@ db_load_rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
 			}
 			nparts = (u_int32_t) val;
 			if ((keys =
-			    malloc((nparts - 1) * sizeof(DBT))) == NULL) {
+			    malloc(nparts * sizeof(DBT))) == NULL) {
 				dbenv->err(dbenv, ENOMEM, NULL);
 				goto err;
 			}
+			keys[nparts - 1].data = NULL;
 			kp = keys;
 			for (i = 1; i < nparts; kp++, i++) {
 				if ((kp->data =
@@ -1026,6 +1032,8 @@ db_load_rheader(dbenv, dbp, dbtypep, subdbp, checkprintp, keysp)
 			if ((ret = dbp->set_partition(
 			     dbp, nparts, keys, NULL)) != 0)
 				goto err;
+
+			*part_keyp = keys;
 
 			continue;
 		}
@@ -1053,7 +1061,22 @@ err:		ret = 1;
 	}
 	if (name != NULL)
 		free(name);
+	if (ret != 0) {
+		*part_keyp = NULL;
+		free_keys(keys);
+	}
 	return (ret);
+}
+
+void free_keys(part_keys)
+	DBT *part_keys;
+{
+	DBT *kp;
+	if (part_keys != NULL) {
+		for (kp = part_keys; kp->data != NULL; kp++)
+			free(kp->data);
+		free(part_keys);
+	}
 }
 
 /*
@@ -1106,7 +1129,7 @@ err:		ret = 1;
  * convprintable --
  *	Convert a printable-encoded string into a newly allocated string.
  *
- * In an ideal world, this would probably share code with dbt_rprint, but
+ * In an ideal world, this would probably share code with dbt_rprint but
  * that's set up to read character-by-character (to avoid large memory
  * allocations that aren't likely to be a problem here), and this has fewer
  * special cases to deal with.

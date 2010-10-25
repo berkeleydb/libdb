@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -31,7 +31,69 @@ namespace CsharpAPITest
 			Configuration.ClearDir(testFixtureHome);
 		}
 
-		[Test]
+        [Test]
+        public void TestCompactWithoutTxn() {
+            int i, nRecs;
+            nRecs = 10000;
+            testName = "TestCompactWithoutTxn";
+            testHome = testFixtureHome + "/" + testName;
+            string hashDBFileName = testHome + "/" + testName + ".db";
+
+            Configuration.ClearDir(testHome);
+
+            HashDatabaseConfig hashDBConfig = new HashDatabaseConfig();
+            hashDBConfig.Creation = CreatePolicy.ALWAYS;
+            // The minimum page size
+            hashDBConfig.PageSize = 512;
+            hashDBConfig.HashComparison =
+                new EntryComparisonDelegate(dbIntCompare);
+            using (HashDatabase hashDB = HashDatabase.Open(
+                hashDBFileName, hashDBConfig)) {
+                DatabaseEntry key;
+                DatabaseEntry data;
+
+                // Fill the database with entries from 0 to 9999
+                for (i = 0; i < nRecs; i++) {
+                    key = new DatabaseEntry(BitConverter.GetBytes(i));
+                    data = new DatabaseEntry(BitConverter.GetBytes(i));
+                    hashDB.Put(key, data);
+                }
+
+                /*
+                 * Delete entries below 500, between 3000 and
+                 * 5000 and above 7000
+                 */
+                for (i = 0; i < nRecs; i++)
+                    if (i < 500 || i > 7000 || (i < 5000 && i > 3000)) {
+                        key = new DatabaseEntry(BitConverter.GetBytes(i));
+                        hashDB.Delete(key);
+                    }
+
+                hashDB.Sync();
+                long fileSize = new FileInfo(hashDBFileName).Length;
+
+                // Compact database
+                CompactConfig cCfg = new CompactConfig();
+                cCfg.FillPercentage = 30;
+                cCfg.Pages = 10;
+                cCfg.Timeout = 1000;
+                cCfg.TruncatePages = true;
+                cCfg.start = new DatabaseEntry(BitConverter.GetBytes(1));
+                cCfg.stop = new DatabaseEntry(BitConverter.GetBytes(7000));
+                CompactData compactData = hashDB.Compact(cCfg);
+                Assert.IsFalse((compactData.Deadlocks == 0) &&
+                    (compactData.Levels == 0) &&
+                    (compactData.PagesExamined == 0) &&
+                    (compactData.PagesFreed == 0) &&
+                    (compactData.PagesTruncated == 0));
+
+                hashDB.Sync();
+                long compactedFileSize = new FileInfo(hashDBFileName).Length;
+                Assert.Less(compactedFileSize, fileSize);
+            }
+        }
+
+        [Test]
 		public void TestHashComparison()
 		{
 			testName = "TestHashComparison";
@@ -323,6 +385,13 @@ namespace CsharpAPITest
 			StatsInTxn(testHome, testName, true);
 		}
 
+        private int dbIntCompare(DatabaseEntry dbt1, DatabaseEntry dbt2) {
+            int a, b;
+            a = BitConverter.ToInt32(dbt1.Data, 0);
+            b = BitConverter.ToInt32(dbt2.Data, 0);
+            return a - b;
+        }
+
 		public void StatsInTxn(string home, string name, bool ifIsolation)
 		{
 			DatabaseEnvironmentConfig envConfig =
@@ -456,7 +525,7 @@ namespace CsharpAPITest
 			Configuration.ConfirmUint(xmlElem,
 			    "FillFactor", hashDB.FillFactor, compulsory);
 			Configuration.ConfirmUint(xmlElem,
-			    "NumElements", hashDB.TableSize * hashDB.FillFactor,
+			    "NumElements", hashDB.TableSize,
 			    compulsory);
 			Assert.AreEqual(DatabaseType.HASH, hashDB.Type);
 			string type = hashDB.Type.ToString();

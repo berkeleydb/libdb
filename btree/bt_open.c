@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -49,7 +49,6 @@
 #include "dbinc/db_swap.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/fop.h"
@@ -340,11 +339,8 @@ __bam_read_root(dbp, ip, txn, base_pgno, flags)
 
 		t->bt_meta = base_pgno;
 		t->bt_root = meta->root;
-#ifndef HAVE_FTRUNCATE
-		if (PGNO(meta) == PGNO_BASE_MD &&
-		    !F_ISSET(dbp, DB_AM_RECOVER) && !IS_VERSION(dbp, meta))
+		if (PGNO(meta) == PGNO_BASE_MD && !F_ISSET(dbp, DB_AM_RECOVER))
 			__memp_set_last_pgno(mpf, meta->dbmeta.last_pgno);
-#endif
 	} else {
 		DB_ASSERT(dbp->env,
 		    IS_RECOVERING(dbp->env) || F_ISSET(dbp, DB_AM_RECOVER));
@@ -487,8 +483,8 @@ __bam_new_file(dbp, ip, txn, fhp, name)
 	if (F_ISSET(dbp, DB_AM_INMEM)) {
 		/* Build the meta-data page. */
 		pgno = PGNO_BASE_MD;
-		if ((ret = __memp_fget(mpf, &pgno, ip, txn,
-		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
+		if ((ret = __memp_fget(mpf, &pgno,
+		    ip, txn, DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 			return (ret);
 		LSN_NOT_LOGGED(lsn);
 		__bam_init_meta(dbp, meta, PGNO_BASE_MD, &lsn);
@@ -505,7 +501,7 @@ __bam_new_file(dbp, ip, txn, fhp, name)
 		/* Build the root page. */
 		pgno = 1;
 		if ((ret = __memp_fget(mpf, &pgno,
-		    ip, txn, DB_MPOOL_CREATE, &root)) != 0)
+		    ip, txn, DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &root)) != 0)
 			goto err;
 		P_INIT(root, dbp->pgsize, 1, PGNO_INVALID, PGNO_INVALID,
 		    LEAFLEVEL, dbp->type == DB_RECNO ? P_LRECNO : P_LBTREE);
@@ -614,7 +610,7 @@ __bam_new_subdb(mdbp, dbp, ip, txn)
 	    0, dbp->meta_pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
 	if ((ret = __memp_fget(mpf, &dbp->meta_pgno,
-	    ip, txn, DB_MPOOL_CREATE, &meta)) != 0)
+	    ip, txn, DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &meta)) != 0)
 		goto err;
 
 	/* Build meta-data page. */

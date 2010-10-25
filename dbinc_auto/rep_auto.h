@@ -77,5 +77,19 @@ typedef struct ___rep_vote_info_args {
 	u_int32_t	tiebreaker;
 } __rep_vote_info_args;
 
+#define	__REP_LSN_HIST_KEY_SIZE	8
+typedef struct ___rep_lsn_hist_key_args {
+	u_int32_t	version;
+	u_int32_t	gen;
+} __rep_lsn_hist_key_args;
+
+#define	__REP_LSN_HIST_DATA_SIZE	20
+typedef struct ___rep_lsn_hist_data_args {
+	u_int32_t	envid;
+	DB_LSN		lsn;
+	u_int32_t	hist_sec;
+	u_int32_t	hist_nsec;
+} __rep_lsn_hist_data_args;
+
 #define	__REP_MAXMSG_SIZE	36
 #endif

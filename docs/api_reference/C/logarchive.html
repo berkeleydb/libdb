@@ -51,6 +51,12 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
     </p>
       <p>
+	 When Replication Manager is in use, log archiving is
+	 performed in a replication group-aware manner such that the
+	 log file status of other sites in the group is considered to
+	 determine if a log file is in use.
+    </p>
+      <p>
 
          Arrays of log filenames are stored in allocated memory.  If application-specific allocation
          routines have been declared (see <a class="xref" href="envset_alloc.html" title="DB_ENV-&gt;set_alloc()">DB_ENV-&gt;set_alloc()</a> 
@@ -97,7 +103,7 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1680126"></a>Parameters</h3>
+              <h3 class="title"><a id="id3999531"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -105,7 +111,22 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1680787"></a>flags</h4>
+                <h4 class="title"><a id="id3999520"></a>listp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>listp</strong></span> parameter references memory
+                          into which the allocated array of log or database filenames is copied.
+                           If there are no filenames to return, the memory location to which
+                          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3999279"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -169,27 +190,12 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1681073"></a>listp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>listp</strong></span> parameter references memory
-                          into which the allocated array of log or database filenames is copied.
-                           If there are no filenames to return, the memory location to which
-                          <span class="bold"><strong>listp</strong></span> refers will be set to NULL.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1681092"></a>Errors</h3>
+              <h3 class="title"><a id="id3999872"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -205,7 +211,7 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1680583"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3999888"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -218,7 +224,7 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1681176"></a>Class</h3>
+              <h3 class="title"><a id="id3999916"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -232,7 +238,7 @@ DB_ENV-&gt;log_archive(DB_ENV *env, char *(*listp)[], u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1680870"></a>See Also</h3>
+              <h3 class="title"><a id="id3999901"></a>See Also</h3>
             </div>
           </div>
         </div>

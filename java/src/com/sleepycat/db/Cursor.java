@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -24,6 +24,9 @@ If the cursor is to be used to perform operations on behalf of a
 transaction, the cursor must be opened and closed within the context of
 that single transaction.
 <p>
+If you do not close the cursor before closing the database handle or the 
+transaction handle that owns this cursor, then, closing a database 
+handle or a transaction handle closes these open cursors.
 Once the cursor close method has been called, the handle may not be
 accessed again, regardless of the close method's success or failure.
 <p>
@@ -64,6 +67,26 @@ public class Cursor {
         this.config = config;
     }
 
+    /**
+    Discard the cursor.
+    <p>
+    After the close method has been called, you cannot use the cursor handle
+    again.
+    <p>
+    It is not required to close the cursor explicitly before closing the
+    database handle or the transaction handle that owns this cursor because
+    closing a database handle or transaction handle closes those open cursor.
+    <p>
+    However, it is recommended that you always close all cursor handles
+    immediately after their use to promote concurrency and to release resources
+    such as page locks.
+    <p>
+    @throws DeadlockException if the operation was selected to resolve a
+    deadlock.  If the application is already intending to abort the transaction,
+    this exception should be ignored, and the application should proceed. 
+    <p>
+    @throws DatabaseException if a failure occurs.
+    */
     public synchronized void close()
         throws DatabaseException {
 
@@ -718,8 +741,7 @@ found; {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY
     }
 
     /**
-    Move the cursor to the specified key and closest matching data item of the
-database.
+    Move the cursor to the specified key and matching data item of the database.
 <p>
 In the case of any database supporting sorted duplicate sets, the returned
 key/data pair is for the smallest data item greater than or equal to the

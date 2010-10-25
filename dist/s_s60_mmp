@@ -3,7 +3,7 @@
 #
 # Build BREW .dsp files.
 
-. RELEASE
+. ./RELEASE
 
 SRCFILES=srcfiles.in
 

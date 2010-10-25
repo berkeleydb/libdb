@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -675,43 +675,25 @@ __bam_ritem(dbc, h, indx, data, typeflag)
 	u_int32_t typeflag;
 {
 	BKEYDATA *bk;
-	BINTERNAL *bi;
 	DB *dbp;
 	DBT orig, repl;
-	db_indx_t cnt, lo, ln, min, off, prefix, suffix;
-	int32_t nbytes;
+	db_indx_t min, prefix, suffix;
 	u_int32_t len;
 	int ret;
-	db_indx_t *inp;
 	u_int8_t *dp, *p, *t, type;
 
 	dbp = dbc->dbp;
-	bi = NULL;
-	bk = NULL;
 
 	/*
 	 * Replace a single item onto a page.  The logic figuring out where
 	 * to insert and whether it fits is handled in the caller.  All we do
 	 * here is manage the page shuffling.
 	 */
-	if (TYPE(h) == P_IBTREE) {
-		/* Point at the part of the internal struct past the type. */
-		bi = GET_BINTERNAL(dbp, h, indx);
-		if (B_TYPE(bi->type) == B_OVERFLOW)
-			len = BOVERFLOW_SIZE;
-		else
-			len = bi->len;
-		len += SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
-		dp = &bi->unused;
-		type = typeflag == 0 ? bi->type :
-			(bi->type == B_KEYDATA ? B_OVERFLOW : B_KEYDATA);
-	} else {
-		bk = GET_BKEYDATA(dbp, h, indx);
-		len = bk->len;
-		dp = bk->data;
-		type = bk->type;
-		typeflag = B_DISSET(type);
-	}
+	bk = GET_BKEYDATA(dbp, h, indx);
+	len = bk->len;
+	dp = bk->data;
+	type = bk->type;
+	typeflag = B_DISSET(type);
 
 	/* Log the change. */
 	if (DBC_LOGGING(dbc)) {
@@ -745,6 +727,33 @@ __bam_ritem(dbc, h, indx, data, typeflag)
 	} else
 		LSN_NOT_LOGGED(LSN(h));
 
+	return (__bam_ritem_nolog(dbc, h, indx, NULL, data, type));
+}
+
+/*
+ * __bam_ritem_nolog --
+ *	Replace an item on a page.
+ *
+ * PUBLIC: int __bam_ritem_nolog __P((DBC *,
+ * PUBLIC:      PAGE *, u_int32_t, DBT *, DBT *, u_int32_t));
+ */
+int
+__bam_ritem_nolog(dbc, h, indx, hdr, data, type)
+	DBC *dbc;
+	PAGE *h;
+	u_int32_t indx;
+	DBT *hdr, *data;
+	u_int32_t type;
+{
+	BKEYDATA *bk;
+	BINTERNAL *bi;
+	DB *dbp;
+	db_indx_t cnt, off, lo, ln;
+	db_indx_t *inp;
+	int32_t nbytes;
+	u_int8_t *p, *t;
+
+	dbp = dbc->dbp;
 	/*
 	 * Set references to the first in-use byte on the page and the
 	 * first byte of the item being replaced.
@@ -752,11 +761,18 @@ __bam_ritem(dbc, h, indx, data, typeflag)
 	inp = P_INP(dbp, h);
 	p = (u_int8_t *)h + HOFFSET(h);
 	if (TYPE(h) == P_IBTREE) {
+		bi = GET_BINTERNAL(dbp, h, indx);
 		t = (u_int8_t *)bi;
 		lo = (db_indx_t)BINTERNAL_SIZE(bi->len);
-		ln = (db_indx_t)BINTERNAL_SIZE(data->size -
-		    (SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused)));
+		if (data == NULL) {
+			DB_ASSERT(dbp->env, hdr != NULL);
+			bi = (BINTERNAL*)hdr->data;
+			P_16_COPY(&bi->len, &cnt);
+			ln = (db_indx_t)BINTERNAL_SIZE(cnt);
+		} else
+			ln = (db_indx_t)BINTERNAL_SIZE(data->size);
 	} else {
+		bk = GET_BKEYDATA(dbp, h, indx);
 		t = (u_int8_t *)bk;
 		lo = (db_indx_t)BKEYDATA_SIZE(bk->len);
 		ln = (db_indx_t)BKEYDATA_SIZE(data->size);
@@ -769,33 +785,37 @@ __bam_ritem(dbc, h, indx, data, typeflag)
 	 * the regions overlap.
 	 */
 	if (lo != ln) {
-		nbytes = lo - ln;		/* Signed difference. */
+		nbytes = (int32_t)(lo - ln);	/* Signed difference. */
 		if (p == t)			/* First index is fast. */
-			inp[indx] += nbytes;
+			inp[indx] += (u_int32_t)nbytes;
 		else {				/* Else, shift the page. */
 			memmove(p + nbytes, p, (size_t)(t - p));
 
 			/* Adjust the indices' offsets. */
-			off = inp[indx];
+			off = (u_int32_t)inp[indx];
 			for (cnt = 0; cnt < NUM_ENT(h); ++cnt)
 				if (inp[cnt] <= off)
-					inp[cnt] += nbytes;
+					inp[cnt] += (u_int32_t)nbytes;
 		}
 
 		/* Clean up the page and adjust the item's reference. */
-		HOFFSET(h) += nbytes;
+		HOFFSET(h) += (u_int32_t)nbytes;
 		t += nbytes;
 	}
 
 	/* Copy the new item onto the page. */
-	bk = (BKEYDATA *)t;
-	bk->len = data->size;
-	B_TSET(bk->type, type);
-	memcpy(bk->data, data->data, bk->len);
-
-	/* Remove the length of the internal header elements. */
-	if (TYPE(h) == P_IBTREE)
-		bk->len -= SSZA(BINTERNAL, data) - SSZ(BINTERNAL, unused);
+	if (TYPE(h) == P_IBTREE) {
+		DB_ASSERT(dbp->env, hdr != NULL);
+		memcpy(t, hdr->data, hdr->size);
+		bi = (BINTERNAL *)t;
+		if (data != NULL && data->size != 0)
+			memcpy(bi->data, data->data, data->size);
+	} else {
+		bk = (BKEYDATA *)t;
+		bk->len = data->size;
+		B_TSET(bk->type, type);
+		memcpy(bk->data, data->data, bk->len);
+	}
 
 	return (0);
 }
@@ -828,20 +848,16 @@ __bam_irep(dbc, h, indx, hdr, data)
 	    (ret = __db_doff(dbc, ((BOVERFLOW *)bi->data)->pgno)) != 0)
 		return (ret);
 
-	memset(&dbt, 0, sizeof(dbt));
-	dbt.size = hdr->size + data->size - SSZ(BINTERNAL, unused);
-	if ((ret = __os_malloc(dbp->env, dbt.size, &dbt.data)) != 0)
-		return (ret);
-	memcpy(dbt.data,
-	     (u_int8_t *)hdr->data + SSZ(BINTERNAL, unused),
-	     hdr->size - SSZ(BINTERNAL, unused));
-	memcpy((u_int8_t *)dbt.data +
-	    hdr->size - SSZ(BINTERNAL, unused), data->data, data->size);
+	if (DBC_LOGGING(dbc)) {
+		dbt.data = bi;
+		dbt.size = BINTERNAL_SIZE(bi->len);
+		if ((ret = __bam_irep_log(dbp, dbc->txn, &LSN(h), 0, PGNO(h),
+		    &LSN(h), (u_int32_t)indx, TYPE(h), hdr, data, &dbt)) != 0)
+			return (ret);
+	} else
+		LSN_NOT_LOGGED(LSN(h));
 
-	ret = __bam_ritem(dbc, h, indx, &dbt, bi->type != bn->type);
-
-	__os_free(dbp->env, dbt.data);
-	return (ret);
+	return (__bam_ritem_nolog(dbc, h, indx, hdr, data, bn->type));
 }
 
 /*
@@ -875,10 +891,8 @@ __bam_dup_check(dbc, op, h, indx, sz, cntp)
 	sz += B_TYPE(bk->type) == B_KEYDATA ?
 	    BKEYDATA_PSIZE(bk->len) : BOVERFLOW_PSIZE;
 
-	/* Sum up all the data items. */
-	first = indx;
-
 	/*
+	 * Sum up all the data items.
 	 * Account for the record being inserted.  If we are replacing it,
 	 * don't count it twice.
 	 *

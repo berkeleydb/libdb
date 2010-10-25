@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -212,34 +212,141 @@ public class SecondaryConfig extends DatabaseConfig implements Cloneable {
         return multiKeyCreator;
     }
 
+    /**
+     * Defines a foreign key integrity constraint for a given foreign key
+     * database.
+     *
+     * <p>If this property is non-null, a record must be present in the
+     * specified foreign database for every record in the secondary database,
+     * where the secondary key value is equal to the foreign database key
+     * value. Whenever a record is to be added to the secondary database, the
+     * secondary key is used as a lookup key in the foreign database.
+     *
+     * <p>The foreign database must not have duplicates allowed.</p>
+     *
+     * @param foreignDb the database used to check the foreign key
+     * integrity constraint, or null if no foreign key constraint should be
+     * checked.
+     */
     public void setForeignKeyDatabase(Database foreignDb){
 	this.foreign = foreignDb.db;
     }
 
+    /**
+     * Returns the database used to check the foreign key integrity constraint,
+     * or null if no foreign key constraint will be checked.
+     *
+     * @return the foreign key database, or null.
+     *
+     * @see #setForeignKeyDatabase
+     */
     public Db getForeignKeyDatabase(){
 	return foreign;
     }
 
+    /**
+     * Specifies the action taken when a referenced record in the foreign key
+     * database is deleted.
+     *
+     * <p>This property is ignored if the foreign key database property is
+     * null.</p>
+     *
+     * @param action the action taken when a referenced record
+     * in the foreign key database is deleted.
+     *
+     * @see ForeignKeyDeleteAction @see #setForeignKeyDatabase
+     */
     public void setForeignKeyDeleteAction(ForeignKeyDeleteAction action){
 	this.fkDelAction = action;
     }
 
+    /**
+     * Returns the action taken when a referenced record in the foreign key
+     * database is deleted.
+     *
+     * @return the action taken when a referenced record in the foreign key
+     * database is deleted.
+     *
+     * @see #setForeignKeyDeleteAction
+     */
     public ForeignKeyDeleteAction getForeignKeyDeleteAction(){
 	return fkDelAction;
     }
 
+    /**
+     * Specifies the user-supplied object used for setting single-valued
+     * foreign keys to null.
+     *
+     * <p>This method may <em>not</em> be used along with {@link
+     * #setMultiKeyCreator}.  When using a multi-key creator, use {@link
+     * #setForeignMultiKeyNullifier} instead.</p>
+     *
+     * <p>If the foreign key database property is non-null and the foreign key
+     * delete action is <code>NULLIFY</code>, this property is required to be
+     * non-null; otherwise, this property is ignored.</p>
+     *
+     * <p><em>WARNING:</em> Key nullifier instances are shared by multiple
+     * threads and key nullifier methods are called without any special
+     * synchronization.  Therefore, key creators must be thread safe.  In
+     * general no shared state should be used and any caching of computed
+     * values must be done with proper synchronization.</p>
+     *
+     * @param keyNullifier the user-supplied object used for setting
+     * single-valued foreign keys to null.
+     *
+     * @see ForeignKeyNullifier @see ForeignKeyDeleteAction#NULLIFY @see
+     * #setForeignKeyDatabase
+     */
     public void setForeignKeyNullifier(ForeignKeyNullifier keyNullifier){
 	this.keyNullifier = keyNullifier;
     }
 
+    /**
+     * Returns the user-supplied object used for setting single-valued foreign
+     * keys to null.
+     *
+     * @return the user-supplied object used for setting single-valued foreign
+     * keys to null.
+     *
+     * @see #setForeignKeyNullifier
+     */
     public ForeignKeyNullifier getForeignKeyNullifier(){
 	return keyNullifier;
     }
     
+    /**
+     * Specifies the user-supplied object used for setting multi-valued foreign
+     * keys to null.
+     *
+     * <p>If the foreign key database property is non-null and the foreign key
+     * delete action is <code>NULLIFY</code>, this property is required to be
+     * non-null; otherwise, this property is ignored.</p>
+     *
+     * <p><em>WARNING:</em> Key nullifier instances are shared by multiple
+     * threads and key nullifier methods are called without any special
+     * synchronization.  Therefore, key creators must be thread safe.  In
+     * general no shared state should be used and any caching of computed
+     * values must be done with proper synchronization.</p>
+     *
+     * @param multiKeyNullifier the user-supplied object used for
+     * setting multi-valued foreign keys to null.
+     *
+     * @see ForeignMultiKeyNullifier @see ForeignKeyDeleteAction#NULLIFY @see
+     * #setForeignKeyDatabase
+     */
     public void setForeignMultiKeyNullifier(ForeignMultiKeyNullifier multiKeyNullifier){
 	this.multiKeyNullifier = multiKeyNullifier;
     }
 
+    /**
+     * Returns the user-supplied object used for setting multi-valued foreign
+     * keys to null.
+     *
+     * @return the user-supplied object used for setting multi-valued foreign
+     * keys to null.
+     *
+     * @see #setForeignMultiKeyNullifier
+     */
     public ForeignMultiKeyNullifier getForeignMultiKeyNullifier(){
 	return multiKeyNullifier;
     }

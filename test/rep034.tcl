@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004-2009 Oracle.  All rights reserved.
+# Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -20,11 +20,6 @@ proc rep034 { method { niter 2 } { tnum "034" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -68,7 +63,6 @@ proc rep034_sub { method niter tnum logset largs } {
 	global testdir
 	global databases_in_memory
 	global repfiles_in_memory
-	global startup_done
 	global rep_verbose
 	global verbose_type
 	global rep034_got_allreq
@@ -116,7 +110,7 @@ proc rep034_sub { method niter tnum logset largs } {
 	# 
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create $m_txnargs $m_logargs \
-	    -event rep_event $verbargs -errpfx MASTER $repmemargs \
+	    -event $verbargs -errpfx MASTER $repmemargs \
 	    -home $masterdir -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd]
 	puts "\tRep$tnum.a: Create master; add some data."
@@ -128,11 +122,10 @@ proc rep034_sub { method niter tnum logset largs } {
 	puts "\tRep$tnum.b: Bring up client; check STARTUPDONE."
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create $c_txnargs $c_logargs \
-	    -event rep_event $verbargs -errpfx CLIENT $repmemargs \
+	    -event $verbargs -errpfx CLIENT $repmemargs \
 	    -home $clientdir -rep_client -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd]
 	set envlist "{$masterenv 1} {$clientenv 2}"
-	set startup_done 0
 	process_msgs $envlist
 
 	error_check_good done_without_live_txns \
@@ -144,7 +137,7 @@ proc rep034_sub { method niter tnum logset largs } {
 	# STARTUPDONE can be computed, so testing the event firing mechanism
 	# just this once is enough.
 	#
-	error_check_good done_event_too $startup_done 1
+	error_check_good done_event_too [is_startup_done $clientenv] 1
 
 	#
 	# Bring up another client.  Do additional new txns at master, ensure
@@ -158,7 +151,7 @@ proc rep034_sub { method niter tnum logset largs } {
 	# of the replication transport call-back function.
 	#
 	set cl2_envcmd "berkdb_env_noerr -create $c2_txnargs $c2_logargs \
-	    -event rep_event $verbargs -errpfx CLIENT2 $repmemargs \
+	    -event $verbargs -errpfx CLIENT2 $repmemargs \
 	    -home $clientdir2 -rep_client -rep_transport \[list 3 rep034_send\]"
 	set client2env [eval $cl2_envcmd]
 

@@ -49,12 +49,12 @@
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mastersync.html#id1615013">Blocked client operations</a>
+              <a href="rep_mastersync.html#id3664561">Blocked client operations</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mastersync.html#id1615125">Clients too far out-of-date to synchronize</a>
+              <a href="rep_mastersync.html#id3665198">Clients too far out-of-date to synchronize</a>
             </span>
           </dt>
         </dl>
@@ -115,12 +115,12 @@ flag.  The application may continue trying to find another client to
 service the request, or it may give up and simply send it to the master
 (that is, the environment ID explicitly specified to the transport
 function).</p>
-        <p>Replication Manager allows an application to designate one remote site
-(called its "peer") to receive client-to-client requests, via the
+        <p>Replication Manager allows an application to designate one or more
+remote sites (called its "peers") to receive client-to-client requests, via the
 flags parameter to the <a href="../api_reference/C/repmgrremote_site.html" class="olink">DB_ENV-&gt;repmgr_add_remote_site()</a> method.  Replication
-Manager will always first try to send requests marked with the
-<a href="../api_reference/C/reptransport.html#transport_DB_REP_ANYWHERE" class="olink">DB_REP_ANYWHERE</a> flag to its peer, if available.  However, it
-will always send a <a href="../api_reference/C/reptransport.html#transport_DB_REP_REREQUEST" class="olink">DB_REP_REREQUEST</a> to the master site.</p>
+Manager always tries to send requests marked with the
+<a href="../api_reference/C/reptransport.html#transport_DB_REP_ANYWHERE" class="olink">DB_REP_ANYWHERE</a> flag to a peer, if available.  However, it
+always sends a <a href="../api_reference/C/reptransport.html#transport_DB_REP_REREQUEST" class="olink">DB_REP_REREQUEST</a> to the master site.</p>
         <p>Base API applications have complete freedom
 in choosing where to send these <a href="../api_reference/C/reptransport.html#transport_DB_REP_ANYWHERE" class="olink">DB_REP_ANYWHERE</a> requests, and
 in deciding how to handle <a href="../api_reference/C/reptransport.html#transport_DB_REP_REREQUEST" class="olink">DB_REP_REREQUEST</a>.</p>
@@ -142,7 +142,7 @@ the election.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1615013"></a>Blocked client operations</h3>
+              <h3 class="title"><a id="id3664561"></a>Blocked client operations</h3>
             </div>
           </div>
         </div>
@@ -161,7 +161,7 @@ currently synchronizing with the master.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1615125"></a>Clients too far out-of-date to synchronize</h3>
+              <h3 class="title"><a id="id3665198"></a>Clients too far out-of-date to synchronize</h3>
             </div>
           </div>
         </div>
@@ -175,8 +175,8 @@ time and may require database handles to be reopened in the client
 applications.</p>
         <p>Client applications which cannot wait or would prefer
 to do a hot backup instead of performing internal initialization, should
-call the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method with the <a href="../api_reference/C/repconfig.html#config_DB_REP_CONF_NOAUTOINIT" class="olink">DB_REP_CONF_NOAUTOINIT</a> flag.
-This configuration flag causes Berkeley DB to return
+call the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method to turn off the <a href="../api_reference/C/repconfig.html#config_DB_REP_CONF_AUTOINIT" class="olink">DB_REP_CONF_AUTOINIT</a> flag.
+Turning off this configuration flag causes Berkeley DB to return
 <a href="../api_reference/C/repmessage.html#repmsg_DB_REP_JOIN_FAILURE" class="olink">DB_REP_JOIN_FAILURE</a> to the application instead of performing
 internal initialization.</p>
       </div>

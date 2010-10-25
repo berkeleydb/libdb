@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Oracle Corporation")]
 [assembly: AssemblyProduct("ex_repquote")]
-[assembly: AssemblyCopyright("Copyright © Oracle Corporation 2009")]
+[assembly: AssemblyCopyright("Copyright © 2009, 2010 Oracle Corporation and/or its affiliates.  All rights reserved.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

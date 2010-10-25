@@ -72,7 +72,7 @@
 </p>
       <p>
     The following statements open the three databases by
-	constructing a Database object.
+    constructing a <code class="classname">Database</code> object.
 </p>
       <a id="cb_java_sampledatabase4"></a>
       <pre class="programlisting">    public SampleDatabase(String homeDirectory)
@@ -85,8 +85,10 @@
         dbConfig.setType(DatabaseType.BTREE);
         ...
 <strong class="userinput"><code>        partDb = env.openDatabase(null, PART_STORE, null, dbConfig);
-        supplierDb = env.openDatabase(null, SUPPLIER_STORE, null, dbConfig);
-        shipmentDb = env.openDatabase(null, SHIPMENT_STORE, null, dbConfig);</code></strong>
+        supplierDb = env.openDatabase(null, SUPPLIER_STORE, null, 
+                                      dbConfig);
+        shipmentDb = env.openDatabase(null, SHIPMENT_STORE, null,
+                                      dbConfig); </code></strong>
         ...
     } </pre>
       <p>
@@ -110,7 +112,7 @@
         env.close();
     } </pre>
       <p>
-    All databases, including the catalog database, must be closed
+    It is recommended that all databases, including the catalog database, is closed
 	before closing the environment.
 </p>
       <p>

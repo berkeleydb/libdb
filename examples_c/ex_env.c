@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -109,27 +109,27 @@ db_setup(home, data_dir, errfp, progname)
 
 	/* Open the environment with full transactional support. */
 	if ((ret = dbenv->open(dbenv, home,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | 
+	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 	    DB_INIT_TXN, 0644)) != 0) {
 		dbenv->err(dbenv, ret, "environment open: %s", home);
 		dbenv->close(dbenv, 0);
 		return (1);
 	}
 
-	/* 
+	/*
 	 * Open a database in the environment to verify the data_dir
 	 * has been set correctly.
 	 * Create a database object and initialize it for error
 	 * reporting.
 	 */
-	if ((ret = db_create(&dbp, dbenv, 0)) != 0){
+	if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
 		return (1);
 	}
 
 	/* Open a database with DB_BTREE access method. */
-	if ((ret = dbp->open(dbp, NULL, "exenv_db1.db", NULL, 
-	    DB_BTREE, DB_CREATE,0644)) != 0){
+	if ((ret = dbp->open(dbp, NULL, "exenv_db1.db", NULL,
+	    DB_BTREE, DB_CREATE,0644)) != 0) {
 		fprintf(stderr, "database open: %s\n", db_strerror(ret));
 		return (1);
 	}

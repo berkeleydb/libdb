@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,12 +11,12 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 
 #ifdef HAVE_STATISTICS
 static int __rep_print_all __P((ENV *, u_int32_t));
 static int __rep_print_stats __P((ENV *, u_int32_t));
 static int __rep_stat __P((ENV *, DB_REP_STAT **, u_int32_t));
+static const char *__rep_syncstate_to_string __P((repsync_t));
 
 /*
  * __rep_stat_pp --
@@ -85,13 +85,13 @@ __rep_stat(env, statp, flags)
 	 * copy just the stats struct so we won't block.  We only copy out
 	 * those stats that don't require acquiring any mutex.
 	 */
-	dolock = FLD_ISSET(rep->flags, REP_F_RECOVER_MASK) ? 0 : 1;
+	dolock = IS_REP_RECOVERING(rep) ? 0 : 1;
 	memcpy(stats, &rep->stat, sizeof(*stats));
 
 	/* Copy out election stats. */
-	if (F_ISSET(rep, REP_F_EPHASE1))
+	if (FLD_ISSET(rep->elect_flags, REP_E_PHASE1))
 		stats->st_election_status = 1;
-	else if (F_ISSET(rep, REP_F_EPHASE2))
+	else if (FLD_ISSET(rep->elect_flags, REP_E_PHASE2))
 		stats->st_election_status = 2;
 
 	stats->st_election_nsites = rep->sites;
@@ -416,36 +416,46 @@ __rep_print_all(env, flags)
 	ENV *env;
 	u_int32_t flags;
 {
+	static const FN rep_cfn[] = {
+		{ REP_C_2SITE_STRICT,	"REP_C_2SITE_STRICT" },
+		{ REP_C_AUTOINIT,	"REP_C_AUTOINIT" },
+		{ REP_C_BULK,		"REP_C_BULK" },
+		{ REP_C_DELAYCLIENT,	"REP_C_DELAYCLIENT" },
+		{ REP_C_ELECTIONS,	"REP_C_ELECTIONS" },
+		{ REP_C_INMEM,		"REP_C_INMEM" },
+		{ REP_C_LEASE,		"REP_C_LEASE" },
+		{ REP_C_NOWAIT,		"REP_C_NOWAIT" },
+		{ 0,			NULL }
+	};
+	static const FN rep_efn[] = {
+		{ REP_E_PHASE0,		"REP_E_PHASE0" },
+		{ REP_E_PHASE1,		"REP_E_PHASE1" },
+		{ REP_E_PHASE2,		"REP_E_PHASE2" },
+		{ REP_E_TALLY,		"REP_E_TALLY" },
+		{ 0,			NULL }
+	};
 	static const FN rep_fn[] = {
 		{ REP_F_ABBREVIATED,	"REP_F_ABBREVIATED" },
 		{ REP_F_APP_BASEAPI,	"REP_F_APP_BASEAPI" },
 		{ REP_F_APP_REPMGR,	"REP_F_APP_REPMGR" },
 		{ REP_F_CLIENT,		"REP_F_CLIENT" },
 		{ REP_F_DELAY,		"REP_F_DELAY" },
-		{ REP_F_EGENUPDATE,	"REP_F_EGENUPDATE" },
-		{ REP_F_EPHASE0,	"REP_F_EPHASE0" },
-		{ REP_F_EPHASE1,	"REP_F_EPHASE1" },
-		{ REP_F_EPHASE2,	"REP_F_EPHASE2" },
 		{ REP_F_GROUP_ESTD,	"REP_F_GROUP_ESTD" },
-		{ REP_F_INREPELECT,	"REP_F_INREPELECT" },
-		{ REP_F_INREPSTART,	"REP_F_INREPSTART" },
 		{ REP_F_LEASE_EXPIRED,	"REP_F_LEASE_EXPIRED" },
 		{ REP_F_MASTER,		"REP_F_MASTER" },
 		{ REP_F_MASTERELECT,	"REP_F_MASTERELECT" },
 		{ REP_F_NEWFILE,	"REP_F_NEWFILE" },
 		{ REP_F_NIMDBS_LOADED,	"REP_F_NIMDBS_LOADED" },
-		{ REP_F_NOARCHIVE,	"REP_F_NOARCHIVE" },
-		{ REP_F_READY_API,	"REP_F_READY_API" },
-		{ REP_F_READY_APPLY,	"REP_F_READY_APPLY" },
-		{ REP_F_READY_MSG,	"REP_F_READY_MSG" },
-		{ REP_F_READY_OP,	"REP_F_READY_OP" },
-		{ REP_F_RECOVER_LOG,	"REP_F_RECOVER_LOG" },
-		{ REP_F_RECOVER_PAGE,	"REP_F_RECOVER_PAGE" },
-		{ REP_F_RECOVER_UPDATE,	"REP_F_RECOVER_UPDATE" },
-		{ REP_F_RECOVER_VERIFY,	"REP_F_RECOVER_VERIFY" },
 		{ REP_F_SKIPPED_APPLY,	"REP_F_SKIPPED_APPLY" },
 		{ REP_F_START_CALLED,	"REP_F_START_CALLED" },
-		{ REP_F_TALLY,		"REP_F_TALLY" },
+		{ 0,			NULL }
+	};
+	static const FN rep_lfn[] = {
+		{ REP_LOCKOUT_API,	"REP_LOCKOUT_API" },
+		{ REP_LOCKOUT_APPLY,	"REP_LOCKOUT_APPLY" },
+		{ REP_LOCKOUT_ARCHIVE,	"REP_LOCKOUT_ARCHIVE" },
+		{ REP_LOCKOUT_MSG,	"REP_LOCKOUT_MSG" },
+		{ REP_LOCKOUT_OP,	"REP_LOCKOUT_OP" },
 		{ 0,			NULL }
 	};
 	static const FN dbrep_fn[] = {
@@ -489,7 +499,8 @@ __rep_print_all(env, flags)
 	STAT_LONG("Environment ID", rep->eid);
 	STAT_LONG("Master environment ID", rep->master_id);
 	STAT_ULONG("Election generation", rep->egen);
-	STAT_ULONG("Election generation number", rep->gen);
+	STAT_ULONG("Last active egen", rep->spent_egen);
+	STAT_ULONG("Master generation", rep->gen);
 	STAT_LONG("Space allocated for sites", rep->asites);
 	STAT_LONG("Sites in group", rep->nsites);
 	STAT_LONG("Votes needed for election", rep->nvotes);
@@ -504,6 +515,7 @@ __rep_print_all(env, flags)
 	    rep->max_gap.tv_nsec / NS_PER_US);
 
 	STAT_ULONG("Callers in rep_proc_msg", rep->msg_th);
+	STAT_ULONG("Callers in rep_elect", rep->elect_th);
 	STAT_ULONG("Library handle count", rep->handle_cnt);
 	STAT_ULONG("Multi-step operation count", rep->op_cnt);
 	__db_msg(env, "%.24s\tRecovery timestamp",
@@ -518,6 +530,14 @@ __rep_print_all(env, flags)
 	STAT_LONG("Winner tiebreaker", rep->w_tiebreaker);
 	STAT_LONG("Votes for this site", rep->votes);
 
+	STAT_STRING("Synchronization State",
+	    __rep_syncstate_to_string(rep->sync_state));
+	__db_prflags(env, NULL, rep->config, rep_cfn, NULL,
+	    "\tConfig Flags");
+	__db_prflags(env, NULL, rep->elect_flags, rep_efn, NULL,
+	    "\tElect Flags");
+	__db_prflags(env, NULL, rep->lockout_flags, rep_lfn,
+	    NULL, "\tLockout Flags");
 	__db_prflags(env, NULL, rep->flags, rep_fn, NULL, "\tFlags");
 
 	__db_msg(env, "%s", DB_GLOBAL(db_line));
@@ -540,6 +560,27 @@ __rep_print_all(env, flags)
 	ENV_LEAVE(env, ip);
 
 	return (0);
+}
+
+static const char *
+__rep_syncstate_to_string(state)
+	repsync_t state;
+{
+	switch (state) {
+	case SYNC_OFF:
+		return ("Not Synchronizing");
+	case SYNC_LOG:
+		return ("SYNC_LOG");
+	case SYNC_PAGE:
+		return ("SYNC_PAGE");
+	case SYNC_UPDATE:
+		return ("SYNC_UPDATE");
+	case SYNC_VERIFY:
+		return ("SYNC_VERIFY");
+	default:
+		break;
+	}
+	return ("UNKNOWN STATE");
 }
 
 #else /* !HAVE_STATISTICS */

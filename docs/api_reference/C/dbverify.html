@@ -84,7 +84,7 @@ DB-&gt;verify(DB *db, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1652773"></a>Parameters</h3>
+              <h3 class="title"><a id="id3969869"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -92,7 +92,20 @@ DB-&gt;verify(DB *db, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1652642"></a>database</h4>
+                <h4 class="title"><a id="id3969201"></a>file</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>file</strong></span> parameter is the physical
+                          file in which the databases to be verified are found.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3970025"></a>database</h4>
               </div>
             </div>
           </div>
@@ -111,20 +124,20 @@ DB-&gt;verify(DB *db, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1652927"></a>file</h4>
+                <h4 class="title"><a id="id3969801"></a>outfile</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>file</strong></span> parameter is the physical
-                          file in which the databases to be verified are found.
+                          The <span class="bold"><strong>outfile</strong></span> parameter is an optional
+                          file stream to which the databases' key/data pairs are written.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1652950"></a>flags</h4>
+                <h4 class="title"><a id="id3969821"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -239,25 +252,12 @@ DB-&gt;verify(DB *db, const char *file,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1652963"></a>outfile</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>outfile</strong></span> parameter is an optional
-                          file stream to which the databases' key/data pairs are written.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653290"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id3970428"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ DB-&gt;verify(DB *db, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1653115"></a>Errors</h3>
+              <h3 class="title"><a id="id3969944"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -294,7 +294,7 @@ DB-&gt;verify(DB *db, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1653134"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3970227"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -307,7 +307,7 @@ DB-&gt;verify(DB *db, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1652638"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3969202"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -320,7 +320,7 @@ DB-&gt;verify(DB *db, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1652725"></a>Class</h3>
+              <h3 class="title"><a id="id3970500"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -332,7 +332,7 @@ DB-&gt;verify(DB *db, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1652829"></a>See Also</h3>
+              <h3 class="title"><a id="id3970595"></a>See Also</h3>
             </div>
           </div>
         </div>

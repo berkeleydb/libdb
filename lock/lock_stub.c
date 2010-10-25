@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -97,6 +97,26 @@ __lock_get_lk_partitions(dbenv, lk_maxp)
 	u_int32_t *lk_maxp;
 {
 	COMPQUIET(lk_maxp, NULL);
+	return (__db_nolocking(dbenv->env));
+}
+
+int
+__lock_get_lk_priority(dbenv, lockid, priorityp)
+	DB_ENV *dbenv;
+	u_int32_t lockid, *priorityp;
+{
+	COMPQUIET(lockid, 0);
+	COMPQUIET(priorityp, NULL);
+	return (__db_nolocking(dbenv->env));
+}
+
+int
+__lock_set_lk_priority(dbenv, lockid, priority)
+	DB_ENV *dbenv;
+	u_int32_t lockid, priority;
+{
+	COMPQUIET(lockid, 0);
+	COMPQUIET(priority, 0);
 	return (__db_nolocking(dbenv->env));
 }
 
@@ -388,18 +408,29 @@ __lock_set_timeout(env, locker, timeout, op)
 }
 
 int
-__lock_addfamilylocker(env, pid, id)
+__lock_addfamilylocker(env, pid, id, is_family)
 	ENV *env;
-	u_int32_t pid, id;
+	u_int32_t pid, id, is_family;
 {
 	COMPQUIET(env, NULL);
 	COMPQUIET(pid, 0);
 	COMPQUIET(id, 0);
+	COMPQUIET(is_family, 0);
 	return (0);
 }
 
 int
-__lock_freefamilylocker(lt, sh_locker)
+__lock_freelocker(lt, sh_locker)
+	DB_LOCKTAB *lt;
+	DB_LOCKER *sh_locker;
+{
+	COMPQUIET(lt, NULL);
+	COMPQUIET(sh_locker, NULL);
+	return (0);
+}
+
+int
+__lock_familyremove(lt, sh_locker)
 	DB_LOCKTAB *lt;
 	DB_LOCKER *sh_locker;
 {
@@ -423,15 +454,15 @@ __lock_downgrade(env, lock, new_mode, flags)
 }
 
 int
-__lock_locker_is_parent(env, locker, child, retp)
+__lock_locker_same_family(env, locker1, locker2, retp)
 	ENV *env;
-	DB_LOCKER *locker;
-	DB_LOCKER *child;
+	DB_LOCKER *locker1;
+	DB_LOCKER *locker2;
 	int *retp;
 {
 	COMPQUIET(env, NULL);
-	COMPQUIET(locker, NULL);
-	COMPQUIET(child, NULL);
+	COMPQUIET(locker1, NULL);
+	COMPQUIET(locker2, NULL);
 
 	*retp = 1;
 	return (0);

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -24,7 +24,10 @@ __os_abspath(path)
 	 * separator used by the win32 DB (PATH_SEPARATOR) is \; look for both
 	 * / and \ since these are user-input paths.
 	 */
-	if (isalpha(path[0]) && path[1] == ':')
+	if (strlen(path) == 0)
+		return (0);
+
+	if (strlen(path) >= 3 && isalpha(path[0]) && path[1] == ':')
 		path += 2;
 	return (path[0] == '/' || path[0] == '\\');
 }

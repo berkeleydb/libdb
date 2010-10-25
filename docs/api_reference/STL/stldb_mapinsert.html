@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-insert
-</th>
+          <th colspan="3" align="center">insert</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldb_mapdstr_db_map.html">Prev</a> </td>
@@ -32,9 +30,7 @@ insert
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldb_mapinsert"></a>
-insert
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldb_mapinsert"></a>insert</h2>
           </div>
         </div>
       </div>
@@ -42,25 +38,19 @@ insert
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldb_mapinsert_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
-insert(const value_type &amp;x)
+insert(const value_type &amp;x)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Insert a single key/data pair if the key is not in the container. </p>
-          <p></p>
-        </div>
+        <p>Insert a single key/data pair if the key is not in the container. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550816"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490666"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -68,8 +58,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550855"></a>
- x </h5>
+                  <h5 class="title"><a id="id3490737"></a>x</h5>
                 </div>
               </div>
             </div>
@@ -80,28 +69,23 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550670"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3490223"></a>Return Value</h4>
               </div>
             </div>
           </div>
           <p>A pair P, if insert OK, i.e. the inserted key wasn't in the container, P.first will be the iterator sitting on the inserted key/data pair, and P.second is true; otherwise P.first is an invalid iterator and P.second is false. </p>
         </div>
         <pre class="programlisting">
-iterator insert(iterator position,
-    const value_type &amp;x)
+iterator insert(iterator position,
+    const value_type &amp;x)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Insert with hint position. </p>
-          <p>We ignore the hint position because Berkeley DB knows better where to insert. </p>
-        </div>
+        <p>Insert with hint position. </p>
+        <p>We ignore the hint position because Berkeley DB knows better where to insert. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550844"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490780"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -109,8 +93,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550885"></a>
- position </h5>
+                  <h5 class="title"><a id="id3490784"></a>position</h5>
                 </div>
               </div>
             </div>
@@ -120,8 +103,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550705"></a>
- x </h5>
+                  <h5 class="title"><a id="id3490798"></a>x</h5>
                 </div>
               </div>
             </div>
@@ -132,29 +114,24 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550785"></a>
-Return Value</h4>
+                <h4 class="title"><a id="id3490226"></a>Return Value</h4>
               </div>
             </div>
           </div>
           <p>The iterator sitting on the inserted key/data pair, or an invalid iterator if the key was already in the container. </p>
         </div>
         <pre class="programlisting">
-void insert(const db_map_base_iterator&lt; kdt, realddt, ddt &gt; &amp;first,
-    const db_map_base_iterator&lt; kdt, realddt,
-    ddt &gt; &amp;last)
+void insert(const db_map_base_iterator&lt; kdt, realddt, ddt &gt; &amp;first,
+    const db_map_base_iterator&lt; kdt, realddt,
+    ddt &gt; &amp;last)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Range insertion. </p>
-          <p>Insert a range [first, last) of key/data pairs into this container. </p>
-        </div>
+        <p>Range insertion. </p>
+        <p>Insert a range [first, last) of key/data pairs into this container. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1550748"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490814"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -162,8 +139,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550903"></a>
- last </h5>
+                  <h5 class="title"><a id="id3490817"></a>last</h5>
                 </div>
               </div>
             </div>
@@ -173,8 +149,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1551011"></a>
- first </h5>
+                  <h5 class="title"><a id="id3490831"></a>first</h5>
                 </div>
               </div>
             </div>
@@ -182,20 +157,16 @@ Parameters</h4>
           </div>
         </div>
         <pre class="programlisting">
-void insert(InputIterator first,
-    InputIterator last)
+void insert(InputIterator first,
+    InputIterator last)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Range insertion. </p>
-          <p>Insert a range [first, last) of key/data pairs into this container. </p>
-        </div>
+        <p>Range insertion. </p>
+        <p>Insert a range [first, last) of key/data pairs into this container. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549823"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3490839"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -203,8 +174,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550653"></a>
- last </h5>
+                  <h5 class="title"><a id="id3490842"></a>last</h5>
                 </div>
               </div>
             </div>
@@ -214,8 +184,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1550656"></a>
- first </h5>
+                  <h5 class="title"><a id="id3490856"></a>first</h5>
                 </div>
               </div>
             </div>
@@ -227,8 +196,7 @@ Parameters</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1550833"></a>
-Group: Insert Functions</h3>
+              <h3 class="title"><a id="id3490543"></a>Group: Insert Functions</h3>
             </div>
           </div>
         </div>
@@ -247,14 +215,12 @@ Group: Insert Functions</h3>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1550181"></a>
-Class</h3>
+              <h3 class="title"><a id="id3490819"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="db_map.html" title="Chapter 5.  Db_map">
-  db_map</a>
+  <a class="link" href="db_map.html" title="Chapter 5.  Db_map">db_map</a>
      </p>
       </div>
     </div>
@@ -269,9 +235,7 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldb_mapbegin.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-~db_map
- </td>
+          <td width="40%" align="left" valign="top">~db_map </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

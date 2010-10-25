@@ -157,7 +157,7 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700000"></a>Parameters</h3>
+              <h3 class="title"><a id="id3689162"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -165,7 +165,20 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700081"></a>flags</h4>
+                <h4 class="title"><a id="id3689147"></a>statp</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>statp</strong></span> parameter references memory
+                          into which a pointer to the allocated statistics structure is copied.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3688890"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -186,25 +199,12 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1700176"></a>statp</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>statp</strong></span> parameter references memory
-                          into which a pointer to the allocated statistics structure is copied.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700313"></a>Errors</h3>
+              <h3 class="title"><a id="id3689628"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -222,7 +222,7 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700240"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3689757"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -235,7 +235,7 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699883"></a>Class</h3>
+              <h3 class="title"><a id="id3689736"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@ DbEnv::mutex_stat(DB_MUTEX_STAT **statp, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699855"></a>See Also</h3>
+              <h3 class="title"><a id="id3689683"></a>See Also</h3>
             </div>
           </div>
         </div>

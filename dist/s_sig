@@ -35,8 +35,6 @@ cat << END_OF_TEXT > $b
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
-#define __INCLUDE_SELECT_H      1
 #include "db_int.h"
 
 #include "dbinc/db_page.h"
@@ -46,7 +44,7 @@ cat << END_OF_TEXT > $b
 #include "dbinc/db_verify.h"
 #include "dbinc/hash.h"
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
+#include "dbinc/log_verify.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/qam.h"

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2009 Oracle.  All rights reserved.
+# Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -17,11 +17,6 @@ proc rep005 { method args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Skip for all methods except btree.
 	if { $checking_valid_methods } {
@@ -111,7 +106,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_logargs -errpfx MASTER $verbargs \
 	    $m_txnargs -rep_master -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M) $recargs]
@@ -124,7 +119,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    -home $clientdir($i) $c_logargs($i) \
 		    $c_txnargs($i) -rep_client $verbargs \
 		    -errpfx CLIENT$i \
@@ -155,9 +150,7 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 		replclear [expr $i + 2]
 	}
 
-	# We set up the error list for each client.  We know that the
-	# first client is the one calling the election, therefore, add
-	# the error location on sending the message (electsend) for that one.
+	# We set up the error list for each client.  
 	set m "Rep$tnum"
 	set count 0
 	set win -1
@@ -194,7 +187,6 @@ proc rep005_sub { method tnum niter nclients logset recargs largs } {
 
 proc rep005_elect { ecmd celist qdir msg count \
     winner lsn_lose elist logset} {
-	global elect_timeout elect_serial
 	global timeout_ok
 	global databases_in_memory
 	upvar $ecmd env_cmd
@@ -266,7 +258,7 @@ proc rep005_elect { ecmd celist qdir msg count \
 	} else {
 		set dbname test.db
 	}
-	run_election env_cmd envlist err_cmd pri crash \
+	run_election envlist err_cmd pri crash \
 	    $qdir $msg $el $nsites $nvotes $nclients $win \
 	    0 $dbname 0 $timeout_ok
 

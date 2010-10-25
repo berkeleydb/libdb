@@ -81,7 +81,7 @@
       <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -95,7 +95,7 @@ int main(void)
     u_int32_t db_flags = DB_CREATE | DB_AUTO_COMMIT;
     Db *dbp = NULL;
     const char *file_name = "mydb.db";
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 

@@ -35,6 +35,15 @@
           </div>
         </div>
       </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="am_second.html#id3642561">Error Handling With Secondary Indexes</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
       <p>A secondary index, put simply, is a way to efficiently access records
 in a database (the primary) by means of some piece of information other
 than the usual (primary) key.  In Berkeley DB, this index is simply another
@@ -230,6 +239,41 @@ longer needed, all of its handles should be closed using the
 a new database handle and the <a href="../api_reference/C/dbremove.html" class="olink">DB-&gt;remove()</a> method.</p>
       <p>Closing a primary database handle automatically dis-associates all
 secondary database handles associated with it.</p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3642561"></a>Error Handling With Secondary Indexes</h3>
+            </div>
+          </div>
+        </div>
+        <p>An error return during a secondary update in CDS or DS (which requires an abort in TDS) may leave a secondary index inconsistent in CDS or DS. There are a few non-error returns: 
+</p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>0 
+</li>
+            <li>DB_BUFFER_SMALL
+</li>
+            <li>DB_NOTFOUND
+</li>
+            <li>DB_KEYEMPTY
+</li>
+            <li>
+DB_KEYEXIST
+</li>
+          </ul>
+        </div>
+        <p>
+In the case of any other error return during a secondary update in CDS or DS, delete the secondary indices, recreate them and set the <code class="literal">DB_CREATE flag</code> to the <code class="literal">DB-&gt;associate</code> method.  Some examples of non-error returns that need to be handled this way are:</p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>ENOMEM - indicating there is insufficient memory to return the requested item</li>
+            <li>EINVAL - indicating that an invalid flag value or parameter is specified</li>
+          </ul>
+        </div>
+        <p>Note that <code class="literal">DB_RUNRECOVERY</code> and <code class="literal">DB_PAGE_NOTFOUND</code> are fatal errors which should never occur during normal use of CDS or DS.  If those errors are returned by Berkeley DB when running without transactions, check the database integrity with the <code class="literal">DB-&gt;verify</code> method before rebuilding the secondary indices. </p>
+      </div>
     </div>
     <div class="navfooter">
       <hr />

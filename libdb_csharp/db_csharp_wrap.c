@@ -408,6 +408,19 @@ SWIGINTERN DBT *new_DBT(){
 SWIGINTERN int DB_TXN_abort(DB_TXN *self){
 		return self->abort(self);
 	}
+SWIGINTERN int DB_TXN_is_commit_token_enabled(DB_TXN *self){
+		int is_nested, is_logging_enabled, is_rep_client;
+		ENV *env = self->mgrp->env;
+		is_nested = self->parent != NULL;
+		is_logging_enabled = env->lg_handle != NULL;
+		is_rep_client = (env->rep_handle != NULL && 
+                    env->rep_handle->region != NULL &&
+                    F_ISSET((env->rep_handle->region), REP_F_CLIENT));
+		return (!is_nested && is_logging_enabled && !is_rep_client);
+	}
+SWIGINTERN int DB_TXN_set_commit_token(DB_TXN *self,DB_TXN_TOKEN *token){
+		return self->set_commit_token(self, token);
+	}
 SWIGINTERN int DB_TXN_commit(DB_TXN *self,u_int32_t flags){
 		return self->commit(self, flags);
 	}
@@ -425,6 +438,12 @@ SWIGINTERN int DB_TXN_get_name(DB_TXN *self,char const **name){
 	}
 SWIGINTERN int DB_TXN_set_name(DB_TXN *self,char const *name){
 		return self->set_name(self, name);
+	}
+SWIGINTERN int DB_TXN_get_priority(DB_TXN *self,u_int32_t *priorityp){
+		return self->get_priority(self, priorityp);
+	}
+SWIGINTERN int DB_TXN_set_priority(DB_TXN *self,u_int32_t priority){
+		return self->set_priority(self, priority);
 	}
 SWIGINTERN int DB_TXN_set_timeout(DB_TXN *self,db_timeout_t timeout,u_int32_t flags){
 		return self->set_timeout(self, timeout, flags);
@@ -462,6 +481,9 @@ SWIGINTERN int DB_ENV_fileid_reset(DB_ENV *self,char const *file,u_int32_t flags
 	}
 SWIGINTERN int DB_ENV_get_home(DB_ENV *self,char const **file){
 		return self->get_home(self, file);
+	}
+SWIGINTERN int DB_ENV_is_transaction_applied(DB_ENV *self,DB_TXN_TOKEN *token,db_timeout_t timeout,u_int32_t flags){
+		return self->txn_applied(self, token, timeout, flags);
 	}
 SWIGINTERN int DB_ENV_lock_detect(DB_ENV *self,u_int32_t flags,u_int32_t atype,u_int32_t *rejected){
 		return self->lock_detect(self, flags, atype, rejected);
@@ -818,6 +840,11 @@ SWIGINTERN int DB_ENV_get_lg_regionmax(DB_ENV *self,u_int32_t *max){
 SWIGINTERN int DB_ENV_set_lg_regionmax(DB_ENV *self,u_int32_t max){
 		return self->set_lg_regionmax(self, max);
 	}
+SWIGINTERN int DB_ENV_log_verify(DB_ENV *self,char const *envhome,u_int32_t cachesz,char const *dbfile,char const *dbname,time_t stime,time_t etime,u_int32_t stfile,u_int32_t stoffset,u_int32_t efile,u_int32_t eoffset,int caf,int verbose){
+                return self->env->log_verify_wrap(self->env, envhome, cachesz,
+                    dbfile, dbname, stime, etime, stfile, stoffset, efile, 
+                    eoffset, caf, verbose);
+        }
 SWIGINTERN int DB_ENV_get_lk_conflicts_nmodes(DB_ENV *self,int *nmodes){
 		return self->get_lk_conflicts(self, NULL, nmodes);
 	}
@@ -966,6 +993,10 @@ SWIGINTERN int DB_ENV_get_verbose(DB_ENV *self,u_int32_t *msgs){
 			return ret;
 		if (onoff)
 			*msgs |= DB_VERB_REP_SYNC;
+		if ((ret = self->get_verbose(self, DB_VERB_REP_SYSTEM, &onoff)) != 0)
+			return ret;
+		if (onoff)
+			*msgs |= DB_VERB_REP_SYSTEM;
 		if ((ret = self->get_verbose(self, DB_VERB_REPMGR_CONNFAIL, &onoff)) != 0)
 			return ret;
 		if (onoff)
@@ -1016,6 +1047,9 @@ SWIGINTERN int DB_ENV_set_verbose(DB_ENV *self,u_int32_t which,int onoff){
 			return ret;
 		if ((which & DB_VERB_REP_SYNC) && 
 			(ret = self->set_verbose(self, DB_VERB_REP_SYNC, onoff)) != 0)
+			return ret;
+		if ((which & DB_VERB_REP_SYSTEM) && 
+			(ret = self->set_verbose(self, DB_VERB_REP_SYSTEM, onoff)) != 0)
 			return ret;
 		if ((which & DB_VERB_REPMGR_CONNFAIL) && 
 			(ret = self->set_verbose(self, DB_VERB_REPMGR_CONNFAIL, onoff)) != 0)
@@ -1189,6 +1223,28 @@ SWIGEXPORT unsigned long SWIGSTDCALL CSharp_DB_COMPACT_compact_pages_get(void * 
   arg1 = (DB_COMPACT *)jarg1; 
   result = (u_int32_t) ((arg1)->compact_pages);
   jresult = (unsigned long)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void SWIGSTDCALL CSharp_DB_COMPACT_compact_empty_buckets_set(void * jarg1, unsigned long jarg2) {
+  DB_COMPACT *arg1 = (DB_COMPACT *) 0 ;
+  u_int32_t arg2 ;
+
+  arg1 = (DB_COMPACT *)jarg1;
+  arg2 = (u_int32_t)jarg2;
+  if (arg1) (arg1)->compact_empty_buckets = arg2;
+}
+
+
+SWIGEXPORT unsigned long SWIGSTDCALL CSharp_DB_COMPACT_compact_empty_buckets_get(void * jarg1) {
+  unsigned long jresult ;
+  DB_COMPACT *arg1 = (DB_COMPACT *) 0 ;
+  u_int32_t result;
+
+  arg1 = (DB_COMPACT *)jarg1;
+  result = (u_int32_t) ((arg1)->compact_empty_buckets);
+  jresult = (unsigned long)result;
   return jresult;
 }
 
@@ -2641,6 +2697,50 @@ SWIGEXPORT void SWIGSTDCALL CSharp_delete_DBC(void * jarg1) {
 }
 
 
+SWIGEXPORT void SWIGSTDCALL CSharp_DB_TXN_TOKEN_buf_set(void * jarg1, void * jarg2) {
+  DB_TXN_TOKEN *arg1 = (DB_TXN_TOKEN *) 0 ;
+  u_int8_t *arg2 ;
+  
+  arg1 = (DB_TXN_TOKEN *)jarg1; 
+  arg2 = (u_int8_t *)jarg2; 
+  {
+    size_t ii;
+    u_int8_t *b = (u_int8_t *) arg1->buf;
+    for (ii = 0; ii < (size_t)DB_TXN_TOKEN_SIZE; ii++) b[ii] = *((u_int8_t *) arg2 + ii);
+  }
+}
+
+
+SWIGEXPORT void * SWIGSTDCALL CSharp_DB_TXN_TOKEN_buf_get(void * jarg1) {
+  void * jresult ;
+  DB_TXN_TOKEN *arg1 = (DB_TXN_TOKEN *) 0 ;
+  u_int8_t *result = 0 ;
+  
+  arg1 = (DB_TXN_TOKEN *)jarg1; 
+  result = (u_int8_t *)(u_int8_t *) ((arg1)->buf);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void * SWIGSTDCALL CSharp_new_DB_TXN_TOKEN() {
+  void * jresult ;
+  DB_TXN_TOKEN *result = 0 ;
+  
+  result = (DB_TXN_TOKEN *)calloc(1, sizeof(DB_TXN_TOKEN));
+  jresult = (void *)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void SWIGSTDCALL CSharp_delete_DB_TXN_TOKEN(void * jarg1) {
+  DB_TXN_TOKEN *arg1 = (DB_TXN_TOKEN *) 0 ;
+  
+  arg1 = (DB_TXN_TOKEN *)jarg1; 
+  free((char *) arg1);
+}
+
+
 SWIGEXPORT void SWIGSTDCALL CSharp_DBT_dlen_set(void * jarg1, unsigned long jarg2) {
   DBT *arg1 = (DBT *) 0 ;
   u_int32_t arg2 ;
@@ -2904,6 +3004,28 @@ SWIGEXPORT unsigned long SWIGSTDCALL CSharp_DB_REPMGR_SITE_status_get(void * jar
 }
 
 
+SWIGEXPORT void SWIGSTDCALL CSharp_DB_REPMGR_SITE_flags_set(void * jarg1, unsigned long jarg2) {
+  DB_REPMGR_SITE *arg1 = (DB_REPMGR_SITE *) 0 ;
+  u_int32_t arg2 ;
+  
+  arg1 = (DB_REPMGR_SITE *)jarg1; 
+  arg2 = (u_int32_t)jarg2; 
+  if (arg1) (arg1)->flags = arg2;
+}
+
+
+SWIGEXPORT unsigned long SWIGSTDCALL CSharp_DB_REPMGR_SITE_flags_get(void * jarg1) {
+  unsigned long jresult ;
+  DB_REPMGR_SITE *arg1 = (DB_REPMGR_SITE *) 0 ;
+  u_int32_t result;
+  
+  arg1 = (DB_REPMGR_SITE *)jarg1; 
+  result = (u_int32_t) ((arg1)->flags);
+  jresult = (unsigned long)result; 
+  return jresult;
+}
+
+
 SWIGEXPORT void * SWIGSTDCALL CSharp_new_DB_REPMGR_SITE() {
   void * jresult ;
   DB_REPMGR_SITE *result = 0 ;
@@ -2929,6 +3051,32 @@ SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_abort(void * jarg1) {
   
   arg1 = (DB_TXN *)jarg1; 
   result = (int)DB_TXN_abort(arg1);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_is_commit_token_enabled(void * jarg1) {
+  int jresult ;
+  DB_TXN *arg1 = (DB_TXN *) 0 ;
+  int result;
+  
+  arg1 = (DB_TXN *)jarg1; 
+  result = (int)DB_TXN_is_commit_token_enabled(arg1);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_set_commit_token(void * jarg1, void * jarg2) {
+  int jresult ;
+  DB_TXN *arg1 = (DB_TXN *) 0 ;
+  DB_TXN_TOKEN *arg2 = (DB_TXN_TOKEN *) 0 ;
+  int result;
+  
+  arg1 = (DB_TXN *)jarg1; 
+  arg2 = (DB_TXN_TOKEN *)jarg2; 
+  result = (int)DB_TXN_set_commit_token(arg1,arg2);
   jresult = result; 
   return jresult;
 }
@@ -3011,6 +3159,34 @@ SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_set_name(void * jarg1, char * jarg2) {
   arg1 = (DB_TXN *)jarg1; 
   arg2 = (char *)jarg2; 
   result = (int)DB_TXN_set_name(arg1,(char const *)arg2);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_get_priority(void * jarg1, void * jarg2) {
+  int jresult ;
+  DB_TXN *arg1 = (DB_TXN *) 0 ;
+  u_int32_t *arg2 = (u_int32_t *) 0 ;
+  int result;
+  
+  arg1 = (DB_TXN *)jarg1; 
+  arg2 = (u_int32_t *)jarg2; 
+  result = (int)DB_TXN_get_priority(arg1,arg2);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_TXN_set_priority(void * jarg1, unsigned long jarg2) {
+  int jresult ;
+  DB_TXN *arg1 = (DB_TXN *) 0 ;
+  u_int32_t arg2 ;
+  int result;
+  
+  arg1 = (DB_TXN *)jarg1; 
+  arg2 = (u_int32_t)jarg2; 
+  result = (int)DB_TXN_set_priority(arg1,arg2);
   jresult = result; 
   return jresult;
 }
@@ -3215,6 +3391,24 @@ SWIGEXPORT int SWIGSTDCALL CSharp_DB_ENV_get_home(void * jarg1, void * jarg2) {
   arg1 = (DB_ENV *)jarg1; 
   arg2 = (char **)jarg2; 
   result = (int)DB_ENV_get_home(arg1,(char const **)arg2);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_ENV_is_transaction_applied(void * jarg1, void * jarg2, unsigned long jarg3, unsigned long jarg4) {
+  int jresult ;
+  DB_ENV *arg1 = (DB_ENV *) 0 ;
+  DB_TXN_TOKEN *arg2 = (DB_TXN_TOKEN *) 0 ;
+  db_timeout_t arg3 ;
+  u_int32_t arg4 ;
+  int result;
+  
+  arg1 = (DB_ENV *)jarg1; 
+  arg2 = (DB_TXN_TOKEN *)jarg2; 
+  arg3 = (db_timeout_t)jarg3; 
+  arg4 = (u_int32_t)jarg4; 
+  result = (int)DB_ENV_is_transaction_applied(arg1,arg2,arg3,arg4);
   jresult = result; 
   return jresult;
 }
@@ -4679,6 +4873,42 @@ SWIGEXPORT int SWIGSTDCALL CSharp_DB_ENV_set_lg_regionmax(void * jarg1, unsigned
   arg1 = (DB_ENV *)jarg1; 
   arg2 = (u_int32_t)jarg2; 
   result = (int)DB_ENV_set_lg_regionmax(arg1,arg2);
+  jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT int SWIGSTDCALL CSharp_DB_ENV_log_verify(void * jarg1, char * jarg2, unsigned long jarg3, char * jarg4, char * jarg5, long jarg6, long jarg7, unsigned long jarg8, unsigned long jarg9, unsigned long jarg10, unsigned long jarg11, int jarg12, int jarg13) {
+  int jresult ;
+  DB_ENV *arg1 = (DB_ENV *) 0 ;
+  char *arg2 = (char *) 0 ;
+  u_int32_t arg3 ;
+  char *arg4 = (char *) 0 ;
+  char *arg5 = (char *) 0 ;
+  time_t arg6 ;
+  time_t arg7 ;
+  u_int32_t arg8 ;
+  u_int32_t arg9 ;
+  u_int32_t arg10 ;
+  u_int32_t arg11 ;
+  int arg12 ;
+  int arg13 ;
+  int result;
+  
+  arg1 = (DB_ENV *)jarg1; 
+  arg2 = (char *)jarg2; 
+  arg3 = (u_int32_t)jarg3; 
+  arg4 = (char *)jarg4; 
+  arg5 = (char *)jarg5; 
+  arg6 = (time_t)jarg6; 
+  arg7 = (time_t)jarg7; 
+  arg8 = (u_int32_t)jarg8; 
+  arg9 = (u_int32_t)jarg9; 
+  arg10 = (u_int32_t)jarg10; 
+  arg11 = (u_int32_t)jarg11; 
+  arg12 = (int)jarg12; 
+  arg13 = (int)jarg13; 
+  result = (int)DB_ENV_log_verify(arg1,(char const *)arg2,arg3,(char const *)arg4,(char const *)arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12,arg13);
   jresult = result; 
   return jresult;
 }

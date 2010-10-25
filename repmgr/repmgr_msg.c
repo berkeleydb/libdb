@@ -1,33 +1,37 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
-static int message_loop __P((ENV *));
+static int message_loop __P((ENV *, REPMGR_RUNNABLE *));
 static int process_message __P((ENV*, DBT*, DBT*, int));
 static int handle_newsite __P((ENV *, const DBT *));
-static int ack_message __P((ENV *, u_int32_t, DB_LSN *));
-static int ack_msg_conn __P((ENV *, REPMGR_CONNECTION *, u_int32_t, DB_LSN *));
+static int send_permlsn __P((ENV *, u_int32_t, int, DB_LSN *));
+static int send_permlsn_conn __P((ENV *,
+		REPMGR_CONNECTION *, u_int32_t, DB_LSN *));
 
 /*
  * PUBLIC: void *__repmgr_msg_thread __P((void *));
  */
 void *
-__repmgr_msg_thread(args)
-	void *args;
+__repmgr_msg_thread(argsp)
+	void *argsp;
 {
-	ENV *env = args;
+	REPMGR_RUNNABLE *th;
+	ENV *env;
 	int ret;
 
-	if ((ret = message_loop(env)) != 0) {
+	th = argsp;
+	env = th->env;
+
+	if ((ret = message_loop(env, th)) != 0) {
 		__db_err(env, ret, "message thread failed");
 		__repmgr_thread_failure(env, ret);
 	}
@@ -35,17 +39,18 @@ __repmgr_msg_thread(args)
 }
 
 static int
-message_loop(env)
+message_loop(env, th)
 	ENV *env;
+	REPMGR_RUNNABLE *th;
 {
 	REPMGR_MESSAGE *msg;
 	int ret;
 
-	while ((ret = __repmgr_queue_get(env, &msg)) == 0) {
+	while ((ret = __repmgr_queue_get(env, &msg, th)) == 0) {
 		while ((ret = process_message(env, &msg->control, &msg->rec,
 		    msg->originating_eid)) == DB_LOCK_DEADLOCK)
-			RPRINT(env, DB_VERB_REPMGR_MISC,
-			    (env, "repmgr deadlock retry"));
+			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "repmgr deadlock retry"));
 
 		__os_free(env, msg);
 		if (ret != 0)
@@ -64,7 +69,7 @@ process_message(env, control, rec, eid)
 	DB_LSN permlsn;
 	DB_REP *db_rep;
 	REP *rep;
-	int ret;
+	int bcast, ret;
 	u_int32_t generation;
 
 	db_rep = env->rep_handle;
@@ -81,7 +86,7 @@ process_message(env, control, rec, eid)
 	case 0:
 		if (db_rep->takeover_pending) {
 			db_rep->takeover_pending = FALSE;
-			return (__repmgr_become_master(env));
+			return (__repmgr_repstart(env, DB_REP_MASTER));
 		}
 		break;
 
@@ -90,7 +95,8 @@ process_message(env, control, rec, eid)
 
 	case DB_REP_HOLDELECTION:
 		LOCK_MUTEX(db_rep->mutex);
-		ret = __repmgr_init_election(env, ELECT_ELECTION);
+		ret = __repmgr_init_election(env,
+		    ELECT_F_IMMED | ELECT_F_INVITEE);
 		UNLOCK_MUTEX(db_rep->mutex);
 		if (ret != 0)
 			return (ret);
@@ -99,9 +105,12 @@ process_message(env, control, rec, eid)
 	case DB_REP_DUPMASTER:
 		if ((ret = __repmgr_repstart(env, DB_REP_CLIENT)) != 0)
 			return (ret);
-		LOCK_MUTEX(db_rep->mutex);
-		ret = __repmgr_init_election(env, ELECT_ELECTION);
-		UNLOCK_MUTEX(db_rep->mutex);
+		if (FLD_ISSET(db_rep->region->config, REP_C_ELECTIONS)) {
+			LOCK_MUTEX(db_rep->mutex);
+			ret = __repmgr_init_election(env, ELECT_F_IMMED);
+			UNLOCK_MUTEX(db_rep->mutex);
+		}
+		DB_EVENT(env, DB_EVENT_REP_DUPMASTER, NULL);
 		if (ret != 0)
 			return (ret);
 		break;
@@ -109,13 +118,26 @@ process_message(env, control, rec, eid)
 	case DB_REP_ISPERM:
 		/*
 		 * Don't bother sending ack if master doesn't care about it.
+		 * Archiving cares on all sites, if the file number changes.
 		 */
-		if (db_rep->perm_policy == DB_REPMGR_ACKS_NONE ||
+		bcast = FALSE;
+		if (db_rep->perm_lsn.file == permlsn.file &&
+		    (db_rep->perm_policy == DB_REPMGR_ACKS_NONE ||
 		    (IS_PEER_POLICY(db_rep->perm_policy) &&
-		    rep->priority == 0))
+		    rep->priority == 0)))
 			break;
 
-		if ((ret = ack_message(env, generation, &permlsn)) != 0)
+#ifdef	CONFIG_TEST
+		if (env->test_abort == DB_TEST_REPMGR_PERM)
+			VPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			"ISPERM: Test hook.  Skip ACK for permlsn [%lu][%lu]",
+			(u_long)permlsn.file, (u_long)permlsn.offset));
+#endif
+		DB_TEST_SET(env->test_abort, DB_TEST_REPMGR_PERM);
+		if (db_rep->perm_lsn.file != permlsn.file)
+			bcast = TRUE;
+		db_rep->perm_lsn = permlsn;
+		if ((ret = send_permlsn(env, generation, bcast, &permlsn)) != 0)
 			return (ret);
 
 		break;
@@ -125,10 +147,17 @@ process_message(env, control, rec, eid)
 	case DB_LOCK_DEADLOCK:
 		break;
 
+	case DB_REP_JOIN_FAILURE:
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			"repmgr fires join failure event"));
+		DB_EVENT(env, DB_EVENT_REP_JOIN_FAILURE, NULL);
+		break;
+
 	default:
 		__db_err(env, ret, "DB_ENV->rep_process_message");
 		return (ret);
 	}
+DB_TEST_RECOVERY_LABEL
 	return (0);
 }
 
@@ -156,8 +185,6 @@ __repmgr_handle_event(env, event, info)
 	switch (event) {
 	case DB_EVENT_REP_ELECTED:
 		DB_ASSERT(env, info == NULL);
-
-		db_rep->found_master = TRUE;
 		db_rep->takeover_pending = TRUE;
 
 		/*
@@ -171,9 +198,6 @@ __repmgr_handle_event(env, event, info)
 	case DB_EVENT_REP_NEWMASTER:
 		DB_ASSERT(env, info != NULL);
 
-		db_rep->found_master = TRUE;
-		db_rep->master_eid = *(int *)info;
-
 		/* Application still needs to see this. */
 		break;
 	default:
@@ -183,44 +207,81 @@ __repmgr_handle_event(env, event, info)
 }
 
 static int
-ack_message(env, generation, lsn)
+send_permlsn(env, generation, bcast, lsn)
 	ENV *env;
 	u_int32_t generation;
+	int bcast;
 	DB_LSN *lsn;
 {
 	DB_REP *db_rep;
+	REP *rep;
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
-	int ret;
+	int master, ret;
+	u_int eid;
 
 	db_rep = env->rep_handle;
-	/*
-	 * Regardless of where a message came from, all ack's go to the master
-	 * site.  If we're not in touch with the master, we drop it, since
-	 * there's not much else we can do.
-	 */
+	rep = db_rep->region;
 	ret = 0;
+	master = rep->master_id;
 	LOCK_MUTEX(db_rep->mutex);
-	if (!IS_VALID_EID(db_rep->master_eid) ||
-	    db_rep->master_eid == SELF_EID) {
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
-		    "dropping ack with master %d", db_rep->master_eid));
+
+	/*
+	 * All non-bcast perms go to the master site.
+	 * If we're not in touch with the master, we drop it, since
+	 * there's not much else we can do for now.
+	 */
+	if (!bcast && (!IS_VALID_EID(master) || master == SELF_EID)) {
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "dropping ack with master %d", master));
 		goto unlock;
 	}
 
-	site = SITE_FROM_EID(db_rep->master_eid);
-
 	/*
-	 * Send the ack out on any/all connections that need it, rather than
-	 * going to the trouble of trying to keep track of what LSN's each
-	 * connection may be waiting for.
+	 * We always need to send the perm LSN to the master, and
+	 * we need to send to both primary and subordinate connections.
+	 * Do that first.
 	 */
-	if (site->state == SITE_CONNECTED &&
-	    (ret = ack_msg_conn(env, site->ref.conn, generation, lsn)) != 0)
+	site = SITE_FROM_EID(master);
+	if (bcast)
+		VPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "send_permlsn: send [%lu][%lu] to master %d",
+		    (u_long)lsn->file, (u_long)lsn->offset, master));
+	/*
+	 * Send the ack out on any/all connections that need it,
+	 * rather than going to the trouble of trying to keep
+	 * track of what LSN's each connection may be waiting for.
+	 */
+	if (IS_SITE_AVAILABLE(site) &&
+	    (ret = send_permlsn_conn(env, site->ref.conn, generation,
+	    lsn)) != 0)
 		goto unlock;
 	TAILQ_FOREACH(conn, &site->sub_conns, entries) {
-		if ((ret = ack_msg_conn(env, conn, generation, lsn)) != 0)
+		if ((ret = send_permlsn_conn(env, conn, generation, lsn)) != 0)
 			goto unlock;
+	}
+	if (bcast) {
+		/*
+		 * Send our information to everyone.
+		 */
+		for (eid = 0; eid < db_rep->site_cnt; eid++) {
+			/*
+			 * Skip the master, we've already sent to that site.
+			 */
+			if ((int)eid == master)
+				continue;
+			site = SITE_FROM_EID(eid);
+			VPRINT(env, (env, DB_VERB_REPMGR_MISC,
+			    "send_permlsn: send permlsn to eid %d", eid));
+
+			/*
+			 * Send the ack out on primary connection only.
+			 */
+			if (site->state == SITE_CONNECTED &&
+			    (ret = send_permlsn_conn(env,
+			    site->ref.conn, generation, lsn)) != 0)
+				goto unlock;
+		}
 	}
 
 unlock:
@@ -229,35 +290,35 @@ unlock:
 }
 
 /*
- * Sends an acknowledgment on one connection, if it needs it.
+ * Sends an perm LSN message on one connection, if it needs it.
  *
  * !!! Called with mutex held.
  */
 static int
-ack_msg_conn(env, conn, generation, lsn)
+send_permlsn_conn(env, conn, generation, lsn)
 	ENV *env;
 	REPMGR_CONNECTION *conn;
 	u_int32_t generation;
 	DB_LSN *lsn;
 {
 	DBT control2, rec2;
-	__repmgr_ack_args ack;
-	u_int8_t buf[__REPMGR_ACK_SIZE];
+	__repmgr_permlsn_args permlsn;
+	u_int8_t buf[__REPMGR_PERMLSN_SIZE];
 	int ret;
 
 	ret = 0;
 
 	if (conn->state == CONN_READY) {
 		DB_ASSERT(env, conn->version > 0);
-		ack.generation = generation;
-		memcpy(&ack.lsn, lsn, sizeof(DB_LSN));
+		permlsn.generation = generation;
+		memcpy(&permlsn.lsn, lsn, sizeof(DB_LSN));
 		if (conn->version == 1) {
-			control2.data = &ack;
-			control2.size = sizeof(ack);
+			control2.data = &permlsn;
+			control2.size = sizeof(permlsn);
 		} else {
-			__repmgr_ack_marshal(env, &ack, buf);
+			__repmgr_permlsn_marshal(env, &permlsn, buf);
 			control2.data = buf;
-			control2.size = __REPMGR_ACK_SIZE;
+			control2.size = __REPMGR_PERMLSN_SIZE;
 		}
 		rec2.size = 0;
 		/*
@@ -265,7 +326,7 @@ ack_msg_conn(env, conn, generation, lsn)
 		 * the path to the master is so congested as to need blocking;
 		 * so pass "blockable" argument as FALSE.
 		 */
-		if ((ret = __repmgr_send_one(env, conn, REPMGR_ACK,
+		if ((ret = __repmgr_send_one(env, conn, REPMGR_PERMLSN,
 		    &control2, &rec2, FALSE)) == DB_REP_UNAVAIL)
 			ret = __repmgr_bust_connection(env, conn);
 	}
@@ -312,14 +373,15 @@ handle_newsite(env, rec)
 	/* It's me, do nothing. */
 	if (strcmp(host, db_rep->my_addr.host) == 0 &&
 	    port == db_rep->my_addr.port) {
-		RPRINT(env, DB_VERB_REPMGR_MISC,
-		    (env, "repmgr ignores own NEWSITE info"));
+		VPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "repmgr ignores own NEWSITE info"));
 		return (0);
 	}
 
 	LOCK_MUTEX(db_rep->mutex);
-	if ((ret = __repmgr_add_site(env, host, port, &site, 0)) == EEXIST) {
-		RPRINT(env, DB_VERB_REPMGR_MISC, (env,
+	if ((ret = __repmgr_add_site(env,
+	    host, port, &site, 0, FALSE)) == EEXIST) {
+		VPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "NEWSITE info from %s was already known",
 		    __repmgr_format_site_loc(site, buffer)));
 		/*
@@ -336,8 +398,8 @@ handle_newsite(env, rec)
 	} else {
 		if (ret != 0)
 			goto unlock;
-		RPRINT(env, DB_VERB_REPMGR_MISC,
-		    (env, "NEWSITE info added %s",
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "NEWSITE info added %s",
 		    __repmgr_format_site_loc(site, buffer)));
 	}
 

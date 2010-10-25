@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -412,6 +412,11 @@ void dbstl_startup()
 void dbstl_exit()
 {
 	ResourceManager::instance()->global_exit();
+}
+
+void dbstl_thread_exit()
+{
+	ResourceManager::thread_exit();
 }
 
 // Internally used only.

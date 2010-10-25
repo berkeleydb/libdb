@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Getting Started with the Oracle Berkeley DB SQL APIs</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="next" href="preface.html" title="Preface" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Getting Started with the Oracle Berkeley DB SQL APIs</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="preface.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="book" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h1 class="title"><a id="id2621485"></a>Getting Started with the Oracle Berkeley DB SQL APIs</h1>
+          </div>
+          <div>
+            <div class="legalnotice">
+              <a id="id3467680"></a>
+              <p class="legalnotice-title">
+                <b>Legal Notice</b>
+              </p>
+              <p>
+        This documentation is distributed under an open source license.
+        You may review the terms of this license at:
+        
+        
+        
+    </p>
+              <p>
+            Oracle, Berkeley DB,
+            
+            
+            and
+            Sleepycat are trademarks or registered trademarks of
+            Oracle. All rights to these marks are reserved.
+            No third-party use is permitted without the
+            express prior written consent of Oracle.
+    </p>
+              <p>
+        Other names may be trademarks of their respective owners.
+    </p>
+              <p>
+        To obtain a copy of this document's original source code, please
+        submit a request to the Oracle Technology Network forum at:
+        
+        
+        
+    </p>
+            </div>
+          </div>
+          <div>
+            <p class="pubdate">11/8/2010</p>
+          </div>
+        </div>
+        <hr />
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="preface">
+              <a href="preface.html">Preface</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="chapter">
+              <a href="dbsqlbasics.html">1. Berkeley DB SQL: The Absolute Basics</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="dbsqlbasics.html#identicalusage">BDB SQL Is Nearly Identical to SQLite</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="buildinstall.html">Getting and Installing BDB SQL</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="buildinstall.html#onwin">On Windows Systems</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="buildinstall.html#onunix">On Unix</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="journaldirectory.html">The Journal Directory</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="unsupportedpragmas.html">Unsupported PRAGMAs</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changedpragmas.html">Changed PRAGMAs</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changedpragmas.html#journal_size_limit">PRAGMA journal_size_limit</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changedpragmas.html#max_page_count">PRAGMA max_page_count</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="miscdiff.html">Miscellaneous Differences</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="bdb-concepts.html">Berkeley DB Concepts</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="lockingnotes.html">2. Locking Notes</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="lockingnotes.html#dbusage">Internal Database Usage</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="lockhandling.html">Lock Handling</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="lockhandling.html#sqllockmodel">SQLite Lock Usage</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="lockhandling.html#bdblockusage">Lock Usage with the DB SQL Interface</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="configure.html">3. Configuring the Berkeley DB SQL interface</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="configure.html#env-overview">Introduction to Environments</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="using_dbconfig.html">The DB_CONFIG File</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="using_dbconfig.html#dbconfigcreate">Creating the DB_CONFIG File Before Environment Creation</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="using_dbconfig.html#envrecreate">Re-creating the Environment</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="configpage.html">Configuring the Database Page Size</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="configpage.html#selectpage_size">Selecting the Page Size</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="dbfilesize.html">Selecting the Database File Size</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="configcache.html">Configuring the In-Memory Cache</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="admin-logfile.html">Administering Log Files</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin-logfile.html#logfilesize">Setting the Log File Size</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin-logfile.html#logregionsize">Configuring the Logging Region Size</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin-logfile.html#logbuffer">Setting the In-Memory Log Buffer Size</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="admin-locking.html">Managing the Locking Subsystem</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="admin.html">4. Administrating Berkeley DB SQL</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="admin.html#backup">Backing up</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin.html#standardbackup">Offline Backups</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin.html#hotbackup">Hot Backup</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin.html#incrementalbackups">Incremental Backups</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="admin.html#copyutilities">About Unix Copy Utilities</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="recover.html">Recovering from a Backup</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="recover.html#catastrophicrecovery">Catastrophic Recovery</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="sync.html">Syncing with Oracle Databases</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="sync.html#syncunix">Syncing on Unix Platforms</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="sync.html#syncwin">Syncing on Windows Platforms</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="sync.html#syncwinmobile">Syncing on Windows Mobile Platforms</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="datamigration.html">Data Migration</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="datamigration.html#shellmigrate">Migration Using the Shells</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="datamigration.html#migratedataschema">Supported Data and Schema</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="appendix">
+              <a href="configuration_reference.html">A. DB_CONFIG Parameter Reference</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="configuration_reference.html#set_cachesize_parameter">set_cachesize</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_cache_max_parameter.html">set_cache_max</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lk_max_lockers_parameter.html">set_lk_max_lockers</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lk_max_locks_parameter.html">set_lk_max_locks</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lk_max_objects_parameter.html">set_lk_max_objects</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lg_bsize_parameter.html">set_lg_bsize</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lg_max_parameter.html">set_lg_max</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="set_lg_regionmax_parameter.html">set_lg_regionmax</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="preface.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top"> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right" valign="top"> Preface</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

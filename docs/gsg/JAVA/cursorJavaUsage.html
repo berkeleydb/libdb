@@ -178,7 +178,7 @@ import com.sleepycat.db.OperationStatus;</pre>
         // DatabaseEntry objects used for reading records
         DatabaseEntry foundKey = new DatabaseEntry();
         DatabaseEntry foundData = new DatabaseEntry();
-                                                                                                                                       
+
         try { // always want to make sure the cursor gets closed
             while (cursor.getNext(foundKey, foundData,
                         LockMode.DEFAULT) == OperationStatus.SUCCESS) {
@@ -220,7 +220,7 @@ import com.sleepycat.db.OperationStatus;</pre>
         DatabaseEntry searchKey = null;
         try {
             searchKey =
-                new DatabaseEntry(theInventory.getVendor().getBytes("UTF-8"));
+             new DatabaseEntry(theInventory.getVendor().getBytes("UTF-8"));
         } catch (IOException willNeverOccur) {}
         DatabaseEntry foundVendor = new DatabaseEntry();
 

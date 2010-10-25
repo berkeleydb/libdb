@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -16,7 +16,6 @@
 #include "dbinc/qam.h"			/* For __db_no_queue_am(). */
 #endif
 #include "dbinc/lock.h"
-#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/partition.h"
 #include "dbinc/txn.h"
@@ -36,6 +35,8 @@ static int __db_open_arg __P((DB *,
 static int __db_pget_arg __P((DB *, DBT *, u_int32_t));
 static int __db_put_arg __P((DB *, DBT *, DBT *, u_int32_t));
 static int __dbt_ferr __P((const DB *, const char *, const DBT *, int));
+static int __db_compact_func
+    __P((DBC *, DBC *, u_int32_t *, db_pgno_t, u_int32_t, void *));
 static int __db_associate_foreign_arg __P((DB *, DB *,
 		int (*)(DB *, const DBT *, DBT *, const DBT *, int *),
 		u_int32_t));
@@ -287,10 +288,12 @@ __db_cursor_pp(dbp, txn, dbcp, flags)
 
 	/* Check for replication block. */
 	rep_blocked = 0;
-	if (txn == NULL && IS_ENV_REPLICATED(env)) {
-		if ((ret = __op_rep_enter(env)) != 0)
-			goto err;
-		rep_blocked = 1;
+	if (IS_ENV_REPLICATED(env)) {
+		if (txn == NULL) {
+			if ((ret = __op_rep_enter(env, 0)) != 0)
+				goto err;
+			rep_blocked = 1;
+		}
 		renv = env->reginfo->primary;
 		if (dbp->timestamp != renv->rep_timestamp) {
 			__db_errx(env, "%s %s",
@@ -314,6 +317,15 @@ __db_cursor_pp(dbp, txn, dbcp, flags)
 		goto err;
 
 	ret = __db_cursor(dbp, ip, txn, dbcp, flags);
+
+	/*
+	 * Register externally created cursors into the valid transaction.
+	 * If a family transaction was passed in, the transaction handle in
+	 * the cursor may not match.
+	 */
+	txn = (*dbcp)->txn;
+	if (txn != NULL && ret == 0)
+		TAILQ_INSERT_HEAD(&(txn->my_cursors), *dbcp, txn_cursors);
 
 err:	/* Release replication block on error. */
 	if (ret != 0 && rep_blocked)
@@ -562,7 +574,8 @@ __db_exists(dbp, txn, key, flags)
 	 * specific incompatibilities here.  This saves making __get_arg
 	 * aware of the exist method's API constraints.
 	 */
-	STRIP_AUTO_COMMIT(flags);	
+	STRIP_AUTO_COMMIT(flags);
+
 	if ((ret = __db_fchk(dbp->env, "DB->exists", flags,
 	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW)) != 0)
 		return (ret);
@@ -1100,16 +1113,10 @@ __db_open_pp(dbp, txn, fname, dname, type, flags, mode)
 	ENV_ENTER(env, ip);
 
 	/*
-	 * Save the file and database names and flags.  We do this here
-	 * because we don't pass all of the flags down into the actual
-	 * DB->open method call, we strip DB_AUTO_COMMIT at this layer.
+	 * Save the flags.  We do this here because we don't pass all of the
+	 * flags down into the actual DB->open method call, we strip
+	 * DB_AUTO_COMMIT at this layer.
 	 */
-	if ((fname != NULL &&
-	    (ret = __os_strdup(env, fname, &dbp->fname)) != 0))
-		goto err;
-	if ((dname != NULL &&
-	    (ret = __os_strdup(env, dname, &dbp->dname)) != 0))
-		goto err;
 	dbp->open_flags = flags;
 
 	/* Save the current DB handle flags for refresh. */
@@ -1124,6 +1131,17 @@ __db_open_pp(dbp, txn, fname, dname, type, flags, mode)
 	}
 
 	/*
+	 * A replication client can't create a database, but it's convenient to
+	 * allow a repmgr application to specify DB_CREATE anyway.  Thus for
+	 * such an application the meaning of DB_CREATE becomes "create it if
+	 * I'm a master, and otherwise ignore the flag".  A repmgr application
+	 * running as master can't be sure that it won't spontaneously become a
+	 * client, so there's a race condition.
+	 */
+	if (IS_REP_CLIENT(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE))
+		LF_CLR(DB_CREATE);
+
+	/*
 	 * Create local transaction as necessary, check for consistent
 	 * transaction usage.
 	 */
@@ -1132,7 +1150,7 @@ __db_open_pp(dbp, txn, fname, dname, type, flags, mode)
 			goto err;
 		txn_local = 1;
 	} else if (txn != NULL && !TXN_ON(env) &&
-	    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_CDSGROUP))) {
+	    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_FAMILY))) {
 		ret = __db_not_txn_env(env);
 		goto err;
 	}
@@ -1707,6 +1725,31 @@ err:		return (__db_ferr(env, "DB->put", 0));
 }
 
 /*
+ * __db_compact_func
+ *	Callback routine to report if the txn has open cursors.
+ */
+static int
+__db_compact_func(dbc, my_dbc, countp, pgno, indx, args)
+	DBC *dbc, *my_dbc;
+	u_int32_t *countp;
+	db_pgno_t pgno;
+	u_int32_t indx;
+	void *args;
+{
+	DB_TXN *txn;
+
+	COMPQUIET(my_dbc, NULL);
+	COMPQUIET(countp, NULL);
+	COMPQUIET(pgno, 0);
+	COMPQUIET(indx, 0);
+
+	txn = (DB_TXN *)args;
+
+	if (txn == dbc->txn)
+		return (EEXIST);
+	return (0);
+}
+/*
  * __db_compact_pp --
  *	DB->compact pre/post processing.
  *
@@ -1726,6 +1769,7 @@ __db_compact_pp(dbp, txn, start, stop, c_data, flags, end)
 	DB_THREAD_INFO *ip;
 	ENV *env;
 	int handle_check, ret, t_ret;
+	u_int32_t count;
 
 	env = dbp->env;
 
@@ -1759,6 +1803,19 @@ __db_compact_pp(dbp, txn, start, stop, c_data, flags, end)
 		goto err;
 	}
 
+	if (txn != NULL) {
+		if ((ret = __db_walk_cursors(dbp,
+		    NULL, __db_compact_func, &count, 0, 0, &txn)) != 0) {
+			if (ret == EEXIST) {
+				__db_errx(env,
+	"DB->compact may not be called with active cursors in the transaction."
+				);
+				ret = EINVAL;
+			}
+			goto err;
+		}
+	}
+
 	if (c_data == NULL) {
 		dp = &l_data;
 		memset(dp, 0, sizeof(*dp));
@@ -1771,12 +1828,9 @@ __db_compact_pp(dbp, txn, start, stop, c_data, flags, end)
 #endif
 	switch (dbp->type) {
 	case DB_HASH:
-		if (!LF_ISSET(DB_FREELIST_ONLY))
-			goto err;
-		/* FALLTHROUGH */
 	case DB_BTREE:
 	case DB_RECNO:
-		ret = __bam_compact(dbp, ip, txn, start, stop, dp, flags, end);
+		ret = __db_compact_int(dbp, ip, txn, start, stop, dp, flags, end);
 		break;
 
 	default:
@@ -1947,10 +2001,12 @@ __dbc_close_pp(dbc)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	ENV *env;
+	DB_TXN *txn;
 	int handle_check, ret, t_ret;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
+	txn = dbc->txn;
 
 	/*
 	 * If the cursor is already closed we have a serious problem, and we
@@ -1966,6 +2022,17 @@ __dbc_close_pp(dbc)
 
 	/* Check for replication block. */
 	handle_check = dbc->txn == NULL && IS_ENV_REPLICATED(env);
+
+	/* Unregister the cursor from its transaction, regardless of ret. */
+	if (txn != NULL) {
+		TAILQ_REMOVE(&(txn->my_cursors), dbc, txn_cursors);
+		dbc->txn_cursors.tqe_next = NULL;
+		dbc->txn_cursors.tqe_prev = NULL;
+	} else {
+		DB_ASSERT(env, dbc->txn_cursors.tqe_next == NULL &&
+		    dbc->txn_cursors.tqe_prev == NULL);
+	}
+
 	ret = __dbc_close(dbc);
 
 	/* Release replication block. */
@@ -2007,7 +2074,7 @@ __dbc_cmp_pp(dbc, other_cursor, result, flags)
 	}
 
 	if (dbp != odbp) {
-		__db_errx(env, 
+		__db_errx(env,
 "DBcursor->cmp both cursors must refer to the same database.");
 		return (EINVAL);
 	}
@@ -2150,7 +2217,7 @@ __dbc_dup_pp(dbc, dbcp, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	ENV *env;
-	int ret;
+	int rep_blocked, ret;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
@@ -2164,8 +2231,25 @@ __dbc_dup_pp(dbc, dbcp, flags)
 		return (__db_ferr(env, "DBcursor->dup", 0));
 
 	ENV_ENTER(env, ip);
+	rep_blocked = 0;
+	if (dbc->txn == NULL && IS_ENV_REPLICATED(env)) {
+		if ((ret = __op_rep_enter(env, 1)) != 0)
+			goto err;
+		rep_blocked = 1;
+	}
 	ret = __dbc_dup(dbc, dbcp, flags);
+
+	/* Register externally created cursors into the valid transaction. */
+	DB_ASSERT(env, (*dbcp)->txn == dbc->txn);
+	if ((*dbcp)->txn != NULL && ret == 0)
+		TAILQ_INSERT_HEAD(&((*dbcp)->txn->my_cursors), *dbcp,
+		    txn_cursors);
+err:
+	if (ret != 0 && rep_blocked)
+		(void)__op_rep_exit(env);
+
 	ENV_LEAVE(env, ip);
+
 	return (ret);
 }
 
@@ -2770,7 +2854,7 @@ __db_txn_auto_init(env, ip, txnidp)
 	 * specified if a transaction cookie is also specified, nor can the
 	 * flag be specified in a non-transactional environment.
 	 */
-	if (*txnidp != NULL) {
+	if (*txnidp != NULL && !F_ISSET(*txnidp, TXN_FAMILY)) {
 		__db_errx(env,
     "DB_AUTO_COMMIT may not be specified along with a transaction handle");
 		return (EINVAL);
@@ -2786,7 +2870,7 @@ __db_txn_auto_init(env, ip, txnidp)
 	 * Our caller checked to see if replication is making a state change.
 	 * Don't call the user-level API (which would repeat that check).
 	 */
-	return (__txn_begin(env, ip, NULL, txnidp, 0));
+	return (__txn_begin(env, ip, *txnidp, txnidp, 0));
 }
 
 /*
@@ -2803,10 +2887,6 @@ __db_txn_auto_resolve(env, txn, nosync, ret)
 {
 	int t_ret;
 
-	/*
-	 * We're resolving a transaction for the user, and must decrement the
-	 * replication handle count.  Call the user-level API.
-	 */
 	if (ret == 0)
 		return (__txn_commit(txn, nosync ? DB_TXN_NOSYNC : 0));
 

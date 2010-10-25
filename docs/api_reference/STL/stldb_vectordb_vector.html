@@ -15,9 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">
-db_vector
-</th>
+          <th colspan="3" align="center">db_vector</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="stldb_vectorempty.html">Prev</a> </td>
@@ -32,9 +30,7 @@ db_vector
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title" style="clear: both"><a id="stldb_vectordb_vector"></a>
-db_vector
-</h2>
+            <h2 class="title" style="clear: both"><a id="stldb_vectordb_vector"></a>db_vector</h2>
           </div>
         </div>
       </div>
@@ -42,26 +38,21 @@ db_vector
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+              <h3 class="title"><a id="stldb_vectordb_vector_details"></a>Function Details</h3>
             </div>
           </div>
         </div>
         <pre class="programlisting">
-db_vector(Db *dbp=NULL,
-    DbEnv *penv=NULL)
+db_vector(Db *dbp=NULL,
+    DbEnv *penv=NULL)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Constructor. </p>
-          <p>Note that we do not need an allocator in db-stl containser, but we need backing up Db* and DbEnv*, and we have to verify that the passed in bdb handles are valid for use by the container class. See class detail for handle requirement. </p>
-        </div>
+        <p>Constructor. </p>
+        <p>Note that we do not need an allocator in db-stl containser, but we need backing up Db* and DbEnv*, and we have to verify that the passed in bdb handles are valid for use by the container class. See class detail for handle requirement. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549095"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3488978"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -69,8 +60,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549136"></a>
- dbp </h5>
+                  <h5 class="title"><a id="id3489007"></a>dbp</h5>
                 </div>
               </div>
             </div>
@@ -81,8 +71,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1548760"></a>
- penv </h5>
+                  <h5 class="title"><a id="id3488979"></a>penv</h5>
                 </div>
               </div>
             </div>
@@ -94,8 +83,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549084"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3488815"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -103,23 +91,20 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldb_containerdb_container.html" title="db_container">db_container(Db*, DbEnv*)</a>
 ; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-db_vector(size_type n, const T &amp;val=T(), Db *dbp=NULL,
-    DbEnv *penv=NULL)
+db_vector(size_type n, const T &amp;val=T(), Db *dbp=NULL,
+    DbEnv *penv=NULL)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Constructor. </p>
-          <p>This function supports auto-commit. Insert n elements of T type into the database, the value of the elements is the default value or user set value. See class detail for handle requirement. </p>
-        </div>
+        <p>Constructor. </p>
+        <p>This function supports auto-commit. Insert n elements of T type into the database, the value of the elements is the default value or user set value. See class detail for handle requirement. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1548616"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3489013"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -127,8 +112,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549173"></a>
- dbp </h5>
+                  <h5 class="title"><a id="id3489016"></a>dbp</h5>
                 </div>
               </div>
             </div>
@@ -139,8 +123,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549308"></a>
- penv </h5>
+                  <h5 class="title"><a id="id3488985"></a>penv</h5>
                 </div>
               </div>
             </div>
@@ -151,8 +134,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549184"></a>
- val </h5>
+                  <h5 class="title"><a id="id3488909"></a>val</h5>
                 </div>
               </div>
             </div>
@@ -162,8 +144,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549210"></a>
- n </h5>
+                  <h5 class="title"><a id="id3488514"></a>n</h5>
                 </div>
               </div>
             </div>
@@ -174,8 +155,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1548617"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3489075"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -184,22 +164,19 @@ See Also</h4>
           <p><a class="link" href="stldb_vectordb_vector.html" title="db_vector">db_vector(Db*, DbEnv*)</a>
 ; <a class="link" href="stldb_containerdb_container.html" title="db_container">db_container(Db*, DbEnv*)</a>
 ; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-db_vector(const self &amp;x)
+db_vector(const self &amp;x)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Copy constructor. </p>
-          <p>This function supports auto-commit. Insert all elements in x into this container. </p>
-        </div>
+        <p>Copy constructor. </p>
+        <p>This function supports auto-commit. Insert all elements in x into this container. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549380"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3488990"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -207,23 +184,20 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldb_containerdb_container.html" title="db_container">db_container(const db_container&amp;)</a>
  </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-db_vector(Db *dbp, DbEnv *penv, InputIterator first,
-    InputIterator last)
+db_vector(Db *dbp, DbEnv *penv, InputIterator first,
+    InputIterator last)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Insert a range of elements into this container. </p>
-          <p>The range is [first, last), which contains elements that can be converted to type T automatically. See class detail for handle requirement. </p>
-        </div>
+        <p>Insert a range of elements into this container. </p>
+        <p>The range is [first, last), which contains elements that can be converted to type T automatically. See class detail for handle requirement. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549263"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3489117"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -231,8 +205,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549382"></a>
- dbp </h5>
+                  <h5 class="title"><a id="id3489120"></a>dbp</h5>
                 </div>
               </div>
             </div>
@@ -243,8 +216,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549314"></a>
- first </h5>
+                  <h5 class="title"><a id="id3489171"></a>first</h5>
                 </div>
               </div>
             </div>
@@ -254,8 +226,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549060"></a>
- last </h5>
+                  <h5 class="title"><a id="id3489177"></a>last</h5>
                 </div>
               </div>
             </div>
@@ -265,8 +236,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1548782"></a>
- penv </h5>
+                  <h5 class="title"><a id="id3489251"></a>penv</h5>
                 </div>
               </div>
             </div>
@@ -278,8 +248,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549061"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3489136"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -287,23 +256,20 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldb_vectordb_vector.html" title="db_vector">db_vector(Db*, DbEnv*)</a>
 ; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
         <pre class="programlisting">
-db_vector(const_iterator first, const_iterator last, Db *dbp=NULL,
-    DbEnv *penv=NULL)
+db_vector(const_iterator first, const_iterator last, Db *dbp=NULL,
+    DbEnv *penv=NULL)
  </pre>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage"></div>
-          <p>Range constructor. </p>
-          <p>This function supports auto-commit. Insert the range of elements in [first, last) into this container. See class detail for handle requirement. </p>
-        </div>
+        <p>Range constructor. </p>
+        <p>This function supports auto-commit. Insert the range of elements in [first, last) into this container. See class detail for handle requirement. </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549163"></a>
-Parameters</h4>
+                <h4 class="title"><a id="id3489124"></a>Parameters</h4>
               </div>
             </div>
           </div>
@@ -311,8 +277,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549288"></a>
- dbp </h5>
+                  <h5 class="title"><a id="id3489128"></a>dbp</h5>
                 </div>
               </div>
             </div>
@@ -323,8 +288,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1548761"></a>
- first </h5>
+                  <h5 class="title"><a id="id3489257"></a>first</h5>
                 </div>
               </div>
             </div>
@@ -334,8 +298,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549396"></a>
- last </h5>
+                  <h5 class="title"><a id="id3489263"></a>last</h5>
                 </div>
               </div>
             </div>
@@ -345,8 +308,7 @@ Parameters</h4>
             <div class="titlepage">
               <div>
                 <div>
-                  <h5 class="title"><a id="id1549409"></a>
- penv </h5>
+                  <h5 class="title"><a id="id3489321"></a>penv</h5>
                 </div>
               </div>
             </div>
@@ -358,8 +320,7 @@ Parameters</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1549279"></a>
-See Also</h4>
+                <h4 class="title"><a id="id3489134"></a>See Also</h4>
               </div>
             </div>
           </div>
@@ -367,21 +328,20 @@ See Also</h4>
     </p>
           <p><a class="link" href="stldb_vectordb_vector.html" title="db_vector">db_vector(Db*, DbEnv*)</a>
 ; </p>
-          <p>   </p>
+          <p>
+   </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1548762"></a>
-Class</h3>
+              <h3 class="title"><a id="id3488803"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-  <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">
-  db_vector</a>
+  <a class="link" href="db_vector.html" title="Chapter 4.  Db_vector">db_vector</a>
      </p>
       </div>
     </div>
@@ -396,15 +356,11 @@ Class</h3>
           <td width="40%" align="right"> <a accesskey="n" href="stldb_vectordstr_db_vector.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">
-empty
- </td>
+          <td width="40%" align="left" valign="top">empty </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-~db_vector
-</td>
+          <td width="40%" align="right" valign="top"> ~db_vector</td>
         </tr>
       </table>
     </div>

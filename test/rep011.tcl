@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -22,10 +22,6 @@ proc rep011 { method { tnum "011" } args } {
 	global repfiles_in_memory
 
 	source ./include.tcl
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for all access methods.
 	if { $checking_valid_methods } {

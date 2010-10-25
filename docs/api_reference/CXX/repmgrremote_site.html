@@ -38,7 +38,8 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t flags);</pre>
+DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, 
+                              u_int32_t flags);</pre>
       <p>
          The <code class="methodname">DbEnv::repmgr_add_remote_site()</code> method adds a new replication
          site to the Replication Manager's list of known sites.  It is not
@@ -63,7 +64,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1706839"></a>Parameters</h3>
+              <h3 class="title"><a id="id3696847"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -71,7 +72,31 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1707016"></a>eidp</h4>
+                <h4 class="title"><a id="id3696844"></a>host</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The site's host identification string, generally a TCP/IP host name.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3696907"></a>port</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The port number on which the remote site is receiving.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3696914"></a>eidp</h4>
               </div>
             </div>
           </div>
@@ -87,7 +112,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1707193"></a>flags</h4>
+                <h4 class="title"><a id="id3696530"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -107,43 +132,22 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
                         synchronization with the specified remote site.
                     </p>
                 <p>
-                        Currently, the Replication Manager framework only supports a single
-                        client peer, and the last specified peer is used.
+                        You can configure one or more remote sites as client peers. To 
+                        remove a remote site as a possible client peer, call the 
+                        <code class="methodname">DbEnv::repmgr_add_remote_site()</code> method for that 
+                        site with a <span class="bold"><strong>flags</strong></span> value excluding 
+                        the DB_REPMGR_PEER bit value.
                     </p>
               </li>
             </ul>
           </div>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1707361"></a>host</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The site's host identification string, generally a TCP/IP host name.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1707370"></a>port</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The port number on which the remote site is receiving.
-                     </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707284"></a>Errors</h3>
+              <h3 class="title"><a id="id3696956"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -162,7 +166,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1707281"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3697107"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -177,7 +181,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707042"></a>Class</h3>
+              <h3 class="title"><a id="id3696954"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -189,7 +193,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp, u_int32_t
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1707013"></a>See Also</h3>
+              <h3 class="title"><a id="id3697040"></a>See Also</h3>
             </div>
           </div>
         </div>

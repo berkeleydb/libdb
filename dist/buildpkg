@@ -2,7 +2,7 @@
 # $Id: $
 #
 # Build the distribution package.
-. RELEASE || exit 1
+. ./RELEASE || exit 1
 
 # A version string can be specified on the command line (e.g., "20080219").
 # Otherwise, use the standard X.X.X format.
@@ -12,28 +12,95 @@ VERSION=${1:-${DB_VERSION_MAJOR}.${DB_VERSION_MINOR}.${DB_VERSION_PATCH}}
 TAR=ustar
 
 # Set root directory where we do the work, can be anywhere.
+START_DIR=`pwd`
 D=`pwd`/../release
 R="$D/db-${VERSION}"
 RNC="$D/db-$VERSION.NC"
+#DOCS=`pwd`/../../docs_books
+DOCS=`pwd`/../../docs_books-5.0
+
+if [ ! -d $DOCS ]; then
+	echo "buildpkg requires a docs_books repository at the same level as
+the db repository."
+	exit 1
+fi
+
+fix_permissions()
+{
+    ROOT_DIR="$1"
+    cd $ROOT_DIR && find . -type d | xargs chmod 775
+    cd $ROOT_DIR && find . -type f | xargs chmod 444
+    cd $ROOT_DIR && chmod 664 build_windows/*vcproj
+    cd $ROOT_DIR && chmod 664 build_wince/*vcproj
+    cd $ROOT_DIR && chmod 664 build_wince/*sln
+    cd $ROOT_DIR && chmod 664 csharp/doc/libdb_dotnet*.XML
+    cd $ROOT_DIR && chmod 664 csharp/*csproj
+    cd $ROOT_DIR && chmod 664 examples_csharp/*/*.csproj
+    cd $ROOT_DIR && chmod 664 sql/jdbc/SQLite/Constants.java
+    cd $ROOT_DIR && chmod 664 sql/odbc/resource3.h
+    cd $ROOT_DIR && chmod 555 sql/odbc/conf* sql/jdbc/conf*
+    cd $ROOT_DIR/dist && sh s_perm
+}
 
 # Create directory, remove any previous release tree.
 rm -rf $R $RNC
 mkdir -p $R
 
-# Copy the CVS files in the current tree to $R
+echo "Removed old release build from $R"
+
+# Copy the files in the current tip to $R
 hg archive $R
+
+echo "Created hg archive in $R"
+
+# Check that the doc repo is up to date, and create a tag if necessary.
+cd $DOCS
+hg pull -u
+if [ $? != 0 ]; then
+	echo "Failed updating the docs_books repository. Exiting."
+	rm -rf $R
+	exit 1
+fi
+has_tag=`hg tags | grep "db-${VERSION}"`
+if [ "$has_tag" = "" ]; then
+	hg tag "db-${VERSION}"
+	TAG_CREATED="true"
+else
+	hg up -r "db-${VERSION}"
+fi
+
+# Build a copy of the documentation in the release tree.
+cd $R/dist
+sh s_docs db-${VERSION} $DOCS
+
+if [ $? != 0 ]; then
+	echo "Failed generating documentation. Exiting"
+	rm -rf $R
+	exit 1
+fi
+
+# Copy the C sharp doc from the original tree - it's not generated.
+rm -rf $R/docs/csharp
+mkdir -p $R/docs/csharp
+cp -rp $START_DIR/../docs/csharp $R/docs
+
+# Pull a copy of the JDBC and ODBC libraries into the package.
+# Tell the script where to look for packages.
+sh s_sql_drivers ../..
+
+cd $START_DIR
 
 # Build the documentation.
 cd $R/dist && sh s_javadoc
 
 # Remove source directories we don't distribute.
-cd $R && rm -rf build_brew_x build_s60_x
+cd $R && rm -rf build_brew build_s60
 cd $R && rm -rf java/src/com/sleepycat/xa
+cd $R && rm -rf os_brew os_s60
 cd $R && rm -rf rpc_* dbinc/db_server_int.h dbinc_auto/rpc*.h
 cd $R && rm -rf test/TODO test/upgrade test/scr036 test_erlang
 cd $R && rm -rf test_perf test_purify test_repmgr
-cd $R && rm -rf test_server test_stl/ms_examples test_stl/stlport
-cd $R && rm -rf test_vxworks
+cd $R && rm -rf test_server test_stl test_vxworks
 cd $R && find . -name '.hg*' | xargs rm -f
 cd $R && find . -name 'tags' | xargs rm -f
 
@@ -56,12 +123,7 @@ cd $R && find . -name 'tags' | xargs rm -f
 # Remove the build directory
 ### cd $R && rm -rf build_run
 
-# Fix permissions
-cd $R && find . -type d | xargs chmod 775
-cd $R && find . -type f | xargs chmod 444
-cd $R && chmod 664 build_windows/*.dsp build_windows/*vcproj
-cd $R && chmod 664 csharp/doc/libdb_dotnet*.XML
-cd $R/dist && sh s_perm
+fix_permissions $R
 
 # Check for file names differing only in case.
 cd $R && find . | sort -f | uniq -ic | sed '/1 /d'
@@ -75,10 +137,7 @@ chmod 444 $T
 cd $D && mv -i db-$VERSION $RNC && $TAR xzf $T
 cd $RNC/dist && sh s_crypto
 
-cd $RNC && find . -type d | xargs chmod 775
-cd $RNC && find . -type f | xargs chmod 444
-cd $RNC && chmod 664 build_windows/*.dsp
-cd $RNC/dist && sh s_perm
+fix_permissions $RNC
 
 # Create the non-crypto tar archive release.
 T="$D/db-$VERSION.NC.tar.gz"
@@ -86,10 +145,10 @@ cd $RNC/.. && $TAR czf $T -find db-$VERSION.NC -chown 100 -chgrp 100
 chmod 444 $T
 
 t=__tmp
-cd $R && awk '{print $0 "\r"}' < LICENSE > $t && rm -f LICENSE && cp $t LICENSE && rm -f $t
-cd $R && awk '{print $0 "\r"}' < README > $t && rm -f README && cp $t README && rm -f $t
-cd $RNC && awk '{print $0 "\r"}' < LICENSE > $t && rm -f LICENSE && cp $t LICENSE && rm -f $t
-cd $RNC && awk '{print $0 "\r"}' < README > $t && rm -f README && cp $t README && rm -f $t
+cd $R && awk '{print $0 "\r"}' < LICENSE > $t && rm -f LICENSE && cp $t LICENSE
+cd $R && awk '{print $0 "\r"}' < README > $t && rm -f README && cp $t README && rm $t
+cd $RNC && awk '{print $0 "\r"}' < LICENSE > $t && rm -f LICENSE && cp $t LICENSE
+cd $RNC && awk '{print $0 "\r"}' < README > $t && rm -f README && cp $t README && rm $t
 
 # Create the crypto zip archive release.
 T="$D/db-$VERSION.zip"
@@ -101,4 +160,8 @@ T="$D/db-$VERSION.NC.zip"
 cd $RNC/.. && rm -f $T && zip -q -r $T db-$VERSION.NC 
 chmod 444 $T
 
-rm -f $R $RNC
+rm -rf $R $RNC
+
+if [ "$TAG_CREATED" = "true" ]; then
+	echo "Created a tag in docs_books repository. Please push."
+fi

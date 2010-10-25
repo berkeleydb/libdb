@@ -25,14 +25,18 @@ for i in `cat $t1`; do
 	(cd $d && egrep "^#include[	 ].*[<\"]$i[>\"]" */*.[ch])
 done |
 sed -e '/^build/d' \
+    -e '/^dist\/api_flags.c/d' \
     -e '/^db_codegen\/code_capi.c/d' \
+    -e '/db_sql_codegen/d' \
     -e '/^db_dump185/d' \
     -e '/^dbinc\/mutex_int.h.*<sys\/mman.h>/d' \
     -e '/^dbinc\/win_db.h:/d' \
     -e '/^examples_c/d' \
+    -e '/^examples_stl\/StlAdvancedFe/d' \
     -e '/^libdb_java.*errno.h/d' \
     -e '/^libdb_java.*java_util.h/d' \
     -e '/^libdb_java\/db_java_wrap.c/d' \
+    -e '/^libdb_csharp\/db_csharp_wrap.c/d' \
     -e '/^mod_db4/d' \
     -e '/^mutex\/tm.c/d' \
     -e '/^os\/os_map.c.*<sys\/mman.h>/d' \

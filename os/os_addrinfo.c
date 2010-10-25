@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
 /*
@@ -71,7 +70,8 @@ __os_getaddrinfo(env, nodename, port, servname, hints, res)
 	if (nodename) {
 		if (nodename[0] == '\0')
 			sin.sin_addr.s_addr = htonl(INADDR_ANY);
-		else if ((tmpaddr = inet_addr(nodename)) != INADDR_NONE) {
+		else if ((tmpaddr = inet_addr(CHAR_STAR_CAST nodename)) !=
+		    INADDR_NONE) {
 			sin.sin_addr.s_addr = tmpaddr;
 		} else {
 			hostaddr = gethostbyname(nodename);

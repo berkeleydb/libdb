@@ -346,8 +346,8 @@ public class Db {
     return db_javaJNI.Db_del(swigCPtr, this, DbTxn.getCPtr(txnid), txnid, key, flags);
   }
 
-  public void err(int error, String message) /* no exception */ {
-    db_javaJNI.Db_err(swigCPtr, this, error, message);
+  public void err(int ret, String message) /* no exception */ {
+    db_javaJNI.Db_err(swigCPtr, this, ret, message);
   }
 
   public void errx(String message) /* no exception */ {

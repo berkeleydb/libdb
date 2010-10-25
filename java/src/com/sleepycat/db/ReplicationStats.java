@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -32,338 +32,338 @@ public class ReplicationStats {
     */
     public static final int REP_NONE = 0;
 
-    private long st_log_queued;
-    /** TODO */
-    public long getLogQueued() {
-        return st_log_queued;
-    }
-
     private int st_startup_complete;
-    /** TODO */
+    /** The client site has completed its startup procedures and is now handling live records from the master.  */
     public boolean getStartupComplete() {
         return (st_startup_complete != 0);
     }
 
+    private long st_log_queued;
+    /** The number of log records currently queued. */
+    public long getLogQueued() {
+        return st_log_queued;
+    }
+
     private int st_status;
-    /** TODO */
+    /** The current replication mode.  Set to one of {@link #REP_MASTER}, {@link #REP_CLIENT} or {@link #REP_NONE}. */
     public int getStatus() {
         return st_status;
     }
 
     private LogSequenceNumber st_next_lsn;
-    /** TODO */
+    /** In replication environments configured as masters, the next LSN to be used. In replication environments configured as clients, the next LSN expected.  */
     public LogSequenceNumber getNextLsn() {
         return st_next_lsn;
     }
 
     private LogSequenceNumber st_waiting_lsn;
-    /** TODO */
+    /** The LSN of the first log record we have after missing log records being waited for, or 0 if no log records are currently missing.  */
     public LogSequenceNumber getWaitingLsn() {
         return st_waiting_lsn;
     }
 
     private LogSequenceNumber st_max_perm_lsn;
-    /** TODO */
+    /** The LSN of the maximum permanent log record, or 0 if there are no permanent log records.  */
     public LogSequenceNumber getMaxPermLsn() {
         return st_max_perm_lsn;
     }
 
     private int st_next_pg;
-    /** TODO */
+    /** The next page number we expect to receive.  */
     public int getNextPages() {
         return st_next_pg;
     }
 
     private int st_waiting_pg;
-    /** TODO */
+    /** The page number of the first page we have after missing pages being waited for, or 0 if no pages are currently missing. */
     public int getWaitingPages() {
         return st_waiting_pg;
     }
 
     private int st_dupmasters;
-    /** TODO */
+    /** The number of duplicate master conditions originally detected at this site. */
     public int getDupmasters() {
         return st_dupmasters;
     }
 
     private int st_env_id;
-    /** TODO */
+    /** The current environment ID. */
     public int getEnvId() {
         return st_env_id;
     }
 
     private int st_env_priority;
-    /** TODO */
+    /** The current environment priority. */
     public int getEnvPriority() {
         return st_env_priority;
     }
 
     private long st_bulk_fills;
-    /** TODO */
+    /** The number of times the bulk buffer filled up, forcing the buffer content to be sent. */
     public long getBulkFills() {
         return st_bulk_fills;
     }
 
     private long st_bulk_overflows;
-    /** TODO */
+    /** The number of times a record was bigger than the entire bulk buffer, and therefore had to be sent as a singleton. */
     public long getBulkOverflows() {
         return st_bulk_overflows;
     }
 
     private long st_bulk_records;
-    /** TODO */
+    /** The number of records added to a bulk buffer. */
     public long getBulkRecords() {
         return st_bulk_records;
     }
 
     private long st_bulk_transfers;
-    /** TODO */
+    /** The number of bulk buffers transferred (via a call to the application's {@link ReplicationTransport} function). */
     public long getBulkTransfers() {
         return st_bulk_transfers;
     }
 
     private long st_client_rerequests;
-    /** TODO */
+    /** The number of times this client site received a "re-request" message, indicating that a request it previously sent to another client could not be serviced by that client. (Compare to {@link #getClientSvcMiss}.) */
     public long getClientRerequests() {
         return st_client_rerequests;
     }
 
     private long st_client_svc_req;
-    /** TODO */
+    /** The number of "request" type messages received by this client. ("Request" messages are usually sent from a client to the master, but a message passed with the anywhere parameter set to true in the invocation of the application's {@link ReplicationTransport#send ReplicationTransport.send()} function may be sent to another client instead.) */
     public long getClientSvcReq() {
         return st_client_svc_req;
     }
 
     private long st_client_svc_miss;
-    /** TODO */
+    /** The number of "request" type messages received by this client that could not be processed, forcing the originating requester to try sending the request to the master (or another client). */
     public long getClientSvcMiss() {
         return st_client_svc_miss;
     }
 
     private int st_gen;
-    /** TODO */
+    /** The current master generation number. */
     public int getGen() {
         return st_gen;
     }
 
     private int st_egen;
-    /** TODO */
+    /** The election generation number for the current or next election. */
     public int getEgen() {
         return st_egen;
     }
 
     private long st_log_duplicated;
-    /** TODO */
+    /** The number of duplicate log records received. */
     public long getLogDuplicated() {
         return st_log_duplicated;
     }
 
     private long st_log_queued_max;
-    /** TODO */
+    /** The maximum number of log records ever queued at once. */
     public long getLogQueuedMax() {
         return st_log_queued_max;
     }
 
     private long st_log_queued_total;
-    /** TODO */
+    /** The total number of log records queued. */
     public long getLogQueuedTotal() {
         return st_log_queued_total;
     }
 
     private long st_log_records;
-    /** TODO */
+    /** The number of log records received and appended to the log. */
     public long getLogRecords() {
         return st_log_records;
     }
 
     private long st_log_requested;
-    /** TODO */
+    /** The number of times log records were missed and requested. */
     public long getLogRequested() {
         return st_log_requested;
     }
 
     private int st_master;
-    /** TODO */
+    /** The current master environment ID. */
     public int getMaster() {
         return st_master;
     }
 
     private long st_master_changes;
-    /** TODO */
+    /** The number of times the master has changed. */
     public long getMasterChanges() {
         return st_master_changes;
     }
 
     private long st_msgs_badgen;
-    /** TODO */
+    /** The number of messages received with a bad generation number. */
     public long getMsgsBadgen() {
         return st_msgs_badgen;
     }
 
     private long st_msgs_processed;
-    /** TODO */
+    /** The number of messages received and processed. */
     public long getMsgsProcessed() {
         return st_msgs_processed;
     }
 
     private long st_msgs_recover;
-    /** TODO */
+    /** The number of messages ignored due to pending recovery. */
     public long getMsgsRecover() {
         return st_msgs_recover;
     }
 
     private long st_msgs_send_failures;
-    /** TODO */
+    /** The number of failed message sends. */
     public long getMsgsSendFailures() {
         return st_msgs_send_failures;
     }
 
     private long st_msgs_sent;
-    /** TODO */
+    /** The number of messages sent. */
     public long getMsgsSent() {
         return st_msgs_sent;
     }
 
     private long st_newsites;
-    /** TODO */
+    /** The number of new site messages received. */
     public long getNewsites() {
         return st_newsites;
     }
 
     private int st_nsites;
-    /** TODO */
+    /** The number of sites used in the last election. */
     public int getNumSites() {
         return st_nsites;
     }
 
     private long st_nthrottles;
-    /** TODO */
+    /** Transmission limited. This indicates the number of times that data transmission was stopped to limit the amount of data sent in response to a single call to {@link Environment#processReplicationMessage Environment.processReplicationMessage}. */
     public long getNumThrottles() {
         return st_nthrottles;
     }
 
     private long st_outdated;
-    /** TODO */
+    /** The number of outdated conditions detected. */
     public long getOutdated() {
         return st_outdated;
     }
 
     private long st_pg_duplicated;
-    /** TODO */
+    /** The number of duplicate pages received. */
     public long getPagesDuplicated() {
         return st_pg_duplicated;
     }
 
     private long st_pg_records;
-    /** TODO */
+    /** The number of pages received and stored. */
     public long getPagesRecords() {
         return st_pg_records;
     }
 
     private long st_pg_requested;
-    /** TODO */
+    /** The number of pages missed and requested from the master. */
     public long getPagesRequested() {
         return st_pg_requested;
     }
 
     private long st_txns_applied;
-    /** TODO */
+    /** The number of transactions applied. */
     public long getTxnsApplied() {
         return st_txns_applied;
     }
 
     private long st_startsync_delayed;
-    /** TODO */
+    /** The number of times the client had to delay the start of a cache flush operation (initiated by the master for an impending checkpoint) because it was missing some previous log record(s). */
     public long getStartSyncDelayed() {
         return st_startsync_delayed;
     }
 
     private long st_elections;
-    /** TODO */
+    /** The number of elections held. */
     public long getElections() {
         return st_elections;
     }
 
     private long st_elections_won;
-    /** TODO */
+    /** The number of elections won. */
     public long getElectionsWon() {
         return st_elections_won;
     }
 
     private int st_election_cur_winner;
-    /** TODO */
+    /** The environment ID of the winner of the current or last election.*/
     public int getElectionCurWinner() {
         return st_election_cur_winner;
     }
 
     private int st_election_gen;
-    /** TODO */
+    /** The master generation number of the winner of the current or last election. */
     public int getElectionGen() {
         return st_election_gen;
     }
 
     private LogSequenceNumber st_election_lsn;
-    /** TODO */
+    /** The maximum LSN of the winner of the current or last election.*/
     public LogSequenceNumber getElectionLsn() {
         return st_election_lsn;
     }
 
     private int st_election_nsites;
-    /** TODO */
+    /** The number of sites responding to this site during the current election. */
     public int getElectionNumSites() {
         return st_election_nsites;
     }
 
     private int st_election_nvotes;
-    /** TODO */
+    /** The number of votes required in the current or last election. */
     public int getElectionNumVotes() {
         return st_election_nvotes;
     }
 
     private int st_election_priority;
-    /** TODO */
+    /** The priority of the winner of the current or last election. */
     public int getElectionPriority() {
         return st_election_priority;
     }
 
     private int st_election_status;
-    /** TODO */
+    /** The current election phase (0 if no election is in progress). */
     public int getElectionStatus() {
         return st_election_status;
     }
 
     private int st_election_tiebreaker;
-    /** TODO */
+    /** The tiebreaker value of the winner of the current or last election. */
     public int getElectionTiebreaker() {
         return st_election_tiebreaker;
     }
 
     private int st_election_votes;
-    /** TODO */
+    /** The number of votes received during the current election. */
     public int getElectionVotes() {
         return st_election_votes;
     }
 
     private int st_election_sec;
-    /** TODO */
+    /** The number of seconds the last election took (the total election time is this value plus {@link #getElectionUsec}). */
     public int getElectionSec() {
         return st_election_sec;
     }
 
     private int st_election_usec;
-    /** TODO */
+    /** The number of microseconds the last election took (the total election time is this value plus {@link #getElectionSec}). */
     public int getElectionUsec() {
         return st_election_usec;
     }
 
     private int st_max_lease_sec;
-    /** TODO */
+    /** The number of seconds of the longest lease (the total lease time is this value plus {@link #getMaxLeaseUsec}). */
     public int getMaxLeaseSec() {
         return st_max_lease_sec;
     }
 
     private int st_max_lease_usec;
-    /** TODO */
+    /** The number of microseconds of the longest lease (the total lease time is this value plus {@link #getMaxLeaseSec}). */
     public int getMaxLeaseUsec() {
         return st_max_lease_usec;
     }
@@ -374,8 +374,8 @@ public class ReplicationStats {
     */
     public String toString() {
         return "ReplicationStats:"
-            + "\n  st_log_queued=" + st_log_queued
             + "\n  st_startup_complete=" + (st_startup_complete != 0)
+            + "\n  st_log_queued=" + st_log_queued
             + "\n  st_status=" + st_status
             + "\n  st_next_lsn=" + st_next_lsn
             + "\n  st_waiting_lsn=" + st_waiting_lsn

@@ -15,7 +15,6 @@
 #include "dbinc/fop.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
-#include "dbinc/log.h"
 #include "dbinc/txn.h"
 
 static int __fop_set_pgsize __P((DB *, DB_FH *, const char *));
@@ -140,7 +139,8 @@ __fop_lock_handle(env, dbp, locker, mode, elockp, flags)
 		if ((ret = __lock_vec(env,
 		    locker, flags, reqs, 2, &ereq)) == 0) {
 			dbp->handle_lock = reqs[1].lock;
-			LOCK_INIT(*elockp);
+			if (elockp != &dbp->handle_lock)
+				LOCK_INIT(*elockp);
 		} else if (ereq != reqs)
 			LOCK_INIT(*elockp);
 	}
@@ -245,6 +245,13 @@ __fop_file_setup(dbp, ip, txn, name, mode, flags, retidp)
 		created_locker = 1;
 	}
 	LOCK_INIT(dbp->handle_lock);
+
+	if (txn != NULL && dbp->locker != NULL && F_ISSET(txn, TXN_INFAMILY)) {
+		if ((ret = __lock_addfamilylocker(env,
+		    txn->txnid, dbp->locker->id, 1)) != 0)
+			goto err;
+		txn = NULL;
+	}
 
 	locker = txn == NULL ? dbp->locker : txn->locker;
 
@@ -494,6 +501,12 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 #endif
 		goto err;
 	LF_SET(DB_CREATE);
+	/*
+	 * If we were trying to open a non-existent master database
+	 * readonly clear that here.
+	 */
+	LF_CLR(DB_RDONLY);
+	F_CLR(dbp, DB_AM_RDONLY);
 	ret = 0;
 
 	/*
@@ -732,13 +745,15 @@ __fop_subdb_setup(dbp, ip, txn, mname, name, mode, flags)
 	DB *mdbp;
 	ENV *env;
 	db_lockmode_t lkmode;
+	u_int32_t mflags;
 	int ret, t_ret;
 
 	mdbp = NULL;
 	env = dbp->env;
 
-	if ((ret = __db_master_open(dbp,
-	    ip, txn, mname, flags, mode, &mdbp)) != 0)
+	mflags = flags | DB_RDONLY;
+retry:	if ((ret = __db_master_open(dbp,
+	    ip, txn, mname, mflags, mode, &mdbp)) != 0)
 		return (ret);
 	/*
 	 * If we created this file, then we need to set the DISCARD flag so
@@ -762,8 +777,16 @@ __fop_subdb_setup(dbp, ip, txn, mname, name, mode, flags)
 	F_SET(dbp, DB_AM_SUBDB);
 
 	if (name != NULL && (ret = __db_master_update(mdbp, dbp,
-	    ip, txn, name, dbp->type, MU_OPEN, NULL, flags)) != 0)
+	    ip, txn, name, dbp->type, MU_OPEN, NULL, flags)) != 0) {
+	    	if (ret == EBADF && F_ISSET(mdbp, DB_AM_RDONLY)) {
+			/* We need to reopen the master R/W to do the create. */
+			if ((ret = __db_close(mdbp, txn, 0)) != 0)
+				goto err;
+			FLD_CLR(mflags, DB_RDONLY);
+			goto retry;
+		}
 		goto err;
+	}
 
 	/*
 	 * Hijack the master's locker ID as well, so that our locks don't
@@ -905,10 +928,14 @@ __fop_remove_setup(dbp, txn, name, flags)
 
 	/* Create locker if necessary. */
 retry:	if (LOCKING_ON(env)) {
-		if (txn != NULL)
+		if (IS_REAL_TXN(txn))
 			dbp->locker = txn->locker;
 		else if (dbp->locker == DB_LOCK_INVALIDID) {
 			if ((ret = __lock_id(env, NULL, &dbp->locker)) != 0)
+				goto err;
+			if (txn != NULL && F_ISSET(txn, TXN_INFAMILY) &&
+			    (ret = __lock_addfamilylocker(env,
+			    txn->txnid, dbp->locker->id, 1)) != 0)
 				goto err;
 		}
 	}
@@ -1206,9 +1233,10 @@ __fop_inmem_create(dbp, name, txn, flags)
 	ENV *env;
 	int ret;
 	int32_t lfid;
-	u_int32_t *p32;
+	u_int32_t dflags, *p32;
 
 	env = dbp->env;
+	dflags = F_ISSET(dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0;
 
 	MAKE_INMEM(dbp);
 
@@ -1267,7 +1295,7 @@ __fop_inmem_create(dbp, name, txn, flags)
 		lfid = dbp->log_filename == NULL ?
 		    DB_LOGFILEID_INVALID : dbp->log_filename->id;
 		if ((ret = __crdel_inmem_create_log(env, txn,
-		    &lsn, 0, lfid, &name_dbt, &fid_dbt, dbp->pgsize)) != 0)
+		    &lsn, dflags, lfid, &name_dbt, &fid_dbt, dbp->pgsize)) != 0)
 			goto err;
 	}
 

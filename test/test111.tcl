@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005-2009 Oracle.  All rights reserved.
+# Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -15,8 +15,8 @@
 
 proc test111 { method {nentries 10000} {tnum "111"} args } {
 
-	# Compaction is an option for btree and recno databases only.
-	if { [is_hash $method] == 1 || [is_queue $method] == 1 } {
+	# Compaction is an option for btree, recno, and hash databases.
+	if { [is_queue $method] == 1 } {
 		puts "Skipping test$tnum for method $method."
 		return
 	}
@@ -66,6 +66,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		set testdir [get_home $env]
 	}
 	puts "Test$tnum: ($method $args) Database compaction."
+
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set splitopts { "" "-revsplitoff" }
@@ -133,10 +134,11 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		} else {
 			set filename $testfile
 		}
+
+		# Record the file size and page count.  Both will
+		# be reduced by compaction.
 		set size1 [file size $filename]
-		set free1 [stat_field $db stat "Pages on freelist"]
-		set leaf1 [stat_field $db stat "Leaf pages"]
-		set internal1 [stat_field $db stat "Internal pages"]
+		set count1 [stat_field $db stat "Page count"]
 
 		# Delete between 1 and maxdelete items, then skip over between
 		# 1 and maxskip items.  This is to make the data bunchy,
@@ -203,7 +205,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 				error_check_good txn [is_valid_txn $t $env] TRUE
 				set txn "-txn $t"
 			}
-			set ret [eval $db compact $txn -freespace]
+			set ret [eval {$db compact} $txn {-freespace}]
 			if { $txnenv == 1 } {
 				if { $commit == 0 } {
 					puts "\tTest$tnum.d: Aborting."
@@ -219,18 +221,11 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		}
 
 		set size2 [file size $filename]
-		set free2 [stat_field $db stat "Pages on freelist"]
-		set leaf2 [stat_field $db stat "Leaf pages"]
-		set internal2 [stat_field $db stat "Internal pages"]
+		set count2 [stat_field $db stat "Page count"]
 
-		# The sum of internal pages, leaf pages, and pages freed
-		# should decrease on compaction, indicating that pages
-		# have been freed to the file system.
-		set sum1 [expr $free1 + $leaf1 + $internal1]
-		set sum2 [expr $free2 + $leaf2 + $internal2]
-		error_check_good pages_freed [expr $sum1 > $sum2] 1
+		# Now check for reduction in page count and file size.
+		error_check_good pages_freed [expr $count1 > $count2] 1
 
-		# The on-disk file size should be smaller.
 	#### We should look at the partitioned files #####
 	if { [is_partitioned $args] == 0 } {
 		set reduction .96
@@ -249,7 +244,13 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 			error_check_good txn_commit [$t commit] 0
 		}
 
-		error_check_good filecmp [filecmp $t1 $t2] 0
+		if { [is_hash $method] == 1 } {
+			filesort $t1 $t1.sort
+			filesort $t2 $t2.sort
+			error_check_good filecmp [filecmp $t1.sort $t2.sort] 0
+		} else {
+			error_check_good filecmp [filecmp $t1 $t2] 0
+		}
 
 		puts "\tTest$tnum.f: Add more entries to database."
 		# Use integers as keys instead of strings, just to mix it up
@@ -272,9 +273,7 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		error_check_good db_sync [$db sync] 0
 
 		set size3 [file size $filename]
-		set free3 [stat_field $db stat "Pages on freelist"]
-		set leaf3 [stat_field $db stat "Leaf pages"]
-		set internal3 [stat_field $db stat "Internal pages"]
+		set count3 [stat_field $db stat "Page count"]
 
 		puts "\tTest$tnum.g: Remove more entries, this time by cursor."
 		set count 0
@@ -318,13 +317,13 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 				error_check_good txn [is_valid_txn $t $env] TRUE
 				set txn "-txn $t"
 			}
-			set ret [eval $db compact $txn -freespace]
+			set ret [eval {$db compact} $txn {-freespace}]
 			if { $txnenv == 1 } {
 				if { $commit == 0 } {
-					puts "\tTest$tnum.d: Aborting."
+					puts "\tTest$tnum.i1: Aborting."
 					error_check_good txn_abort [$t abort] 0
 				} else {
-					puts "\tTest$tnum.d: Committing."
+					puts "\tTest$tnum.i2: Committing."
 					error_check_good txn_commit [$t commit] 0
 				}
 			}
@@ -334,23 +333,33 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		}
 
 		set size4 [file size $filename]
-		set free4 [stat_field $db stat "Pages on freelist"]
-		set leaf4 [stat_field $db stat "Leaf pages"]
-		set internal4 [stat_field $db stat "Internal pages"]
+		set count4 [stat_field $db stat "Page count"]
 
-		# The sum of internal pages, leaf pages, and pages freed
-		# should decrease on compaction, indicating that pages
-		# have been freed to the file system.
-		set sum3 [expr $free3 + $leaf3 + $internal3]
-		set sum4 [expr $free4 + $leaf4 + $internal4]
-		error_check_good pages_freed [expr $sum3 > $sum4] 1
+		# Check for page count and file size reduction.
+		#
+		# Identify cases where we don't expect much reduction in
+		# size, for example hash with large pagesizes.
+		#
+		#### We should look at the partitioned files #####
+		set test_filesize 1
+		if { [is_partitioned $args] } {
+			set test_filesize 0
+		}
+		if { [is_hash $method] && $pagesize == 65536 } {
+			set test_filesize 0
+		}
 
-		# File should be smaller as well.
-	#### We should look at the partitioned files #####
-	if { [is_partitioned $args] == 0 } {
-		error_check_good \
-		    file_size [expr [expr $size3 * $reduction] > $size4] 1
-	}
+		# Test for reduced file size where expected.  In cases where
+		# we don't expect much (if any) reduction, verify that at
+		# least the file size hasn't increased. 
+		if { $test_filesize == 1 } {
+			error_check_good file_size_reduced \
+			    [expr [expr $size3 * $reduction] > $size4] 1
+			error_check_good pages_freed [expr $count3 > $count4] 1
+		} else {
+			error_check_good file_size [expr $size3 >= $size4] 1
+			error_check_good pages_freed [expr $count3 >= $count4] 1
+		}
 
 		puts "\tTest$tnum.j: Contents are the same after compaction."
 		if { $txnenv == 1 } {
@@ -362,7 +371,13 @@ proc test111 { method {nentries 10000} {tnum "111"} args } {
 		if { $txnenv == 1 } {
 			error_check_good t_commit [$t commit] 0
 		}
-		error_check_good filecmp [filecmp $t1 $t2] 0
+		if { [is_hash $method] == 1 } {
+			filesort $t1 $t1.sort
+			filesort $t2 $t2.sort
+			error_check_good filecmp [filecmp $t1.sort $t2.sort] 0
+		} else {
+			error_check_good filecmp [filecmp $t1 $t2] 0
+		}
 
 		error_check_good db_close [$db close] 0
 		close $did

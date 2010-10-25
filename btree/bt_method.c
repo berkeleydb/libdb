@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -178,7 +178,7 @@ __bam_set_flags(dbp, flagsp)
 		DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE | DB_OK_HASH);
 
 	if (LF_ISSET(DB_RECNUM | DB_REVSPLITOFF))
-		DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE);
+		DB_ILLEGAL_METHOD(dbp, DB_OK_BTREE | DB_OK_HASH);
 
 	/* DB_DUP/DB_DUPSORT is incompatible with DB_RECNUM. */
 	if (LF_ISSET(DB_DUP | DB_DUPSORT) && F_ISSET(dbp, DB_AM_RECNUM))

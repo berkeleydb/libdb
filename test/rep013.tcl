@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001-2009 Oracle.  All rights reserved.
+# Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -18,11 +18,6 @@ proc rep013 { method { niter 10 } { tnum "013" } args } {
 	source ./include.tcl
 	global databases_in_memory 
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for all access methods.
 	if { $checking_valid_methods } {
@@ -164,7 +159,7 @@ proc rep013_sub { method niter tnum logset recargs anyopt largs } {
 	set stat [catch {berkdb_open_noerr -env $env2 -auto_commit \
 	     -create -mode 0644 $largs $omethod $testfile} ret]
 	error_check_good create_cl $stat 1
-	error_check_good cr_str [is_substr $ret "invalid"] 1
+	error_check_good cr_str [is_substr $ret "no such file"] 1
 
 	# Bring the clients online by processing the startup messages.
 	set envlist "{$env1 1} {$env2 2} {$cl2env 3}"

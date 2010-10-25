@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -670,8 +670,8 @@ namespace BerkeleyDB {
         /// <param name="info">The locking behavior to use.</param>
         /// <returns>
         /// A <see cref="KeyValuePair{T,T}"/> whose Key
-        /// parameter is <paramref name="key"/> and whose Value parameter is the
-        /// retrieved data.
+        /// parameter is <paramref name="recno"/> and whose Value parameter is
+        /// the retrieved data.
         /// </returns>
         public KeyValuePair<DatabaseEntry, DatabaseEntry> Get(
             uint recno, Transaction txn, LockingInfo info) {
@@ -681,18 +681,109 @@ namespace BerkeleyDB {
             return Get(key, null, txn, info, DbConstants.DB_SET_RECNO);
         }
 
+        /// <summary>
+        /// Retrieve a specific numbered key and all duplicate data items from
+        /// the database.
+        /// </summary>
+        /// <param name="recno">
+        /// The record number of the record to be retrieved.
+        /// </param>
+        /// <exception cref="NotFoundException">
+        /// A NotFoundException is thrown if <paramref name="recno"/> is not in
+        /// the database. 
+        /// </exception>
+        /// <returns>
+        /// A <see cref="KeyValuePair{T,T}"/> whose Key parameter is
+        /// <paramref name="recno"/> and whose Value parameter is the retrieved
+        /// data items.
+        /// </returns>
         public KeyValuePair<DatabaseEntry, MultipleDatabaseEntry> GetMultiple(
             uint recno) {
             return GetMultiple(recno, (int)Pagesize, null, null);
         }
+        /// <summary>
+        /// Retrieve a specific numbered key and all duplicate data items from
+        /// the database.
+        /// </summary>
+        /// <param name="recno">
+        /// The record number of the record to be retrieved.
+        /// </param>
+        /// <param name="BufferSize">
+        /// The initial size of the buffer to fill with duplicate data items. If
+        /// the buffer is not large enough, it will be automatically resized.
+        /// </param>
+        /// <exception cref="NotFoundException">
+        /// A NotFoundException is thrown if <paramref name="recno"/> is not in
+        /// the database. 
+        /// </exception>
+        /// <returns>
+        /// A <see cref="KeyValuePair{T,T}"/> whose Key parameter is
+        /// <paramref name="recno"/> and whose Value parameter is the retrieved
+        /// data items.
+        /// </returns>
         public KeyValuePair<DatabaseEntry, MultipleDatabaseEntry> GetMultiple(
             uint recno, int BufferSize) {
             return GetMultiple(recno, BufferSize, null, null);
         }
+        /// <summary>
+        /// Retrieve a specific numbered key and all duplicate data items from
+        /// the database.
+        /// </summary>
+        /// <param name="recno">
+        /// The record number of the record to be retrieved.
+        /// </param>
+        /// <param name="BufferSize">
+        /// The initial size of the buffer to fill with duplicate data items. If
+        /// the buffer is not large enough, it will be automatically resized.
+        /// </param>
+        /// <param name="txn">
+        /// <paramref name="txn"/> is a Transaction object returned from
+        /// <see cref="DatabaseEnvironment.BeginTransaction"/>; if
+        /// the operation is part of a Berkeley DB Concurrent Data Store group,
+        /// <paramref name="txn"/> is a handle returned from
+        /// <see cref="DatabaseEnvironment.BeginCDSGroup"/>; otherwise null.
+        /// </param>
+        /// <exception cref="NotFoundException">
+        /// A NotFoundException is thrown if <paramref name="recno"/> is not in
+        /// the database. 
+        /// </exception>
+        /// <returns>
+        /// A <see cref="KeyValuePair{T,T}"/> whose Key parameter is
+        /// <paramref name="recno"/> and whose Value parameter is the retrieved
+        /// data items.
+        /// </returns>
         public KeyValuePair<DatabaseEntry, MultipleDatabaseEntry> GetMultiple(
             uint recno, int BufferSize, Transaction txn) {
             return GetMultiple(recno, BufferSize, txn, null);
         }
+        /// <summary>
+        /// Retrieve a specific numbered key and all duplicate data items from
+        /// the database.
+        /// </summary>
+        /// <param name="recno">
+        /// The record number of the record to be retrieved.
+        /// </param>
+        /// <param name="BufferSize">
+        /// The initial size of the buffer to fill with duplicate data items. If
+        /// the buffer is not large enough, it will be automatically resized.
+        /// </param>
+        /// <param name="txn">
+        /// <paramref name="txn"/> is a Transaction object returned from
+        /// <see cref="DatabaseEnvironment.BeginTransaction"/>; if
+        /// the operation is part of a Berkeley DB Concurrent Data Store group,
+        /// <paramref name="txn"/> is a handle returned from
+        /// <see cref="DatabaseEnvironment.BeginCDSGroup"/>; otherwise null.
+        /// </param>
+        /// <param name="info">The locking behavior to use.</param>
+        /// <exception cref="NotFoundException">
+        /// A NotFoundException is thrown if <paramref name="recno"/> is not in
+        /// the database. 
+        /// </exception>
+        /// <returns>
+        /// A <see cref="KeyValuePair{T,T}"/> whose Key parameter is
+        /// <paramref name="recno"/> and whose Value parameter is the retrieved
+        /// data items.
+        /// </returns>
         public KeyValuePair<DatabaseEntry, MultipleDatabaseEntry> GetMultiple(
             uint recno, int BufferSize, Transaction txn, LockingInfo info) {
             KeyValuePair<DatabaseEntry, DatabaseEntry> kvp;

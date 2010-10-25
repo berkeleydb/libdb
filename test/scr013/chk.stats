@@ -37,6 +37,7 @@ hash_metaflags
 qs_metaflags
 qs_ndata
 st_hash_max_nowait
+st_filefail_cleanups
 END_OF_IGNORE
 
 # Check to make sure the elements of a structure from db.h appear in

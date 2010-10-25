@@ -9,7 +9,7 @@ use BerkeleyDB;
 use util ;
 use Test::More;
 
-plan tests =>  212;
+plan tests =>  214;
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -51,6 +51,7 @@ umask(0) ;
     # Add a k/v pair
     my $value ;
     my $status ;
+    is $db->Env, undef;
     ok $db->db_put("some key", "some value") == 0  ;
     ok $db->status() == 0 ;
     ok $db->db_get("some key", $value) == 0 ;
@@ -104,6 +105,8 @@ umask(0) ;
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
+    isa_ok $db->Env, 'BerkeleyDB::Env';
+                    
     # Add a k/v pair
     my $value ;
     ok $db->db_put("some key", "some value") == 0 ;

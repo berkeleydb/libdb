@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="txn.html" title="Chapter 13.  The DbTxn Handle" />
     <link rel="prev" href="txnid.html" title="DbTxn::id()" />
-    <link rel="next" href="txnrecover.html" title="DbEnv::txn_recover()" />
+    <link rel="next" href="txnset_name.html" title="DbTxn::set_name()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 13. 
                 The DbTxn Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -61,6 +61,10 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
          resolved along with their parent's during global recovery.
     </p>
       <p>
+     	All open cursors in the transaction are closed and the
+     	first cursor close error will be returned.
+    </p>
+      <p>
          The <code class="methodname">DbTxn::prepare()</code> <span>
             
             <span>
@@ -69,12 +73,63 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
                 failure, and returns 0 on success.
             </span>
         </span>
+         
+         The errors that this method returns include the error values of <code class="methodname">Dbc::close()</code> and the following:
+         
     </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3706504"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+        <p>
+                <a class="xref" href="dbdeadlock.html" title="DbDeadlockException">DbDeadlockException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_DEADLOCK</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3706561"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        <p>
+                <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
+                your Berkeley DB API is configured to throw exceptions.
+                Otherwise, <code class="literal">DB_LOCK_NOTGRANTED</code> is returned.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id3706683"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714462"></a>Parameters</h3>
+              <h3 class="title"><a id="id3706984"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -82,7 +137,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1714940"></a>gid</h4>
+                <h4 class="title"><a id="id3706987"></a>gid</h4>
               </div>
             </div>
           </div>
@@ -99,7 +154,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714463"></a>Class</h3>
+              <h3 class="title"><a id="id3706867"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -111,7 +166,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714988"></a>See Also</h3>
+              <h3 class="title"><a id="id3706887"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -128,14 +183,14 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DbTxn::id() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DbEnv::txn_recover()</td>
+          <td width="40%" align="right" valign="top"> DbTxn::set_name()</td>
         </tr>
       </table>
     </div>

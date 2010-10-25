@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -287,6 +287,9 @@ namespace BerkeleyDB {
             }
         }
 
+        /// <summary>
+        /// The nullifying function used to set the foreign key to null.
+        /// </summary>
         public ForeignKeyNullifyDelegate Nullifier {
             get { return nullifierHandler; }
             private set { nullifierHandler = value; }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -413,6 +413,56 @@ __lock_set_lk_partitions(dbenv, lk_partitions)
 
 	dbenv->lk_partitions = lk_partitions;
 	return (0);
+}
+
+/*
+ * __lock_set_lk_priority --
+ *	Set a locker's priority.
+ *
+ * PUBLIC: int __lock_set_lk_priority __P((DB_ENV *, u_int32_t, u_int32_t));
+ */
+int
+__lock_set_lk_priority(dbenv, lockid, priority)
+	DB_ENV *dbenv;
+	u_int32_t lockid, priority;
+{
+	DB_LOCKER *locker;
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
+
+	if (!LOCKING_ON(env))
+		return (EINVAL);
+
+	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0)
+		locker->priority = priority;
+	return ret;
+}
+
+/*
+ * __lock_get_lk_priority --
+ *	Get a locker's priority.
+ *
+ * PUBLIC: int __lock_get_lk_priority __P((DB_ENV *, u_int32_t, u_int32_t *));
+ */
+int
+__lock_get_lk_priority(dbenv, lockid, priorityp)
+	DB_ENV *dbenv;
+	u_int32_t lockid, *priorityp;
+{
+	DB_LOCKER *locker;
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
+
+	if (!LOCKING_ON(env))
+		return (EINVAL);
+
+	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0)
+		*priorityp = locker->priority;
+	return ret;
 }
 
 /*

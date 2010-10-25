@@ -142,10 +142,9 @@ public class SampleDatabase
 </p>
       <p>
     The following statement closes the environment. The environment
-	should always be closed when database work is completed to free
+	must be closed when database work is completed to free
 	allocated resources and to avoid having to run recovery later.
-	Closing the environment does not automatically close databases, so
-	databases should be closed explicitly before closing the
+	It is recommended that databases are closed before closing the
 	environment.
 </p>
       <a id="cb_close"></a>

@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
-    <link rel="prev" href="txnabort.html" title="DB_TXN-&gt;abort()" />
+    <link rel="prev" href="txnrecover.html" title="DB_ENV-&gt;txn_recover()" />
     <link rel="next" href="txncheckpoint.html" title="DB_ENV-&gt;txn_checkpoint()" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">DB_ENV-&gt;txn_begin()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="txnabort.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="txnrecover.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
@@ -88,7 +88,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708319"></a>Parameters</h3>
+              <h3 class="title"><a id="id4029275"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -96,7 +96,25 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708353"></a>flags</h4>
+                <h4 class="title"><a id="id4029278"></a>parent</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the <span class="bold"><strong>parent</strong></span> parameter is non-NULL,
+                          the new transaction will be a nested transaction, with the transaction
+                          indicated by <span class="bold"><strong>parent</strong></span> as its parent. 
+                          Transactions may be nested to any level. In the presence of
+                          distributed transactions and two-phase commit, only the parental
+                          transaction, that is a transaction without a <span class="bold"><strong>parent</strong></span> specified, should be passed as an
+                          parameter to <a class="xref" href="txnprepare.html" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a>.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4028752"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -239,30 +257,12 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1708596"></a>parent</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the <span class="bold"><strong>parent</strong></span> parameter is non-NULL,
-                          the new transaction will be a nested transaction, with the transaction
-                          indicated by <span class="bold"><strong>parent</strong></span> as its parent. 
-                          Transactions may be nested to any level. In the presence of
-                          distributed transactions and two-phase commit, only the parental
-                          transaction, that is a transaction without a <span class="bold"><strong>parent</strong></span> specified, should be passed as an
-                          parameter to <a class="xref" href="txnprepare.html" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a>.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708989"></a>Errors</h3>
+              <h3 class="title"><a id="id4029548"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1708838"></a> or ENOMEM</h4>
+                <h4 class="title"><a id="id4029440"></a> ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -292,7 +292,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708953"></a>Class</h3>
+              <h3 class="title"><a id="id4029388"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -304,7 +304,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1708629"></a>See Also</h3>
+              <h3 class="title"><a id="id4029459"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -317,14 +317,14 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="txnabort.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="txnrecover.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="txncheckpoint.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">DB_TXN-&gt;abort() </td>
+          <td width="40%" align="left" valign="top">DB_ENV-&gt;txn_recover() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

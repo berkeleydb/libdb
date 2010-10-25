@@ -1,11 +1,11 @@
-﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{4696FB1E-1E5F-40B9-BD8C-A54D3BDA00F6}</ProjectGuid>
     <OutputType>Library</OutputType>
     <NoStandardLibraries>false</NoStandardLibraries>
-    <AssemblyName>libdb_dotnet48</AssemblyName>
+    <AssemblyName>libdb_dotnet50</AssemblyName>
     <RootNamespace>BerkeleyDB</RootNamespace>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -38,7 +38,7 @@
     <OutputPath>..\build_windows\AnyCPU\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DocumentationFile>doc\libdb_dotnet48.XML</DocumentationFile>
+    <DocumentationFile>doc\libdb_dotnet50.XML</DocumentationFile>
     <NoWarn>419</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -46,7 +46,7 @@
     <Optimize>true</Optimize>
     <OutputPath>..\build_windows\AnyCPU\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <DocumentationFile>doc\libdb_dotnet48.XML</DocumentationFile>
+    <DocumentationFile>doc\libdb_dotnet50.XML</DocumentationFile>
     <NoWarn>419</NoWarn>
   </PropertyGroup>
   <ItemGroup>
@@ -91,6 +91,7 @@
     <Compile Include="LockStats.cs" />
     <Compile Include="LogConfig.cs" />
     <Compile Include="LogStats.cs" />
+    <Compile Include="LogVerifyConfig.cs" />
     <Compile Include="MPoolConfig.cs" />
     <Compile Include="MPoolFileStats.cs" />
     <Compile Include="MPoolStats.cs" />
@@ -139,6 +140,7 @@
     <Compile Include="Internal\DB_LSN.cs" />
     <Compile Include="Internal\db_recops.cs" />
     <Compile Include="Internal\DB_TXN.cs" />
+    <Compile Include="Internal\DB_TXN_TOKEN.cs" />
     <Compile Include="Internal\Delegates.cs" />
     <Compile Include="JoinCursor.cs" />
     <Compile Include="KeyRange.cs" />

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -81,7 +81,9 @@ retry:	TXN_SYSTEM_LOCK(env);
 				return (ret);
 			F_SET(ktxn, TXN_MALLOC);
 			ktxn->parent = txn;
-			TAILQ_INSERT_HEAD(&txn->kids, txn, klinks);
+			ktxn->mgrp = txn->mgrp;
+			TAILQ_INSERT_TAIL(&mgr->txn_chain, ktxn, links);
+			TAILQ_INSERT_HEAD(&txn->kids, ktxn, klinks);
 		}
 		TAILQ_INSERT_TAIL(&mgr->txn_chain, txn, links);
 		pid = td->pid;

@@ -42,15 +42,18 @@ db_version(int *major, int *minor, int *patch);  </pre>
       <p>
          The 
          <code class="methodname">db_version()</code> 
-          
-         method returns a pointer to a string, suitable for
-         display, containing Berkeley DB version information.
+         
+         method returns a pointer to a string, suitable for display,
+         containing Berkeley DB version information.  For a method
+         that returns this information as well as Oracle release
+         numbers, see
+	 <a class="xref" href="envfullversion.html" title="db_full_version">db_full_version</a>.
     </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1673966"></a>Parameters</h3>
+              <h3 class="title"><a id="id3992568"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -58,7 +61,7 @@ db_version(int *major, int *minor, int *patch);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1674008"></a>major</h4>
+                <h4 class="title"><a id="id3992573"></a>major</h4>
               </div>
             </div>
           </div>
@@ -72,7 +75,7 @@ db_version(int *major, int *minor, int *patch);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1673860"></a>minor</h4>
+                <h4 class="title"><a id="id3992671"></a>minor</h4>
               </div>
             </div>
           </div>
@@ -86,7 +89,7 @@ db_version(int *major, int *minor, int *patch);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1674295"></a>patch</h4>
+                <h4 class="title"><a id="id3992080"></a>patch</h4>
               </div>
             </div>
           </div>
@@ -101,7 +104,7 @@ db_version(int *major, int *minor, int *patch);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1673477"></a>Class</h3>
+              <h3 class="title"><a id="id3992754"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -113,7 +116,7 @@ db_version(int *major, int *minor, int *patch);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1673912"></a>See Also</h3>
+              <h3 class="title"><a id="id3992740"></a>See Also</h3>
             </div>
           </div>
         </div>

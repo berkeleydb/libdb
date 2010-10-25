@@ -73,9 +73,13 @@ sed -e '/DB_VERB_/d' \
 	exit 1
 }
 
+# there are a few exceptions in rep_util.c
 echo 'Checking DB_VER_XXX flags with other than dbenv "verbose" field'
 grep -- 'DB_VERB_' $t1 |
 sed -e '/dbenv->verbose,/d' \
+    -e '/rep_util.c.*(verbflag/d' \
+    -e '/rep_util.c.*(tmp_verbose/d' \
+    -e '/rep_util.c.*(verbose/d' \
     > $t2
 [ -s $t2 ] && {
 	cat $t2
@@ -98,6 +102,7 @@ grep 'DB_AM_' $t1 |
 sed \
     -e '/(&db,/d' \
     -e '/(db,/d' \
+    -e '/log_get.c:.*dbpp,/d' \
     -e '/_method.c:.*outflagsp,/d' \
     -e '/partition.c:.*pdbp,/d' \
     -e '/rep_backup.c:.*->flags,/d' \

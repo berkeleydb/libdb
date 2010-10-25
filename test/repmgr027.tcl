@@ -1,216 +1,112 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# TEST repmgr027
-# TEST Repmgr recognition of peer setting, across processes.
+# TEST	repmgr027
+# TEST	Test of "full election" timeouts, where a client starts up and joins the
+# TEST	group during the middle of an election.
 # TEST
-# TEST Set up a master and two clients, synchronized with some data.
-# TEST Add a new client, configured to use c2c sync with one of the original
-# TEST clients.  Check stats to make sure the correct c2c peer was used.
 
-proc repmgr027 { } {
-	repmgr027_sub position_chg
-	repmgr027_sub chg_site
-	repmgr027_sub chg_after_open
-	repmgr027_sub set_peer_after_open
-}
-
-proc repmgr027_sub { config } {
+proc repmgr027 { { tnum 027 } } {
 	source ./include.tcl
 
-	set tnum "027" 
-	puts "Repmgr$tnum: Repmgr peer, with \"$config\" configuration."
-	set site_prog [setup_site_prog]
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
+	}
+	puts -nonewline "Repmgr$tnum: Full election test,"
+	puts " with client joining halfway through election"
+	repmgr027_sub $tnum
+}
+
+proc repmgr027_sub { tnum } {
+	global testdir
+	global repfiles_in_memory
+	global rep_verbose
+	global verbose_type
+	
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
 	env_cleanup $testdir
+	file mkdir [set dira $testdir/SITE_A]
+	file mkdir [set dirb $testdir/SITE_B]
+	file mkdir [set dirc $testdir/SITE_C]
+	file mkdir [set dirc $testdir/SITE_D]
+	foreach { porta portb portc portd } [available_ports 4] {}
 
-	set ports [available_ports 4]
-	set mport [lindex $ports 0]
-	set portA [lindex $ports 1]
-	set portB [lindex $ports 2]
+	# The election times are arbitrary, but the full election timeout should
+	# be long enough to allow the test to start two sites, wait for them to
+	# be in an election, and then have the third site start and join
+	# (including the leeway time, in seconds), before it times out.
+	#
+	set common "-create -txn $verbargs $repmemargs \
+	    -rep -thread -event"
+	set common_mgr "-nsites 3 -start elect -timeout {conn_retry 5000000} \
+	    -timeout {elect_retry 2000000}"
+	set times "-timeout {full_elect 180000000} -timeout {elect 5000000}"
+	set leeway 5
 
-	file mkdir [set masterdir $testdir/MASTER]
-	file mkdir $testdir/A
-	file mkdir $testdir/B
-	file mkdir $testdir/C
-
-	puts "\tRepmgr$tnum.a: Start master, write some data."
-	make_dbconfig $masterdir {{rep_set_nsites 4}}
-	set cmds {
-		"home $masterdir"
-		"local $mport"
-		"output $testdir/moutput"
-		"open_env"
-		"start master"
-		"open_db test.db"
-		"put key1 value1"
-	}
-	set m [open_site_prog [subst $cmds]]
-
-	puts "\tRepmgr$tnum.b:\
-	    Start initial two clients; wait for them to synchronize."
-	# Allowing both A and B to start at the same time, and synchronize
-	# concurrently would make sense.  But it causes very slow performance on
-	# Windows.  Since it's really only client C that's under test here, this
-	# detail doesn't matter.
+	# Cold boot, at first just 2 sites.
 	# 
-	make_dbconfig $testdir/A {{rep_set_nsites 4}}
-	set a [open_site_prog [list \
-			       "home $testdir/A" \
-			       "local $portA" \
-			       "output $testdir/aoutput" \
-			       "remote localhost $mport" \
-			       "open_env" \
-			       "start client"]]
-	set env [berkdb_env -home $testdir/A]
-	await_startup_done $env
-	$env close
+	puts "\tRepmgr$tnum.a: Start first two sites."
+	set cmda "berkdb_env_noerr $common -errpfx SITE_A -home $dira"
+	set enva [eval $cmda]
+	eval $enva repmgr $common_mgr $times -pri 200 \
+	    -local {[list localhost $porta]}
 
-	make_dbconfig $testdir/B {{rep_set_nsites 4}}
-	set b [open_site_prog [list  \
-			       "home $testdir/B" \
-			       "local $portB" \
-			       "output $testdir/boutput" \
-			       "remote localhost $mport" \
-			       "open_env" \
-			       "start client"]]
-	set env [berkdb_env -home $testdir/B]
-	await_startup_done $env
-	$env close
+	set cmdb "berkdb_env_noerr $common -errpfx SITE_B -home $dirb"
+	set envb [eval $cmdb]
+	eval $envb repmgr $common_mgr $times -pri 100 \
+	    -local {[list localhost $portb]} -remote {[list localhost $porta]}
 
-	# Client C is the one whose behavior is being tested.  It has two
-	# processes.  "c" will be the main replication process, and "c2" the
-	# subordinate process.  The initial configuration commands used to set
-	# up the two processes vary slightly with each test.  The variable
-	# $config contains the name of the proc which will fill out the
-	# configuration information appropriately for each test variant.
+	# Wait until both sites recognize that they're in an election, plus a
+	# few extra seconds just for good measure.
+	# 
+	await_condition {[expr \
+	    [stat_field $enva rep_stat "Election phase"] == 1 && \
+	    [stat_field $envb rep_stat "Election phase"] == 1]}
+	tclsleep $leeway
+
+	# At this point we should not have completed an election yet, even
+	# though we have a majority, because we don't have full participation.
+	# 
+	error_check_bad site_a_elected [is_elected $enva] 1
+	error_check_bad site_b_elected [is_elected $envb] 1
+
+	puts "\tRepmgr$tnum.c: Start 3rd site."
+
+	set cmdc "berkdb_env_noerr $common -errpfx SITE_C -home $dirc"
+	set envc [eval $cmdc]
+	eval $envc repmgr $common_mgr $times -pri 100 \
+	    -local {[list localhost $portc]} \
+	    -remote {[list localhost $porta]}
+
+	# Wait for results, and make sure they're correct.  The election should
+	# complete right away, once the third client has joined, regardless of
+	# the election timeout values.  We wait an arbitrary maximum of 60
+	# seconds, merely so that the test doesn't hang forever if something
+	# goes horribly wrong.
 	#
-	puts "\tRepmgr$tnum.c: Start client under test."
-	make_dbconfig $testdir/C {{rep_set_nsites 4}}
+	set envlist [list $enva $envb $envc]
+	set limit 60
+	puts "\tRepmgr$tnum.c: wait (up to $limit seconds) for election."
+	set t [repmgr026_await_election_result $envlist $limit]
+	error_check_good timely_election [expr $t < 2 * $leeway] 1
+	puts "\tRepmgr$tnum.d: first election completed in $t seconds"
 
-	set c2 [list \
-		    "home $testdir/C" \
-		    "local [lindex $ports 3]" \
-		    "output $testdir/c2output" \
-		    "open_env"]
-	set c [list \
-		   "home $testdir/C" \
-		   "local [lindex $ports 3]" \
-		   "output $testdir/coutput" \
-		   "open_env"]
-	set lists [repmgr027_$config $c2 $c]
-	set c2 [lindex $lists 0]
-	set c [lindex $lists 1]
+	puts "\tRepmgr$tnum.e: wait for start-up done"
+	await_startup_done $envb
+	await_startup_done $envc
 
-	# Ugly hack: in this one case, the order of opening the two client
-	# processes has to be reversed.
-	#
-	if {$config == "chg_after_open"} {
-		set c [open_site_prog $c]
-		set c2 [open_site_prog $c2]
-	} else {
-		set c2 [open_site_prog $c2]
-		set c [open_site_prog $c]
-	}
-	puts $c "start client"
-	gets $c
-
-	puts "\tRepmgr$tnum.d: Wait for startup-done at test client."
-	set env [berkdb_env -home $testdir/C]
-	await_startup_done $env 27
-	$env close
-
-	puts "\tRepmgr$tnum.e: Check stats to make sure proper peer was used."
-	set env [berkdb_env -home $testdir/A]
-	set reqs [stat_field $env rep_stat "Client service requests"]
-	error_check_good used_client_A [expr {$reqs > 0}] 1
-	$env close
-	set env [berkdb_env -home $testdir/B]
-	set reqs [stat_field $env rep_stat "Client service requests"]
-	error_check_good didnt_use_b [expr {$reqs == 0}] 1
-	$env close
-
-	puts "\tRepmgr$tnum.f: Clean up."
-	close $c2
-	close $c
-	close $b
-	close $a
-	close $m
-}
-
-# Scenario 1: client A is the peer; C2 sets B, A; C sets A.  For C, this means
-# no peer change, but its position in the list changes, requiring some tricky
-# shuffling.
-#
-proc repmgr027_position_chg { c2 c } {
-	set remote_config [uplevel 1 {list \
-			   "remote localhost $mport" \
-			   "remote localhost $portB" \
-			   "remote -p localhost $portA"}]
-	set i [lsearch -exact $c2 "open_env"]
-
-	# It should be found, in the middle somewhere, or this will break.
-	set c2 "[lrange $c2 0 [expr $i - 1]] $remote_config [lrange $c2 $i end]"
-
-	set remote_config [uplevel 1 {list \
-			       "remote -p localhost $portA" \
-					  "remote localhost $mport"}]
-	set i [lsearch -exact $c "open_env"]
-	set c "[lrange $c 0 [expr $i - 1]] $remote_config [lrange $c $i end]"
-
-	return [list $c2 $c]
-}
-
-# C2 first sets the peer as B, but then C comes along and changes it to A.
-#
-proc repmgr027_chg_site { c2 c } {
-	set remote_config [uplevel 1 {list \
-			   "remote localhost $mport" \
-			   "remote -p localhost $portB"}]
-	set i [lsearch -exact $c2 "open_env"]
-
-	# It should be found, in the middle somewhere, or this will break.
-	set c2 "[lrange $c2 0 [expr $i - 1]] $remote_config [lrange $c2 $i end]"
-
-	set remote_config [uplevel 1 {list \
-			       "remote -p localhost $portA" \
-					  "remote localhost $mport"}]
-	set i [lsearch -exact $c "open_env"]
-	set c "[lrange $c 0 [expr $i - 1]] $remote_config [lrange $c $i end]"
-
-	return [list $c2 $c]
-}
-
-# C first sets B as its peer, and creates the env.  Then C2 comes along and
-# changes it to A.  C will have to learn of the change on the fly, rather than
-# at env open/join time.  Even though the actual order of process creation will
-# be reversed (by the caller), we still conform to the convention of putting C2
-# first, and then C, in the ordered list.
-# 
-proc repmgr027_chg_after_open { c2 c } {
-	set remote_config [uplevel 1 {list \
-			   "remote localhost $mport" \
-			   "remote -p localhost $portA"}]
-	set i [lsearch -exact $c2 "open_env"]
-
-	# It should be found, in the middle somewhere, or this will break.
-	set c2 "[lrange $c2 0 [expr $i - 1]] $remote_config [lrange $c2 $i end]"
-
-	set remote_config [uplevel 1 {list \
-			       "remote -p localhost $portB" \
-					  "remote localhost $mport"}]
-	set i [lsearch -exact $c "open_env"]
-	set c "[lrange $c 0 [expr $i - 1]] $remote_config [lrange $c $i end]"
-
-	return [list $c2 $c]
-}
-
-# Nothing especially exotic here, except this exercises a code path where I
-# previously discovered a bug.
-# 
-proc repmgr027_set_peer_after_open { c2 c } {
-	set remote_config [uplevel 1 {subst "remote -p localhost $portA"}]
-	lappend c $remote_config
-	return [list $c2 $c]
+	$envb close
+	$envc close
+	$enva close
 }

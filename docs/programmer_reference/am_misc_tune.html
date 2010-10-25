@@ -87,7 +87,7 @@ filesystem activity, typically when the filesystem sync thread or
 process is run.  In some cases, this can dramatically affect application
 throughput.  The workaround to this problem is to create the shared
 regions in system shared memory (<a href="../api_reference/C/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a>) or application
-private memory (<a href="../api_reference/C/envopen.html#open_DB_PRIVATE" class="olink">DB_PRIVATE</a>), or, in cases where this behavior
+private memory (<a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a>), or, in cases where this behavior
 is configurable, to turn off the operating system's flushing of
 memory-mapped pages.</dd>
           <dt>

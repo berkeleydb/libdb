@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2006, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -291,7 +291,7 @@ err:			atomic_dec(env, &bhp->ref);
 			    alloc_bhp->td_off))) != 0)
 				break;
 
-			memcpy(alloc_bhp->buf, bhp->buf, mfp->stat.st_pagesize);
+			memcpy(alloc_bhp->buf, bhp->buf, mfp->pagesize);
 
 			/*
 			 * We build up the MVCC chain first, then insert the

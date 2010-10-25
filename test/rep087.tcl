@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep087
 # TEST  Abbreviated internal init with open file handles.
@@ -12,11 +12,6 @@
 
 proc rep087 { method { niter 200 } { tnum "087" } args } {
 	source ./include.tcl
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# Run for btree and queue only.  Since this is a NIMDB test, 
 	# explicitly exclude queueext. 

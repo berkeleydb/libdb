@@ -402,8 +402,8 @@ err:
             0);
     } catch(DbException dbe) {
         cerr &lt;&lt; "Caught an exception during DB environment open." &lt;&lt; endl
-            &lt;&lt; "Ensure that the home directory is created prior to starting"
-            &lt;&lt; " the application." &lt;&lt; endl;
+            &lt;&lt; "Ensure that the home directory is created prior to"
+            &lt;&lt; " starting the application." &lt;&lt; endl;
         ret = ENOENT;
         goto err;
     }
@@ -628,7 +628,8 @@ int SimpleTxn::doloop()
     for (ret = dbc-&gt;get(&amp;key, &amp;data, DB_FIRST);
         ret == 0;
         ret = dbc-&gt;get(&amp;key, &amp;data, DB_NEXT)) {
-        keysize = key.get_size() &gt; MAXKEYSIZE ? MAXKEYSIZE : key.get_size();
+        keysize = key.get_size() &gt; MAXKEYSIZE ? MAXKEYSIZE : 
+                                   key.get_size();
         memcpy(keybuf, key.get_data(), keysize);
         keybuf[keysize] = '\0';
 

@@ -1,140 +1,211 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# TEST repmgr024
-# TEST Ensuring exactly one listener process.
-# TEST 
-# TEST Start a repmgr process with a listener.
-# TEST Start a second process, and see that it does not become the listener.
-# TEST Shut down the first process (gracefully).  Now a second process should
-# TEST become listener.
-# TEST Kill the listener process abruptly.  Running failchk should show that
-# TEST recovery is necessary.  Run recovery and start a clean listener.
-
-proc repmgr024 {  } {
+# TEST	repmgr024
+# TEST	Test of group-wide log archiving awareness.
+# TEST 	Verify that log archiving will use the ack from the clients in
+# TEST	its decisions about what log files are allowed to be archived.
+#
+proc repmgr024 { { niter 50 } { tnum 024 } args } {
 	source ./include.tcl
-	source $test_path/testutils.tcl
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
+	}
 
-	set tnum "024"
-	puts "Repmgr$tnum: Ensuring exactly one listener process."
-	set site_prog [setup_site_prog]
+	set method "btree"
+	set args [convert_args $method $args]
+	puts "Repmgr$tnum ($method): group wide log archiving."
+	repmgr024_sub $method $niter $tnum $args
+}
+
+proc repmgr024_sub { method niter tnum largs } {
+	global testdir
+	global util_path
+	global databases_in_memory
+	global repfiles_in_memory
+	global rep_verbose
+	global verbose_type
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
+
+	set repmemargs ""
+	if { $repfiles_in_memory } {
+		set repmemargs "-rep_inmem_files "
+	}
 
 	env_cleanup $testdir
+	file mkdir [set dira $testdir/SITE_A]
+	file mkdir [set dirb $testdir/SITE_B]
+	file mkdir [set dirc $testdir/SITE_C]
+	foreach { porta portb portc } [available_ports 3] {}
 
-	set masterdir $testdir/MASTERDIR
+	# Log size is small so we quickly create more than one.
+	# The documentation says that the log file must be at least
+	# four times the size of the in-memory log buffer.
+	set pagesize 4096
+	append largs " -pagesize $pagesize "
+	set log_buf [expr $pagesize * 2]
+	set log_max [expr $log_buf * 4]
 
-	file mkdir $masterdir
+	set cmda "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_A \
+	    -home $dira"
+	set enva [eval $cmda]
+	# Use quorum ack policy (default, therefore not specified)
+	# otherwise it will never wait when
+	# the client is closed and we want to give it a chance to
+	# wait later in the test.
+	$enva repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $porta] -start master
 
-	set ports [available_ports 1]
-	set master_port [lindex $ports 0]
+	set cmdb "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_B \
+	    -home $dirb"
+	set envb [eval $cmdb]
+	$envb repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $portb] -start client \
+	    -remote [list localhost $porta]
+	puts "\tRepmgr$tnum.a: wait for client B to sync with master."
+	await_startup_done $envb
 
-	make_dbconfig $masterdir {{rep_set_nsites 3}}
-	set masterenv [berkdb_env -rep -txn -thread -home $masterdir \
-			   -isalive my_isalive -create]
-	$masterenv close
+	set cmdc "berkdb_env_noerr -create -txn nosync \
+	    $verbargs $repmemargs -rep -thread \
+	    -log_buffer $log_buf -log_max $log_max -errpfx SITE_C \
+	    -home $dirc"
+	set envc [eval $cmdc]
+	$envc repmgr -timeout {conn_retry 5000000} -nsites 3 \
+	    -local [list localhost $portc] -start client \
+	    -remote [list localhost $porta]
+	puts "\tRepmgr$tnum.b: wait for client C to sync with master."
+	await_startup_done $envc
 
-	puts "\tRepmgr$tnum.a: Set up the master (on TCP port $master_port)."
-	set master [open "| $site_prog" "r+"]
-	fconfigure $master -buffering line
-	puts $master "home $masterdir"
-	puts $master "local $master_port"
-	puts $master "output $testdir/m1output"
-	puts $master "open_env"
-	puts $master "start master"
-	error_check_match ok1 [gets $master] "*Successful*" 
 
-	# sync.
-	puts $master "echo setup"
-	set sentinel [gets $master]
-	error_check_good echo_setup $sentinel "setup"
-	
-	puts "\tRepmgr$tnum.b: Start a second process at master."
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "local $master_port"
-	puts $m2 "output $testdir/m2output"
-	puts $m2 "open_env"
-	puts $m2 "start master"
-	set ret [gets $m2]
-	error_check_match ignored "$ret" "*DB_REP_IGNORE*"
+	# Clobber replication's 30-second anti-archive timer, which will have
+	# been started by client sync-up internal init, so that we can do a
+	# log_archive in a moment.
+	#
+	$enva test force noarchive_timeout
 
-	puts $m2 "echo started"
-	set sentinel [gets $m2]
-	error_check_good started $sentinel "started"
+	set stop 0
+	set start 0
+	while { $stop == 0 } {
+		# Run rep_test in the master.
+		puts "\tRepmgr$tnum.c: Running rep_test in replicated env."
+		eval rep_test $method $enva NULL $niter $start 0 0 $largs
+		incr start $niter
 
-	close $m2
-	close $master
+		set res [eval exec $util_path/db_archive -h $dira]
+		if { [llength $res] != 0 } {
+			set stop 1
+		}
+	}
+	# Save list of files for later.
+	set files_arch $res
 
-	# Hmm, actually it'd probably be better to send them an "exit" command,
-	# and then read until we get an EOF error.  That we we're sure they've
-	# had a chance to finish the close operation.  This is a recurring
-	# theme, doing stuff synchronously.  There should be a way to wrap this
-	# up to make it the default behavior.
+	puts "\tRepmgr$tnum.d: Close client."
+	$envc close
 
-	puts "\tRepmgr$tnum.c: Restart 2nd process, to act as listener this time"
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "local $master_port"
-	puts $m2 "output $testdir/m2output2"
-	puts $m2 "open_env"
-	puts $m2 "start master"
-	set answer [gets $m2]
-	error_check_match ok2 "$answer" "*Successful*"
+	# Now that the client closed its connection, verify that
+	# we cannot archive files.
+	#
+	# When a connection is closed, repmgr updates the 30 second
+	# noarchive timestamp in order to give the client process a
+	# chance to restart and rejoin the group.  We verify that
+	# when the connection is closed the master cannot archive.
+	# due to the 30-second timer.
+	#
+	set res [eval exec $util_path/db_archive -h $dira]
+	error_check_good files_archivable_closed [llength $res] 0
 
-	puts "\tRepmgr$tnum.d: Clean up."
-	close $m2
+	#
+	# Clobber the 30-second timer and verify we can again archive the
+	# files.
+	#
+	$enva test force noarchive_timeout
+	set res [eval exec $util_path/db_archive -h $dira]
+	error_check_good files_arch2 $files_arch $res
 
-	puts "\tRepmgr$tnum.e: Start main process."
-	set master [open "| $site_prog" "r+"]
-	fconfigure $master -buffering line
-	puts $master "home $masterdir"
-	puts $master "local $master_port"
-	puts $master "output $testdir/m1output3"
-	puts $master "open_env"
-	puts $master "start master"
-	set answer [gets $master]
-	error_check_match ok3 $answer "*Successful*"
+	set res [eval exec $util_path/db_archive -l -h $dirc]
+	set last_client_log [lindex [lsort $res] end]
 
-	# This seems to require $KILL; tclkill does not work. 
-	puts "\tRepmgr$tnum.f: Kill process [pid $master] without clean-up."
-	exec $KILL [pid $master]
-	catch {close $master}
+	set stop 0
+	while { $stop == 0 } {
+		# Run rep_test in the master.
+		puts "\tRepmgr$tnum.e: Running rep_test in replicated env."
+		eval rep_test $method $enva NULL $niter $start 0 0 $largs
+		incr start $niter
 
-	# In realistic, correct operation, the application should have called
-	# failchk before trying to restart a new process.  But let's just prove
-	# to ourselves that it's actually doing something.  This first try
-	# should fail.
-	# 
-	puts "\tRepmgr$tnum.g: Start take-over process without failchk."
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "local $master_port"
-	puts $m2 "output $testdir/m2output3"
-	puts $m2 "open_env"
-	puts $m2 "start master"
-	set answer [gets $m2]
-	error_check_match ignored3 $answer "*DB_REP_IGNORE*"
-	close $m2
+		# We use log_archive when we want to remove log files so
+		# that if we are running verbose, we get all of the output
+		# we might need.
+		#
+		# However, we can use db_archive for all of the other uses
+		# we need such as getting a list of what log files exist in
+		# the environment.
+		#
+		puts "\tRepmgr$tnum.f: Run log_archive on master."
+		set res [$enva log_archive -arch_remove]
+		set res [eval exec $util_path/db_archive -l -h $dira]
+		if { [lsearch -exact $res $last_client_log] == -1 } {
+			set stop 1
+		}
+	}
 
-	set masterenv [berkdb_env -thread -home $masterdir -isalive my_isalive]
-	$masterenv failchk
+	#
+	# Get the new last log file for client 1.
+	#
+	set res [eval exec $util_path/db_archive -l -h $dirb]
+	set last_client_log [lindex [lsort $res] end]
 
-	# This time it should work.
-	puts "\tRepmgr$tnum.h: Start take-over process after failchk."
-	set m2 [open "| $site_prog" "r+"]
-	fconfigure $m2 -buffering line
-	puts $m2 "home $masterdir"
-	puts $m2 "local $master_port"
-	puts $m2 "output $testdir/m2output4"
-	puts $m2 "open_env"
-	puts $m2 "start master"
-	set answer [gets $m2]
-	error_check_match ok4 $answer "*Successful*" 
+	#
+	# Set test hook to prevent client 1 from sending any ACKs,
+	# but remaining alive.
+	#
+	puts "\tRepmgr$tnum.g: Turn off acks via test hook on remaining client."
+	$envb test abort repmgr_perm
 
-	close $m2
-	$masterenv close
+	#
+	# Advance logfiles again.
+	set stop 0
+	while { $stop == 0 } {
+		# Run rep_test in the master.
+		puts "\tRepmgr$tnum.h: Running rep_test in replicated env."
+		eval rep_test $method $enva NULL $niter $start 0 0 $largs
+		incr start $niter
+
+		puts "\tRepmgr$tnum.i: Run db_archive on master."
+		set res [eval exec $util_path/db_archive -l -h $dira]
+		set last_master_log [lindex [lsort $res] end]
+		if { $last_master_log != $last_client_log } {
+			set stop 1
+		}
+	}
+
+	puts "\tRepmgr$tnum.j: Try to archive. Verify it didn't."
+	set res [$enva log_archive -arch_remove]
+	set res [eval exec $util_path/db_archive -l -h $dira]
+	error_check_bad cl1_archive [lsearch -exact $res $last_client_log] -1
+	#
+	# Turn off test hook preventing acks.  Then run a perm operation
+	# so that the client can send its ack.
+	#
+	puts "\tRepmgr$tnum.k: Enable acks and archive again."
+	$envb test abort none
+	$enva txn_checkpoint -force
+	#
+	# Now archive again and make sure files were removed.
+	#
+	set res [$enva log_archive -arch_remove]
+	set res [eval exec $util_path/db_archive -l -h $dira]
+	error_check_good cl1_archive [lsearch -exact $res $last_client_log] -1
+
+	$enva close
+	$envb close
 }

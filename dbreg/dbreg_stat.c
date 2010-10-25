@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,7 +11,6 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
-#include "dbinc/log.h"
 #include "dbinc/txn.h"
 
 #ifdef HAVE_STATISTICS
@@ -51,6 +50,8 @@ __dbreg_print_fname(env, fnp)
 	static const FN fn[] = {
 		{ DB_FNAME_DURABLE,	"DB_FNAME_DURABLE" },
 		{ DB_FNAME_NOTLOGGED,	"DB_FNAME_NOTLOGGED" },
+		{ DB_FNAME_CLOSED,	"DB_FNAME_CLOSED" },
+		{ DB_FNAME_RECOVER,	"DB_FNAME_RECOVER" },
 		{ 0,			NULL }
 	};
 
@@ -60,6 +61,7 @@ __dbreg_print_fname(env, fnp)
 	STAT_ULONG("Meta pgno", fnp->meta_pgno);
 	__db_print_fileid(env, fnp->ufid, "\tFile ID");
 	STAT_ULONG("create txn", fnp->create_txnid);
+	STAT_ULONG("refcount", fnp->txn_ref);
 	__db_prflags(env, NULL, fnp->flags, fn, NULL, "\tFlags");
 }
 
@@ -96,14 +98,14 @@ __dbreg_print_all(env, flags)
 		if (first) {
 			first = 0;
 			__db_msg(env,
-		    "ID\tName\t\tType\tPgno\tPid\tTxnid\tFlags\tDBP-info");
+		    "ID\tName\t\tType\tPgno\tPid\tTxnid\tFlags\tRef\tDBP-info");
 		}
 		dbp = fnp->id >= dblp->dbentry_cnt ? NULL :
 		    dblp->dbentry[fnp->id].dbp;
 		del = fnp->id >= dblp->dbentry_cnt ? 0 :
 		    dblp->dbentry[fnp->id].deleted;
 		__db_msg(env,
-		    "%ld\t%-8s%s%-8s%s\t%lu\t%lu\t%lx\t%lx\t%s (%d %lx %lx)",
+		    "%ld\t%-8s%s%-8s%s\t%lu\t%lu\t%lx\t%lx\t%lx\t%s",
 		    (long)fnp->id,
 		    fnp->fname_off == INVALID_ROFF ?
 			"" : (char *)R_ADDR(&dblp->reginfo, fnp->fname_off),
@@ -113,8 +115,11 @@ __dbreg_print_all(env, flags)
 		    __db_dbtype_to_string(fnp->s_type),
 		    (u_long)fnp->meta_pgno, (u_long)fnp->pid,
 		    (u_long)fnp->create_txnid, (u_long)fnp->flags,
-		    dbp == NULL ? "No DBP" : "DBP", del, P_TO_ULONG(dbp),
-		    (u_long)(dbp == NULL ? 0 : dbp->flags));
+		    (u_long)fnp->txn_ref,
+		    dbp == NULL ? "No DBP" : "DBP");
+		if (dbp != NULL)
+			__db_msg(env, " (%d %lx %lx)", del, P_TO_ULONG(dbp),
+			    (u_long)(dbp == NULL ? 0 : dbp->flags));
 	}
 	MUTEX_UNLOCK(env, lp->mtx_filelist);
 

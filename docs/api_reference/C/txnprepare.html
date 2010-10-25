@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="txn.html" title="Chapter 12.  The DB_TXN Handle" />
     <link rel="prev" href="txnid.html" title="DB_TXN-&gt;id()" />
-    <link rel="next" href="txnrecover.html" title="DB_ENV-&gt;txn_recover()" />
+    <link rel="next" href="txnset_name.html" title="DB_TXN-&gt;set_name()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 12. 
                 The DB_TXN Handle 
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -61,18 +61,63 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_XIDDATASIZE]);  </pre>
          resolved along with their parent's during global recovery.
     </p>
       <p>
+     	All open cursors in the transaction are closed and the
+     	first cursor close error will be returned.
+    </p>
+      <p>
          The <code class="methodname">DB_TXN-&gt;prepare()</code> <span>
             <span>
                   method returns a non-zero error value on failure and 0 on success.
             </span>
             
         </span>
+         
+         The errors that this method returns include the error values of <code class="methodname">DBcursor-&gt;close()</code> and the following:
+         
     </p>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4030632"></a>DB_LOCK_DEADLOCK</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A transactional database environment operation was selected to resolve
+                a deadlock.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4031227"></a>DB_LOCK_NOTGRANTED</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                A Berkeley DB Concurrent Data Store database environment configured
+                for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+      </div>
+      <div class="sect3" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h4 class="title"><a id="id4031979"></a>EINVAL</h4>
+            </div>
+          </div>
+        </div>
+        <p>
+                If the cursor is already closed; or if an invalid flag value or parameter was specified.
+            </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709775"></a>Parameters</h3>
+              <h3 class="title"><a id="id4031986"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -80,7 +125,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_XIDDATASIZE]);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1709784"></a>gid</h4>
+                <h4 class="title"><a id="id4031990"></a>gid</h4>
               </div>
             </div>
           </div>
@@ -97,7 +142,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_XIDDATASIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709682"></a>Class</h3>
+              <h3 class="title"><a id="id4031849"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -109,7 +154,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_XIDDATASIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1709837"></a>See Also</h3>
+              <h3 class="title"><a id="id4031554"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -126,14 +171,14 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_XIDDATASIZE]);  </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="txn.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="txnrecover.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnset_name.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DB_TXN-&gt;id() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DB_ENV-&gt;txn_recover()</td>
+          <td width="40%" align="right" valign="top"> DB_TXN-&gt;set_name()</td>
         </tr>
       </table>
     </div>

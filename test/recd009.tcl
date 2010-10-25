@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999-2009 Oracle.  All rights reserved.
+# Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -33,7 +33,7 @@ proc recd009 { method {select 0} args} {
 	set dbenv [eval $env_cmd]
 	error_check_good dbenv [is_valid_env $dbenv] TRUE
 
-	set oflags "-env $dbenv -pagesize 8192 -create -mode 0644 $opts $method"
+	set oflags "-env $dbenv -auto_commit -pagesize 8192 -create -mode 0644 $opts $method"
 	set db [eval {berkdb_open} $oflags $testfile]
 	error_check_good dbopen [is_valid_db $db] TRUE
 

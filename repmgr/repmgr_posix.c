@@ -1,25 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
-#define	__INCLUDE_SELECT_H	1
 #include "db_int.h"
-
-/*
- * A very rough guess at the maximum stack space one of our threads could ever
- * need, which we hope is plenty conservative.  This can be patched in the field
- * if necessary.
- */
-#ifdef _POSIX_THREAD_ATTR_STACKSIZE
-size_t __repmgr_guesstimated_max = (128 * 1024);
-#endif
 
 /*
  * Invalid open file descriptor value, that can be used as an out-of-band
@@ -49,15 +38,11 @@ __repmgr_thread_start(env, runnable)
 	REPMGR_RUNNABLE *runnable;
 {
 	pthread_attr_t *attrp;
-#ifdef _POSIX_THREAD_ATTR_STACKSIZE
+#if defined(_POSIX_THREAD_ATTR_STACKSIZE) && defined(DB_STACKSIZE)
 	pthread_attr_t attributes;
 	size_t size;
 	int ret;
-#endif
 
-	runnable->finished = FALSE;
-
-#ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	attrp = &attributes;
 	if ((ret = pthread_attr_init(&attributes)) != 0) {
 		__db_err(env,
@@ -65,13 +50,8 @@ __repmgr_thread_start(env, runnable)
 		return (ret);
 	}
 
-	/*
-	 * On a 64-bit machine it seems reasonable that we could need twice as
-	 * much stack space as we did on a 32-bit machine.
-	 */
-	size = __repmgr_guesstimated_max;
-	if (sizeof(size_t) > 4)
-		size *= 2;
+	size = DB_STACKSIZE;
+
 #ifdef PTHREAD_STACK_MIN
 	if (size < PTHREAD_STACK_MIN)
 		size = PTHREAD_STACK_MIN;
@@ -85,8 +65,11 @@ __repmgr_thread_start(env, runnable)
 	attrp = NULL;
 #endif
 
+	runnable->finished = FALSE;
+	runnable->env = env;
+
 	return (pthread_create(&runnable->thread_id, attrp,
-		    runnable->run, env));
+		    runnable->run, runnable));
 }
 
 /*
@@ -333,7 +316,8 @@ __repmgr_init(env)
 {
 	DB_REP *db_rep;
 	struct sigaction sigact;
-	int ack_inited, elect_inited, file_desc[2], queue_inited, ret;
+	int ack_inited, elect_inited, file_desc[2], queue_inited, rereq_inited;
+	int ret;
 
 	db_rep = env->rep_handle;
 
@@ -359,7 +343,7 @@ __repmgr_init(env)
 		}
 	}
 
-	ack_inited = elect_inited = queue_inited = FALSE;
+	ack_inited = elect_inited = queue_inited = rereq_inited = FALSE;
 	if ((ret = pthread_cond_init(&db_rep->ack_condition, NULL)) != 0)
 		goto err;
 	ack_inited = TRUE;
@@ -368,7 +352,11 @@ __repmgr_init(env)
 		goto err;
 	elect_inited = TRUE;
 
-	if ((ret = pthread_cond_init(&db_rep->queue_nonempty, NULL)) != 0)
+	if ((ret = pthread_cond_init(&db_rep->check_rereq, NULL)) != 0)
+		goto err;
+	rereq_inited = TRUE;
+
+	if ((ret = pthread_cond_init(&db_rep->msg_avail, NULL)) != 0)
 		goto err;
 	queue_inited = TRUE;
 
@@ -382,7 +370,9 @@ __repmgr_init(env)
 	return (0);
 err:
 	if (queue_inited)
-		(void)pthread_cond_destroy(&db_rep->queue_nonempty);
+		(void)pthread_cond_destroy(&db_rep->msg_avail);
+	if (rereq_inited)
+		(void)pthread_cond_destroy(&db_rep->check_rereq);
 	if (elect_inited)
 		(void)pthread_cond_destroy(&db_rep->check_election);
 	if (ack_inited)
@@ -407,7 +397,11 @@ __repmgr_deinit(env)
 	if (!(REPMGR_INITED(db_rep)))
 		return (0);
 
-	ret = pthread_cond_destroy(&db_rep->queue_nonempty);
+	ret = pthread_cond_destroy(&db_rep->msg_avail);
+
+	if ((t_ret = pthread_cond_destroy(&db_rep->check_rereq)) != 0 &&
+	    ret == 0)
+		ret = t_ret;
 
 	if ((t_ret = pthread_cond_destroy(&db_rep->check_election)) != 0 &&
 	    ret == 0)
@@ -462,6 +456,28 @@ __repmgr_signal(v)
 }
 
 /*
+ * Wake repmgr message processing threads, expressly for the purpose of shutting
+ * some subset of them down.
+ *
+ * !!!
+ * Caller must hold mutex.
+ *
+ * PUBLIC: int __repmgr_wake_msngers __P((ENV*, u_int));
+ */
+int
+__repmgr_wake_msngers(env, n)
+	ENV *env;
+	u_int n;
+{
+	DB_REP *db_rep;
+
+	COMPQUIET(n, 0);
+
+	db_rep = env->rep_handle;
+	return (__repmgr_signal(&db_rep->msg_avail));
+}
+
+/*
  * PUBLIC: int __repmgr_wake_main_thread __P((ENV*));
  */
 int
@@ -479,7 +495,7 @@ __repmgr_wake_main_thread(env)
 	 * byte in the stream is enough to wake up the select() thread reading
 	 * the pipe.
 	 */
-	if (write(db_rep->write_pipe, &any_value, 1) == -1)
+	if (write(db_rep->write_pipe, VOID_STAR_CAST &any_value, 1) == -1)
 		return (errno);
 	return (0);
 }
@@ -494,10 +510,14 @@ __repmgr_writev(fd, iovec, buf_count, byte_count_p)
 	int buf_count;
 	size_t *byte_count_p;
 {
-	int nw;
+	int nw, result;
 
-	if ((nw = writev(fd, iovec, buf_count)) == -1)
-		return (errno);
+	if ((nw = writev(fd, iovec, buf_count)) == -1) {
+		/* Why?  See note at __repmgr_readv(). */
+		result = errno;
+		DB_ASSERT(NULL, result != 0);
+		return (result);
+	}
 	*byte_count_p = (size_t)nw;
 	return (0);
 }
@@ -512,10 +532,21 @@ __repmgr_readv(fd, iovec, buf_count, byte_count_p)
 	int buf_count;
 	size_t *byte_count_p;
 {
+	int result;
 	ssize_t nw;
 
-	if ((nw = readv(fd, iovec, buf_count)) == -1)
-		return (errno);
+	if ((nw = readv(fd, iovec, buf_count)) == -1) {
+		/*
+		 * Why bother to assert this obvious "truth"?  On some systems
+		 * when the library is loaded into a single-threaded Tcl
+		 * configuration the differing errno mechanisms apparently
+		 * conflict, and we occasionally "see" a 0 value here!  And that
+		 * turns out to be painful to debug.
+		 */
+		result = errno;
+		DB_ASSERT(NULL, result != 0);
+		return (result);
+	}
 	*byte_count_p = (size_t)nw;
 	return (0);
 }
@@ -593,6 +624,10 @@ __repmgr_select_loop(env)
 			}
 		}
 		LOCK_MUTEX(db_rep->mutex);
+		if (db_rep->finished) {
+			ret = 0;
+			goto out;
+		}
 
 		/*
 		 * Timer expiration events include retrying of lost connections.
@@ -610,14 +645,11 @@ __repmgr_select_loop(env)
 		 * actually need to do anything with them; they're just there to
 		 * wake us up when necessary.
 		 */
-		if (FD_ISSET((u_int)db_rep->read_pipe, &reads)) {
-			if (read(db_rep->read_pipe, buf, sizeof(buf)) <= 0) {
-				ret = errno;
-				goto out;
-			} else if (db_rep->finished) {
-				ret = 0;
-				goto out;
-			}
+		if (FD_ISSET((u_int)db_rep->read_pipe, &reads) &&
+		    read(db_rep->read_pipe, VOID_STAR_CAST buf,
+		    sizeof(buf)) <= 0) {
+			ret = errno;
+			goto out;
 		}
 		/*
 		 * Obviously elements can be added to the connection list here.

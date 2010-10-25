@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -10,7 +10,8 @@
 
 #include "db_int.h"
 
-static inline int __db_fcntl_mutex_lock_int __P((ENV *, db_mutex_t, int));
+static inline int __db_fcntl_mutex_lock_int
+	    __P((ENV *, db_mutex_t, db_timeout_t, int));
 
 /*
  * __db_fcntl_mutex_init --
@@ -36,9 +37,10 @@ __db_fcntl_mutex_init(env, mutex, flags)
  *	Internal function to lock a mutex, blocking only when requested
  */
 inline int
-__db_fcntl_mutex_lock_int(env, mutex, wait)
+__db_fcntl_mutex_lock_int(env, mutex, timeout, wait)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 	int wait;
 {
 	DB_ENV *dbenv;
@@ -47,6 +49,8 @@ __db_fcntl_mutex_lock_int(env, mutex, wait)
 	DB_THREAD_INFO *ip;
 	struct flock k_lock;
 	int locked, ms, ret;
+	db_timespec now, timespec;
+	db_timeout_t time_left;
 
 	dbenv = env->dbenv;
 
@@ -69,6 +73,11 @@ __db_fcntl_mutex_lock_int(env, mutex, wait)
 	k_lock.l_whence = SEEK_SET;
 	k_lock.l_start = mutex;
 	k_lock.l_len = 1;
+
+	if (timeout != 0) {
+		timespecclear(&timespec);
+		__clock_set_expires(env, &timespec, timeout);
+	}
 
 	/*
 	 * Only check the thread state once, by initializing the thread
@@ -94,6 +103,15 @@ __db_fcntl_mutex_lock_int(env, mutex, wait)
 			}
 			if (!wait)
 				return (DB_LOCK_NOTGRANTED);
+			if (timeout != 0) {
+				timespecclear(&now);
+				if (__clock_expired(env, &now, &timespec))
+					return (DB_TIMEOUT);
+				DB_TIMESPEC_TO_TIMEOUT(time_left, &now, 0);
+				time_left = timeout - time_left;
+				if (ms * US_PER_MS > time_left)
+					ms = time_left / US_PER_MS;
+			}
 			__os_yield(NULL, 0, ms * US_PER_MS);
 			if ((ms <<= 1) > MS_PER_SEC)
 				ms = MS_PER_SEC;
@@ -149,14 +167,15 @@ err:	ret = __os_get_syserr();
  * __db_fcntl_mutex_lock
  *	Lock a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_fcntl_mutex_lock __P((ENV *, db_mutex_t));
+ * PUBLIC: int __db_fcntl_mutex_lock __P((ENV *, db_mutex_t, db_timeout_t));
  */
 int
-__db_fcntl_mutex_lock(env, mutex)
+__db_fcntl_mutex_lock(env, mutex, timeout)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 {
-	return (__db_fcntl_mutex_lock_int(env, mutex, 1));
+	return (__db_fcntl_mutex_lock_int(env, mutex, timeout, 1));
 }
 
 /*
@@ -170,7 +189,7 @@ __db_fcntl_mutex_trylock(env, mutex)
 	ENV *env;
 	db_mutex_t mutex;
 {
-	return (__db_fcntl_mutex_lock_int(env, mutex, 0));
+	return (__db_fcntl_mutex_lock_int(env, mutex, 0, 0));
 }
 
 /*

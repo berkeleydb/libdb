@@ -37,7 +37,8 @@
       </div>
       <p>Replication Manager automatically conducts elections when necessary,
 based on configuration information supplied to the
-<a href="../api_reference/C/reppriority.html" class="olink">DB_ENV-&gt;rep_set_priority()</a> method.</p>
+<a href="../api_reference/C/reppriority.html" class="olink">DB_ENV-&gt;rep_set_priority()</a> method, unless the application turns off automatic
+elections using the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method.</p>
       <p>It is the responsibility of a Base API application
 to initiate elections if desired.  It is never dangerous
 to hold an election, as the Berkeley DB election process ensures there is
@@ -80,19 +81,22 @@ Applications should only configure themselves as the master environment
 if they are the only possible master, or if they have won an election.
 An application knows it has won an election when it receives the
 <a href="../api_reference/C/envevent_notify.html#event_notify_DB_EVENT_REP_ELECTED" class="olink">DB_EVENT_REP_ELECTED</a> event.</p>
-      <p>Normally, when a master failure is detected it is desired that an
-election finish quickly so the application can continue to service
-updates.  Also, participating sites are already up and can participate.
-However, in the case of restarting a whole group after an administrative
-shutdown, it is possible that a slower booting site had later logs than
-any other site.  To cover that case, an application would like to give
-the election more time to ensure all sites have a chance to participate.
-Since it is intractable for a starting site to determine which case
-the whole group is in, the use of a long timeout gives all sites a
-reasonable chance to participate.  If an application wanting full
-participation sets the <span class="bold"><strong>nvotes</strong></span> arg to the <a href="../api_reference/C/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method to
-the number of sites in the group and one site does not reboot, a master
-can never be elected without manual intervention.</p>
+      <p>
+    Normally, when a master failure is detected it is desired that an
+    election finish quickly so the application can continue to service
+    updates.  Also, participating sites are already up and can participate.
+    However, in the case of restarting a whole group after an
+    administrative shutdown, it is possible that a slower booting site had
+    later logs than any other site.  To cover that case, an application
+    would like to give the election more time to ensure all sites have a
+    chance to participate.  Since it is intractable for a starting site to
+    determine which case the whole group is in, the use of a long timeout
+    gives all sites a reasonable chance to participate.  If an application
+    wanting full participation sets the <a href="../api_reference/C/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method's 
+    <span class="bold"><strong>nvotes</strong></span> argument to the number of sites 
+    in the group and one site does not reboot, a master can never be elected
+    without manual intervention.
+</p>
       <p>
 In those cases, the desired action at a group level is to hold
 a full election if all sites crashed and a majority election if

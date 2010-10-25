@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -9,8 +9,10 @@
 #include "db_config.h"
 
 #include "db_int.h"
+#include "dbinc/lock.h"
 
-static inline int __db_tas_mutex_lock_int __P((ENV *, db_mutex_t, int));
+static inline int __db_tas_mutex_lock_int
+	    __P((ENV *, db_mutex_t, db_timeout_t, int));
 static inline int __db_tas_mutex_readlock_int __P((ENV *, db_mutex_t, int));
 
 /*
@@ -67,9 +69,10 @@ __db_tas_mutex_init(env, mutex, flags)
  *     Internal function to lock a mutex, or just try to lock it without waiting
  */
 static inline int
-__db_tas_mutex_lock_int(env, mutex, nowait)
+__db_tas_mutex_lock_int(env, mutex, timeout, nowait)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 	int nowait;
 {
 	DB_ENV *dbenv;
@@ -81,6 +84,8 @@ __db_tas_mutex_lock_int(env, mutex, nowait)
 	int ret;
 #ifndef HAVE_MUTEX_HYBRID
 	u_long ms, max_ms;
+	db_timespec now, timespec;
+	db_timeout_t time_left;
 #endif
 
 	dbenv = env->dbenv;
@@ -109,6 +114,11 @@ __db_tas_mutex_lock_int(env, mutex, nowait)
 	 */
 	ms = 1;
 	max_ms = F_ISSET(mutexp, DB_MUTEX_LOGICAL_LOCK) ? 10 : 25;
+	if (timeout != 0) {
+		timespecclear(&timespec);
+		__clock_set_expires(env, &timespec, timeout);
+	}
+
 #endif
 
 	 /*
@@ -215,9 +225,18 @@ loop:	/* Attempt to acquire the resource for N spins. */
 	__os_yield(env, 0, 0);
 	if (!MUTEXP_IS_BUSY(mutexp))
 		goto loop;
-	if ((ret = __db_pthread_mutex_lock(env, mutex)) != 0)
+	if ((ret = __db_pthread_mutex_lock(env, mutex, timeout)) != 0)
 		return (ret);
 #else
+	if (timeout != 0) {
+		timespecclear(&now);
+		if (__clock_expired(env, &now, &timespec))
+			return (DB_TIMEOUT);
+		DB_TIMESPEC_TO_TIMEOUT(time_left, &now, 0);
+		time_left = timeout - time_left;
+		if (ms * US_PER_MS > time_left)
+			ms = time_left / US_PER_MS;
+	}
 	__os_yield(env, 0, ms * US_PER_MS);
 	if ((ms <<= 1) > max_ms)
 		ms = max_ms;
@@ -238,14 +257,15 @@ loop:	/* Attempt to acquire the resource for N spins. */
  * __db_tas_mutex_lock
  *	Lock on a mutex, blocking if necessary.
  *
- * PUBLIC: int __db_tas_mutex_lock __P((ENV *, db_mutex_t));
+ * PUBLIC: int __db_tas_mutex_lock __P((ENV *, db_mutex_t, db_timeout_t));
  */
 int
-__db_tas_mutex_lock(env, mutex)
+__db_tas_mutex_lock(env, mutex, timeout)
 	ENV *env;
 	db_mutex_t mutex;
+	db_timeout_t timeout;
 {
-	return (__db_tas_mutex_lock_int(env, mutex, 0));
+	return (__db_tas_mutex_lock_int(env, mutex, timeout, 0));
 }
 
 /*
@@ -266,7 +286,7 @@ __db_tas_mutex_trylock(env, mutex)
 	ENV *env;
 	db_mutex_t mutex;
 {
-	return (__db_tas_mutex_lock_int(env, mutex, 1));
+	return (__db_tas_mutex_lock_int(env, mutex, 0, 1));
 }
 
 #if defined(HAVE_SHARED_LATCHES)
@@ -320,13 +340,6 @@ __db_tas_mutex_readlock_int(env, mutex, nowait)
 	ms = 1;
 	max_ms = F_ISSET(mutexp, DB_MUTEX_LOGICAL_LOCK) ? 10 : 25;
 #endif
-	/*
-	 * Only check the thread state once, by initializing the thread
-	 * control block pointer to null.  If it is not the failchk
-	 * thread, then ip will have a valid value subsequent times
-	 * in the loop.
-	 */
-	ip = NULL;
 
 loop:	/* Attempt to acquire the resource for N spins. */
 	for (nspins =
@@ -335,16 +348,6 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		if (lock == MUTEX_SHARE_ISEXCLUSIVE ||
 		    !atomic_compare_exchange(env,
 			&mutexp->sharecount, lock, lock + 1)) {
-			if (F_ISSET(dbenv, DB_ENV_FAILCHK) &&
-			    ip == NULL && dbenv->is_alive(dbenv,
-			    mutexp->pid, mutexp->tid, 0) == 0) {
-				ret = __env_set_state(env, &ip, THREAD_VERIFY);
-				if (ret != 0 ||
-				    ip->dbth_state == THREAD_FAILCHK)
-					return (DB_RUNRECOVERY);
-			}
-			if (nowait)
-				return (DB_LOCK_NOTGRANTED);
 			/*
 			 * Some systems (notably those with newer Intel CPUs)
 			 * need a small pause here. [#6975]
@@ -361,6 +364,28 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		return (0);
 	}
 
+	/*
+	 * Waiting for the latched must be avoided when it could allow a
+	 * 'failchk'ing thread to hang.
+	 */
+	if (F_ISSET(dbenv, DB_ENV_FAILCHK) &&
+	    dbenv->is_alive(dbenv, mutexp->pid, mutexp->tid, 0) == 0) {
+		ret = __env_set_state(env, &ip, THREAD_VERIFY);
+		if (ret != 0 || ip->dbth_state == THREAD_FAILCHK)
+			return (DB_RUNRECOVERY);
+	}
+
+	/*
+	 * It is possible to spin out when the latch is just shared, due to
+	 * many threads or interrupts interfering with the compare&exchange.
+	 * Avoid spurious DB_LOCK_NOTGRANTED returns by retrying.
+	 */
+	if (nowait) {
+		if (atomic_read(&mutexp->sharecount) != MUTEX_SHARE_ISEXCLUSIVE)
+			goto loop;
+		return (DB_LOCK_NOTGRANTED);
+	}
+
 	/* Wait for the lock to become available. */
 #ifdef HAVE_MUTEX_HYBRID
 	/*
@@ -371,7 +396,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 	__os_yield(env, 0, 0);
 	if (atomic_read(&mutexp->sharecount) != MUTEX_SHARE_ISEXCLUSIVE)
 		goto loop;
-	if ((ret = __db_pthread_mutex_lock(env, mutex)) != 0)
+	if ((ret = __db_pthread_mutex_lock(env, mutex, 0)) != 0)
 		return (ret);
 #else
 	__os_yield(env, 0, ms * US_PER_MS);

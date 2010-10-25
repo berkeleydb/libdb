@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2003-2009 Oracle.  All rights reserved.
+# Copyright (c) 2003, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -84,7 +84,7 @@ proc fop006 { method { inmem 0 } args } {
 	# To run a particular case, add the case in this format and
 	# uncomment.
 #	set cases {
-#		{{open_excl {foo} 0 abort} {rename {b foo} 0}}
+#		{{open_create {a} 0 abort} {rename {a bar} 0 {b bar}}}
 #	}
 
 	set testid 0
@@ -102,16 +102,28 @@ proc fop006 { method { inmem 0 } args } {
 		set op2 [lindex [lindex $case 1] 0]
 		set names2 [lindex [lindex $case 1] 1]
 		set res2 [lindex [lindex $case 1] 2]
+		set remaining [lindex [lindex $case 1] 3]
 
-		puts "\tFop$tnum.$testid: $op1 ($names1) $res1 $end1;\
-		    $op2 ($names2) $res2."
+		# Use the list of remaining files to derive
+		# the list of files that should be gone.
+		set allnames { a b foo bar }
+		set gone {}
+		foreach f $allnames {
+			set idx [lsearch -exact $remaining $f]
+			if { $idx == -1 } {
+				lappend gone $f
+			}
+		}
+
+		puts -nonewline "\tFop$tnum.$testid: $op1 ($names1) $res1 $end1; "
+		puts " $op2 ($names2) $res2.  Files remaining: $remaining."
 
 		foreach end2 { abort commit } {
 			# Create transactional environment.
 			set env [berkdb_env -create -home $testdir -txn]
 			error_check_good is_valid_env [is_valid_env $env] TRUE
 
-			# Create databases
+			# Create databases.
 			if { $inmem == 0 } {
 				set db [eval {berkdb_open -create} \
 				    $omethod $args -env $env -auto_commit a]
@@ -137,7 +149,8 @@ proc fop006 { method { inmem 0 } args } {
 			error_check_good db_close [$db close] 0
 
 			# Start transaction 1 and perform a file op.
-			set txn1 [$env txn]
+			set ptxn1 [$env txn]
+			set txn1 [$env txn -parent $ptxn1]
 			error_check_good \
 			    txn_begin [is_valid_txn $txn1 $env] TRUE
 			set result1 [$operator $omethod $op1 $names1 $txn1 $env $args]
@@ -160,6 +173,7 @@ proc fop006 { method { inmem 0 } args } {
 			# End transaction 1 and close any open db handles.
 			# Txn2 will now unblock and finish.
 			error_check_good txn1_$end1 [$txn1 $end1] 0
+			error_check_good ptxn1_$end1 [$ptxn1 $end1] 0
 			set handles [berkdb handles]
 			foreach handle $handles {
 				if {[string range $handle 0 1] == "db" } {
@@ -168,6 +182,20 @@ proc fop006 { method { inmem 0 } args } {
 				}
 			}
 			watch_procs $pid 1 60 1
+
+			# Check whether the expected databases exist.
+			if { $end2 == "commit" } {
+				foreach db $remaining {
+				    error_check_good db_exists \
+				   [database_exists \
+				   $inmem $testdir $db] 1
+				}
+				foreach db $gone {
+				    error_check_good db_gone \
+				   [database_exists \
+				   $inmem $testdir $db] 0
+				}
+			}
 
 			# Clean up for next case
 			error_check_good env_close [$env close] 0

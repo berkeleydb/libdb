@@ -62,7 +62,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702349"></a>Parameters</h3>
+              <h3 class="title"><a id="id4022176"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -70,7 +70,31 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702416"></a>eidp</h4>
+                <h4 class="title"><a id="id4022346"></a>host</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The site's host identification string, generally a TCP/IP host name.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4021910"></a>port</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The port number on which the remote site is receiving.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4022442"></a>eidp</h4>
               </div>
             </div>
           </div>
@@ -86,7 +110,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702404"></a>flags</h4>
+                <h4 class="title"><a id="id4022284"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -106,43 +130,22 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
                         synchronization with the specified remote site.
                     </p>
                 <p>
-                        Currently, the Replication Manager framework only supports a single
-                        client peer, and the last specified peer is used.
+                        You can configure one or more remote sites as client peers. To 
+                        remove a remote site as a possible client peer, call the 
+                        <code class="methodname">DB_ENV-&gt;repmgr_add_remote_site()</code> method for that 
+                        site with a <span class="bold"><strong>flags</strong></span> value excluding 
+                        the DB_REPMGR_PEER bit value.
                     </p>
               </li>
             </ul>
           </div>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1702757"></a>host</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The site's host identification string, generally a TCP/IP host name.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1702767"></a>port</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The port number on which the remote site is receiving.
-                     </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702304"></a>Errors</h3>
+              <h3 class="title"><a id="id4022484"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -159,7 +162,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1702677"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4022581"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -174,7 +177,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702678"></a>Class</h3>
+              <h3 class="title"><a id="id4022563"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -186,7 +189,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1702351"></a>See Also</h3>
+              <h3 class="title"><a id="id4022260"></a>See Also</h3>
             </div>
           </div>
         </div>

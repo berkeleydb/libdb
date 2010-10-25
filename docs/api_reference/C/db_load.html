@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="apiReference.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
-    <link rel="up" href="utilities.html" title="Appendix 1.  Berkeley DB Command Line Utilities" />
+    <link rel="up" href="utilities.html" title="Appendix A.  Berkeley DB Command Line Utilities" />
     <link rel="prev" href="db_hotbackup.html" title="db_hotbackup" />
-    <link rel="next" href="db_printlog.html" title="db_printlog" />
+    <link rel="next" href="db_log_verify.html" title="db_log_verify" />
   </head>
   <body>
     <div class="navheader">
@@ -19,10 +19,10 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="db_hotbackup.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix 1. 
+          <th width="60%" align="center">Appendix A. 
                 Berkeley DB Command Line Utilities
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="db_printlog.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="db_log_verify.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -47,9 +47,9 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
     </p>
       <p>
          The input to <span class="command"><strong>db_load</strong></span> must be in the output format specified by the
-         <a class="xref" href="db_dump.html" title="db_dump">db_dump</a> utility,
-         utilities, or as specified for the <span class="bold"><strong>-T</strong></span>
-         below.
+         <a class="xref" href="db_dump.html" title="db_dump">db_dump</a> utility
+         or as specified by the <span class="bold"><strong>-T</strong></span>
+         option below.
     </p>
       <p>
         The options are as follows:
@@ -160,9 +160,9 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
                  applications to easily load text files into databases.     
              </p>
             <p>
-                 If the database to be created is of type Btree or Hash, or the keyword
-                 <span class="bold"><strong>keys</strong></span> is specified as set, the input
-                 must be paired lines of text, where the first line of the pair is the
+                    If the database to be created is of type Btree or Hash, or the keyword
+                    <span class="bold"><strong>keys</strong></span> is specified as set, the
+                 input must be paired lines of text, where the first line of the pair is the
                  key item, and the second line of the pair is its corresponding data
                  item.  If the database to be created is of type Queue or Recno and the
                  keyword <span class="bold"><strong>keys</strong></span> is not set, the input
@@ -219,11 +219,12 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
         </ul>
       </div>
       <p>
-         The <span class="command"><strong>db_load</strong></span> utility may be used with a Berkeley DB environment (as
-         described for the <span class="bold"><strong>-h</strong></span> option, the
-         environment variable <span class="bold"><strong>DB_HOME</strong></span>, or
-         because the utility was run in a directory containing a Berkeley DB
-         environment).  In order to avoid environment corruption when using a
+          The <span class="command"><strong>db_load</strong></span> utility may be used with a Berkeley DB 
+          environment (as described for the <span class="bold"><strong>-h</strong></span>
+          option, the environment variable 
+          <span class="bold"><strong>DB_HOME</strong></span>, or because the utility
+          was run in a directory containing a Berkeley DB environment). 
+         In order to avoid environment corruption when using a
          Berkeley DB environment, <span class="command"><strong>db_load</strong></span> should always be given the chance to
          detach from the environment and exit gracefully.  To cause <span class="command"><strong>db_load</strong></span> to
          release all environment resources and exit cleanly, send it an
@@ -238,7 +239,7 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1713857"></a>Examples</h3>
+              <h3 class="title"><a id="id4035439"></a>Examples</h3>
             </div>
           </div>
         </div>
@@ -260,7 +261,7 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714540"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id4035034"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -268,7 +269,7 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1714534"></a>DB_HOME</h4>
+                <h4 class="title"><a id="id4035368"></a>DB_HOME</h4>
               </div>
             </div>
           </div>
@@ -284,7 +285,7 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714549"></a>Supported Keywords</h3>
+              <h3 class="title"><a id="id4035361"></a>Supported Keywords</h3>
             </div>
           </div>
         </div>
@@ -457,14 +458,14 @@ db_load [-r lsn | fileid] [-h home] [-P password] file  </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="utilities.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="db_printlog.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="db_log_verify.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">db_hotbackup </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> db_printlog</td>
+          <td width="40%" align="right" valign="top"> db_log_verify</td>
         </tr>
       </table>
     </div>

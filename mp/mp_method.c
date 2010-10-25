@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -69,6 +69,7 @@ __memp_get_cachesize(dbenv, gbytesp, bytesp, ncachep)
 	u_int32_t *gbytesp, *bytesp;
 	int *ncachep;
 {
+	DB_MPOOL *dbmp;
 	ENV *env;
 	MPOOL *mp;
 
@@ -78,22 +79,23 @@ __memp_get_cachesize(dbenv, gbytesp, bytesp, ncachep)
 	    env->mp_handle, "DB_ENV->get_cachesize", DB_INIT_MPOOL);
 
 	if (MPOOL_ON(env)) {
-		/* Cannot be set after open, no lock required to read. */
-		mp = env->mp_handle->reginfo[0].primary;
+		dbmp = env->mp_handle;
+		mp = dbmp->reginfo[0].primary;
 		if (gbytesp != NULL)
-			*gbytesp = mp->stat.st_gbytes;
+			*gbytesp = mp->gbytes;
 		if (bytesp != NULL)
-			*bytesp = mp->stat.st_bytes;
+			*bytesp = mp->bytes;
 		if (ncachep != NULL)
-			*ncachep = (int)mp->nreg;
+			*ncachep = mp->nreg;
 	} else {
 		if (gbytesp != NULL)
 			*gbytesp = dbenv->mp_gbytes;
 		if (bytesp != NULL)
 			*bytesp = dbenv->mp_bytes;
 		if (ncachep != NULL)
-			*ncachep = (int)dbenv->mp_ncache;
+			*ncachep = dbenv->mp_ncache;
 	}
+
 	return (0);
 }
 
@@ -113,6 +115,8 @@ __memp_set_cachesize(dbenv, gbytes, bytes, arg_ncache)
 	u_int ncache;
 
 	env = dbenv->env;
+	ENV_NOT_CONFIGURED(env,
+	    env->mp_handle, "DB_ENV->set_cachesize", DB_INIT_MPOOL);
 
 	/* Normalize the cache count. */
 	ncache = arg_ncache <= 0 ? 1 : (u_int)arg_ncache;
@@ -463,14 +467,22 @@ __memp_get_mp_pagesize(dbenv, mp_pagesizep)
 	DB_ENV *dbenv;
 	u_int32_t *mp_pagesizep;
 {
+	DB_MPOOL *dbmp;
 	ENV *env;
+	MPOOL *mp;
 
 	env = dbenv->env;
 
 	ENV_NOT_CONFIGURED(env,
 	    env->mp_handle, "DB_ENV->get_mp_max_pagesize", DB_INIT_MPOOL);
 
-	*mp_pagesizep = dbenv->mp_pagesize;
+	if (MPOOL_ON(env)) {
+		dbmp = env->mp_handle;
+		mp = dbmp->reginfo[0].primary;
+		*mp_pagesizep = mp->pagesize;
+	} else {
+		*mp_pagesizep = dbenv->mp_pagesize;
+	}
 	return (0);
 }
 
@@ -790,10 +802,10 @@ __memp_ftruncate(dbmfp, txn, ip, pgno, flags)
 	    !mfp->no_backing_file && pgno <= mfp->last_flushed_pgno)
 #ifdef HAVE_FTRUNCATE
 		ret = __os_truncate(env,
-		    dbmfp->fhp, pgno, mfp->stat.st_pagesize);
+		    dbmfp->fhp, pgno, mfp->pagesize);
 #else
 		ret = __db_zero_extend(env,
-		    dbmfp->fhp, pgno, mfp->last_pgno, mfp->stat.st_pagesize);
+		    dbmfp->fhp, pgno, mfp->last_pgno, mfp->pagesize);
 #endif
 
 	/*
@@ -981,12 +993,22 @@ __memp_extend_freelist(dbmfp, count, listp)
 /*
  * __memp_set_last_pgno -- set the last page of the file
  *
- * PUBLIC: void __memp_set_last_pgno __P((DB_MPOOLFILE *, db_pgno_t));
+ * PUBLIC: int __memp_set_last_pgno __P((DB_MPOOLFILE *, db_pgno_t));
  */
-void
+int
 __memp_set_last_pgno(dbmfp, pgno)
 	DB_MPOOLFILE *dbmfp;
 	db_pgno_t pgno;
 {
-	dbmfp->mfp->last_pgno = pgno;
+	MPOOLFILE *mfp;
+
+	mfp = dbmfp->mfp;
+
+	if (mfp->mpf_cnt == 1) {
+		MUTEX_LOCK(dbmfp->env, mfp->mutex);
+		if (mfp->mpf_cnt == 1) 
+			dbmfp->mfp->last_pgno = pgno;
+		MUTEX_UNLOCK(dbmfp->env, mfp->mutex);
+	}
+	return (0);
 }

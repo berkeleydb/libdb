@@ -1,0 +1,2939 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Berkeley DB Installation and Build Guide</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB Installation and Build Guide" />
+    <link rel="next" href="preface.html" title="Preface" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Berkeley DB Installation and Build Guide</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="preface.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="book" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h1 class="title"><a id="id2901700"></a>Berkeley DB Installation and Build Guide</h1>
+          </div>
+          <div>
+            <div class="legalnotice">
+              <a id="id3744429"></a>
+              <p class="legalnotice-title">
+                <b>Legal Notice</b>
+              </p>
+              <p>
+        This documentation is distributed under an open source license.
+        You may review the terms of this license at:
+        <a class="ulink" href="http://www.oracle.com/technology/software/products/berkeley-db/htdocs/oslicense.html" target="_top">http://www.oracle.com/technology/software/products/berkeley-db/htdocs/oslicense.html</a>
+        
+        
+    </p>
+              <p>
+            Oracle, Berkeley DB,
+            
+            
+            and
+            Sleepycat are trademarks or registered trademarks of
+            Oracle. All rights to these marks are reserved.
+            No third-party use is permitted without the
+            express prior written consent of Oracle.
+    </p>
+              <p>
+        Other names may be trademarks of their respective owners.
+    </p>
+              <p>
+        To obtain a copy of this document's original source code, please
+        submit a request to the Oracle Technology Network forum at:
+        <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+        
+        
+    </p>
+            </div>
+          </div>
+          <div>
+            <p class="pubdate">11/8/2010</p>
+          </div>
+        </div>
+        <hr />
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="preface">
+              <a href="preface.html">Preface</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="preface.html#conventions">Conventions Used in this Book</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="preface.html#moreinfo">For More Information</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="introduction.html">1. Introduction</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="introduction.html#install-overview">Installation Overview</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="install.html">2. 
+		System Installation Notes
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="install.html#install_file">File utility /etc/magic information</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="install.html#magic">Magic information</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="install.html#big-endian">Big-endian magic information</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="install.html#little-endian">Little-endian magic information</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="install_multiple.html">Building with multiple versions of Berkeley DB</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="debug.html">3. 
+		Debugging Applications
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="debug.html#debug_intro">Introduction to debugging</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="debug_compile.html">Compile-time configuration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="debug_runtime.html">Run-time error information</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="debug_printlog.html">Reviewing Berkeley DB log files</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3745682">Augmenting the Log for Debugging</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3746206">Extracting Committed Transactions and Transaction Status</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3746172">Extracting Transaction Histories</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3746225">Extracting File Histories</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3746718">Extracting Page Histories</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="debug_printlog.html#id3746733">Other log processing tools</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="build_win.html">4. 
+		Building Berkeley DB for Windows
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win.html#win_build32">Building Berkeley DB for 32 bit Windows</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win.html#id3745667">Visual C++ .NET 2008</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win.html#id3746778">Visual C++ .NET 2005</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win.html#id3746431">Build results</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="win_build64.html">Building Berkeley DB for 64-bit Windows</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="win_build64.html#id3746897">x64 build with Visual Studio 2005 or newer</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="win_build_cygwin.html">Building Berkeley DB with Cygwin</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="win_build_cxx.html">Building the C++ API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="win_build_stl.html">Building the C++ STL API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_java.html">Building the Java API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_csharp.html">Building the C# API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_sql.html">Building the SQL API</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_sql.html#id3747347">Binary Compatibility With SQLite</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_sql.html#id3747352">Enabling Extensions</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_sql.html#id3746992">Building the JDBC Driver</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_sql.html#id3747123">Building the ODBC Driver</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_tcl.html">Building the Tcl API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="win_build_dist_dll.html">Distributing DLLs</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_small.html">Building a small memory footprint library</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_test.html">Running the test suite under Windows</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_test.html#id3748145">Building the software needed by the tests</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_test.html#id3747793">Running the test suite under Windows</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_win_test.html#build_win_test_sql">Building the software needed by the SQL tests</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_notes.html">Windows notes</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_win_faq.html">Windows FAQ</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="build_wince.html">5. 
+		Building Berkeley DB for Windows Mobile
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="build_wince.html#build_wince_intro">Building for Windows Mobile</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_wince.html#id3748301">Building Berkeley DB for Windows Mobile</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_wince.html#id3748978">Changing Build Configuration Type</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_wince.html#id3748905">Building Berkeley DB for different target platforms</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_wince_notes.html">Windows Mobile notes</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_wince_faq.html">Windows Mobile FAQ</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="build_unix.html">6. 
+		Building Berkeley DB for UNIX/POSIX
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix.html#build_unix_intro">Building for UNIX/POSIX</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_unix.html#build_unix_sqlinter">Building the Berkeley DB SQL Interface</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_conf.html">Configuring Berkeley DB</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_sql.html">Configuring the SQL Interface</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_unix_sql.html#id3749979">Enabling Extensions</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_unix_sql.html#id3750315">Building the JDBC Driver
+</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_unix_sql.html#id3749376">Building the ODBC Driver</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_small.html">Building a small memory footprint library</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_flags.html">Changing compile or load options</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_install.html">Installing Berkeley DB</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_shlib.html">Dynamic shared libraries</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_test.html">Running the test suite under UNIX</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_unix_test.html#build_unix_test_sql">Building SQL Test Suite on Unix</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_notes.html">Architecture independent FAQ</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_aix.html">AIX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_freebsd.html">FreeBSD</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_hpux.html">HP-UX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_irix.html">IRIX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_linux.html">Linux</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_macosx.html">Mac OS X</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_osf1.html">OSF/1</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_qnx.html">QNX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_sco.html">SCO</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_solaris.html">Solaris</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_sunos.html">SunOS</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_ultrix.html">Ultrix</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="build_vxworks.html">7. 
+		Building Berkeley DB for VxWorks
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="build_vxworks.html#build_vxworks_intro">Building for VxWorks 5.4 and 5.5</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks.html#id3753828">Building With Tornado 2.0 or Tornado 2.2</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_vxworks_intro6x.html">Building for VxWorks 6.x</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_intro6x.html#id3753527">Building With Wind River Workbench using the Makefile</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_vxworks_notes.html">VxWorks notes</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_notes.html#id3754068">Building and Running the Demo Program</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_notes.html#id3754059">Building and Running the Utility Programs</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_notes.html#id3754090">VxWorks 5.4/5.5: shared memory</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_notes.html#id3754079">VxWorks 5.4/5.5: building a small memory footprint library</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="build_vxworks_notes.html#id3753840">Support for Replication Manager</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="build_vxworks_faq.html">VxWorks FAQ</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade.html">8. 
+		Upgrading from previous versions of Berkeley DB
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade.html#upgrade_version">Library version information</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_process.html">Upgrading Berkeley DB installations</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_11gr2_toc.html">9. Upgrading Berkeley DB 4.8 applications to Berkeley DB 11gR2</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_11gr2_toc.html#upgrade_11gr2_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_11gr2_dbsqlcodegen.html">db_sql Renamed to db_sql_codegen</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_11gr2_autoinit.html">DB_REP_CONF_NOAUTOINIT Replaced</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_11gr2_repmgr.html">Support for Multiple Client-to-Client Peers</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_encrypt.html">Cryptography Support</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_db_nosync.html">DB_NOSYNC Flag to Flush Files</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_11gr2_remsupp.html">Dropped Support</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="build_unix_stacksize.html">Changing Stack Size</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_5_0.html">Berkeley DB 11g Release 2 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_5_0.html#id3755680">Changes between 11.2.5.0.26  and 11.2.5.0.32</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_5_0.html#id3755171">Changes between 11.2.5.0.21  and 11.2.5.0.26</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_5_0.html#id3755522">Changes between 4.8 and 11.2.5.0.21</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_5_0.html#id3755785">Known Bugs</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_8_toc.html">10. Upgrading Berkeley DB 4.7 applications to Berkeley DB 4.8</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_8_toc.html#upgrade_4_8_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_8_dpl.html">Registering DPL Secondary Keys</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_8_mpool.html">Minor Change in Behavior of DB_MPOOLFILE-&gt;get</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_8_fcntl.html">Dropped Support for fcntl System Calls</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_8_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_8.html">Berkeley DB 4.8.28 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757123">
+Changes between 4.8.26 and 4.8.28:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3756809">
+Known bugs in 4.8 </a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757107">
+Changes between 4.8.24 and 4.8.26:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757154">
+Changes between 4.8.21 and 4.8.24:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3755257">
+Changes between 4.7 and 4.8.21:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3755441">
+Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757124">
+New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757161">
+Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757015">
+Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757022">
+General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757207">
+Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757433">
+Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757329">
+Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757350">
+Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757171">
+C-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757212">
+C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757626">
+Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757654">
+
+ Direct Persistence Layer (DPL), Bindings and Collections API:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757669">
+
+ Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757623">
+RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757725">
+Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757651">
+XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757684">
+Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757887">
+Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3758071">
+Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757871">
+Mutex Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3758131">
+Test Suite Changes</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3758127">
+Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757538">
+Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_8.html#id3757876">
+Configuration, Documentation, Sample Application, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_7_toc.html">11. Upgrading Berkeley DB 4.6 applications to Berkeley DB 4.7</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_toc.html#upgrade_4_7_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_rtc.html">Run-time configuration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_repapi.html">Replication API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_tcl.html">Tcl API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_interdir.html">DB_ENV-&gt;set_intermediate_dir</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_log.html">Log configuration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_7_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_7.html">Berkeley DB 4.7.25 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758390">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758840">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758858">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758876">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758861">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759008">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758718">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758535">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3757446">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3757453">C-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3757001">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3757005">Direct Persistence Layer (DPL), Bindings and Collections API:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758924">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759072">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759076">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759011">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758397">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759112">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3757012">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758930">Mutex Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3758918">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759090">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_7.html#id3759103">Configuration, Documentation, Sample Application, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_6_toc.html">12. Upgrading Berkeley DB 4.5 applications to Berkeley DB 4.6</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_toc.html#upgrade_4_6_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_cursor.html"> C API cursor handle method names</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_memp_fput.html">DB_MPOOLFILE-&gt;put</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_memp_fset.html">B_MPOOLFILE-&gt;set</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_event.html">Replication Events</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_full_election.html">DB_REP_FULL_ELECTION</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_verbose.html">Verbose Output</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_verb.html">DB_VERB_REPLICATION</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_win.html">Windows 9X</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_6_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_6.html">Berkeley DB 4.6.21 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760065">4.6.21 Patches:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760005">4.6.19 Patches</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760032">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760135">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760166">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760184">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760170">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760420">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760191">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760000">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760038">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760224">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760523">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760234">Java collections and bind API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760242">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760247">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760603">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760261">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760251">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760099">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760114">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760293">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760422">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_6.html#id3760489">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_5_toc.html">13. Upgrading Berkeley DB 4.4 applications to Berkeley DB 4.5</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_toc.html#upgrade_4_5_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_deprecate.html">deprecated interfaces</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_alive.html">DB-&gt;set_isalive</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_elect.html">DB_ENV-&gt;rep_elect</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_rep_set.html">Replication method naming</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_rep_event.html">Replication events</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_memp.html">Memory Pool API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_paniccall.html">DB_ENV-&gt;set_paniccall</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_pagesize.html">DB-&gt;set_pagesize</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_collect.html">Collections API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_config.html">--enable-pthread_self</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_source.html">Recno backing text source files</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_applog.html">Application-specific logging</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_5_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_5_20.html">Berkeley DB 4.5.20 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761406">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761099">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761150">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761207">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761293">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761558">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761477">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761427">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761508">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761512">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761544">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761568">Java collections and bind API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761627">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761662">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761647">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761795">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761669">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761698">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761441">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761411">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761486">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_5_20.html#id3761550">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_4_toc.html">14. Upgrading Berkeley DB 4.3 applications to Berkeley DB 4.4</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_toc.html#upgrade_4_4_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_autocommit.html">DB_AUTO_COMMIT</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_isolation.html">DB_DEGREE_2, DB_DIRTY_READ</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_joinenv.html">DB_JOINENV</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_mutex.html">mutexes</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_clear.html">DB_MPOOLFILE-&gt;set_clear_len</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_lockstat.html">lock statistics</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_4_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_4_16.html">Berkeley DB 4.4.16 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762436">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762208">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762518">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762268">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762376">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762661">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762437">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762469">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762487">Recno Access Method Changes</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762472">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762505">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762843">Java collections and bind API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762575">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762327">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762670">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762417">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762735">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762740">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762668">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762789">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762786">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_16.html#id3762852">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_4_20.html">Berkeley DB 4.4.20 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_4_20.html#id3762896">Changes since Berkeley DB 4.4.16:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_3_toc.html">15. Upgrading Berkeley DB 4.2 applications to Berkeley DB 4.3</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_toc.html#upgrade_4_3_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_java.html">Java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_err.html">DB_ENV-&gt;set_errcall, DB-&gt;set_errcall</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_cput.html">DBcursor-&gt;c_put</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_stat.html">DB-&gt;stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_verb.html">DB_ENV-&gt;set_verbose</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_log.html">Logging</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_fileopen.html">DB_FILEOPEN</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_enomem.html">ENOMEM and DbMemoryException</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_repl.html">Replication</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_rtc.html">Run-time configuration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_3_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_3_29.html">Berkeley DB 4.3.29 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764060">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3763690">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3763745">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3763911">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764001">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3763999">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764061">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764098">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764486">Recno Access Method Changes</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764160">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764181">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764188">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764210">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764343">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764359">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764352">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764829">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764469">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764496">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764563">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_3_29.html#id3764560">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_2_toc.html">16. Upgrading Berkeley DB 4.1 applications to Berkeley DB 4.2</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_toc.html#upgrade_4_2_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_java.html">Java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_queue.html">Queue access method</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_cksum.html">DB_CHKSUM_SHA1</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_client.html">DB_CLIENT</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_del.html">DB-&gt;del</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_priority.html">DB-&gt;set_cache_priority</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_verify.html">DB-&gt;verify</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_lockng.html">DB_LOCK_NOTGRANTED</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_repinit.html">Replication</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="upgrade_4_2_repinit.html#id3765890">Replication initialization</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="upgrade_4_2_repinit.html#id3764929">Database methods and replication clients</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="upgrade_4_2_repinit.html#id3765474">DB_ENV-&gt;rep_process_message()</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_nosync.html">Client replication environments</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_tcl.html">Tcl API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_2_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_2_52.html">Berkeley DB 4.2.52 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766195">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3765992">New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766272">Database Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766336">Concurrent Data Store Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3765173">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766475">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766181">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766210">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766217">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766252">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766282">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766183">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766280">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766713">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766800">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766826">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3767314">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3766461">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3765477">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3767056">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_2_52.html#id3767297">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_1_toc.html">17. Upgrading Berkeley DB 4.0 applications to Berkeley DB 4.1</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_toc.html#upgrade_4_1_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_excl.html">DB_EXCL</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_fop.html">DB-&gt;associate, DB-&gt;open, DB-&gt;remove, DB-&gt;rename</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_log_register.html">DB_ENV-&gt;log_register</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_log_stat.html">st_flushcommit</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_checkpoint.html">DB_CHECKPOINT, DB_CURLSN</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_incomplete.html">DB_INCOMPLETE</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_memp_sync.html">DB_ENV-&gt;memp_sync</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_hash_nelem.html">DB-&gt;stat.hash_nelem</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_java.html">Java exceptions</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_cxx.html">C++ exceptions</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_app_dispatch.html">Application-specific logging and recovery</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_1_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_1_24.html">Berkeley DB 4.1.24 and 4.1.25 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768525">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768440">Major New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768350">General Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768485">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768530">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768597">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768628">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768675">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768706">C++-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768736">Java-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768346">Tcl-specific API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768294">RPC-specific Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768486">Replication Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768833">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768927">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3768959">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3769007">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3769025">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3769052">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_1_24.html#id3769100">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_1_25.html">Berkeley DB 4.1.25 Change Log</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_4_0_toc.html">18. Upgrading Berkeley DB 3.3 applications to Berkeley DB 4.0</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_toc.html#upgrade_4_0_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_deadlock.html">db_deadlock</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_lock.html">lock_XXX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_log.html">log_XXX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_mp.html">memp_XXX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_txn.html">txn_XXX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_env.html">db_env_set_XXX</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_rpc.html">DB_ENV-&gt;set_server</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_set_lk_max.html">DB_ENV-&gt;set_lk_max</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_lock_id_free.html">DB_ENV-&gt;lock_id_free</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_java.html">Java CLASSPATH environment variable</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_cxx.html">C++ ostream objects</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_asr.html">application-specific recovery</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_4_0_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="changelog_4_0_14.html">4.0.14 Change Log</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771095">Major New Features:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3770851">General Environment Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3770884">General Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3770914">Btree Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771026">Hash Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771078">Queue Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771096">Recno Access Method Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771110">C++ API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771115">Java API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771119">Tcl API Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771127">RPC Client/Server Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771151">XA Resource Manager Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771157">Locking Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771206">Logging Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771222">Memory Pool Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771242">Transaction Subsystem Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771255">Utility Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771262">Database or Log File On-Disk Format Changes:</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="changelog_4_0_14.html#id3771291">Configuration, Documentation, Portability and Build Changes:</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_3_3_toc.html">19. Upgrading Berkeley DB 3.2 applications to Berkeley DB 3.3</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_toc.html#upgrade_3_3_intro">introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_rpc.html">DB_ENV-&gt;set_server</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_gettype.html">DB-&gt;get_type</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_getswap.html">DB-&gt;get_byteswapped</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_alloc.html">DB-&gt;set_malloc, DB-&gt;set_realloc</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_conflict.html">DB_LOCK_CONFLICT</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_memp_fget.html">memp_fget, EIO</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_txn_prepare.html">txn_prepare</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_shared.html">--enable-dynamic, --enable-shared</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_bigfile.html">--disable-bigfile</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_3_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_3_2_toc.html">20. Upgrading Berkeley DB 3.1 applications to Berkeley DB 3.2</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_toc.html#upgrade_3_2_intro">introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_set_flags.html">DB_ENV-&gt;set_flags</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_callback.html">DB callback functions, app_private field</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_renumber.html">Logically renumbering records</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_incomplete.html">DB_INCOMPLETE</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_tx_recover.html">DB_ENV-&gt;set_tx_recover</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_mutexlock.html">DB_ENV-&gt;set_mutexlocks</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_handle.html">Java and C++ object reuse</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_notfound.html">Java java.io.FileNotFoundException</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_db_dump.html">db_dump</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_2_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_3_1_toc.html">21. Upgrading Berkeley DB 3.0 applications to Berkeley DB 3.1</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_toc.html#upgrade_3_1_intro">introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_config.html">DB_ENV-&gt;open, DB_ENV-&gt;remove</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_set_tx_recover.html">DB_ENV-&gt;set_tx_recover</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_set_feedback.html">DB_ENV-&gt;set_feedback, DB-&gt;set_feedback</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_set_paniccall.html">DB_ENV-&gt;set_paniccall, DB-&gt;set_paniccall</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_put.html">DB-&gt;put</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_dup.html">identical duplicate data items</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_btstat.html">DB-&gt;stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_sysmem.html">DB_SYSTEM_MEM</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_log_register.html">log_register</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_memp_register.html">memp_register</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_txn_check.html">txn_checkpoint</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_env.html">environment configuration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_tcl.html">Tcl API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_tmp.html">DB_TMP_DIR</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_logalloc.html">log file pre-allocation</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_1_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_3_0_toc.html">22. Upgrading Berkeley DB 2.X applications to Berkeley DB 3.0</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_toc.html#upgrade_3_0_intro">introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_envopen.html">environment open/close/unlink</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_func.html">function arguments</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_dbenv.html">DB_ENV structure</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_open.html">database open/close</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_xa.html">db_xa_open</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_db.html">DB structure</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_dbinfo.html">DBINFO structure</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_join.html">DB-&gt;join</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_stat.html">DB-&gt;stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_close.html">DB-&gt;sync and DB-&gt;close</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_lock_put.html">lock_put</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_lock_detect.html">lock_detect</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_lock_stat.html">lock_stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_log_register.html">log_register</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_log_stat.html">log_stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_memp_stat.html">memp_stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_txn_begin.html">txn_begin</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_txn_commit.html">txn_commit</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_txn_stat.html">txn_stat</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_rmw.html">DB_RMW</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_lock_notheld.html">DB_LOCK_NOTHELD</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_eagain.html">EAGAIN</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_eacces.html">EACCES</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_jump_set.html">db_jump_set</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_value_set.html">db_value_set</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_dbenv_cxx.html">DbEnv class for C++ and Java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_db_cxx.html">Db class for C++ and Java</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_cxx.html">additional C++ changes</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_java.html">additional Java changes</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_3_0_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="upgrade_2_0_toc.html">23. Upgrading Berkeley DB 1.85 or 1.86 applications to Berkeley DB 2.0</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_2_0_toc.html#upgrade_2_0_intro">Introduction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_2_0_system.html">System Integration</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_2_0_convert.html">Converting Applications</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect1">
+                  <a href="upgrade_2_0_disk.html">Upgrade Requirements</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="chapter">
+              <a href="test.html">24. 
+		Test Suite
+        </a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="test.html#test_run">Running the test suite</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="test.html#id3777600">Running SQL Test Suite on Unix</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="test.html#id3777464">Running SQL Test Suite on Windows</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="test_faq.html">Test suite FAQ</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="preface.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top"> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right" valign="top"> Preface</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

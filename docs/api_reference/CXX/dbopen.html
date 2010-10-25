@@ -82,7 +82,7 @@ Db::open(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639518"></a>Parameters</h3>
+              <h3 class="title"><a id="id3626130"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -90,7 +90,58 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639501"></a>database</h4>
+                <h4 class="title"><a id="id3626638"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; 
+                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          DB_AUTO_COMMIT flag is specified, the operation will be implicitly
+                          transaction protected. Note that transactionally protected operations
+                          on a <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle requires
+                          the <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle itself be
+                          transactionally protected during its open.  Also note that the
+                          transaction must be committed before the handle is closed; see <a href="../../programmer_reference/program_scope.html" class="olink">Berkeley DB handles</a> for more
+                          information.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3626771"></a>file</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>file</strong></span> parameter is used as the
+                          name of an underlying file that will be used to back the database; see
+                          <a href="../../programmer_reference/env_naming.html" class="olink">File naming</a> for more
+                          information.
+                     </p>
+          <p>
+                          In-memory databases never intended to be preserved on disk may be
+                          created by setting the <span class="bold"><strong>file</strong></span> parameter
+                          to NULL. Whether other threads of control can access this database is
+                          driven entirely by whether the <span class="bold"><strong>database</strong></span>
+                          parameter is set to NULL.
+                     </p>
+          <p>
+                             When using a Unicode build on Windows (the default), the <span class="bold"><strong>file</strong></span> argument will be interpreted as a UTF-8 
+                             string, which is equivalent to ASCII for Latin characters.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3626362"></a>database</h4>
               </div>
             </div>
           </div>
@@ -128,33 +179,30 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640053"></a>file</h4>
+                <h4 class="title"><a id="id3626149"></a>type</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>file</strong></span> parameter is used as the
-                          name of an underlying file that will be used to back the database; see
-                          <a href="../../programmer_reference/env_naming.html" class="olink">File naming</a> for more
-                          information.
+                          The <span class="bold"><strong>type</strong></span> parameter is of type DBTYPE,
+                          and must be set to one of <code class="literal">DB_BTREE</code>, 
+                          <code class="literal">DB_HASH</code>, <code class="literal">DB_QUEUE</code>,
+                          <code class="literal">DB_RECNO</code>, or <code class="literal">DB_UNKNOWN</code>.  If <span class="bold"><strong>type</strong></span> is DB_UNKNOWN, the database must already
+                          exist and <code class="methodname">Db::open()</code> will automatically determine its type.  The
+                          <a class="xref" href="dbget_type.html" title="Db::get_type()">Db::get_type()</a>  method
+                          may be used to determine the underlying type of databases opened using
+                          DB_UNKNOWN.
                      </p>
           <p>
-                          In-memory databases never intended to be preserved on disk may be
-                          created by setting the <span class="bold"><strong>file</strong></span> parameter
-                          to NULL. Whether other threads of control can access this database is
-                          driven entirely by whether the <span class="bold"><strong>database</strong></span>
-                          parameter is set to NULL.
-                     </p>
-          <p>
-                             When using a Unicode build on Windows (the default), the <span class="bold"><strong>file</strong></span> argument will be interpreted as a UTF-8 
-                             string, which is equivalent to ASCII for Latin characters.
+                         It is an error to specify the incorrect <span class="bold"><strong>type</strong></span> 
+                         for a database that already exists.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640112"></a>flags</h4>
+                <h4 class="title"><a id="id3626717"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -282,7 +330,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640156"></a>mode</h4>
+                <h4 class="title"><a id="id3627251"></a>mode</h4>
               </div>
             </div>
           </div>
@@ -301,60 +349,12 @@ Db::open(DbTxn *txnid, const char *file,
                           mode of readable and writable by both owner and group.
                      </p>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1640343"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DbEnv::txn_begin()">DbEnv::txn_begin()</a>; 
-                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DbEnv::cdsgroup_begin()">DbEnv::cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          DB_AUTO_COMMIT flag is specified, the operation will be implicitly
-                          transaction protected. Note that transactionally protected operations
-                          on a <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle requires
-                          the <a class="link" href="db.html" title="Chapter 2.  The Db Handle">Db</a>  handle itself be
-                          transactionally protected during its open.  Also note that the
-                          transaction must be committed before the handle is closed; see <a href="../../programmer_reference/program_scope.html" class="olink">Berkeley DB handles</a> for more
-                          information.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1639885"></a>type</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>type</strong></span> parameter is of type DBTYPE,
-                          and must be set to one of <code class="literal">DB_BTREE</code>, 
-                          <code class="literal">DB_HASH</code>, <code class="literal">DB_QUEUE</code>,
-                          <code class="literal">DB_RECNO</code>, or <code class="literal">DB_UNKNOWN</code>.  If <span class="bold"><strong>type</strong></span> is DB_UNKNOWN, the database must already
-                          exist and <code class="methodname">Db::open()</code> will automatically determine its type.  The
-                          <a class="xref" href="dbget_type.html" title="Db::get_type()">Db::get_type()</a>  method
-                          may be used to determine the underlying type of databases opened using
-                          DB_UNKNOWN.
-                     </p>
-          <p>
-                         It is an error to specify the incorrect <span class="bold"><strong>type</strong></span> 
-                         for a database that already exists.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639830"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id3627250"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -394,7 +394,7 @@ Db::open(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1640751"></a>Errors</h3>
+              <h3 class="title"><a id="id3627581"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -412,7 +412,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640382"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3627550"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -430,7 +430,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640694"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3627572"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -448,7 +448,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1639978"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3627219"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -460,7 +460,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640026"></a>ENOENT</h4>
+                <h4 class="title"><a id="id3627051"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -472,7 +472,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640725"></a>DB_OLD_VERSION</h4>
+                <h4 class="title"><a id="id3627483"></a>DB_OLD_VERSION</h4>
               </div>
             </div>
           </div>
@@ -484,7 +484,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640707"></a>EEXIST</h4>
+                <h4 class="title"><a id="id3627449"></a>EEXIST</h4>
               </div>
             </div>
           </div>
@@ -497,7 +497,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640308"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3627450"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -520,7 +520,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640889"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3626805"></a><span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -542,7 +542,7 @@ Db::open(DbTxn *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1640738"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3627529"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -560,7 +560,7 @@ Db::open(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1640968"></a>Class</h3>
+              <h3 class="title"><a id="id3627201"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -572,7 +572,7 @@ Db::open(DbTxn *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1639918"></a>See Also</h3>
+              <h3 class="title"><a id="id3627626"></a>See Also</h3>
             </div>
           </div>
         </div>

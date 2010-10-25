@@ -1,9 +1,9 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002,2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
- * $Id: DualTestCase.java,v 1.6 2009/01/13 10:41:22 cwl Exp $
+ * $Id$
  */
 
 package com.sleepycat.db.util;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -148,7 +148,7 @@ __db_goff(dbc, dbt, tlen, pgno, bpp, bpsz)
 		DB_ASSERT(env,
 		    F_ISSET(dbt,
 		    DB_DBT_USERMEM | DB_DBT_MALLOC | DB_DBT_REALLOC) ||
-		    bpsz != NULL || bpp != NULL);
+		    bpsz != NULL);
 		return (DB_BUFFER_SMALL);
 	}
 
@@ -276,8 +276,8 @@ __db_poff(dbc, dbt, pgnop)
 			tmp_dbt.data = dbt->data;
 			tmp_dbt.size = space;
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp, dbc->txn,
-			    &LSN(lastp), 0, DB_APPEND_BIG, pgno,
+			if ((ret = __db_big_log(dbp, dbc->txn, &LSN(lastp), 0,
+			    OP_SET(DB_APPEND_BIG, lastp), pgno,
 			    PGNO_INVALID, PGNO_INVALID, &tmp_dbt,
 			    &LSN(lastp), &null_lsn, &null_lsn)) != 0)
 				goto err;
@@ -312,9 +312,9 @@ __db_poff(dbc, dbt, pgnop)
 			tmp_dbt.data = p;
 			tmp_dbt.size = pagespace;
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp, dbc->txn,
-			    &LSN(pagep), 0, DB_ADD_BIG, PGNO(pagep),
-			    lastp ? PGNO(lastp) : PGNO_INVALID,
+			if ((ret = __db_big_log(dbp, dbc->txn, &LSN(pagep), 0,
+			    OP_SET(DB_ADD_BIG, pagep),
+			    PGNO(pagep), lastp ? PGNO(lastp) : PGNO_INVALID,
 			    PGNO_INVALID, &tmp_dbt, &LSN(pagep),
 			    lastp == NULL ? &null_lsn : &LSN(lastp),
 			    &null_lsn)) != 0) {
@@ -464,10 +464,9 @@ __db_doff(dbc, pgno)
 			tmp_dbt.data = (u_int8_t *)pagep + P_OVERHEAD(dbp);
 			tmp_dbt.size = OV_LEN(pagep);
 			ZERO_LSN(null_lsn);
-			if ((ret = __db_big_log(dbp, dbc->txn,
-			    &LSN(pagep), 0, DB_REM_BIG,
-			    PGNO(pagep), PREV_PGNO(pagep),
-			    NEXT_PGNO(pagep), &tmp_dbt,
+			if ((ret = __db_big_log(dbp, dbc->txn, &LSN(pagep), 0,
+			    OP_SET(DB_REM_BIG, pagep), PGNO(pagep),
+			    PREV_PGNO(pagep), NEXT_PGNO(pagep), &tmp_dbt,
 			    &LSN(pagep), &null_lsn, &null_lsn)) != 0) {
 				(void)__memp_fput(mpf,
 				    dbc->thread_info, pagep, dbc->priority);

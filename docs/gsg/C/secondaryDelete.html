@@ -83,9 +83,9 @@
       <a id="c_index7"></a>
       <pre class="programlisting">#include &lt;db.h&gt;
 #include &lt;string.h&gt;
-                                                                                                                                     
+
 ...
-                                                                                                                                     
+
 DB *dbp, *sdbp;    /* Primary and secondary DB handles */
 DBT key;           /* DBTs used for the delete */
 int ret;           /* Function return value */
@@ -96,7 +96,7 @@ ret = db_create(&amp;dbp, NULL, 0);
 if (ret != 0) {
   /* Error handling goes here */
 }
-                                                                                                                                     
+
 /* Secondary */
 ret = db_create(&amp;sdbp, NULL, 0);
 if (ret != 0) {

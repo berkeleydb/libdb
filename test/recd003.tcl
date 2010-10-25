@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -37,7 +37,7 @@ proc recd003 { method {select 0} args } {
 	# See comment in recd001.tcl for why there are two database files...
 	set testfile recd003.db
 	set testfile2 recd003-2.db
-	set eflags "-create -txn -home $testdir $envargs"
+	set eflags "-create -txn wrnosync -home $testdir $envargs"
 
 	puts "\tRecd003.a: creating environment"
 	set env_cmd "berkdb_env $eflags"
@@ -46,13 +46,13 @@ proc recd003 { method {select 0} args } {
 
 	# Create the databases.
 	set oflags \
-	    "-create $largs -mode 0644 $omethod -dup -env $dbenv $testfile"
+	    "-create -auto_commit $largs -mode 0644 $omethod -dup -env $dbenv $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	set oflags \
-	    "-create $largs -mode 0644 $omethod -dup -env $dbenv $testfile2"
+	    "-create -auto_commit $largs -mode 0644 $omethod -dup -env $dbenv $testfile2"
 	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1

@@ -21,9 +21,12 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
          ../dbinc_auto/api_flags.in ../dbinc/db.in | \
      egrep -w "^#define[	 ]$i|^[	 ][	 ]*$i" ;
  done |
- sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
+ sed -e "s/@DB_VERSION_FAMILY@/$DB_VERSION_FAMILY/" \
+     -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/" \
      -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/" \
      -e "s/@DB_VERSION_PATCH@/$DB_VERSION_PATCH/" \
+     -e "s/@DB_VERSION_RELEASE@/$DB_VERSION_RELEASE/" \
+     -e "s/@DB_VERSION_FULL_STRING@/\"$DB_VERSION_FULL_STRING\"/" \
      -e "s/@DB_VERSION_STRING@/\"$DB_VERSION_STRING\"/" \
      -e 's/^#define[	 ][	 ]*//' \
      -e 's/[()=,]/ /g' \
@@ -53,6 +56,7 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
      -e 's/uint DB_REPMGR_ACKS_ONE/int DB_REPMGR_ACKS_ONE/' \
      -e 's/uint DB_REPMGR_ACKS_ONE_PEER/int DB_REPMGR_ACKS_ONE_PEER/' \
      -e 's/uint DB_REPMGR_ACKS_QUORUM/int DB_REPMGR_ACKS_QUORUM/' \
+     -e 's/uint DB_VERSION_FULL_STRING/string DB_VERSION_FULL_STRING/' \
      -e 's/uint DB_VERSION_STRING/string DB_VERSION_STRING/' \
      -e 's/\(.*\)uint \(DB_VERSION_[A-Z]*\)\([ =]*\)\([0-9][0-9]*\);/\1uint \2\3\4;\n\1string \2_STR\3\"\4\";/' &&
  echo '        internal const uint DB_USERCOPY_GETDATA = 0x00000001;' && 

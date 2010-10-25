@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1999, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -463,7 +463,8 @@ __log_set_config_int(dbenv, flags, on, in_open)
 	}
 
 	if (LOGGING_ON(env)) {
-		if (!in_open && LF_ISSET(DB_LOG_IN_MEMORY))
+		if (!in_open && LF_ISSET(DB_LOG_IN_MEMORY) &&
+		    ((LOG *)dblp->reginfo.primary)->db_log_inmemory == 0)
 			ENV_ILLEGAL_AFTER_OPEN(env,
 			     "DB_ENV->log_set_config: DB_LOG_IN_MEMORY");
 		__log_set_flags(env, flags, on);

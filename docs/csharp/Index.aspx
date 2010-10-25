@@ -4,7 +4,7 @@
 <html>
 
 <head>
-<title>Table of Content</title>
+<title>Berkeley DB .NET API Documentation - Table of Content</title>
 <link rel="stylesheet" href="TOC.css">
 <script type="text/javascript" src="TOC.js"></script>
 </head>
@@ -85,7 +85,7 @@ This page uses an IFRAME but your browser does not support it.
 //
 // This code is published under the Microsoft Public License (Ms-PL).  A copy
 // of the license should be distributed with the code.  It can also be found
-// at the project website: http://www.CodePlex.com/SHFB.   This notice, the
+// at the project website: http://SHFB.CodePlex.com.   This notice, the
 // author's name, and all copyright notices must remain intact in all
 // applications, documentation, and source files.
 //

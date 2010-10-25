@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with Berkeley DB" />
-    <link rel="up" href="DB.html" title="Chapter 2. Databases" />
+    <link rel="up" href="databases.html" title="Chapter 2. Databases" />
     <link rel="prev" href="CoreEnvUsage.html" title="Managing Databases in Environments" />
     <link rel="next" href="DBEntry.html" title="Chapter 3. Database Records" />
   </head>
@@ -147,9 +147,9 @@ set_db_filenames(STOCK_DBS *my_stock)
         <div class="example-contents">
           <p>
 			We are opening multiple databases, and we are
-			opening those databases using identical flags and error reporting
-			settings. It is therefore worthwhile to create a function that
-			performs this operation for us:
+            opening those databases using identical flags and error 
+            reporting settings. It is therefore worthwhile to create a 
+            function that performs this operation for us:
 		</p>
           <a id="c_db13"></a>
           <pre class="programlisting">/* File: gettingstarted_common.c */
@@ -160,7 +160,8 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
     const char *file_name,     /* The file in which the db lives */
     const char *program_name,  /* Name of the program calling this 
                                 * function */
-    FILE *error_file_pointer)  /* File where we want error messages sent */
+    FILE *error_file_pointer)  /* File where we want error messages 
+                                  sent */
 {
     DB *dbp;    /* For convenience */
     u_int32_t open_flags;
@@ -175,8 +176,8 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
     }
 
     /* Point to the memory malloc'd by db_create() */
-    *dbpp = dbp;
-                                                                                                                               
+    *dbpp = dbp
+
     /* Set up error handling for this database */
     dbp-&gt;set_errfile(dbp, error_file_pointer);
     dbp-&gt;set_errpfx(dbp, program_name);
@@ -196,7 +197,7 @@ open_database(DB **dbpp,       /* The DB handle that we are opening */
         dbp-&gt;err(dbp, ret, "Database '%s' open failed.", file_name);
         return(ret);
     }
-                                                                                                                               
+
     return (0);
 }</pre>
         </div>
@@ -296,7 +297,7 @@ databases_close(STOCK_DBS *my_stock)
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="CoreEnvUsage.html">Prev</a> </td>
           <td width="20%" align="center">
-            <a accesskey="u" href="DB.html">Up</a>
+            <a accesskey="u" href="databases.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="DBEntry.html">Next</a></td>
         </tr>

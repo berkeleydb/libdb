@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -73,47 +73,7 @@ typedef struct __db_globals {
 #define	DB_GLOBAL(v)							\
 	((DB_GLOBALS *)(((BDBApp *)GETAPPINSTANCE())->db_global_values))->v
 #else
-#ifdef DB_INITIALIZE_DB_GLOBALS
-DB_GLOBALS __db_global_values = {
-#ifdef HAVE_VXWORKS
-	0,				/* VxWorks: initialized */
-	NULL,				/* VxWorks: global semaphore */
-#endif
-
-	"=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=",
-	{ 0 },
-	0,
-	0,
-	0,
-	0,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
-};
-#else
 extern	DB_GLOBALS	__db_global_values;
-#endif
-
 #define	DB_GLOBAL(v)	__db_global_values.v
 #endif /* HAVE_BREW */
 

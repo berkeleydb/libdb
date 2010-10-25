@@ -257,7 +257,7 @@
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -277,7 +277,7 @@ int main(void)
     const char *file_name = "mydb.db";
     const char *keystr ="thekey";
     const char *datastr = "thedata";
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 
@@ -295,10 +295,11 @@ int main(void)
         DbTxn *txn = NULL;
         myEnv.txn_begin(NULL, &amp;txn, DB_READ_UNCOMMITTED);
 
-        // From here, you perform your database reads and writes as normal,
-        // committing and aborting the transactions as is necessary, and
-        // testing for deadlock exceptions as normal (omitted for brevity). 
-        
+        // From here, you perform your database reads and writes as
+        // normal, committing and aborting the transactions as is 
+        // necessary, and testing for deadlock exceptions as normal 
+        // (omitted for brevity). 
+
         ...</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -381,7 +382,7 @@ int main(void)
         <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -398,7 +399,7 @@ int main(void)
     u_int32_t db_flags = DB_CREATE | DB_AUTO_COMMIT;
     Db *dbp = NULL;
     const char *file_name = "mydb.db";
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 
@@ -420,9 +421,10 @@ int main(void)
         // isolation.
         myEnv.txn_begin(NULL, &amp;txn, DB_READ_COMMITTED);
 
-        // From here, you perform your database reads and writes as normal,
-        // committing and aborting the transactions as is necessary, 
-        // testing for deadlock exceptions as normal (omitted for brevity). 
+        // From here, you perform your database reads and writes as
+        // normal, committing and aborting the transactions as is
+        // necessary, testing for deadlock exceptions as normal 
+        // (omitted for brevity). 
 
         // Using transactional cursors with concurrent applications is 
         // described in more detail in the following section.
@@ -675,7 +677,7 @@ int main(void)
           <pre class="programlisting">#include "db_cxx.h"
 
 ...
-                                                                                                                                  
+
 int main(void)
 {
     u_int32_t env_flags = DB_CREATE     |  // If the environment does not
@@ -691,7 +693,7 @@ int main(void)
     u_int32_t db_flags = DB_CREATE | DB_AUTO_COMMIT;
     Db *dbp = NULL;
     const char *file_name = "mydb.db";
-                                                                                                                                  
+
     std::string envHome("/export1/testEnv");
     DbEnv myEnv(0);
 

@@ -1,12 +1,15 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 package com.sleepycat.db;
+
+import java.lang.IllegalArgumentException;
+import java.lang.NullPointerException;
 
 import com.sleepycat.db.internal.DbConstants;
 import com.sleepycat.db.internal.DbEnv;
@@ -102,11 +105,17 @@ public class Environment {
     <p>
     The {@link com.sleepycat.db.Environment Environment} handle should not be closed while any other
     handle that refers to it is not yet closed; for example, database
-    environment handles must not be closed while database handles remain
-    open, or transactions in the environment have not yet been committed
-    or aborted.  Specifically, this includes {@link com.sleepycat.db.Database Database},
-    {@link com.sleepycat.db.Cursor Cursor}, {@link com.sleepycat.db.Transaction Transaction}, and {@link com.sleepycat.db.LogCursor LogCursor}
+    environment handles must not be closed while 
+    transactions in the environment have not yet been committed
+    or aborted.  Specifically, this includes 
+{@link com.sleepycat.db.Transaction Transaction}, and {@link com.sleepycat.db.LogCursor LogCursor}
     handles.
+    <p>
+    This method automatically closes all open database handles but does not synchronize 
+    the database. To synchronize all open databases ensure that the last environment 
+    object is closed using the Environment.CloseForceSync() method. 
+	When the close operation fails, the method returns a non-zero error value for the 
+	first instance of such error, and continues to close the rest of the environment objects. 
     <p>
     Where the environment was initialized with a locking subsystem,
     closing the environment does not release any locks still held by the
@@ -139,6 +148,19 @@ public class Environment {
         throws DatabaseException {
 
         dbenv.close(0);
+    }
+    /**
+    Close the database environment, freeing any allocated resources and
+    closing any underlying subsystems. 
+    <p>
+    This function has verify similar
+    behavior as Environment.close(), except the following:
+    When each open database handle is closed, it's synced.
+    */
+    public void closeForceSync()
+        throws DatabaseException {
+
+        dbenv.close(DbConstants.DB_FORCESYNC);
     }
 
     /* package */
@@ -501,6 +523,12 @@ deadlock.
             (txn == null) ? autoCommitFlag : 0);
     }
 
+    /**
+    Return the database environment home directory. This directory is normally
+    identified in the {@link com.sleepycat.db.Environment} constructor.
+    <p>
+    @return the database environment home directory.
+    */
     public java.io.File getHome()
         throws DatabaseException {
 
@@ -639,6 +667,35 @@ deadlock.
     }
 
     /**
+    Return the deadlock priority for the given locker.
+    <p>
+    @param id
+    The locker id
+    <p>
+    @throws DatabaseException if a failure occurs.
+    */
+    public int getLockerPriority(int id) throws DatabaseException {
+        return dbenv.get_lk_priority(id);
+    }
+
+    /**
+    Assign a deadlock priority to a locker.  The deadlock detector will reject
+    lock requests from lower priority lockers are before those from higher
+    priority lockers.
+    <p>
+    @param id
+    The locker id to configure
+    @param priority
+    The priority to assign to the locker.
+    <p>
+    @throws DatabaseException if a failure occurs
+    */
+    public void setLockerPriority(int id, int priority)
+	throws DatabaseException {
+        dbenv.set_lk_priority(id, priority);
+    }
+
+    /**
     Atomically obtain and release one or more locks from the lock table.
     This method is intended to support acquisition or trading of
     multiple locks under one lock table semaphore, as is needed for lock
@@ -719,6 +776,57 @@ deadlock.
         return dbenv.log_file(lsn);
     }
 
+    /**
+    Verify log files.
+    <p>
+    @param config
+    The LogVerifyConfig object which contains configurations for the log 
+    verification.
+    <p>
+    @return
+    If the verification succeeds, return 0; otherwise non-zero. 
+    Error, warning and report messages are written to the environment's 
+    error report destination.
+    */
+    public int logVerify(LogVerifyConfig config) {
+
+        String env_home, dbfile, dbname;
+        int caf, efile, eoffset, flags, ret, stfile, stoffset, verbose;
+        long etime, stime;
+        LogSequenceNumber endlsn, startlsn;
+
+        caf = ret = verbose = 0;
+        env_home = config.getEnvHome();
+        dbfile = config.getDbFile();
+        dbname = config.getDbName();
+        stime = 0;
+        etime = 0;
+        if (config.getContinueAfterFail())
+            caf = 1;
+        if (config.getVerbose())
+            verbose = 1;
+        if (config.getStartTime() != null)
+            stime = config.getStartTime().getTime() / 1000;
+        if (config.getEndTime() != null)
+            etime = config.getEndTime().getTime() / 1000;
+        startlsn = config.getStartLsn();
+        endlsn = config.getEndLsn();
+        efile = eoffset = stfile = stoffset = 0;
+        if (endlsn != null)
+            efile = endlsn.getFile();
+        if (endlsn != null)
+            eoffset = endlsn.getOffset();
+        if (startlsn != null)
+            stfile = startlsn.getFile();
+        if (startlsn != null)
+            stoffset = startlsn.getOffset();
+        try {
+            ret = dbenv.log_verify(env_home, config.getCacheSize(), 
+                dbfile, dbname, stime, etime, 
+                stfile, stoffset, efile, eoffset, caf, verbose);
+        } catch (Exception ex) {  }
+        return (ret);
+    }
     /* Replication support */
     /**
     Configure the database environment as a client or master in a group
@@ -976,12 +1084,22 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     }
 
     /* Statistics */
+    /**
+    Returns the memory pool (that is, the buffer cache) subsystem statistics. 
+    <p>
+    @return the memory pool (that is, the buffer cache) subsystem statistics.
+    */
     public CacheStats getCacheStats(StatsConfig config)
         throws DatabaseException {
 
         return dbenv.memp_stat(StatsConfig.checkNull(config).getFlags());
     }
 
+    /**
+    Return statistics for individual files in the cache.
+    <p>
+    @return statistics for individual files in the cache.
+    */
     public CacheFileStats[] getCacheFileStats(StatsConfig config)
         throws DatabaseException {
 
@@ -1243,6 +1361,42 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
         dbenv.log_print((txn == null) ? null : txn.txn, message);
     }
 
+    /**
+    Return an array of log files.
+    <p>
+    When Replication Manager is in use, log archiving is performed in a
+    replication group-aware manner such that the log file status of other sites
+    in the group is considered to determine if a log file is in use. 
+    <p>
+    Log cursor handles (returned by the
+    {@link com.sleepycat.db.Environment#openLogCursor openLogCursor() method} may
+    have open file descriptors for log files in the database environment. Also,
+    the Berkeley DB interfaces to the database environment logging subsystem (for
+    example, {@link com.sleepycat.db.Environment#logPut logPut} and
+    {@link com.sleepycat.db.Transaction#abort Transaction.abort} may allocate log
+    cursors and have open file descriptors for log files as well. On operating
+    systems where filesystem related system calls (for example, rename and unlink
+    on Windows/NT) can fail if a process has an open file descriptor for the
+    affected file, attempting to move or remove returned log files may fail. All
+    Berkeley DB internal use of log cursors operates on active log files only and
+    furthermore, is short-lived in nature. So, an application seeing such a
+    failure should be restructured to close any open log cursors it may have, and
+    otherwise to retry the operation until it succeeds. (Although the latter is
+    not likely to be necessary; it is hard to imagine a reason to move or rename
+    a log file in which transactions are being logged or aborted.)
+    <p>
+    See
+    <a href="{@docRoot}/../api_reference/C/db_archive.html" target="_top">db_archive</a>
+    for more information on database archival procedures. 
+    <p>
+    @param includeInUse if true, all log files, regardless of whether or not they
+    are in use, are returned.  Otherwise, the log files that are no longer in use
+    (for example, that are no longer involved in active transactions), and that
+    may safely be archived for catastrophic recovery and then removed from the
+    system.
+    <p>
+    @return An array of log files
+    */
     public java.io.File[] getArchiveLogFiles(boolean includeInUse)
         throws DatabaseException {
 
@@ -1255,6 +1409,23 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
         return logFiles;
     }
 
+    /**
+    Return the database files that need to be archived in order to recover the
+    database from catastrophic failure. If any of the database files have not
+    been accessed during the lifetime of the current log files, they will not be
+    returned. It is also possible that some of the files referred to by the log
+    have since been deleted from the system.
+    <p>
+    When Replication Manager is in use, log archiving is performed in a
+    replication group-aware manner such that the log file status of other sites
+    in the group is considered to determine if a log file is in use. 
+    <p>
+    See
+    <a href="{@docRoot}/../api_reference/C/db_archive.html" target="_top">db_archive</a>
+    for more information on database archival procedures. 
+    <p>
+    @return An array of database files
+    */
     public java.io.File[] getArchiveDatabases()
         throws DatabaseException {
 
@@ -1273,6 +1444,10 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     Automatic log file removal is likely to make catastrophic recovery
     impossible.
     <p>
+    When Replication Manager is in use, log archiving is performed in a
+    replication group-aware manner such that the log file status of other sites
+    in the group is considered to determine if a log file is in use.
+    <p>
     <p>
 @throws DatabaseException if a failure occurs.
     */
@@ -1282,6 +1457,26 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
         dbenv.log_archive(DbConstants.DB_ARCH_REMOVE);
     }
 
+    /**
+    Environment recovery restores transactions that were prepared, but not yet
+    resolved at the time of the system shut down or crash, to their state prior
+    to the shut down or crash, including any locks previously held. This method
+    returns a list of those prepared transactions.
+    <p>
+    This method should only be called after the environment has been recovered.
+    <p>
+    Multiple threads of control may call this method, but only one thread of
+    control may resolve each returned transaction, that is, only one thread of
+    control may call 
+    {@link com.sleepycat.db.Transaction#commit Transaction.commit()} or 
+    {@link com.sleepycat.db.Transaction#abort Transaction.abort()} each returned
+    transaction. Callers must call 
+    {@link com.sleepycat.db.Transaction#discard Transaction.discard()} to discard
+    each transaction they do not resolve.
+    <p>
+    @return a list of {@link com.sleepycat.db.PreparedTransaction transactions}
+    that must be resolved by the application (committed, aborted or discarded).
+    */
     public PreparedTransaction[] recover(final int count,
                                          final boolean continued)
         throws DatabaseException {
@@ -1388,6 +1583,42 @@ The release version information, suitable for display.
     }
 
     /**
+Return the full release version information, suitable for display.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The full release version information, suitable for display.
+    */
+    public static String getVersionFullString() {
+        return DbEnv.get_version_full_string();
+    }
+
+    /**
+Return the release's Oracle family number.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The release's Oracle family number.
+    */
+    public static int getVersionFamily() {
+        return DbEnv.get_version_family();
+    }
+
+    /**
+Return the release's Oracle release number.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+The release's Oracle release number.
+    */
+    public static int getVersionRelease() {
+        return DbEnv.get_version_release();
+    }
+
+    /**
 Return the release major number.
 <p>
 This method may be called at any time during the life of the application.
@@ -1418,6 +1649,33 @@ pages in the cache are written to disk.
     public void syncCache(LogSequenceNumber logSequenceNumber) 
         throws DatabaseException {
         dbenv.memp_sync(logSequenceNumber);
+    }
+
+    /**
+Return whether the transaction referred to by the commit token "token" has
+been applied at the local replication environment.
+<p>
+This method may not be called before the database environment is opened.
+<p>
+@param maxwait
+The maximum time to wait for the transaction to arrive by replication,
+expressed in microseconds.  To check the status of the transaction
+without waiting, the timeout may be specified as 0.
+<p>
+@return
+TransactionStatus indicating the status of the applicaton of the transaction.
+    */
+    public TransactionStatus isTransactionApplied(byte[] token, int maxwait)
+        throws DatabaseException {
+
+        if (token == null) {
+            throw new NullPointerException("token is null");
+        }
+        if (token.length != DbConstants.DB_TXN_TOKEN_SIZE) {
+            throw new IllegalArgumentException("token must be 20 bytes");
+        }
+
+        return TransactionStatus.fromInt(dbenv.txn_applied(token, maxwait, 0));
     }
 
     /**

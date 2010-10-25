@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -19,11 +19,6 @@ proc rep081 { method { niter 200 } { tnum "081" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -226,7 +221,7 @@ proc rep081_sub { method niter tnum logset testopt largs } {
 			set clstat [exec $util_path/db_stat \
 			    -N -r -R A -h $clientdir]
 			if { $dbrem_init == 0 && \
-			    [is_substr $clstat "REP_F_RECOVER_PAGE"] } {
+			    [is_substr $clstat "SYNC_PAGE"] } {
 				set in_rec_page 1
 				set dbrem_init 1
 				#

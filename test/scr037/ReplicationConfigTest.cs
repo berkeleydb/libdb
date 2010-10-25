@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -135,8 +135,8 @@ namespace CsharpAPITest
 			    cfg.HeartbeatSend, compulsory);
 			Configuration.ConfirmUint(xmlElement, "LeaseTimeout",
 			    cfg.LeaseTimeout, compulsory);
-			Configuration.ConfirmBool(xmlElement, "NoAutoInit",
-			    cfg.NoAutoInit, compulsory);
+			Configuration.ConfirmBool(xmlElement, "AutoInit",
+			    cfg.AutoInit, compulsory);
 			Configuration.ConfirmBool(xmlElement, "NoBlocking",
 			    cfg.NoBlocking, compulsory);
 			Configuration.ConfirmUint(xmlElement, "NSites",
@@ -189,8 +189,8 @@ namespace CsharpAPITest
 			if (Configuration.ConfigUint(xmlElement, "LeaseTimeout",
 			    ref uintValue, compulsory))
 				cfg.LeaseTimeout = uintValue;
-			Configuration.ConfigBool(xmlElement, "NoAutoInit",
-			    ref cfg.NoAutoInit, compulsory);
+			Configuration.ConfigBool(xmlElement, "AutoInit",
+			    ref cfg.AutoInit, compulsory);
 			Configuration.ConfigBool(xmlElement, "NoBlocking",
 			    ref cfg.NoBlocking, compulsory);
 			if (Configuration.ConfigUint(xmlElement, "NSites",

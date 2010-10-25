@@ -1,57 +1,30 @@
 #!/bin/bash -
-#	$Id$
+############################################################
+# Build Windows Binary Distribution for BDB 11gR2
 #
-# Note: The s_winmsi script in Berkeley DB core closely parallels the
-# s_winmsi script in Berkeley DB/XML.  If you change one,
-# consider whether your changes apply to the other.
-# As of this writing, the two s_winmsi scripts 'diff' very closely, and
-# identical portions have been factored into functions in s_winmsi.fcn.
+# Assumes current dir is db/dist inside a clean, unzipped 
+# tree from a source distribution package
 #
-#   Usage: s_winmsi [ options ]
+# Usage:  bash s_winmsi []
+# 
+# Steps:
+#  1. Build release and debug binaries (including java and php)
+#  2. Build additional included languages (perl, python)
+#  3. Build, or check .wxs file (uses Python)
+#  4. Build .msi
 #
-# See the Usage() function in s_winmsi.fcn for a full list of options.
-# By default, this script expects a db-X.Y.Z.zip file
-# to be in this directory, and uses it to build all binaries
-# needed for an Windows install, and finally builds the an
-# output db-X.Y.Z.msi file that can be installed on
-# Windows XP and 2000.
+# db-version.msi ends up in $PRODUCT_BLDDIR/wix
 #
-# The major other inputs to this script are these files:
-#
-#   features.in        list of choosable features (like Java,PHP,...)
-#   files.in           what files are in each feature and where they belong
-#   links.in           a list of URLs that end up as part of the Start Menu
-#   environment.in     a list of environment vars that must be set
-#
-# This script does a number of operations, using the directory
-# './winmsi/stage' as a staging area:
-#
-#   extracts the contents of the input ZIP file and uses those
-#   files (minus docs/...) to build a Sources directory for
-#   the Sources features.
-#
-#   builds Berkeley DB using Visual Studio tools using a .BAT
-#   script derived from winbuild.in .
-#
-#   builds Perl and other APIs .
-#
-#   uses {features,files,links,environment}.in to build some include
-#   files in WiX XML format.  These files are named
-#   *.wixinc (e.g. directory.wixinc)
-#
-#   run m4 on dbcorewix.in to create dbcore.wxs .  dbcorewix.in
-#   uses m4 macros to allow reasonable refactoring of repeated
-#   UI code.  Also, m4 is used to include the files created in
-#   the previous step.
-#
-#   Use the WiX compiler/linker on the .wxs files to create the .msi file.
-#
-################################################################
+# Options:
+#  TBD -- add some
+############################################################
 
-# Define all needed shell functions
-. ./winmsi/s_winmsi.fcn
+#
+# Get utility functions
+#
+. winmsi/s_winmsi.fcn
 
-ERRORLOG="$0".log
+ERRORLOG=winmsi.log
 SetupErrorLog
 
 # Do this before parsing options, we need the version number
@@ -59,83 +32,62 @@ SetupErrorLog
 dbver=db-$DB_VERSION
 
 # Set variables used by functions to customize this installer
-PRODUCT_NAME="Berkeley DB"
+PRODUCT_NAME=`printf "Berkeley DB %d%sR%d" $DB_VERSION_FAMILY $DB_VERSION_LETTER $DB_VERSION_RELEASE`
 PRODUCT_VERSION="$DB_VERSION"
-PRODUCT_STAGE=`pwd`/winmsi/stage
-PRODUCT_LICENSEDIR="${PRODUCT_STAGE}/$dbver"
-PRODUCT_SUB_BLDDIR="${PRODUCT_STAGE}/$dbver"
-PRODUCT_BLDDIR="${PRODUCT_STAGE}/$dbver"
-PRODUCT_SRCDIR="${PRODUCT_STAGE}/$dbver"
-PRODUCT_DBBUILDDIR="${PRODUCT_STAGE}/$dbver/build_unix"
-PRODUCT_SHARED_WINMSIDIR=`pwd`/winmsi
-PRODUCT_IMAGEDIR=$PRODUCT_SHARED_WINMSIDIR/images
-PRODUCT_ZIP_FILEFMT="db-X.Y.Z.zip"
-PRODUCT_MSI_FILEFMT="db-X.Y.Z.msi"
-PRODUCT_MSVC_VERSION=71
-
-PRODUCT_MAJOR=`echo "$PRODUCT_VERSION" | \
-    sed -e 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\1/'`
-PRODUCT_MINOR=`echo "$PRODUCT_VERSION" | \
-    sed -e 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\2/'`
-PRODUCT_PATCH=`echo "$PRODUCT_VERSION" | \
-    sed -e 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\3/'`
-PRODUCT_MAJMIN="${PRODUCT_MAJOR}${PRODUCT_MINOR}"
-
-# Gather command line options, and use reasonable defaults
-SetupOptions \
-        -input "$dbver.zip" \
-        -output "$dbver.msi" \
-        "$@"
-
-if [ "$OPT_USEBUILD" != '' ]; then
-    PRODUCT_BLDDIR="${OPT_USEBUILD}"
-    PRODUCT_SUB_BLDDIR="${OPT_USEBUILD}"
-fi
-
-# Choose the MS runtime libraries to use.
-if [ -e "/cygdrive/c/Program Files/Microsoft Visual Studio 8/Common7/Tools/vsvars32.bat" ]; then
-    MSVC_ROOT_DIR="/cygdrive/c/Program Files/Microsoft Visual Studio 8/"
-    PRODUCT_MSVC_VERSION=80
-fi
+PRODUCT_VERSION_MAJOR="$DB_VERSION_MAJOR"
+PRODUCT_VERSION_MINOR="$DB_VERSION_MINOR"
+PRODUCT_VERSION_PATCH="$DB_VERSION_PATCH"
+PRODUCT_STAGE=`pwd`/..
+PRODUCT_LICENSEDIR="${PRODUCT_STAGE}"
+PRODUCT_BLDDIR="${PRODUCT_STAGE}"
+REG_KEY_NAME="Berkeley DB"
+REG_KEY_VERSION="$PRODUCT_VERSION_MAJOR.$PRODUCT_VERSION_MINOR.$PRODUCT_VERSION_PATCH"
+DIST_DIR=`pwd`
+MSI_DIR=winmsi
 
 Progress "s_winmsi starting, errors to $ERRORLOG"
 
-# Fail fast for certain missing files
+SetProductDir
+
+Progress "Building from $PRODUCT_BLDDIR, $dbver is $PRODUCT_SUB_BLDDIR"
 
 RequireCygwin
 RequireJava
-RequireTcl
 RequireWix
-RequirePerl
+RequirePython
+RequireXQilla
 
-CreateStage
-cd ${PRODUCT_STAGE}
+#
+# Stage source files such as examples, etc *before*
+# the build to avoid build artifacts.
+#
+StageSourceComponents
 
+#
+# Build from source
+#
+BuildProduct
 
-CreateSources ${PRODUCT_STAGE}/Sources
+#
+# Stage runtime files in a directory tree that looks like
+# bin, lib, include, etc
+#
+StageRuntimeComponents
 
-# The docs are put into a separate feature set
-mv ${PRODUCT_STAGE}/Sources/docs ${PRODUCT_STAGE}/
+#
+# Build the license file as rtf
+#
+CreateLicenseRtf ../LICENSE License.rtf
 
-# Build everything unless we were told to use a preexisting build
-if [ "$OPT_USEBUILD" = '' ]; then
-    CreateWindowsBuild
-    CreateWindowsSystem
-    CreateInclude \
-        ${PRODUCT_SUB_BLDDIR}/installed_include \
-        ${PRODUCT_SUB_BLDDIR}/dbinc/* \
-        ${PRODUCT_SUB_BLDDIR}/dbinc_auto/* \
-        ${PRODUCT_SUB_BLDDIR}/build_windows/*.h \
-        ${PRODUCT_SUB_BLDDIR}/stl/*.h
-    CreateDbPerl
-fi
+#
+# Build runtime .wxs files
+#
+CreateRuntimeComponents
 
-if ! "$OPT_SKIPGEN" ; then
-  CreateLicenseRtf ../../../LICENSE license.rtf
-  CreateWixIncludeFiles
-fi
-
-CreateMsi ../dbcorewix.in dbcore.wxs "$OPT_OUTFILE"
+#
+# Create the .msi
+#
+CreateMsi
 
 Progress "s_winmsi finished, $OPT_OUTFILE created."
 exit 0

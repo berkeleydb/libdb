@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with Replicated Berkeley DB Applications" />
     <link rel="up" href="addfeatures.html" title="Chapter 5. Additional Features" />
-    <link rel="prev" href="noautoinit.html" title="Stop Auto-Initialization" />
+    <link rel="prev" href="rywc.html" title="Read-Your-Writes Consistency" />
     <link rel="next" href="bulk.html" title="Bulk Transfers" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">Client to Client Transfer</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="noautoinit.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="rywc.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 5. Additional Features</th>
           <td width="20%" align="right"> <a accesskey="n" href="bulk.html">Next</a></td>
         </tr>
@@ -69,9 +69,8 @@
             </p>
       <p>
                      When you are using the Replication Manager, you configure replica to replica synchronization by
-                     declaring one environment to be a peer of another environment. If an
-                     environment is a peer, then
-                     it can be used for synchronization purposes.
+                     declaring an environment to be a peer of another environment. If an
+                     environment is a peer, then it can be used for synchronization purposes.
              </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -89,10 +88,6 @@
                             network connections and so you are willing to
                             accept the overhead of waiting for
                             acknowledgments from those specific machines.
-                    </p>
-        <p>
-                            An environment is currently allowed to have only one
-                            peer.
                     </p>
         <p>
                         Note that peers are not required to be a
@@ -117,14 +112,14 @@
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="noautoinit.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="rywc.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="addfeatures.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="bulk.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Stop Auto-Initialization </td>
+          <td width="40%" align="left" valign="top">Read-Your-Writes Consistency </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

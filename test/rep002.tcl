@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2002-2009 Oracle.  All rights reserved.
+# Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,11 +16,6 @@ proc rep002 { method { niter 10 } { nclients 3 } { tnum "002" } args } {
 
 	source ./include.tcl
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Skip for record-based methods.
 	if { $checking_valid_methods } {
@@ -66,8 +61,8 @@ proc rep002 { method { niter 10 } { nclients 3 } { tnum "002" } args } {
 proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	source ./include.tcl
 	global repfiles_in_memory
-	global elect_timeout elect_serial
-	set elect_timeout(default) 5000000
+	global elect_serial
+	set elect_timeout 5000000
 
 	global rep_verbose
 	global verbose_type
@@ -104,7 +99,7 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	# Open a master.
 	repladd 1
 	set env_cmd(M) "berkdb_env_noerr -create -log_max 1000000 \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_logargs -errpfx MASTER $verbargs \
 	    $m_txnargs -rep_master -rep_transport \[list 1 replsend\]"
 	# In an election test, the -recovery arg must not go
@@ -117,7 +112,7 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create -home $clientdir($i) \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    $c_logargs($i) $c_txnargs($i) -rep_client -errpfx CLIENT$i \
 		    $verbargs -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i) $recargs]
@@ -172,8 +167,13 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 		set got_hold_elect($i) 0
 		set elect_pipe($i) INVALID
 	}
-	set elect_pipe(0) [start_election C0 $qdir $env_cmd(0) \
-	    [expr $nclients + 1] $nclients 20 $elect_timeout(default)]
+
+	# Client EIDs are always offset by 2 from the corresponding array index,
+	# so client 0's EID is 2.
+	# 
+	set envid 2
+	set elect_pipe(0) [start_election C0 $qdir $clientdir(0) $envid \
+	    [expr $nclients + 1] $nclients 20 $elect_timeout]
 
 	tclsleep 2
 
@@ -186,9 +186,11 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 
 		if { $he == 1 } {
 			incr elect_serial
+			# The master's EID is 1.
+			set envid 1
 			set elect_pipe(M) [start_election CM $qdir \
-			    $env_cmd(M) [expr $nclients + 1] $nclients \
-			    0 $elect_timeout(default)]
+			    $masterdir $envid [expr $nclients + 1] $nclients \
+			    0 $elect_timeout]
 			set got_hold_elect(M) 1
 		}
 
@@ -205,9 +207,9 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 				incr elect_serial
 				set pfx CHILD$i.$elect_serial
 				set elect_pipe($i) [start_election $pfx $qdir \
-			    	    $env_cmd($i) [expr $nclients + 1] \
+			    	    $clientdir($i) $envid [expr $nclients + 1] \
 				    $nclients 0 \
-				    $elect_timeout(default)]
+				    $elect_timeout]
 				set got_hold_elect($i) 1
 			}
 		}
@@ -262,7 +264,7 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 	# is $win.
 	set elector 1
 	set win 1
-	run_election env_cmd envlist err_cmd pri crash $qdir $m \
+	run_election envlist err_cmd pri crash $qdir $m \
 	    $elector $nsites $nvotes $nclients $win 1 "test$tnum.db"
 
 	# Hold an election with two clients at the same (winning) priority.
@@ -290,7 +292,7 @@ proc rep002_sub { method niter nclients tnum logset recargs largs } {
 		set win 1
 		set altwin 0
 		if {[catch {eval run_election \
-		    env_cmd envlist err_cmd pri crash $qdir $m $elector $nsites \
+		    envlist err_cmd pri crash $qdir $m $elector $nsites \
 		    $nvotes $nclients $win 1 "test$tnum.db"} res]} {
 			#
 			# If the primary winner didn't win, make sure

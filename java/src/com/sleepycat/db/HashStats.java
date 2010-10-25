@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -17,103 +17,173 @@ public class HashStats extends DatabaseStats {
     /* package */ HashStats() {}
 
     private int hash_magic;
-    /** TODO */
+    /**
+    The magic number that identifies the file as a Hash file.
+    */
     public int getMagic() {
         return hash_magic;
     }
 
     private int hash_version;
-    /** TODO */
+    /**
+    The version of the Hash database.
+    */
     public int getVersion() {
         return hash_version;
     }
 
     private int hash_metaflags;
-    /** TODO */
+    /**
+    The metadata flags.
+    */
     public int getMetaFlags() {
         return hash_metaflags;
     }
 
     private int hash_nkeys;
-    /** TODO */
+    /**
+    The number of unique keys in the database.
+    <p>
+    If the {@link com.sleepycat.db.Database#getStats Database.getStats} call was configured by the
+    {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method, the count will be the last
+    saved value unless it has never been calculated, in which case it
+    will be 0.
+    */
     public int getNumKeys() {
         return hash_nkeys;
     }
 
     private int hash_ndata;
-    /** TODO */
+    /**
+    The number of key/data pairs in the database.
+    <p>
+    If the {@link com.sleepycat.db.Database#getStats Database.getStats} call was configured by the
+    {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method, the count will be the last
+    saved value unless it has never been calculated, in which case it
+    will be 0.
+    */
     public int getNumData() {
         return hash_ndata;
     }
 
     private int hash_pagecnt;
-    /** TODO */
+    /**
+    The number of pages in the database.
+    <p>
+    Returned if {@link StatsConfig#setFast} was configured.
+    */
     public int getPageCount() {
         return hash_pagecnt;
     }
 
     private int hash_pagesize;
-    /** TODO */
+    /**
+    The underlying Hash database page (and bucket) size, in bytes.
+    */
     public int getPageSize() {
         return hash_pagesize;
     }
 
     private int hash_ffactor;
-    /** TODO */
+    /**
+    The desired fill factor specified at database-creation time.
+    */
     public int getFfactor() {
         return hash_ffactor;
     }
 
     private int hash_buckets;
-    /** TODO */
+    /**
+    The the number of hash buckets.
+    */
     public int getBuckets() {
         return hash_buckets;
     }
 
     private int hash_free;
-    /** TODO */
+    /**
+    The number of pages on the free list.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getFree() {
         return hash_free;
     }
 
     private long hash_bfree;
-    /** TODO */
+    /**
+    The number of bytes free on bucket pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public long getBFree() {
         return hash_bfree;
     }
 
     private int hash_bigpages;
-    /** TODO */
+    /**
+    The number of big key/data pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getBigPages() {
         return hash_bigpages;
     }
 
     private long hash_big_bfree;
-    /** TODO */
+    /**
+    The number of bytes free on big item pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public long getBigBFree() {
         return hash_big_bfree;
     }
 
     private int hash_overflows;
-    /** TODO */
+    /**
+    The number of overflow pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getOverflows() {
         return hash_overflows;
     }
 
     private long hash_ovfl_free;
-    /** TODO */
+    /**
+    The number of bytes free on overflow pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public long getOvflFree() {
         return hash_ovfl_free;
     }
 
     private int hash_dup;
-    /** TODO */
+    /**
+    The number of duplicate pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public int getDup() {
         return hash_dup;
     }
 
     private long hash_dup_free;
-    /** TODO */
+    /**
+    The number of bytes free on duplicate pages.
+<p>
+The information is only included if the {@link com.sleepycat.db.Database#getStats Database.getStats} call
+was not configured by the {@link com.sleepycat.db.StatsConfig#setFast StatsConfig.setFast} method.
+    */
     public long getDupFree() {
         return hash_dup_free;
     }

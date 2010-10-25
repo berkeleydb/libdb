@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -36,7 +36,7 @@ proc recd004 { method {select 0} args } {
 	env_cleanup $testdir
 	set testfile recd004.db
 	set testfile2 recd004-2.db
-	set eflags "-create -txn -home $testdir $envargs"
+	set eflags "-create -txn wrnosync -home $testdir $envargs"
 	puts "\tRecd004.a: creating environment"
 	set env_cmd "berkdb_env $eflags"
 	set dbenv [eval $env_cmd]
@@ -45,13 +45,13 @@ proc recd004 { method {select 0} args } {
 	# Create the databases. We will use a small page size so that we
 	# elevate quickly
 	set oflags "-create -mode 0644 \
-	    $omethod -env $dbenv $opts -pagesize 512 $testfile"
+	    -auto_commit $omethod -env $dbenv $opts -pagesize 512 $testfile"
 	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1
 	error_check_good db_close [$db close] 0
 	set oflags "-create -mode 0644 \
-	    $omethod -env $dbenv $opts -pagesize 512 $testfile2"
+	    -auto_commit $omethod -env $dbenv $opts -pagesize 512 $testfile2"
 	set db [eval {berkdb_open} $oflags]
 	error_check_bad db_open $db NULL
 	error_check_good db_open [is_substr $db db] 1

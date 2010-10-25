@@ -20,7 +20,7 @@
 static int __db_dbtxn_remove __P((DB *,
     DB_THREAD_INFO *, DB_TXN *, const char *, const char *));
 static int __db_subdb_remove __P((DB *,
-    DB_THREAD_INFO *, DB_TXN *, const char *, const char *));
+    DB_THREAD_INFO *, DB_TXN *, const char *, const char *, u_int32_t));
 
 /*
  * __env_dbremove_pp
@@ -51,8 +51,8 @@ __env_dbremove_pp(dbenv, txn, name, subdb, flags)
 	 * The actual argument checking is simple, do it inline, outside of
 	 * the replication block.
 	 */
-	if ((ret = __db_fchk(env,
-		"DB->remove", flags, DB_AUTO_COMMIT | DB_TXN_NOT_DURABLE)) != 0)
+	if ((ret = __db_fchk(env, "DB->remove", flags,
+		DB_AUTO_COMMIT | DB_NOSYNC | DB_TXN_NOT_DURABLE)) != 0)
 		return (ret);
 
 	ENV_ENTER(env, ip);
@@ -72,12 +72,11 @@ __env_dbremove_pp(dbenv, txn, name, subdb, flags)
 		if ((ret = __db_txn_auto_init(env, ip, &txn)) != 0)
 			goto err;
 		txn_local = 1;
-	} else
-		if (txn != NULL && !TXN_ON(env) &&
-		    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_CDSGROUP))) {
-			ret = __db_not_txn_env(env);
-			goto err;
-		}
+	} else if (txn != NULL && !TXN_ON(env) &&
+	    (!CDB_LOCKING(env) || !F_ISSET(txn, TXN_FAMILY))) {
+		ret = __db_not_txn_env(env);
+		goto err;
+	}
 	LF_CLR(DB_AUTO_COMMIT);
 
 	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
@@ -97,7 +96,7 @@ __env_dbremove_pp(dbenv, txn, name, subdb, flags)
 		 */
 		LOCK_INIT(dbp->handle_lock);
 		dbp->locker = NULL;
-	} else if (txn != NULL) {
+	} else if (IS_REAL_TXN(txn)) {
 		/*
 		 * We created this handle locally so we need to close it
 		 * and clean it up.  Unfortunately, it's holding transactional
@@ -166,7 +165,7 @@ __db_remove_pp(dbp, name, subdb, flags)
 		return (__db_mi_open(env, "DB->remove", 1));
 
 	/* Validate arguments. */
-	if ((ret = __db_fchk(env, "DB->remove", flags, 0)) != 0)
+	if ((ret = __db_fchk(env, "DB->remove", flags, DB_NOSYNC)) != 0)
 		return (ret);
 
 	/* Check for consistent transaction usage. */
@@ -248,7 +247,7 @@ __db_remove_int(dbp, ip, txn, name, subdb, flags)
 		MAKE_INMEM(dbp);
 		real_name = (char *)subdb;
 	} else if (subdb != NULL) {
-		ret = __db_subdb_remove(dbp, ip, txn, name, subdb);
+		ret = __db_subdb_remove(dbp, ip, txn, name, subdb, flags);
 		goto err;
 	}
 
@@ -333,6 +332,13 @@ __db_inmem_remove(dbp, txn, name)
 		if (dbp->locker == NULL &&
 		    (ret = __lock_id(env, NULL, &dbp->locker)) != 0)
 			return (ret);
+		if (!CDB_LOCKING(env) &&
+		    txn != NULL && F_ISSET(txn, TXN_INFAMILY)) {
+			if ((ret = __lock_addfamilylocker(env,
+			    txn->txnid, dbp->locker->id, 1)) != 0)
+				return (ret);
+			txn = NULL;
+		}
 		locker = txn == NULL ? dbp->locker : txn->locker;
 	}
 
@@ -368,11 +374,12 @@ __db_inmem_remove(dbp, txn, name)
  *	Remove a subdatabase.
  */
 static int
-__db_subdb_remove(dbp, ip, txn, name, subdb)
+__db_subdb_remove(dbp, ip, txn, name, subdb, flags)
 	DB *dbp;
 	DB_THREAD_INFO *ip;
 	DB_TXN *txn;
 	const char *name, *subdb;
+	u_int32_t flags;
 {
 	DB *mdbp, *sdbp;
 	int ret, t_ret;
@@ -429,8 +436,9 @@ err:
 	if ((t_ret = __db_close(sdbp, txn, DB_NOSYNC)) != 0 && ret == 0)
 		ret = t_ret;
 
-	if (mdbp != NULL &&
-	    (t_ret = __db_close(mdbp, txn, DB_NOSYNC)) != 0 && ret == 0)
+	if (mdbp != NULL && (t_ret = __db_close(mdbp, txn,
+	    (LF_ISSET(DB_NOSYNC) || txn != NULL) ? DB_NOSYNC : 0)) != 0 &&
+	    ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -465,7 +473,7 @@ __db_dbtxn_remove(dbp, ip, txn, name, subdb)
 	DB_TEST_RECOVERY(dbp, DB_TEST_PREDESTROY, ret, name);
 
 	if ((ret = __db_rename_int(dbp,
-	    txn->thread_info, txn, name, subdb, tmpname)) != 0)
+	    txn->thread_info, txn, name, subdb, tmpname, DB_NOSYNC)) != 0)
 		goto err;
 
 	/*

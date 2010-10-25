@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2004, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * http://www.apache.org/licenses/LICENSE-2.0.txt
  * 
@@ -338,8 +338,12 @@ static zend_function_entry Db4_functions[] = {
         ZEND_NAMED_FE(cursor, _wrap_db_cursor, NULL)
         ZEND_NAMED_FE(del, _wrap_db_del, NULL)
         ZEND_NAMED_FE(get, _wrap_db_get, NULL)
-		ZEND_NAMED_FE(get_encrypt_flags, _wrap_db_get_encrypt_flags, NULL)
+	ZEND_NAMED_FE(get_encrypt_flags, _wrap_db_get_encrypt_flags, NULL)
+#if PHP_MAJOR_VERSION <= 4
         ZEND_NAMED_FE(pget, _wrap_db_pget, second_arg_force_ref)
+#else
+	ZEND_NAMED_FE(pget, _wrap_db_pget, NULL)
+#endif
         ZEND_NAMED_FE(get_type, _wrap_db_get_type, NULL)
         ZEND_NAMED_FE(join, _wrap_db_join, NULL)
         ZEND_NAMED_FE(put, _wrap_db_put, NULL)
@@ -618,7 +622,6 @@ PHP_MINIT_FUNCTION(db4)
     REGISTER_LONG_CONSTANT("DB_VERB_RECOVERY", DB_VERB_RECOVERY, CONST_CS | CONST_PERSISTENT);
     REGISTER_LONG_CONSTANT("DB_VERB_REPLICATION", DB_VERB_REPLICATION, CONST_CS | CONST_PERSISTENT);
     REGISTER_LONG_CONSTANT("DB_VERB_WAITSFOR", DB_VERB_WAITSFOR, CONST_CS | CONST_PERSISTENT);
-    REGISTER_LONG_CONSTANT("DB_DBM_HSEARCH", DB_DBM_HSEARCH, CONST_CS | CONST_PERSISTENT);
 	return SUCCESS;
 }
 /* }}} */

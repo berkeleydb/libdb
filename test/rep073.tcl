@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -15,11 +15,6 @@ proc rep073 { method { niter 200 } { tnum "073" } args } {
 	source ./include.tcl
 	global databases_in_memory
 	global repfiles_in_memory
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Valid for all access methods.
 	if { $checking_valid_methods } {
@@ -140,9 +135,9 @@ proc rep073_sub { method niter tnum logset recargs largs } {
 	}
 
 	puts "\tRep$tnum.b: Open non-durable databases on master and client."
-	set mdb [berkdb_open -create -auto_commit \
+	set mdb [eval berkdb_open -create -auto_commit \
 	    -btree -env $masterenv -notdurable $mtestfile]
-	set cdb [berkdb_open -create -auto_commit \
+	set cdb [eval berkdb_open -create -auto_commit \
 	    -btree -env $clientenv -notdurable $ctestfile]
 	process_msgs $envlist
 
@@ -150,9 +145,9 @@ proc rep073_sub { method niter tnum logset recargs largs } {
 	# Look for the file if it's on-disk, and try to open a handle
 	# if it's in-memory.
 	if { $databases_in_memory } { 
-		catch { berkdb_open -env $clientenv $mtestfile } ret
+		catch { eval berkdb_open -env $clientenv $mtestfile } ret
 		error_check_good mtestfile [is_substr $ret "no such file"] 1
-		catch { berkdb_open -env $masterenv $ctestfile } ret
+		catch { eval berkdb_open -env $masterenv $ctestfile } ret
 		error_check_good ctestfile [is_substr $ret "no such file"] 1
 	} else {
 		error_check_good master_not_on_client \
@@ -170,7 +165,7 @@ proc rep073_sub { method niter tnum logset recargs largs } {
 	incr start $niter
 	process_msgs $envlist
 	if { $databases_in_memory } {
-		catch { berkdb_open -env $clientenv $mtestfile } ret
+		catch { eval berkdb_open -env $clientenv $mtestfile } ret
 		error_check_good mtestfile [is_substr $ret "no such file"] 1
 	} else {
 		error_check_good master_not_on_client \

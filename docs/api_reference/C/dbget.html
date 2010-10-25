@@ -106,7 +106,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1634398"></a>Parameters</h3>
+              <h3 class="title"><a id="id3951165"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -114,7 +114,52 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1634708"></a>data</h4>
+                <h4 class="title"><a id="id3951301"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
+                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3951425"></a>key</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a> operated on.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3951339"></a>pkey</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>pkey</strong></span> parameter is the return key
+                          from the primary database.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3951161"></a>data</h4>
               </div>
             </div>
           </div>
@@ -126,7 +171,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1634754"></a>flags</h4>
+                <h4 class="title"><a id="id3951078"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -319,57 +364,12 @@ DB-&gt;pget(DB *db,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1635213"></a>key</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The key <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a> operated on.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1634709"></a>pkey</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>pkey</strong></span> parameter is the return key
-                          from the primary database.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1635117"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
-                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1634360"></a>Errors</h3>
+              <h3 class="title"><a id="id3951689"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -385,7 +385,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635426"></a>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="id3952130"></a>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -397,7 +397,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635125"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="id3951946"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -410,7 +410,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635087"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3951920"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -423,7 +423,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635112"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="id3951857"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -437,7 +437,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1634745"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3951999"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -456,7 +456,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635405"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="id3952229"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -468,7 +468,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635202"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3952175"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -480,7 +480,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1634888"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="id3951104"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -492,7 +492,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1635167"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3952219"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -515,7 +515,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1635252"></a>Class</h3>
+              <h3 class="title"><a id="id3951512"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -527,7 +527,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1634720"></a>See Also</h3>
+              <h3 class="title"><a id="id3951802"></a>See Also</h3>
             </div>
           </div>
         </div>

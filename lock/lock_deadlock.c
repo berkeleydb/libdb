@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -42,11 +42,12 @@ typedef struct {
 	u_int32_t	last_ndx;
 	u_int32_t	last_locker_id;
 	db_pgno_t	pgno;
+	u_int32_t	priority;
 } locker_info;
 
 static int __dd_abort __P((ENV *, locker_info *, int *));
-static int __dd_build __P((ENV *, u_int32_t,
-	    u_int32_t **, u_int32_t *, u_int32_t *, locker_info **, int*));
+static int __dd_build __P((ENV *, u_int32_t, u_int32_t **,
+	    u_int32_t *, u_int32_t *, locker_info **, int*, int*));
 static int __dd_find __P((ENV *,
 	    u_int32_t *, locker_info *, u_int32_t, u_int32_t, u_int32_t ***));
 static int __dd_isolder __P((u_int32_t, u_int32_t, u_int32_t, u_int32_t));
@@ -124,7 +125,7 @@ __lock_detect(env, atype, rejectp)
 	u_int32_t *bitmap, *copymap, **deadp, **deadlist, *tmpmap;
 	u_int32_t i, cid, keeper, killid, limit, nalloc, nlockers;
 	u_int32_t lock_max, txn_max;
-	int ret, status;
+	int pri_set, ret, status;
 
 	/*
 	 * If this environment is a replication client, then we must use the
@@ -148,7 +149,7 @@ __lock_detect(env, atype, rejectp)
 	timespecclear(&now);
 	if (region->need_dd == 0 &&
 	     (!timespecisset(&region->next_timeout) ||
-	     !__lock_expired(env, &now, &region->next_timeout))) {
+	     !__clock_expired(env, &now, &region->next_timeout))) {
 		return (0);
 	}
 	if (region->need_dd == 0)
@@ -159,7 +160,7 @@ __lock_detect(env, atype, rejectp)
 
 	/* Build the waits-for bitmap. */
 	ret = __dd_build(env,
-	    atype, &bitmap, &nlockers, &nalloc, &idmap, rejectp);
+	    atype, &bitmap, &nlockers, &nalloc, &idmap, rejectp, &pri_set);
 	lock_max = region->stat.st_cur_maxid;
 	if (ret != 0 || atype == DB_LOCK_EXPIRE)
 		return (ret);
@@ -232,7 +233,7 @@ __lock_detect(env, atype, rejectp)
 		    tmpmap, copymap, nlockers, nalloc, keeper) == 0)
 			killid = BAD_KILLID;
 
-		if (killid != BAD_KILLID &&
+		if (!pri_set && killid != BAD_KILLID &&
 		    (atype == DB_LOCK_DEFAULT || atype == DB_LOCK_RANDOM))
 			goto dokill;
 
@@ -267,6 +268,12 @@ __lock_detect(env, atype, rejectp)
 			} else
 				cid = killid;
 
+			if (idmap[i].priority > idmap[cid].priority)
+				continue;
+			if (idmap[i].priority < idmap[cid].priority)
+				goto use_next;
+
+			/* Equal priorities, break ties using atype. */
 			switch (atype) {
 			case DB_LOCK_OLDEST:
 				if (__dd_isolder(idmap[cid].id,
@@ -293,7 +300,7 @@ __lock_detect(env, atype, rejectp)
 				break;
 			case DB_LOCK_DEFAULT:
 			case DB_LOCK_RANDOM:
-				goto dokill;
+				continue;
 
 			default:
 				killid = BAD_KILLID;
@@ -337,17 +344,17 @@ dokill:		if (killid == BAD_KILLID) {
 				__db_errx(env,
 				    "warning: unable to abort locker %lx",
 				    (u_long)idmap[killid].id);
-			else 
+			else
 				region->need_dd = 1;
 		} else if (FLD_ISSET(env->dbenv->verbose, DB_VERB_DEADLOCK))
 			__db_msg(env,
 			    "Aborting locker %lx", (u_long)idmap[killid].id);
 	}
-err:	if(copymap != NULL)
+err:	if (copymap != NULL)
 		__os_free(env, copymap);
 	if (deadlist != NULL)
 		__os_free(env, deadlist);
-	if(tmpmap != NULL)
+	if (tmpmap != NULL)
 		__os_free(env, tmpmap);
 	__os_free(env, bitmap);
 	__os_free(env, idmap);
@@ -365,7 +372,7 @@ err:	if(copymap != NULL)
 /*
  * __dd_build --
  *	Build the lock dependency bit maps.
- * Notes on syncronization:  
+ * Notes on syncronization:
  *	LOCK_SYSTEM_LOCK is used to hold objects locked when we have
  *		a single partition.
  *	LOCK_LOCKERS is held while we are walking the lockers list and
@@ -374,11 +381,11 @@ err:	if(copymap != NULL)
  */
 
 static int
-__dd_build(env, atype, bmp, nlockers, allocp, idmap, rejectp)
+__dd_build(env, atype, bmp, nlockers, allocp, idmap, rejectp, pri_set)
 	ENV *env;
 	u_int32_t atype, **bmp, *nlockers, *allocp;
 	locker_info **idmap;
-	int *rejectp;
+	int *pri_set, *rejectp;
 {
 	struct __db_lock *lp;
 	DB_LOCKER *lip, *lockerp, *child;
@@ -423,7 +430,7 @@ skip:		LOCK_DD(env, region);
 				lockerp = (DB_LOCKER *)
 				    R_ADDR(&lt->reginfo, lp->holder);
 				if (lp->status == DB_LSTAT_WAITING) {
-					if (__lock_expired(env,
+					if (__clock_expired(env,
 					    &now, &lockerp->lk_expire)) {
 						lp->status = DB_LSTAT_EXPIRED;
 						MUTEX_UNLOCK(
@@ -493,11 +500,17 @@ skip:		LOCK_DD(env, region);
 	 * First we go through and assign each locker a deadlock detector id.
 	 */
 	id = 0;
+	*pri_set = 0;
 	SH_TAILQ_FOREACH(lip, &region->lockers, ulinks, __db_locker) {
 		if (lip->master_locker == INVALID_ROFF) {
 			DB_ASSERT(env, id < count);
 			lip->dd_id = id++;
 			id_array[lip->dd_id].id = lip->id;
+			id_array[lip->dd_id].priority = lip->priority;
+			if (lip->dd_id > 0 &&
+			    id_array[lip->dd_id-1].priority != lip->priority)
+				*pri_set = 1;
+
 			switch (atype) {
 			case DB_LOCK_MINLOCKS:
 			case DB_LOCK_MAXLOCKS:
@@ -599,7 +612,7 @@ again:		memset(bitmap, 0, count * sizeof(u_int32_t) * nentries);
 		    lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
 			lockerp = (DB_LOCKER *)R_ADDR(&lt->reginfo, lp->holder);
 			if (lp->status == DB_LSTAT_WAITING) {
-				if (__lock_expired(env,
+				if (__clock_expired(env,
 				    &now, &lockerp->lk_expire)) {
 					lp->status = DB_LSTAT_EXPIRED;
 					MUTEX_UNLOCK(env, lp->mtx_lock);

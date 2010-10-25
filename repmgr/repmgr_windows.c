@@ -1,14 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db_config.h"
 
-#define	__INCLUDE_NETWORKING	1
 #include "db_int.h"
 
 /* Convert time-out from microseconds to milliseconds, rounding up. */
@@ -61,15 +60,21 @@ __repmgr_thread_start(env, runnable)
 	ENV *env;
 	REPMGR_RUNNABLE *runnable;
 {
-	HANDLE thread_id;
+	HANDLE event, thread_id;
 
 	runnable->finished = FALSE;
+	runnable->env = env;
 
-	thread_id = CreateThread(NULL, 0,
-	    (LPTHREAD_START_ROUTINE)runnable->run, env, 0, NULL);
-	if (thread_id == NULL)
+	if ((event = CreateEvent(NULL, TRUE, FALSE, NULL)) == NULL)
 		return (GetLastError());
+	thread_id = CreateThread(NULL, 0,
+	    (LPTHREAD_START_ROUTINE)runnable->run, runnable, 0, NULL);
+	if (thread_id == NULL) {
+		CloseHandle(event);
+		return (GetLastError());
+	}
 	runnable->thread_id = thread_id;
+	runnable->quit_event = event;
 	return (0);
 }
 
@@ -77,9 +82,17 @@ int
 __repmgr_thread_join(thread)
 	REPMGR_RUNNABLE *thread;
 {
-	if (WaitForSingleObject(thread->thread_id, INFINITE) == WAIT_OBJECT_0)
-		return (0);
-	return (GetLastError());
+	int ret;
+
+	ret = 0;
+	if (WaitForSingleObject(thread->thread_id, INFINITE) != WAIT_OBJECT_0)
+		ret = GetLastError();
+	if (!CloseHandle(thread->thread_id) && ret == 0)
+		ret = GetLastError();
+	if (!CloseHandle(thread->quit_event) && ret == 0)
+		ret = GetLastError();
+
+	return (ret);
 }
 
 int
@@ -354,11 +367,15 @@ __repmgr_init(env)
 	    NULL)) == NULL)		/* name */
 		goto geterr;
 
-	if ((db_rep->queue_nonempty = CreateEvent(NULL, TRUE, FALSE, NULL))
+	if ((db_rep->msg_avail = CreateEvent(NULL, TRUE, FALSE, NULL))
 	    == NULL)
 		goto geterr;
 
-	if ((db_rep->check_election = CreateEvent(NULL, FALSE, FALSE, NULL))
+	if ((db_rep->check_election = CreateEvent(NULL, TRUE, FALSE, NULL))
+	    == NULL)
+		goto geterr;
+
+	if ((db_rep->check_rereq = CreateEvent(NULL, FALSE, FALSE, NULL))
 	    == NULL)
 		goto geterr;
 
@@ -381,16 +398,18 @@ __repmgr_init(env)
 geterr:
 	ret = GetLastError();
 err:
+	if (db_rep->check_rereq != NULL)
+		CloseHandle(db_rep->check_rereq);
 	if (db_rep->check_election != NULL)
 		CloseHandle(db_rep->check_election);
-	if (db_rep->queue_nonempty != NULL)
-		CloseHandle(db_rep->queue_nonempty);
+	if (db_rep->msg_avail != NULL)
+		CloseHandle(db_rep->msg_avail);
 	if (db_rep->signaler != NULL)
 		CloseHandle(db_rep->signaler);
 	if (table != NULL)
 		__os_free(env, table);
-	db_rep->signaler =
-	    db_rep->queue_nonempty = db_rep->check_election = NULL;
+	db_rep->signaler = db_rep->msg_avail =
+	    db_rep->check_election = db_rep->check_rereq = NULL;
 	db_rep->waiters = NULL;
 	(void)WSACleanup();
 	return (ret);
@@ -418,10 +437,13 @@ __repmgr_deinit(env)
 	__os_free(env, db_rep->waiters->array);
 	__os_free(env, db_rep->waiters);
 
+	if (!CloseHandle(db_rep->check_rereq) && ret == 0)
+		ret = GetLastError();
+
 	if (!CloseHandle(db_rep->check_election) && ret == 0)
 		ret = GetLastError();
 
-	if (!CloseHandle(db_rep->queue_nonempty) && ret == 0)
+	if (!CloseHandle(db_rep->msg_avail) && ret == 0)
 		ret = GetLastError();
 
 	if (!CloseHandle(db_rep->signaler) && ret == 0)
@@ -454,6 +476,23 @@ __repmgr_signal(v)
 	cond_var_t *v;
 {
 	return (SetEvent(*v) ? 0 : GetLastError());
+}
+
+int
+__repmgr_wake_msngers(env, n)
+	ENV *env;
+	u_int n;
+{
+	DB_REP *db_rep;
+	u_int i;
+
+	db_rep = env->rep_handle;
+
+	/* Ask all threads beyond index 'n' to shut down. */
+	for (i = n; i< db_rep->nthreads; i++)
+		if (!SetEvent(db_rep->messengers[i]->quit_event))
+			return (GetLastError());
+	return (0);
 }
 
 int

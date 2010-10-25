@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -521,6 +521,8 @@ __lock_dump_locker(env, mbp, lt, lip)
 	    mbp, "%8lx dd=%2ld locks held %-4d write locks %-4d pid/thread %s",
 	    (u_long)lip->id, (long)lip->dd_id, lip->nlocks, lip->nwrites,
 	    env->dbenv->thread_id_string(env->dbenv, lip->pid, lip->tid, buf));
+	__db_msgadd(env, mbp, " priority %-10u", lip->priority);
+
 	if (timespecisset(&lip->tx_expire)) {
 #ifdef HAVE_STRFTIME
 		time_t t = (time_t)lip->tx_expire.tv_sec;

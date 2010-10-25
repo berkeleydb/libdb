@@ -66,7 +66,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686373"></a>Parameters</h3>
+              <h3 class="title"><a id="id3674297"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -74,7 +74,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686298"></a>flags</h4>
+                <h4 class="title"><a id="id3675013"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -152,7 +152,12 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
                  impossible.
             </p>
                 <p>
-                 Replication applications will rarely want to configure automatic log
+		 Replication Manager applications operate in a
+		 group-aware manner for log file removal, and automatic log
+		 file removal simplifies the application.
+       	    </p>
+                <p>
+                 Replication Base API applications will rarely want to configure automatic log
                  file removal as it increases the likelihood a master will be unable to
                  satisfy a client's request for a recent log record.
             </p>
@@ -228,7 +233,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686741"></a>onoff</h4>
+                <h4 class="title"><a id="id3675380"></a>onoff</h4>
               </div>
             </div>
           </div>
@@ -242,7 +247,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686848"></a>Errors</h3>
+              <h3 class="title"><a id="id3675067"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -260,7 +265,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1686458"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3675315"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -273,7 +278,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686503"></a>Class</h3>
+              <h3 class="title"><a id="id3675356"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -285,7 +290,7 @@ DbEnv::log_set_config(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1686673"></a>See Also</h3>
+              <h3 class="title"><a id="id3675410"></a>See Also</h3>
             </div>
           </div>
         </div>

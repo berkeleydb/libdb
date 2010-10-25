@@ -4,14 +4,16 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
 
 import com.sleepycat.db.internal.DbUtil;
 
-/** TODO */
+/**
+Statistics returned by a {@link Database#compact} operation.
+*/
 public class CompactStats {
     // no public constructor
     /* package */ CompactStats() {}
@@ -38,32 +40,50 @@ public class CompactStats {
         return compact_pages;
     }
 
+    private int compact_empty_buckets;
+    /** The number of empty hash buckets that were found the compaction phase. */
+    public int getEmptyBuckets() {
+        return compact_empty_buckets;
+    }
+
     private int compact_pages_free;
-    /** TODO */
+    /**
+    The number of database pages free during the compaction phase.
+    */
     public int getPagesFree() {
         return compact_pages_free;
     }
 
     private int compact_pages_examine;
-    /** TODO */
+    /**
+    The number of database pages reviewed during the compaction phase.
+    */
     public int getPagesExamine() {
         return compact_pages_examine;
     }
 
     private int compact_levels;
-    /** TODO */
+    /**
+    The number of levels removed from the Btree or Recno database during the compaction phase.
+    */
     public int getLevels() {
         return compact_levels;
     }
 
     private int compact_deadlock;
-    /** TODO */
+    /**
+    If no transaction parameter was specified to
+    {@link Database#compact Database.compact}, the number of deadlocks which
+    occurred.
+    */
     public int getDeadlock() {
         return compact_deadlock;
     }
 
     private int compact_pages_truncated;
-    /** TODO */
+    /**
+    The number of database pages returned to the filesystem.
+    */
     public int getPagesTruncated() {
         return compact_pages_truncated;
     }
@@ -73,12 +93,16 @@ public class CompactStats {
         return compact_truncate;
     }
 
-    /** TODO */
+    /**
+    For convenience, the CompactStats class has a toString method that lists
+    all the data fields.
+    */
     public String toString() {
         return "CompactStats:"
             + "\n  compact_fillpercent=" + compact_fillpercent
             + "\n  compact_timeout=" + compact_timeout
             + "\n  compact_pages=" + compact_pages
+            + "\n  compact_empty_buckets=" + compact_empty_buckets
             + "\n  compact_pages_free=" + compact_pages_free
             + "\n  compact_pages_examine=" + compact_pages_examine
             + "\n  compact_levels=" + compact_levels

@@ -2,7 +2,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -364,6 +364,8 @@ private:
 	u_int32_t flags_;
 	u_int32_t construct_flags_;
 
+	static int alt_close(DB *, u_int32_t);
+
 public:
 	// These are public only because they need to be called
 	// via C callback functions.  They should never be used by
@@ -522,6 +524,8 @@ public:
 	virtual int set_lk_max_objects(u_int32_t);
 	virtual int get_lk_partitions(u_int32_t *);
 	virtual int set_lk_partitions(u_int32_t);
+	virtual int get_lk_priority(u_int32_t, u_int32_t *);
+	virtual int set_lk_priority(u_int32_t, u_int32_t);
 	virtual int get_mp_mmapsize(size_t *);
 	virtual int set_mp_mmapsize(size_t);
 	virtual int get_mp_max_openfd(int *);
@@ -555,9 +559,11 @@ public:
 	virtual int get_verbose(u_int32_t which, int *);
 	virtual int set_verbose(u_int32_t which, int);
 
-	// Version information.  A static method so it can be obtained anytime.
+	// Version information.  Static methods, can be called at any time.
 	//
 	static char *version(int *major, int *minor, int *patch);
+	static char *full_version(int *family, int *release,
+	    int *major, int *minor, int *patch);
 
 	// Convert DB errors to strings
 	static char *strerror(int);
@@ -612,6 +618,7 @@ public:
 	virtual int log_set_config(u_int32_t, int);
 	virtual int log_stat(DB_LOG_STAT **spp, u_int32_t flags);
 	virtual int log_stat_print(u_int32_t flags);
+	virtual int log_verify(DB_LOG_VERIFY_CONFIG *);
 
 	// Mpool functions
 	//
@@ -994,8 +1001,10 @@ public:
 	int discard(u_int32_t flags);
 	u_int32_t id();
 	int get_name(const char **namep);
+	int get_priority(u_int32_t *priorityp);
 	int prepare(u_int8_t *gid);
 	int set_name(const char *name);
+	int set_priority(u_int32_t priority);
 	int set_timeout(db_timeout_t timeout, u_int32_t flags);
 
 	virtual DB_TXN *get_DB_TXN()

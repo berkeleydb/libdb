@@ -1,0 +1,112 @@
+#!/bin/sh
+#
+# This script pulls the ch-werner ODBC and JDBC packages into a Berkeley DB
+# source tree.
+
+# javasqlite-<date>.tar.gz and sqliteodbc-X.XX.tar.gz packages must be
+# in the parent of this repository/source tree.
+
+# The packages can be downloaded from (update to current version):
+# http://www.ch-werner.de/sqliteodbc/sqliteodbc-0.85.tar.gz
+# http://www.ch-werner.de/javasqlite/javasqlite-20100131.tar.gz
+
+if [ "$1x" != "x" ]; then
+	PKG_ROOT=$1
+else
+	PKG_ROOT=.
+fi
+ODBC_PACKAGE=`ls $PKG_ROOT/../../sqliteodbc-*.tar.gz | tail -1`
+JDBC_PACKAGE=`ls $PKG_ROOT/../../javasqlite-*.tar.gz | tail -1`
+
+if [ ! -e $ODBC_PACKAGE ]; then
+	echo "No ODBC package found, can't continue."
+	echo "Download it from: http://www.ch-werner.de/sqliteodbc"
+	exit 1
+fi
+if [ ! -e $JDBC_PACKAGE ]; then
+	echo "No JDBC package found, can't continue."
+	echo "Download it from: http://www.ch-werner.de/javasqlite"
+	exit 1
+fi
+
+SQL_DIR=../sql/
+ODBC_DIR=$SQL_DIR/odbc
+JDBC_DIR=$SQL_DIR/jdbc
+mkdir -p $ODBC_DIR
+mkdir -p $JDBC_DIR
+
+HOMEDIR=`pwd`
+
+# Don't assume GNU tar
+dir=`basename $ODBC_PACKAGE .tar.gz`
+gzip -c -d $ODBC_PACKAGE | tar xf -
+mv $dir/* $ODBC_DIR || exit $?
+
+dir=`basename $JDBC_PACKAGE .tar.gz`
+gzip -c -d $JDBC_PACKAGE | tar xf -
+mv $dir/* $JDBC_DIR || exit $?
+
+# Remove unnecessary files from packages.
+
+# There is a symbolic link in the ODBC package: that can't go into a zip file.
+rm -f $ODBC_DIR/source
+
+# TCC has a conflicting license, so we can't ship it.
+rm -rf $ODBC_DIR/tcc* $ODBC_DIR/sqlite+tcc.c $ODBC_DIR/README.sqlite+tcc
+
+# Remove useless makefiles, they create confusion.
+for f in `ls $JDBC_DIR/*mak`; do
+	# TODO: It would be nice to pull this release number from the SQL
+	#       code in the repository.
+	if [ `basename $f` = "sqlite-3.6.22.mak" ]; then
+		continue;
+	fi
+	rm -f $f
+done
+
+# Remove some SQLite format databases from the package.
+rm -f $JDBC_DIR/db $JDBC_DIR/db2 $JDBC_DIR/db3
+
+# Remove other bits and pieces that aren't relevant.
+rm -rf $JDBC_DIR/debian $ODBC_DIR/*ming* $ODBC_DIR/README.* $ODBC_DIR/*mak
+
+# Patch the JDBC and ODBC build files for autoconf, so the Berkeley DB library
+# can be added to the link command.
+
+echo "
+--- Makefile.in 
++++ Makefile.in
+50c50
+< LIBS=	@SQLITE_LIB@ @SQLITE3_LIB@
+---
+> LIBS=	@SQLITE_LIB@ @SQLITE3_LIB@ @LDFLAGS@" > s_sql_drivers.tmpdiff
+
+( cd ../sql/jdbc && patch < ../../dist/s_sql_drivers.tmpdiff)
+
+echo "
+--- Makefile.in 
++++ Makefile.in
+30c30
+< ODBC_LIB =	@ODBC_LIB@
+---
+> ODBC_LIB =	@ODBC_LIB@ @LDFLAGS@" > s_sql_drivers.tmpdiff
+
+( cd ../sql/odbc && patch < ../../dist/s_sql_drivers.tmpdiff)
+rm -f s_sql_drivers.tmpdiff
+
+# Generate the resource3.h file needed by ODBC on Windows.
+VERS=`cat ../sql/odbc/VERSION`
+VERS_C=`echo $VERS | sed -e 's/\([0-9]\+\)[.]\([0-9]\+\).*/\1,\2/g'`
+cat ../sql/odbc/resource.h.in | sed -e "s/--VERS_C--/$VERS_C/g" -e "s/--VERS--/$VERS/g" > ../sql/odbc/resource3.h
+
+# Let sqlite3odb.rc include "../sql/generated/sqlite3.h" instead of sqlite3.h 
+mv ../sql/odbc/sqlite3odbc.rc ../sql/odbc/sqlite3odbc.rc.in
+cat ../sql/odbc/sqlite3odbc.rc.in | sed -e 's/sqlite3.h/..\/sql\/generated\/sqlite3.h/g' > ../sql/odbc/sqlite3odbc.rc
+
+# Generate Constants.java needed by JDBC on Windows
+gcc -DHAVE_SQLITE3 -I../sql/generated -o mkconst ../sql/jdbc/native/mkconst.c
+./mkconst > $JDBC_DIR/SQLite/Constants.java
+
+# Add the wildcard below since gcc on Windows appends a .exe
+rm -f mkconst*
+

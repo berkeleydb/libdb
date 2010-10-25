@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2008-2009 Oracle.  All rights reserved.
+# Copyright (c) 2008, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep084
 # TEST  Abbreviated internal init for named in-memory databases (NIMDBs).
@@ -8,11 +8,6 @@
 #
 proc rep084 { method { niter 200 } { tnum "084" } args } {
 	source ./include.tcl
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win9x platform."
-		return
-	}
 
 	# As an internal init test, run for btree and queue only.
 	# As an in-memory database test, skip queueext. 
@@ -100,13 +95,13 @@ proc rep084_sub { method niter tnum  largs } {
 
 	# Restart the clients with recovery, which causes the NIMDB to
 	# disappear.  Before syncing with the master, verify that the NIMDB is
-	# gone.  Verify that the NOAUTOINIT setting does not inhibit NIMDB
+	# gone.  Verify that the AUTOINIT off setting does not inhibit NIMDB
 	# materialization.
 	puts "\tRep$tnum.b: restart with recovery; \
 check expected database existence."
 	set envs(B) [eval $env_B_cmd -rep_client -recover]
 	set envs(C) [eval $env_C_cmd -rep_client -recover]
-	$envs(C) rep_config {noautoinit on}
+	$envs(C) rep_config {autoinit off}
 
 	[berkdb_open -env $envs(B) -auto_commit "test.db"] close
 	[berkdb_open -env $envs(C) -auto_commit "test.db"] close

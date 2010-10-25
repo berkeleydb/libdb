@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -35,6 +35,8 @@ struct __txn_logrec;	typedef struct __txn_logrec DB_TXNLOGREC;
 #define	DEF_MAX_TXNS	100		/* Default max transactions. */
 #define	TXN_NSLOTS	4		/* Initial slots to hold DB refs */
 
+#define	TXN_PRIORITY_DEFAULT	DB_LOCK_DEFPRIORITY
+
 /*
  * Internal data maintained in shared memory for each transaction.
  */
@@ -48,7 +50,7 @@ typedef struct __txn_detail {
 	DB_LSN	begin_lsn;		/* LSN of begin record. */
 	roff_t	parent;			/* Offset of transaction's parent. */
 	roff_t	name;			/* Offset of txn name. */
-
+	
 	u_int32_t	nlog_dbs;	/* Number of databases used. */
 	u_int32_t	nlog_slots;	/* Number of allocated slots. */
 	roff_t		log_dbs;	/* Databases used. */
@@ -59,6 +61,8 @@ typedef struct __txn_detail {
 	db_mutex_t	mvcc_mtx;	/* Version mutex. */
 	u_int32_t	mvcc_ref;	/* Number of buffers created by this
 					   transaction still in cache.  */
+
+	u_int32_t	priority;	/* Deadlock resolution priority. */
 
 	SH_TAILQ_HEAD(__tdkids)	kids;	/* Linked list of child txn detail. */
 	SH_TAILQ_ENTRY		klinks;
@@ -130,6 +134,18 @@ struct __db_txnregion {
 					/* active TXN list */
 	SH_TAILQ_HEAD(__active) active_txn;
 	SH_TAILQ_HEAD(__mvcc) mvcc_txn;
+};
+
+/*
+ * DB_COMMIT_INFO --
+ *	Meta-data uniquely describing a transaction commit across a replication
+ *	group.
+ */
+struct __db_commit_info {
+	u_int32_t	version;	/* Stored format version. */
+	u_int32_t	gen;		/* Replication master generation. */
+	u_int32_t	envid;		/* Unique env ID of master. */
+	DB_LSN		lsn;		/* LSN of commit log record. */
 };
 
 /*

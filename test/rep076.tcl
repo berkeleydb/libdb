@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -27,10 +27,6 @@ proc rep076 { method args } {
 	global repfiles_in_memory
 
 	set tnum "076"
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree only.
 	if { $checking_valid_methods } {
@@ -116,7 +112,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	set envlist {}
 	repladd 1
 	set env_cmd(M) "berkdb_env -create -log_max 1000000 $verbargs \
-	    -event rep_event $repmemargs \
+	    -event $repmemargs \
 	    -home $masterdir $m_txnargs $m_logargs -rep_master \
 	    -errpfx MASTER -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $env_cmd(M)]
@@ -127,7 +123,7 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 		set envid [expr $i + 2]
 		repladd $envid
 		set env_cmd($i) "berkdb_env_noerr -create $verbargs \
-		    -event rep_event $repmemargs \
+		    -event $repmemargs \
 		    -home $clientdir($i) $c_txnargs($i) $c_logargs($i) \
 		    -rep_client -rep_transport \[list $envid replsend\]"
 		set clientenv($i) [eval $env_cmd($i)]
@@ -182,14 +178,14 @@ proc rep076_sub { method nclients tnum logset winset largs } {
 	# Run election where winner will ignore its election and
 	# not be made master.
 	puts "\tRep$tnum: First winner ignores its election."
-	run_election env_cmd envlist err_cmd pri crash $qdir $m\
+	run_election envlist err_cmd pri crash $qdir $m\
 	    $elector $nsites $nvotes $nclients $winner1 0 $dbname 1
 
 	# Run second election where winner accepts its election and
 	# is made master.
 	puts "\tRep$tnum: Second winner accepts its election."
 	setpriority pri $nclients $winner2
-	run_election env_cmd envlist err_cmd pri crash $qdir $m\
+	run_election envlist err_cmd pri crash $qdir $m\
 	    $elector $nsites $nvotes $nclients $winner2 0 $dbname
 
 	# Clean up.

@@ -49,8 +49,9 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
          maximum threshold of <span class="bold"><strong>max</strong></span> microseconds.
     </p>
       <p>
-         These values are thresholds only.  Since Berkeley DB has no thread
-         available in the library as a timer, the threshold is only checked
+         These values are thresholds only. Replication Manager applications use these values to determine 
+         when to automatically request retransmission of missing messages. For Base API applications, 
+         Berkeley DB has no thread available in the library as a timer, so the threshold is only checked
          when a thread enters the Berkeley DB library to process an incoming
          replication message. Any amount of time may have passed since the last
          message arrived and Berkeley DB only checks whether the amount of time
@@ -95,7 +96,7 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699586"></a>Parameters</h3>
+              <h3 class="title"><a id="id4019261"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -103,20 +104,7 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1699514"></a>max</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The maximum number of microseconds a client waits before requesting
-                          retransmission.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1699668"></a>min</h4>
+                <h4 class="title"><a id="id4019342"></a>min</h4>
               </div>
             </div>
           </div>
@@ -125,12 +113,25 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
                           retransmission.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id4019521"></a>max</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The maximum number of microseconds a client waits before requesting
+                          retransmission.
+                     </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699670"></a>Errors</h3>
+              <h3 class="title"><a id="id4019359"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -146,7 +147,7 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1699513"></a>EINVAL</h4>
+                <h4 class="title"><a id="id4019088"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -159,7 +160,7 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699761"></a>Class</h3>
+              <h3 class="title"><a id="id4018988"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -171,7 +172,7 @@ DB_ENV-&gt;rep_set_request(DB_ENV *env, u_int32_t min, u_int32_t max);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1699506"></a>See Also</h3>
+              <h3 class="title"><a id="id4019455"></a>See Also</h3>
             </div>
           </div>
         </div>

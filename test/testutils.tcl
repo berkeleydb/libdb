@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -2860,6 +2860,25 @@ proc fileremove { args } {
 			eval {file delete $forceflag $a}
 		}
 	}
+}
+
+# Look for a certain character string on a single line in one file.
+proc findstring { string file } {
+
+	set found 0
+	if { [file exists $file] == 0 } {
+		error "FAIL: file $file does not exist"
+	}
+	set f [open $file r]
+	while { [gets $f line] >= 0 } {
+		if { [is_substr $line $string] == 1 } {
+			set found 1
+			close $f
+			return $found
+		}
+	}
+	close $f
+	return $found
 }
 
 proc findfail { args } {

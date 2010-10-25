@@ -122,12 +122,17 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 
 # Optional Tcl API.
 AC_DEFUN(AM_TCL_LOAD, [
-	if test "$enable_shared" != "yes"; then
-		AC_MSG_ERROR([Tcl requires shared libraries])
-	fi
-
 	SC_PATH_TCLCONFIG
 	SC_LOAD_TCLCONFIG
 
-	INSTALL_LIBS="${INSTALL_LIBS} \$(libtso_target)"
+	if test "$enable_shared" = "no"; then
+		DEFAULT_LIB_TCL="\$(libtcl_version)"
+	fi
+	if test "$enable_shared" = "yes"; then
+		DEFAULT_LIB_TCL="\$(libtso_target)"
+	fi
+	INSTALL_LIBS="$INSTALL_LIBS $DEFAULT_LIB_TCL"
+	if test "$enable_static" = "yes"; then
+		INSTALL_LIBS="$INSTALL_LIBS \$(libtcl)"
+	fi
 ])

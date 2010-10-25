@@ -64,7 +64,7 @@ be configured to live in memory rather than in the filesystem:</p>
     </p>
             <p>
         To create the database environment in heap memory, specify the
-        <a href="../api_reference/C/envopen.html#open_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag to the <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method.  Note that database
+        <a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag to the <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method.  Note that database
         environments created in heap memory are only accessible to the
         threads of a single process, however.
     </p>
@@ -118,7 +118,7 @@ be configured to live in memory rather than in the filesystem:</p>
             storage, durability must be accomplished through replication.
             In this case, database environments should be configured to
             maintain database logs in memory, rather than in the
-            filesystem, by specifying the <a href="../api_reference/C/envlog_get_config.html#log_set_config_DB_LOG_IN_MEMORY" class="olink">DB_LOG_IN_MEMORY</a> flag to the
+            filesystem, by specifying the <a href="../api_reference/C/envlog_set_config.html#log_set_config_DB_LOG_IN_MEMORY" class="olink">DB_LOG_IN_MEMORY</a> flag to the
             <a href="../api_reference/C/envlog_set_config.html" class="olink">DB_ENV-&gt;log_set_config()</a> method.
         </p>
           </dd>

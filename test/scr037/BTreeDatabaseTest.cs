@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -2034,6 +2034,7 @@ namespace CsharpAPITest
             BTreeDatabase newDb = BTreeDatabase.Open(btreeDBName, dbcfg);
             Boolean val = newDb.HasMultiple;
             Assert.IsTrue(val);
+            newDb.Close();
         }
 
 		public void StatsInTxn(string home, string name, bool ifIsolation)

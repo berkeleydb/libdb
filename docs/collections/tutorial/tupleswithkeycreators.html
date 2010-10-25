@@ -112,7 +112,7 @@ public class SampleDatabase
     private static class SupplierByCityKeyCreator
 <strong class="userinput"><code>        extends TupleSerialKeyCreator</code></strong>
     {
-        private SupplierByCityKeyCreator(StoredClassCatalog catalog,
+        private SupplierByCityKeyCreator(ClassCatalog catalog,
                                          <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);
@@ -136,7 +136,7 @@ public class SampleDatabase
     private static class ShipmentByPartKeyCreator
         <strong class="userinput"><code>extends TupleSerialKeyCreator</code></strong>
     {
-        private ShipmentByPartKeyCreator(StoredClassCatalog catalog,
+        private ShipmentByPartKeyCreator(ClassCatalog catalog,
                                          <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);
@@ -156,7 +156,7 @@ public class SampleDatabase
     private static class ShipmentBySupplierKeyCreator
         <strong class="userinput"><code>extends TupleSerialKeyCreator</code></strong>
     {
-        private ShipmentBySupplierKeyCreator(StoredClassCatalog catalog,
+        private ShipmentBySupplierKeyCreator(ClassCatalog catalog,
                                              <strong class="userinput"><code>Class valueClass</code></strong>)
         {
             super(catalog, valueClass);

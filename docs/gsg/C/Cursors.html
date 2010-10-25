@@ -135,8 +135,9 @@ my_database-&gt;cursor(my_database, NULL, &amp;cursorp, 0); </pre>
             
         method. Note that closing your database while cursors are still opened
         within the scope of the DB handle, especially if those cursors are 
-        writing to the database, can have unpredictable results. Always 
-        close your cursors before closing your database.
+        writing to the database, can have unpredictable results. 
+        It is recommended that you 
+        close all cursor handles after their use to ensure concurrency and to release resources such as page locks. 
     </p>
         <a id="c_cursor2"></a>
         <pre class="programlisting">#include &lt;db.h&gt;

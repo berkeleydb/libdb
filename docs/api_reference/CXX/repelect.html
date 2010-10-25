@@ -68,18 +68,35 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
          an election.
     </p>
       <p>
-        Before calling this method, the enclosing database environment must
-        already have been opened by calling the 
-        <a class="xref" href="envopen.html" title="DbEnv::open()">DbEnv::open()</a> method and must
-        already have been configured to send replication messages by
-        calling the <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport()">DbEnv::rep_set_transport()</a> 
-        method.
+        Before calling this method do the following:
     </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    open the database environment by calling the 
+                    <a class="xref" href="envopen.html" title="DbEnv::open()">DbEnv::open()</a> method.
+              </p>
+          </li>
+          <li>
+            <p>
+                  configure the database environment to send replication messages by calling the 
+                  <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport()">DbEnv::rep_set_transport()</a> method.
+              </p>
+          </li>
+          <li>
+            <p>
+              configure the database environment as a client or a master
+              by calling the <a class="xref" href="repstart.html" title="DbEnv::rep_start()">DbEnv::rep_start()</a> method.
+            </p>
+          </li>
+        </ul>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700576"></a>How Elections are Held</h3>
+              <h3 class="title"><a id="id3689790"></a>How Elections are Held</h3>
             </div>
           </div>
         </div>
@@ -117,7 +134,9 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
                     sites that may take longer to boot than the local site, setting <span class="bold"><strong>nvotes</strong></span> also to this same total number of sites will guarantee that
                     every site in the group is considered. Alternatively, using the special timeout for full elections
                     allows full participation on restart but allows election of a master if one site does not reboot and
-                    rejoin the group in a reasonable amount of time. (See the <a href="../../programmer_reference/rep_elect.html" class="olink">Elections</a> section in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> for more information.)
+                    rejoin the group in a reasonable amount of time. (See the 
+                    <a href="../../programmer_reference/rep_elect.html" class="olink">Elections</a> section in the 
+                    <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> for more information.)
             </p>
         <p>
                     Setting <span class="bold"><strong>nsites</strong></span> to lower values can increase the speed of an
@@ -128,7 +147,7 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700760"></a>Parameters</h3>
+              <h3 class="title"><a id="id3690179"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -136,43 +155,30 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700729"></a>flags</h4>
+                <h4 class="title"><a id="id3690168"></a>nsites</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>flags</strong></span> parameter is currently
-                          unused, and must be set to 0.
-                     </p>
+                  The <span class="bold"><strong>nsites</strong></span> parameter specifies the
+                  number of replication sites expected to participate in the election. 
+                  Once the current site has election information from that many sites,
+                  it will short-circuit the election and immediately cast its vote for a
+                  new master. The <span class="bold"><strong>nsites</strong></span> parameter must
+                  be no less than <span class="bold"><strong>nvotes</strong></span>, or 0 if the
+                  election should use the value previously set using the 
+                  <a class="xref" href="repnsites.html" title="DbEnv::rep_set_nsites()">DbEnv::rep_set_nsites()</a> 
+                  method.  If an application is using master leases, then the value
+                  <span class="bold"><strong>must</strong></span> be 0 and the value from 
+                  <a class="xref" href="repnsites.html" title="DbEnv::rep_set_nsites()">DbEnv::rep_set_nsites()</a> 
+                  method must be used.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700738"></a>nsites</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>nsites</strong></span> parameter specifies the
-                          number of replication sites expected to participate in the election. 
-                          Once the current site has election information from that many sites,
-                          it will short-circuit the election and immediately cast its vote for a
-                          new master. The <span class="bold"><strong>nsites</strong></span> parameter must
-                          be no less than <span class="bold"><strong>nvotes</strong></span>, or 0 if the
-                          election should use the value previously set using the 
-                          <a class="xref" href="repnsites.html" title="DbEnv::rep_set_nsites()">DbEnv::rep_set_nsites()</a> 
-                          method.  If an application is using master leases, then the value
-                          <span class="bold"><strong>must</strong></span> be 0 and the value from 
-                          <a class="xref" href="repnsites.html" title="DbEnv::rep_set_nsites()">DbEnv::rep_set_nsites()</a> 
-                          method must be used.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1700739"></a>nvotes</h4>
+                <h4 class="title"><a id="id3689792"></a>nvotes</h4>
               </div>
             </div>
           </div>
@@ -186,17 +192,30 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
                           <span class="bold"><strong>nvotes</strong></span> argument.
                      </p>
         </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3690247"></a>flags</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                  The <span class="bold"><strong>flags</strong></span> parameter is currently
+                  unused, and must be set to 0.
+             </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700935"></a>Errors</h3>
+              <h3 class="title"><a id="id3690233"></a>Errors</h3>
             </div>
           </div>
         </div>
         <p>
-                         The <code class="methodname">DbEnv::rep_elect()</code> <span>
+             The <code class="methodname">DbEnv::rep_elect()</code> <span>
             
             <span>
                 method may fail and throw a <a class="link" href="dbexception.html" title="Chapter 6. The DbException Class">DbException</a> 
@@ -204,46 +223,45 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
                 of the following non-zero errors:
             </span>
         </span>
-                    </p>
+        </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1700645"></a>DB_REP_UNAVAIL</h4>
+                <h4 class="title"><a id="id3690500"></a>DB_REP_UNAVAIL</h4>
               </div>
             </div>
           </div>
           <p>
-                              The replication group was unable to elect a master, or was unable to
-                              complete the election in the election timeout period (see 
-                              <a class="xref" href="repset_timeout.html" title="DbEnv::rep_set_timeout()">DbEnv::rep_set_timeout()</a> 
-                              method for more information).
-                         </p>
+                  The replication group was unable to elect a master, or was unable to
+                  complete the election in the election timeout period (see 
+                  <a class="xref" href="repset_timeout.html" title="DbEnv::rep_set_timeout()">DbEnv::rep_set_timeout()</a> 
+                  method for more information).
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1701030"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3690548"></a>EINVAL</h4>
               </div>
             </div>
           </div>
           <p>
                 If the database environment was not already configured to
-                communicate with a replication group by a call to
-                <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport()">DbEnv::rep_set_transport()</a>; 
-                if the database environment was not already opened;
-                if this method is called from a Replication Manager
-                application; or if an invalid flag value or parameter
-                was specified.
-            </p>
+                communicate with a replication group by a call to 
+                <a class="xref" href="reptransport.html" title="DbEnv::rep_set_transport()">DbEnv::rep_set_transport()</a>;
+                if the database environment was not already opened; if this
+                method is called from a Replication Manager application; or if
+                an invalid flag value or parameter was specified.
+             </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700646"></a>Class</h3>
+              <h3 class="title"><a id="id3690200"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -255,7 +273,7 @@ DbEnv::rep_elect(u_int32_t nsites, u_int32_t nvotes, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1700782"></a>See Also</h3>
+              <h3 class="title"><a id="id3690281"></a>See Also</h3>
             </div>
           </div>
         </div>

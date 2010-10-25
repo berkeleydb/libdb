@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2001, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,6 @@
 #include "dbinc/txn.h"
 #include "dbinc/db_page.h"
 #include "dbinc/db_dispatch.h"
-#include "dbinc/log.h"
 #include "dbinc_auto/db_auto.h"
 #include "dbinc_auto/crdel_auto.h"
 #include "dbinc_auto/db_ext.h"

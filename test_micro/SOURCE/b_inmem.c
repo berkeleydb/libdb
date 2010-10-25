@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2005, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -204,7 +204,7 @@ op_tds(u_int ops, int update, u_int32_t env_flags, u_int32_t log_flags)
 
 	/* Logging configuration. */
 	if (log_flags != 0)
-#if DB_VERSION_MINOR >= 7
+#if DB_VERSION_MINOR >= 7 || DB_VERSION_MAJOR > 4
 		DB_BENCH_ASSERT(
 		    dbenv->log_set_config(dbenv, log_flags, 1) == 0);
 #else

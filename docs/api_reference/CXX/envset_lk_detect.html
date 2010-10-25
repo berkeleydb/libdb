@@ -79,7 +79,7 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1679688"></a>Parameters</h3>
+              <h3 class="title"><a id="id3667946"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -87,14 +87,17 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679716"></a>detect</h4>
+                <h4 class="title"><a id="id3667938"></a>detect</h4>
               </div>
             </div>
           </div>
           <p>
                           The <span class="bold"><strong>detect</strong></span> parameter configures the
-                          deadlock detector.  The specified value must be one of the following
-                          list:
+                          deadlock detector.  The deadlock detector will reject the lock request
+			  with the lowest priority.  If multiple lock requests have the lowest
+			  priority, then the <span class="bold"><strong>detect</strong></span> parameter
+			  is used to select which of those lock requests to reject.  The
+			  specified value must be one of the following list:
                      </p>
           <div class="itemizedlist">
             <ul type="disc">
@@ -181,7 +184,7 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1679888"></a>Errors</h3>
+              <h3 class="title"><a id="id3667496"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -199,7 +202,7 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1679505"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3668167"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -212,7 +215,7 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1680147"></a>Class</h3>
+              <h3 class="title"><a id="id3668094"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -225,7 +228,7 @@ DbEnv::set_lk_detect(u_int32_t detect); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1680046"></a>See Also</h3>
+              <h3 class="title"><a id="id3667797"></a>See Also</h3>
             </div>
           </div>
         </div>

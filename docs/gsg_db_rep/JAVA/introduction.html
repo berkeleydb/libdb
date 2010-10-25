@@ -357,11 +357,16 @@
           </div>
           <p>
                     Every replication group is allowed one and only one
-                    master environment. Almost always, masters are selected by
-                    holding an <span class="emphasis"><em>election</em></span>.  All such
-                    elections are performed by the underlying Berkeley DB
-                    replication code so you have to do very little to
-                    implement them. 
+                    master environment. Usually masters are selected by
+                    holding an <span class="emphasis"><em>election</em></span>, although it
+                    is possible to turn elections off and manually select
+                    masters (this is not recommended for most replicated
+                    applications).
+                </p>
+          <p>
+                    When elections are being used, they are performed by the 
+                    underlying Berkeley DB replication code so you have to 
+                    do very little to implement them. 
                 </p>
           <p>
                     When holding an election, replicas "vote" on who should

@@ -39,7 +39,7 @@
       <p>This class is also used to support auto commit transactions. Autocommit is enabled when DB_AUTO_COMMIT is set to the database or database environment handle and the environment is transactional.</p>
       <p>Inside dbstl, there are transactions begun and committed/aborted if the backing database and/or environment requires auto commit, and there are cursors opened internally, and you can set the flags used by the transaction and cursor functions via set functions of this class.</p>
       <p>All dbstl containers are fully multi-threaded, you should not need any synchronization to use them in the correct way, but this class is not thread safe, access to its members are not proctected by any mutex because the data members of this class are supposed to be set before they are used, and remain read only afterwards. If this is not the case, you must synchronize the access. </p>
-      <h4><a id="id1543698"></a> Public Members </h4>
+      <h4><a id="id3483529"></a> Public Members </h4>
       <div class="informaltable">
         <table border="1" width="80%">
           <colgroup>
@@ -55,108 +55,84 @@
           <tbody>
             <tr>
               <td>
-<a class="xref" href="db_container.html#stldb_containerget_db_open_flags" title="get_db_open_flags">
-get_db_open_flags
-</a>
+<a class="xref" href="db_container.html#stldb_containerget_db_open_flags" title="get_db_open_flags">get_db_open_flags</a>
 </td>
               <td>
    <p>Get the backing database's open flags. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_db_set_flags.html" title="get_db_set_flags">
-get_db_set_flags
-</a>
+<a class="xref" href="stldb_containerget_db_set_flags.html" title="get_db_set_flags">get_db_set_flags</a>
 </td>
               <td>
    <p>Get the backing database's flags that are set via Db::set_flags() function. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_db_handle.html" title="get_db_handle">
-get_db_handle
-</a>
+<a class="xref" href="stldb_containerget_db_handle.html" title="get_db_handle">get_db_handle</a>
 </td>
               <td>
    <p>Get the backing database's handle. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_db_env_handle.html" title="get_db_env_handle">
-get_db_env_handle
-</a>
+<a class="xref" href="stldb_containerget_db_env_handle.html" title="get_db_env_handle">get_db_env_handle</a>
 </td>
               <td>
    <p>Get the backing database environment's handle. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerset_db_handle.html" title="set_db_handle">
-set_db_handle
-</a>
+<a class="xref" href="stldb_containerset_db_handle.html" title="set_db_handle">set_db_handle</a>
 </td>
               <td>
    <p>Set the underlying database's handle, and optionally environment handle if the environment has also changed. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerset_all_flags.html" title="set_all_flags">
-set_all_flags
-</a>
+<a class="xref" href="stldb_containerset_all_flags.html" title="set_all_flags">set_all_flags</a>
 </td>
               <td>
    <p>Set the flags required by the Berkeley DB functions DbEnv::txn_begin(), DbTxn::commit() and DbEnv::cursor(). </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerset_txn_begin_flags.html" title="set_txn_begin_flags">
-set_txn_begin_flags
-</a>
+<a class="xref" href="stldb_containerset_txn_begin_flags.html" title="set_txn_begin_flags">set_txn_begin_flags</a>
 </td>
               <td>
    <p>Set flag of DbEnv::txn_begin() call. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_txn_begin_flags.html" title="get_txn_begin_flags">
-get_txn_begin_flags
-</a>
+<a class="xref" href="stldb_containerget_txn_begin_flags.html" title="get_txn_begin_flags">get_txn_begin_flags</a>
 </td>
               <td>
    <p>Get flag of DbEnv::txn_begin() call. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerset_commit_flags.html" title="set_commit_flags">
-set_commit_flags
-</a>
+<a class="xref" href="stldb_containerset_commit_flags.html" title="set_commit_flags">set_commit_flags</a>
 </td>
               <td>
    <p>Set flag of DbTxn::commit() call. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_commit_flags.html" title="get_commit_flags">
-get_commit_flags
-</a>
+<a class="xref" href="stldb_containerget_commit_flags.html" title="get_commit_flags">get_commit_flags</a>
 </td>
               <td>
    <p>Get flag of DbTxn::commit() call. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerget_cursor_open_flags.html" title="get_cursor_open_flags">
-get_cursor_open_flags
-</a>
+<a class="xref" href="stldb_containerget_cursor_open_flags.html" title="get_cursor_open_flags">get_cursor_open_flags</a>
 </td>
               <td>
    <p>Get flag of Db::cursor() call. </p>        </td>
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerset_cursor_open_flags.html" title="set_cursor_open_flags">
-set_cursor_open_flags
-</a>
+<a class="xref" href="stldb_containerset_cursor_open_flags.html" title="set_cursor_open_flags">set_cursor_open_flags</a>
 </td>
               <td>
    <p>Set flag of Db::cursor() call. </p>        </td>
@@ -172,9 +148,7 @@ db_container
             </tr>
             <tr>
               <td>
-<a class="xref" href="stldb_containerdstr_db_container.html" title="~db_container">
-~db_container
-</a>
+<a class="xref" href="stldb_containerdstr_db_container.html" title="~db_container">~db_container</a>
 </td>
               <td>
    <p>The backing database is not closed in this function. </p>        </td>
@@ -182,7 +156,7 @@ db_container
           </tbody>
         </table>
       </div>
-      <h4><a id="id1544020"></a>
+      <h4><a id="id3483561"></a>
 Group</h4>
       <p>
 <a class="xref" href="dbstl_containers.html" title="Chapter 2.  Dbstl Container Classes">
@@ -194,9 +168,7 @@ Group</h4>
         <div class="titlepage">
           <div>
             <div>
-              <h2 class="title" style="clear: both"><a id="stldb_containerget_db_open_flags"></a>
-get_db_open_flags
-</h2>
+              <h2 class="title" style="clear: both"><a id="stldb_containerget_db_open_flags"></a>get_db_open_flags</h2>
             </div>
           </div>
         </div>
@@ -204,25 +176,19 @@ get_db_open_flags
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="func_details"></a>
-Function Details</h3>
+                <h3 class="title"><a id="stldb_containerget_db_open_flags_details"></a>Function Details</h3>
               </div>
             </div>
           </div>
           <pre class="programlisting">
-u_int32_t get_db_open_flags() const
+u_int32_t get_db_open_flags() const
  </pre>
-          <div class="sect3" lang="en" xml:lang="en">
-            <div class="titlepage"></div>
-            <p>Get the backing database's open flags. </p>
-            <p></p>
-          </div>
+          <p>Get the backing database's open flags. </p>
           <div class="sect3" lang="en" xml:lang="en">
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id1544016"></a>
-Return Value</h4>
+                  <h4 class="title"><a id="id3483887"></a>Return Value</h4>
                 </div>
               </div>
             </div>
@@ -233,26 +199,23 @@ Return Value</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id1544142"></a>
-Group: Get and set functions for data members.</h3>
+                <h3 class="title"><a id="id3484021"></a>Group: Get and set functions for data members.</h3>
               </div>
             </div>
           </div>
           <p>Note that these functions are not thread safe, because all data members of <a class="link" href="db_container.html" title="Chapter 3.  Db_container">db_container</a>
- are supposed to be set on container construction and initialization, and remain read only afterwards. </p>
+     are supposed to be set on container construction and initialization, and remain read only afterwards. </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id1543917"></a>
-Class</h3>
+                <h3 class="title"><a id="id3484211"></a>Class</h3>
               </div>
             </div>
           </div>
           <p>
-  <a class="link" href="db_container.html" title="Chapter 3.  Db_container">
-  db_container</a>
+  <a class="link" href="db_container.html" title="Chapter 3.  Db_container">db_container</a>
      </p>
         </div>
       </div>
@@ -271,9 +234,7 @@ Class</h3>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> 
-get_db_set_flags
-</td>
+          <td width="40%" align="right" valign="top"> get_db_set_flags</td>
         </tr>
       </table>
     </div>

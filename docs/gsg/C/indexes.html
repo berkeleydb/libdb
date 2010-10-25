@@ -264,13 +264,13 @@
 DB *dbp, *sdbp;    /* Primary and secondary DB handles */
 u_int32_t flags;   /* Primary database open flags */
 int ret;           /* Function return value */
-                                                                                                                                     
+
 /* Primary */
 ret = db_create(&amp;dbp, NULL, 0);
 if (ret != 0) {
   /* Error handling goes here */
 }
-                                                                                                                                     
+
 /* Secondary */
 ret = db_create(&amp;sdbp, NULL, 0);
 if (ret != 0) {
@@ -303,7 +303,8 @@ if (ret != 0) {
 /* open the secondary database */
 ret = sdbp-&gt;open(sdbp,          /* DB structure pointer */
                  NULL,          /* Transaction pointer */
-                 "my_secdb.db", /* On-disk file that holds the database. */
+                 "my_secdb.db", /* On-disk file that holds the 
+                                   database. */
                  NULL,          /* Optional logical database name */
                  DB_BTREE,      /* Database access method */
                  flags,         /* Open flags */
@@ -316,7 +317,7 @@ if (ret != 0) {
 dbp-&gt;associate(dbp,            /* Primary database */
                NULL,           /* TXN id */
                sdbp,           /* Secondary database */
-               get_sales_rep,  /* Callback used for key creation. Not 
+               get_sales_rep,  /* Callback used for key creation. Not
                                 * defined in this example. See the next
                                 * section. */
                0);              /* Flags */</pre>

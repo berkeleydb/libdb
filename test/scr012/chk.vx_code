@@ -19,6 +19,9 @@ d=../..
 F="$d/clib/getopt.c $d/common/util_arg.c $d/common/util_cache.c
 	$d/common/util_log.c $d/common/util_sig.c $d/*/*_autop.c"
 
+# Added the following lines to enable compiling on Linux Blade server.
+L=" -D_GNU_SOURCE -lpthread"
+
 header()
 {
 	echo "int $1(int, char *[]);"
@@ -46,7 +49,7 @@ LIST="\
 for i in $LIST; do
 	echo "	compiling Vxworks version of $i"
 	header $i > MAIN.c
-	if cc -Wall -I.. -I$d -I$d/build_vxworks/$i \
+	if cc -Wall -I.. -I$d -I$d/build_vxworks/$i $L \
 	    $d/build_vxworks/$i/*.c MAIN.c $F ../libdb.a -o t; then
 		:
 	else
@@ -75,7 +78,7 @@ echo "}"
 ) > MAIN.c
 
 echo "	compiling VxWorks utility composite"
-if cc -Wall -I.. -I$d $inc `eval ls $src` MAIN.c $F ../libdb.a -o t; then
+if cc -Wall -I.. -I$d $inc $L `eval ls $src` MAIN.c $F ../libdb.a -o t; then
 	:
 else
 	echo 'FAIL: unable to compile VxWorks utility composite'

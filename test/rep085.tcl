@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009 Oracle.  All rights reserved.
+# Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	rep085
 # TEST  Skipping unnecessary abbreviated internal init.
@@ -13,11 +13,6 @@
 
 proc rep085 { method {niter 20} {tnum 085} args } {
 	source ./include.tcl
-
-	if { $is_windows9x_test == 1 } {
-		puts "Skipping replication test on Win 9x platform."
-		return
-	}
 
 	# Run for btree and queue only.  Since this is a NIMDB test, 
 	# skip queueext. 

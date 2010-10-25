@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002-2009 Oracle.  All rights reserved.
+ * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -39,11 +39,11 @@ public final class ReplicationConfig implements Cloneable {
       new ReplicationConfig("INMEM", DbConstants.DB_REP_CONF_INMEM);
 
     /**
-    The replication master should not automatically re-initialize outdated
-    clients.
+    The replication master should automatically re-initialize outdated
+    clients (defaults to on.)
     **/
-    public static final ReplicationConfig NOAUTOINIT =
-        new ReplicationConfig("NOAUTOINIT", DbConstants.DB_REP_CONF_NOAUTOINIT);
+    public static final ReplicationConfig AUTOINIT =
+        new ReplicationConfig("AUTOINIT", DbConstants.DB_REP_CONF_AUTOINIT);
 
     /**
     Berkeley DB method calls that would normally block while clients are in
@@ -64,6 +64,15 @@ public final class ReplicationConfig implements Cloneable {
     public static final ReplicationConfig STRICT_2SITE =
         new ReplicationConfig("STRICT_2SITE",
                               DbConstants.DB_REPMGR_CONF_2SITE_STRICT);
+
+    /**
+    Replication Manager automatically runs elections to choose a new
+    master when the old master appears to have become disconnected.
+    This option is turned on by default.
+     */
+    public static final ReplicationConfig ELECTIONS =
+        new ReplicationConfig("ELECTIONS",
+                              DbConstants.DB_REPMGR_CONF_ELECTIONS);
 
     /** 
     Master leases will be used for this site.
@@ -87,12 +96,14 @@ public final class ReplicationConfig implements Cloneable {
             return DELAYCLIENT;
         case DbConstants.DB_REP_CONF_INMEM:
             return INMEM;
-        case DbConstants.DB_REP_CONF_NOAUTOINIT:
-            return NOAUTOINIT;
+        case DbConstants.DB_REP_CONF_AUTOINIT:
+            return AUTOINIT;
         case DbConstants.DB_REP_CONF_NOWAIT:
             return NOWAIT;
         case DbConstants.DB_REPMGR_CONF_2SITE_STRICT:
             return STRICT_2SITE;
+        case DbConstants.DB_REPMGR_CONF_ELECTIONS:
+            return ELECTIONS;
 	case DbConstants.DB_REP_CONF_LEASE:
 	    return LEASE;
         default:

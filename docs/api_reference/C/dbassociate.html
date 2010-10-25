@@ -71,7 +71,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1630489"></a>Parameters</h3>
+              <h3 class="title"><a id="id3946895"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -79,7 +79,63 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1630915"></a>callback</h4>
+                <h4 class="title"><a id="id3947414"></a>primary</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>primary</strong></span> parameter should be a
+                          database handle for the primary database that is to be indexed.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3947479"></a>txnid</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          If the operation is part of an application-specified transaction, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
+                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
+                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
+                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
+                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
+                          otherwise NULL. If no transaction handle is specified, but the
+                          operation occurs in a transactional database, the operation will be
+                          implicitly transaction protected.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3947438"></a>secondary</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>secondary</strong></span> parameter should be an
+                          open database handle of either a newly created and empty database that
+                          is to be used to store a secondary index, or of a database that was
+                          previously associated with the same primary and contains a secondary
+                          index.  Note that it is not safe to associate as a secondary database
+                          a handle that is in use by another thread of control or has open
+                          cursors.  If the handle was opened with the 
+                          <a class="link" href="envopen.html#envopen_DB_THREAD">DB_THREAD</a>  flag it is
+                          safe to use it in multiple threads of control after the
+                          <code class="methodname">DB-&gt;associate()</code> method has returned.  Note also that either secondary
+                          keys must be unique or the secondary database must be configured with
+                          support for duplicate data items.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3947573"></a>callback</h4>
               </div>
             </div>
           </div>
@@ -247,7 +303,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631678"></a>flags</h4>
+                <h4 class="title"><a id="id3947778"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -311,68 +367,12 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1631257"></a>primary</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>primary</strong></span> parameter should be a
-                          database handle for the primary database that is to be indexed.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1631270"></a>secondary</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>secondary</strong></span> parameter should be an
-                          open database handle of either a newly created and empty database that
-                          is to be used to store a secondary index, or of a database that was
-                          previously associated with the same primary and contains a secondary
-                          index.  Note that it is not safe to associate as a secondary database
-                          a handle that is in use by another thread of control or has open
-                          cursors.  If the handle was opened with the 
-                          <a class="link" href="envopen.html#envopen_DB_THREAD">DB_THREAD</a>  flag it is
-                          safe to use it in multiple threads of control after the
-                          <code class="methodname">DB-&gt;associate()</code> method has returned.  Note also that either secondary
-                          keys must be unique or the secondary database must be configured with
-                          support for duplicate data items.
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1631062"></a>txnid</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          If the operation is part of an application-specified transaction, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a transaction
-                          handle returned from <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; 
-                          if the operation is part of a Berkeley DB Concurrent Data Store group, the
-                          <span class="bold"><strong>txnid</strong></span> parameter is a handle returned
-                          from <a class="xref" href="envcdsgroup_begin.html" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>;
-                          otherwise NULL. If no transaction handle is specified, but the
-                          operation occurs in a transactional database, the operation will be
-                          implicitly transaction protected.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1631057"></a>Errors</h3>
+              <h3 class="title"><a id="id3948280"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -388,7 +388,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631763"></a> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="id3947622"></a> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -407,7 +407,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631242"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="id3947607"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -419,7 +419,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1631320"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3947642"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -435,7 +435,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1630627"></a>Class</h3>
+              <h3 class="title"><a id="id3948116"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -447,7 +447,7 @@ DB-&gt;associate(DB *primary, DB_TXN *txnid, DB *secondary,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1630946"></a>See Also</h3>
+              <h3 class="title"><a id="id3947614"></a>See Also</h3>
             </div>
           </div>
         </div>

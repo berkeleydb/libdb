@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -11,9 +11,8 @@ import com.sleepycat.db.internal.DbEnv;
 
 /**
 Thrown if a new master has been chosen but the client is unable to synchronize
-with the new master (possibly because the client has been configured
-with the {@link ReplicationConfig#NOAUTOINIT} setting to turn-off automatic
-internal initialization).
+with the new master, possibly because the client has turned off automatic
+internal initialization (the {@link ReplicationConfig#AUTOINIT} setting).
 */
 public class ReplicationJoinFailureException extends DatabaseException {
     /* package */ ReplicationJoinFailureException(final String s,

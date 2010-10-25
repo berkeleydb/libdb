@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -30,11 +30,16 @@ namespace BerkeleyDB {
         /// If true, the site is connected.
         /// </summary>
         public bool isConnected;
+        /// <summary>
+        /// If true, the site is client-to-client peer.
+        /// </summary>
+        public bool isPeer;
 
         internal RepMgrSite(DB_REPMGR_SITE site) {
             EId = site.eid;
             Address = new ReplicationHostAddress(site.host, site.port);
             isConnected = (site.status == DbConstants.DB_REPMGR_CONNECTED);
+            isPeer = (site.flags & DbConstants.DB_REPMGR_PEER) != 0;
         }
     }
 }

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Administering Log Files</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
+    <link rel="up" href="configure.html" title="Chapter 3. Configuring the Berkeley DB SQL interface" />
+    <link rel="prev" href="configcache.html" title="Configuring the In-Memory Cache" />
+    <link rel="next" href="admin-locking.html" title="Managing the Locking Subsystem" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Administering Log Files</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="configcache.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 3. Configuring the Berkeley DB SQL interface</th>
+          <td width="20%" align="right"> <a accesskey="n" href="admin-locking.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="admin-logfile"></a>Administering Log Files</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="admin-logfile.html#logfilesize">Setting the Log File Size</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="admin-logfile.html#logregionsize">Configuring the Logging Region Size</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="admin-logfile.html#logbuffer">Setting the In-Memory Log Buffer Size</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+              Your environment directory contains log
+              files.  Berkeley DB log files are used to record all the
+              transactional activity performed against the Berkeley DB database
+              files. This information is used after an application or
+              system failure to automatically restore the database to an up-to-date
+              consistent point.
+          </p>
+      <p>
+              Your log files are maintained by Berkeley DB's logging subsystem.
+              There are some aspects of the Berkeley DB logging subsystem that
+              you can configure using <code class="literal">DB_CONFIG</code>
+              parameters, and (sometimes) by using PRAGMAs.
+          </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                  For most users of the BDB SQL interface, there should not normally
+                  be any reason to manage your log files or otherwise worry
+                  about them.  However, it is important to realize that they
+                  can not simply be deleted. Note that when using the
+                  Berkeley DB SQL interface, your log files will be automatically deleted by
+                  Berkeley DB when they are no longer needed.
+              </p>
+      </div>
+      <p>
+            The things you can manage for your logging subsystem are:
+        </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    Size of the log files. See <a class="xref" href="admin-logfile.html#logfilesize" title="Setting the Log File Size">Setting the Log File Size</a>.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Size of the logging subsystem's region. See <a class="xref" href="admin-logfile.html#logregionsize" title="Configuring the Logging Region Size">Configuring the Logging Region Size</a>.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Size of the log buffer in memory. 
+                    <a class="xref" href="admin-logfile.html#logbuffer" title="Setting the In-Memory Log Buffer Size">Setting the In-Memory Log Buffer Size</a>.
+                </p>
+          </li>
+        </ul>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="logfilesize"></a>Setting the Log File Size</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                    Whenever a pre-defined amount of data is written to a
+                    log file (10 MB by default), the BDB SQL interface stops using the
+                    current log file and starts writing to a new file.
+                    You can change the maximum amount of data contained in each
+                    log file by using either <code class="literal">PRAGMA journal_size_limit</code> or
+                    the <code class="literal">set_lg_max</code> DB_CONFIG file parameter.  
+                </p>
+        <p>
+                    If you use <code class="literal">PRAGMA journal_size_limit</code>,
+                    then using this PRAGMA with no value simply returns the
+                    current journal size limit. Using:
+                </p>
+        <pre class="programlisting">PRAGMA journal_size_limit=N</pre>
+        <p>
+                    sets the log size to <span class="emphasis"><em>N</em></span> bytes. If
+                    the PRAGMA is successful, <span class="emphasis"><em>N</em></span> is
+                    returned. If it fails, the previous log file size is
+                    returned. Failures can occur if you specify a log file
+                    size that is less than 4K bytes, or if you specify a
+                    log file size larger than the permitted file size on
+                    the system.
+                </p>
+        <p>
+                    If you use the DB_CONFIG file to manage this value,
+                    <code class="literal">set_lg_max</code> may be changed without
+                    re-creating the environment. You will, however, have to
+                    restart your application in order for the DB_CONFIG
+                    file to be re-read.
+                </p>
+        <p>
+                    The DB_CONFIG file is described in 
+                    <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>.
+                    The <code class="literal">set_lg_max</code> parameter is
+                    described in 
+                    <a class="xref" href="set_lg_max_parameter.html" title="set_lg_max">set_lg_max</a>.
+                </p>
+        <p>
+                    For a description of how, when and why you should
+                    change the size of your log files, see
+                    the <a href="../programmer_reference/log_config.html" class="olink">Selecting a page size</a> section in the 
+                    <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="logregionsize"></a>Configuring the Logging Region Size</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                The logging subsystem's default region size is 512 KB. The
+                logging region is used to store database and table names, and so you may
+                need to increase its size if you will be using a large
+                number of tables.
+            </p>
+        <p>
+                You can set the size of your logging region by using the
+                <code class="literal">set_lg_regionmax</code> DB_CONFIG parameter.  Note that 
+                to manage this value you must set it before you create your
+                environment, or you must re-create your environment.  See  
+                <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>
+                for more information.
+            </p>
+        <p>
+                The <code class="literal">set_lg_regionmax</code> parameter is described in
+                <a class="xref" href="set_lg_regionmax_parameter.html" title="set_lg_regionmax">set_lg_regionmax</a>.
+            </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="logbuffer"></a>Setting the In-Memory Log Buffer Size</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                When using named (persistent) databases, log information is stored
+                in-memory until the storage space fills up, or a
+                transaction commit forces the log information to be flushed
+                to disk.
+            </p>
+        <p>
+                It is possible to increase the amount of memory available
+                to your file log buffer. Doing so improves throughput for
+                long-running transactions, or for transactions that produce
+                a large amount of data. Note that for named (persistent) databases, the
+                default log buffer space is 32 KB.
+            </p>
+        <p>
+                You can increase your log buffer space by using the
+                <code class="literal">set_lg_bsize</code> DB_CONFIG parameter.  Note that this
+                method can only be called before the environment
+                is first opened, so you will have to set this by creating
+                your <code class="literal">-journal</code> directory, and then
+                creating your database. See 
+                <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>
+                for more information.
+            </p>
+        <p>
+                The <code class="literal">set_lg_bsize</code> parameter is described
+                in <a class="xref" href="set_lg_bsize_parameter.html" title="set_lg_bsize">set_lg_bsize</a>.
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                      When working with in-memory databases, the environment is
+                      configured to perform logging in-memory. The log buffer is
+                      set to 64 * 1024, and the maximum log size is set to 32 *
+                      1024.
+                  </p>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="configcache.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="configure.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="admin-locking.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Configuring the In-Memory Cache </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Managing the Locking Subsystem</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

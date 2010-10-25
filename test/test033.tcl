@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996-2009 Oracle.  All rights reserved.
+# Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -15,7 +15,8 @@
 # TEST
 # TEST	XXX
 # TEST	This does not work for rbtree.
-proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
+proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} \
+    {overflow 0} args } {
 	source ./include.tcl
 
 	set args [convert_args $method $args]
@@ -31,6 +32,9 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
 		return
 	}
 
+	if {$ndups <= 1} { 
+		set ndups 1 
+	}
 	set txnenv 0
 	set eindex [lsearch -exact $args "-env"]
 	#
@@ -58,14 +62,25 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
 		set testdir [get_home $env]
 	}
 
-	puts "Test$tnum: $method ($args) $nentries small $ndups dup key/data pairs"
+	if {$ndups == 1} {
+		set dup "non-dup"
+	} else {
+		set dup "$ndups-dup"
+	}
+
+	set dataset ""
+	if {$overflow != 0} {
+		set dataset "overflow"
+	}
+	puts "Test$tnum:\
+	    $method ($args) $nentries $dup ${dataset}key/data pairs"
 	set t1 $testdir/t1
 	set t2 $testdir/t2
 	set t3 $testdir/t3
 	cleanup $testdir $env
 
 	# Duplicate data entries are not allowed in record based methods.
-	if { [is_record_based $method] == 1 } {
+	if { [is_record_based $method] == 1 || $ndups == 1} {
 		set db [eval {berkdb_open -create -mode 0644 \
 			$omethod} $args {$testfile}]
 	} else {
@@ -77,6 +92,16 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
 	set pflags ""
 	set gflags ""
 	set txn ""
+	#
+	# Find the pagesize if we are testing with overflow pages. We will
+	# use the pagesize to build overflow items of the correct size.
+	#
+	if {$overflow != 0} {
+		set stat [$db stat]
+		set pg [get_pagesize $stat]
+		error_check_bad get_pagesize $pg -1
+		set len $pg
+	}
 
 	# Allocate a cursor for DB_GET_BOTH_RANGE.
 	if { $txnenv == 1 } {
@@ -92,6 +117,16 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
 	set count 0
 	set did [open $dict]
 	while { [gets $did str] != -1 && $count < $nentries } {
+		if { $overflow != 0 } {
+			# 
+			# Pad the data string so that overflow data items
+			# are large enough to generate overflow pages.
+			#
+			for { set j 1} { $j <= [expr $len / 4 - 1] } \
+			    { incr j } {
+				append str "!@#$"
+			}
+		}
 		if { [is_record_based $method] == 1 } {
 			set key [expr $count + 1]
 			set ret [eval {$db put} $txn $pflags \
@@ -122,6 +157,16 @@ proc test033 { method {nentries 10000} {ndups 5} {tnum "033"} args } {
 	set count 0
 	set did [open $dict]
 	while { [gets $did str] != -1 && $count < $nentries } {
+		if { $overflow != 0 } {
+			# 
+			# Pad the data string so that overflow data items
+			# are large enough to generate overflow pages.
+			#
+			for { set j 1} { $j <= [expr $len / 4 - 1] } \
+			    { incr j } {
+				append str "!@#$"
+			}
+		}
 		# Now retrieve all the keys matching this key
 		# for non-record based AMs.
 		if { [is_record_based $method] == 1 } {

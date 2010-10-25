@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,6 @@ INCLUDE #include "dbinc/crypto.h"
 INCLUDE #include "dbinc/db_page.h"
 INCLUDE #include "dbinc/db_dispatch.h"
 INCLUDE #include "dbinc/db_am.h"
-INCLUDE #include "dbinc/log.h"
 INCLUDE #include "dbinc/txn.h"
 INCLUDE
 
@@ -34,7 +33,18 @@ INCLUDE
  * If the dbt was NULL then the hdr is a complete item to be
  * pasted on the page.
  */
-BEGIN addrem		42	41
+BEGIN addrem		50	41
+OP	opcode		u_int32_t	lu
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	indx		u_int32_t	lu
+ARG	nbytes		u_int32_t	lu
+HDR	hdr		DBT		s
+DBT	dbt		DBT		s
+POINTER	pagelsn		DB_LSN *	lu
+END
+
+BEGIN_COMPAT addrem		42	41
 ARG	opcode		u_int32_t	lu
 DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
@@ -60,7 +70,19 @@ END
  *		may be used later if we actually do overwrites of big key/
  *		data items in place.
  */
-BEGIN big		42	43
+BEGIN big		50	43
+OP	opcode		u_int32_t	lu
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	prev_pgno	db_pgno_t	lu
+ARG	next_pgno	db_pgno_t	lu
+HDR	dbt		DBT		s
+POINTER	pagelsn		DB_LSN *	lu
+POINTER	prevlsn		DB_LSN *	lu
+POINTER	nextlsn		DB_LSN *	lu
+END
+
+BEGIN_COMPAT big		42	43
 ARG	opcode		u_int32_t	lu
 DB	fileid		int32_t		ld
 ARG	pgno		db_pgno_t	lu
@@ -315,7 +337,7 @@ END
  * last_pgno:	current last page number.
  * list:	list of pages and lsns on free list.
  */
-BEGIN pg_trunc		49	66
+BEGIN pg_trunc		50	66
 DB	fileid		int32_t		ld
 ARG	meta		db_pgno_t	lu
 POINTER	meta_lsn	DB_LSN *	lu
@@ -323,6 +345,87 @@ ARG	last_free	db_pgno_t	lu
 POINTER	last_lsn	DB_LSN *	lu
 ARG	next_free	db_pgno_t	lu
 ARG	last_pgno	db_pgno_t	lu
-DBT	list		DBT		s
+PGLIST	list		DBT		s
 END
 
+/*
+ * realloc: allocate a range of pages from the free list
+ * prev_pgno:	page number of the page preceeding the set of pages to
+ *			be allocated
+ * prev_lsn	LSN from the prev_pgno page
+ * next_free	page number of the page immediately following the set
+ *			of pages to be allocated
+ * ptype	The type of page being allocated
+ * list:	pairs of page numbers and LSNs corresponding to the pages on
+ *			the free list that are being reallocated
+ */
+BEGIN realloc		50	36
+DB	fileid		int32_t		ld
+ARG	prev_pgno	db_pgno_t	lu
+POINTER	page_lsn	DB_LSN *	lu
+ARG	next_free	db_pgno_t	lu
+ARG	ptype		u_int32_t	lu
+PGLIST	list		DBT		s
+END
+
+/*
+ * relink: relink next and previous page pointers
+ * NOTE: moved from btree so its number is from that range.
+ * pgno:	The page being removed.
+ * new_pgno:	The new page number, if any.
+ * prev_pgno:	The previous page, if any.
+ * lsn_prev:	The previous page's original lsn.
+ * next_pgno:	The next page, if any.
+ * lsn_next:	The previous page's original lsn.
+ */
+BEGIN relink		44	147
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+ARG	new_pgno	db_pgno_t	lu
+ARG	prev_pgno	db_pgno_t	lu
+POINTER	lsn_prev	DB_LSN *	lu
+ARG	next_pgno	db_pgno_t	lu
+POINTER	lsn_next	DB_LSN *	lu
+END
+
+/*
+ * Merge: merge two pages.
+ * NOTE: moved from btree so its number is from that range.
+ * pgno:	The page number of the target page.
+ * lsn:		Orignial LSN of the page.
+ * npgno:	The page number of the next, or merged, page.
+ * nlsn:	The LSN of hte next page.
+ * hdr:		The page header of the next page.
+ * data:	The data from the next page.
+ * pg_copy:	If 1, then the whole page was copied.
+ */
+BEGIN merge		47	148
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+POINTER	lsn		DB_LSN *	lu
+ARG	npgno		db_pgno_t	lu
+POINTER nlsn		DB_LSN *	lu
+PGDBT	hdr		DBT		s
+PGDDBT	data		DBT		s
+ARG	pg_copy		int32_t		lu
+END
+
+
+/*
+ * pgno -- Handles replacing a page number in a record
+ * reference on pgno by indx.
+ * NOTE: moved from btree so its number is from that range.
+ * pgno:	The page that is being updated.
+ * lsn:		The LSN of the page.
+ * indx:	The index of the record being updated.
+ * opgno:	Old page number.
+ * npgno:	New page number.
+ */
+BEGIN pgno		44	149
+DB	fileid		int32_t		ld
+ARG	pgno		db_pgno_t	lu
+POINTER	lsn		DB_LSN *	lu
+ARG	indx		u_int32_t	lu
+ARG	opgno		db_pgno_t	lu
+ARG	npgno		db_pgno_t	lu
+END

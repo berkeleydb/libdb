@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1987, 1993, 1994
@@ -34,9 +34,17 @@
  * $Id$
  */
 
-#include "db_config.h"
-
-#include "db_int.h"
+/* 
+ * Avoid inclusion of internal header files as this
+ * file is used by example code.
+ *
+ * Unconditional inclusion of stdio and string are
+ * OK in this file.  It will work on all platforms
+ * for which this file is used
+ */
+extern char *__db_rpath(const char *);
+#include <stdio.h>
+#include <string.h>
 
 int	__db_getopt_reset;	/* global reset for VxWorks. */
 

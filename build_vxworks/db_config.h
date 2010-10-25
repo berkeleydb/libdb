@@ -6,6 +6,9 @@
 /* Define to 1 if you want to build a version for running the test suite. */
 /* #undef CONFIG_TEST */
 
+/* Defined to a size to limit the stack size of Berkeley DB threads. */
+/* #undef DB_STACKSIZE */
+
 /* We use DB_WIN32 much as one would use _WIN32 -- to specify that we're using
    an operating system environment that supports Win32 calls and semantics. We
    don't use _WIN32 because Cygwin/GCC also defines _WIN32, even though
@@ -78,11 +81,17 @@
 /* Define to 1 if Berkeley DB release includes strong cryptography. */
 #define HAVE_CRYPTO 1
 
+/* Define to 1 if using Intel IPP for cryptography. */
+/* #undef HAVE_CRYPTO_IPP */
+
 /* Define to 1 if you have the `ctime_r' function. */
 #define HAVE_CTIME_R 1
 
 /* Define to 1 if ctime_r takes a buffer length as a third argument. */
 #define HAVE_CTIME_R_3ARG 1
+
+/* Define to 1 if building the DBM API. */
+/* #undef HAVE_DBM */
 
 /* Define to 1 if you have the `directio' function. */
 /* #undef HAVE_DIRECTIO */
@@ -93,6 +102,9 @@
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 /* #undef HAVE_DLFCN_H */
+
+/* Define to 1 to use dtrace for performance event tracing. */
+/* #undef HAVE_DTRACE */
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 /* #undef HAVE_EXECINFO_H */
@@ -134,7 +146,7 @@
 #define HAVE_FWRITE 1
 
 /* Define to 1 if you have the `getaddrinfo' function. */
-/* #undef HAVE_GETADDRINFO */
+#define HAVE_GETADDRINFO 1
 
 /* Define to 1 if you have the `getcwd' function. */
 #define HAVE_GETCWD 1
@@ -330,6 +342,9 @@
 /* Define to 1 if building partitioned database support. */
 /* #undef HAVE_PARTITION */
 
+/* Define to 1 to enable some kind of performance event tracing. */
+/* #undef HAVE_PERFMON */
+
 /* Define to 1 if you have the `pread' function. */
 /* #undef HAVE_PREAD */
 
@@ -370,7 +385,7 @@
 #define HAVE_REPLICATION 1
 
 /* Define to 1 if building the Berkeley DB replication framework. */
-/* #undef HAVE_REPLICATION_THREADS */
+#define HAVE_REPLICATION_THREADS 1
 
 /* Define to 1 if building RPC client/server. */
 /* #undef HAVE_RPC */
@@ -413,6 +428,9 @@
 
 /* Define to 1 if building statistics support. */
 #define HAVE_STATISTICS 1
+
+/* Define to 1 to enable performance event tracing of *_stat() statistics. */
+/* #undef HAVE_STATISTICS_PERFMON */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 /* #undef HAVE_STDINT_H */
@@ -468,6 +486,9 @@
 /* Define to 1 if you have the `sysconf' function. */
 /* #undef HAVE_SYSCONF */
 
+/* Define to 1 to use stap for performance event tracing. */
+/* #undef HAVE_SYSTEMTAP */
+
 /* Define to 1 if port includes files in the Berkeley DB source code. */
 #define HAVE_SYSTEM_INCLUDE_FILES 1
 
@@ -479,11 +500,14 @@
    */
 /* #undef HAVE_SYS_NDIR_H */
 
+/* Define to 1 if you have the <sys/sdt.h> header file. */
+/* #undef HAVE_SYS_SDT_H */
+
 /* Define to 1 if you have the <sys/select.h> header file. */
 /* #undef HAVE_SYS_SELECT_H */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
-/* #undef HAVE_SYS_SOCKET_H */
+#define HAVE_SYS_SOCKET_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 /* #undef HAVE_SYS_STAT_H */
@@ -531,13 +555,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 4.8.30"
+#define PACKAGE_STRING "Berkeley DB 5.0.32"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-4.8.30"
+#define PACKAGE_TARNAME "db-5.0.32"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.8.30"
+#define PACKAGE_VERSION "5.0.32"
 
 /* The size of a `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */

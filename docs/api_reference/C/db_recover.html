@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="apiReference.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
-    <link rel="up" href="utilities.html" title="Appendix 1.  Berkeley DB Command Line Utilities" />
+    <link rel="up" href="utilities.html" title="Appendix A.  Berkeley DB Command Line Utilities" />
     <link rel="prev" href="db_printlog.html" title="db_printlog" />
-    <link rel="next" href="db_sql.html" title="db_sql" />
+    <link rel="next" href="db_sql_codegen.html" title="db_sql_codegen" />
   </head>
   <body>
     <div class="navheader">
@@ -19,10 +19,10 @@
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="db_printlog.html">Prev</a> </td>
-          <th width="60%" align="center">Appendix 1. 
+          <th width="60%" align="center">Appendix A. 
                 Berkeley DB Command Line Utilities
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="db_sql.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="db_sql_codegen.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -69,9 +69,11 @@
             </p>
             <p>
                  Retain the environment after running recovery.  This option will
-                 rarely be used unless a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is
-                 present in the home directory.  If a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is
-                 not present, then the regions will be created with default parameter
+                 rarely be used unless a 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> 
+                 file is present in the home directory.  If a 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> 
+                 file is not present, then the regions will be created with default parameter
                  values.
             </p>
           </li>
@@ -206,9 +208,13 @@
          <span class="emphasis"><em>snapshot</em></span> — of all database files must be
          restored along with all of the log files written since the database
          file snapshot was made. (If disk space is a problem, log files may be
-         referenced by symbolic links).  For further information on creating a
-         database snapshot, see <a href="../../programmer_reference/transapp_archival.html" class="olink">Archival Procedures</a>.  For
-         further information on performing recovery, see <a href="../../programmer_reference/transapp_recovery.html" class="olink">Recovery Procedures</a>.
+         referenced by symbolic links).  
+         
+         <span>
+            For further information on creating a database snapshot, see
+            <a href="../../programmer_reference/transapp_archival.html" class="olink">Archival Procedures</a>.
+            For further information on performing recovery, see <a href="../../programmer_reference/transapp_recovery.html" class="olink">Recovery Procedures</a>.
+        </span>
     </p>
       <p>
          If the failure was not catastrophic, the files present on the system
@@ -220,10 +226,11 @@
          restored and recovery performed again.
     </p>
       <p>
-         The <span class="command"><strong>db_recover</strong></span> utility uses a Berkeley DB environment (as described
-         for the <span class="bold"><strong>-h</strong></span> option, the environment
-         variable <span class="bold"><strong>DB_HOME</strong></span>, or because the
-         utility was run in a directory containing a Berkeley DB environment). 
+         The <span class="command"><strong>db_recover</strong></span> utility uses a Berkeley DB
+         environment (as described for the <span class="bold"><strong>-h</strong></span>
+         option, the environment variable 
+         <span class="bold"><strong>DB_HOME</strong></span>, or because the utility
+         was run in a directory containing a Berkeley DB environment). 
          In order to avoid environment corruption when using a Berkeley DB
          environment, <span class="command"><strong>db_recover</strong></span> should always be given the chance to detach
          from the environment and exit gracefully.  To cause <span class="command"><strong>db_recover</strong></span> to
@@ -238,7 +245,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1714661"></a>Environment Variables</h3>
+              <h3 class="title"><a id="id4036608"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -246,7 +253,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1715630"></a>DB_HOME</h4>
+                <h4 class="title"><a id="id4036612"></a>DB_HOME</h4>
               </div>
             </div>
           </div>
@@ -268,14 +275,14 @@
           <td width="20%" align="center">
             <a accesskey="u" href="utilities.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="db_sql.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="db_sql_codegen.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">db_printlog </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> db_sql</td>
+          <td width="40%" align="right" valign="top"> db_sql_codegen</td>
         </tr>
       </table>
     </div>

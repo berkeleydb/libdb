@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -63,6 +63,43 @@ __memp_walk_files(env, mp, func, arg, countp, flags)
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 		if (ret != 0 && !LF_ISSET(DB_STAT_MEMP_NOERROR))
 			break;
+	}
+	return (ret);
+}
+
+/*
+ * __memp_discard_all_mpfs --
+ *	Force discard all mpoolfiles. When closing a private environment, we
+ *	always want to discard all mpoolfiles to avoid memory leak.
+ *
+ * PUBLIC: int __memp_discard_all_mpfs __P((ENV *, MPOOL *));
+ */
+int
+__memp_discard_all_mpfs (env, mp)
+	ENV *env;
+	MPOOL *mp;
+{
+	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
+	MPOOLFILE *mfp;
+	int i, ret, t_ret;
+
+	ret = t_ret = 0;
+	mfp = NULL;
+	hp = NULL;
+	dbmp = env->mp_handle;
+
+	hp = R_ADDR(dbmp->reginfo, mp->ftab);
+	for (i = 0; i < MPOOL_FILE_BUCKETS; i++, hp++) {
+		MUTEX_LOCK(env, hp->mtx_hash);
+		while ((mfp = SH_TAILQ_FIRST(
+		    &hp->hash_bucket, __mpoolfile)) != NULL) {
+			MUTEX_LOCK(env, mfp->mutex);
+			if ((t_ret = __memp_mf_discard(dbmp, mfp, 1)) != 0 &&
+			    ret == 0)
+				ret = t_ret;
+		}
+		MUTEX_UNLOCK(env, hp->mtx_hash);
 	}
 	return (ret);
 }
@@ -769,7 +806,7 @@ retry:		MUTEX_LOCK(env, hp->mtx_hash);
 			if (!mfp->deadfile &&
 			    mfp->block_cnt == 0 && mfp->mpf_cnt == 0) {
 				MUTEX_UNLOCK(env, hp->mtx_hash);
-				(void)__memp_mf_discard(dbmp, mfp);
+				(void)__memp_mf_discard(dbmp, mfp, 0);
 				goto retry;
 			} else
 				MUTEX_UNLOCK(env, mfp->mutex);

@@ -1,97 +1,153 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c)-2009 Oracle.  All rights reserved.
+# Copyright (c) 2007, 2010 Oracle and/or its affiliates.  All rights reserved.
 #
-# TEST repmgr030
-# TEST Subordinate connections and processes should not trigger elections.
+# $Id$
+#
+# TEST	repmgr030
+# TEST	repmgr multiple client-to-client peer test.
+# TEST
+# TEST	Start an appointed master and three clients. The third client
+# TEST	configures the other two clients as peers and delays client
+# TEST	sync.  Add some data and confirm that the third client uses first
+# TEST	client as a peer.  Close the master so that the first client now
+# TEST	becomes the master.  Add some more data and confirm that the
+# TEST	third client now uses the second client as a peer.
+# TEST
+# TEST	Run for btree only because access method shouldn't matter.
+# TEST
+proc repmgr030 { { niter 100 } { tnum "030" } args } {
 
-proc repmgr030 { } {
 	source ./include.tcl
 
-	set tnum "030"
-	puts "Repmgr$tnum: Subordinate\
-	    connections and processes should not trigger elections."
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping replication manager test on FreeBSD platform."
+		return
+	}
+
+	set method "btree"
+	set args [convert_args $method $args]
+
+	puts "Repmgr$tnum ($method): repmgr multiple c2c peer test."
+	repmgr030_sub $method $niter $tnum $args
+}
+
+proc repmgr030_sub { method niter tnum largs } {
+	global testdir
+	global rep_verbose
+	global verbose_type
+	set nsites 4
+
+	set verbargs ""
+	if { $rep_verbose == 1 } {
+		set verbargs " -verbose {$verbose_type on} "
+	}
 
 	env_cleanup $testdir
+	set ports [available_ports $nsites]
+	set omethod [convert_method $method]
 
-	foreach {mport cport} [available_ports 2] {}
-	file mkdir [set mdir $testdir/MASTER]
-	file mkdir [set cdir $testdir/CLIENT]
+	set masterdir $testdir/MASTERDIR
+	set clientdir $testdir/CLIENTDIR
+	set clientdir2 $testdir/CLIENTDIR2
+	set clientdir3 $testdir/CLIENTDIR3
 
-	make_dbconfig $mdir [set dbconfig {{rep_set_nsites 3}}]
-	make_dbconfig $cdir $dbconfig
+	file mkdir $masterdir
+	file mkdir $clientdir
+	file mkdir $clientdir2
+	file mkdir $clientdir3
 
-	puts "\tRepmgr$tnum.a: Set up a pair of sites, two processes each."
-	set cmds {
-		"home $mdir"
-		"local $mport"
-		"output $testdir/m1output"
-		"open_env"
-		"start master"
-	}
-	set m1 [open_site_prog [subst $cmds]]
+	# Use different connection retry timeout values to handle any
+	# collisions from starting sites at the same time by retrying
+	# at different times.
 
-	set cmds {
-		"home $mdir"
-		"local $mport"
-		"output $testdir/m2output"
-		"open_env"
-		"start master"
-	}
-	set m2 [open_site_prog [subst $cmds]]
+	# Open a master.
+	puts "\tRepmgr$tnum.a: Start a master."
+	set ma_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx MASTER -home $masterdir -txn -rep -thread"
+	set masterenv [eval $ma_envcmd]
+	$masterenv repmgr -ack all -nsites $nsites -pri 100 \
+	    -timeout {conn_retry 20000000} \
+	    -local [list localhost [lindex $ports 0]] \
+	    -start master
 
-	# Force subordinate client process to be the one to inform master of its
-	# address, to be sure there's a connection.  This shouldn't be
-	# necessary, but it's hard to verify this in a test.
-	# 
-	set cmds {
-		"home $cdir"
-		"local $cport"
-		"output $testdir/c1output"
-		"open_env"
-		"start client"
-	}
-	set c1 [open_site_prog [subst $cmds]]
+	# Open three clients, setting first two as peers of the third and
+	# configuring third for delayed sync.
+	puts "\tRepmgr$tnum.b: Start three clients, third with two peers."
+	set cl_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT -home $clientdir -txn -rep -thread"
+	set clientenv [eval $cl_envcmd]
+	$clientenv repmgr -ack all -nsites $nsites -pri 80 \
+	    -timeout {conn_retry 10000000} \
+	    -local [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 2]] \
+	    -remote [list localhost [lindex $ports 3]] \
+	    -start client
+	await_startup_done $clientenv
 
-	set cmds {
-		"home $cdir"
-		"local $cport"
-		"output $testdir/c2output"
-		"remote localhost $mport"
-		"open_env"
-		"start client"
-	}
-	set c2 [open_site_prog [subst $cmds]]
+	set cl2_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread"
+	set clientenv2 [eval $cl2_envcmd]
+	$clientenv2 repmgr -ack all -nsites $nsites -pri 50 \
+	    -timeout {conn_retry 5000000} \
+	    -local [list localhost [lindex $ports 2]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1]] \
+	    -remote [list localhost [lindex $ports 3]] \
+	    -start client
+	await_startup_done $clientenv2
 
-	set cenv [berkdb_env -home $cdir]
-	await_startup_done $cenv
+	set cl3_envcmd "berkdb_env_noerr -create $verbargs \
+	    -errpfx CLIENT3 -home $clientdir3 -txn -rep -thread"
+	set clientenv3 [eval $cl3_envcmd]
+	$clientenv3 repmgr -ack all -nsites $nsites -pri 50 \
+	    -timeout {conn_retry 75000000} \
+	    -local [list localhost [lindex $ports 3]] \
+	    -remote [list localhost [lindex $ports 0]] \
+	    -remote [list localhost [lindex $ports 1] peer] \
+	    -remote [list localhost [lindex $ports 2] peer] \
+	    -start client
+	await_startup_done $clientenv3
 
-	puts "\tRepmgr$tnum.b: Stop master's subordinate process (pause)."
-	close $m2
+	# Internally, repmgr does the following to determine the peer
+	# to use: it scans the internal list of remote sites, selecting
+	# the first one that is marked as a peer and that is not the
+	# current master.
 
-	# Pause to let client notice the connection loss.
-	tclsleep 3
+	puts "\tRepmgr$tnum.c: Configure third client for delayed sync."
+	$clientenv3 rep_config {delayclient on}
 
-	# The client main process is still running, but it shouldn't care about
-	# a connection loss to the master's subordinate process.
+	puts "\tRepmgr$tnum.d: Check third client used first client as peer."
+	set creqs [stat_field $clientenv rep_stat "Client service requests"]
+	set c2reqs [stat_field $clientenv2 rep_stat "Client service requests"]
+	error_check_good got_client_reqs [expr {$creqs > 0}] 1
+	error_check_good no_client2_reqs [expr {$c2reqs == 0}] 1
 
-	puts "\tRepmgr$tnum.c:\
-	    Stop client's main process, then master's main process (pause)."
-	close $c1
-	tclsleep 2
-	close $m1
-	tclsleep 3
+	puts "\tRepmgr$tnum.e: Run some transactions at master."
+	eval rep_test $method $masterenv NULL $niter 0 0 0 $largs
 
-	# If the client main process were still running, it would have reacted
-	# to the loss of the master by calling for an election.  However, with
-	# only the client subordinate process still running, he cannot call for
-	# an election.  So, we should see no elections ever having been
-	# started.
-	# 
-	set election_count [stat_field $cenv rep_stat "Elections held"]
-	puts "\tRepmgr$tnum.d: Check election count ($election_count)."
-	error_check_good no_elections $election_count 0
+	puts "\tRepmgr$tnum.f: Shut down master, first client takes over."
+	error_check_good masterenv_close [$masterenv close] 0
+	await_expected_master $clientenv
 
-	$cenv close
-	close $c2
+	puts "\tRepmgr$tnum.g: Run some more transactions at new master."
+	eval rep_test $method $clientenv NULL $niter $niter 0 0 $largs
+
+	puts "\tRepmgr$tnum.h: Sync delayed third client."
+	error_check_good rep_sync [$clientenv3 rep_sync] 0
+	# Give sync requests a bit of time to show up in stats.
+	tclsleep 1
+
+	puts "\tRepmgr$tnum.i: Check third client used second client as peer."
+	set c2reqs [stat_field $clientenv2 rep_stat "Client service requests"]
+	error_check_good got_client2_reqs [expr {$c2reqs > 0}] 1
+
+	puts "\tRepmgr$tnum.j: Verifying client database contents."
+	rep_verify $clientdir $clientenv $clientdir2 $clientenv2 1 1 1
+	rep_verify $clientdir $clientenv $clientdir3 $clientenv3 1 1 1
+
+	error_check_good client3_close [$clientenv3 close] 0
+	error_check_good client2_close [$clientenv2 close] 0
+	error_check_good client_close [$clientenv close] 0
 }

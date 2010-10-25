@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -25,7 +25,7 @@ public class EnvExample {
     private static void runApplication(Environment dbenv)
         throws DatabaseException, FileNotFoundException {
          
-        // Open a database in the environment to verify the data_dir
+        // open a database in the environment to verify the data_dir
         // has been set correctly.
         DatabaseConfig dbconfig = new DatabaseConfig();
 

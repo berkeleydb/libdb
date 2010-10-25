@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -262,7 +262,7 @@ __bam_dpages(dbc, use_top, flags)
 	 * leaf page chain.
 	 */
 	if (LF_ISSET(BTD_RELINK) && LEVEL(cp->csp->page) == 1 &&
-	    (ret = __bam_relink(dbc, cp->csp->page, NULL, PGNO_INVALID)) != 0)
+	    (ret = __db_relink(dbc, cp->csp->page, NULL, PGNO_INVALID)) != 0)
 		goto discard;
 
 	/*
@@ -369,9 +369,13 @@ err:		for (; epg <= cp->csp; ++epg) {
 	 * tree can collapse one or more levels.  While there remains only a
 	 * single item on the root page, write lock the last page referenced
 	 * by the root page and copy it over the root page.
+	 * Note that if pgno is the root of a btree database then the root
+	 * cannot change as we have it locked.
 	 */
-	root_pgno = cp->root;
-	if (pgno != root_pgno || nitems != 1)
+	if (nitems != 1)
+		return (0);
+	root_pgno = BAM_ROOT_PGNO(dbc);
+	if (pgno != root_pgno)
 		return (0);
 
 	for (done = 0; !done;) {
@@ -380,16 +384,13 @@ err:		for (; epg <= cp->csp; ++epg) {
 		LOCK_INIT(p_lock);
 		LOCK_INIT(c_lock);
 
-		/* Lock the root. */
-		pgno = root_pgno;
-		if ((ret =
-		    __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, &p_lock)) != 0)
-			goto stop;
-		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
-		    DB_MPOOL_DIRTY, &parent)) != 0)
-			goto stop;
+		/* Get the root. */
+		root_pgno = cp->root;
+		BAM_GET_ROOT(dbc, root_pgno,
+		    parent, DB_MPOOL_DIRTY, DB_LOCK_WRITE, p_lock, ret);
 
-		if (NUM_ENT(parent) != 1)
+		DB_ASSERT(dbp->env, parent != NULL);
+		if (ret != 0 || NUM_ENT(parent) != 1)
 			goto stop;
 
 		switch (TYPE(parent)) {
@@ -487,114 +488,6 @@ stop:			done = 1;
 			ret = t_ret;
 	}
 
-	return (ret);
-}
-
-/*
- * __bam_relink --
- *	Relink around a deleted page.
- *
- * PUBLIC: int __bam_relink __P((DBC *, PAGE *, PAGE *, db_pgno_t));
- *	Otherp can be either the previous or the next page to use if
- * the caller already holds that page.
- */
-int
-__bam_relink(dbc, pagep, otherp, new_pgno)
-	DBC *dbc;
-	PAGE *pagep, *otherp;
-	db_pgno_t new_pgno;
-{
-	DB *dbp;
-	DB_LOCK npl, ppl;
-	DB_LSN *nlsnp, *plsnp, ret_lsn;
-	DB_MPOOLFILE *mpf;
-	PAGE *np, *pp;
-	int ret, t_ret;
-
-	dbp = dbc->dbp;
-	np = pp = NULL;
-	LOCK_INIT(npl);
-	LOCK_INIT(ppl);
-	nlsnp = plsnp = NULL;
-	mpf = dbp->mpf;
-	ret = 0;
-
-	/*
-	 * Retrieve the one/two pages.  The caller must have them locked
-	 * because the parent is latched. For a remove, we may need
-	 * two pages (the before and after).  For an add, we only need one
-	 * because, the split took care of the prev.
-	 */
-	if (pagep->next_pgno != PGNO_INVALID) {
-		if (((np = otherp) == NULL ||
-		    PGNO(otherp) != pagep->next_pgno) &&
-		    (ret = __memp_fget(mpf, &pagep->next_pgno,
-		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &np)) != 0) {
-			ret = __db_pgerr(dbp, pagep->next_pgno, ret);
-			goto err;
-		}
-		nlsnp = &np->lsn;
-	}
-	if (pagep->prev_pgno != PGNO_INVALID) {
-		if (((pp = otherp) == NULL ||
-		    PGNO(otherp) != pagep->prev_pgno) &&
-		    (ret = __memp_fget(mpf, &pagep->prev_pgno,
-		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &pp)) != 0) {
-			ret = __db_pgerr(dbp, pagep->prev_pgno, ret);
-			goto err;
-		}
-		plsnp = &pp->lsn;
-	}
-
-	/* Log the change. */
-	if (DBC_LOGGING(dbc)) {
-		if ((ret = __bam_relink_log(dbp, dbc->txn, &ret_lsn, 0,
-		    pagep->pgno, new_pgno, pagep->prev_pgno, plsnp,
-		    pagep->next_pgno, nlsnp)) != 0)
-			goto err;
-	} else
-		LSN_NOT_LOGGED(ret_lsn);
-	if (np != NULL)
-		np->lsn = ret_lsn;
-	if (pp != NULL)
-		pp->lsn = ret_lsn;
-
-	/*
-	 * Modify and release the two pages.
-	 */
-	if (np != NULL) {
-		if (new_pgno == PGNO_INVALID)
-			np->prev_pgno = pagep->prev_pgno;
-		else
-			np->prev_pgno = new_pgno;
-		if (np != otherp)
-			ret = __memp_fput(mpf,
-			    dbc->thread_info, np, dbc->priority);
-		if ((t_ret = __TLPUT(dbc, npl)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			goto err;
-	}
-
-	if (pp != NULL) {
-		if (new_pgno == PGNO_INVALID)
-			pp->next_pgno = pagep->next_pgno;
-		else
-			pp->next_pgno = new_pgno;
-		if (pp != otherp)
-			ret = __memp_fput(mpf,
-			    dbc->thread_info, pp, dbc->priority);
-		if ((t_ret = __TLPUT(dbc, ppl)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			goto err;
-	}
-	return (0);
-
-err:	if (np != NULL && np != otherp)
-		(void)__memp_fput(mpf, dbc->thread_info, np, dbc->priority);
-	if (pp != NULL && pp != otherp)
-		(void)__memp_fput(mpf, dbc->thread_info, pp, dbc->priority);
 	return (ret);
 }
 

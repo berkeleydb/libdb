@@ -50,6 +50,11 @@
               <a href="lockingsubsystem.html#deadlockresolve">Resolving Deadlocks</a>
             </span>
           </dt>
+          <dt>
+            <span class="sect2">
+              <a href="lockingsubsystem.html#setpriority">Setting Transaction Priorities</a>
+            </span>
+          </dt>
         </dl>
       </div>
       <p>
@@ -199,7 +204,7 @@ main(void)
             db_strerror(ret));
         return (EXIT_FAILURE);
     }
-                                                                                                                                  
+
     env_flags = DB_CREATE     |  /* If the environment does not
                                   * exist, create it. */
                 DB_INIT_LOCK  |  /* Initialize locking */
@@ -207,7 +212,7 @@ main(void)
                 DB_INIT_MPOOL |  /* Initialize the cache */
                 DB_THREAD     |  /* Free-thread the env handle. */
                 DB_INIT_TXN;     /* Initialize transactions */
-                                                                                                                                  
+
     /* Configure max locks */
     ret = envp-&gt;set_lk_max_locks(envp, 5000);
     if (ret != 0) {
@@ -392,7 +397,7 @@ main(void)
             db_strerror(ret));
         return (EXIT_FAILURE);
     }
-                                                                                                                                  
+
     env_flags = DB_CREATE     |  /* If the environment does not
                                   * exist, create it. */
                 DB_INIT_LOCK  |  /* Initialize locking */
@@ -403,8 +408,8 @@ main(void)
 
     /*
      * Configure db to perform deadlock detection internally, and to
-     * choose the transaction that has performed the least amount of writing
-     * to break the deadlock in the event that one is detected.
+     * choose the transaction that has performed the least amount of
+     * writing to break the deadlock in the event that one is detected.
      */
     ret = envp-&gt;set_lk_detect(envp, DB_LOCK_MINWRITE);
     if (ret != 0) {
@@ -548,6 +553,120 @@ main(void)
     }
 
     return (EXIT_SUCCESS); </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="setpriority"></a>Setting Transaction Priorities</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                Normally when a thread of control must be selected to
+                resolve a deadlock, DB decides which thread will
+                perform the resolution; you have no way of knowing in
+                advance which thread will be selected to resolve the
+                deadlock.
+            </p>
+        <p>
+                However, there may be situations where you know it is
+                better for one thread to resolve a deadlock over another
+                thread. As an example, if you have a background thread
+                running data management activities, and another thread
+                responding to user requests, you might want deadlock
+                resolution to occur in the background thread because you
+                can better afford the throughput costs there. Under these
+                circumstances, you can identify which thread of control
+                will be selected for resolved deadlocks by setting a
+                transaction priorities.
+            </p>
+        <p>
+                When two transactions are deadlocked, DB will abort the
+                transaction with the lowest priority. By default, every
+                transaction is given a priority of 100. However, you can
+                set a different priority on a transaction-by-transaction
+                basis by using the
+                <code class="methodname">DB_TXN-&gt;set_priority()</code>
+                
+                
+                method.
+            </p>
+        <p>
+                When two or more transactions are tied for the lowest
+                priority, the tie is broken based on the policy provided to
+                <span>
+                    the
+                    <code class="methodname">DB_ENV-&gt;lock_detect()</code>
+                    
+                    method's <code class="literal">atype</code> parameter.
+                </span>
+                
+            </p>
+        <p>
+                A transaction's priority can be changed at any time after
+                the transaction handle has been created and before the
+                transaction has been resolved (committed or aborted).
+                For example:
+            </p>
+        <pre class="programlisting">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+#include "db.h"
+
+int
+main(void)
+{
+    int ret, ret_c;
+    u_int32_t db_flags, env_flags;
+    DB *dbp;
+    DB_ENV *envp;
+    DBT key, data;
+    DB_TXN *txn;
+
+    ...
+    // Open the environment and database as normal.
+    // Omitted for brevity
+    ...
+
+    /* Get the txn handle */
+    txn = NULL;
+    ret = envp-&gt;txn_begin(envp, NULL, &amp;txn, 0);
+    if (ret != 0) {
+        envp-&gt;err(envp, ret, "Transaction begin failed.");
+        goto err;
+    }
+
+    <strong class="userinput"><code>ret = txn-&gt;set_priority(txn, 200);
+    if (ret != 0) {
+        envp-&gt;err(envp, ret, "Transaction set_priority failed.");
+        goto err;
+    }</code></strong>
+
+    /*
+     * Perform the database write. If this fails, abort the transaction.
+     */
+    ret = dbp-&gt;put(dbp, txn, &amp;key, &amp;data, 0);
+    if (ret != 0) {
+        envp-&gt;err(envp, ret, "Database put failed.");
+        txn-&gt;abort(txn);
+        goto err;
+    }
+
+    /* 
+     * Commit the transaction.
+     */ 
+    ret = txn-&gt;commit(txn, 0);
+    if (ret != 0) {
+        envp-&gt;err(envp, ret, "Transaction commit failed.");
+        goto err;
+    }
+
+err:
+    ...
+    // Close the database and environment here, and exit the application.
+    // Omitted for brevity.
+} </pre>
       </div>
     </div>
     <div class="navfooter">

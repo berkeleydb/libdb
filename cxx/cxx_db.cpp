@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2009 Oracle.  All rights reserved.
+ * Copyright (c) 1997, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -152,6 +152,7 @@ int Db::initialize()
 	// Associate the DB with this object
 	imp_ = db;
 	db->api_internal = this;
+	db->alt_close = this->alt_close;
 
 	// Create a new DbEnv from a DB_ENV* if it was created locally.
 	// It is deleted in Db::close().
@@ -808,3 +809,13 @@ void Db::set_message_stream(__DB_STD(ostream) *message_stream)
 }
 
 DB_METHOD_QUIET(get_transactional, (), (db))
+
+int Db::alt_close(DB *pdb, u_int32_t flags)
+{
+	int ret;
+	
+	((Db *)(pdb->api_internal))->imp_ = NULL;
+	ret = pdb->close(pdb, flags);
+
+	return ret;
+}

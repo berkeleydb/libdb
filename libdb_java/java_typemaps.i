@@ -27,6 +27,44 @@ JAVA_TYPEMAP(int_bool, boolean, jboolean)
 %typemap(in) int_bool %{ $1 = ($input == JNI_TRUE); %}
 %typemap(out) int_bool %{ $result = ($1) ? JNI_TRUE : JNI_FALSE; %}
 
+/* Fake typedefs for SWIG */
+typedef        int db_ret_t;    /* An int that is mapped to a void */
+typedef        int int_bool;    /* An int that is mapped to a boolean */
+
+%{
+typedef int db_ret_t;
+typedef int int_bool;
+
+struct __db_lk_conflicts {
+       u_int8_t *lk_conflicts;
+       int lk_modes;
+};
+
+struct __db_out_stream {
+       void *handle;
+       int (*callback) __P((void *, const void *));
+};
+
+struct __db_repmgr_sites {
+       DB_REPMGR_SITE *sites;
+       u_int32_t nsites;
+};
+
+#define        Db __db
+#define        Dbc __dbc
+#define        Dbt __db_dbt
+#define        DbEnv __db_env
+#define        DbLock __db_lock_u
+#define        DbLogc __db_log_cursor
+#define        DbLsn __db_lsn
+#define        DbMpoolFile __db_mpoolfile
+#define        DbSequence __db_sequence
+#define        DbTxn __db_txn
+
+/* Suppress a compilation warning for an unused symbol */
+void *unused = (void *)SWIG_JavaThrowException;
+%}
+
 /* Dbt handling */
 JAVA_TYPEMAP(DBT *, com.sleepycat.db.DatabaseEntry, jobject)
 
@@ -267,6 +305,32 @@ static void __dbj_dbt_release(
 
 %typemap(freearg) DBT * %{ __dbj_dbt_release(jenv, $input, $1, &ldbt$argnum); %}
 
+/* DB_TXN_TOKEN handling */
+JAVA_TYPEMAP(DB_TXN_TOKEN *, byte[], jobject)
+
+%typemap(check) DB_TXN_TOKEN * %{
+       if ($1 == NULL) {
+               __dbj_throw(jenv, EINVAL, "null txn commit token", NULL, NULL);
+               return $null;
+       }
+%}
+
+
+%typemap(in) DB_TXN_TOKEN * (DB_TXN_TOKEN token) %{
+       if ($input == NULL) {
+               $1 = NULL;
+       } else {
+               $1 = &token;
+               (*jenv)->GetByteArrayRegion(jenv, (jbyteArray)$input, 0, DB_TXN_TOKEN_SIZE, $1->buf);
+       }
+%}
+
+%typemap(out) DB_TXN_TOKEN * %{
+       if ($input != NULL) {
+               (*jenv)->SetByteArrayRegion(jenv, (jbyteArray)$input, 0, DB_TXN_TOKEN_SIZE, $1->buf);
+       }
+%}
+
 /* DbLsn handling */
 JAVA_TYPEMAP(DB_LSN *, com.sleepycat.db.LogSequenceNumber, jobject)
 
@@ -306,6 +370,11 @@ JAVA_TYPEMAP(time_t *, long, jlong)
 	$1 = &time;
 %}
 
+%typemap(in) time_t %{
+        $1 = $input;
+%}
+
+
 JAVA_TYPEMAP(DB_KEY_RANGE *, com.sleepycat.db.KeyRange, jobject)
 %typemap(in) DB_KEY_RANGE * (DB_KEY_RANGE range) {
 	$1 = &range;
@@ -318,11 +387,11 @@ JAVA_TYPEMAP(DB_KEY_RANGE *, com.sleepycat.db.KeyRange, jobject)
 
 JAVA_TYPEMAP(DBC **, Dbc[], jobjectArray)
 %typemap(in) DBC ** {
-	int i, count, err;
+	int i, count, ret;
 
 	count = (*jenv)->GetArrayLength(jenv, $input);
-	if ((err = __os_malloc(NULL, (count + 1) * sizeof(DBC *), &$1)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, DB2JDBENV);
+	if ((ret = __os_malloc(NULL, (count + 1) * sizeof(DBC *), &$1)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, DB2JDBENV);
 		return $null;
 	}
 	for (i = 0; i < count; i++) {
@@ -394,14 +463,14 @@ JAVA_TYPEMAP(char **, String[], jobjectArray)
 
 JAVA_TYPEMAP(struct __db_lk_conflicts, byte[][], jobjectArray)
 %typemap(in) struct __db_lk_conflicts {
-	int i, len, err;
+	int i, len, ret;
 	size_t bytesize;
 
 	len = $1.lk_modes = (*jenv)->GetArrayLength(jenv, $input);
 	bytesize = sizeof(u_char) * len * len;
 
-	if ((err = __os_malloc(NULL, bytesize, &$1.lk_conflicts)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, JDBENV);
+	if ((ret = __os_malloc(NULL, bytesize, &$1.lk_conflicts)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, JDBENV);
 		return $null;
 	}
 
@@ -533,7 +602,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	DBT_LOCKED *locked_dbts;
 	DBT *obj;
 	ENV *env;
-	int err, alloc_err, i;
+	int alloc_err, i, ret;
 	size_t bytesize, ldbtsize;
 	jobject jlockreq;
 	db_lockop_t op;
@@ -566,15 +635,15 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	}
 
 	bytesize = sizeof(DB_LOCKREQ) * count;
-	if ((err = __os_malloc(env, bytesize, &lockreq)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	if ((ret = __os_malloc(env, bytesize, &lockreq)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 		return;
 	}
 	memset(lockreq, 0, bytesize);
 
 	ldbtsize = sizeof(DBT_LOCKED) * count;
-	if ((err = __os_malloc(env, ldbtsize, &locked_dbts)) != 0) {
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	if ((ret = __os_malloc(env, ldbtsize, &locked_dbts)) != 0) {
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 		goto err;
 	}
 	memset(locked_dbts, 0, ldbtsize);
@@ -605,9 +674,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			    jenv, jlockreq, lockreq_modeflag_fid);
 			jobj = (*jenv)->GetObjectField(jenv, jlockreq,
 			    lockreq_obj_fid);
-			if ((err = __dbj_dbt_copyin(jenv,
+			if ((ret = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
-			    (err = __dbt_usercopy(env, obj)) != 0)
+			    (ret = __dbt_usercopy(env, obj)) != 0)
 				goto err;
 			prereq->obj = obj;
 			break;
@@ -634,9 +703,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 			/* Needed: obj.  Ignored: lock, mode. */
 			jobj = (*jenv)->GetObjectField(jenv, jlockreq,
 			    lockreq_obj_fid);
-			if ((err = __dbj_dbt_copyin(jenv,
+			if ((ret = __dbj_dbt_copyin(jenv,
 			    &locked_dbts[i], &obj, jobj, 0)) != 0 ||
-			    (err = __dbt_usercopy(env, obj)) != 0)
+			    (ret = __dbt_usercopy(env, obj)) != 0)
 				goto err;
 			prereq->obj = obj;
 			break;
@@ -647,9 +716,9 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 		}
 	}
 
-	err = dbenv->lock_vec(dbenv, (u_int32_t)locker, (u_int32_t)flags,
+	ret = dbenv->lock_vec(dbenv, (u_int32_t)locker, (u_int32_t)flags,
 	    lockreq, count, &failedreq);
-	if (err == 0)
+	if (ret == 0)
 		completed = count;
 	else
 		completed = (int)(failedreq - lockreq);
@@ -702,7 +771,7 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 	}
 
 	/* If one of the locks was not granted, build the exception now. */
-	if (err == DB_LOCK_NOTGRANTED && i < count) {
+	if (ret == DB_LOCK_NOTGRANTED && i < count) {
 		jlockreq = (*jenv)->GetObjectArrayElement(jenv, list,
 		    i + offset);
 		jobj = (*jenv)->GetObjectField(jenv, jlockreq, lockreq_obj_fid);
@@ -712,8 +781,8 @@ Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1lock_1vec(JNIEnv *jenv,
 		    (*jenv)->NewObject(jenv, lockex_class, lockex_construct,
 		    (*jenv)->NewStringUTF(jenv, "DbEnv.lock_vec incomplete"),
 		    lockreq[i].op, lockreq[i].mode, jobj, jlock, i, jdbenv));
-	} else if (err != 0)
-		__dbj_throw(jenv, err, NULL, NULL, jdbenv);
+	} else if (ret != 0)
+		__dbj_throw(jenv, ret, NULL, NULL, jdbenv);
 
 err:	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++)
 		if (prereq->op == DB_LOCK_GET_TIMEOUT ||
@@ -730,6 +799,70 @@ err:	for (i = 0, prereq = &lockreq[0]; i < count; i++, prereq++)
 		__os_free(env, locked_dbts);
 	if (lockreq != NULL)
 		__os_free(env, lockreq);
+}
+%}
+
+%native(DbTxn_commit) void DbTxn_commit(DB_TXN *txn, u_int32_t flags);
+%{
+SWIGEXPORT void JNICALL
+Java_com_sleepycat_db_internal_db_1javaJNI_DbTxn_1commit(JNIEnv *jenv,
+    jclass jcls, jlong jarg1, jobject jarg1_, jint jarg2) {
+  struct DbTxn *txn = (struct DbTxn *) 0 ;
+  ENV *env = (ENV *) 0 ;
+  u_int32_t flags;
+  DB_TXN_TOKEN token;
+  db_ret_t result;
+  db_ret_t result1;
+  int is_nested, is_logging_enabled, is_rep_client, commit_token_enabled;
+  
+  (void)jcls;
+  txn = *(struct DbTxn **)&jarg1; 
+  flags = (u_int32_t)jarg2; 
+  
+  if (jarg1 == 0) {
+     __dbj_throw(jenv, EINVAL, "call on closed handle", NULL, NULL);
+  return ;
+  }
+
+  /*
+   * The Java API uses set_commit_token in a different way to the C API.
+   * In Java a commit token is always generated, unless doing so would
+   * generate an error from the C API.
+   * The checks below are based on those in place in the implementation
+   * of set_commit_token in the C API. It is invalid to set a commit
+   * token for a subtransaction, or if logging is disabled, or on a rep
+   * client node.
+   */
+  env = txn->mgrp->env;
+  is_nested = (txn->parent != NULL);
+  is_logging_enabled = env->lg_handle != NULL;
+  is_rep_client = (env->rep_handle != NULL && 
+                   env->rep_handle->region != NULL &&
+                   F_ISSET((env->rep_handle->region), REP_F_CLIENT));
+  commit_token_enabled = (!is_nested && is_logging_enabled && !is_rep_client);
+
+  if (commit_token_enabled) {
+    result1 = (db_ret_t)txn->set_commit_token(txn, &token);
+  }
+
+  result = (db_ret_t)txn->commit(txn, flags);
+  if (!DB_RETOK_STD(result)) {
+     __dbj_throw(jenv, result, NULL, NULL, NULL);
+  }
+
+  /* 
+   * Set the commit token in the Java Transaction class object only if 
+   * the Core has generated a valid token for this transaction
+   */
+  if (commit_token_enabled && DB_RETOK_STD(result1)) {
+     jbyteArray newarr = (*jenv)->NewByteArray(jenv, (jsize)DB_TXN_TOKEN_SIZE);
+     if (newarr == NULL) {
+        return; /* An exception is pending */
+     }
+     (*jenv)->SetByteArrayRegion(jenv, newarr, 0, (jsize)DB_TXN_TOKEN_SIZE,
+        (jbyte *)&token);
+     (*jenv)->SetObjectField(jenv, jarg1_, txn_commit_token, newarr);
+  }
 }
 %}
 
@@ -756,10 +889,12 @@ JAVA_TYPEMAP(struct __db_repmgr_sites,
 
 		jrep_info = (*jenv)->NewObject(jenv,
 		    repmgr_siteinfo_class, repmgr_siteinfo_construct, jrep_addr, $1.sites[i].eid);
-		(*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_status_fid,
-		    $1.sites[i].status);
 		if (jrep_info == NULL)
 			return $null; /* An exception is pending */
+		(*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_flags_fid,
+		    $1.sites[i].flags);
+		(*jenv)->SetIntField(jenv, jrep_info, repmgr_siteinfo_status_fid,
+		    $1.sites[i].status);
 
 		(*jenv)->SetObjectArrayElement(jenv, $result, i, jrep_info);
 	}

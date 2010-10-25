@@ -85,6 +85,45 @@
       </config>
     </platform>
   </library>
+  <library name="db_sql">
+    <libname config="Debug">libdb_sql@DB_VERSION_MAJOR@@DB_VERSION_MINOR@d</libname>
+    <libname config="Release">libdb_sql@DB_VERSION_MAJOR@@DB_VERSION_MINOR@</libname>
+    <platform name="Win32 x64 IA64">
+      <config type="Debug">
+	<libdir>$(OutDir)</libdir>
+      </config>
+      <config type="Release">
+	<libdir>$(OutDir)</libdir>
+      </config>
+    </platform>
+    <options><compile platform="x64 IA64">/bigobj</compile></options>
+  </library>
+  <library name="db_sql_jdbc">
+    <libname config="Debug">sqlite_jni</libname>
+    <libname config="Release">sqlite_jni</libname>
+    <platform name="Win32 x64 IA64">
+      <config type="Debug">
+	<libdir>$(OutDir)</libdir>
+      </config>
+      <config type="Release">
+	<libdir>$(OutDir)</libdir>
+      </config>
+    </platform>
+    <options><compile platform="x64 IA64">/bigobj</compile></options>
+  </library>
+  <library name="db_sql_odbc">
+    <libname config="Debug">sqlite3odbc</libname>
+    <libname config="Release">sqlite3odbc</libname>
+    <platform name="Win32 x64 IA64">
+      <config type="Debug">
+	<libdir>$(OutDir)</libdir>
+      </config>
+      <config type="Release">
+	<libdir>$(OutDir)</libdir>
+      </config>
+    </platform>
+    <options><compile platform="x64 IA64">/bigobj</compile></options>
+  </library>
   <library name="db_stl">
     <libname config="Debug">libdb_stl@DB_VERSION_MAJOR@@DB_VERSION_MINOR@d</libname>
     <libname config="Release">libdb_stl@DB_VERSION_MAJOR@@DB_VERSION_MINOR@</libname>
@@ -143,16 +182,15 @@
       </config>
     </platform>
   </library>
-  <include name="all">../build_windows,../dbinc</include>
-  <include name="db">../build_windows,../,../dbinc</include>
-  <include name="db_stl">../stl,../,../dbinc</include>
-  <include name="ex_csv">../examples_c/csv</include>
+  <include name="all">../build_windows,../,../dbinc,../include</include>
+  <include name="db_sql_src">../sql/generated,../sql/adapter,../sql/sqlite/src,../sql/sqlite/ext/fts3,../sql/sqlite/ext/rtree</include>
+  <include name="db_sql">../sql/generated,../include</include>
   <project name="php_db4" guid="44AFD8B5-687F-4B9D-B163-1F381CC11794">
     <type>dll</type>
     <depends>db</depends>
     <depends>php5ts</depends>
     <include type="ref">all</include>
-    <include type="rel">php_db4</include>
+    <!--<include type="rel">php_db4</include>-->
     <preprocessor config="all">COMPILE_DL_DB4;DB4_EXPORTS;HAVE_DB_H=1;ZEND_WIN32=1;PHP_WIN32=1;ZEND_WIN32_FORCE_INLINE;ZTS=1</preprocessor>
     <preprocessor config="Release">NDebug;ZEND_DEBUG=0</preprocessor>
     <preprocessor config="Debug">ZEND_DEBUG=1</preprocessor>
@@ -163,7 +201,7 @@
   <project name="db" guid="FD045D60-ABAD-4A6C-9794-9BFB085FC3E7">
     <type>dll</type>
     <depends>winsock</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <moddef file="build_windows/libdb.def"/>
     <options>
       <nowp64/>
@@ -210,9 +248,11 @@
       <file name="db/db.c"/>
       <file name="db/db_am.c"/>
       <file name="db/db_auto.c"/>
+      <file name="common/clock.c"/>
       <file name="common/db_byteorder.c"/>
       <file name="db/db_cam.c"/>
       <file name="db/db_cds.c"/>
+      <file name="db/db_compact.c"/>
       <file name="db/db_conv.c"/>
       <file name="db/db_dispatch.c"/>
       <file name="db/db_dup.c"/>
@@ -271,6 +311,7 @@
       <file name="fileops/fop_util.c"/>
       <file name="hash/hash.c"/>
       <file name="hash/hash_auto.c"/>
+      <file name="hash/hash_compact.c"/>
       <file name="hash/hash_conv.c"/>
       <file name="hash/hash_dup.c"/>
       <file name="hash/hash_func.c"/>
@@ -285,6 +326,7 @@
       <file name="hash/hash_verify.c"/>
       <file name="hmac/hmac.c"/>
       <file name="hsearch/hsearch.c"/>
+      <file name="clib/isalpha.c"/>
       <file name="build_windows/libdb.def"/>
       <file name="build_windows/libdb.rc"/>
       <file name="lock/lock.c"/>
@@ -303,8 +345,13 @@
       <file name="log/log_debug.c"/>
       <file name="log/log_get.c"/>
       <file name="log/log_method.c"/>
+      <file name="log/log_print.c"/>
       <file name="log/log_put.c"/>
       <file name="log/log_stat.c"/>
+      <file name="log/log_verify.c"/>
+      <file name="log/log_verify_util.c"/>
+      <file name="log/log_verify_auto.c"/>
+      <file name="log/log_verify_int.c"/>
       <file name="common/mkpath.c"/>
       <file name="mp/mp_alloc.c"/>
       <file name="mp/mp_bh.c"/>
@@ -387,6 +434,7 @@
       <file name="repmgr/repmgr_msg.c"/>
       <file name="repmgr/repmgr_net.c"/>
       <file name="repmgr/repmgr_queue.c"/>
+      <file name="repmgr/repmgr_rereq.c"/>
       <file name="repmgr/repmgr_sel.c"/>
       <file name="repmgr/repmgr_stat.c"/>
       <file name="repmgr/repmgr_util.c"/>
@@ -417,7 +465,7 @@
   <project name="db_small" guid="B7124116-7A43-4BF1-B727-4C8ADE40FF7F">
     <type>dll</type>
     <depends>winsock</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <options>
       <nowp64/>
       <link config="Debug">/FIXED:NO /export:__db_assert</link>
@@ -443,7 +491,9 @@
       <file name="btree\bt_stat.c"/>
       <file name="btree\bt_upgrade.c"/>
       <file name="btree\btree_auto.c"/>
+      <file name="clib\isalpha.c"/>
       <file name="clib\strsep.c"/>
+      <file name="common\clock.c"/>
       <file name="common\crypto_stub.c"/>
       <file name="common\db_byteorder.c"/>
       <file name="common\db_err.c"/>
@@ -476,6 +526,7 @@
       <file name="db\db_auto.c"/>
       <file name="db\db_cam.c"/>
       <file name="db\db_cds.c"/>
+      <file name="db\db_compact.c"/>
       <file name="db\db_conv.c"/>
       <file name="db\db_dispatch.c"/>
       <file name="db\db_dup.c"/>
@@ -544,6 +595,7 @@
       <file name="log\log_method.c"/>
       <file name="log\log_put.c"/>
       <file name="log\log_stat.c"/>
+      <file name="log\log_verify_stub.c"/>
       <file name="mp\mp_alloc.c"/>
       <file name="mp\mp_bh.c"/>
       <file name="mp\mp_fget.c"/>
@@ -614,16 +666,140 @@
   </project>
   <project name="db_small_static" guid="FE85C600-38A6-11DE-8A39-0800200C9A66">
     <type>static_lib</type>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <preprocessor config="all">WIN32;_UNICODE;UNICODE;HAVE_SMALLBUILD</preprocessor>
     <preprocessor config="Debug">DIAGNOSTIC</preprocessor>
     <options><nowp64/></options>
   </project>
+  <project name="db_sql" guid="4B65E600-064A-11DF-8A39-0800200C9A66">
+    <type>dll</type>
+    <depends>db</depends>
+    <moddef file="build_windows/libdb_sql.def"/>
+    <include type="ref">all</include>
+    <include type="ref">db_sql_src</include>
+    <options>
+      <nowp64/>
+      <link config="Debug">/FIXED:NO</link>
+    </options>
+    <preprocessor config="all">WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE</preprocessor>
+    <preprocessor config="Debug">_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>
+    <files>
+      <file name="sql\sqlite\src\alter.c"/>
+      <file name="sql\sqlite\src\analyze.c"/>
+      <file name="sql\sqlite\src\attach.c"/>
+      <file name="sql\sqlite\src\auth.c"/>
+      <file name="sql\adapter\backup.c"/>
+      <file name="sql\sqlite\src\bitvec.c"/>
+      <file name="sql\adapter\btmutex.c"/>
+      <file name="sql\adapter\btree.c"/>
+      <file name="sql\sqlite\src\build.c"/>
+      <file name="sql\sqlite\src\callback.c"/>
+      <file name="sql\sqlite\src\complete.c"/>
+      <file name="sql\sqlite\src\ctime.c"/>
+      <file name="sql\sqlite\src\date.c"/>
+      <file name="sql\sqlite\src\delete.c"/>
+      <file name="sql\sqlite\src\expr.c"/>
+      <file name="sql\sqlite\src\fault.c"/>
+      <file name="sql\sqlite\src\fkey.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_expr.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_hash.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_icu.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_porter.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_snippet.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_tokenizer1.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_tokenizer.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_write.c"/>
+      <file name="sql\sqlite\src\func.c"/>
+      <file name="sql\sqlite\src\global.c"/>
+      <file name="sql\sqlite\src\hash.c"/>
+      <file name="sql\sqlite\src\insert.c"/>
+      <file name="sql\sqlite\src\journal.c"/>
+      <file name="sql\sqlite\src\legacy.c"/>
+      <file name="sql\sqlite\src\loadext.c"/>
+      <file name="sql\sqlite\src\main.c"/>
+      <file name="sql\sqlite\src\malloc.c"/>
+      <file name="sql\sqlite\src\mem0.c"/>
+      <file name="sql\sqlite\src\mem1.c"/>
+      <file name="sql\sqlite\src\mem2.c"/>
+      <file name="sql\sqlite\src\memjournal.c"/>
+      <file name="sql\sqlite\src\mutex.c"/>
+      <file name="sql\sqlite\src\mutex_w32.c"/>
+      <file name="sql\sqlite\src\notify.c"/>
+      <file name="sql\generated\opcodes.c"/>
+      <file name="sql\sqlite\src\os.c"/>
+      <file name="sql\sqlite\src\os_win.c"/>
+      <file name="sql\adapter\pager.c"/>
+      <file name="sql\generated\parse.c"/>
+      <file name="sql\adapter\pcache.c"/>
+      <file name="sql\adapter\pcache1.c"/>
+      <file name="sql\sqlite\src\pragma.c"/>
+      <file name="sql\sqlite\src\prepare.c"/>
+      <file name="sql\sqlite\src\printf.c"/>
+      <file name="sql\sqlite\src\random.c"/>
+      <file name="sql\sqlite\src\resolve.c"/>
+      <file name="sql\sqlite\src\rowset.c"/>
+      <file name="sql\sqlite\ext\rtree\rtree.c"/>
+      <file name="sql\sqlite\src\select.c"/>
+      <file name="sql\sqlite\src\status.c"/>
+      <file name="sql\sqlite\src\table.c"/>
+      <file name="sql\sqlite\src\tokenize.c"/>
+      <file name="sql\sqlite\src\trigger.c"/>
+      <file name="sql\sqlite\src\update.c"/>
+      <file name="sql\sqlite\src\utf.c"/>
+      <file name="sql\sqlite\src\util.c"/>
+      <file name="sql\adapter\vacuum.c"/>
+      <file name="sql\sqlite\src\vdbe.c"/>
+      <file name="sql\sqlite\src\vdbeapi.c"/>
+      <file name="sql\sqlite\src\vdbeaux.c"/>
+      <file name="sql\sqlite\src\vdbeblob.c"/>
+      <file name="sql\sqlite\src\vdbemem.c"/>
+      <file name="sql\sqlite\src\vdbetrace.c"/>
+      <file name="sql\sqlite\src\vtab.c"/>
+      <file name="sql\sqlite\src\walker.c"/>
+      <file name="sql\sqlite\src\where.c"/>
+    </files>
+  </project>
+  <project name="db_sql_jdbc" guid="433EAC30-1CEA-11DF-8A39-0800200C9A66" output="sqlite_jni">
+    <type>dll</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql_src</include>
+    <include type="rel">../sql/jdbc/native</include>
+    <options><nowp64/></options>
+    <event name="prebuild">
+      <command config="ReleaseDebug">
+mkdir "./$(OutDir)/jdbc_classes/" 
+echo compiling JDBC classes
+javac -g -target 1.5 -d "$(OutDir)\jdbc_classes" -classpath "$(OutDir)\jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+echo Building JNI header files
+javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)\jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+echo creating jar file
+jar cf "$(OutDir)\jdbc.jar" -C "$(OutDir)\jdbc_classes" .
+echo JDBC build finished</command>
+    </event>
+    <preprocessor config="all">DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1</preprocessor>
+    <files>
+      <file name="sql/jdbc/native/sqlite_jni.c"/>
+    </files>
+  </project>
+  <project name="db_sql_odbc" guid="0D7E0170-2D8B-11DF-8A39-0800200C9A66">
+    <type>dll</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <options><nowp64/></options>
+    <preprocessor config="all">WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;SQLITE_CORE;_WIN32;WITHOUT_SHELL;HAVE_SQLITE3PREPAREV2=1;NO_TCL;THREADSAFE=1;SQLITE_DLL=1;SQLITE_THREADSAFE=1;SQLITE_OS_WIN=1;SQLITE_ASCII=1;SQLITE_SOUNDEX=1;SQLITE_OMIT_SHARED_CACHE=1;SQLITE_OMIT_EXPLAIN=1</preprocessor>
+    <preprocessor config="debug">_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>
+    <moddef file="sql/odbc/sqlite3odbc.def"/>
+    <files>
+      <file name="sql/odbc/sqlite3odbc.c"/>
+      <file name="sql/odbc/sqlite3odbc.rc"/>
+    </files>
+  </project>
   <project name="db_stl" guid="284CC197-0C66-11DE-8C30-0800200C9A66">
     <type>dll</type>
     <depends>db</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <options><nowp64/></options>
     <preprocessor config="all">DB_CREATE_DLL;_UNICODE;UNICODE</preprocessor>
     <files>
@@ -646,8 +822,8 @@
   </project>
   <project name="db_stl_static" guid="284CC198-0C66-11DE-8C30-0800200C9A66">
     <type>static_lib</type>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <preprocessor config="all">_UNICODE;UNICODE</preprocessor>
     <preprocessor config="Debug">DIAGNOSTIC</preprocessor>
     <options><nowp64/></options>
@@ -656,7 +832,7 @@
     <type>dll</type>
     <depends>db</depends>
     <depends>tcl</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <moddef file="build_windows/libdb_tcl.def"/>
     <preprocessor config="all">DB_CREATE_DLL;_UNICODE;DB_TCL_SUPPORT</preprocessor>
     <preprocessor config="Debug">DIAGNOSTIC;CONFIG_TEST</preprocessor>
@@ -683,17 +859,17 @@
   <project name="db_java" guid="0052E828-5F10-4973-8729-50B0C5598702">
     <type>dll</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <options><nowp64/></options>
     <preprocessor config="all">DB_CREATE_DLL;_UNICODE;UNICODE</preprocessor>
     <event name="custom">
       <command config="ReleaseDebug">
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)/classes/" 
-javac -g -d "$(OutDir)\classes" -classpath "$(OutDir)\classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
+javac -g -target 1.5 -d "$(OutDir)\classes" -classpath "$(OutDir)\classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
 echo compiling examples
 mkdir "$(OutDir)\classes.ex"
-javac -g -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
 echo creating jar files
 jar cf "$(OutDir)/db.jar" -C "$(OutDir)\classes" .
 jar cf "$(OutDir)/dbexamples.jar" -C "$(OutDir)\classes.ex" .
@@ -707,7 +883,7 @@ echo Java build finished</command>
   <project name="db_csharp" guid="13DE550F-16FD-4AC2-9EC6-B1A18F41476F">
     <type>dll</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <options><nowp64/></options>
     <preprocessor config="all">DB_CREATE_DLL;_UNICODE;UNICODE</preprocessor>
     <files>
@@ -717,7 +893,7 @@ echo Java build finished</command>
   <project name="db_archive" guid="56056344-53A1-4FA6-B20B-862C0BA68953">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_archive/db_archive.c"/>
       <file name="clib/getopt.c"/>
@@ -726,7 +902,7 @@ echo Java build finished</command>
   <project name="db_checkpoint" guid="A3BE0163-1E6C-4235-9B6B-3A36ABB5E285">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_checkpoint/db_checkpoint.c"/>
       <file name="clib/getopt.c"/>
@@ -735,7 +911,7 @@ echo Java build finished</command>
   <project name="db_deadlock" guid="CD0FD995-B4D1-4907-987B-99CF3304E7E0">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_deadlock/db_deadlock.c"/>
       <file name="clib/getopt.c"/>
@@ -744,7 +920,7 @@ echo Java build finished</command>
   <project name="db_dump" guid="DB067D2C-7163-428B-AAF8-642316AB173B">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_dump/db_dump.c"/>
       <file name="clib/getopt.c"/>
@@ -753,7 +929,7 @@ echo Java build finished</command>
   <project name="db_hotbackup" guid="67C0DABC-353A-491F-9A77-8E2E601ED52B">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_hotbackup/db_hotbackup.c"/>
       <file name="clib/getopt.c"/>
@@ -762,16 +938,25 @@ echo Java build finished</command>
   <project name="db_load" guid="7640133F-4AB8-42DA-ADB5-95F21447F7D5">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_load/db_load.c"/>
+      <file name="clib/getopt.c"/>
+    </files>
+  </project>
+  <project name="db_log_verify" guid="872961A3-877A-4B53-886D-F1FB65073608">
+    <type>app</type>
+    <depends>db</depends>
+    <include type="ref">all</include>
+    <files>
+      <file name="db_log_verify/db_log_verify.c"/>
       <file name="clib/getopt.c"/>
     </files>
   </project>
   <project name="db_perf" guid="5835B4B0-2F99-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="test_perf/db_perf.c"/>
       <file name="test_perf/perf_checkpoint.c"/>
@@ -799,7 +984,7 @@ echo Java build finished</command>
   <project name="db_printlog" guid="D505F51B-2B92-4850-A08F-9113D947FF4B">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_printlog/db_printlog.c"/>
       <file name="btree/btree_autop.c"/>
@@ -816,7 +1001,7 @@ echo Java build finished</command>
   <project name="db_recover" guid="9E03FD51-E387-4EEF-9EEA-E71707A56212">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_recover/db_recover.c"/>
       <file name="clib/getopt.c"/>
@@ -825,37 +1010,168 @@ echo Java build finished</command>
   <project name="db_repsite" guid="23A3F970-2E25-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="test_repmgr/db_repsite.cpp"/>
       <file name="clib/getopt.c"/>
     </files>
   </project>
-  <project name="db_sql" guid="738ee880-0e33-11de-8c30-0800200c9a66">
+  <project name="db_sql_shell" guid="A5DB89F0-06E5-11DF-8A39-0800200C9A66" output="dbsql">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <depends>db_sql</depends>
+    <include type="ref">all</include>
+    <include type="ref">db_sql_src</include>
+    <preprocessor config="all">WIN32;_CONSOLE;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE</preprocessor>
+    <preprocessor config="Debug">_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;</preprocessor>
     <files>
-      <file name="db_sql/db_sql.c"/>
-      <file name="db_sql/preparser.c"/>
-      <file name="db_sql/parsefuncs.c"/>
-      <file name="db_sql/tokenize.c"/>
-      <file name="db_sql/buildpt.c"/>
-      <file name="db_sql/utils.c"/>
-      <file name="db_sql/generate.c"/>
-      <file name="db_sql/generate_test.c"/>
-      <file name="db_sql/generation_utils.c"/>
-      <file name="db_sql/generate_verification.c"/>
-      <file name="db_sql/hint_comment.c"/>
-      <file name="db_sql/sqlite/sqlprintf.c"/>
-      <file name="db_sql/sqlite/parse.c"/>
+      <file name="sql\sqlite\src\shell.c"/>
+    </files>
+  </project>
+  <project name="db_sql_testfixture" guid="5D79B660-0667-11DF-8A39-0800200C9A66" output="testfixture">
+    <type>app</type>
+    <depends>db</depends>
+    <depends>tcl</depends>
+    <include type="ref">all</include>
+    <include type="ref">db_sql_src</include>
+    <preprocessor config="all">WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE</preprocessor>
+    <preprocessor config="Debug">_DEBUG;SQLITE_MEMDEBUG;</preprocessor>
+    <files>
+      <file name="sql\sqlite\src\alter.c"/>
+      <file name="sql\sqlite\src\analyze.c"/>
+      <file name="sql\sqlite\src\attach.c"/>
+      <file name="sql\sqlite\src\auth.c"/>
+      <file name="sql\adapter\backup.c"/>
+      <file name="sql\sqlite\src\bitvec.c"/>
+      <file name="sql\adapter\btmutex.c"/>
+      <file name="sql\adapter\btree.c"/>
+      <file name="sql\sqlite\src\build.c"/>
+      <file name="sql\sqlite\src\callback.c"/>
+      <file name="sql\sqlite\src\ctime.c"/>
+      <file name="sql\sqlite\src\complete.c"/>
+      <file name="sql\sqlite\src\date.c"/>
+      <file name="sql\sqlite\src\delete.c"/>
+      <file name="sql\sqlite\src\expr.c"/>
+      <file name="sql\sqlite\src\fault.c"/>
+      <file name="sql\sqlite\src\fkey.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_expr.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_hash.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_icu.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_porter.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_snippet.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_tokenizer1.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_tokenizer.c"/>
+      <file name="sql\sqlite\ext\fts3\fts3_write.c"/>
+      <file name="sql\sqlite\src\func.c"/>
+      <file name="sql\sqlite\src\global.c"/>
+      <file name="sql\sqlite\src\hash.c"/>
+      <file name="sql\sqlite\src\insert.c"/>
+      <file name="sql\sqlite\src\journal.c"/>
+      <file name="sql\sqlite\src\legacy.c"/>
+      <file name="sql\sqlite\src\loadext.c"/>
+      <file name="sql\sqlite\src\main.c"/>
+      <file name="sql\sqlite\src\malloc.c"/>
+      <file name="sql\sqlite\src\mem0.c"/>
+      <file name="sql\sqlite\src\mem1.c"/>
+      <file name="sql\sqlite\src\mem2.c"/>
+      <file name="sql\sqlite\src\mem3.c"/>
+      <file name="sql\sqlite\src\mem5.c"/>
+      <file name="sql\sqlite\src\memjournal.c"/>
+      <file name="sql\sqlite\src\mutex.c"/>
+      <file name="sql\sqlite\src\mutex_w32.c"/>
+      <file name="sql\sqlite\src\notify.c"/>
+      <file name="sql\generated\opcodes.c"/>
+      <file name="sql\sqlite\src\os.c"/>
+      <file name="sql\sqlite\src\os_win.c"/>
+      <file name="sql\adapter\pager.c"/>
+      <file name="sql\generated\parse.c"/>
+      <file name="sql\adapter\pcache.c"/>
+      <file name="sql\adapter\pcache1.c"/>
+      <file name="sql\sqlite\src\pragma.c"/>
+      <file name="sql\sqlite\src\prepare.c"/>
+      <file name="sql\sqlite\src\printf.c"/>
+      <file name="sql\sqlite\src\random.c"/>
+      <file name="sql\sqlite\src\resolve.c"/>
+      <file name="sql\sqlite\src\rowset.c"/>
+      <file name="sql\sqlite\ext\rtree\rtree.c"/>
+      <file name="sql\sqlite\src\select.c"/>
+      <file name="sql\sqlite\src\status.c"/>
+      <file name="sql\sqlite\src\table.c"/>
+      <file name="sql\sqlite\src\tokenize.c"/>
+      <file name="sql\sqlite\src\trigger.c"/>
+      <file name="sql\sqlite\src\update.c"/>
+      <file name="sql\sqlite\src\utf.c"/>
+      <file name="sql\sqlite\src\util.c"/>
+      <file name="sql\adapter\vacuum.c"/>
+      <file name="sql\sqlite\src\vdbe.c"/>
+      <file name="sql\sqlite\src\vdbeapi.c"/>
+      <file name="sql\sqlite\src\vdbeaux.c"/>
+      <file name="sql\sqlite\src\vdbeblob.c"/>
+      <file name="sql\sqlite\src\vdbemem.c"/>
+      <file name="sql\sqlite\src\vdbetrace.c"/>
+      <file name="sql\sqlite\src\vtab.c"/>
+      <file name="sql\sqlite\src\walker.c"/>
+      <file name="sql\sqlite\src\where.c"/>
+      <file name="sql\sqlite\src\tclsqlite.c"/>
+      <file name="sql\sqlite\src\test_init.c"/>
+      <file name="sql\sqlite\src\test1.c"/>
+      <file name="sql\sqlite\src\test2.c"/>
+      <file name="sql\sqlite\src\test3.c"/>
+      <file name="sql\sqlite\src\test4.c"/>
+      <file name="sql\sqlite\src\test5.c"/>
+      <file name="sql\sqlite\src\test6.c"/>
+      <file name="sql\sqlite\src\test7.c"/>
+      <file name="sql\sqlite\src\test8.c"/>
+      <file name="sql\sqlite\src\test9.c"/>
+      <file name="sql\sqlite\src\test_async.c"/>
+      <file name="sql\sqlite\src\test_autoext.c"/>
+      <file name="sql\sqlite\src\test_backup.c"/>
+      <file name="sql\sqlite\src\test_btree.c"/>
+      <file name="sql\sqlite\src\test_config.c"/>
+      <file name="sql\sqlite\src\test_devsym.c"/>
+      <file name="sql\sqlite\src\test_func.c"/>
+      <file name="sql\sqlite\src\test_hexio.c"/>
+      <file name="sql\sqlite\src\test_intarray.c"/>
+      <file name="sql\sqlite\src\test_journal.c"/>
+      <file name="sql\sqlite\src\test_loadext.c"/>
+      <file name="sql\sqlite\src\test_malloc.c"/>
+      <file name="sql\sqlite\src\test_mutex.c"/>
+      <file name="sql\sqlite\src\test_onefile.c"/>
+      <file name="sql\sqlite\src\test_osinst.c"/>
+      <file name="sql\sqlite\src\test_pcache.c"/>
+      <file name="sql\sqlite\src\test_schema.c"/>
+      <file name="sql\sqlite\src\test_server.c"/>
+      <file name="sql\sqlite\src\test_tclvar.c"/>
+      <file name="sql\sqlite\src\test_thread.c"/>
+      <file name="sql\sqlite\src\test_wsd.c"/>
+    </files>
+  </project>
+  <project name="db_sql_codegen" guid="738ee880-0e33-11de-8c30-0800200c9a66">
+    <type>app</type>
+    <depends>db</depends>
+    <include type="ref">all</include>
+    <files>
+      <file name="db_sql_codegen/db_sql_codegen.c"/>
+      <file name="db_sql_codegen/preparser.c"/>
+      <file name="db_sql_codegen/parsefuncs.c"/>
+      <file name="db_sql_codegen/tokenize.c"/>
+      <file name="db_sql_codegen/buildpt.c"/>
+      <file name="db_sql_codegen/utils.c"/>
+      <file name="db_sql_codegen/generate.c"/>
+      <file name="db_sql_codegen/generate_test.c"/>
+      <file name="db_sql_codegen/generation_utils.c"/>
+      <file name="db_sql_codegen/generate_verification.c"/>
+      <file name="db_sql_codegen/hint_comment.c"/>
+      <file name="db_sql_codegen/sqlite/sqlprintf.c"/>
+      <file name="db_sql_codegen/sqlite/parse.c"/>
       <file name="clib/getopt.c"/>
     </files>
   </project>
   <project name="db_stat" guid="19D3A4CB-1C12-43D4-A94B-D2B387AD43E5">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_stat/db_stat.c"/>
       <file name="clib/getopt.c"/>
@@ -864,7 +1180,7 @@ echo Java build finished</command>
   <project name="db_test" guid="B17B933F-6F75-4095-BE51-12666358163A" output="dbkill">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="build_windows/dbkill.cpp"/>
       <file name="clib/getopt.c"/>
@@ -873,7 +1189,7 @@ echo Java build finished</command>
   <project name="db_upgrade" guid="5F4D66DB-8D75-43D4-A1BB-60A01BC6B32F">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_upgrade/db_upgrade.c"/>
       <file name="clib/getopt.c"/>
@@ -882,7 +1198,7 @@ echo Java build finished</command>
   <project name="db_verify" guid="12E118CA-CAAE-4F54-AE81-8D9981AA0635">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="db_verify/db_verify.c"/>
       <file name="clib/getopt.c"/>
@@ -890,7 +1206,7 @@ echo Java build finished</command>
   </project>
   <project name="db_static" guid="671539AA-D9A6-4B7B-8044-61B511D6F432">
     <type>static_lib</type>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <preprocessor config="all">_UNICODE;UNICODE</preprocessor>
     <preprocessor config="Debug">DIAGNOSTIC</preprocessor>
     <options><nowp64/></options>
@@ -898,7 +1214,7 @@ echo Java build finished</command>
   <project name="ex_access" guid="75DF98AA-25DF-4183-A022-024CF918480D">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_access.c"/>
@@ -907,7 +1223,7 @@ echo Java build finished</command>
   <project name="ex_btrec" guid="5DD66F4B-EB4A-4453-BC31-3FF7B2240634">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_btrec.c"/>
@@ -916,8 +1232,7 @@ echo Java build finished</command>
   <project name="ex_csvcode" guid="54E6A58D-561D-467E-B378-6BA2EE138880">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
-    <include type="ref">ex_csv</include>
+    <include type="ref">all</include>
     <event name="postbuild">
       <command config="Release">$(OUTDIR)\ex_csvcode.exe -c ../examples_c/csv/csv_local.c -h ../examples_c/csv/csv_local.h -f ../examples_c/csv/sample.desc</command>
       <command config="Debug">$(OUTDIR)\ex_csvcode.exe -c ../examples_c/csv/csv_local.c -h ../examples_c/csv/csv_local.h -f ../examples_c/csv/sample.desc</command>
@@ -931,8 +1246,7 @@ echo Java build finished</command>
   <project name="ex_csvload" guid="CEC6CC37-88A3-4573-8957-6BA0CEF94B3D">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
-    <include type="ref">ex_csv</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/csv/DbRecord.c"/>
@@ -946,8 +1260,7 @@ echo Java build finished</command>
   <project name="ex_csvquery" guid="438BEA9C-A9DF-4EAE-A9F7-A5F35CAF3FB9">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
-    <include type="ref">ex_csv</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/csv/Dbrecord.c"/>
@@ -961,16 +1274,30 @@ echo Java build finished</command>
   <project name="ex_env" guid="443530F5-CCC3-40C8-A89B-AEF6C14D3A41">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_env.c"/>
     </files>
   </project>
+  <project name="ex_java" guid="ecfcd4d6-3063-11df-95b2-000d88a6f448">
+    <type>app</type>
+    <options><nowp64/></options>
+    <event name="custom">
+      <command config="ReleaseDebug">
+echo compiling examples
+mkdir "$(OutDir)\classes.ex"
+javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+echo creating jar files
+jar cf "$(OutDir)/dbexamples.jar" -C "$(OutDir)\classes.ex" .
+echo Java example build finished</command>
+      <output>force_compilation.txt</output>
+    </event>
+  </project>
   <project name="ex_lock" guid="B254668F-C28F-4B14-92A5-3BF4B83D02EE">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_lock.c"/>
@@ -979,7 +1306,7 @@ echo Java build finished</command>
   <project name="ex_mpool" guid="0F6925F0-6243-47E0-A0FF-05F70B15FC2C">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_mpool.c"/>
@@ -989,7 +1316,7 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>winsock</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_rep/base/rep_base.c"/>
@@ -1001,7 +1328,7 @@ echo Java build finished</command>
   <project name="ex_rep_mgr" guid="365A89B8-B5A5-4EC6-990B-08254028E1A6">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_rep/common/rep_common.c"/>
@@ -1011,7 +1338,7 @@ echo Java build finished</command>
   <project name="ex_sequence" guid="4E43DB5C-D050-4003-A4FF-6294D9F498DD">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_sequence.c"/>
@@ -1020,7 +1347,7 @@ echo Java build finished</command>
   <project name="ex_stream" guid="8F3D872E-C7F5-4C0D-9974-0F0CB9DAA527">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_stream.c"/>
@@ -1029,7 +1356,7 @@ echo Java build finished</command>
   <project name="ex_tpcb" guid="8632C58A-CC00-4116-B61A-CBE0F2C11CAD">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/ex_tpcb.c"/>
@@ -1038,7 +1365,7 @@ echo Java build finished</command>
   <project name="ex_txnguide" guid="80B961C4-D1D6-48E9-8965-CFCE69BF85E2">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/txn_guide/txn_guide.c"/>
@@ -1047,7 +1374,7 @@ echo Java build finished</command>
   <project name="ex_txnguide_inmem" guid="925BD215-6680-4FFF-8345-0741E4627B1F">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/txn_guide/txn_guide_inmemory.c"/>
@@ -1056,7 +1383,7 @@ echo Java build finished</command>
   <project name="example_database_load" guid="56C01012-66D7-4295-B382-F3815366DB26">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/getting_started/example_database_load.c"/>
@@ -1066,7 +1393,7 @@ echo Java build finished</command>
   <project name="example_database_read" guid="0D35F7E6-425B-4D09-B805-B6D47A9B4AB3">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_c/getting_started/example_database_read.c"/>
@@ -1076,7 +1403,7 @@ echo Java build finished</command>
   <project name="excxx_access" guid="2575F0DD-DAA5-4AE5-AC81-7C47507AD279">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/AccessExample.cpp"/>
@@ -1085,7 +1412,7 @@ echo Java build finished</command>
   <project name="excxx_btrec" guid="38C080B1-7003-48DF-820D-06348BC87B1B">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/BtRecExample.cpp"/>
@@ -1094,7 +1421,7 @@ echo Java build finished</command>
   <project name="excxx_env" guid="E790C029-341D-489B-B987-D35947AD78C3">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/EnvExample.cpp"/>
@@ -1103,7 +1430,7 @@ echo Java build finished</command>
   <project name="excxx_example_database_load" guid="A4F42222-FE02-431D-A046-B049E516DEB7">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/getting_started/MyDb.cpp"/>
@@ -1113,7 +1440,7 @@ echo Java build finished</command>
   <project name="excxx_example_database_read" guid="81C97B03-193C-4021-A78E-F0A2A2AFAA87">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/getting_started/MyDb.cpp"/>
@@ -1123,7 +1450,7 @@ echo Java build finished</command>
   <project name="excxx_lock" guid="19393F5D-DBBE-450C-9217-EA0C7503E277">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/LockExample.cpp"/>
@@ -1132,7 +1459,7 @@ echo Java build finished</command>
   <project name="excxx_mpool" guid="DAEDD51B-0FED-4779-A99A-C09E4D2ACB5E">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/MpoolExample.cpp"/>
@@ -1141,7 +1468,7 @@ echo Java build finished</command>
   <project name="excxx_repquote" guid="75046027-E052-4E8B-AE87-E27DE9C2BC21">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/excxx_repquote/RepConfigInfo.cpp"/>
@@ -1151,7 +1478,7 @@ echo Java build finished</command>
   <project name="excxx_sequence" guid="D90AE774-03EF-4945-A3C3-AC76BF90825F">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/SequenceExample.cpp"/>
@@ -1160,7 +1487,7 @@ echo Java build finished</command>
   <project name="excxx_tpcb" guid="77BD278B-7927-4C88-9198-5067C549398D">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/TpcbExample.cpp"/>
@@ -1169,7 +1496,7 @@ echo Java build finished</command>
   <project name="excxx_txnguide" guid="2E9B94E9-024C-4255-9104-BA81FF7F2591">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/txn_guide/TxnGuide.cpp"/>
@@ -1178,29 +1505,132 @@ echo Java build finished</command>
   <project name="excxx_txnguide_inmem" guid="009413E4-EFDF-42FB-8631-931CFAEAAB72">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="clib/getopt.c"/>
       <file name="examples_cxx/txn_guide/TxnGuideInMemory.cpp"/>
+    </files>
+  </project>
+  <project name="ex_sql_binding" guid="67965310-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_binding.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_fts3" guid="FF1CAD6A-1EDF-4AD3-9A4F-8C76B7214A13">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_fts3.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_index" guid="67965311-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_index.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_load" guid="67965312-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_load.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_multi_thread" guid="67965313-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_multi_thread.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_query" guid="67965314-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_query.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_rtree" guid="9CBFC33A-027B-4A58-8059-2E3C29489E64">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_rtree.c"/>
+    </files>
+  </project> 
+  <project name="ex_sql_savepoint" guid="67965315-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_savepoint.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_statement" guid="67965316-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_statement.c"/>
+    </files>
+  </project>
+  <project name="ex_sql_transaction" guid="67965317-072A-11DF-8A39-0800200C9A66">
+    <type>app</type>
+    <depends>db_sql</depends>
+    <include type="ref">db_sql</include>
+    <files>
+      <file name="sql/examples/c/ex_sql_utils.c"/>
+      <file name="sql/examples/c/ex_sql_transaction.c"/>
     </files>
   </project>
   <project name="exstl_access" guid="284CC190-0C66-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
       <file name="examples_stl/StlAccessExample.cpp"/>
+    </files>
+  </project>
+  <project name="exstl_advancedfeatures" guid="8E5423C1-0177-4A14-86BC-75F0895E7198">
+    <type>app</type>
+    <depends>db</depends>
+    <depends>db_stl</depends>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
+    <options><compile platform="x64 IA64">/bigobj</compile></options>
+    <files>
+      <file name="examples_stl/StlAdvancedFeatures.cpp"/>
+      <file name="examples_stl/StlAdvancedFeatures.h"/>
+      <file name="clib/getopt.c"/>
     </files>
   </project>
   <project name="exstl_repquote" guid="284CC191-0C66-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
       <file name="examples_stl/repquote/StlRepConfigInfo.cpp"/>
@@ -1213,8 +1643,8 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
       <file name="examples_stl/StlTpcbExample.cpp"/>
@@ -1225,8 +1655,8 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
       <file name="examples_stl/StlTransactionGuideExample.cpp"/>
@@ -1237,8 +1667,8 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
@@ -1257,8 +1687,8 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
@@ -1269,7 +1699,7 @@ echo Java build finished</command>
       <file name="test_stl/stlport/rand.h"/>
       <file name="test_stl/stlport/stl_test.cpp"/>
       <file name="test_stl/stlport/stl_test.h"/>
-      <file name="test_stl/stlport/test_builder.cpp"/>
+      <file name="test_stl/stlport/stlport_test_builder.cpp"/>
       <file name="test_stl/stlport/unary.h"/>
       <file name="test_stl/stlport/utility.cpp"/>
     </files>
@@ -1278,8 +1708,8 @@ echo Java build finished</command>
     <type>app</type>
     <depends>db</depends>
     <depends>db_stl</depends>
-    <include type="ref">db</include>
-    <include type="ref">db_stl</include>
+    <include type="ref">all</include>
+    <include type="rel">../stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64 IA64">/bigobj</compile></options>
     <files>
@@ -1287,7 +1717,6 @@ echo Java build finished</command>
       <file name="test_stl/ms_examples/ms_stl_common.hpp"/>
       <file name="test_stl/ms_examples/ms_stl_main.cpp"/>
       <file name="test_stl/ms_examples/ptype.h"/>
-      <file name="test_stl/ms_examples/tgetopt.cpp"/>
       <file name="test_stl/ms_examples/test_builder.cpp"/>
       <file name="clib/getopt.c"/>
     </files>
@@ -1295,7 +1724,7 @@ echo Java build finished</command>
   <project name="test_micro" guid="9556E0A0-2E25-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="test_micro/source/b_curalloc.c"/>
       <file name="test_micro/source/b_curwalk.c"/>
@@ -1320,7 +1749,7 @@ echo Java build finished</command>
   <project name="test_mutex" guid="9556E0A1-2E25-11DE-8C30-0800200C9A66">
     <type>app</type>
     <depends>db</depends>
-    <include type="ref">db</include>
+    <include type="ref">all</include>
     <files>
       <file name="mutex/test_mutex.c"/>
       <file name="clib/getopt.c"/>

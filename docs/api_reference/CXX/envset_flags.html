@@ -43,12 +43,15 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
         Configure a database environment.
     </p>
       <p>
-         The database environment's flag values may also be configured using
-         the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.  The
-         syntax of the entry in that file is a single line with the string
-         "set_flags", one or more whitespace characters, and the method flag
-         parameter as a string; for example, "set_flags DB_TXN_NOSYNC". Because
-         the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+         The database environment's flag values may also be configured
+         using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
+         The syntax of the entry in that file is a single line with the
+         string "set_flags", one or more whitespace characters, and the
+         method flag parameter as a string, and optionally one or more
+         whitespace characters, and the string "on" or "off".  If the
+         optional string is omitted, the default is "on"; for example,
+         "set_flags DB_TXN_NOSYNC" or "set_flags DB_TXN_NOSYNC on". Because the 
+         <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> 
          file is read when the database environment is opened, it will silently
          overrule configuration done before that time.
     </p>
@@ -66,7 +69,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1671745"></a>Parameters</h3>
+              <h3 class="title"><a id="id3660157"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -74,7 +77,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1672054"></a>flags</h4>
+                <h4 class="title"><a id="id3660139"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -102,7 +105,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  consistent behavior across the environment, all 
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in the
                  environment must either set this flag
-                 or the flag should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 or the flag should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -126,7 +130,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_CDB_ALLDB flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -150,7 +155,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_DIRECT_DB flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -208,7 +214,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  Berkeley DB handles opened within the scope of that handle). For
                  consistent behavior across the environment, all <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
                  handles opened in the environment must either set the DB_MULTIVERSION flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -253,7 +260,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  handle). For consistent behavior across the environment, all 
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in the
                  environment must either set the DB_NOMMAP flag or the flag should be
-                 specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -268,7 +276,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                 <p>
                  If set, Berkeley DB will ignore any panic state in the database
                  environment. (Database environments in a panic state normally refuse
-                 all attempts to call Berkeley DB functions, returning <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.)
+                 all attempts to call Berkeley DB functions, returning 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.)
                  This functionality should never be used for purposes other than
                  debugging.
             </p>
@@ -313,8 +322,10 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                 <p>
                  If set, Berkeley DB will set the panic state for the database
                  environment. (Database environments in a panic state normally refuse
-                 all attempts to call Berkeley DB functions, returning <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.)
-                 This flag may not be specified using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
+                 all attempts to call Berkeley DB functions, returning 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.)
+                 This flag may not be specified using the environment's 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
             </p>
                 <p>
                  Calling <code class="methodname">DbEnv::set_flags()</code> with the DB_PANIC_ENVIRONMENT flag
@@ -349,7 +360,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_REGION_INIT flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -363,8 +375,10 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
             </p>
                 <p>
                  If set, database calls timing out based on lock or transaction timeout
-                 values will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>
-                 instead of <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>.
+                 values will return 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>
+                 instead of 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>.
                  This allows applications to distinguish between operations which have
                  deadlocked and operations which have exceeded their time limits.
             </p>
@@ -375,7 +389,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  consistent behavior across the environment, all 
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in the
                  environment must either set the DB_TIME_NOTGRANTED flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -410,7 +425,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_TXN_NOSYNC flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -425,8 +441,10 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                 <p>
                  If set and a lock is unavailable for any Berkeley DB operation
                  performed in the context of a transaction, cause the operation to
-                 return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>
-                 (or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>
+                 return 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>
+                 (or 
+                 <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>
                  if configured using the DB_TIME_NOTGRANTED flag).
             </p>
                 <p>
@@ -436,7 +454,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_TXN_NOWAIT flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -462,7 +481,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  consistent behavior across the environment, all 
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in the
                  environment must either set the DB_TXN_SNAPSHOT flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -491,7 +511,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  consistent behavior across the environment, all 
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in the
                  environment must either set the DB_TXN_WRITE_NOSYNC flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -515,7 +536,8 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
                  that handle). For consistent behavior across the environment, all
                  <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handles opened in
                  the environment must either set the DB_YIELDCPU flag or the flag
-                 should be specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+                 should be specified in the 
+                 <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
                  configuration file.
             </p>
                 <p>
@@ -530,7 +552,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1672019"></a>onoff</h4>
+                <h4 class="title"><a id="id3660149"></a>onoff</h4>
               </div>
             </div>
           </div>
@@ -544,7 +566,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1671734"></a>Errors</h3>
+              <h3 class="title"><a id="id3659692"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -562,7 +584,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1672705"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3660610"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -575,7 +597,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1671856"></a>Class</h3>
+              <h3 class="title"><a id="id3660439"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -587,7 +609,7 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1672053"></a>See Also</h3>
+              <h3 class="title"><a id="id3660843"></a>See Also</h3>
             </div>
           </div>
         </div>

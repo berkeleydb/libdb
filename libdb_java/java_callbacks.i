@@ -67,7 +67,7 @@ static void __dbj_message(const DB_ENV *dbenv, const char *msg)
 		__dbj_detach();
 }
 
-static void __dbj_panic(DB_ENV *dbenv, int err)
+static void __dbj_panic(DB_ENV *dbenv, int ret)
 {
 	int detach;
 	JNIEnv *jenv = __dbj_get_jnienv(&detach);
@@ -76,7 +76,7 @@ static void __dbj_panic(DB_ENV *dbenv, int err)
 	if (jdbenv != NULL)
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv, dbenv_class,
 		    paniccall_method,
-		    __dbj_get_except(jenv, err, NULL, NULL, jdbenv));
+		    __dbj_get_except(jenv, ret, NULL, NULL, jdbenv));
 
 	if (detach)
 		__dbj_detach();
@@ -142,13 +142,29 @@ static void __dbj_event_notify(DB_ENV *dbenv, u_int32_t event_id, void * info)
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_client_event_notify_method);
 		break;
+	case DB_EVENT_REP_DUPMASTER:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_dupmaster_event_notify_method);
+		break;
 	case DB_EVENT_REP_ELECTED:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_elected_event_notify_method);
 		break;
+	case DB_EVENT_REP_ELECTION_FAILED:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_election_failed_event_notify_method);
+		break;
+	case DB_EVENT_REP_JOIN_FAILURE:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_join_failure_event_notify_method);
+		break;
 	case DB_EVENT_REP_MASTER:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
 		    dbenv_class, rep_master_event_notify_method);
+		break;
+	case DB_EVENT_REP_MASTER_FAILURE:
+		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,
+		    dbenv_class, rep_master_failure_event_notify_method);
 		break;
 	case DB_EVENT_REP_NEWMASTER:
 		(*jenv)->CallNonvirtualVoidMethod(jenv, jdbenv,

@@ -68,7 +68,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1667665"></a>Parameters</h3>
+              <h3 class="title"><a id="id3985335"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -76,7 +76,20 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1667701"></a>flags</h4>
+                <h4 class="title"><a id="id3985812"></a>passwd</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>passwd</strong></span> parameter is the password
+                          used to perform encryption and decryption.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3985676"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -87,7 +100,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                <p><a id="set_encrypt_DB_ENCRYPT_AES"></a>
+                <p><a id="envset_encrypt_DB_ENCRYPT_AES"></a>
                   <code class="literal">DB_ENCRYPT_AES</code>
             </p>
                 <p>
@@ -99,25 +112,12 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
             </ul>
           </div>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id1667866"></a>passwd</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>passwd</strong></span> parameter is the password
-                          used to perform encryption and decryption.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1668005"></a>Errors</h3>
+              <h3 class="title"><a id="id3985955"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -133,7 +133,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1667892"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3986029"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id1667669"></a>EOPNOTSUPP</h4>
+                <h4 class="title"><a id="id3986047"></a>EOPNOTSUPP</h4>
               </div>
             </div>
           </div>
@@ -159,7 +159,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1667695"></a>Class</h3>
+              <h3 class="title"><a id="id3986008"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@ DB_ENV-&gt;set_encrypt(DB_ENV *dbenv, const char *passwd, u_int32_t flags);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id1667938"></a>See Also</h3>
+              <h3 class="title"><a id="id3986069"></a>See Also</h3>
             </div>
           </div>
         </div>

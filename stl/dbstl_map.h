@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009 Oracle.  All rights reserved.
+ * Copyright (c) 2009, 2010 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -188,7 +188,7 @@ public:
 	// Begin functions that shift iterator position.
 	//
 	// Do not throw exceptions here because it is likely and normal 
-	// to iterate to the "end itrerator". 
+	// to iterate to the "end iterator". 
 	//
 	/// @name Iterator increment movement functions.
 	/// The two functions moves the iterator one element backward, so that
@@ -512,7 +512,7 @@ protected:
 	//
 	mutable LazyDupCursor<DbCursor<kdt, csrddt> > pcsr_;
 
-	// In order for std::map style itrerator to work, we need a pair 
+	// In order for std::map style iterator to work, we need a pair 
 	// here to store the key-value pair this iterator currently points
 	// to in the db_map. 
 	//
@@ -846,7 +846,7 @@ public:
 	// Begin functions that shift iterator position.
 	//
 	// Do not throw exceptions here because it is likely and normal 
-	// to iterate to the "end itrerator". 
+	// to iterate to the "end iterator". 
 	/// \name Iterator movement operators.
 	//@{
 	/// Pre-increment \sa db_map_base_iterator::operator++()
@@ -991,7 +991,7 @@ protected:
 	////////////////////////////////////////////////////////////////
 	// Begin db_map_iterator data members.
 	//
-	// In order for std::map style itrerator to work, we need a pair 
+	// In order for std::map style iterator to work, we need a pair 
 	// here to store the key-value pair this iterator currently points
 	// to in the db_map. 
 	//
