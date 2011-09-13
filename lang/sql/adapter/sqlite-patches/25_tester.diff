@@ -1,0 +1,19 @@
+--- test/tester.tcl
++++ test/tester.tcl
+@@ -1441,6 +1441,7 @@
+     set f [string range $f2 3 end]
+     file copy -force $f2 $f
+   }
++  file delete test.db-journal/__db.register
+ }
+ proc db_restore_and_reopen {{dbfile test.db}} {
+   catch { db close }
+@@ -1449,7 +1450,7 @@
+ }
+ proc db_delete_and_reopen {{file test.db}} {
+   catch { db close }
+-  foreach f [glob -nocomplain test.db*] { file delete -force $f }
++  foreach f [glob -nocomplain test.db*] { forcedelete $f }
+   sqlite3 db $file
+ }
+ 

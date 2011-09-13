@@ -1,0 +1,17 @@
+--- src/shell.c
++++ src/shell.c
+@@ -17,6 +17,14 @@
+ #define _CRT_SECURE_NO_WARNINGS
+ #endif
+ 
++/*
++** Include the configuration header output by 'configure' if we're using the
++** autoconf-based build
++*/
++#ifdef _HAVE_SQLITE_CONFIG_H
++#include "config.h"
++#endif
++
+ #include <stdlib.h>
+ #include <string.h>
+ #include <stdio.h>
