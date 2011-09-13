@@ -1,0 +1,4 @@
+https://github.com/ddanderson/libdb-3n
+
+This code implements the 3n+1 benchmark.  A description of the benchmark and results is on the libdb blog here:
+  http://libdb.wordpress.com/2011/01/31/revving-up-a-benchmark-from-626-to-74000-operations-per-second/
