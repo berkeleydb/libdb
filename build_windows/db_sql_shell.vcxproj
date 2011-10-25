@@ -85,7 +85,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_CONSOLE;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -102,7 +102,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;libdb_sql51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)dbsql.pdb</ProgramDatabaseFile>
@@ -117,7 +117,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_CONSOLE;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -134,7 +134,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;libdb_sql51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)dbsql.pdb</ProgramDatabaseFile>
@@ -148,7 +148,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_CONSOLE;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -165,7 +165,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;libdb_sql51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)dbsql.pdb</ProgramDatabaseFile>
@@ -180,7 +180,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_CONSOLE;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -197,7 +197,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;libdb_sql51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)dbsql.pdb</ProgramDatabaseFile>
@@ -208,7 +208,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\sql\sqlite\src\shell.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\shell.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="db.vcxproj">

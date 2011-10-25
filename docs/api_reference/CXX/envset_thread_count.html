@@ -40,13 +40,30 @@
 int
 DbEnv::set_thread_count(u_int32_t count); </pre>
       <p>
-         Declare an approximate number of threads in the database environment.
-         The <code class="methodname">DbEnv::set_thread_count()</code> method must be called prior to opening
-         the database environment if the 
-         <a class="xref" href="envfailchk.html" title="DbEnv::failchk()">DbEnv::failchk()</a>  method will
-         be used.  The <code class="methodname">DbEnv::set_thread_count()</code> method does not set the
+         Declare an approximate number of threads in the database
+         environment. This method allocates resources in your environment
+         for the threads your application will use. If you fail to properly
+         estimate the number of threads your application will use, your
+         application will run out of resources and errors will be returned
+         when the application attempts to start one too many threads.
+    </p>
+      <p>
+         The <code class="methodname">DbEnv::set_thread_count()</code> method does not set the
          maximum number of threads but is used to determine memory sizing and
          the thread control block reclamation policy.
+    </p>
+      <p>
+         The <code class="methodname">DbEnv::set_thread_count()</code> method must be called 
+         prior to opening the database environment. In addition, this method must be
+         used with the
+         <a class="xref" href="envfailchk.html" title="DbEnv::failchk()">DbEnv::failchk()</a>  method.
+    </p>
+      <p>
+        If a process invokes this method without the use of 
+         <a class="xref" href="envfailchk.html" title="DbEnv::failchk()">DbEnv::failchk()</a>
+        the program may be unable to allocate a thread
+        control block. This is true of the standalone Berkeley DB utility
+        programs.
     </p>
       <p>
          If a process has not configured an <span class="bold"><strong>is_alive</strong></span> function from the 
@@ -98,7 +115,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3662851"></a>Parameters</h3>
+              <h3 class="title"><a id="idp52311160"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -106,7 +123,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3662848"></a>count</h4>
+                <h4 class="title"><a id="idp52311760"></a>count</h4>
               </div>
             </div>
           </div>
@@ -120,7 +137,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3662672"></a>Errors</h3>
+              <h3 class="title"><a id="idp52294288"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -138,7 +155,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3663044"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp52325352"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -152,7 +169,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3663066"></a>Class</h3>
+              <h3 class="title"><a id="idp52326680"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -164,7 +181,7 @@ DbEnv::set_thread_count(u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3662740"></a>See Also</h3>
+              <h3 class="title"><a id="idp52312888"></a>See Also</h3>
             </div>
           </div>
         </div>

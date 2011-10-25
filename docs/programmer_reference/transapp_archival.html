@@ -64,6 +64,15 @@ or monthly, and archive additional log files daily.  Using both the
 snapshot and the log files, a catastrophic crash at any time can be
 recovered to the time of the most recent log archival; a time long after
 the original snapshot.</p>
+      <p>When incremental backups are implemented using this procedure,
+it is important to know that a database copy taken prior to a bulk
+loading event (that is, a transaction started with the
+<a href="../api_reference/C/txnbegin.html#txnbegin_DB_TXN_BULK" class="olink">DB_TXN_BULK</a> flag) can no
+longer be used as the target of an incremental backup.  This is true
+because bulk loading omits logging of some record insertions, so these 
+insertions cannot be rolled forward by recovery.
+It is recommended
+that a full backup be scheduled following a bulk loading event.</p>
       <p>To create a standard backup of your database that can be used to recover
 from catastrophic failure, take the following steps:</p>
       <div class="orderedlist">
@@ -110,6 +119,11 @@ information).</li>
       <div class="orderedlist">
         <ol type="1">
           <li>
+    Set the <a href="../api_reference/C/envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="olink">DB_HOTBACKUP_IN_PROGRESS</a> flag in the environment.
+        This affects the behavior of transactions started with the
+        <a href="../api_reference/C/txnbegin.html#txnbegin_DB_TXN_BULK" class="olink">DB_TXN_BULK</a> flag.
+    </li>
+          <li>
         Archive your databases, as described in the previous step #4.  You
         do not have to halt ongoing transactions or force a checkpoint.  As
         this is a hot backup, and the databases may be modified during the
@@ -136,6 +150,9 @@ information).</li>
             <a href="../api_reference/C/envset_lg_dir.html" class="olink">DB_ENV-&gt;set_lg_dir()</a> method for more information).
         </p>
           </li>
+          <li>
+       Reset the <a href="../api_reference/C/envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="olink">DB_HOTBACKUP_IN_PROGRESS</a> flag.
+    </li>
         </ol>
       </div>
       <p>To minimize the archival space needed for log files when doing a hot
@@ -178,32 +195,32 @@ prints out a list of log and database files that need to be archived:</p>
       <pre class="programlisting">void
 log_archlist(DB_ENV *dbenv)
 {
-	int ret;
-	char **begin, **list;
+    int ret;
+    char **begin, **list;
 
-	/* Get the list of database files. */
-	if ((ret = dbenv-&gt;log_archive(dbenv,
-	    &amp;list, DB_ARCH_ABS | DB_ARCH_DATA)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_DATA");
-		exit (1);
-	}
-	if (list != NULL) {
-		for (begin = list; *list != NULL; ++list)
-			printf("database file: %s\n", *list);
-		free (begin);
-	}
+    /* Get the list of database files. */
+    if ((ret = dbenv-&gt;log_archive(dbenv,
+        &amp;list, DB_ARCH_ABS | DB_ARCH_DATA)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_DATA");
+        exit (1);
+    }
+    if (list != NULL) {
+        for (begin = list; *list != NULL; ++list)
+            printf("database file: %s\n", *list);
+        free (begin);
+    }
 
-	/* Get the list of log files. */
-	if ((ret = dbenv-&gt;log_archive(dbenv,
-	    &amp;list, DB_ARCH_ABS | DB_ARCH_LOG)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_LOG");
-		exit (1);
-	}
-	if (list != NULL) {
-		for (begin = list; *list != NULL; ++list)
-			printf("log file: %s\n", *list);
-		free (begin);
-	}
+    /* Get the list of log files. */
+    if ((ret = dbenv-&gt;log_archive(dbenv,
+        &amp;list, DB_ARCH_ABS | DB_ARCH_LOG)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;log_archive: DB_ARCH_LOG");
+        exit (1);
+    }
+    if (list != NULL) {
+        for (begin = list; *list != NULL; ++list)
+            printf("log file: %s\n", *list);
+        free (begin);
+    }
 }</pre>
     </div>
     <div class="navfooter">

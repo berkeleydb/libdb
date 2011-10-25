@@ -7,9 +7,6 @@ AH_TEMPLATE(DB_WIN32,
     defines _WIN32, even though Cygwin/GCC closely emulates the Unix
     environment.])
 
-AH_TEMPLATE(HAVE_BREW, [Define to 1 if building on BREW.])
-AH_TEMPLATE(HAVE_BREW_SDK2, [Define to 1 if building on BREW (SDK2).])
-AH_TEMPLATE(HAVE_S60, [Define to 1 if building on S60.])
 AH_TEMPLATE(HAVE_VXWORKS, [Define to 1 if building on VxWorks.])
 
 AH_TEMPLATE(HAVE_FILESYSTEM_NOTZERO,

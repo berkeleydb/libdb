@@ -51,17 +51,17 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3748301">Building Berkeley DB for Windows Mobile</a>
+                  <a href="build_wince.html#idp50377976">Building Berkeley DB for Windows Mobile</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3748978">Changing Build Configuration Type</a>
+                  <a href="build_wince.html#idp50563152">Changing Build Configuration Type</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3748905">Building Berkeley DB for different target platforms</a>
+                  <a href="build_wince.html#idp50559008">Building Berkeley DB for different target platforms</a>
                 </span>
               </dt>
             </dl>
@@ -90,17 +90,17 @@
           <dl>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3748301">Building Berkeley DB for Windows Mobile</a>
+                <a href="build_wince.html#idp50377976">Building Berkeley DB for Windows Mobile</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3748978">Changing Build Configuration Type</a>
+                <a href="build_wince.html#idp50563152">Changing Build Configuration Type</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3748905">Building Berkeley DB for different target platforms</a>
+                <a href="build_wince.html#idp50559008">Building Berkeley DB for different target platforms</a>
               </span>
             </dt>
           </dl>
@@ -138,7 +138,7 @@ project files for Microsoft Visual 2005 with the Mobile SDK installed:</p>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3748301"></a>Building Berkeley DB for Windows Mobile</h3>
+                <h3 class="title"><a id="idp50377976"></a>Building Berkeley DB for Windows Mobile</h3>
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@ project files for Microsoft Visual 2005 with the Mobile SDK installed:</p>
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3748016"></a>Visual Studio 2005</h4>
+                  <h4 class="title"><a id="idp50386848"></a>Visual Studio 2005</h4>
                 </div>
               </div>
             </div>
@@ -164,20 +164,44 @@ and click <code class="literal">Open</code>.</li>
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3748980"></a>Build results</h4>
+                  <h4 class="title"><a id="idp50585192"></a>Build results</h4>
                 </div>
               </div>
             </div>
-            <p>The results of your build will be placed in a subdirectory of
-<code class="filename">build_windows</code> named after the configuration you chose (for
-examples, <code class="filename">build_wince\Debug_PocketPC2003_ARMV4</code></p>
-            <p>When building your application during development, you should normally
+            <p>The results of your build will be placed in any one of the following Berkeley DB subdirectories,
+depending on the configuration that you chose:
+</p>
+            <table class="simplelist" border="0" summary="Simple list">
+              <tr>
+                <td>
+                  <code class="filename">build_wince\(Platform)\Debug</code>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code class="filename">build_wince\(Platform)\Release</code>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code class="filename">build_wince\(Platform)\Debug_static</code>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code class="filename">build_wince\(Platform)\Release_static</code>
+                </td>
+              </tr>
+            </table>
+            <p>
+</p>
+            <p>When building your application during development, you must
 link against
-<code class="filename">libdb_small50sd.lib</code>.  You can
+<code class="filename">libdb_small51sd.lib</code> or against <code class="filename">libdb_sql51sd.lib</code> for SQL features.  You can
 also build using a release version of the Berkeley DB libraries and tools,
-which will be placed in
-<code class="filename">build_windows\Release\libdb_small50s.lib</code>.
-You will also need to add the <code class="filename">build_wince</code> directory to the list
+which will be placed in the 
+<code class="filename">build_wince\(Platform)\Release_static </code>directory.
+You must add the <code class="filename">build_wince</code> directory to the list
 of include directories of your application's project, or copy the Berkeley DB
 include files to a location in your Visual Studio include path.</p>
           </div>
@@ -186,7 +210,7 @@ include files to a location in your Visual Studio include path.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3748978"></a>Changing Build Configuration Type</h3>
+                <h3 class="title"><a id="idp50563152"></a>Changing Build Configuration Type</h3>
               </div>
             </div>
           </div>
@@ -212,18 +236,23 @@ output and configuration in the Release build is as follows:
               <tbody>
                 <tr>
                   <td align="center">db_small_static</td>
-                  <td align="center">libdb_small50s.lib</td>
+                  <td align="center">libdb_small51s.lib</td>
                   <td align="center">Static Library</td>
                 </tr>
                 <tr>
                   <td align="center">db_static</td>
-                  <td align="center">libdb50s.lib</td>
+                  <td align="center">libdb51s.lib</td>
                   <td align="center">Static Library</td>
                 </tr>
                 <tr>
                   <td align="center">db_sql</td>
-                  <td align="center">libdb_sql50.dll</td>
+                  <td align="center">libdb_sql51.dll</td>
                   <td align="center">Dynamic Library</td>
+                </tr>
+                <tr>
+                  <td align="center">db_sql_static</td>
+                  <td align="center">libdb_sql51s.lib</td>
+                  <td align="center">Static Library</td>
                 </tr>
               </tbody>
             </table>
@@ -244,7 +273,7 @@ project and do the following:
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3748905"></a>Building Berkeley DB for different target platforms</h3>
+                <h3 class="title"><a id="idp50559008"></a>Building Berkeley DB for different target platforms</h3>
               </div>
             </div>
           </div>
@@ -256,22 +285,20 @@ project and do the following:
     </p>
           <p>
         The Visual Studio 2005 project files will by default build for
-        Pocket PC 2003 (ARMV4) and Smartphone 2003 (ARMV4). If you want to
-        build for other platforms such as Windows Mobile 6.0 or Windows
-        Mobile 6.0 Professional, you need to follow the steps provided
-        in this section.
+        Pocket PC 2003 and Smartphone 2003, and Windows Mobile 6.5.3 Professional. If you want to
+        build for other platforms such as Windows Mobile 6.0, 6.1, or 6.5, you need to follow the steps provided in this section.
     </p>
           <p>
         Different target architectures are available in different Platform
-        SDK downloads from Microsoft. The appropriate SDK must be installed
+        SDK or DTK downloads from Microsoft. The appropriate SDK must be installed
         for your mobile architecture before you can build for that
-        platform.
+        platform. You can find the downloads at the <a class="ulink" href=" http://msdn.microsoft.com/en-us/windowsmobile/default.aspx" target="_top">Microsoft Developer Center</a> page.
     </p>
           <div class="sect3" lang="en" xml:lang="en">
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3749059"></a>Visual Studio 2005</h4>
+                  <h4 class="title"><a id="idp50592592"></a>Visual Studio 2005</h4>
                 </div>
               </div>
             </div>
@@ -304,6 +331,25 @@ project and do the following:
                 <li>
                 Build as per the instructions given at the beginning of this chapter.
             </li>
+              </ol>
+            </div>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="idp50543848"></a>BDB SQL Notes</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+    After building for a different platform, change the deployment remote directory for the <code class="literal">db_sql</code> project to run the <code class="literal">wce_sql</code> sample application:
+    </p>
+            <div class="orderedlist">
+              <ol type="1">
+                <li>Select <code class="literal">db_sql</code> from the <code class="literal">Solution explorer</code> window.</li>
+                <li>Choose <span class="emphasis"><em>Project-&gt;Properties</em></span> and navigate to <code class="literal">Configuration Properties</code>.</li>
+                <li>Under <code class="literal">Deployment</code>, change the remote directory to <code class="literal">%CSIDL_PROGRAM_FILES%\wce_sql</code>.</li>
               </ol>
             </div>
           </div>

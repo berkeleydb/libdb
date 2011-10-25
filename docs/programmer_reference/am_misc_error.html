@@ -43,8 +43,8 @@ Berkeley DB specific return values.</p>
       <p>For example:</p>
       <pre class="programlisting">int ret;
 if ((ret = dbp-&gt;put(dbp, NULL, &amp;key, &amp;data, 0)) != 0) {
-	fprintf(stderr, "put failed: %s\n", db_strerror(ret));
-	return (1);
+    fprintf(stderr, "put failed: %s\n", db_strerror(ret));
+    return (1);
 }</pre>
       <p>There are also two additional error methods, <a href="../api_reference/C/dberr.html" class="olink">DB-&gt;err()</a> and
 <code class="methodname">DB-&gt;errx()</code>.  These methods work like the ANSI C X3.159-1989 (ANSI C) printf
@@ -65,11 +65,11 @@ int ret;
 
 if ((ret = dbp-&gt;open(dbp,
     NULL, DATABASE, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
-	dbp-&gt;err(dbp, ret, "%s", DATABASE);
-	dbp-&gt;errx(dbp,
-		"contact your system administrator: session ID was %d",
-    		session_id);
-	return (1);
+    dbp-&gt;err(dbp, ret, "%s", DATABASE);
+    dbp-&gt;errx(dbp,
+        "contact your system administrator: session ID was %d",
+            session_id);
+    return (1);
 }</pre>
       <p>For example, if the program were called my_app and the open call returned
 an EACCESS system error, the error messages shown would appear as follows:</p>

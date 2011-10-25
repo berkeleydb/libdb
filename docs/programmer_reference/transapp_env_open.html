@@ -79,7 +79,7 @@
 
 #include &lt;db.h&gt;
 
-#define	ENV_DIRECTORY	"TXNAPP"
+#define    ENV_DIRECTORY    "TXNAPP"
 
 void  env_dir_create(void);
 void  env_open(DB_ENV **);
@@ -87,82 +87,82 @@ void  env_open(DB_ENV **);
 int
 main(int argc, char *argv)
 {
-	extern int optind;
-	DB *db_cats, *db_color, *db_fruit;
-	DB_ENV *dbenv;
-	int ch;
+    extern int optind;
+    DB *db_cats, *db_color, *db_fruit;
+    DB_ENV *dbenv;
+    int ch;
 
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+    while ((ch = getopt(argc, argv, "")) != EOF)
+        switch (ch) {
+        case '?':
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
 
-	env_dir_create();
-	env_open(&amp;dbenv);
+    env_dir_create();
+    env_open(&amp;dbenv);
 
-	return (0);
+    return (0);
 }
 
 void
 env_dir_create()
 {
-	struct stat sb;
+    struct stat sb;
 
-	/*
-	 * If the directory exists, we're done.  We do not further check
-	 * the type of the file, DB will fail appropriately if it's the
-	 * wrong type.
-	 */
-	if (stat(ENV_DIRECTORY, &amp;sb) == 0)
-		return;
+    /*
+     * If the directory exists, we're done.  We do not further check
+     * the type of the file, DB will fail appropriately if it's the
+     * wrong type.
+     */
+    if (stat(ENV_DIRECTORY, &amp;sb) == 0)
+        return;
 
-	/* Create the directory, read/write/access owner only. */
-	if (mkdir(ENV_DIRECTORY, S_IRWXU) != 0) {
-		fprintf(stderr,
-		    "txnapp: mkdir: %s: %s\n", ENV_DIRECTORY, strerror(errno));
-		exit (1);
-	}
+    /* Create the directory, read/write/access owner only. */
+    if (mkdir(ENV_DIRECTORY, S_IRWXU) != 0) {
+        fprintf(stderr,
+            "txnapp: mkdir: %s: %s\n", ENV_DIRECTORY, strerror(errno));
+        exit (1);
+    }
 }
 
 void
 env_open(DB_ENV **dbenvp)
 {
-	DB_ENV *dbenv;
-	int ret;
+    DB_ENV *dbenv;
+    int ret;
 
-	/* Create the environment handle. */
-	if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
-		fprintf(stderr,
-		    "txnapp: db_env_create: %s\n", db_strerror(ret));
-		exit (1);
-	}
+    /* Create the environment handle. */
+    if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
+        fprintf(stderr,
+            "txnapp: db_env_create: %s\n", db_strerror(ret));
+        exit (1);
+    }
 
-	/* Set up error handling. */
-	dbenv-&gt;set_errpfx(dbenv, "txnapp");
-	dbenv-&gt;set_errfile(dbenv, stderr);
+    /* Set up error handling. */
+    dbenv-&gt;set_errpfx(dbenv, "txnapp");
+    dbenv-&gt;set_errfile(dbenv, stderr);
 
-	/*
-	 * Open a transactional environment:
-	 *	create if it doesn't exist
-	 *	free-threaded handle
-	 *	run recovery
-	 *	read/write owner only
-	 */
-	if ((ret = dbenv-&gt;open(dbenv, ENV_DIRECTORY,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
-	    DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
-	    S_IRUSR | S_IWUSR)) != 0) {
-		(void)dbenv-&gt;close(dbenv, 0);
-		fprintf(stderr, "dbenv-&gt;open: %s: %s\n",
-		    ENV_DIRECTORY, db_strerror(ret));
-		exit (1);
-	}
+    /*
+     * Open a transactional environment:
+     *    create if it doesn't exist
+     *    free-threaded handle
+     *    run recovery
+     *    read/write owner only
+     */
+    if ((ret = dbenv-&gt;open(dbenv, ENV_DIRECTORY,
+        DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+        DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
+        S_IRUSR | S_IWUSR)) != 0) {
+        (void)dbenv-&gt;close(dbenv, 0);
+        fprintf(stderr, "dbenv-&gt;open: %s: %s\n",
+            ENV_DIRECTORY, db_strerror(ret));
+        exit (1);
+    }
 
-	*dbenvp = dbenv;
+    *dbenvp = dbenv;
 }</pre>
       <p>
     After running this initial program, we can use the <a href="../api_reference/C/db_stat.html" class="olink">db_stat utility</a> to display

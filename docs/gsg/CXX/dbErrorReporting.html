@@ -133,13 +133,14 @@
         For example, to send all error messages for a given database handle 
 		to a callback for handling, first create your callback. Do something like this:
      </p>
-      <a id="c_db8"></a>
+      <a id="cxx_db8"></a>
       <pre class="programlisting">/* 
  * Function called to handle any database error messages
  * issued by DB. 
  */
 void
-my_error_handler(const char *error_prefix, char *msg)
+my_error_handler(const DbEnv *dbenv, const char *error_prefix,
+	const char *msg)
 {
   /* 
    * Put your code to handle the error prefix and error

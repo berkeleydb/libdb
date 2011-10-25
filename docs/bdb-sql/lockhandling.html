@@ -149,22 +149,18 @@
           </div>
         </div>
         <p>
-                When you use the BDB SQL interface, the lock usage is considerably
-                different. First, you cannot specify the kind of a lock
-                that you want when you begin a transaction. That is, the
-                <code class="literal">IMMEDIATE</code> and <code class="literal">EXCLUSIVE</code>
-                keywords are ignored by the BDB SQL interface. Instead, you simply
-                begin your transaction with <code class="literal">BEGIN</code>.
+                When you use the BDB SQL interface, you can 
+                begin your transaction with <code class="literal">BEGIN</code> or <code class="literal">BEGIN EXCLUSIVE</code>.
+                </p>
+        <p>
+                Note that the <code class="literal">IMMEDIATE</code> keyword is ignored in the BDB SQL interface (<code class="literal">BEGIN IMMEDIATE</code> behaves like <code class="literal">BEGIN</code>).
             </p>
         <p>
-                Note that this does not mean that Berkeley DB only supports one
-                kind of a lock. Instead, Berkeley DB decides what kind of a lock
+                When you begin your transaction with <code class="literal">BEGIN</code>, Berkeley DB decides what kind of a lock
                 you need based on what you are doing to the database. If
                 you perform an action that is read-only, it acquires a read
                 lock. If you perform a write action, it acquires a write
-                lock. What you do not have to do (and, in fact, cannot do), 
-                is identify the type of lock that you want when you begin
-                your transaction.
+                lock.
             </p>
         <p>    
                 Also, the BDB SQL interface supports multiple readers
@@ -219,7 +215,6 @@ dbsql&gt; insert into a values (2); </pre>
         <pre class="programlisting">dbsql&gt; begin;
 dbsql&gt; insert into a values (3);
 dbsql&gt; insert into b values (3);
-Error: database table is locked
 </pre>
         <p>
                 <span class="bold"><strong>Session 2:</strong></span>
@@ -236,10 +231,33 @@ Error: database table is locked
                 no forward progress, and so it is deadlocked.
             </p>
         <p>
-                The proper thing for your application to do here is to
-                rollback the transaction for one of the sessions and then
-                retry the operation. This is exactly what you would do if
-                you were using SQLite in shared cache mode.
+                When such a deadlock is detected one session loses the lock it got 
+                when executing its last statement, and that statement is automatically rolled back.
+                The rest of the statements in the session will still be valid, and you can 
+                continue to execute statements in that session. 
+                The session that does not lose its lock to deadlock detection 
+                will continue to execute as if nothing happened. 
+                </p>
+        <p>
+                Assume Session 2 was sacrificed to deadlock detection, no value would be inserted into a and an error will be returned.
+                But the insertion of value 3 into b would still be valid.  
+                Session 1 would continue to wait while inserting into table b 
+                until Session 2 either commits or aborts, thus freeing the lock it has on table b.
+                </p>
+        <p>
+            When you begin your transaction with <code class="literal">BEGIN EXCLUSIVE</code>, the session is 
+            never aborted due to deadlock or lock contention with another transaction.
+            Non-exclusive transactions are allowed to execute concurrently with the exclusive
+			transaction, but the non-exclusive transactions will have their locks
+			released if deadlock with the exclusive transaction occurs. If two or 
+            more exclusive transactions are running at the same time, they 
+            will be forced to execute in serial.
+            </p>
+        <p>If Session 1 was using an exclusive transaction, 
+            then Session 2 would lose its locks when deadlock is detected between the two.  
+            If both Session 1 and Session 2 start an exclusive transaction, then the 
+            last one to start the exclusive transaction would be blocked after 
+            executing <code class="literal">BEGIN EXCLUSIVE</code> until the first one is committed or aborted.
             </p>
       </div>
     </div>

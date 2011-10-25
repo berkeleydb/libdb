@@ -162,6 +162,33 @@ if the file does not exist.
         </ul>
       </div>
       <p> The dbsql executable provides the same interface as the sqlite3 executable that is part of SQLite. For more information on how to use dbsql see the <a class="ulink" href="http://www.sqlite.org/sqlite.html" target="_top">SQLite Documentation page.</a> </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="dbsql_command_feature"></a>Command Line Features Unique to dbsql
+ </h3>
+            </div>
+          </div>
+        </div>
+        <p>This section describes pre-defined query statements that can be executed from the dbsql command line.
+ </p>
+        <table class="simplelist" border="0" summary="Simple list">
+          <tr>
+            <td><span class="bold"><strong>.stat ?ITEM?</strong></span>  
+ 
+    <p>Prints statistics</p>
+    <p>If <span class="bold"><strong>ITEM</strong></span> is <span class="emphasis"><em>:env:</em></span>, then this command prints statistics for the Berkeley DB environment using the <a class="xref" href="envstat.html" title="DbEnv::stat_print()">DbEnv::stat_print()</a>. </p>
+    <pre class="programlisting">dbsql&gt; .stat :env:</pre>
+    <p>If <span class="bold"><strong>ITEM</strong></span> is the name of a table or index, then this command prints statistics for the table or index using the <a class="xref" href="dbstat_print.html" title="Db::stat_print()">Db::stat_print()</a>. </p>
+    <pre class="programlisting">dbsql&gt; .stat example</pre>
+    <p>If <span class="bold"><strong>ITEM</strong></span> is not specified, then this command prints statistics for the Berkeley DB environment followed by statistics for all tables and indexes within the database. 
+</p>
+<pre class="programlisting">dbsql&gt; .stat </pre>
+    </td>
+          </tr>
+        </table>
+      </div>
     </div>
     <div class="navfooter">
       <hr />

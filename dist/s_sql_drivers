@@ -7,16 +7,33 @@
 # in the parent of this repository/source tree.
 
 # The packages can be downloaded from (update to current version):
-# http://www.ch-werner.de/sqliteodbc/sqliteodbc-0.85.tar.gz
-# http://www.ch-werner.de/javasqlite/javasqlite-20100131.tar.gz
+# http://www.ch-werner.de/sqliteodbc/sqliteodbc-0.86.tar.gz
+# http://www.ch-werner.de/javasqlite/javasqlite-20100727.tar.gz
+die()
+{
+	echo >&2 "$@"
+	exit 1
+}
 
-if [ "$1x" != "x" ]; then
+START_DIR=`pwd`
+if [ "x$1" != "x" ]; then
 	PKG_ROOT=$1
 else
-	PKG_ROOT=.
+	PKG_ROOT=../..
 fi
-ODBC_PACKAGE=`ls $PKG_ROOT/../../sqliteodbc-*.tar.gz | tail -1`
-JDBC_PACKAGE=`ls $PKG_ROOT/../../javasqlite-*.tar.gz | tail -1`
+
+#DB_ADDONS_REPO=$PKG_ROOT/db_addons
+#if [ ! -d $DB_ADDONS_REPO ]; then
+#	die "db_addons repository doesn't exist."
+#fi
+#cd $DB_ADDONS_REPO
+#hg pull -u
+#if [ $? != 0 ]; then
+#	die "Failed updating the db_addons repository."
+#fi
+cd $START_DIR
+ODBC_PACKAGE=`ls $PKG_ROOT/sqliteodbc-0.86.tar.gz | tail -1`
+JDBC_PACKAGE=`ls $PKG_ROOT/javasqlite-20100727.tar.gz | tail -1`
 
 if [ ! -e $ODBC_PACKAGE ]; then
 	echo "No ODBC package found, can't continue."
@@ -29,11 +46,11 @@ if [ ! -e $JDBC_PACKAGE ]; then
 	exit 1
 fi
 
-SQL_DIR=../sql/
+SQL_DIR=../lang/sql/
 ODBC_DIR=$SQL_DIR/odbc
 JDBC_DIR=$SQL_DIR/jdbc
-mkdir -p $ODBC_DIR
-mkdir -p $JDBC_DIR
+rm -rf "$ODBC_DIR" && mkdir -p $ODBC_DIR
+rm -rf "$JDBC_DIR" && mkdir -p $JDBC_DIR
 
 HOMEDIR=`pwd`
 
@@ -72,39 +89,25 @@ rm -rf $JDBC_DIR/debian $ODBC_DIR/*ming* $ODBC_DIR/README.* $ODBC_DIR/*mak
 
 # Patch the JDBC and ODBC build files for autoconf, so the Berkeley DB library
 # can be added to the link command.
-
-echo "
---- Makefile.in 
-+++ Makefile.in
-50c50
-< LIBS=	@SQLITE_LIB@ @SQLITE3_LIB@
----
-> LIBS=	@SQLITE_LIB@ @SQLITE3_LIB@ @LDFLAGS@" > s_sql_drivers.tmpdiff
-
-( cd ../sql/jdbc && patch < ../../dist/s_sql_drivers.tmpdiff)
-
-echo "
---- Makefile.in 
-+++ Makefile.in
-30c30
-< ODBC_LIB =	@ODBC_LIB@
----
-> ODBC_LIB =	@ODBC_LIB@ @LDFLAGS@" > s_sql_drivers.tmpdiff
-
-( cd ../sql/odbc && patch < ../../dist/s_sql_drivers.tmpdiff)
-rm -f s_sql_drivers.tmpdiff
+mv $JDBC_DIR/Makefile.in $JDBC_DIR/Makefile.in.tmp
+# 1. Define BDB_LIB for Makefile
+# 2. Add LD_LIBRARY_PATH for runing native/mkconst in JDBC configuration
+cat $JDBC_DIR/Makefile.in.tmp | \
+        sed -e '/native\/mkconst > SQLite\/Constants.java/ i \\t\LD_LIBRARY_PATH=\"\$\$LD_LIBRARY_PATH:\$(PWD)\/..\/.libs\" \\' \
+            -e '/^LIBS=/s/$/ @BDB_LIB@/' > $JDBC_DIR/Makefile.in
+rm -f $JDBC_DIR/Makefile.in.tmp
 
 # Generate the resource3.h file needed by ODBC on Windows.
-VERS=`cat ../sql/odbc/VERSION`
+VERS=`cat $ODBC_DIR/VERSION`
 VERS_C=`echo $VERS | sed -e 's/\([0-9]\+\)[.]\([0-9]\+\).*/\1,\2/g'`
-cat ../sql/odbc/resource.h.in | sed -e "s/--VERS_C--/$VERS_C/g" -e "s/--VERS--/$VERS/g" > ../sql/odbc/resource3.h
+cat $ODBC_DIR/resource.h.in | sed -e "s/--VERS_C--/$VERS_C/g" -e "s/--VERS--/$VERS/g" > $ODBC_DIR/resource3.h
 
-# Let sqlite3odb.rc include "../sql/generated/sqlite3.h" instead of sqlite3.h 
-mv ../sql/odbc/sqlite3odbc.rc ../sql/odbc/sqlite3odbc.rc.in
-cat ../sql/odbc/sqlite3odbc.rc.in | sed -e 's/sqlite3.h/..\/sql\/generated\/sqlite3.h/g' > ../sql/odbc/sqlite3odbc.rc
+# Let sqlite3odb.rc include "$SQL_DIR/generated/sqlite3.h" instead of sqlite3.h 
+mv $ODBC_DIR/sqlite3odbc.rc $ODBC_DIR/sqlite3odbc.rc.in
+cat $ODBC_DIR/sqlite3odbc.rc.in | sed -e 's/sqlite3.h/..\/lang\/sql\/generated\/sqlite3.h/g' > $ODBC_DIR/sqlite3odbc.rc
 
 # Generate Constants.java needed by JDBC on Windows
-gcc -DHAVE_SQLITE3 -I../sql/generated -o mkconst ../sql/jdbc/native/mkconst.c
+gcc -DHAVE_SQLITE3 -I$SQL_DIR/generated -o mkconst $JDBC_DIR/native/mkconst.c
 ./mkconst > $JDBC_DIR/SQLite/Constants.java
 
 # Add the wildcard below since gcc on Windows appends a .exe

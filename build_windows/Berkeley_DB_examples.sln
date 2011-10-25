@@ -4,6 +4,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_access", "ex_access.vcpr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_btrec", "ex_btrec.vcproj", "{5DD66F4B-EB4A-4453-BC31-3FF7B2240634}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_bulk", "ex_bulk.vcproj", "{ABE1ACF6-C375-44AB-A628-80B4A94580FD}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvcode", "ex_csvcode.vcproj", "{54E6A58D-561D-467E-B378-6BA2EE138880}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvload", "ex_csvload.vcproj", "{CEC6CC37-88A3-4573-8957-6BA0CEF94B3D}"

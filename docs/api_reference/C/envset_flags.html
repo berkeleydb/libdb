@@ -67,7 +67,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3987727"></a>Parameters</h3>
+              <h3 class="title"><a id="idp51962200"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -75,7 +75,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3987848"></a>flags</h4>
+                <h4 class="title"><a id="idp51961096"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -161,6 +161,40 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
                  The DB_DIRECT_DB flag may be used to configure Berkeley DB at any time
                  during the life of the application.
             </p>
+              </li>
+              <li>
+                <p><a id="set_flags_DB_HOTBACKUP_IN_PROGRESS"></a>
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </p>
+                <p>
+	          Set this flag prior to creating a
+	          hot backup of a database environment.
+	          If a transaction with the bulk
+	          insert optimization enabled (with the
+	          <a class="xref" href="txnbegin.html#txnbegin_DB_TXN_BULK">
+             
+             <code class="literal">DB_TXN_BULK</code>
+            </a> flag) is in progress,
+	          setting the <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code> flag
+	          forces a checkpoint in the environment.
+	          After
+	          this flag is set in the environment, the bulk insert
+	          optimization is disabled, until the flag is reset.
+	          Using this protocol allows a hot backup procedure to
+	          make a consistent copy of the database even when
+	          bulk transactions are ongoing.  For more information, see the
+	          section on Hot Backup in the <span class="emphasis"><em>Getting Started
+	          With Transaction Processing Guide</em></span> and the description of the 
+	          <a class="xref" href="txnbegin.html#txnbegin_DB_TXN_BULK">
+             
+             <code class="literal">DB_TXN_BULK</code>
+            </a> flag in the
+	          <a class="xref" href="txnbegin.html" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> method.
+             </p>
+                <p>
+	          The <a class="xref" href="db_hotbackup.html" title="db_hotbackup">db_hotbackup</a>
+	          utility implements the protocol described above.
+	     </p>
               </li>
               <li>
                 <p><a id="set_flags_DB_DSYNC_DB"></a>
@@ -550,7 +584,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3987864"></a>onoff</h4>
+                <h4 class="title"><a id="idp51962064"></a>onoff</h4>
               </div>
             </div>
           </div>
@@ -564,7 +598,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3987371"></a>Errors</h3>
+              <h3 class="title"><a id="idp51945616"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -580,7 +614,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3987211"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp51982064"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -593,7 +627,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3988138"></a>Class</h3>
+              <h3 class="title"><a id="idp51981960"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -605,7 +639,7 @@ DB_ENV-&gt;set_flags(DB_ENV *dbenv, u_int32_t flags, int onoff);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3988543"></a>See Also</h3>
+              <h3 class="title"><a id="idp51986112"></a>See Also</h3>
             </div>
           </div>
         </div>

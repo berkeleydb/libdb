@@ -541,7 +541,6 @@ public:
 	virtual void get_msgfile(FILE **);
 	virtual void set_msgfile(FILE *);
 	virtual int set_paniccall(void (*)(DbEnv *, int));
-	virtual int set_rpc_server(void *, char *, long, long, u_int32_t);
 	virtual int get_shm_key(long *);
 	virtual int set_shm_key(long);
 	virtual int get_timeout(db_timeout_t *, u_int32_t);
@@ -700,6 +699,7 @@ public:
 	    int *eidp, u_int32_t flags);
 	virtual int repmgr_get_ack_policy(int *policy);
 	virtual int repmgr_set_ack_policy(int policy);
+	virtual int repmgr_get_local_site(const char ** host, u_int * port);
 	virtual int repmgr_set_local_site(const char * host, u_int16_t port,
 	    u_int32_t flags);
 	virtual int repmgr_site_list(u_int *countp, DB_REPMGR_SITE **listp);

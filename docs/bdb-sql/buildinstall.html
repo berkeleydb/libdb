@@ -50,7 +50,7 @@
       <p>
                 The BDB SQL interface comes as a part of the Oracle Berkeley DB
                 download. This can be downloaded from the 
-                <a class="ulink" href="http://www.oracle.com/technology/software/products/berkeley-db/db/index.html" target="_top">Oracle Berkeley DB download page</a>.
+                <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" target="_top">Oracle Berkeley DB download page</a>.
             </p>
       <p>
                 How you install the BDB SQL interface differs depending on whether you are
@@ -108,9 +108,9 @@
                     In order to build the BDB SQL interface, you download and build
                     Berkeley DB, configuring it so that the BDB SQL interface is also built.
                     Be aware that it is not built by default. Instead, you
-                    need to tell the Berkeley DB <code class="literal">configure</code> to
-                    also build the BDB SQL interface.  For instructions on building
-                    the BDB SQL interface, see <a href="../installation/build_unix.html#build_unix_sqlinter" class="olink">Building the DB SQL Interface</a> in the
+                    need to tell the Berkeley DB <code class="literal">configure</code>
+                    script to also build the BDB SQL interface.  For instructions on
+                    building the BDB SQL interface, see <a href="../installation/build_unix.html#build_unix_sqlinter" class="olink">Building the DB SQL Interface</a> in the
                     <em class="citetitle">Berkeley DB Installation and Build Guide</em>.
                 </p>
         <p>
@@ -121,6 +121,22 @@
                     the BDB SQL interface build using the compatibility
                     (<code class="literal">--enable-sql_compat</code>) option.
                 </p>
+        <div class="warning" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Warning</h3>
+          <p>
+                        The compatibility option can break other
+                        applications on your platform that rely on standard
+                        SQLite. This is especially true of Mac OS X, which
+                        uses standard SQLite for a number of default
+                        applications.
+                    </p>
+          <p>
+                        <span class="emphasis"><em>
+                            Use the compatibility option only if you know
+                            exactly what you are doing.
+                        </em></span>
+                    </p>
+        </div>
         <p>
                     Unless you built the BDB SQL interface with the compatibility
                     option, libraries and a command line shell

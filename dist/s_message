@@ -13,19 +13,19 @@ DIR="rep repmgr"
 
 # Build DB's message marshaling/unmarshaling routines.
 for i in $DIR; do
-	for f in ../$i/*.src; do
+	for f in ../src/$i/*.src; do
 		subsystem=`basename $f .src`
 		awk -f gen_msg.awk \
 		    -v header_file=$header \
 		    -v source_file=$source < $f
 
-		f=../dbinc_auto/${subsystem}_auto.h
+		f=../src/dbinc_auto/${subsystem}_auto.h
 		cmp $header $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $header $f && chmod 444 $f)
-		f=../$i/${subsystem}_auto.c
+		    rm -f $f && cp $header $f)
+		f=../src/$i/${subsystem}_auto.c
 		cmp $source $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $source $f && chmod 444 $f)
+		    rm -f $f && cp $source $f)
 	done
 done

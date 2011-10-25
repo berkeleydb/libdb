@@ -18,7 +18,7 @@ DIR="db dbreg btree fileops hash qam txn"
 # Check to make sure we haven't duplicated a log record entry, and build
 # the list of log record types that the test suite uses.
 for i in $DIR; do
-	for f in ../$i/*.src; do
+	for f in ../src/$i/*.src; do
 		# Grab the PREFIX;  there should only be one per file, and
 		# so it's okay to just take the first.
 		grep '^PREFIX' $f | sed q
@@ -36,11 +36,11 @@ grep -v '^PREFIX' $loglist |
 }
 f=../test/logtrack.list
 cmp $loglist $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $loglist $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $loglist $f)
 
 # Build DB's recovery routines.
 for i in $DIR; do
-	for f in ../$i/*.src; do
+	for f in ../src/$i/*.src; do
 		subsystem=`basename $f .src`
 		awk -f gen_rec.awk \
 		    -v header_file=$header \
@@ -48,24 +48,24 @@ for i in $DIR; do
 		    -v source_file=$source \
 		    -v template_file=$template < $f
 
-		f=../dbinc_auto/${subsystem}_auto.h
+		f=../src/dbinc_auto/${subsystem}_auto.h
 		cmp $header $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $header $f && chmod 444 $f)
-		f=../$i/${subsystem}_auto.c
+		    rm -f $f && cp $header $f)
+		f=../src/$i/${subsystem}_auto.c
 		cmp $source $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $source $f && chmod 444 $f)
-		f=../$i/${subsystem}_autop.c
+		    rm -f $f && cp $source $f)
+		f=../src/$i/${subsystem}_autop.c
 		cmp $print $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $print $f && chmod 444 $f)
+		    rm -f $f && cp $print $f)
 		f=template/rec_${subsystem}
 		cmp $template $f > /dev/null 2>&1 ||
 		    (echo "Building $f" &&
-		    rm -f $f && cp $template $f && chmod 444 $f)
+		    rm -f $f && cp $template $f)
 	done
 done
 
 # Build the example application's recovery routines.
-(cd ../examples_c/ex_apprec && sh auto_rebuild)
+(cd ../examples/c/ex_apprec && sh auto_rebuild)

@@ -54,7 +54,7 @@ db0
 % set ret [db0 put -nooverwrite dog newcat]
 DB_KEYEXIST: Key/data pair already exists
 % if { [string first DB_KEYEXIST $ret] != -1 } {
-	puts "This was an error; the key existed"
+    puts "This was an error; the key existed"
 }
 This was an error; the key existed
 % db0 close

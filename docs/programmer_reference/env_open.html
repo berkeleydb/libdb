@@ -46,62 +46,62 @@ created or joined, database operations will automatically perform all
 necessary locking operations for the application.</p>
       <p>The following is a simple example of opening two databases within a
 database environment:</p>
-      <pre class="programlisting">	DB_ENV *dbenv;
-	DB *dbp1, *dbp2;
-	int ret;
+      <pre class="programlisting">    DB_ENV *dbenv;
+    DB *dbp1, *dbp2;
+    int ret;
 
-	dbenv = NULL;
-	dbp1 = dbp2 = NULL;
+    dbenv = NULL;
+    dbp1 = dbp2 = NULL;
 
-	/*
-	 * Create an environment and initialize it for additional error
-	 * reporting.
-	 */
-	if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
-		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
-		return (ret);
-	}
+    /*
+     * Create an environment and initialize it for additional error
+     * reporting.
+     */
+    if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
+        fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
+        return (ret);
+    }
 
-	dbenv-&gt;set_errfile(dbenv, errfp);
-	dbenv-&gt;set_errpfx(dbenv, progname);
+    dbenv-&gt;set_errfile(dbenv, errfp);
+    dbenv-&gt;set_errpfx(dbenv, progname);
 
-	/* Open an environment with just a memory pool. */
-	if ((ret =
-	    dbenv-&gt;open(dbenv, home, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "environment open: %s", home);
-		goto err;
-	}
+    /* Open an environment with just a memory pool. */
+    if ((ret =
+        dbenv-&gt;open(dbenv, home, DB_CREATE | DB_INIT_MPOOL, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "environment open: %s", home);
+        goto err;
+    }
 
-	/* Open database #1. */
-	if ((ret = db_create(&amp;dbp1, dbenv, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "database create");
-		goto err;
-	}
-	if ((ret = dbp1-&gt;open(dbp1,
-	    NULL, DATABASE1, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE1);
-		goto err;
-	}
+    /* Open database #1. */
+    if ((ret = db_create(&amp;dbp1, dbenv, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "database create");
+        goto err;
+    }
+    if ((ret = dbp1-&gt;open(dbp1,
+        NULL, DATABASE1, NULL, DB_BTREE, DB_CREATE, 0664)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE1);
+        goto err;
+    }
 
-	/* Open database #2. */
-	if ((ret = db_create(&amp;dbp2, dbenv, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "database create");
-		goto err;
-	}
-	if ((ret = dbp2-&gt;open(dbp2,
-	    NULL, DATABASE2, NULL, DB_HASH, DB_CREATE, 0664)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE2);
-		goto err;
-	}
+    /* Open database #2. */
+    if ((ret = db_create(&amp;dbp2, dbenv, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "database create");
+        goto err;
+    }
+    if ((ret = dbp2-&gt;open(dbp2,
+        NULL, DATABASE2, NULL, DB_HASH, DB_CREATE, 0664)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "DB-&gt;open: %s", DATABASE2);
+        goto err;
+    }
 
-	return (0);
+    return (0);
 
-err:	if (dbp2 != NULL)
-		(void)dbp2-&gt;close(dbp2, 0);
-	if (dbp1 != NULL)
-		(void)dbp2-&gt;close(dbp1, 0);
-	(void)dbenv-&gt;close(dbenv, 0);
-	return (1);
+err:    if (dbp2 != NULL)
+        (void)dbp2-&gt;close(dbp2, 0);
+    if (dbp1 != NULL)
+        (void)dbp1-&gt;close(dbp1, 0);
+    (void)dbenv-&gt;close(dbenv, 0);
+    return (1);
 }</pre>
     </div>
     <div class="navfooter">

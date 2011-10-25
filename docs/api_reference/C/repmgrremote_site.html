@@ -47,6 +47,15 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
          sites in the group.
     </p>
       <p>
+         The database environment's replication subsystem may also be configured using the
+         environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.  The
+         syntax of the entry in that file is a single line with the string "repmgr_add_remote_site",
+         one or more whitespace characters, and the
+	 <span class="bold"><strong>host, port</strong></span> and optional
+	 <span class="bold"><strong>peer</strong></span>
+         parameters specified. For example, "repmgr_add_remote_site example.com 49201 peer".
+    </p>
+      <p>
          The <code class="methodname">DB_ENV-&gt;repmgr_add_remote_site()</code> method may be called at any time
          during the life of the application.
     </p>
@@ -62,7 +71,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4022176"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54038368"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -70,7 +79,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4022346"></a>host</h4>
+                <h4 class="title"><a id="idp54047704"></a>host</h4>
               </div>
             </div>
           </div>
@@ -82,7 +91,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4021910"></a>port</h4>
+                <h4 class="title"><a id="idp54054824"></a>port</h4>
               </div>
             </div>
           </div>
@@ -94,7 +103,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4022442"></a>eidp</h4>
+                <h4 class="title"><a id="idp54055256"></a>eidp</h4>
               </div>
             </div>
           </div>
@@ -110,7 +119,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4022284"></a>flags</h4>
+                <h4 class="title"><a id="idp54043472"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -145,7 +154,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4022484"></a>Errors</h3>
+              <h3 class="title"><a id="idp54057776"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -162,7 +171,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4022581"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp54063664"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -177,7 +186,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4022563"></a>Class</h3>
+              <h3 class="title"><a id="idp54062584"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -189,7 +198,7 @@ DB_ENV-&gt;repmgr_add_remote_site(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4022260"></a>See Also</h3>
+              <h3 class="title"><a id="idp54064096"></a>See Also</h3>
             </div>
           </div>
         </div>

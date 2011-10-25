@@ -72,21 +72,21 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db_sql\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_sql50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_sql51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_sql50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_sql51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_sql50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_sql51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_sql50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_sql51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_API=__declspec(dllexport);SQLITE_HAS_CODEC;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -102,15 +102,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 /FIXED:NO %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_sql50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_sql51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_sql50d.lib</ImportLibrary>
-      <ModuleDefinitionFile>..\build_windows\libdb_sql.def</ModuleDefinitionFile>
+      <ImportLibrary>$(OutDir)libdb_sql51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -119,8 +118,8 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_API=__declspec(dllexport);SQLITE_HAS_CODEC;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -136,15 +135,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_sql50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_sql51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_sql50.lib</ImportLibrary>
-      <ModuleDefinitionFile>..\build_windows\libdb_sql.def</ModuleDefinitionFile>
+      <ImportLibrary>$(OutDir)libdb_sql51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -152,8 +150,8 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_API=__declspec(dllexport);SQLITE_HAS_CODEC;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION;_DEBUG;SQLITE_DEBUG;SQLITE_MEMDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -169,15 +167,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 /FIXED:NO %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_sql50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_sql51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_sql50d.lib</ImportLibrary>
-      <ModuleDefinitionFile>..\build_windows\libdb_sql.def</ModuleDefinitionFile>
+      <ImportLibrary>$(OutDir)libdb_sql51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -186,8 +183,8 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;_USRDLL;SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_API=__declspec(dllexport);SQLITE_HAS_CODEC;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -203,93 +200,97 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_sql50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_sql51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_sql50.lib</ImportLibrary>
-      <ModuleDefinitionFile>..\build_windows\libdb_sql.def</ModuleDefinitionFile>
+      <ImportLibrary>$(OutDir)libdb_sql51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\sql\sqlite\src\alter.c" />
-    <ClCompile Include="..\sql\sqlite\src\analyze.c" />
-    <ClCompile Include="..\sql\sqlite\src\attach.c" />
-    <ClCompile Include="..\sql\sqlite\src\auth.c" />
-    <ClCompile Include="..\sql\adapter\backup.c" />
-    <ClCompile Include="..\sql\sqlite\src\bitvec.c" />
-    <ClCompile Include="..\sql\adapter\btmutex.c" />
-    <ClCompile Include="..\sql\adapter\btree.c" />
-    <ClCompile Include="..\sql\sqlite\src\build.c" />
-    <ClCompile Include="..\sql\sqlite\src\callback.c" />
-    <ClCompile Include="..\sql\sqlite\src\complete.c" />
-    <ClCompile Include="..\sql\sqlite\src\ctime.c" />
-    <ClCompile Include="..\sql\sqlite\src\date.c" />
-    <ClCompile Include="..\sql\sqlite\src\delete.c" />
-    <ClCompile Include="..\sql\sqlite\src\expr.c" />
-    <ClCompile Include="..\sql\sqlite\src\fault.c" />
-    <ClCompile Include="..\sql\sqlite\src\fkey.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_expr.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_hash.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_icu.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_porter.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_snippet.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_tokenizer1.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_tokenizer.c" />
-    <ClCompile Include="..\sql\sqlite\ext\fts3\fts3_write.c" />
-    <ClCompile Include="..\sql\sqlite\src\func.c" />
-    <ClCompile Include="..\sql\sqlite\src\global.c" />
-    <ClCompile Include="..\sql\sqlite\src\hash.c" />
-    <ClCompile Include="..\sql\sqlite\src\insert.c" />
-    <ClCompile Include="..\sql\sqlite\src\journal.c" />
-    <ClCompile Include="..\sql\sqlite\src\legacy.c" />
-    <ClCompile Include="..\sql\sqlite\src\loadext.c" />
-    <ClCompile Include="..\sql\sqlite\src\main.c" />
-    <ClCompile Include="..\sql\sqlite\src\malloc.c" />
-    <ClCompile Include="..\sql\sqlite\src\mem0.c" />
-    <ClCompile Include="..\sql\sqlite\src\mem1.c" />
-    <ClCompile Include="..\sql\sqlite\src\mem2.c" />
-    <ClCompile Include="..\sql\sqlite\src\memjournal.c" />
-    <ClCompile Include="..\sql\sqlite\src\mutex.c" />
-    <ClCompile Include="..\sql\sqlite\src\mutex_w32.c" />
-    <ClCompile Include="..\sql\sqlite\src\notify.c" />
-    <ClCompile Include="..\sql\generated\opcodes.c" />
-    <ClCompile Include="..\sql\sqlite\src\os.c" />
-    <ClCompile Include="..\sql\sqlite\src\os_win.c" />
-    <ClCompile Include="..\sql\adapter\pager.c" />
-    <ClCompile Include="..\sql\generated\parse.c" />
-    <ClCompile Include="..\sql\adapter\pcache.c" />
-    <ClCompile Include="..\sql\adapter\pcache1.c" />
-    <ClCompile Include="..\sql\sqlite\src\pragma.c" />
-    <ClCompile Include="..\sql\sqlite\src\prepare.c" />
-    <ClCompile Include="..\sql\sqlite\src\printf.c" />
-    <ClCompile Include="..\sql\sqlite\src\random.c" />
-    <ClCompile Include="..\sql\sqlite\src\resolve.c" />
-    <ClCompile Include="..\sql\sqlite\src\rowset.c" />
-    <ClCompile Include="..\sql\sqlite\ext\rtree\rtree.c" />
-    <ClCompile Include="..\sql\sqlite\src\select.c" />
-    <ClCompile Include="..\sql\sqlite\src\status.c" />
-    <ClCompile Include="..\sql\sqlite\src\table.c" />
-    <ClCompile Include="..\sql\sqlite\src\tokenize.c" />
-    <ClCompile Include="..\sql\sqlite\src\trigger.c" />
-    <ClCompile Include="..\sql\sqlite\src\update.c" />
-    <ClCompile Include="..\sql\sqlite\src\utf.c" />
-    <ClCompile Include="..\sql\sqlite\src\util.c" />
-    <ClCompile Include="..\sql\adapter\vacuum.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbe.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbeapi.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbeaux.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbeblob.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbemem.c" />
-    <ClCompile Include="..\sql\sqlite\src\vdbetrace.c" />
-    <ClCompile Include="..\sql\sqlite\src\vtab.c" />
-    <ClCompile Include="..\sql\sqlite\src\walker.c" />
-    <ClCompile Include="..\sql\sqlite\src\where.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\alter.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\analyze.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\attach.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\auth.c" />
+    <ClCompile Include="..\lang\sql\adapter\backup.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\bitvec.c" />
+    <ClCompile Include="..\lang\sql\adapter\btmutex.c" />
+    <ClCompile Include="..\lang\sql\adapter\btree.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\build.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\callback.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\complete.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\ctime.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\date.c" />
+    <ClCompile Include="..\lang\sql\adapter\db_encrypt.c" />
+    <ClCompile Include="..\lang\sql\adapter\db_pragma.c" />
+    <ClCompile Include="..\lang\sql\adapter\db_shell.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\delete.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\expr.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\fault.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\fkey.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_expr.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_hash.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_icu.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_porter.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_snippet.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_tokenizer1.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_tokenizer.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\fts3\fts3_write.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\func.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\global.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\hash.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\insert.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\journal.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\legacy.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\loadext.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\main.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\malloc.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mem0.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mem1.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mem2.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\memjournal.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mutex.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mutex_noop.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\mutex_w32.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\notify.c" />
+    <ClCompile Include="..\lang\sql\generated\opcodes.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\os.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\os_win.c" />
+    <ClCompile Include="..\lang\sql\adapter\pager.c" />
+    <ClCompile Include="..\lang\sql\generated\parse.c" />
+    <ClCompile Include="..\lang\sql\adapter\pcache.c" />
+    <ClCompile Include="..\lang\sql\adapter\pcache1.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\pragma.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\prepare.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\printf.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\random.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\resolve.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\rowset.c" />
+    <ClCompile Include="..\lang\sql\sqlite\ext\rtree\rtree.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\select.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\status.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\table.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\tokenize.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\trigger.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\update.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\utf.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\util.c" />
+    <ClCompile Include="..\lang\sql\adapter\vacuum.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbe.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbeapi.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbeaux.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbeblob.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbemem.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vdbetrace.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\vtab.c" />
+    <ClCompile Include="..\lang\sql\adapter\wal.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\walker.c" />
+    <ClCompile Include="..\lang\sql\sqlite\src\where.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="db.vcxproj">

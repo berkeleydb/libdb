@@ -63,78 +63,78 @@ the databases.</p>
       <pre class="programlisting">int
 main(int argc, char *argv)
 {
-	extern int optind;
-	DB *db_cats, *db_color, *db_fruit;
-	DB_ENV *dbenv;
-	pthread_t ptid;
-	int ch;
+    extern int optind;
+    DB *db_cats, *db_color, *db_fruit;
+    DB_ENV *dbenv;
+    pthread_t ptid;
+    int ch;
 
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+    while ((ch = getopt(argc, argv, "")) != EOF)
+        switch (ch) {
+        case '?':
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
 
-	env_dir_create();
-	env_open(&amp;dbenv);
+    env_dir_create();
+    env_open(&amp;dbenv);
 
-<span class="bold"><strong>	/* Start a checkpoint thread. */
-	if ((errno = pthread_create(
-	    &amp;ptid, NULL, checkpoint_thread, (void *)dbenv)) != 0) {
-		fprintf(stderr,
-		    "txnapp: failed spawning checkpoint thread: %s\n",
-		    strerror(errno));
-		exit (1);
-	}</strong></span>
+<span class="bold"><strong>    /* Start a checkpoint thread. */
+    if ((errno = pthread_create(
+        &amp;ptid, NULL, checkpoint_thread, (void *)dbenv)) != 0) {
+        fprintf(stderr,
+            "txnapp: failed spawning checkpoint thread: %s\n",
+            strerror(errno));
+        exit (1);
+    }</strong></span>
 
-	/* Open database: Key is fruit class; Data is specific type. */
-	db_open(dbenv, &amp;db_fruit, "fruit", 0);
+    /* Open database: Key is fruit class; Data is specific type. */
+    db_open(dbenv, &amp;db_fruit, "fruit", 0);
 
-	/* Open database: Key is a color; Data is an integer. */
-	db_open(dbenv, &amp;db_color, "color", 0);
+    /* Open database: Key is a color; Data is an integer. */
+    db_open(dbenv, &amp;db_color, "color", 0);
 
-	/*
-	 * Open database:
-	 *	Key is a name; Data is: company name, cat breeds.
-	 */
-	db_open(dbenv, &amp;db_cats, "cats", 1);
+    /*
+     * Open database:
+     *    Key is a name; Data is: company name, cat breeds.
+     */
+    db_open(dbenv, &amp;db_cats, "cats", 1);
 
-	add_fruit(dbenv, db_fruit, "apple", "yellow delicious");
+    add_fruit(dbenv, db_fruit, "apple", "yellow delicious");
 
-	add_color(dbenv, db_color, "blue", 0);
-	add_color(dbenv, db_color, "blue", 3);
+    add_color(dbenv, db_color, "blue", 0);
+    add_color(dbenv, db_color, "blue", 3);
 
-	add_cat(dbenv, db_cats,
-		"Amy Adams",
-		"Oracle",
-		"abyssinian",
-		"bengal",
-		"chartreaux",
-		NULL);
+    add_cat(dbenv, db_cats,
+        "Amy Adams",
+        "Oracle",
+        "abyssinian",
+        "bengal",
+        "chartreaux",
+        NULL);
 
-	return (0);
+    return (0);
 }
 
 <span class="bold"><strong>void *
 checkpoint_thread(void *arg)
 {
-	DB_ENV *dbenv;
-	int ret;
+    DB_ENV *dbenv;
+    int ret;
 
-	dbenv = arg;
-	dbenv-&gt;errx(dbenv, "Checkpoint thread: %lu", (u_long)pthread_self());
+    dbenv = arg;
+    dbenv-&gt;errx(dbenv, "Checkpoint thread: %lu", (u_long)pthread_self());
 
-	/* Checkpoint once a minute. */
-	for (;; sleep(60))
-		if ((ret = dbenv-&gt;txn_checkpoint(dbenv, 0, 0, 0)) != 0) {
-			dbenv-&gt;err(dbenv, ret, "checkpoint thread");
-			exit (1);
-		}
+    /* Checkpoint once a minute. */
+    for (;; sleep(60))
+        if ((ret = dbenv-&gt;txn_checkpoint(dbenv, 0, 0, 0)) != 0) {
+            dbenv-&gt;err(dbenv, ret, "checkpoint thread");
+            exit (1);
+        }
 
-	/* NOTREACHED */
+    /* NOTREACHED */
 }</strong></span></pre>
       <p>Because checkpoints can be quite expensive, choosing how often to
 perform a checkpoint is a common tuning parameter for Berkeley DB

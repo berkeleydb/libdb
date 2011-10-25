@@ -313,6 +313,7 @@ commands. It is identical to the dbsql executable but named so that existing scr
 	   you will need a standard C++ compiler. So far gcc is the best choice, we have tested and found
 	   that gcc-3.4.4 and all its newer versions can build the Berkeley DB C++ STL API successfully.
 	</p>
+            <p>For information on db_stl supported compilers, see the <a href="../programmer_reference/stl.html#stl_intro_portability" class="olink">Portability section</a> in the <span class="emphasis"><em>Programmer's Reference Guide</em></span>.</p>
             <p>
 And you need to include the STL API header files in your application code.
 If you are using the Berkeley DB source tree, the header files are in &lt;Berkeley DB Source Root &gt;/stl directory; 
@@ -385,6 +386,40 @@ db.h and db_cxx.h header files.
             errors.  This argument should not be specified when configuring
             to build production binaries.
         </p>
+          </li>
+          <li>
+            <p><a id="build_unix_conf.--enable-dtrace"></a>
+            <span class="bold"><strong>--enable-dtrace</strong></span>
+	    [<span class="bold"><strong>--enable-perfmon-statistics</strong></span>]
+        </p>
+            <p>
+	    To build Berkeley DB with performance event monitoring probes
+	    add --enable-dtrace to the configuration options.  Both native
+	    DTrace (on Solaris and Mac OS X) and the
+	    Statically Defined Tracing compatibility layer
+	    in Linux SystemTap version 1.1 or better are supported.
+	    That compatibility package may be called systemtap-sdt-devel;
+	    it includes <code class="filename">sys/sdt.h</code>.
+        </p>
+            <p>
+	    If --enable-perfmon-statistics is combined with --enable-dtrace
+	    then additional probes are defined for the tracking variables
+	    from which DB's statistics are obtained.
+	    They allow DTrace and SystemTap access to these values when
+	    they are updated, are the basis of the statistics
+	    as displayed db_stat and the API functions that return statistics.
+        </p>
+            <p>
+	    The --enable-dtrace option may not be specified at the same time
+	    as --disable-statistics.
+        </p>
+            <p>
+	    For information on Berkeley DB Performance Event Monitoring,
+	    see the
+	    <a href="../programmer_reference/program_perfmon.html" class="olink">Performance Event Monitoring</a>
+	    section in the
+	    <span class="emphasis"><em>Programmer's Reference Guide</em></span>.
+	</p>
           </li>
           <li>
             <p><a id="build_unix_conf.--with-cryptography"></a>

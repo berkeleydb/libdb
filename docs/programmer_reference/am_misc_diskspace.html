@@ -39,12 +39,12 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="am_misc_diskspace.html#id3646102">Btree</a>
+              <a href="am_misc_diskspace.html#idp50931016">Btree</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="am_misc_diskspace.html#id3646103">Hash</a>
+              <a href="am_misc_diskspace.html#idp50931080">Hash</a>
             </span>
           </dt>
         </dl>
@@ -57,7 +57,8 @@ to actually store it on disk.</p>
 never returned to the filesystem, although it is reused where possible.
 This means that the Btree and Hash databases are grow-only.  If enough
 keys are deleted from a database that shrinking the underlying file is
-desirable, you should create a new database and copy the records from
+desirable, you should use the <a href="../api_reference/C/dbcompact.html" class="olink">DB-&gt;compact()</a> method to reclaim disk space. Alternatively,
+you can create a new database and copy the records from
 the old one into it.</p>
       <p>These are rough estimates at best. For example, they do not take into
 account overflow records, filesystem metadata information, large sets
@@ -68,7 +69,7 @@ variable, and the page-fill factor changes over time.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3646102"></a>Btree</h3>
+              <h3 class="title"><a id="idp50931016"></a>Btree</h3>
             </div>
           </div>
         </div>
@@ -117,7 +118,7 @@ multiplied by the <span class="bold"><strong>page-size</strong></span>.  In the 
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3646103"></a>Hash</h3>
+              <h3 class="title"><a id="idp50931080"></a>Hash</h3>
             </div>
           </div>
         </div>

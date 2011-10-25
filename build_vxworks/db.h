@@ -46,10 +46,10 @@ extern "C" {
 #define	DB_VERSION_FAMILY	11
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	5
-#define	DB_VERSION_MINOR	0
-#define	DB_VERSION_PATCH	32
-#define	DB_VERSION_STRING	"Berkeley DB 5.0.32: (October 25, 2010)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.0.32: (October 25, 2010)"
+#define	DB_VERSION_MINOR	1
+#define	DB_VERSION_PATCH	29
+#define	DB_VERSION_STRING	"Berkeley DB 5.1.29: (October 25, 2011)"
+#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.1.29: (October 25, 2011)"
 
 /*
  * !!!
@@ -390,9 +390,10 @@ struct __db_lock_pstat {
 struct __db_ilock {
 	db_pgno_t pgno;			/* Page being locked. */
 	u_int8_t fileid[DB_FILE_ID_LEN];/* File id. */
-#define	DB_HANDLE_LOCK	1
-#define	DB_RECORD_LOCK	2
-#define	DB_PAGE_LOCK	3
+#define	DB_HANDLE_LOCK		1
+#define	DB_RECORD_LOCK		2
+#define	DB_PAGE_LOCK		3
+#define	DB_DATABASE_LOCK	4
 	u_int32_t type;			/* Type of lock. */
 };
 
@@ -689,6 +690,7 @@ struct __db_mpool_stat {
 	u_int32_t st_page_clean;	/* Clean pages. */
 	u_int32_t st_page_dirty;	/* Dirty pages. */
 	u_int32_t st_hash_buckets;	/* Number of hash buckets. */
+	u_int32_t st_hash_mutexes;	/* Number of hash bucket mutexes. */
 	u_int32_t st_pagesize;		/* Assumed page size. */
 	u_int32_t st_hash_searches;	/* Total hash chain searches. */
 	u_int32_t st_hash_longest;	/* Longest hash chain searched. */
@@ -763,7 +765,6 @@ struct __db_txn {
 
 	void		*td;		/* Detail structure within region. */
 	db_timeout_t	lock_timeout;	/* Timeout for locks for this txn. */
-	db_timeout_t	expire;		/* Time transaction expires. */
 	void		*txn_list;	/* Undo information for parent. */
 
 	/*
@@ -826,6 +827,18 @@ struct __db_txn {
 		struct __dbc **tqh_last;
 	} my_cursors;
 
+	/*
+	 * !!!
+	 * Explicit representations of structures from queue.h.
+	 * TAILQ_HEAD(__femfs, MPOOLFILE) femfs;
+	 *
+	 * These are DBs involved in file extension in this transaction.
+	 */
+	struct __femfs {
+		DB *tqh_first;
+		DB **tqh_last;
+	} femfs;
+
 	DB_TXN_TOKEN	*token_buffer;	/* User's commit token buffer. */
 	void	*api_internal;		/* C++ API private. */
 	void	*xml_internal;		/* XML API private. */
@@ -868,6 +881,7 @@ struct __db_txn {
 #define	TXN_SNAPSHOT		0x08000	/* Snapshot Isolation. */
 #define	TXN_SYNC		0x10000	/* Write and sync on prepare/commit. */
 #define	TXN_WRITE_NOSYNC	0x20000	/* Write only on prepare/commit. */
+#define TXN_BULK		0x40000 /* Enable bulk loading optimization. */
 	u_int32_t	flags;
 };
 
@@ -946,11 +960,12 @@ struct __db_txn_token {
 
 /* Acknowledgement policies. */
 #define	DB_REPMGR_ACKS_ALL		1
-#define	DB_REPMGR_ACKS_ALL_PEERS	2
-#define	DB_REPMGR_ACKS_NONE		3
-#define	DB_REPMGR_ACKS_ONE		4
-#define	DB_REPMGR_ACKS_ONE_PEER		5
-#define	DB_REPMGR_ACKS_QUORUM		6
+#define	DB_REPMGR_ACKS_ALL_AVAILABLE	2
+#define	DB_REPMGR_ACKS_ALL_PEERS	3
+#define	DB_REPMGR_ACKS_NONE		4
+#define	DB_REPMGR_ACKS_ONE		5
+#define	DB_REPMGR_ACKS_ONE_PEER		6
+#define	DB_REPMGR_ACKS_QUORUM		7
 
 /* Replication timeout configuration values. */
 #define	DB_REP_ACK_TIMEOUT		1	/* RepMgr acknowledgements. */
@@ -1210,18 +1225,17 @@ typedef enum {
 #define	DB_NEXT_NODUP		18	/* Dbc.get */
 #define	DB_NODUPDATA		19	/* Db.put, Dbc.put */
 #define	DB_NOOVERWRITE		20	/* Db.put */
-#define	DB_NOSYNC		21	/* Db.close */
-#define	DB_OVERWRITE_DUP	22	/* Dbc.put, Db.put; no DB_KEYEXIST */
-#define	DB_POSITION		23	/* Dbc.dup */
-#define	DB_PREV			24	/* Dbc.get, DbLogc->get */
-#define	DB_PREV_DUP		25	/* Dbc.get */
-#define	DB_PREV_NODUP		26	/* Dbc.get */
-#define	DB_SET			27	/* Dbc.get, DbLogc->get */
-#define	DB_SET_RANGE		28	/* Dbc.get */
-#define	DB_SET_RECNO		29	/* Db.get, Dbc.get */
-#define	DB_UPDATE_SECONDARY	30	/* Dbc.get, Dbc.del (internal) */
-#define	DB_SET_LTE		31	/* Dbc.get (internal) */
-#define	DB_GET_BOTH_LTE		32	/* Dbc.get (internal) */
+#define	DB_OVERWRITE_DUP	21	/* Dbc.put, Db.put; no DB_KEYEXIST */
+#define	DB_POSITION		22	/* Dbc.dup */
+#define	DB_PREV			23	/* Dbc.get, DbLogc->get */
+#define	DB_PREV_DUP		24	/* Dbc.get */
+#define	DB_PREV_NODUP		25	/* Dbc.get */
+#define	DB_SET			26	/* Dbc.get, DbLogc->get */
+#define	DB_SET_RANGE		27	/* Dbc.get */
+#define	DB_SET_RECNO		28	/* Db.get, Dbc.get */
+#define	DB_UPDATE_SECONDARY	29	/* Dbc.get, Dbc.del (internal) */
+#define	DB_SET_LTE		30	/* Dbc.get (internal) */
+#define	DB_GET_BOTH_LTE		31	/* Dbc.get (internal) */
 
 /* This has to change when the max opcode hits 255. */
 #define	DB_OPFLAGS_MASK	0x000000ff	/* Mask for operations flags. */
@@ -1310,7 +1324,7 @@ struct __db {
 	db_mutex_t mutex;		/* Synchronization for free threading */
 
 	char *fname, *dname;		/* File/database passed to DB->open. */
-	const char *dirname;		/* Direcory of DB file. */
+	const char *dirname;		/* Directory of DB file. */
 	u_int32_t open_flags;		/* Flags passed to DB->open. */
 
 	u_int8_t fileid[DB_FILE_ID_LEN];/* File's unique ID for locking. */
@@ -1326,8 +1340,6 @@ struct __db {
 	DB_TXN *cur_txn;		/* Opening transaction. */
 	DB_LOCKER *associate_locker;	/* Locker for DB->associate call. */
 	DB_LOCK	 handle_lock;		/* Lock held on this handle. */
-
-	u_int	 cl_id;			/* RPC: remote client id. */
 
 	time_t	 timestamp;		/* Handle timestamp for replication. */
 	u_int32_t fid_gen;		/* Rep generation number for fids. */
@@ -1427,6 +1439,7 @@ struct __db {
 	DB	*s_primary;
 
 #define	DB_ASSOC_IMMUTABLE_KEY    0x00000001 /* Secondary key is immutable. */
+#define	DB_ASSOC_CREATE    0x00000002 /* Secondary db populated on open. */
 
 	/* Flags passed to associate -- set in the secondary. */
 	u_int32_t s_assoc_flags;
@@ -1443,6 +1456,20 @@ struct __db {
 	struct {
 		struct __db_foreign_info *lh_first;
 	} f_primaries;
+
+	/*
+	 * !!!
+	 * Explicit representations of structures from queue.h.
+	 * TAILQ_ENTRY(__db) felink;
+	 *
+	 * Links in a list of DBs involved in file extension
+	 * during a transaction.  These are to be used only while the
+	 * metadata is locked.
+	 */
+	struct {
+		struct __db *tqe_next;
+		struct __db **tqe_prev;
+	} felink;
 
 	/* Reference to foreign -- set in the secondary. */
 	DB      *s_foreign;
@@ -1475,6 +1502,7 @@ struct __db {
 	int  (*get_alloc) __P((DB *, void *(**)(size_t),
 		void *(**)(void *, size_t), void (**)(void *)));
 	int  (*get_append_recno) __P((DB *, int (**)(DB *, DBT *, db_recno_t)));
+	int  (*get_assoc_flags) __P((DB *, u_int32_t *));
 	int  (*get_bt_compare)
 		__P((DB *, int (**)(DB *, const DBT *, const DBT *)));
 	int  (*get_bt_compress) __P((DB *,
@@ -1898,8 +1926,6 @@ struct __dbc {
 	DB_LOCK_ILOCK lock;		/* Object to be locked. */
 	DB_LOCK	  mylock;		/* CDB lock held on this cursor. */
 
-	u_int	  cl_id;		/* Remote client id. */
-
 	DBTYPE	  dbtype;		/* Cursor type. */
 
 	DBC_INTERNAL *internal;		/* Access method private. */
@@ -2118,9 +2144,6 @@ struct __db_env {
 	char	*passwd;		/* Cryptography support */
 	size_t	 passwd_len;
 
-	void	*cl_handle;		/* RPC: remote client handle */
-	u_int	 cl_id;			/* RPC: remote client env id */
-
 	/* Private handle references */
 	void	*app_private;		/* Application-private handle */
 	void	*api1_internal;		/* C++, Perl API private */
@@ -2162,6 +2185,7 @@ struct __db_env {
 	u_int		mp_ncache;	/* Initial number of cache regions */
 	u_int32_t	mp_pagesize;	/* Average page size */
 	u_int32_t	mp_tablesize;	/* Approximate hash table size */
+	u_int32_t	mp_mtxcount;	/* Number of mutexs */
 					/* Sleep after writing max buffers */
 	db_timeout_t	mp_maxwrite_sleep;
 
@@ -2190,20 +2214,21 @@ struct __db_env {
 #define	DB_ENV_FAILCHK		0x00000004 /* Failchk is running */
 #define	DB_ENV_DIRECT_DB	0x00000008 /* DB_DIRECT_DB set */
 #define	DB_ENV_DSYNC_DB		0x00000010 /* DB_DSYNC_DB set */
-#define	DB_ENV_MULTIVERSION	0x00000020 /* DB_MULTIVERSION set */
-#define	DB_ENV_NOLOCKING	0x00000040 /* DB_NOLOCKING set */
-#define	DB_ENV_NOMMAP		0x00000080 /* DB_NOMMAP set */
-#define	DB_ENV_NOPANIC		0x00000100 /* Okay if panic set */
-#define	DB_ENV_OVERWRITE	0x00000200 /* DB_OVERWRITE set */
-#define	DB_ENV_REGION_INIT	0x00000400 /* DB_REGION_INIT set */
-#define	DB_ENV_RPCCLIENT	0x00000800 /* DB_RPCCLIENT set */
-#define	DB_ENV_RPCCLIENT_GIVEN	0x00001000 /* User-supplied RPC client struct */
-#define	DB_ENV_TIME_NOTGRANTED	0x00002000 /* DB_TIME_NOTGRANTED set */
-#define	DB_ENV_TXN_NOSYNC	0x00004000 /* DB_TXN_NOSYNC set */
-#define	DB_ENV_TXN_NOWAIT	0x00008000 /* DB_TXN_NOWAIT set */
-#define	DB_ENV_TXN_SNAPSHOT	0x00010000 /* DB_TXN_SNAPSHOT set */
-#define	DB_ENV_TXN_WRITE_NOSYNC	0x00020000 /* DB_TXN_WRITE_NOSYNC set */
-#define	DB_ENV_YIELDCPU		0x00040000 /* DB_YIELDCPU set */
+#define	DB_ENV_DATABASE_LOCKING	0x00000020 /* Try database-level locking */
+#define	DB_ENV_MULTIVERSION	0x00000040 /* DB_MULTIVERSION set */
+#define	DB_ENV_NOLOCKING	0x00000080 /* DB_NOLOCKING set */
+#define	DB_ENV_NOMMAP		0x00000100 /* DB_NOMMAP set */
+#define	DB_ENV_NOPANIC		0x00000200 /* Okay if panic set */
+#define	DB_ENV_OVERWRITE	0x00000400 /* DB_OVERWRITE set */
+#define	DB_ENV_REGION_INIT	0x00000800 /* DB_REGION_INIT set */
+#define	DB_ENV_TIME_NOTGRANTED	0x00001000 /* DB_TIME_NOTGRANTED set */
+#define	DB_ENV_TXN_NOSYNC	0x00002000 /* DB_TXN_NOSYNC set */
+#define	DB_ENV_TXN_NOWAIT	0x00004000 /* DB_TXN_NOWAIT set */
+#define	DB_ENV_TXN_SNAPSHOT	0x00008000 /* DB_TXN_SNAPSHOT set */
+#define	DB_ENV_TXN_WRITE_NOSYNC	0x00010000 /* DB_TXN_WRITE_NOSYNC set */
+#define	DB_ENV_YIELDCPU		0x00020000 /* DB_YIELDCPU set */
+#define DB_ENV_HOTBACKUP	0x00040000 /* DB_HOTBACKUP_IN_PROGRESS set */
+#define DB_ENV_NOFLUSH		0x00080000 /* DB_NOFLUSH set */
 	u_int32_t flags;
 
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
@@ -2226,6 +2251,7 @@ struct __db_env {
 	int  (*get_cachesize) __P((DB_ENV *, u_int32_t *, u_int32_t *, int *));
 	int  (*get_create_dir) __P((DB_ENV *, const char **));
 	int  (*get_data_dirs) __P((DB_ENV *, const char ***));
+	int  (*get_data_len) __P((DB_ENV *, u_int32_t *));
 	int  (*get_encrypt_flags) __P((DB_ENV *, u_int32_t *));
 	void (*get_errcall) __P((DB_ENV *,
 		void (**)(const DB_ENV *, const char *, const char *)));
@@ -2252,6 +2278,7 @@ struct __db_env {
 	int  (*get_mp_max_openfd) __P((DB_ENV *, int *));
 	int  (*get_mp_max_write) __P((DB_ENV *, int *, db_timeout_t *));
 	int  (*get_mp_mmapsize) __P((DB_ENV *, size_t *));
+	int  (*get_mp_mtxcount) __P((DB_ENV *, u_int32_t *));
 	int  (*get_mp_pagesize) __P((DB_ENV *, u_int32_t *));
 	int  (*get_mp_tablesize) __P((DB_ENV *, u_int32_t *));
 	void (*get_msgcall)
@@ -2348,6 +2375,8 @@ struct __db_env {
 	int  (*repmgr_add_remote_site)
 		__P((DB_ENV *, const char *, u_int, int *, u_int32_t));
 	int  (*repmgr_get_ack_policy) __P((DB_ENV *, int *));
+	int  (*repmgr_get_local_site)
+		__P((DB_ENV *, const char **, u_int *));
 	int  (*repmgr_set_ack_policy) __P((DB_ENV *, int));
 	int  (*repmgr_set_local_site)
 		__P((DB_ENV *, const char *, u_int, u_int32_t));
@@ -2364,6 +2393,7 @@ struct __db_env {
 	int  (*set_cachesize) __P((DB_ENV *, u_int32_t, u_int32_t, int));
 	int  (*set_create_dir) __P((DB_ENV *, const char *));
 	int  (*set_data_dir) __P((DB_ENV *, const char *));
+	int  (*set_data_len) __P((DB_ENV *, u_int32_t));
 	int  (*set_encrypt) __P((DB_ENV *, const char *, u_int32_t));
 	void (*set_errcall) __P((DB_ENV *,
 		void (*)(const DB_ENV *, const char *, const char *)));
@@ -2391,14 +2421,13 @@ struct __db_env {
 	int  (*set_mp_max_openfd) __P((DB_ENV *, int));
 	int  (*set_mp_max_write) __P((DB_ENV *, int, db_timeout_t));
 	int  (*set_mp_mmapsize) __P((DB_ENV *, size_t));
+	int  (*set_mp_mtxcount) __P((DB_ENV *, u_int32_t));
 	int  (*set_mp_pagesize) __P((DB_ENV *, u_int32_t));
 	int  (*set_mp_tablesize) __P((DB_ENV *, u_int32_t));
 	void (*set_msgcall)
 		__P((DB_ENV *, void (*)(const DB_ENV *, const char *)));
 	void (*set_msgfile) __P((DB_ENV *, FILE *));
 	int  (*set_paniccall) __P((DB_ENV *, void (*)(DB_ENV *, int)));
-	int  (*set_rpc_server)
-		__P((DB_ENV *, void *, const char *, long, long, u_int32_t));
 	int  (*set_shm_key) __P((DB_ENV *, long));
 	int  (*set_thread_count) __P((DB_ENV *, u_int32_t));
 	int  (*set_thread_id)
@@ -2550,9 +2579,10 @@ typedef struct entry {
 #define	DB_CURSOR_BULK				0x00000001
 #define	DB_CURSOR_TRANSIENT			0x00000004
 #define	DB_CXX_NO_EXCEPTIONS			0x00000002
+#define	DB_DATABASE_LOCKING			0x00000080
 #define	DB_DIRECT				0x00000010
-#define	DB_DIRECT_DB				0x00000080
-#define	DB_DSYNC_DB				0x00000200
+#define	DB_DIRECT_DB				0x00000200
+#define	DB_DSYNC_DB				0x00000400
 #define	DB_DUP					0x00000010
 #define	DB_DUPSORT				0x00000004
 #define	DB_DURABLE_UNKNOWN			0x00000020
@@ -2571,6 +2601,7 @@ typedef struct entry {
 #define	DB_FOREIGN_NULLIFY			0x00000004
 #define	DB_FREELIST_ONLY			0x00000001
 #define	DB_FREE_SPACE				0x00000002
+#define	DB_HOTBACKUP_IN_PROGRESS		0x00000800
 #define	DB_IGNORE_LEASE				0x00001000
 #define	DB_IMMUTABLE_KEY			0x00000002
 #define	DB_INIT_CDB				0x00000040
@@ -2582,11 +2613,12 @@ typedef struct entry {
 #define	DB_INORDER				0x00000020
 #define	DB_JOIN_NOSORT				0x00000001
 #define	DB_LOCKDOWN				0x00001000
-#define	DB_LOCK_NOWAIT				0x00000001
-#define	DB_LOCK_RECORD				0x00000002
-#define	DB_LOCK_SET_TIMEOUT			0x00000004
-#define	DB_LOCK_SWITCH				0x00000008
-#define	DB_LOCK_UPGRADE				0x00000010
+#define	DB_LOCK_CHECK				0x00000001
+#define	DB_LOCK_NOWAIT				0x00000002
+#define	DB_LOCK_RECORD				0x00000004
+#define	DB_LOCK_SET_TIMEOUT			0x00000008
+#define	DB_LOCK_SWITCH				0x00000010
+#define	DB_LOCK_UPGRADE				0x00000020
 #define	DB_LOG_AUTO_REMOVE			0x00000001
 #define	DB_LOG_CHKPNT				0x00000002
 #define	DB_LOG_COMMIT				0x00000004
@@ -2595,6 +2627,7 @@ typedef struct entry {
 #define	DB_LOG_IN_MEMORY			0x00000008
 #define	DB_LOG_NOCOPY				0x00000008
 #define	DB_LOG_NOT_DURABLE			0x00000010
+#define	DB_LOG_NO_DATA				0x00000004
 #define	DB_LOG_VERIFY_CAF			0x00000001
 #define	DB_LOG_VERIFY_DBFILE			0x00000002
 #define	DB_LOG_VERIFY_ERR			0x00000004
@@ -2626,17 +2659,20 @@ typedef struct entry {
 #define	DB_MUTEX_SELF_BLOCK			0x00000010
 #define	DB_MUTEX_SHARED				0x00000020
 #define	DB_NOERROR				0x00001000
-#define	DB_NOLOCKING				0x00000400
+#define	DB_NOFLUSH				0x00001000
+#define	DB_NOLOCKING				0x00002000
 #define	DB_NOMMAP				0x00000008
 #define	DB_NOORDERCHK				0x00000002
-#define	DB_NOPANIC				0x00000800
+#define	DB_NOPANIC				0x00004000
+#define	DB_NOSYNC				0x00000001
 #define	DB_NO_AUTO_COMMIT			0x00002000
+#define	DB_NO_CHECKPOINT			0x00002000
 #define	DB_ODDFILESIZE				0x00000080
 #define	DB_ORDERCHKONLY				0x00000004
-#define	DB_OVERWRITE				0x00001000
-#define	DB_PANIC_ENVIRONMENT			0x00002000
+#define	DB_OVERWRITE				0x00008000
+#define	DB_PANIC_ENVIRONMENT			0x00010000
 #define	DB_PRINTABLE				0x00000008
-#define	DB_PRIVATE				0x00002000
+#define	DB_PRIVATE				0x00004000
 #define	DB_PR_PAGE				0x00000010
 #define	DB_PR_RECOVERYTEST			0x00000020
 #define	DB_RDONLY				0x00000400
@@ -2645,9 +2681,9 @@ typedef struct entry {
 #define	DB_READ_UNCOMMITTED			0x00000200
 #define	DB_RECNUM				0x00000040
 #define	DB_RECOVER				0x00000002
-#define	DB_RECOVER_FATAL			0x00004000
-#define	DB_REGION_INIT				0x00004000
-#define	DB_REGISTER				0x00008000
+#define	DB_RECOVER_FATAL			0x00008000
+#define	DB_REGION_INIT				0x00020000
+#define	DB_REGISTER				0x00010000
 #define	DB_RENUMBER				0x00000080
 #define	DB_REPMGR_CONF_2SITE_STRICT		0x00000001
 #define	DB_REPMGR_CONF_ELECTIONS		0x00000002
@@ -2667,7 +2703,6 @@ typedef struct entry {
 #define	DB_REP_REREQUEST			0x00000008
 #define	DB_REVSPLITOFF				0x00000100
 #define	DB_RMW					0x00002000
-#define	DB_RPCCLIENT				0x00000001
 #define	DB_SALVAGE				0x00000040
 #define	DB_SA_SKIPFIRSTKEY			0x00000080
 #define	DB_SA_UNKNOWNKEY			0x00000100
@@ -2699,17 +2734,18 @@ typedef struct entry {
 #define	DB_ST_RECNUM				0x00004000
 #define	DB_ST_RELEN				0x00008000
 #define	DB_ST_TOPLEVEL				0x00010000
-#define	DB_SYSTEM_MEM				0x00010000
+#define	DB_SYSTEM_MEM				0x00020000
 #define	DB_THREAD				0x00000010
-#define	DB_TIME_NOTGRANTED			0x00008000
+#define	DB_TIME_NOTGRANTED			0x00040000
 #define	DB_TRUNCATE				0x00008000
-#define	DB_TXN_FAMILY				0x00000008
+#define	DB_TXN_BULK				0x00000008
+#define	DB_TXN_FAMILY				0x00000040
 #define	DB_TXN_NOSYNC				0x00000001
 #define	DB_TXN_NOT_DURABLE			0x00000002
-#define	DB_TXN_NOWAIT				0x00000010
-#define	DB_TXN_SNAPSHOT				0x00000002
+#define	DB_TXN_NOWAIT				0x00000002
+#define	DB_TXN_SNAPSHOT				0x00000010
 #define	DB_TXN_SYNC				0x00000004
-#define	DB_TXN_WAIT				0x00000040
+#define	DB_TXN_WAIT				0x00000080
 #define	DB_TXN_WRITE_NOSYNC			0x00000020
 #define	DB_UNREF				0x00020000
 #define	DB_UPGRADE				0x00000001
@@ -2734,9 +2770,9 @@ typedef struct entry {
 #define	DB_VERIFY				0x00000002
 #define	DB_VERIFY_PARTITION			0x00040000
 #define	DB_WRITECURSOR				0x00000008
-#define	DB_WRITELOCK				0x00000010
+#define	DB_WRITELOCK				0x00000020
 #define	DB_WRITEOPEN				0x00010000
-#define	DB_YIELDCPU				0x00010000
+#define	DB_YIELDCPU				0x00080000
 
 /* DO NOT EDIT: automatically built by dist/s_include. */
 #ifndef	_DB_EXT_PROT_IN_

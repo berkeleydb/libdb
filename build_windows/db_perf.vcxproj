@@ -85,7 +85,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -102,7 +102,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)db_perf.pdb</ProgramDatabaseFile>
@@ -117,7 +117,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -134,7 +134,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)db_perf.pdb</ProgramDatabaseFile>
@@ -148,7 +148,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -165,7 +165,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)db_perf.pdb</ProgramDatabaseFile>
@@ -180,7 +180,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -197,7 +197,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)db_perf.pdb</ProgramDatabaseFile>
@@ -208,27 +208,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\test_perf\db_perf.c" />
-    <ClCompile Include="..\test_perf\perf_checkpoint.c" />
-    <ClCompile Include="..\test_perf\perf_config.c" />
-    <ClCompile Include="..\test_perf\perf_dbs.c" />
-    <ClCompile Include="..\test_perf\perf_dead.c" />
-    <ClCompile Include="..\test_perf\perf_debug.c" />
-    <ClCompile Include="..\test_perf\perf_file.c" />
-    <ClCompile Include="..\test_perf\perf_key.c" />
-    <ClCompile Include="..\test_perf\perf_log.c" />
-    <ClCompile Include="..\test_perf\perf_misc.c" />
-    <ClCompile Include="..\test_perf\perf_op.c" />
-    <ClCompile Include="..\test_perf\perf_parse.c" />
-    <ClCompile Include="..\test_perf\perf_rand.c" />
-    <ClCompile Include="..\test_perf\perf_spawn.c" />
-    <ClCompile Include="..\test_perf\perf_stat.c" />
-    <ClCompile Include="..\test_perf\perf_sync.c" />
-    <ClCompile Include="..\test_perf\perf_thread.c" />
-    <ClCompile Include="..\test_perf\perf_trickle.c" />
-    <ClCompile Include="..\test_perf\perf_txn.c" />
-    <ClCompile Include="..\test_perf\perf_util.c" />
-    <ClCompile Include="..\clib\getopt.c" />
+    <ClCompile Include="..\test\perf\db_perf.c" />
+    <ClCompile Include="..\test\perf\perf_checkpoint.c" />
+    <ClCompile Include="..\test\perf\perf_config.c" />
+    <ClCompile Include="..\test\perf\perf_dbs.c" />
+    <ClCompile Include="..\test\perf\perf_dead.c" />
+    <ClCompile Include="..\test\perf\perf_debug.c" />
+    <ClCompile Include="..\test\perf\perf_file.c" />
+    <ClCompile Include="..\test\perf\perf_key.c" />
+    <ClCompile Include="..\test\perf\perf_log.c" />
+    <ClCompile Include="..\test\perf\perf_misc.c" />
+    <ClCompile Include="..\test\perf\perf_op.c" />
+    <ClCompile Include="..\test\perf\perf_parse.c" />
+    <ClCompile Include="..\test\perf\perf_rand.c" />
+    <ClCompile Include="..\test\perf\perf_spawn.c" />
+    <ClCompile Include="..\test\perf\perf_stat.c" />
+    <ClCompile Include="..\test\perf\perf_sync.c" />
+    <ClCompile Include="..\test\perf\perf_thread.c" />
+    <ClCompile Include="..\test\perf\perf_trickle.c" />
+    <ClCompile Include="..\test\perf\perf_txn.c" />
+    <ClCompile Include="..\test\perf\perf_util.c" />
+    <ClCompile Include="..\src\clib\getopt.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

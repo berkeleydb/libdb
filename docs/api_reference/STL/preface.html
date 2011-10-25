@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ Standard Template Library API Reference" />
     <link rel="up" href="index.html" title="Berkeley DB C++ Standard Template Library API Reference" />
     <link rel="prev" href="index.html" title="Berkeley DB C++ Standard Template Library API Reference" />
-    <link rel="next" href="dbstl_global_functions.html" title="Chapter 1.  Dbstl Global Public Functions" />
+    <link rel="next" href="moreinfo.html" title="For More Information" />
   </head>
   <body>
     <div class="navheader">
@@ -20,7 +20,7 @@
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
           <th width="60%" align="center"> </th>
-          <td width="20%" align="right"> <a accesskey="n" href="dbstl_global_functions.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="moreinfo.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -39,7 +39,7 @@
          
          
         <span>C++ STL</span> 
-        API for DB library version 11.2.5.0.  
+        API for DB library version 11.2.5.1.  
 
             It is intended to describe the DB API, including all
             classes, methods, and functions.  As such, this document is
@@ -47,11 +47,18 @@
              developers who are actively writing or maintaining
             applications that make use of DB databases.
      </p>
-      <h2><a id="conventions"></a>Conventions Used in this Book</h2>
-      <p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="conventions"></a>Conventions Used in this Book</h2>
+            </div>
+          </div>
+        </div>
+        <p>
         The following typographical conventions are used within in this manual:
     </p>
-      <p>
+        <p>
         Class names are represented in <code class="classname">monospaced font</code>, as are <code class="methodname">method
         names</code>. For example: 
         
@@ -59,15 +66,15 @@
 		<code class="classname">Db</code> class method."</span>
 
     </p>
-      <p>
+        <p>
             Variable or non-literal text is presented in <span class="emphasis"><em>italics</em></span>. For example: 
             "Go to your <span class="emphasis"><em>DB_INSTALL</em></span> directory."
     </p>
-      <p>
+        <p>
         Program examples are displayed in a <code class="classname">monospaced font</code> on a shaded background.
         For example:
     </p>
-      <pre class="programlisting">typedef struct vendor {
+        <pre class="programlisting">typedef struct vendor {
     char name[MAXFIELD];             // Vendor name
     char street[MAXFIELD];           // Street name and number
     char city[MAXFIELD];             // City
@@ -75,86 +82,13 @@
     char zipcode[6];                 // US zipcode
     char phone_number[13];           // Vendor phone number
 } VENDOR; </pre>
-      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
-        <h3 class="title">Note</h3>
-        <p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
             Finally, notes of interest are represented using a note block such
             as this.
         </p>
-      </div>
-      <h2><a id="moreinfo"></a>For More Information</h2>
-      <p>
-            Beyond this manual, you may also find the following sources of information useful when building a
-            DB application:
-        </p>
-      <div class="itemizedlist">
-        <ul type="disc">
-          <li>
-            <p>
-                    
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg/CXX/index.html" target="_top">
-                        Getting Started with Berkeley DB for C++
-                    </a>
-                </p>
-          </li>
-          <li>
-            <p>
-                    
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_txn/CXX/index.html" target="_top">
-                        Getting Started with Transaction Processing for C++
-                    </a>
-                </p>
-          </li>
-          <li>
-            <p>
-                        
-                        <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/gsg_db_rep/CXX/index.html" target="_top">
-                                Berkeley DB Getting Started with Replicated Applications for C++
-                        </a>
-                </p>
-          </li>
-          <li>
-            <p>
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/api_reference/C/frame_main.html" target="_top">
-                        Berkeley DB C API
-                    </a>
-                    
-                    </p>
-          </li>
-          <li>
-            <p>
-                    
-                    </p>
-          </li>
-          <li>
-            <p>
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/api_reference/TCL/frame_main.html" target="_top">
-                        Berkeley DB TCL API
-                    </a>
-                    </p>
-          </li>
-          <li>
-            <p>
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/installation/index.html" target="_top">
-                        Berkeley DB Installation and Build Guide
-                    </a>
-                </p>
-          </li>
-          <li>
-            <p>
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/programmer_reference/index.html" target="_top">
-                        Berkeley DB Programmer's Reference Guide
-                    </a>
-                </p>
-          </li>
-          <li>
-            <p>
-                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/bdb-sql/index.html" target="_top">
-                        Berkeley DB Getting Started with the SQL APIs
-                    </a>
-                </p>
-          </li>
-        </ul>
+        </div>
       </div>
     </div>
     <div class="navfooter">
@@ -163,15 +97,14 @@
         <tr>
           <td width="40%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
           <td width="20%" align="center"> </td>
-          <td width="40%" align="right"> <a accesskey="n" href="dbstl_global_functions.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="moreinfo.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Berkeley DB C++ Standard Template Library API Reference </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Chapter 1. 
- Dbstl Global Public Functions  </td>
+          <td width="40%" align="right" valign="top"> For More Information</td>
         </tr>
       </table>
     </div>

@@ -162,11 +162,11 @@ information.</dd>
       </div>
       <p>A typical ex_rep session begins with a command such as the
 following, to start a master:</p>
-      <pre class="programlisting">ex_rep_mgr -M -p 100 -n 4 -h DIR1 -l localhost:6000</pre>
+      <pre class="programlisting">ex_rep_mgr -M -p 100 -n 4 -h DIR1 -l localhost:49200</pre>
       <p>and several clients:</p>
-      <pre class="programlisting">ex_rep_mgr -C -p 50 -n 4 -h DIR2 -l localhost:6001 -r localhost:6000
-ex_rep_mgr -C -p 10 -n 4 -h DIR3 -l localhost:6002 -r localhost:6000
-ex_rep_mgr -C -p  0 -n 4 -h DIR4 -l localhost:6003 -r localhost:6000</pre>
+      <pre class="programlisting">ex_rep_mgr -C -p 50 -n 4 -h DIR2 -l localhost:49201 -r localhost:49200
+ex_rep_mgr -C -p 10 -n 4 -h DIR3 -l localhost:49202 -r localhost:49200
+ex_rep_mgr -C -p  0 -n 4 -h DIR4 -l localhost:49203 -r localhost:49200</pre>
       <p>In this example, the client with home directory DIR4 can never become
 a master (its priority is 0).  Both of the other clients can become
 masters, but the one with home directory DIR2 is preferred.  Priorities

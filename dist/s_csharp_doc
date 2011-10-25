@@ -12,5 +12,5 @@ devenv BDB_dotNet.sln /upgrade
 devenv BDB_dotNet.sln /build "Release|Win32"
 
 # Build the C# documentation.
-cd ../csharp/doc
+cd ../lang/csharp/doc
 $SYSROOT/Microsoft.Net/Framework/v3.5/MSBuild.exe /p:Configuration=Release CsharpDoc.shfbproj

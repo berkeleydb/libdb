@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB Programmer's Reference Guide" />
     <link rel="up" href="transapp.html" title="Chapter 11.  Berkeley DB Transactional Data Store Applications" />
     <link rel="prev" href="transapp_recovery.html" title="Recovery procedures" />
-    <link rel="next" href="transapp_filesys.html" title="Recovery and filesystem operations" />
+    <link rel="next" href="transapp_journal.html" title="Using Recovery on Journaling Filesystems" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 11. 
 		Berkeley DB Transactional Data Store Applications
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="transapp_filesys.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="transapp_journal.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -41,6 +41,12 @@ fail.  The following steps can be taken to keep a backup environment in
 close synchrony with an active environment.  The active environment is
 entirely unaffected by these procedures, and both read and write
 operations are allowed during all steps described here.</p>
+      <p>The procedure described here is not compatible with the
+concurrent use of the transactional bulk insert optimization
+(transactions started with the 
+<a href="../api_reference/C/txnbegin.html#txnbegin_DB_TXN_BULK" class="olink">DB_TXN_BULK</a> flag).  After the bulk
+optimization is used, the archive must be created again from scratch
+starting with step 1.</p>
       <div class="orderedlist">
         <ol type="1">
           <li>
@@ -140,14 +146,14 @@ ensure a consistent database environment snapshot.</p>
           <td width="20%" align="center">
             <a accesskey="u" href="transapp.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="transapp_filesys.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="transapp_journal.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Recovery procedures </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Recovery and filesystem operations</td>
+          <td width="40%" align="right" valign="top"> Using Recovery on Journaling Filesystems</td>
         </tr>
       </table>
     </div>

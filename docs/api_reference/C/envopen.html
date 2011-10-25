@@ -55,11 +55,23 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
          <a class="xref" href="envclose.html" title="DB_ENV-&gt;close()">DB_ENV-&gt;close()</a>  method must be
          called to discard the <a class="link" href="env.html" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a>  handle.
     </p>
+      <div class="warning" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Warning</h3>
+        <p>
+            Using environments with some journaling filesystems might
+            result in log file corruption. This can occur if the operating
+            system experiences an unclean shutdown when a log file is being
+            created.  Please see  
+            <a href="../../programmer_reference/transapp_journal.html" class="olink">Using
+                Recovery on Journaling Filesystems</a>
+            in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> for more information.
+        </p>
+      </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3982716"></a>Parameters</h3>
+              <h3 class="title"><a id="idp51618976"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -67,7 +79,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3982544"></a>db_home</h4>
+                <h4 class="title"><a id="idp51609184"></a>db_home</h4>
               </div>
             </div>
           </div>
@@ -88,7 +100,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3982807"></a>flags</h4>
+                <h4 class="title"><a id="idp51641408"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -176,6 +188,16 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
                                         flag requires the
                                         <code class="literal">DB_INIT_TXN</code> and <code class="literal">DB_INIT_LOCK</code> 
                                         flags also be configured.
+                                </p>
+                <p>
+                                        You can also specify this flag in the 
+										<a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+										configuration file. The syntax is a single line with the string "set_open_flags",
+										one or more whitespace characters, the string "DB_INIT_REP", 
+										optionally one or more whitespace characters and the string "on" or "off". If the optional
+										string is omitted, the default is "on"; for example, "set_open_flags DB_INIT_REP" or "set_open_flags DB_INIT_REP on". 
+										Because the DB_CONFIG file is read when the database environment is
+										opened, it will silently overrule configuration done before that time.
                                 </p>
               </li>
               <li>
@@ -361,6 +383,16 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
                                         See <a href="../../programmer_reference/env_region.html" class="olink">Shared Memory Regions</a> for more 
                                         information.
                                 </p>
+                <p>
+                                        You can also specify this flag in the 
+										<a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+										configuration file. The syntax is a single line with the string "set_open_flags",
+										one or more whitespace characters, the string "DB_PRIVATE", 
+										optionally one or more whitespace characters and the string "on" or "off". If the optional
+										string is omitted, the default is "on"; for example, "set_open_flags DB_PRIVATE" or "set_open_flags DB_PRIVATE on". 
+										Because the DB_CONFIG file is read when the database environment is
+										opened, it will silently overrule configuration done before that time.
+                                </p>
               </li>
               <li>
                 <p><a id="envopen_DB_REGISTER"></a>
@@ -416,6 +448,16 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
                 <p>
                                         This flag is required when using the Replication Manager.
                                 </p>
+                <p>
+                                        You can also specify this flag in the 
+										<a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a>
+										configuration file. The syntax is a single line with the string "set_open_flags",
+										one or more whitespace characters, the string "DB_THREAD", 
+										optionally one or more whitespace characters and the string "on" or "off". If the optional
+										string is omitted, the default is "on"; for example, "set_open_flags DB_THREAD" or "set_open_flags DB_THREAD on". 
+										Because the DB_CONFIG file is read when the database environment is
+										opened, it will silently overrule configuration done before that time.
+                                </p>
               </li>
             </ul>
           </div>
@@ -424,7 +466,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3983010"></a>mode</h4>
+                <h4 class="title"><a id="idp51668384"></a>mode</h4>
               </div>
             </div>
           </div>
@@ -449,7 +491,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3983035"></a>Errors</h3>
+              <h3 class="title"><a id="idp51645032"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -465,7 +507,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3983803"></a>DB_RUNRECOVERY</h4>
+                <h4 class="title"><a id="idp51712040"></a>DB_RUNRECOVERY</h4>
               </div>
             </div>
           </div>
@@ -479,7 +521,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3983706"></a>DB_VERSION_MISMATCH</h4>
+                <h4 class="title"><a id="idp51706288"></a>DB_VERSION_MISMATCH</h4>
               </div>
             </div>
           </div>
@@ -492,7 +534,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3984019"></a>EAGAIN</h4>
+                <h4 class="title"><a id="idp51726280"></a>EAGAIN</h4>
               </div>
             </div>
           </div>
@@ -504,7 +546,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3984202"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp51738464"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -519,7 +561,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3983755"></a>ENOSPC</h4>
+                <h4 class="title"><a id="idp51709248"></a>ENOSPC</h4>
               </div>
             </div>
           </div>
@@ -536,7 +578,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3983301"></a>ENOENT</h4>
+                <h4 class="title"><a id="idp51663464"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -549,7 +591,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3983670"></a>Class</h3>
+              <h3 class="title"><a id="idp51732720"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -561,7 +603,7 @@ DB_ENV-&gt;open(DB_ENV *dbenv, char *db_home, u_int32_t flags, int mode);  </pre
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3983065"></a>See Also</h3>
+              <h3 class="title"><a id="idp51664328"></a>See Also</h3>
             </div>
           </div>
         </div>

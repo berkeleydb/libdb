@@ -83,20 +83,20 @@ architectures such as the x86.  Berkeley DB sorts keys as byte strings, and
 little-endian integers don't sort well when viewed as byte strings.
 For example, take the numbers 254 through 257.  Their byte patterns on
 a little-endian system are:</p>
-            <pre class="programlisting">254	fe 0 0 0
-255	ff 0 0 0
-256	 0 1 0 0
-257	 1 1 0 0</pre>
+            <pre class="programlisting">254 fe 0 0 0
+255 ff 0 0 0
+256  0 1 0 0
+257  1 1 0 0</pre>
             <p>If you treat them as strings, then they sort badly:</p>
             <pre class="programlisting">256
 257
 254
 255</pre>
             <p>On a big-endian system, their byte patterns are:</p>
-            <pre class="programlisting">254	0 0 0 fe
-255	0 0 0 ff
-256	0 0 1 0
-257	0 0 1 1</pre>
+            <pre class="programlisting">254 0 0 0 fe
+255 0 0 0 ff
+256 0 0 1 0
+257 0 0 1 1</pre>
             <p>and so, if you treat them as strings they sort nicely.  Which means, if
 you use steadily increasing integers as keys on a big-endian system
 Berkeley DB behaves well and you get compact trees, but on a little-endian

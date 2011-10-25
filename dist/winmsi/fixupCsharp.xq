@@ -31,7 +31,7 @@ declare function local:getRefs()
 (: the main query :)
 
 let $ref := local:getRefs()
-return replace node $ref with <Reference Include="{$libname}, Version={$libversion}, Culture=neutral, processorArchitecture=MSIL"><SpecificVersion>False</SpecificVersion><HintPath>..\..\bin\{$libname}.dll</HintPath></Reference>
+return replace node $ref with <Reference Include="{$libname}, Version={$libversion}, Culture=neutral, processorArchitecture=MSIL"><SpecificVersion>False</SpecificVersion><HintPath>..\..\..\bin\{$libname}.dll</HintPath></Reference>
 
 
 

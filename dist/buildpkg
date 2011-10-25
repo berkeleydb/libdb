@@ -1,8 +1,44 @@
 #!/bin/sh
 # $Id: $
 #
+die()
+{
+	echo >&2 "$@"
+	exit 1
+}
+
 # Build the distribution package.
-. ./RELEASE || exit 1
+. ./RELEASE || die "Can't read the RELEASE file"
+
+CSHARP_DOC_SRC=""
+# 0 is none, 1 is local dir, 2 is remote dir
+CSHARP_DOC_LOCATION=0
+
+while [ $# -gt 0 ]
+do
+	case "$1" in
+	-n)
+		nodocs=true;;
+	-csharp_doc_src)
+		shift
+		if [ ! $# -gt 0 ]; then
+	       		die "csharp_doc_dir param requires argument."
+		fi
+		CSHARP_DOC_SRC=$1
+		CSHARP_DOC_LOCATION=1
+		if [ ! -f $CSHARP_DOC_SRC ]; then
+			die "CSharp doc archive must exist."
+		fi;;
+	-csharp_doc_url)
+		shift
+		if [ ! $# -gt 0 ]; then
+	       		die "csharp_doc_dir param requires argument."
+		fi
+		CSHARP_DOC_SRC=$1
+		CSHARP_DOC_LOCATION=2;;
+	esac
+	shift
+done
 
 # A version string can be specified on the command line (e.g., "20080219").
 # Otherwise, use the standard X.X.X format.
@@ -17,30 +53,13 @@ D=`pwd`/../release
 R="$D/db-${VERSION}"
 RNC="$D/db-$VERSION.NC"
 #DOCS=`pwd`/../../docs_books
-DOCS=`pwd`/../../docs_books-5.0
+DOCS=`pwd`/../../docs_books-5.1
+DB_ADDONS=`pwd`/../../db_addons
 
-if [ ! -d $DOCS ]; then
-	echo "buildpkg requires a docs_books repository at the same level as
-the db repository."
+if [ ! -d $DB_ADDONS ]; then
+	echo "buildpkg requires a db_addons repository at the same level as the db repository."
 	exit 1
 fi
-
-fix_permissions()
-{
-    ROOT_DIR="$1"
-    cd $ROOT_DIR && find . -type d | xargs chmod 775
-    cd $ROOT_DIR && find . -type f | xargs chmod 444
-    cd $ROOT_DIR && chmod 664 build_windows/*vcproj
-    cd $ROOT_DIR && chmod 664 build_wince/*vcproj
-    cd $ROOT_DIR && chmod 664 build_wince/*sln
-    cd $ROOT_DIR && chmod 664 csharp/doc/libdb_dotnet*.XML
-    cd $ROOT_DIR && chmod 664 csharp/*csproj
-    cd $ROOT_DIR && chmod 664 examples_csharp/*/*.csproj
-    cd $ROOT_DIR && chmod 664 sql/jdbc/SQLite/Constants.java
-    cd $ROOT_DIR && chmod 664 sql/odbc/resource3.h
-    cd $ROOT_DIR && chmod 555 sql/odbc/conf* sql/jdbc/conf*
-    cd $ROOT_DIR/dist && sh s_perm
-}
 
 # Create directory, remove any previous release tree.
 rm -rf $R $RNC
@@ -53,54 +72,86 @@ hg archive $R
 
 echo "Created hg archive in $R"
 
-# Check that the doc repo is up to date, and create a tag if necessary.
-cd $DOCS
-hg pull -u
-if [ $? != 0 ]; then
-	echo "Failed updating the docs_books repository. Exiting."
-	rm -rf $R
-	exit 1
-fi
-has_tag=`hg tags | grep "db-${VERSION}"`
-if [ "$has_tag" = "" ]; then
-	hg tag "db-${VERSION}"
-	TAG_CREATED="true"
+if [ "$nodocs" = true ] ; then
+	rm -rf $R/docs
 else
-	hg up -r "db-${VERSION}"
+	[ -d $DOCS ] || die "buildpkg requires a docs_books repository at the same level as the db repository."
+
+	# Check that the doc repo is up to date, and create a tag if necessary.
+	cd $DOCS
+	hg pull -u
+	if [ $? != 0 ]; then
+		rm -rf $R
+		die "Failed updating the docs_books repository."
+	fi
+	has_tag=`hg tags | grep "db-${VERSION}"`
+	if [ "$has_tag" = "" ]; then
+		hg tag "db-${VERSION}"
+		TAG_CREATED="true"
+	else
+		hg up -r "db-${VERSION}"
+	fi
+
+	# Build a copy of the documentation in the release tree.
+	cd $R/dist
+	sh s_docs db-${VERSION} $DOCS
+
+	if [ $? != 0 ]; then
+		rm -rf $R
+		die "Failed generating documentation."
+	fi
+
+	# Copy in the C sharp doc.
+	if [ $CSHARP_DOC_LOCATION -eq 2 ]; then
+		scp $CSHARP_DOC_SRC .
+		CSHARP_DOC_SRC="csharp_docs.tgz"
+		if [ ! -f $CSHARP_DOC_SRC ]; then
+			echo "WARNING: Invalid csharp doc file - csharp_docs.tgz expected."
+		fi
+	fi
+	if [ $CSHARP_DOC_LOCATION -eq 0 -o ! -f $CSHARP_DOC_SRC ]; then
+		echo "WARNING: No csharp docs, skipping."
+		CSHARP_DOC_LOCATION=0
+	fi
+	if [ $CSHARP_DOC_LOCATION != 0 ]; then
+		rm -rf $R/docs/csharp
+		mkdir -p $R/docs/csharp
+		$TAR zxf $CSHARP_DOC_SRC -C $R/docs/csharp
+	fi
+
+	# Build the Java documentation.
+	cd $R/dist && sh s_javadoc
 fi
-
-# Build a copy of the documentation in the release tree.
-cd $R/dist
-sh s_docs db-${VERSION} $DOCS
-
-if [ $? != 0 ]; then
-	echo "Failed generating documentation. Exiting"
-	rm -rf $R
-	exit 1
-fi
-
-# Copy the C sharp doc from the original tree - it's not generated.
-rm -rf $R/docs/csharp
-mkdir -p $R/docs/csharp
-cp -rp $START_DIR/../docs/csharp $R/docs
 
 # Pull a copy of the JDBC and ODBC libraries into the package.
 # Tell the script where to look for packages.
-sh s_sql_drivers ../..
+cd $R/dist && sh s_sql_drivers ../../../..
 
 cd $START_DIR
 
-# Build the documentation.
-cd $R/dist && sh s_javadoc
+# Pull a copy of the bfile directory into the package.
+cd $DB_ADDONS
+hg pull -u
+if [ $? != 0 ]; then
+	echo "Failed updating the db_addons repository. Exiting."
+	rm -rf $R
+	exit 1
+fi
+
+cd $START_DIR
+SQL_EXT_DIR=$R/lang/sql/sqlite/ext
+if [ ! -d $SQL_EXT_DIR ]; then
+	mkdir -p $SQL_EXT_DIR
+fi
+if [ -d $SQL_EXT_DIR/bfile ]; then
+	rm -rf $SQL_EXT_DIR/bfile
+fi
+cp -rp $DB_ADDONS/bfile $SQL_EXT_DIR
 
 # Remove source directories we don't distribute.
-cd $R && rm -rf build_brew build_s60
-cd $R && rm -rf java/src/com/sleepycat/xa
-cd $R && rm -rf os_brew os_s60
-cd $R && rm -rf rpc_* dbinc/db_server_int.h dbinc_auto/rpc*.h
-cd $R && rm -rf test/TODO test/upgrade test/scr036 test_erlang
-cd $R && rm -rf test_perf test_purify test_repmgr
-cd $R && rm -rf test_server test_stl test_vxworks
+cd $R && rm -rf test/tcl/TODO test/upgrade test/scr036 test/erlang
+cd $R && rm -rf test/perf test/purify test/repmgr
+cd $R && rm -rf test/server test/stl test/vxworks
 cd $R && find . -name '.hg*' | xargs rm -f
 cd $R && find . -name 'tags' | xargs rm -f
 
@@ -123,13 +174,14 @@ cd $R && find . -name 'tags' | xargs rm -f
 # Remove the build directory
 ### cd $R && rm -rf build_run
 
-fix_permissions $R
+(cd $R/dist && ./s_perm)
 
 # Check for file names differing only in case.
 cd $R && find . | sort -f | uniq -ic | sed '/1 /d'
 
 # Create the crypto tar archive release.
 T="$D/db-$VERSION.tar.gz"
+rm -f $T
 cd $D && $TAR czf $T -find db-$VERSION -chown 100 -chgrp 100
 chmod 444 $T
 
@@ -137,10 +189,11 @@ chmod 444 $T
 cd $D && mv -i db-$VERSION $RNC && $TAR xzf $T
 cd $RNC/dist && sh s_crypto
 
-fix_permissions $RNC
+(cd $RNC/dist && ./s_perm)
 
 # Create the non-crypto tar archive release.
 T="$D/db-$VERSION.NC.tar.gz"
+rm -f $T
 cd $RNC/.. && $TAR czf $T -find db-$VERSION.NC -chown 100 -chgrp 100
 chmod 444 $T
 
@@ -152,11 +205,13 @@ cd $RNC && awk '{print $0 "\r"}' < README > $t && rm -f README && cp $t README &
 
 # Create the crypto zip archive release.
 T="$D/db-$VERSION.zip"
+rm -f $T
 cd $R/.. && rm -f $T && zip -q -r $T db-$VERSION
 chmod 444 $T
 
 # Create the non-crypto zip archive release.
 T="$D/db-$VERSION.NC.zip"
+rm -f $T
 cd $RNC/.. && rm -f $T && zip -q -r $T db-$VERSION.NC 
 chmod 444 $T
 

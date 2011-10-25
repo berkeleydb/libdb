@@ -38,4 +38,4 @@ div.appendix div.informaltable td  { vertical-align: top; }
 div.appendix div.informaltable p  { margin-top: .25em; }
 div.appendix div.informaltable p  { margin-bottom: .25em; }
 
-
+div.variablelist dl dt {margin-top: 1em; }

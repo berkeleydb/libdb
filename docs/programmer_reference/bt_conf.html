@@ -90,20 +90,20 @@ second argument.  The only fields that the routines may examine in the
 is as follows:</p>
         <pre class="programlisting">int
 compare_int(dbp, a, b)
-	DB *dbp;
-	const DBT *a, *b;
+    DB *dbp;
+    const DBT *a, *b;
 {
-	int ai, bi;
+    int ai, bi;
 &lt;para /&gt;
-	/*
-	 * Returns:
-	 *	&lt; 0 if a &lt; b
-	 *	= 0 if a = b
-	 *	&gt; 0 if a &gt; b
-	 */
-	memcpy(&amp;ai, a-&gt;data, sizeof(int));
-	memcpy(&amp;bi, b-&gt;data, sizeof(int));
-	return (ai - bi);
+    /*
+     * Returns:
+     *    &lt; 0 if a &lt; b
+     *    = 0 if a = b
+     *    &gt; 0 if a &gt; b
+     */
+    memcpy(&amp;ai, a-&gt;data, sizeof(int));
+    memcpy(&amp;bi, b-&gt;data, sizeof(int));
+    return (ai - bi);
 }</pre>
         <p>Note that the data must first be copied into memory that is appropriately
 aligned, as Berkeley DB does not guarantee any kind of alignment of the
@@ -115,22 +115,22 @@ your code may need to compensate.</p>
 five bytes of the key (ignoring any subsequent bytes) is as follows:</p>
         <pre class="programlisting">int
 compare_dbt(dbp, a, b)
-	DB *dbp;
-	const DBT *a, *b;
+    DB *dbp;
+    const DBT *a, *b;
 {
-	int len;
-	u_char *p1, *p2;
+    int len;
+    u_char *p1, *p2;
 &lt;para /&gt;
-	/*
-	 * Returns:
-	 *	&lt; 0 if a &lt; b
-	 *	= 0 if a = b
-	 *	&gt; 0 if a &gt; b
-	 */
-	for (p1 = a-&gt;data, p2 = b-&gt;data, len = 5; len--; ++p1, ++p2)
-		if (*p1 != *p2)
-			return ((long)*p1 - (long)*p2);
-	return (0);
+    /*
+     * Returns:
+     *    &lt; 0 if a &lt; b
+     *    = 0 if a = b
+     *    &gt; 0 if a &gt; b
+     */
+    for (p1 = a-&gt;data, p2 = b-&gt;data, len = 5; len--; ++p1, ++p2)
+        if (*p1 != *p2)
+            return ((long)*p1 - (long)*p2);
+    return (0);
 }</pre>
         <p>All comparison functions must cause the keys in the database to be
 well-ordered. The most important implication of being well-ordered is
@@ -177,27 +177,27 @@ the smaller of the two lengths, then the length of the smaller key plus
         <p>An example prefix comparison routine follows:</p>
         <pre class="programlisting">u_int32_t
 compare_prefix(dbp, a, b)
-	DB *dbp;
-	const DBT *a, *b;
+    DB *dbp;
+    const DBT *a, *b;
 {
-	size_t cnt, len;
-	u_int8_t *p1, *p2;
+    size_t cnt, len;
+    u_int8_t *p1, *p2;
 
-	cnt = 1;
-	len = a-&gt;size &gt; b-&gt;size ? b-&gt;size : a-&gt;size;
-	for (p1 =
-		a-&gt;data, p2 = b-&gt;data; len--; ++p1, ++p2, ++cnt)
-			if (*p1 != *p2)
-				return (cnt);
-	/*
-	 * They match up to the smaller of the two sizes.
-	 * Collate the longer after the shorter.
-	 */
-	if (a-&gt;size &lt; b-&gt;size)
-		return (a-&gt;size + 1);
-	if (b-&gt;size &lt; a-&gt;size)
-		return (b-&gt;size + 1);
-	return (b-&gt;size);
+    cnt = 1;
+    len = a-&gt;size &gt; b-&gt;size ? b-&gt;size : a-&gt;size;
+    for (p1 =
+        a-&gt;data, p2 = b-&gt;data; len--; ++p1, ++p2, ++cnt)
+            if (*p1 != *p2)
+                return (cnt);
+    /*
+     * They match up to the smaller of the two sizes.
+     * Collate the longer after the shorter.
+     */
+    if (a-&gt;size &lt; b-&gt;size)
+        return (a-&gt;size + 1);
+    if (b-&gt;size &lt; a-&gt;size)
+        return (b-&gt;size + 1);
+    return (b-&gt;size);
 }</pre>
         <p>The usefulness of this functionality is data-dependent, but in some data
 sets can produce significantly reduced tree sizes and faster search times.</p>
@@ -265,74 +265,74 @@ a routine that displays the data item for a Btree database created with
 the <a href="../api_reference/C/dbset_flags.html#dbset_flags_DB_RECNUM" class="olink">DB_RECNUM</a> option.</p>
         <pre class="programlisting">int
 rec_display(dbp, recno)
-	DB *dbp;
-	db_recno_t recno;
+    DB *dbp;
+    db_recno_t recno;
 {
-	DBT key, data;
-	int ret;
+    DBT key, data;
+    int ret;
 
-	memset(&amp;key, 0, sizeof(key));
-	key.data = &amp;recno;
-	key.size = sizeof(recno);
-	memset(&amp;data, 0, sizeof(data));
+    memset(&amp;key, 0, sizeof(key));
+    key.data = &amp;recno;
+    key.size = sizeof(recno);
+    memset(&amp;data, 0, sizeof(data));
 
-	if ((ret = dbp-&gt;get(dbp, NULL, &amp;key, &amp;data, DB_SET_RECNO)) != 0)
-		return (ret);
-	printf("data for %lu: %.*s\n",
-	    (u_long)recno, (int)data.size, (char *)data.data);
-	return (0);
+    if ((ret = dbp-&gt;get(dbp, NULL, &amp;key, &amp;data, DB_SET_RECNO)) != 0)
+        return (ret);
+    printf("data for %lu: %.*s\n",
+        (u_long)recno, (int)data.size, (char *)data.data);
+    return (0);
 }</pre>
         <p>To determine a key's record number, use the <a href="../api_reference/C/dbcget.html#dbcget_DB_GET_RECNO" class="olink">DB_GET_RECNO</a> flag
 to the <a href="../api_reference/C/dbcget.html" class="olink">DBC-&gt;get()</a> method.  The following is an example of a routine that
 displays the record number associated with a specific key.</p>
         <pre class="programlisting">int
 recno_display(dbp, keyvalue)
-	DB *dbp;
-	char *keyvalue;
+    DB *dbp;
+    char *keyvalue;
 {
-	DBC *dbcp;
-	DBT key, data;
-	db_recno_t recno;
-	int ret, t_ret;
+    DBC *dbcp;
+    DBT key, data;
+    db_recno_t recno;
+    int ret, t_ret;
 
-	/* Acquire a cursor for the database. */
-	if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
-		goto err;
-	}
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+        goto err;
+    }
 
-	/* Position the cursor. */
-	memset(&amp;key, 0, sizeof(key));
-	key.data = keyvalue;
-	key.size = strlen(keyvalue);
-	memset(&amp;data, 0, sizeof(data));
-	if ((ret = dbcp-&gt;c_get(dbcp, &amp;key, &amp;data, DB_SET)) != 0) {
-		dbp-&gt;err(dbp, ret, "DBC-&gt;c_get(DB_SET): %s", keyvalue);
-		goto err;
-	}
+    /* Position the cursor. */
+    memset(&amp;key, 0, sizeof(key));
+    key.data = keyvalue;
+    key.size = strlen(keyvalue);
+    memset(&amp;data, 0, sizeof(data));
+    if ((ret = dbcp-&gt;get(dbcp, &amp;key, &amp;data, DB_SET)) != 0) {
+        dbp-&gt;err(dbp, ret, "DBC-&gt;get(DB_SET): %s", keyvalue);
+        goto err;
+    }
 
-	/*
-	 * Request the record number, and store it into appropriately
-	 * sized and aligned local memory.
-	 */
-	memset(&amp;data, 0, sizeof(data));
-	data.data = &amp;recno;
-	data.ulen = sizeof(recno);
-	data.flags = DB_DBT_USERMEM;
-	if ((ret = dbcp-&gt;c_get(dbcp, &amp;key, &amp;data, DB_GET_RECNO)) != 0) {
-		dbp-&gt;err(dbp, ret, "DBC-&gt;c_get(DB_GET_RECNO)");
-		goto err;
-	}
+    /*
+     * Request the record number, and store it into appropriately
+     * sized and aligned local memory.
+     */
+    memset(&amp;data, 0, sizeof(data));
+    data.data = &amp;recno;
+    data.ulen = sizeof(recno);
+    data.flags = DB_DBT_USERMEM;
+    if ((ret = dbcp-&gt;get(dbcp, &amp;key, &amp;data, DB_GET_RECNO)) != 0) {
+        dbp-&gt;err(dbp, ret, "DBC-&gt;get(DB_GET_RECNO)");
+        goto err;
+    }
 
-	printf("key for requested key was %lu\n", (u_long)recno);
+    printf("key for requested key was %lu\n", (u_long)recno);
 
-err:	/* Close the cursor. */
-	if ((t_ret = dbcp-&gt;c_close(dbcp)) != 0) {
-		if (ret == 0)
-			ret = t_ret;
-		dbp-&gt;err(dbp, ret, "DBC-&gt;close");
-	}
-	return (ret);
+err:    /* Close the cursor. */
+    if ((t_ret = dbcp-&gt;close(dbcp)) != 0) {
+        if (ret == 0)
+            ret = t_ret;
+        dbp-&gt;err(dbp, ret, "DBC-&gt;close");
+    }
+    return (ret);
 }</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -615,7 +615,7 @@ err:	/* Close the cursor. */
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3639013"></a>Programmer Notes</h4>
+                <h4 class="title"><a id="idp50502992"></a>Programmer Notes</h4>
               </div>
             </div>
           </div>

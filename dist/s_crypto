@@ -9,17 +9,16 @@ t=/tmp/__db_a
 trap 'rm -f $t ; exit 0' 0
 trap 'rm -f $t ; exit 1' 1 2 3 13 15
 
-if ! test -d $d/crypto; then
+if ! test -d $d/src/crypto; then
 	echo "s_crypto: no crypto sources found in the source tree."
 	exit 1
 fi
 
 # Remove the crypto.
-rm -rf $d/crypto
+rm -rf $d/src/crypto
 
 # Update the release splash page.
 f=$d/docs/index.html
-chmod 664 $f
 (echo '/DOES/' &&
  echo 's/DOES/DOES NOT/' &&
  echo 'w' &&
@@ -27,7 +26,6 @@ chmod 664 $f
 
 # Win/32.
 f=win_config.in
-chmod 664 $f
 (echo '/#define.HAVE_CRYPTO/' &&
  echo 'c' &&
  echo '/* #undef HAVE_CRYPTO */'
@@ -36,10 +34,8 @@ chmod 664 $f
  echo 'q') | ed $f
 
 f=srcfiles.in
-chmod 664 $f
-f=srcfiles.in
 r=`egrep crypto/crypto.c $f | awk 'BEGIN { FS="\t*" } { print $2 }'`
-(echo 'g/^crypto\//d' &&
+(echo 'g/^src\/crypto\//d' &&
  echo '/crypto_stub\.c/' &&
  echo "s/\$/ $r/" &&
  echo 'w' &&
@@ -48,12 +44,11 @@ r=`egrep crypto/crypto.c $f | awk 'BEGIN { FS="\t*" } { print $2 }'`
 # Change out crypto/crypto.c for common/crypto_stub.c, remove all other
 # references to crypto files.
 f=win_projects/projects.template.xml
-chmod 664 $f
 (echo '/crypto\/crypto\.c/' &&
  echo 'c' &&
- echo '      <file name="common/crypto_stub.c"/>' &&
+ echo '      <file name="src/common/crypto_stub.c"/>' &&
  echo '.' &&
- echo 'g/"crypto\//d' &&
+ echo 'g/"src\/crypto\//d' &&
  echo "s/\$/ $r/" &&
  echo ',' &&
  echo 'w' &&
@@ -64,7 +59,6 @@ chmod 664 $f
 
 # VxWorks
 f=vx_config.in
-chmod 664 $f
 (echo '/#define.HAVE_CRYPTO/' &&
  echo 'c' &&
  echo '/* #undef HAVE_CRYPTO */'

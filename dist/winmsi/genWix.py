@@ -313,4 +313,4 @@ if __name__ == "__main__":
     gw = GenWix(os.path.realpath("."),outfile,False)
     # extra directory names here that don't exist are fine and make it easier to
     # share this script across products
-    gw.generate(["bin","lib","include","jar","docs", "examples_c", "examples_cxx", "examples_java","examples_stl", "examples_csharp", "build_windows", "clib", "sql", "dbinc", "dbxml", "perl","python","php"])   
+    gw.generate(["bin","lib","include","jar","docs", "examples", "src", "build_windows", "clib", "perl","python","php"])   

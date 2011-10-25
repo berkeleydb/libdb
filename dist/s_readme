@@ -22,4 +22,4 @@ END_OF_README
 
 f=../README
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)

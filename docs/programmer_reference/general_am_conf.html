@@ -319,16 +319,17 @@ architecture.</strong>
         <p>
     <span class="bold"><strong>It is an error to attempt to store identical
         duplicate data items when duplicates are being stored in a sorted
-        order.</strong></span>. Any such attempt results in the
-    <code class="literal">DB_KEYEXISTS</code> return code.
+        order.</strong></span> Any such attempt results in the
+        error message  "Duplicate data items are not supported with sorted
+        data" with a <code class="literal">DB_KEYEXIST</code> return code.
 </p>
         <p>
-    For databases configured for duplicates but which are not stored in
-    sorted order, you can disallow storing identical duplicate data items
-    by using the <a href="../api_reference/C/dbput.html#put_DB_NODUPDATA" class="olink">DB_NODUPDATA</a> flag. As is the case with sorted duplicate
-    database, an attempt to store identical data items when <a href="../api_reference/C/dbput.html#put_DB_NODUPDATA" class="olink">DB_NODUPDATA</a>
-    is specified results in the <code class="literal">DB_KEYEXISTS</code> return
-    code.
+    Note that you can suppress the error message "Duplicate data items are
+    not supported with sorted data" by using the <a href="../api_reference/C/dbput.html#put_DB_NODUPDATA" class="olink">DB_NODUPDATA</a> flag. Use
+    of this flag does not change the database's basic behavior; storing
+    duplicate data items in a database configured for sorted duplicates is
+    still an error and so you will continue to receive the
+    <code class="literal">DB_KEYEXIST</code> return code if you try to do that.
 </p>
         <p>
     For further information on how searching and insertion behaves in the

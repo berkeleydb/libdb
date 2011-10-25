@@ -357,7 +357,7 @@ writer_thread(void *args)
                            "key 9", "key 10"};
 
     DB *dbp = (DB *)args;
-    DB_ENV *envp = dbp-&gt;get_env(dbp);
+    DbEnv *envp = dbp-&amp;gt;get_env();
 
     /* Get the thread number */
     (void)pthread_mutex_lock(&amp;thread_num_lock);
@@ -511,7 +511,7 @@ count_records(DB *dbp, DB_TXN *txn)
             case DB_NOTFOUND:
                 break;
             default:
-                dbp-&gt;err(envp, ret, 
+                dbp-&gt;err(dbp, ret, 
                     "Count records unspecified error");
                 goto cursor_err;
         }

@@ -79,7 +79,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3658026"></a>Parameters</h3>
+              <h3 class="title"><a id="idp52006520"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -87,7 +87,7 @@ DbEnv::set_event_notify(
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3657980"></a>db_event_fcn</h4>
+                <h4 class="title"><a id="idp52017192"></a>db_event_fcn</h4>
               </div>
             </div>
           </div>
@@ -184,6 +184,16 @@ DbEnv::set_event_notify(
                       <p>
                                 The local site is now a replication client.
                             </p>
+                      <p>
+                                This event is generated when the replication
+                                role changes to client, either from master or 
+                                from being unset. The role is unset when an 
+                                environment is first created and after an 
+                                environment is recovered.  This event is not 
+                                generated when restarting replication in an 
+                                environment that was previously a client and 
+                                was opened without recovery.
+                            </p>
                     </li>
                     <li>
                       <p><a id="event_notify_DB_EVENT_REP_ELECTED"></a>
@@ -211,6 +221,16 @@ DbEnv::set_event_notify(
                                 The local site is now the master site of its replication group.  It is
                                 the application's responsibility to begin acting as the master
                                 environment.
+                            </p>
+                      <p>
+                                This event is generated when the replication
+                                role changes to master, either from client or 
+                                from being unset. The role is unset when an 
+                                environment is first created and after an 
+                                environment is recovered.  This event is not 
+                                generated when restarting replication in an 
+                                environment that was previously a master and 
+                                was opened without recovery.
                             </p>
                     </li>
                     <li>
@@ -351,7 +371,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3657465"></a>Class</h3>
+              <h3 class="title"><a id="idp51996344"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -363,7 +383,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3657814"></a>See Also</h3>
+              <h3 class="title"><a id="idp51991416"></a>See Also</h3>
             </div>
           </div>
         </div>

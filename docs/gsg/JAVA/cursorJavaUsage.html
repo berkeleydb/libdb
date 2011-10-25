@@ -205,8 +205,12 @@ import com.sleepycat.db.OperationStatus;</pre>
           <pre class="programlisting">   private void displayInventoryRecord(DatabaseEntry theKey,
                                         Inventory theInventory)
         throws DatabaseException {
-
-        String theSKU = new String(theKey.getData(), "UTF-8");
+		String theSKU = null;
+        try {
+            theSKU = new String(theKey.getData(), "UTF-8");
+        } catch(java.io.UnsupportedEncodingException e) {
+            /* Handle the exception here. */
+        }
         System.out.println(theSKU + ":");
         System.out.println("\t " + theInventory.getItemName());
         System.out.println("\t " + theInventory.getCategory());

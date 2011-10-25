@@ -8,7 +8,7 @@ P=`pwd`
 R=`dirname $P`
 progname="$0"
 VERSION="$1"
-assembly="../csharp/Properties/AssemblyInfo.cs"
+assembly="../lang/csharp/src/Properties/AssemblyInfo.cs"
 t=/tmp/__assembly
 
 # Sanity check
@@ -26,6 +26,7 @@ if [ $# != 5 ] ; then
 	exit 1
 fi
 FAMILY="$1" RELEASE="$2" MAJOR="$3" MINOR="$4" PATCH="$5"
+DATE=`date "+%B %e, %Y"`
 
 IFS="$OFS"
 
@@ -40,6 +41,7 @@ cd $R/dist &&\
      echo "/^DB_VERSION_MAJOR/s/=.*/=$MAJOR/" &&\
      echo "/^DB_VERSION_MINOR/s/=.*/=$MINOR/" &&\
      echo "/^DB_VERSION_PATCH/s/=.*/=$PATCH/" &&\
+     echo "/^DB_RELEASE_DATE/s/=.*/=\"$DATE\"/" &&\
      echo w &&\
      echo q) | ed RELEASE > /dev/null
 VERSION=`sh -c '. ./RELEASE; echo $DB_VERSION'`

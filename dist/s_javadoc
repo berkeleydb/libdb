@@ -10,9 +10,9 @@ DB_HOME=`dirname $0`/..
 javadoc $JAVADOC_ARGS -protected -d $DB_HOME/docs/java \
     -use -link http://java.sun.com/j2se/1.5.0/docs/api/ \
     -link http://java.sun.com/javaee/5/docs/api/ \
-    -sourcepath $DB_HOME/java/src \
+    -sourcepath $DB_HOME/lang/java/src \
     -source 1.5 \
-    -stylesheetfile $DB_HOME/java/doc/style.css \
+    -stylesheetfile $DB_HOME/lang/java/doc/style.css \
     -header '<b>Berkeley DB</b><br><font size="-1"> version '$DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH'</font>' \
     -windowtitle 'Oracle - Berkeley DB Java API' -bottom '<font size=1>Copyright (c) 1996, 2010 Oracle and/or its affiliates.  All rights reserved.</font>' \
     com.sleepycat.db \

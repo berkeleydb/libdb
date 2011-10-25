@@ -102,47 +102,49 @@ the initialization flags make sense, but they are rare.</p>
 environment for a transactional program.</p>
       <pre class="programlisting">DB_ENV *
 db_setup(home, data_dir, errfp, progname)
-	char *home, *data_dir, *progname;
-	FILE *errfp;
+    char *home, *data_dir, *progname;
+    FILE *errfp;
 {
-	DB_ENV *dbenv;
-	int ret;
+    DB_ENV *dbenv;
+    int ret;
 
-	/*
-	 * Create an environment and initialize it for additional error
-	 * reporting.
-	 */
-	if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
-		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
-		return (NULL);
-	}
-	dbenv-&gt;set_errfile(dbenv, errfp);
-	dbenv-&gt;set_errpfx(dbenv, progname);
+    /*
+     * Create an environment and initialize it for additional error
+     * reporting.
+     */
+    if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
+        fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
+        return (NULL);
+    }
+    dbenv-&gt;set_errfile(dbenv, errfp);
+    dbenv-&gt;set_errpfx(dbenv, progname);
 
-	/*
-	 * Specify the shared memory buffer pool cachesize: 5MB.
-	 * Databases are in a subdirectory of the environment home.
-	 */
-	if ((ret = dbenv-&gt;set_cachesize(dbenv, 0, 5 * 1024 * 1024, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "set_cachesize");
-		goto err;
-	}
-	if ((ret = dbenv-&gt;set_data_dir(dbenv, data_dir)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "set_data_dir: %s", data_dir);
-		goto err;
-	}
+    /*
+     * Specify the shared memory buffer pool cachesize: 5MB.
+     * Databases are in a subdirectory of the environment home.
+     */
+    if ((ret = dbenv-&gt;set_cachesize(dbenv, 0, 
+                                     5 * 1024 * 1024, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "set_cachesize");
+        goto err;
+    }
+    if ((ret = dbenv-&gt;set_data_dir(dbenv, data_dir)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "set_data_dir: %s", data_dir);
+        goto err;
+    }
 
-	/* Open the environment with full transactional support. */
-	if ((ret = dbenv-&gt;open(dbenv, home, DB_CREATE |
-	    DB_INIT_LOG | DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "environment open: %s", home);
-		goto err;
-	}
+    /* Open the environment with full transactional support. */
+    if ((ret = dbenv-&gt;open(dbenv, home, DB_CREATE | DB_INIT_LOG | 
+                DB_INIT_LOCK | DB_INIT_MPOOL | 
+                DB_INIT_TXN, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "environment open: %s", home);
+        goto err;
+    }
 
-	return (dbenv);
+    return (dbenv);
 
-err:	(void)dbenv-&gt;close(dbenv, 0);
-	return (NULL);
+err:    (void)dbenv-&gt;close(dbenv, 0);
+    return (NULL);
 }</pre>
     </div>
     <div class="navfooter">

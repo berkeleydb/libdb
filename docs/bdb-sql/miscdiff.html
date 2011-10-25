@@ -8,7 +8,7 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
     <link rel="up" href="dbsqlbasics.html" title="Chapter 1. Berkeley DB SQL: The Absolute Basics" />
-    <link rel="prev" href="changedpragmas.html" title="Changed PRAGMAs" />
+    <link rel="prev" href="addedpragmas.html" title="Added PRAGMAs" />
     <link rel="next" href="bdb-concepts.html" title="Berkeley DB Concepts" />
   </head>
   <body>
@@ -18,7 +18,7 @@
           <th colspan="3" align="center">Miscellaneous Differences</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="changedpragmas.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="addedpragmas.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 1. Berkeley DB SQL: The Absolute Basics</th>
           <td width="20%" align="right"> <a accesskey="n" href="bdb-concepts.html">Next</a></td>
         </tr>
@@ -41,12 +41,19 @@
         <ul type="disc">
           <li>
             <p>
-                        The BDB SQL interface does not support the <code class="literal">EXCLUSIVE</code>
-                        and <code class="literal">IMMEDIATE</code> keywords. Use of
-                        <code class="literal">BEGIN EXCLUSIVE</code> and
-                        <code class="literal">BEGIN IMMEDIATE</code> cause a deferred
-                        transaction (the default type of transaction) to be
-                        started.
+                    The BDB SQL interface does not support the <code class="literal">IMMEDIATE</code> keyword (<code class="literal">BEGIN IMMEDIATE</code> behaves just like <code class="literal">BEGIN</code>).
+                    </p>
+          </li>
+          <li>
+            <p>
+                        When an exclusive transaction is active, it will
+                        block any new transactions from beginning (they
+                        will be blocked during their first operation until
+                        the exclusive transactions commits or aborts).
+                        Non-exclusive transactions that are active when the
+                        exclusive transaction begins will not be able to
+                        execute any more operations without being blocked
+                        until the exclusive transactions finishes.
                     </p>
           </li>
           <li>
@@ -62,8 +69,72 @@
           </li>
           <li>
             <p>
-                        When you use the BDB SQL interface, you cannot attach a
-                        database more than once within the same runtime.
+                        The BDB SQL does not call the busy callback when a session attempts 
+                        to operate the same database page that another session has locked. 
+                        It blocks instead. That is to say, the functions 
+                        <code class="literal">sqlite3_busy_handler</code> and <code class="literal">sqlite3_busy_timeout</code> 
+                        are not effective in BDB SQL.
+                    </p>
+          </li>
+          <li>
+            <p>
+                        The BDB SQL does not support two phase commit across databases.
+                        Attaching to multiple databases can lead to inconsistency 
+                        after recovery and undetected deadlocks when 
+                        accessing multiple databases from concurrent transactions 
+                        in different order. Hence, applications must ensure that 
+                        they access databases in the same order in any transaction 
+                        that spans multiple databases.  Else, a deadlock can 
+                        occur that causes threads to block, and the deadlock will 
+                        not be detected by Berkeley DB.
+                    </p>
+          </li>
+          <li>
+            <p>
+                        In BDB SQL, when two sessions accessing the same database 
+                        perform conflicting operations on the same page, one session 
+                        will be blocked until the conflicting operations are resolved. 
+                        For example,
+                        </p>
+            <p><span class="bold"><strong>Session 1:</strong></span>
+					</p>
+            <pre class="programlisting">dbsql&gt; insert into a values (4);
+dbsql&gt; begin;
+dbsql&gt; insert into a values (5); </pre>
+            <p>
+                <span class="bold"><strong>Session 2:</strong></span>
+            </p>
+            <pre class="programlisting">dbsql&gt; select * from a;
+</pre>
+            <p>
+					What happens here is that Session 2 is blocked until Session 1 commits the transaction.
+					</p>
+            <p><span class="bold"><strong>Session 1:</strong></span>
+					</p>
+            <pre class="programlisting">dbsql&gt; commit;
+</pre>
+            <p>
+                <span class="bold"><strong>Session 2:</strong></span>
+				</p>
+            <pre class="programlisting">dbsql&gt; select * from a;
+4
+5
+</pre>
+            <p>
+                    Under such situations in SQLite, operations poll
+                    instead of blocking, and a callback is used to
+                    determine whether to continue polling. 
+                    </p>
+          </li>
+          <li>
+            <p>
+                        By default, you always only have a single database
+                        file when you use BDB SQL interface SQL, just as you do
+                        when you use SQLite. However, you can configure
+                        BDB SQL interface at compile time to create one BDB SQL interface
+                        database file for each SQL table that you
+                        create. How to perform this configuration is
+                        described in the <em class="citetitle">Berkeley DB Installation and Build Guide</em>.
                     </p>
           </li>
         </ul>
@@ -73,14 +144,14 @@
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="changedpragmas.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="addedpragmas.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="dbsqlbasics.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="bdb-concepts.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Changed PRAGMAs </td>
+          <td width="40%" align="left" valign="top">Added PRAGMAs </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

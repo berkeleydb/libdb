@@ -44,29 +44,31 @@
         <dl>
           <dt>
             <span class="sect1">
-              <a href="am_conf.html#am_conf_intro">What are the available access methods?</a>
+              <a href="am_conf.html#am_conf_intro">
+        What are the available access methods?
+    </a>
             </span>
           </dt>
           <dd>
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf.html#id2799604">Btree</a>
+                  <a href="am_conf.html#idp50378880">Btree</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf.html#id3635409">Hash</a>
+                  <a href="am_conf.html#idp50376696">Hash</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf.html#id3636907">Queue</a>
+                  <a href="am_conf.html#idp50379976">Queue</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf.html#id3636914">Recno</a>
+                  <a href="am_conf.html#idp50382960">Recno</a>
                 </span>
               </dt>
             </dl>
@@ -80,12 +82,12 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf_select.html#id3637030">Hash or Btree?</a>
+                  <a href="am_conf_select.html#idp50382600">Hash or Btree?</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="am_conf_select.html#id3635592">Queue or Recno?</a>
+                  <a href="am_conf_select.html#idp50271272">Queue or Recno?</a>
                 </span>
               </dt>
             </dl>
@@ -222,7 +224,9 @@
         <div class="titlepage">
           <div>
             <div>
-              <h2 class="title" style="clear: both"><a id="am_conf_intro"></a>What are the available access methods?</h2>
+              <h2 class="title" style="clear: both"><a id="am_conf_intro"></a>
+        What are the available access methods?
+    </h2>
             </div>
           </div>
         </div>
@@ -230,80 +234,100 @@
           <dl>
             <dt>
               <span class="sect2">
-                <a href="am_conf.html#id2799604">Btree</a>
+                <a href="am_conf.html#idp50378880">Btree</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="am_conf.html#id3635409">Hash</a>
+                <a href="am_conf.html#idp50376696">Hash</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="am_conf.html#id3636907">Queue</a>
+                <a href="am_conf.html#idp50379976">Queue</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="am_conf.html#id3636914">Recno</a>
+                <a href="am_conf.html#idp50382960">Recno</a>
               </span>
             </dt>
           </dl>
         </div>
-        <p>Berkeley DB currently offers four access methods: Btree, Hash, Queue and Recno.</p>
+        <p>
+        Berkeley DB currently offers four access methods: Btree, Hash, Queue and Recno.
+    </p>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id2799604"></a>Btree</h3>
+                <h3 class="title"><a id="idp50378880"></a>Btree</h3>
               </div>
             </div>
           </div>
-          <p>The Btree access method is an implementation of a sorted, balanced tree
-structure.  Searches, insertions, and deletions in the tree all take O(log
-base_b N) time, where base_b is the average number of keys per page, and
-N is the total number of keys stored.  Often, inserting ordered data into
-Btree implementations results in pages that are only half-full.  Berkeley DB
-makes ordered (or inverse ordered) insertion the best case, resulting in
-nearly full-page space utilization.</p>
+          <p>
+            The Btree access method is an implementation of a sorted, balanced
+            tree structure.  Searches, insertions, and deletions in the tree
+            all take <span class="emphasis"><em>O(height)</em></span> time, where 
+            <span class="emphasis"><em>height</em></span> is the number of levels in the
+            Btree from the root to the leaf pages. The upper bound on the
+            height is <span class="emphasis"><em>log base_b N</em></span>, where 
+            <span class="emphasis"><em>base_b</em></span> is the smallest number of keys on a
+            page, and <span class="emphasis"><em>N</em></span> is the total number of keys
+            stored.
+        </p>
+          <p>
+            Inserting unordered data into a Btree can result in pages that
+            are only half-full. DB makes ordered (or inverse ordered)
+            insertion the best case, resulting in nearly full-page space
+            utilization.
+        </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3635409"></a>Hash</h3>
+                <h3 class="title"><a id="idp50376696"></a>Hash</h3>
               </div>
             </div>
           </div>
-          <p>The Hash access method data structure is an implementation of Extended
-Linear Hashing, as described in "Linear Hashing: A New Tool for File and
-Table Addressing", Witold Litwin, <span class="emphasis"><em>Proceedings of the 6th
-International Conference on Very Large Databases (VLDB)</em></span>, 1980.</p>
+          <p>
+            The Hash access method data structure is an implementation of
+            Extended Linear Hashing, as described in "Linear Hashing: A New
+            Tool for File and Table Addressing", Witold Litwin,
+            <span class="emphasis"><em>Proceedings of the 6th International Conference on Very
+            Large Databases (VLDB)</em></span>, 1980.
+        </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3636907"></a>Queue</h3>
+                <h3 class="title"><a id="idp50379976"></a>Queue</h3>
               </div>
             </div>
           </div>
-          <p>The Queue access method stores fixed-length records with logical record
-numbers as keys.  It is designed for fast inserts at the tail and has a
-special cursor consume operation that deletes and returns a record from
-the head of the queue.  The Queue access method uses record level locking.</p>
+          <p>
+            The Queue access method stores fixed-length records with logical
+            record numbers as keys.  It is designed for fast inserts at the
+            tail and has a special cursor consume operation that deletes and
+            returns a record from the head of the queue.  The Queue access
+            method uses record level locking.
+        </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3636914"></a>Recno</h3>
+                <h3 class="title"><a id="idp50382960"></a>Recno</h3>
               </div>
             </div>
           </div>
-          <p>The Recno access method stores both fixed and variable-length records with
-logical record numbers as keys, optionally backed by a flat text (byte
-stream) file.</p>
+          <p>
+            The Recno access method stores both fixed and variable-length
+            records with logical record numbers as keys, optionally backed by a
+            flat text (byte stream) file.
+        </p>
         </div>
       </div>
     </div>

@@ -160,7 +160,7 @@ get_item_name(Db *dbp, const Dbt *pkey, const Dbt *pdata, Dbt *skey)
     // problem with the buffer contained in pdata, or there's a
     // programming error in how the buffer is marshalled/unmarshalled.
     // This should never happen!
-    if ((u_int32_t)id.getBufferSize() != pdata-&gt;get_size()) {
+    if (offset &gt; pdata-&gt;get_size()) {
         dbp-&gt;errx("get_item_name: buffer sizes do not match!");
         // When we return non-zero, the index record is not
         // added/updated.

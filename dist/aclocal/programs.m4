@@ -30,9 +30,11 @@ RM="$RM -f"
 AC_CHECK_TOOL(MV, mv, none)
 test "$MV" = "none" && AC_MSG_ERROR([No mv utility found.])
 
-if test "$db_cv_rpc" = "yes"; then
-	AC_CHECK_TOOL(RPCGEN, rpcgen, none)
-	test "$RPCGEN" = "none" && AC_MSG_ERROR([No rpcgen utility found.])
+if test "$db_cv_systemtap" = "yes" -o "$db_cv_dtrace" = "yes"; then
+	AC_CHECK_TOOL(STAP, stap, none)
+	test "$STAP" = "none" -a "$db_cv_systemtap" = "yes" && \
+		AC_MSG_ERROR([No stap utility found.])
+	db_cv_dtrace=yes
 fi
 
 if test "$db_cv_dtrace" = "yes"; then
@@ -42,10 +44,6 @@ if test "$db_cv_dtrace" = "yes"; then
 	# the distribution; if either is missing it is not an error for now.
 	AC_CHECK_TOOL(SED, sed, none)
 	AC_CHECK_TOOL(PERL, perl, none)
-fi
-if test "$db_cv_systemtap" = "yes"; then
-	AC_CHECK_TOOL(STAP, stap, none)
-	test "$STAP" = "none" && AC_MSG_ERROR([No stap utility found.])
 fi
 
 # We need a complete path for sh, because some make utility implementations get

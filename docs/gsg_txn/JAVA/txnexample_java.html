@@ -274,7 +274,7 @@ public class TxnGuide { </pre>
         myDbConfig.setAllowCreate(true);
         myDbConfig.setTransactional(true);
         myDbConfig.setSortedDuplicates(true);
-        myDbConfig.setReadUncomitted(true);
+        myDbConfig.setReadUncommitted(true);
         // no DatabaseConfig.setThreaded() method available.
         // db handles in java are free-threaded so long as the
         // env is also free-threaded.
@@ -768,7 +768,7 @@ public class DBWriter extends Thread
         try {
             // Get the cursor
             CursorConfig cc = new CursorConfig();
-            cc.setReadUncomitted(true);
+            cc.setReadUncommitted(true);
             cursor = myDb.openCursor(txn, cc);
             while (cursor.getNext(key, data, LockMode.DEFAULT) ==
                     OperationStatus.SUCCESS) {

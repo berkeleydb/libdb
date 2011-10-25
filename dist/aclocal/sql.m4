@@ -76,6 +76,59 @@ fi
 
 # !!! END COPIED from autoconf distribution
 
-sqlite_dir=`cd $srcdir/../sql/sqlite && /bin/pwd`
+sqlite_dir=`cd $srcdir/../lang/sql/sqlite && /bin/pwd`
 (cd sql && eval "\$SHELL $sqlite_dir/configure --disable-option-checking $ac_sub_configure_args CPPFLAGS=\"-I.. $CPPFLAGS\" --enable-amalgamation=$db_cv_sql_amalgamation --enable-readline=$with_readline" && cat build_config.h >> config.h)
+
+# Configure JDBC if --enable-jdbc
+if test "$db_cv_jdbc" != "no"; then
+
+  # Deal with user-defined jdbc source path
+  if test "$with_jdbc" != "no"; then
+    jdbc_path="$with_jdbc"
+  else
+    jdbc_path="$srcdir/../lang/sql/jdbc"
+  fi
+
+  if test ! -d $jdbc_path; then
+    echo "Cannot find jdbc source in $jdbc_path."
+    echo "Please check that path or use --with-jdbc to specify the source directory"
+    exit 1
+  fi
+  jdbc_dir=`cd $jdbc_path && /bin/pwd`
+
+  # Transfer following setting to jdbc configure:
+  # . --prefix
+  # . --enable-shared/--disable-shared
+  # . --enable-static/--disable-static
+  # . CFLAGS, CPPFLAGS and LDFLAGS
+  jdbc_args=""
+  jdbc_flags=""
+
+  test "$prefix" != "" && jdbc_args="--prefix=$prefix --with-jardir=$prefix/jar"
+  test "$enable_shared" != "" && jdbc_args="$jdbc_args --enable-shared=$enable_shared"
+  test "$enable_static" != "" && jdbc_args="$jdbc_args --enable-static=$enable_static"
+
+  # 1. The build directory is build_unix/jdbc, so the include paths are relative
+  #    to that.
+  # 2. The JDBC driver does not accept CPPFLAGS. So we move the CPPFLAGS options
+  #    into CFLAGS for the JDBC driver.
+  jdbc_flags="$jdbc_flags CFLAGS=\"-I.. -I../../src/dbinc -I../sql \
+    -DHAVE_ERRNO_H -D_HAVE_SQLITE_CONFIG_H -DHAVE_SQLITE3_MALLOC \
+    $CFLAGS $CPPFLAGS\""
+  # Set LDFLAGS for JDBC driver
+  test "$LDFLAGS" != "" && jdbc_flags="$jdbc_flags LDFLAGS=\"$LDFLAGS\""
+
+  # Copy ../lang/sql/jdbc to build_unix/
+  test ! -d jdbc && cp -r $jdbc_dir .
+
+  # Set DBSQL LIB for Makefile.in
+  BDB_LIB="..\/libdb-$DB_VERSION_MAJOR.$DB_VERSION_MINOR.la"
+  test $enable_shared != "yes" && BDB_LIB='..\/libdb.a'
+
+  # Run the jdbc/configure
+  cd jdbc
+  test ! -e Makefile.in.tmp && mv Makefile.in Makefile.in.tmp
+  sed "s/@BDB_LIB@/$BDB_LIB/g" Makefile.in.tmp > Makefile.in
+  eval "\$SHELL ./configure --with-sqlite3=../../lang/sql/generated $jdbc_args $jdbc_flags"
+fi
 ])

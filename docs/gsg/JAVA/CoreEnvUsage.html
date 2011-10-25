@@ -111,7 +111,7 @@ import java.io.FileNotFoundException;
 Environment myEnv = null;
 Database myDb = null;
 File envHome = new File("/export1/testEnv");
-String dbFileName = new String("mydb.db", "UTF-8");
+String dbFileName = new String("mydb.db".getBytes("UTF-8"), "UTF-8");
 
 try {
     EnvironmentConfig envConf = new EnvironmentConfig();

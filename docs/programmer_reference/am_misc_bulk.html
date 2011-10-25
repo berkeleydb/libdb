@@ -116,65 +116,65 @@ pointer variable being set to NULL.</p>
 a Btree database using the bulk return interfaces.</p>
         <pre class="programlisting">int
 rec_display(dbp)
-	DB *dbp;
+    DB *dbp;
 {
-	DBC *dbcp;
-	DBT key, data;
-	size_t retklen, retdlen;
-	char *retkey, *retdata;
-	int ret, t_ret;
-	void *p;
+    DBC *dbcp;
+    DBT key, data;
+    size_t retklen, retdlen;
+    char *retkey, *retdata;
+    int ret, t_ret;
+    void *p;
 
-	memset(&amp;key, 0, sizeof(key));
-	memset(&amp;data, 0, sizeof(data));
+    memset(&amp;key, 0, sizeof(key));
+    memset(&amp;data, 0, sizeof(data));
 
-	/* Review the database in 5MB chunks. */
-#define	BUFFER_LENGTH	(5 * 1024 * 1024)
-	if ((data.data = malloc(BUFFER_LENGTH)) == NULL)
-		return (errno);
-	data.ulen = BUFFER_LENGTH;
-	data.flags = DB_DBT_USERMEM;
+    /* Review the database in 5MB chunks. */
+#define    BUFFER_LENGTH    (5 * 1024 * 1024)
+    if ((data.data = malloc(BUFFER_LENGTH)) == NULL)
+        return (errno);
+    data.ulen = BUFFER_LENGTH;
+    data.flags = DB_DBT_USERMEM;
 
-	/* Acquire a cursor for the database. */
-	if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
-		free(data.data);
-		return (ret);
-	}
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+        free(data.data);
+        return (ret);
+    }
 
-	for (;;) {
-		/*
+    for (;;) {
+        /*
          * Acquire the next set of key/data pairs.  This code 
          * does not handle single key/data pairs that won't fit 
          * in a BUFFER_LENGTH size buffer, instead returning 
          * DB_BUFFER_SMALL to our caller.
-		 */
-		if ((ret = dbcp-&gt;c_get(dbcp,
-		    &amp;key, &amp;data, DB_MULTIPLE_KEY | DB_NEXT)) != 0) {
-			if (ret != DB_NOTFOUND)
-				dbp-&gt;err(dbp, ret, "DBcursor-&gt;c_get");
-			break;
-		}
+         */
+        if ((ret = dbcp-&gt;get(dbcp,
+            &amp;key, &amp;data, DB_MULTIPLE_KEY | DB_NEXT)) != 0) {
+            if (ret != DB_NOTFOUND)
+                dbp-&gt;err(dbp, ret, "DBcursor-&gt;get");
+            break;
+        }
 
-		for (DB_MULTIPLE_INIT(p, &amp;data);;) {
-			DB_MULTIPLE_KEY_NEXT(p,
-			    &amp;data, retkey, retklen, retdata, retdlen);
-			if (p == NULL)
-				break;
-			printf("key: %.*s, data: %.*s\n",
-			    (int)retklen, retkey, (int)retdlen, retdata);
-		}
-	}
+        for (DB_MULTIPLE_INIT(p, &amp;data);;) {
+            DB_MULTIPLE_KEY_NEXT(p,
+                &amp;data, retkey, retklen, retdata, retdlen);
+            if (p == NULL)
+                break;
+            printf("key: %.*s, data: %.*s\n",
+                (int)retklen, retkey, (int)retdlen, retdata);
+        }
+    }
 
-	if ((t_ret = dbcp-&gt;c_close(dbcp)) != 0) {
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
-		if (ret == 0)
-			ret = t_ret;
-	}
+    if ((t_ret = dbcp-&gt;close(dbcp)) != 0) {
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
+        if (ret == 0)
+            ret = t_ret;
+    }
 
-	free(data.data);
+    free(data.data);
 
-	return (ret);
+    return (ret);
 }</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">

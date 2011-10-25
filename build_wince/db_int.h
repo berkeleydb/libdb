@@ -269,30 +269,56 @@ typedef struct __fn {
 /*
  * Statistics update shared memory and so are expensive -- don't update the
  * values unless we're going to display the results.
+ * When performance monitoring is enabled, the changed value can be published
+ * (via DTrace or SystemTap) along with another associated value or two.
  */
 #undef	STAT
 #ifdef	HAVE_STATISTICS
 #define	STAT(x)	x
-#define	STAT_ADJUST(env, cat, id, val, amount)		\
-	do {						\
-		(val) += (amount);			\
-		STAT_PERFMON1((env), cat, id, (val));	\
+#define	STAT_ADJUST(env, cat, subcat, val, amount, id)			\
+	do {								\
+		(val) += (amount);					\
+		STAT_PERFMON2((env), cat, subcat, (val), (id));		\
 	} while (0)
-#define	STAT_INC(env, cat, id, val) 			\
-	 STAT_ADJUST(env, cat, id, val, 1) 
-#define	STAT_DEC(env, cat, id, val) 			\
-	 STAT_ADJUST(env, cat, id, val, -1)
-#define	STAT_SET(env, cat, id, val, newwal) 		\
-	do {						\
-		(val) = (newval);			\
-		STAT_PERFMON1((env), cat, id, (val));	\
+#define	STAT_ADJUST_VERB(env, cat, subcat, val, amount, id1, id2)	\
+	do {								\
+		(val) += (amount);					\
+		STAT_PERFMON3((env), cat, subcat, (val), (id1), (id2));	\
+	} while (0)
+#define	STAT_INC(env, cat, subcat, val, id) 				\
+	STAT_ADJUST(env, cat, subcat, (val), 1, (id))
+#define	STAT_INC_VERB(env, cat, subcat, val, id1, id2) 			\
+	STAT_ADJUST_VERB((env), cat, subcat, (val), 1, (id1), (id2))
+/*
+ * STAT_DEC() subtracts one rather than adding (-1) with STAT_ADJUST(); the
+ * latter might generate a compilation warning for an unsigned value.
+ */
+#define	STAT_DEC(env, cat, subcat, val, id) 				\
+	do {								\
+		(val)--;						\
+		STAT_PERFMON2((env), cat, subcat, (val), (id));		\
+	} while (0)
+/* N.B.: Add a verbose version of STAT_DEC() when needed. */
+
+#define	STAT_SET(env, cat, subcat, val, newval, id) 			\
+	do {								\
+		(val) = (newval);					\
+		STAT_PERFMON2((env), cat, subcat, (val), (id));		\
+	} while (0)
+#define	STAT_SET_VERB(env, cat, subcat, val, newval, id1, id2) 		\
+	do {								\
+		(val) = (newval);					\
+		STAT_PERFMON3((env), cat, subcat, (val), (id1), (id2));	\
 	} while (0)
 #else
-#define	STAT(x)					NOP_STATEMENT
-#define	STAT_ADJUST(env, cat, id, val, amount)	NOP_STATEMENT
-#define	STAT_INC(env, cat, id, val)		NOP_STATEMENT
-#define	STAT_DEC(env, cat, id, val)		NOP_STATEMENT
-#define	STAT_SET(env, cat, id, val, newwal)	NOP_STATEMENT
+#define	STAT(x)							NOP_STATEMENT
+#define	STAT_ADJUST(env, cat, subcat, val, amt, id)		NOP_STATEMENT
+#define	STAT_ADJUST_VERB(env, cat, subcat, val, amt, id1, id2)	NOP_STATEMENT
+#define	STAT_INC(env, cat, subcat, val, id)			NOP_STATEMENT
+#define	STAT_INC_VERB(env, cat, subcat, val, id1, id2)		NOP_STATEMENT
+#define	STAT_DEC(env, cat, subcat, val, id)			NOP_STATEMENT
+#define	STAT_SET(env, cat, subcat, val, newval, id)		NOP_STATEMENT
+#define	STAT_SET_VERB(env, cat, subcat, val, newval, id1, id2)	NOP_STATEMENT
 #endif
 
 /* 
@@ -303,15 +329,15 @@ typedef struct __fn {
  * The second actual argument to these is the second part of the error or
  * warning event name. They work when 'errcode' is a symbolic name e.g.
  * EINVAL or DB_LOCK_DEALOCK, not a variable.  Noticing system call failures
- * would be handled by tracing on syscall exit returning < 0.
+ * would be handled by tracing on syscall exit; when e.g., it returns < 0.
  */
-#define	ERR_ORIGIN(env, errcode)        \
+#define	ERR_ORIGIN(env, errcode)        				\
 	(PERFMON0(env, error, errcode), errcode)
 
-#define	ERR_ORIGIN_MSG(env, errcode, msg)	\
+#define	ERR_ORIGIN_MSG(env, errcode, msg)				\
 	(PERFMON1(env, error, errcode, msg), errcode)
 
-#define	WARNING_ORIGIN(env, errcode)	\
+#define	WARNING_ORIGIN(env, errcode)					\
 	(PERFMON0(env, warning, errcode), errcode)
 
 /*
@@ -331,7 +357,7 @@ typedef struct __db_msgbuf {
 #define	DB_MSGBUF_FLUSH(env, a) do {					\
 	if ((a)->buf != NULL) {						\
 		if ((a)->cur != (a)->buf)				\
-			__db_msg(env, "%s", (a)->buf);		\
+			__db_msg(env, "%s", (a)->buf);			\
 		__os_free(env, (a)->buf);				\
 		DB_MSGBUF_INIT(a);					\
 	}								\
@@ -469,7 +495,6 @@ typedef enum {
  * MUTEX_ON	Mutexes have been configured.
  * MPOOL_ON	Memory pool has been configured.
  * REP_ON	Replication has been configured.
- * RPC_ON	RPC has been configured.
  * TXN_ON	Transactions have been configured.
  *
  * REP_ON is more complex than most: if the BDB library was compiled without
@@ -486,7 +511,6 @@ typedef enum {
 #define	MUTEX_ON(env)		((env)->mutex_handle != NULL)
 #define	REP_ON(env)							\
 	((env)->rep_handle != NULL && (env)->rep_handle->region != NULL)
-#define	RPC_ON(dbenv)		((dbenv)->cl_handle != NULL)
 #define	TXN_ON(env)		((env)->tx_handle != NULL)
 
 /*
@@ -605,7 +629,27 @@ struct __db_thread_info {
 	u_int16_t	dbth_pinmax;	/* Number of slots allocated. */
 	roff_t		dbth_pinlist;	/* List of pins. */
 	PIN_LIST	dbth_pinarray[PINMAX];	/* Initial array of slots. */
+#ifdef DIAGNOSTIC
+	DB_LOCKER	*dbth_locker;	/* Current locker for this thread. */
+	u_int32_t	dbth_check_off;	/* Count of number of LOCK_OFF calls. */
+#endif
 };
+#ifdef DIAGNOSTIC
+#define LOCK_CHECK_OFF(ip) if ((ip) != NULL)				\
+	(ip)->dbth_check_off++
+
+#define LOCK_CHECK_ON(ip) if ((ip) != NULL)				\
+	(ip)->dbth_check_off--
+
+#define LOCK_CHECK(dbc, pgno, mode, flags)				\
+	DB_ASSERT((dbc)->dbp->env, (dbc)->locker == NULL ||		\
+	     __db_haslock((dbc)->dbp->env,				\
+	    (dbc)->locker, (dbc)->dbp->mpf, pgno, mode, flags) == 0)
+#else
+#define LOCK_CHECK_OFF(ip)	NOP_STATEMENT
+#define LOCK_CHECK_ON(ip)	NOP_STATEMENT
+#define LOCK_CHECK(dbc, pgno, mode)	NOP_STATEMENT
+#endif
 
 typedef struct __env_thread_info {
 	u_int32_t	thr_count;
@@ -664,6 +708,9 @@ struct __env {
 	DB_DISTAB   recover_dtab;	/* Dispatch table for recover funcs */
 
 	int dir_mode;			/* Intermediate directory perms. */
+
+#define ENV_DEF_DATA_LEN		100
+	u_int32_t data_len;		/* Data length in __db_prbytes. */
 
 	/* Thread tracking */
 	u_int32_t	 thr_nbucket;	/* Number of hash buckets */
@@ -741,6 +788,7 @@ struct __env {
 #define	ENV_REF_COUNTED		0x00000100 /* Region references this handle */
 #define	ENV_SYSTEM_MEM		0x00000200 /* DB_SYSTEM_MEM set */
 #define	ENV_THREAD		0x00000400 /* DB_THREAD set */
+#define ENV_FORCE_TXN_BULK	0x00000800 /* Txns use bulk mode-for testing */
 	u_int32_t flags;
 };
 
@@ -866,7 +914,7 @@ typedef enum { MU_REMOVE, MU_RENAME, MU_OPEN, MU_MOVE } mu_action;
 
 /* Structure used as the DB pgin/pgout pgcookie. */
 typedef struct __dbpginfo {
-	size_t	db_pagesize;		/* Underlying page size. */
+	u_int32_t db_pagesize;		/* Underlying page size. */
 	u_int32_t flags;		/* Some DB_AM flags needed. */
 	DBTYPE  type;			/* DB type */
 } DB_PGINFO;
@@ -934,33 +982,6 @@ typedef struct __dbpginfo {
  *******************************************************/
 #define	CMP_INT_SPARE_VAL	0xFC	/* Smallest byte value that the integer
 					   compression algorithm doesn't use */
-
-/*******************************************************
- * Secondaries over RPC.
- *******************************************************/
-#ifdef CONFIG_TEST
-/*
- * These are flags passed to DB->associate calls by the Tcl API if running
- * over RPC.  The RPC server will mask out these flags before making the real
- * DB->associate call.
- *
- * These flags must coexist with the valid flags to DB->associate (currently
- * DB_AUTO_COMMIT and DB_CREATE).  DB_AUTO_COMMIT is in the group of
- * high-order shared flags (0xff000000), and DB_CREATE is in the low-order
- * group (0x00000fff), so we pick a range in between.
- */
-#define	DB_RPC2ND_MASK		0x00f00000 /* Reserved bits. */
-
-#define	DB_RPC2ND_REVERSEDATA	0x00100000 /* callback_n(0) _s_reversedata. */
-#define	DB_RPC2ND_NOOP		0x00200000 /* callback_n(1) _s_noop */
-#define	DB_RPC2ND_CONCATKEYDATA	0x00300000 /* callback_n(2) _s_concatkeydata */
-#define	DB_RPC2ND_CONCATDATAKEY 0x00400000 /* callback_n(3) _s_concatdatakey */
-#define	DB_RPC2ND_REVERSECONCAT	0x00500000 /* callback_n(4) _s_reverseconcat */
-#define	DB_RPC2ND_TRUNCDATA	0x00600000 /* callback_n(5) _s_truncdata */
-#define	DB_RPC2ND_CONSTANT	0x00700000 /* callback_n(6) _s_constant */
-#define	DB_RPC2ND_GETZIP	0x00800000 /* sj_getzip */
-#define	DB_RPC2ND_GETNAME	0x00900000 /* sj_getname */
-#endif
 
 #if defined(__cplusplus)
 }

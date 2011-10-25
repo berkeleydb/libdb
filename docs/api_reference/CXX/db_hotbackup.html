@@ -48,6 +48,14 @@
         <ol type="1">
           <li>
             <p>
+                Sets the <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> 
+                flag in the home database environment.
+            </p>
+          </li>
+          <li>
+            <p>
                  If the <span class="bold"><strong>-c</strong></span> option is specified,
                  checkpoint the source home database environment, and remove any
                  unnecessary log files.     
@@ -88,6 +96,14 @@
             <p>
                  Remove any unnecessary log files from the target directory for the
                  backup. 
+            </p>
+          </li>
+          <li>
+            <p>
+                Reset the <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> 
+                flag in the environment.
             </p>
           </li>
         </ol>
@@ -236,7 +252,8 @@
             <p>
                  Specify a source directory that contains log files; if none is
                  specified, the database environment home directory will be searched
-                 for log files.
+                 for log files. If a relative path is specified, the path
+                 is evaluated relative to the home directory.
             </p>
           </li>
           <li>
@@ -258,7 +275,12 @@
             <p>
                  Update a pre-existing hot backup snapshot by copying in new log files.
                  If the <span class="bold"><strong>-u</strong></span> option is specified, no
-                 databases will be copied into the target directory.
+                 databases will be copied into the target directory. If applications
+                 that update the environment are using the transactional bulk insert
+				 optimization, this option must be used with special care.  
+				 For more information, see the
+				section on Hot Backup in the <span class="emphasis"><em>Getting Started
+				With Transaction Processing Guide</em></span>.
             </p>
           </li>
           <li>
@@ -299,7 +321,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3708713"></a>Environment Variables</h3>
+              <h3 class="title"><a id="idp55116184"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -307,7 +329,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3709380"></a>DB_HOME</h4>
+                <h4 class="title"><a id="idp55093600"></a>DB_HOME</h4>
               </div>
             </div>
           </div>

@@ -230,7 +230,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           </li>
           <li>
             <p>
-                         <span class="bold"><strong>uintmax_t st_page_clean;</strong></span>
+                         <span class="bold"><strong>u_int32_t st_page_clean;</strong></span>
                 </p>
             <p>
                         Clean pages currently in the cache.
@@ -238,7 +238,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           </li>
           <li>
             <p>
-                         <span class="bold"><strong>uintmax_t st_page_dirty;</strong></span>
+                         <span class="bold"><strong>u_int32_t st_page_dirty;</strong></span>
                 </p>
             <p>
                         Dirty pages currently in the cache.
@@ -246,7 +246,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           </li>
           <li>
             <p>
-                         <span class="bold"><strong>uintmax_t st_hash_buckets;</strong></span>
+                         <span class="bold"><strong>u_int32_t st_hash_buckets;</strong></span>
                 </p>
             <p>
                         Number of hash buckets in buffer hash table.
@@ -254,7 +254,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           </li>
           <li>
             <p>
-                         <span class="bold"><strong>uintmax_t st_hash_searches;</strong></span>
+                         <span class="bold"><strong>u_int32_t st_hash_searches;</strong></span>
                 </p>
             <p>
                         Total number of buffer hash table lookups.
@@ -262,7 +262,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           </li>
           <li>
             <p>
-                         <span class="bold"><strong>uintmax_t st_hash_longest;</strong></span>
+                         <span class="bold"><strong>u_int32_t st_hash_longest;</strong></span>
                 </p>
             <p>
                         Longest chain ever encountered in buffer hash table lookups.
@@ -510,7 +510,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4006784"></a>Parameters</h3>
+              <h3 class="title"><a id="idp53116576"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -518,7 +518,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4006919"></a>gsp</h4>
+                <h4 class="title"><a id="idp53115928"></a>gsp</h4>
               </div>
             </div>
           </div>
@@ -532,7 +532,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4006980"></a>fsp</h4>
+                <h4 class="title"><a id="idp53119840"></a>fsp</h4>
               </div>
             </div>
           </div>
@@ -546,7 +546,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4006992"></a>flags</h4>
+                <h4 class="title"><a id="idp53071456"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -572,7 +572,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4007077"></a>Errors</h3>
+              <h3 class="title"><a id="idp53125744"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -588,7 +588,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4006968"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp53062248"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -601,7 +601,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4007095"></a>Class</h3>
+              <h3 class="title"><a id="idp53129856"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -613,7 +613,7 @@ DB_ENV-&gt;memp_stat(DB_ENV *env, DB_MPOOL_STAT **gsp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4007173"></a>See Also</h3>
+              <h3 class="title"><a id="idp53131584"></a>See Also</h3>
             </div>
           </div>
         </div>

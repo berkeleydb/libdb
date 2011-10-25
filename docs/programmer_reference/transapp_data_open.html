@@ -42,75 +42,75 @@ may be used by any number of threads we subsequently create.</p>
       <pre class="programlisting">int
 main(int argc, char *argv)
 {
-	extern int optind;
-	DB *db_cats, *db_color, *db_fruit;
-	DB_ENV *dbenv;
-	int ch;
+    extern int optind;
+    DB *db_cats, *db_color, *db_fruit;
+    DB_ENV *dbenv;
+    int ch;
 
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+    while ((ch = getopt(argc, argv, "")) != EOF)
+        switch (ch) {
+        case '?':
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
 
-	env_dir_create();
-	env_open(&amp;dbenv);
+    env_dir_create();
+    env_open(&amp;dbenv);
 
-<span class="bold"><strong>	/* Open database: Key is fruit class; Data is specific type. */
-	if (db_open(dbenv, &amp;db_fruit, "fruit", 0))
-		return (1);
+<span class="bold"><strong>    /* Open database: Key is fruit class; Data is specific type. */
+    if (db_open(dbenv, &amp;db_fruit, "fruit", 0))
+        return (1);
 
-	/* Open database: Key is a color; Data is an integer. */
-	if (db_open(dbenv, &amp;db_color, "color", 0))
-		return (1);
+    /* Open database: Key is a color; Data is an integer. */
+    if (db_open(dbenv, &amp;db_color, "color", 0))
+        return (1);
 
-	/*
-	 * Open database:
-	 *	Key is a name; Data is: company name, cat breeds.
-	 */
-	if (db_open(dbenv, &amp;db_cats, "cats", 1))
-		return (1);</strong></span>
+    /*
+     * Open database:
+     *    Key is a name; Data is: company name, cat breeds.
+     */
+    if (db_open(dbenv, &amp;db_cats, "cats", 1))
+        return (1);</strong></span>
 
-	return (0);
+    return (0);
 }
 
 <span class="bold"><strong>int
 db_open(DB_ENV *dbenv, DB **dbp, char *name, int dups)
 {
-	DB *db;
-	int ret;
+    DB *db;
+    int ret;
 
-	/* Create the database handle. */
-	if ((ret = db_create(&amp;db, dbenv, 0)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "db_create");
-		return (1);
-	}
+    /* Create the database handle. */
+    if ((ret = db_create(&amp;db, dbenv, 0)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "db_create");
+        return (1);
+    }
 
-	/* Optionally, turn on duplicate data items. */
-	if (dups &amp;&amp; (ret = db-&gt;set_flags(db, DB_DUP)) != 0) {
-		(void)db-&gt;close(db, 0);
-		dbenv-&gt;err(dbenv, ret, "db-&gt;set_flags: DB_DUP");
-		return (1);
-	}
+    /* Optionally, turn on duplicate data items. */
+    if (dups &amp;&amp; (ret = db-&gt;set_flags(db, DB_DUP)) != 0) {
+        (void)db-&gt;close(db, 0);
+        dbenv-&gt;err(dbenv, ret, "db-&gt;set_flags: DB_DUP");
+        return (1);
+    }
 
-	/*
-	 * Open a database in the environment:
-	 *	create if it doesn't exist
-	 *	free-threaded handle
-	 *	read/write owner only
-	 */
-	if ((ret = db-&gt;open(db, NULL, name, NULL, DB_BTREE,
-	    DB_AUTO_COMMIT | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
-		(void)db-&gt;close(db, 0);
-		dbenv-&gt;err(dbenv, ret, "db-&gt;open: %s", name);
-		return (1);
-	}
+    /*
+     * Open a database in the environment:
+     *    create if it doesn't exist
+     *    free-threaded handle
+     *    read/write owner only
+     */
+    if ((ret = db-&gt;open(db, NULL, name, NULL, DB_BTREE,
+        DB_AUTO_COMMIT | DB_CREATE | DB_THREAD, S_IRUSR | S_IWUSR)) != 0) {
+        (void)db-&gt;close(db, 0);
+        dbenv-&gt;err(dbenv, ret, "db-&gt;open: %s", name);
+        return (1);
+    }
 
-	*dbp = db;
-	return (0);
+    *dbp = db;
+    return (0);
 }</strong></span></pre>
       <p>After opening the database, we can use the <a href="../api_reference/C/db_stat.html" class="olink">db_stat utility</a> to
 display information about a database we have created:</p>

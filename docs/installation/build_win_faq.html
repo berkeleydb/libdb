@@ -57,6 +57,11 @@ to set <span class="emphasis"><em>Use runtime library</em></span> to <span class
 standard libraries to be linked into your application (one on behalf
 of your application, and one on behalf of the Berkeley DB library).  That
 violates assumptions made by these libraries, and traps can result.</p>
+            <p>
+Also, using different Visual Studio compilers in the application and 
+libraries can lead to a crash. So rebuild the application 
+with the same Visual C++ version as that of the library.
+</p>
           </li>
           <li>
             <span class="bold">
@@ -123,7 +128,7 @@ Definitions</em></span> section, remove <span class="emphasis"><em>_UNICODE</em>
                 </li>
               </ul>
             </div>
-            <p>The ASCII builds will also work on Windows NT/2K/XP and 2003, but will
+            <p>The ASCII builds will also work on Windows NT/2K/XP/2003 and Windows7, but will
 not translate paths to wide character strings.</p>
           </li>
         </ol>

@@ -90,42 +90,42 @@
       <pre class="programlisting">void
 env_open(DB_ENV **dbenvp)
 {
-	DB_ENV *dbenv;
-	int ret;
+    DB_ENV *dbenv;
+    int ret;
 
-	/* Create the environment handle. */
-	if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
-		fprintf(stderr,
-		    "txnapp: db_env_create: %s\n", db_strerror(ret));
-		exit (1);
-	}
+    /* Create the environment handle. */
+    if ((ret = db_env_create(&amp;dbenv, 0)) != 0) {
+        fprintf(stderr,
+            "txnapp: db_env_create: %s\n", db_strerror(ret));
+        exit (1);
+    }
 
-	/* Set up error handling. */
-	dbenv-&gt;set_errpfx(dbenv, "txnapp");
-	dbenv-&gt;set_errfile(dbenv, stderr);
+    /* Set up error handling. */
+    dbenv-&gt;set_errpfx(dbenv, "txnapp");
+    dbenv-&gt;set_errfile(dbenv, stderr);
 
-<span class="bold"><strong>	/* Do deadlock detection internally. */
-	if ((ret = dbenv-&gt;set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "set_lk_detect: DB_LOCK_DEFAULT");
-		exit (1);
-	}</strong></span>
+<span class="bold"><strong>    /* Do deadlock detection internally. */
+    if ((ret = dbenv-&gt;set_lk_detect(dbenv, DB_LOCK_DEFAULT)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "set_lk_detect: DB_LOCK_DEFAULT");
+        exit (1);
+    }</strong></span>
 
-	/*
-	 * Open a transactional environment:
-	 *	create if it doesn't exist
-	 *	free-threaded handle
-	 *	run recovery
-	 *	read/write owner only
-	 */
-	if ((ret = dbenv-&gt;open(dbenv, ENV_DIRECTORY,
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
-	    DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
-	    S_IRUSR | S_IWUSR)) != 0) {
-		dbenv-&gt;err(dbenv, ret, "dbenv-&gt;open: %s", ENV_DIRECTORY);
-		exit (1);
-	}
+    /*
+     * Open a transactional environment:
+     *    create if it doesn't exist
+     *    free-threaded handle
+     *    run recovery
+     *    read/write owner only
+     */
+    if ((ret = dbenv-&gt;open(dbenv, ENV_DIRECTORY,
+        DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+        DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER | DB_THREAD,
+        S_IRUSR | S_IWUSR)) != 0) {
+        dbenv-&gt;err(dbenv, ret, "dbenv-&gt;open: %s", ENV_DIRECTORY);
+        exit (1);
+    }
 
-	*dbenvp = dbenv;
+    *dbenvp = dbenv;
 }</pre>
       <p>
     Deciding how often to run the deadlock detector and which of the

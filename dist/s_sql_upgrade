@@ -8,7 +8,7 @@
 # Once that is done - run this script, review the changes, and push to the
 # central server.
 
-sqldir=../sql/sqlite
+sqldir=../lang/sql/sqlite
 
 copy_if_changes()
 {
@@ -21,7 +21,7 @@ copy_if_changes()
 
 # Update the SQLite Makefile to refer to the replaced source files.
 MAKEFILE_NAME=$sqldir/Makefile.in
-for f in ../sql/adapter/*.[ch]; do
+for f in ../lang/sql/adapter/*.[ch]; do
 	short_f=`basename $f`
 	sed -e "s/\$(TOP)\/src\/$short_f/\$(TOP)\/..\/adapter\/$short_f/g" $MAKEFILE_NAME > $MAKEFILE_NAME.tmp
 	copy_if_changes $MAKEFILE_NAME $MAKEFILE_NAME.tmp
@@ -45,3 +45,9 @@ for f in $sqldir/../adapter/sqlite-patches/[0-9][0-9]_*.patch ; do
 	fi
 done
 
+# Remove files from the SQLite source tree that have been replaced by db.
+( cd $sqldir/../adapter &&
+for f in *c *h ; do
+	rm -f ../sqlite/src/$f
+done
+)

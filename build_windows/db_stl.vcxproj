@@ -72,20 +72,20 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db_stl\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_stl50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_stl51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_stl50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_stl51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_stl50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_stl51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_stl50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_stl51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/cxx/stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -102,14 +102,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_stl50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_stl51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_stl50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_stl51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -118,7 +118,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/cxx/stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -135,14 +135,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_stl50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_stl51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_stl50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_stl51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -150,7 +150,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/cxx/stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -167,14 +167,14 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_stl50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_stl51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_stl50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_stl51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -183,7 +183,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;../stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;../lang/cxx/stl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -200,35 +200,35 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_stl50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_stl51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_stl50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_stl51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\stl\dbstl_exception.h" />
-    <ClInclude Include="..\stl\dbstl_map.h" />
-    <ClInclude Include="..\stl\dbstl_set.h" />
-    <ClInclude Include="..\stl\dbstl_utility.h" />
-    <ClInclude Include="..\stl\dbstl_vector.h" />
-    <ClInclude Include="..\stl\dbstl_common.h" />
-    <ClInclude Include="..\stl\dbstl_base_iterator.h" />
-    <ClInclude Include="..\stl\dbstl_container.h" />
-    <ClInclude Include="..\stl\dbstl_dbc.h" />
-    <ClInclude Include="..\stl\dbstl_dbt.h" />
-    <ClInclude Include="..\stl\dbstl_element_ref.h" />
-    <ClInclude Include="..\stl\dbstl_inner_utility.h" />
-    <ClInclude Include="..\stl\dbstl_resource_manager.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_exception.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_map.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_set.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_utility.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_vector.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_common.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_base_iterator.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_container.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_dbc.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_dbt.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_element_ref.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_inner_utility.h" />
+    <ClInclude Include="..\lang\cxx\stl\dbstl_resource_manager.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\stl\dbstl_container.cpp" />
-    <ClCompile Include="..\stl\dbstl_resource_manager.cpp" />
+    <ClCompile Include="..\lang\cxx\stl\dbstl_container.cpp" />
+    <ClCompile Include="..\lang\cxx\stl\dbstl_resource_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="db.vcxproj">

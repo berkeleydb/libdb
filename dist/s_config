@@ -13,7 +13,7 @@ cat aclocal/*.m4 aclocal_java/*.m4 > aclocal.m4
 echo "autoconf: running autoheader to build config.hin..."
 rm -f config.hin
 autoheader
-chmod 444 config.hin
+chmod 644 config.hin
 
 echo "autoconf: running autoconf to build configure"
 rm -f configure
@@ -32,6 +32,6 @@ sed -e "s/__EDIT_DB_VERSION_FAMILY__/$DB_VERSION_FAMILY/g" \
 mv configure.version configure
 
 rm -rf autom4te.cache
-chmod 555 configure
+chmod 755 configure
 
-chmod 555 config.guess config.sub install-sh
+chmod 755 config.guess config.sub install-sh

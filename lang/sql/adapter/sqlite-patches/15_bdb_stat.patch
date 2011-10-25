@@ -1,0 +1,85 @@
+--- Makefile.in
++++ Makefile.in
+@@ -167,8 +167,8 @@
+ #
+ LIBOBJS0 = alter.lo analyze.lo attach.lo auth.lo \
+          backup.lo bitvec.lo btmutex.lo btree.lo build.lo \
+-         callback.lo complete.lo ctime.lo date.lo db_pragma.lo delete.lo \
+-         expr.lo fault.lo fkey.lo \
++         callback.lo complete.lo ctime.lo date.lo db_pragma.lo db_shell.lo \
++         delete.lo expr.lo fault.lo fkey.lo \
+          fts3.lo fts3_expr.lo fts3_hash.lo fts3_icu.lo fts3_porter.lo \
+          fts3_snippet.lo fts3_tokenizer.lo fts3_tokenizer1.lo fts3_write.lo \
+          func.lo global.lo hash.lo \
+@@ -212,6 +212,7 @@ SRC = \
+   $(TOP)/src/ctime.c \
+   $(TOP)/src/date.c \
+   $(TOP)/../adapter/db_pragma.c \
++  $(TOP)/../adapter/db_shell.c \
+   $(TOP)/src/delete.c \
+   $(TOP)/src/expr.c \
+   $(TOP)/src/fault.c \
+@@ -576,6 +577,10 @@ db_pragma.lo:	$(TOP)/../adapter/db_pragm
+ 		$(TOP)/../adapter/btreeInt.h
+ 	$(LTCOMPILE) $(TEMP_STORE) -c $(TOP)/../adapter/db_pragma.c
+ 
++db_shell.lo:	$(TOP)/../adapter/db_shell.c $(HDR) \
++		$(TOP)/../adapter/btreeInt.h
++	$(LTCOMPILE) $(TEMP_STORE) -c $(TOP)/../adapter/db_shell.c
++
+ delete.lo:	$(TOP)/src/delete.c $(HDR)
+ 	$(LTCOMPILE) $(TEMP_STORE) -c $(TOP)/src/delete.c
+ 
+--- src/shell.c
++++ src/shell.c
+@@ -1272,6 +1272,15 @@ static char zHelp[] =
+   "                         LIKE pattern TABLE.\n"
+   ".separator STRING      Change separator used by output mode and .import\n"
+   ".show                  Show the current values for various settings\n"
++  ".stat ?ITEM?           Print statistics\n"
++  "                         If ITEM=':env:', print statistics for the\n"
++  "                         Berkeley DB environment.\n"
++  "                         If ITEM is the name of a table or index, print\n"
++  "                         statistics for the table or index.\n"
++  "                         If ITEM is not specified, print statistics for\n"
++  "                         the Berkeley DB environment followed by\n"
++  "                         statistics for all tables and indexes within the\n"
++  "                         database.\n"
+   ".tables ?TABLE?        List names of tables\n"
+   "                         If TABLE specified, only list tables matching\n"
+   "                         LIKE pattern TABLE.\n"
+@@ -2030,6 +2039,24 @@ static int do_meta_command(char *zLine, 
+     }
+     fprintf(p->out,"\n");
+   }else
++  
++  if( c=='s' && strncmp(azArg[0], "stat", n)==0 ){
++    extern int bdbSqlDbStatPrint(sqlite3 *, FILE *, char *);
++    extern int bdbSqlEnvStatPrint(sqlite3 *db, FILE *);
++
++    open_db(p);
++
++    if (nArg == 1 || nArg == 2 && strcmp(azArg[1], ":env:") == 0)
++      rc = bdbSqlEnvStatPrint(p->db, p->out);
++    if (rc != SQLITE_OK) {
++      fprintf(stderr, "Error: environment not created yet\n");
++      rc = 1;
++    }
++    else if (nArg == 1)
++      rc = bdbSqlDbStatPrint(p->db, p->out, NULL);
++    else
++      rc = bdbSqlDbStatPrint(p->db, p->out, azArg[1]);
++  }else
+ 
+   if( c=='t' && n>1 && strncmp(azArg[0], "tables", n)==0 && nArg<3 ){
+     char **azResult;
+--- tool/mksqlite3c.tcl
++++ tool/mksqlite3c.tcl
+@@ -251,6 +251,7 @@ foreach file {
+    btree.c
+    backup.c
+    db_pragma.c
++   db_shell.c
+ 
+    vdbemem.c
+    vdbeaux.c

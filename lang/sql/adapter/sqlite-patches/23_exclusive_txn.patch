@@ -1,0 +1,89 @@
+--- lang/sql/sqlite/src/prepare.c
++++ lang/sql/sqlite/src/prepare.c
+@@ -242,16 +242,20 @@ static int sqlite3InitOne(sqlite3 *db, i
+   **    meta[8]   unused
+   **    meta[9]   unused
+   **
+   ** Note: The #defined SQLITE_UTF* symbols in sqliteInt.h correspond to
+   ** the possible values of meta[4].
+   */
+   for(i=0; i<ArraySize(meta); i++){
+     sqlite3BtreeGetMeta(pDb->pBt, i+1, (u32 *)&meta[i]);
++    if ( rc == SQLITE_OK && db->errCode == SQLITE_BUSY ) {
++      rc = db->errCode;
++      goto initone_error_out;
++    }
+   }
+   pDb->pSchema->schema_cookie = meta[BTREE_SCHEMA_VERSION-1];
+ 
+   /* If opening a non-empty database, check the text encoding. For the
+   ** main database, set sqlite3.enc to the encoding of the main database.
+   ** For an attached db, it is an error if the encoding is not the same
+   ** as sqlite3.enc.
+   */
+@@ -466,19 +470,21 @@ static void schemaIsValid(Parse *pParse)
+       if( rc!=SQLITE_OK ) return;
+       openedTransaction = 1;
+     }
+ 
+     /* Read the schema cookie from the database. If it does not match the 
+     ** value stored as part of the in-memory schema representation,
+     ** set Parse.rc to SQLITE_SCHEMA. */
+     sqlite3BtreeGetMeta(pBt, BTREE_SCHEMA_VERSION, (u32 *)&cookie);
+-    if( cookie!=db->aDb[iDb].pSchema->schema_cookie ){
++    if( pParse->rc == SQLITE_OK && db->errCode == SQLITE_BUSY )
++      pParse->rc = db->errCode;
++    if( pParse->rc != SQLITE_BUSY &&
++      cookie!=db->aDb[iDb].pSchema->schema_cookie )
+       pParse->rc = SQLITE_SCHEMA;
+-    }
+ 
+     /* Close the transaction, if one was opened. */
+     if( openedTransaction ){
+       sqlite3BtreeCommit(pBt);
+     }
+   }
+ }
+ 
+--- lang/sql/sqlite/src/vdbe.c
++++ lang/sql/sqlite/src/vdbe.c
+@@ -2797,16 +2797,18 @@ case OP_ReadCookie: {               /* o
+   iDb = pOp->p1;
+   iCookie = pOp->p3;
+   assert( pOp->p3<SQLITE_N_BTREE_META );
+   assert( iDb>=0 && iDb<db->nDb );
+   assert( db->aDb[iDb].pBt!=0 );
+   assert( (p->btreeMask & (1<<iDb))!=0 );
+ 
+   sqlite3BtreeGetMeta(db->aDb[iDb].pBt, iCookie, (u32 *)&iMeta);
++  if ( rc == SQLITE_OK && db->errCode == SQLITE_BUSY )
++    rc = db->errCode;
+   pOut->u.i = iMeta;
+   break;
+ }
+ 
+ /* Opcode: SetCookie P1 P2 P3 * *
+ **
+ ** Write the content of register P3 (interpreted as an integer)
+ ** into cookie number P2 of database P1.  P2==1 is the schema version.  
+@@ -2863,16 +2865,20 @@ case OP_SetCookie: {       /* in3 */
+ case OP_VerifyCookie: {
+   int iMeta;
+   Btree *pBt;
+   assert( pOp->p1>=0 && pOp->p1<db->nDb );
+   assert( (p->btreeMask & (1<<pOp->p1))!=0 );
+   pBt = db->aDb[pOp->p1].pBt;
+   if( pBt ){
+     sqlite3BtreeGetMeta(pBt, BTREE_SCHEMA_VERSION, (u32 *)&iMeta);
++    if (db->errCode == SQLITE_BUSY) {
++      rc = db->errCode;
++      break;
++    }
+   }else{
+     iMeta = 0;
+   }
+   if( iMeta!=pOp->p2 ){
+     sqlite3DbFree(db, p->zErrMsg);
+     p->zErrMsg = sqlite3DbStrDup(db, "database schema has changed");
+     /* If the schema-cookie from the database file matches the cookie 
+     ** stored with the in-memory representation of the schema, do

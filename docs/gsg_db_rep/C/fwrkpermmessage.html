@@ -193,6 +193,19 @@
             </li>
             <li>
               <p>
+                    <code class="literal">DB_REPMGR_ACKS_ALL_AVAILABLE</code>
+                    
+                </p>
+              <p>
+                    All currently connected replication clients must
+                    acknowledge the message.  This policy will invoke the
+                    <code class="literal">DB_EVENT_REP_PERM_FAILED</code> event if
+                    fewer than a quorum of clients acknowledged during that
+                    time. 
+                </p>
+            </li>
+            <li>
+              <p>
                     <code class="literal">DB_REPMGR_ACKS_ALL_PEERS</code>
                     
                 </p>

@@ -1,5 +1,5 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"> 
-  <Product Id='*' UpgradeCode='529068a1-2ba8-11df-8e8e-00262db1b537'
+  <Product Id='*' UpgradeCode='2df79540-9c19-11df-b5e4-00262db1b537'
    Name='@PRODUCT_NAME@' Version='@PROD_WIX_VERSION@'
    Manufacturer='Oracle' Language='1033'>
 
@@ -12,7 +12,7 @@
      Compressed='yes' Platform="x86"
      Languages="1033" SummaryCodepage="1252" />
     <!-- The upgrade id should be the same to the UpgradeCode of the previous version you want upgrade -->
-    <Upgrade Id='7a3ea470-2ba8-11df-abf0-00262db1b537'>
+    <Upgrade Id='529068a1-2ba8-11df-8e8e-00262db1b537'>
     <UpgradeVersion OnlyDetect="yes" 
 			Minimum="@PROD_WIX_VERSION@" 
 			Property="NEWERFOUND" 

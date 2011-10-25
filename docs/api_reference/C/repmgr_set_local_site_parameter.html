@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>repmgr_set_local_site</title>
+    <link rel="stylesheet" href="apiReference.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
+    <link rel="up" href="configuration_reference.html" title="Appendix D. DB_CONFIG Parameter Reference" />
+    <link rel="prev" href="repmgr_set_ack_policy_parameter.html" title="repmgr_set_ack_policy" />
+    <link rel="next" href="set_cachesize_parameter.html" title="set_cachesize" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">repmgr_set_local_site</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="repmgr_set_ack_policy_parameter.html">Prev</a> </td>
+          <th width="60%" align="center">Appendix D. DB_CONFIG Parameter Reference</th>
+          <td width="20%" align="right"> <a accesskey="n" href="set_cachesize_parameter.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="repmgr_set_local_site_parameter"></a>repmgr_set_local_site</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+                Specifies the host identification string and port number for the local system.
+            </p>
+      <p>
+                 The syntax of this parameter in the <code class="literal">DB_CONFIG</code> file is
+                 a single line with the string <code class="literal">repmgr_set_local_site</code>, 
+                 one or more whitespace characters, and the host
+				and port parameters specified as a string and an integer respectively. For example:
+				</p>
+      <pre class="programlisting">repmgr_set_local_site example.com 49200</pre>
+      <p>For more information, see <a class="xref" href="repmgrlocal_site.html" title="DB_ENV-&gt;repmgr_set_local_site()">DB_ENV-&gt;repmgr_set_local_site()</a>. </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="repmgr_set_ack_policy_parameter.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="configuration_reference.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="set_cachesize_parameter.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">repmgr_set_ack_policy </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> set_cachesize</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

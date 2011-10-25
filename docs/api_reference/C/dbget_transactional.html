@@ -42,25 +42,17 @@ DB-&gt;get_transactional(DB *db);  </pre>
       <p>
             The <code class="methodname">DB-&gt;get_transactional()</code> method returns non-zero if the 
             <a class="link" href="db.html" title="Chapter 2.  The DB Handle">DB</a>  handle has been opened in a
-            transactional mode.
+            transactional mode, otherwise it returns <code class="literal">0</code>.
     </p>
       <p>
          The <code class="methodname">DB-&gt;get_transactional()</code> method may be called at any time during
          the life of the application.
     </p>
-      <p>
-         The <code class="methodname">DB-&gt;get_transactional()</code> <span>
-            <span>
-                  method returns a non-zero error value on failure and 0 on success.
-            </span>
-            
-        </span>
-     </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4027547"></a>Class</h3>
+              <h3 class="title"><a id="idp54385256"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -72,7 +64,7 @@ DB-&gt;get_transactional(DB *db);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4027766"></a>See Also</h3>
+              <h3 class="title"><a id="idp54361864"></a>See Also</h3>
             </div>
           </div>
         </div>

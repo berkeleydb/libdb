@@ -255,14 +255,34 @@
                 at the time of the backup.
             </p>
         <p>
-                You can use the <span class="command"><strong>db_hotbackup</strong></span> command line utility to create a hot backup for you. This
-                utility will (optionally) run a checkpoint and then copy all necessary files to a target directory.
+                You can use the <span class="command"><strong>db_hotbackup</strong></span> command line utility to create a hot backup. 
+                This program optionally runs a checkpoint, and then copies all necessary files to a 
+				target directory.                      
             </p>
         <p>
                 Alternatively, you can manually create a hot backup as follows:
             </p>
         <div class="orderedlist">
           <ol type="1">
+            <li>
+              <p>
+		    <span>
+		        Set the <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code> flag in your environment. 
+		    </span>
+		       
+                 
+                <span>
+		        For more information, see the 
+		        <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/api_reference/C/envset_flags.html" target="_top">
+                    DB_ENV-&gt;set_flags() API reference page.
+                </a>
+                
+				
+				
+				</span>
+				
+		    </p>
+            </li>
             <li>
               <p>
                         Copy all your database files to the backup location. 
@@ -288,6 +308,14 @@
               <p>
                         Copy all logs to your backup location.
                     </p>
+            </li>
+            <li>
+              <p>
+		    <span>
+		        Reset the <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code> flag.
+		    </span>
+		        
+		    </p>
             </li>
           </ol>
         </div>
@@ -318,6 +346,30 @@
         <p>
                 Incremental backups do not require you to run a checkpoint
                 or to cease database write operations. 
+            </p>
+        <p>
+	        If your application uses the transactional bulk insert
+	        optimization, it is important to know that a database
+	        copy taken prior to a bulk loading event can no longer
+	        be used as the target of an incremental backup.  This
+	        is true because bulk loading omits logging of some
+	        record insertions, so recovery cannot roll forward
+	        these insertions.  It is recommended that a full
+	        backup be scheduled following a bulk loading event.
+	        </p>
+        <p>
+            <span>
+            For more information, see the description of the <code class="literal">DB_TXN_BULK</code> 
+            flag in the
+             
+            <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/api_reference/C/txnbegin.html" target="_top">
+                    DB_ENV-&gt;txn_begin() API reference page.
+                </a>
+            
+            
+                        
+            </span>
+            
             </p>
         <p>
                 When you are working with incremental backups, remember

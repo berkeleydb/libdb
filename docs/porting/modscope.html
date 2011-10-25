@@ -523,7 +523,7 @@ yield()
         </div>
         <p>
 When the operating system primitives on the target platform are identical
-or close to the POSIX semantics that Berkeley DB requiress, then no code
+or close to the POSIX semantics that Berkeley DB requires, then no code
 changes or minimal code changes to the files in the <code class="literal">os</code> directory are required. If the operating system primitives are quite different, then some code changes may be required to bridge the gap between the requirements of Berkeley DB and what the operating system provides. 
 </p>
         <p>
@@ -531,7 +531,7 @@ Where different code is required, you write an entirely different version
 of the file and place it in an <code class="literal">os</code>_<span class="emphasis"><em>xxx</em></span> directory where <span class="emphasis"><em>xxx</em></span> represents a platform name. 
 There are <code class="literal">os</code>_<span class="emphasis"><em>xxx</em></span>
 subdirectories in the Berkeley DB distribution for several established
-non-POSIX platforms. For example, there is a he
+non-POSIX platforms. For example, there is a
 <code class="literal">os_vxworks</code> directory that contains VxWorks
 versions of some of the files in the os directory, and Windows versions of
 some files are in the <code class="literal">os_windows</code> directory. If
@@ -551,7 +551,7 @@ write that file and place it in a new <code class="literal">os</code>_<span clas
         In some cases, the target platform may not provide the few POSIX
         functions required by Berkeley DB or the functions provided by the
         target platform may not operate in a standard compliant way.
-        Berkeley DB provides replacement functionsin the
+        Berkeley DB provides replacement functions in the
         <code class="literal">clib</code> directory
  of the Berkeley DB distribution.
 </p>
@@ -635,7 +635,7 @@ If you are not intending to write multiprocess database applications, then this 
         </div>
         <p>
 In most cases, you do not need to make any changes to the Berkeley DB
-source code that is not in the abstraction layer (that is, that is in the
+source code that is not in the abstraction layer (that is, in the
 <code class="literal">os</code> directory) as that code is designed to be platform-independent code. However, in some situations, the compiler for the target platform is non-standard and may raise errors when compiling some aspects of the Berkeley DB code (for example, additional casting may be required, or a certain type may cause a problem). In these cases, you will need to modify the generic Berkeley DB code in order to have error-free compilation.
 </p>
       </div>

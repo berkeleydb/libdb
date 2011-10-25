@@ -5,7 +5,7 @@ PACKAGE=db
 AC_INIT(Berkeley DB, __EDIT_DB_VERSION__,
 	[Oracle Technology Network Berkeley DB forum],
 	db-__EDIT_DB_VERSION__)
-AC_CONFIG_SRCDIR([../db/db.c])
+AC_CONFIG_SRCDIR([../src/db/db.c])
 AC_CONFIG_HEADERS([db_config.h:config.hin])
 
 AC_CONFIG_MACRO_DIR([aclocal])
@@ -17,18 +17,18 @@ AC_DISABLE_OPTION_CHECKING()
 AC_CANONICAL_HOST()
 AC_ARG_PROGRAM()
 
-# Don't build in the top-level or dist directories.
+# Don't build in the dist directory.
 AC_MSG_CHECKING(if building in the top-level or dist directories)
-if [ test -d db_archive -o -f configure.ac ] ; then
+if [ test -f configure.ac ] ; then
 	AC_MSG_RESULT(yes)
 	AC_MSG_ERROR([\
-Berkeley DB should not be built in the top-level or "dist" directories. \
+Berkeley DB should not be built in the "dist" directory. \
 Change directory to the build_unix directory and run ../dist/configure \
 from there.])
-
 fi
 AC_MSG_RESULT(no)
 
+topdir=`echo "$srcdir/.." | sed 's,/dist/\.\.,,'`
 # Substitution variables. BDB additions need to be documented.
 AC_SUBST(ADDITIONAL_INCS)
 AC_SUBST(ADDITIONAL_LANG)
@@ -78,9 +78,8 @@ AC_SUBST(MAKEFILE_XSOLINK)
 AC_SUBST(OSDIR)
 AC_SUBST(PATH_SEPARATOR)
 AC_SUBST(POSTLINK)
+AC_SUBST(PRINTLOG_OBJS)
 AC_SUBST(REPLACEMENT_OBJS)
-AC_SUBST(RPC_CLIENT_OBJS)
-AC_SUBST(RPC_SERVER_H)
 AC_SUBST(SOFLAGS)
 AC_SUBST(SQL_FLAGS)
 AC_SUBST(SQL_LIBS)
@@ -89,6 +88,7 @@ AC_SUBST(TEST_LIBS)
 AC_SUBST(db_int_def)
 AC_SUBST(o)
 AC_SUBST(subdir_cmd)
+AC_SUBST(topdir)
 
 # The Windows public header has two extra symbols we need to remove.
 AC_SUBST(platform_header)
@@ -173,7 +173,9 @@ LIBSO_LIBS="$LIBS"
 # because the makefile CC may be set to use $(LIBTOOL).
 #
 # Don't override anything if it's already set from the environment.
-optimize_debug="-O"
+optimize_flag="-O"
+extra_cflags=""
+
 case "$host_os" in
 aix4.3.*|aix[[56]]*)
 	case "$host_os" in
@@ -184,7 +186,8 @@ aix4.3.*|aix[[56]]*)
 	# when ordinary optimization is enabled because they make strong
 	# assumptions about the types held at each memory location, and some
 	# Berkeley DB code violates those assumptions.  [#16141]
-	optimize_debug="-O2 -qalias=noansi"
+	extra_cflags=" -qalias=noansi"
+	optimize_flag="-O2"
 	CC=${CC-"xlc_r"}
 	CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE"
 	LDFLAGS="$LDFLAGS -Wl,-brtl";;
@@ -198,7 +201,7 @@ freebsd*)
 gnu*|k*bsd*-gnu|linux*)
 	CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE -D_REENTRANT";;
 hpux*)	CPPFLAGS="$CPPFLAGS -D_REENTRANT";;
-irix*)	optimize_debug="-O2"
+irix*)	optimize_flag="-O2"
 	CPPFLAGS="$CPPFLAGS -D_SGI_MP_SOURCE";;
 mpeix*)	CPPFLAGS="$CPPFLAGS -D_POSIX_SOURCE -D_SOCKET_SOURCE"
 	LIBSO_LIBS="$LIBSO_LIBS -lsocket -lsvipc";;
@@ -210,22 +213,23 @@ solaris*)
 	CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS ";;
 esac
 
-# If the user wants a debugging environment, change any compiler optimization
-# flags to -g.  We used to add -g to the -O compiler flags, but compilers are
-# good enough at code re-organization that debugging with -O no longer works.
-# If you want to compile with a different set of flags, specify CFLAGS in the
-# environment before configuring.
+# Set CFLAGS/CXXFLAGS.  We MUST set the flags before we call autoconf
+# compiler configuration macros, because if we don't, they set CFLAGS
+# to no optimization and -g, which isn't what we want.
+#
+# If the user wants a debugging environment, add -g the their compiler flags
+# and don't automatically optimize.  If you want to compile with a different
+# set of flags, specify CFLAGS in the environment before configuring.
 if test "$db_cv_debug" = "yes"; then
 	AC_DEFINE(DEBUG)
 	AH_TEMPLATE(DEBUG, [Define to 1 if you want a debugging version.])
 
-	optimize_debug="-g"
+	CFLAGS="-g $CFLAGS"
+else
+	CFLAGS=${CFLAGS-$optimize_flag}
 fi
 
-# Set CFLAGS/CXXFLAGS.  We MUST set the flags before we call autoconf
-# compiler configuration macros, because if we don't, they set CFLAGS
-# to no optimization and -g, which isn't what we want.
-CFLAGS=${CFLAGS-$optimize_debug}
+CFLAGS="$CFLAGS$extra_cflags"
 CXXFLAGS=${CXXFLAGS-"$CFLAGS"}
 
 # The default compiler is cc (NOT gcc), the default CFLAGS is as specified
@@ -336,7 +340,7 @@ esac
 
 # Export our compiler preferences for the libtool configuration.
 export CC CCC
-CCC=CXX
+CCC=$CXX
 
 # Libtool configuration.
 AC_PROG_LIBTOOL
@@ -378,6 +382,10 @@ case "$host_os" in
         LIBTSO_MODSUFFIX=$MODSUFFIX;;
 esac
 
+if test "$enable_static" = "yes"; then
+	test "$AR" = "false" && AC_MSG_ERROR([No ar utility found.])
+fi
+
 # C API.
 if test "$enable_shared" = "no"; then
 	DEFAULT_LIB="\$(libdb_version)"
@@ -407,10 +415,10 @@ if test "$db_cv_cxx" = "yes"; then
 	fi
 fi
 
-# Optional Java API.
-if test "$db_cv_java" = "yes"; then
-	# Java requires shared libraries.
-	if test "$enable_shared" = "no"; then
+# Optional Java API / JDBC.
+if test "$db_cv_java" = "yes" -o "$db_cv_jdbc" = "yes"; then
+	# BDB Java API requires shared libraries.
+	if test "$db_cv_java" = "yes" -a "$enable_shared" = "no"; then
 		AC_MSG_ERROR([Java requires shared libraries])
 	fi
 
@@ -454,8 +462,10 @@ if test "$db_cv_java" = "yes"; then
 		CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
 	done
 
-	ADDITIONAL_LANG="$ADDITIONAL_LANG java"
-	INSTALL_LIBS="$INSTALL_LIBS \$(libjso_target)"
+	if test "$db_cv_java" = "yes"; then
+		ADDITIONAL_LANG="$ADDITIONAL_LANG java"
+		INSTALL_LIBS="$INSTALL_LIBS \$(libjso_target)"
+	fi
 else
 	JAVAC=nojavac
 fi
@@ -537,8 +547,17 @@ if test "$db_cv_sql" = "yes"; then
 		ADDITIONAL_LANG="$ADDITIONAL_LANG sql-test"
 	fi
 
+	if test "$db_cv_jdbc" = "yes"; then
+		subdirs="$subdirs jdbc"
+		ADDITIONAL_LANG="$ADDITIONAL_LANG jdbc"
+	fi
+
 	if test "$db_cv_debug" = "yes"; then
 		SQL_FLAGS="$SQL_FLAGS -DSQLITE_DEBUG=1"
+	fi
+
+	if test "$db_cv_build_cryptography" = "yes"; then
+		SQL_FLAGS="$SQL_FLAGS -DSQLITE_HAS_CODEC=1"
 	fi
 fi
 
@@ -549,7 +568,7 @@ if test "$db_cv_sql_compat" = "yes"; then
 		DEFAULT_LIB_SQLITE="\$(libsqliteso_target)"
 	fi
 
-	ADDITIONAL_INCS="$ADDITIONAL_INCS \$(srcdir)/sql/generated/sqlite3.h"
+	ADDITIONAL_INCS="$ADDITIONAL_INCS \$(langdir)/sql/generated/sqlite3.h"
 	ADDITIONAL_PROGS="$ADDITIONAL_PROGS sqlite3"
 	INSTALL_LIBS="$INSTALL_LIBS $DEFAULT_LIB_SQLITE"
 
@@ -582,7 +601,7 @@ if test "$db_cv_stl" = "yes"; then
 	fi
 	ADDITIONAL_INCS="$ADDITIONAL_INCS dbstl_common.h"
 	for f in dbstl_set.h dbstl_vector.h dbstl_exception.h dbstl_map.h dbstl_utility.h dbstl_dbc.h dbstl_dbt.h dbstl_base_iterator.h dbstl_container.h dbstl_element_ref.h dbstl_inner_utility.h dbstl_resource_manager.h ; do
-		ADDITIONAL_INCS="$ADDITIONAL_INCS \$(srcdir)/stl/$f"
+		ADDITIONAL_INCS="$ADDITIONAL_INCS \$(topdir)/lang/cxx/stl/$f"
 	done
 	INSTALL_LIBS="$INSTALL_LIBS $DEFAULT_LIB_STL"
 	if test "$enable_static" = "yes"; then
@@ -811,11 +830,6 @@ if test "$mmap_ok" = "no" -a "$shmget_ok" = "no"; then
 	AC_MSG_WARN([Neither mmap/munmap(2) or shmget(2) library functions.])
 fi
 
-# Optional RPC client/server.
-if test "$db_cv_rpc" = "yes"; then
-	AM_RPC_CONFIGURE
-fi
-
 # Optional Tcl support.
 if test "$db_cv_tcl" = "yes"; then
 	AM_TCL_LOAD
@@ -933,7 +947,7 @@ else
 fi
 
 # The crypto code can be disabled.
-if test -d "$srcdir/../crypto" -a "$db_cv_build_cryptography" != "no"; then
+if test -d "$topdir/src/crypto" -a "$db_cv_build_cryptography" != "no"; then
 	AC_DEFINE(HAVE_CRYPTO)
 	AH_TEMPLATE(HAVE_CRYPTO,
 	    [Define to 1 if building cryptography support.])
@@ -964,6 +978,9 @@ fi
 # itself, various diagnostic modes use them.
 if test "$db_cv_diagnostic" = "yes"; then
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(PRINT_OBJS)"
+	PRINTLOG_OBJS=""
+else
+	PRINTLOG_OBJS="\$(PRINT_OBJS)"
 fi
 
 # If building for QNX, we need additional OS files.
@@ -997,20 +1014,20 @@ AC_SUBST(LTLIBOBJS)
 
 # Initial output file list.
 CREATE_LIST="Makefile
-    db_cxx.h:$srcdir/../dbinc/db_cxx.in
-    db_int.h:$srcdir/../dbinc/db_int.in
-    clib_port.h:$srcdir/../dist/clib_port.in
-    include.tcl:$srcdir/../test/include.tcl"
+    db_cxx.h:$topdir/src/dbinc/db_cxx.in
+    db_int.h:$topdir/src/dbinc/db_int.in
+    clib_port.h:$topdir/dist/clib_port.in
+    include.tcl:$topdir/test/tcl/include.tcl"
 
 # Create the db.h file from a source file, a list of global function
 # prototypes, and, if configured for unique names, a list of #defines
 # to do DB_VERSION_UNIQUE_NAME substitution.
 if test "$db_cv_uniquename" = "yes"; then
 	CREATE_LIST="$CREATE_LIST
-	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/api_flags.in:$srcdir/../dbinc_auto/ext_def.in:$srcdir/../dbinc_auto/ext_prot.in"
+	db.h:$topdir/src/dbinc/db.in:$topdir/src/dbinc_auto/api_flags.in:$topdir/src/dbinc_auto/ext_def.in:$topdir/src/dbinc_auto/ext_prot.in"
 else
 	CREATE_LIST="$CREATE_LIST
-	db.h:$srcdir/../dbinc/db.in:$srcdir/../dbinc_auto/api_flags.in:$srcdir/../dbinc_auto/ext_prot.in"
+	db.h:$topdir/src/dbinc/db.in:$topdir/src/dbinc_auto/api_flags.in:$topdir/src/dbinc_auto/ext_prot.in"
 fi
 
 # If configured for unique names, create the db_int_uext.h file (which
@@ -1018,7 +1035,7 @@ fi
 # the db_int.h file.
 if test "$db_cv_uniquename" = "yes"; then
 	CREATE_LIST="$CREATE_LIST
-	db_int_def.h:$srcdir/../dbinc_auto/int_def.in"
+	db_int_def.h:$topdir/src/dbinc_auto/int_def.in"
 	db_int_def='#include "db_int_def.h"'
 fi
 
@@ -1028,18 +1045,18 @@ fi
 if test "$db_cv_compat185" = "yes"; then
 	if test "$db_cv_uniquename" = "yes"; then
 		CREATE_LIST="$CREATE_LIST
-		db_185.h:$srcdir/../dbinc/db_185.in:$srcdir/../dbinc_auto/ext_185_def.in:$srcdir/../dbinc_auto/ext_185_prot.in
-		db185_int.h:$srcdir/../db185/db185_int.in:$srcdir/../dbinc_auto/ext_185_def.in:$srcdir/../dbinc_auto/ext_185_prot.in"
+		db_185.h:$topdir/src/dbinc/db_185.in:$topdir/src/dbinc_auto/ext_185_def.in:$topdir/src/dbinc_auto/ext_185_prot.in
+		db185_int.h:$topdir/lang/db185/db185_int.in:$topdir/src/dbinc_auto/ext_185_def.in:$topdir/src/dbinc_auto/ext_185_prot.in"
 	else
 		CREATE_LIST="$CREATE_LIST
-		db_185.h:$srcdir/../dbinc/db_185.in:$srcdir/../dbinc_auto/ext_185_prot.in
-		db185_int.h:$srcdir/../db185/db185_int.in:$srcdir/../dbinc_auto/ext_185_prot.in"
+		db_185.h:$topdir/src/dbinc/db_185.in:$topdir/src/dbinc_auto/ext_185_prot.in
+		db185_int.h:$topdir/lang/db185/db185_int.in:$topdir/src/dbinc_auto/ext_185_prot.in"
 	fi
 fi
 
 if test "$db_cv_stl" = "yes"; then
 	CREATE_LIST="$CREATE_LIST
-	dbstl_common.h:$srcdir/../stl/dbstl_common.in"
+	dbstl_common.h:$topdir/lang/cxx/stl/dbstl_common.in"
 fi
 
 if test "x$subdirs" != "x"; then

@@ -1,0 +1,28 @@
+
+*** A note about pthreads ***
+The db4 c++ library by default tries to link against libpthread on some
+systems (notably Linux).  If your PHP install is not linked against
+libpthread, you will need to disable pthread support in db4.  This can
+be done by compiling db4 with the flag  --with-mutex=x86/gcc-assembly.
+PHP can itself be forced to link against libpthread either by manually
+editing
+its build files (which some distributions do), or by building it with
+--with-experimental-zts.
+
+This module requires that Berkeley DB be configured and built using 
+--enable-cxx to enable C++. To install this php module execute the following 
+steps:
+
+> phpize
+> ./configure --with-db4[=/path/to/db4]
+> make
+> su -
+# make install
+
+Then in your php.ini file add this line:
+
+extension=db4.so
+
+See examples in the "samples" directory.  The samples run in /var/tmp and the
+transaction_counter.php example requires that /var/tmp/dbhome exist. The 
+samples can be edited to change these requirements.

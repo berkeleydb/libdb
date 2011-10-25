@@ -17,6 +17,7 @@ declare variable $projectList := "@PROJECT_INPUT@";
 declare variable $vsversion := "@VISUAL_STUDIO_VERSION@";
 declare variable $sourcePath := doc($projectList)/projects/variable[@name="sourcePath"];
 declare variable $outputBase := doc($projectList)/projects/variable[@name="outputBase.@VISUAL_STUDIO_VERSION@"];
+declare variable $mobile := xs:boolean(doc($projectList)/projects/variable[@name="mobile"]);
 
 (: Visual Studio Variables --relatively static :)
 declare variable $debugOptLevel := "0";  (: VS -- no optimization :)
@@ -59,11 +60,18 @@ declare function local:isRelease($config) as xs:boolean
   contains($config,"Release")
 };
 
+declare function local:characterSet()
+{
+  if ($mobile) then "1" else "2"
+};
+
 (: machine-target-dependent link options :)
 declare function local:addLinkOptions($project, $platform, $config)
 {
-  let $machine := if (contains($platform,"Win32")) then "/machine:x86"
-      	             else concat("/machine:",$platform)
+  let $machine :=
+    if ($mobile) then ""
+    else if (contains($platform,"Win32")) then "/machine:x86"
+    else concat("/machine:",$platform)
   let $opt := string-join(($machine,$project/options/link[contains(@config,$config)])," ")
   return if (not($opt eq "")) then attribute{"AdditionalOptions"}{$opt}
          else ()
@@ -84,13 +92,12 @@ declare function local:generateCompilerPreprocessorDefs($project, $config)
   return string-join(($generic,$proj,$type),";")
 };
 
-(:
 declare function local:generateResourcePreprocessorDefs($config)
 {
-  let $dbg := if (local:isDebug($config)) then "_DEBUG" else "NDEBUG"
-  return concat($dbg,";_CRT_SECURE_NO_DEPRECATE=1")
+    if (not(empty(doc($projectList)/projects/preprocessor[@config="rc_all"]))) then
+        attribute{"PreprocessorDefinitions"}{doc($projectList)/projects/preprocessor[@config="rc_all"]}
+    else ()
 };
-:)
 
 (: Optimization level :)
 declare function local:optLevel($config)
@@ -103,9 +110,9 @@ declare function local:optLevel($config)
 declare function local:runtimeLibrary($config,$static as xs:boolean)
 {
   if (local:isDebug($config)) then 
-    if ($static) then "1" else"3" 
+    if ($static or $mobile) then "1" else "3" 
   else 
-    if ($static) then "0" else"2" 
+    if ($static or $mobile) then "0" else "2" 
 };
 
 declare function local:getLibName($name, $config)
@@ -242,6 +249,15 @@ local:indent(6),<Tool>
 </Tool>
 };
 
+declare function local:generateDeploymentTool($project)
+{
+local:indent(6),<DeploymentTool>
+  {  if ($project/type eq "dll") then
+        (attribute{"RemoteDirectory"}{"\windows"})
+     else ()}
+</DeploymentTool>
+};
+
 (: 
  static build of libraries; at this time it does *not* add additional
  dependent libraries.  This means that applications need to include them
@@ -271,7 +287,10 @@ local:indent(6),<Tool>
   {attribute{"OptimizeReferences"}{"2"}}
   {local:makeImportLibrary($project,$config)}
   {local:makeModuleDefinition($project,$config)}
-  {attribute{"TargetMachine"}{"0"}}
+  {attribute{"TargetMachine"}{if (contains($platform, "(ARMV4)")) then "3" else "0"}}
+  {if ($project/type eq "app" and $mobile) then 
+      (attribute{"SubSystem"}{"9"},attribute{"EntryPointSymbol"}{"WinMainCRTStartup"})
+   else ()}
 </Tool>
 };
 
@@ -279,6 +298,7 @@ declare function local:generateConfigCompiler($project, $platform, $config, $sta
 {
 local:indent(6),<Tool>
   {attribute{"Name"}{"VCCLCompilerTool"}}
+  {if ($mobile) then attribute{"BufferSecurityCheck"}{"FALSE"} else ()}
   {attribute{"Optimization"}{local:optLevel($config)}}
   {attribute{"MinimalRebuild"}{"TRUE"}}
   {if (local:isRelease($config)) then attribute{"InlineFunctionExpansion"}{"1"} else ()}
@@ -305,7 +325,10 @@ local:indent(6),<Tool>
 declare function local:generateConfigBoilerplate($config)
 {
 local:indent(6),<Tool Name="VCPreLinkEventTool"/>,
-local:indent(6),<Tool Name="VCResourceCompilerTool"/>,
+local:indent(6),<Tool>
+  {attribute{"Name"}{"VCResourceCompilerTool"}}
+  {local:generateResourcePreprocessorDefs($config)}
+</Tool>,
 local:indent(6),<Tool Name="VCXMLDataGeneratorTool"/>,
 local:indent(6),<Tool Name="VCManagedWrapperGeneratorTool"/>,
 local:indent(6),<Tool Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
@@ -326,13 +349,14 @@ local:indent(4),<Configuration>
     {attribute{"ConfigurationType"}{local:configurationType($project/type)}}
     {attribute{"UseOfMFC"}{"0"}}
     {attribute{"ATLMinimizesCRunTimeLibraryUsage"}{"FALSE"}}
-    {attribute{"CharacterSet"}{"2"}}
+    {attribute{"CharacterSet"}{local:characterSet()}}
     {local:generateConfigBoilerplate($config)}
     {local:generateConfigCompiler($project, $platform, $config,xs:boolean("false"))}
     {local:generateConfigLinkerAndMidl($project, $platform, $config)}
     {local:generatePreBuildEvent($project,if (local:isDebug($config)) then "Debug" else "Release")}
     {local:generatePostBuildEvent($project,if (local:isDebug($config)) then "Debug" else "Release")}
     {local:generateCustomBuildTool($project,if (local:isDebug($config)) then "Debug" else "Release")}
+    {if ($mobile) then local:generateDeploymentTool($project) else()}
   </Configuration>
 };
 
@@ -345,7 +369,7 @@ declare function local:generateStaticConfig($project, $platform, $config)
     {attribute{"ConfigurationType"}{local:configurationType($project/type)}}
     {attribute{"UseOfMFC"}{"0"}}
     {attribute{"ATLMinimizesCRunTimeLibraryUsage"}{"FALSE"}}
-    {attribute{"CharacterSet"}{"2"}}
+    {attribute{"CharacterSet"}{local:characterSet()}}
     {local:generateConfigBoilerplate($config)}
     {local:generateConfigCompiler($project, $platform, $config,xs:boolean("true"))}
     {if (contains($project/type,"lib")) then 
@@ -371,14 +395,14 @@ declare function local:generateRcFile($file)
 declare function local:generateFilesNoFilter($project)
 {
     for $file in $project/files/file
-        return  if (ends-with($file/@name,".rc")) then local:generateRcFile($file)
+        return  if (ends-with($file/@name,".rc") and not($mobile)) then local:generateRcFile($file)
 	  else  (local:indent(4),<File RelativePath="{local:windowsPath(concat($sourcePath,$file/@name))}"/>)
 };
 
 declare function local:generateFilesWithFilter($project,$filter)
 {
     for $file in $project/files/filter[@name=$filter]/file
-        return if (ends-with($file/@name,".rc")) then local:generateRcFile($file)
+        return if (ends-with($file/@name,".rc") and not($mobile)) then local:generateRcFile($file)
 	  else (local:indent(6),<File RelativePath="{local:windowsPath(concat($sourcePath,$file/@name))}"/>)
 };
 
@@ -394,6 +418,17 @@ declare function local:generateFiles($project)
          {local:indent(4)}</Filter>)
 };
 
+declare function local:generatePlatforms()
+{
+  if (not($mobile)) then
+     (local:indent(4),<Platform Name="Win32"/>,
+      local:indent(4),<Platform Name="x64"/>)
+  else
+     (local:indent(4),<Platform Name="Pocket PC 2003 (ARMV4)"/>,
+      local:indent(4),<Platform Name="Smartphone 2003 (ARMV4)"/>,
+      local:indent(4),<Platform Name="Windows Mobile 6.5.3 Professional DTK (ARMV4I)"/>)
+};
+
 declare function local:getGuid($project)
 {
 	concat("{",$project/@guid,"}")	
@@ -401,8 +436,12 @@ declare function local:getGuid($project)
 
 declare function local:getPlatforms($version)
 {
-	if ($version eq "7.10") then ("Win32")
-	else ("Win32", "x64", "IA64")
+  if (not($mobile)) then
+     (if ($version eq "7.10") then ("Win32")
+      else ("Win32", "x64"))
+  else
+     ("Pocket PC 2003 (ARMV4)", "Smartphone 2003 (ARMV4)",
+     "Windows Mobile 6.5.3 Professional DTK (ARMV4I)")
 };
 
 declare function local:getProjects()
@@ -421,9 +460,7 @@ return
    Name="{string($project/@name)}"
    ProjectGUID="{local:getGuid($project)}">
    {local:indent(2)}<Platforms>
-   {local:indent(4)}<Platform Name="Win32"/>
-   {local:indent(4)}<Platform Name="x64"/>
-   {local:indent(4)}<Platform Name="IA64"/>
+     {local:generatePlatforms()}
    {local:indent(2)}</Platforms>
    {local:indent(2)}<Configurations>
     {

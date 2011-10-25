@@ -51,12 +51,6 @@
 /* Define to 1 if you have the `backtrace_symbols' function. */
 /* #undef HAVE_BACKTRACE_SYMBOLS */
 
-/* Define to 1 if building on BREW. */
-/* #undef HAVE_BREW */
-
-/* Define to 1 if building on BREW (SDK2). */
-/* #undef HAVE_BREW_SDK2 */
-
 /* Define to 1 if you have the `clock_gettime' function. */
 #define HAVE_CLOCK_GETTIME 1
 
@@ -330,8 +324,12 @@
 /* Define to 1 if building partitioned database support. */
 /* #undef HAVE_PARTITION */
 
-/* Define to 1 to enable some kind of performance event tracing. */
+/* Define to 1 to enable some kind of performance event monitoring. */
 /* #undef HAVE_PERFMON */
+
+/* Define to 1 to enable performance event monitoring of *_stat() statistics.
+   */
+/* #undef HAVE_PERFMON_STATISTICS */
 
 /* Define to 1 if you have the `pread' function. */
 /* #undef HAVE_PREAD 1 */
@@ -341,6 +339,14 @@
 
 /* Define to 1 if you have the `pstat_getdynamic' function. */
 /* #undef HAVE_PSTAT_GETDYNAMIC */
+
+/* Define to 1 if it is OK to initialize an already initialized
+   pthread_cond_t. */
+/* #undef HAVE_PTHREAD_COND_REINIT_OKAY */
+
+/* Define to 1 if it is OK to initialize an already initialized
+   pthread_rwlock_t. */
+/* #undef HAVE_PTHREAD_RWLOCK_REINIT_OKAY */
 
 /* Define to 1 if you have the `pthread_self' function. */
 #define HAVE_PTHREAD_SELF 1
@@ -374,12 +380,6 @@
 
 /* Define to 1 if building the Berkeley DB replication framework. */
 /* #undef HAVE_REPLICATION_THREADS */
-
-/* Define to 1 if building RPC client/server. */
-/* #undef HAVE_RPC */
-
-/* Define to 1 if building on S60. */
-/* #undef HAVE_S60 */
 
 /* Define to 1 if you have the `sched_yield' function. */
 #define HAVE_SCHED_YIELD 1
@@ -416,9 +416,6 @@
 
 /* Define to 1 if building statistics support. */
 #define HAVE_STATISTICS 1
-
-/* Define to 1 to enable performance event tracing of *_stat() statistics. */
-/* #undef HAVE_STATISTICS_PERFMON */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -473,9 +470,6 @@
 
 /* Define to 1 if you have the `sysconf' function. */
 #define HAVE_SYSCONF 1
-
-/* Define to 1 to use stap for performance event tracing. */
-/* #undef HAVE_SYSTEMTAP */
 
 /* Define to 1 if port includes files in the Berkeley DB source code. */
 #define HAVE_SYSTEM_INCLUDE_FILES 1
@@ -544,16 +538,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 5.0.32"
+#define PACKAGE_STRING "Berkeley DB 5.1.29"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-5.0.32"
+#define PACKAGE_TARNAME "db-5.1.29"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.0.32"
+#define PACKAGE_VERSION "5.1.29"
 
 /* The size of `char', as computed by sizeof. */
 #define SIZEOF_CHAR 1

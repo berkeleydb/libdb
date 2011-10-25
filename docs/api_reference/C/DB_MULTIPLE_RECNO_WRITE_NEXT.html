@@ -46,7 +46,7 @@ DB_MULTIPLE_RECNO_WRITE_NEXT(void *pointer, DBT *dbt,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3976835"></a>Parameters</h3>
+              <h3 class="title"><a id="idp51318896"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -54,103 +54,77 @@ DB_MULTIPLE_RECNO_WRITE_NEXT(void *pointer, DBT *dbt,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3976823"></a>pointer</h4>
+                <h4 class="title"><a id="idp51286968"></a>pointer</h4>
               </div>
             </div>
           </div>
           <p>
-			The <span class="bold"><strong>pointer</strong></span> parameter
-			is a variable that must have been initialized by a call
-			to <a class="xref" href="DB_MULTIPLE_RECNO_WRITE_INIT.html" title="DB_MULTIPLE_RECNO_WRITE_INIT">DB_MULTIPLE_RECNO_WRITE_INIT</a>.
-                     </p>
+                The <span class="bold"><strong>pointer</strong></span> parameter
+                is a variable that must have been initialized by a call
+                to <a class="xref" href="DB_MULTIPLE_RECNO_WRITE_INIT.html" title="DB_MULTIPLE_RECNO_WRITE_INIT">DB_MULTIPLE_RECNO_WRITE_INIT</a>.
+             </p>
           <p>
-		         This parameter is set to NULL if the data item does not
-			 fit in the buffer.
-                     </p>
+                 This parameter is set to NULL if the data item does not
+                 fit in the buffer.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3976592"></a>dbt</h4>
+                <h4 class="title"><a id="idp51305912"></a>dbt</h4>
               </div>
             </div>
           </div>
           <p>
-			The <span class="bold"><strong>dbt</strong></span> parameter is
-			a <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a> structure
-			initialized with
-			<a class="xref" href="DB_MULTIPLE_WRITE_INIT.html" title="DB_MULTIPLE_WRITE_INIT"><pre class="programlisting">#include &lt;db.h&gt;
-
-DB_MULTIPLE_WRITE_INIT(void *pointer, DBT *data); </pre><p>              
-	Initialize a DBT containing a bulk buffer for use with the <a class="link" href="dbput.html#put_DB_MULTIPLE"></a>DB_MULTIPLE or <a class="link" href="dbput.html#put_DB_MULTIPLE_KEY"></a>DB_MULTIPLE_KEY flags to the <a class="xref" href="dbput.html" title="DB-&gt;put()"></a>DB-&gt;put() or <a class="xref" href="dbdel.html" title="DB-&gt;del()"></a>DB-&gt;del() methods.
-    </p><p>
-	This macro initializes an opaque pointer variable used for adding
-	records to a bulk buffer.  Use this macro for buffers that will contain
-	either a data item per record (for use with
-	<a class="link" href="dbput.html#put_DB_MULTIPLE"></a>DB_MULTIPLE),
-	or key/data pairs, where the key is not a record number.  For record
-	number keys, use <a class="link" href="DB_MULTIPLE_RECNO_WRITE_INIT.html" title="DB_MULTIPLE_RECNO_WRITE_INIT"></a>DB_MULTIPLE_RECNO_WRITE_INIT.
-    </p><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title">Parameters</h3></div></div></div><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title">pointer</h4></div></div></div><p>
-			The <span class="bold"><strong>pointer</strong></span> parameter
-			is an opaque pointer variable to be initialized. 
-                     </p></div><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title">data</h4></div></div></div><p>
-			The <span class="bold"><strong>data</strong></span> parameter is
-			a <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle"></a>DBT structure that
-			has been initialized by the application with a buffer
-			to hold multiple records.
-			The <span class="bold"><strong>ulen</strong></span> field must be
-			set to the size of the buffer allocated by the
-			application, and must be a multiple of 4.
-                     </p></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title">Class</h3></div></div></div><p>
-                <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle"></a>DBT  
-            </p></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title">See Also</h3></div></div></div><p>
-                     <a class="xref" href="dbt.html#dbtlist" title="DBT and Bulk Operations"></a>DBT and Bulk Operations 
-                </p></div></a>.
-                     </p>
+                The <span class="bold"><strong>dbt</strong></span> parameter is
+                a <a class="link" href="dbt.html" title="Chapter 4.  The DBT Handle">DBT</a> structure
+                initialized with
+                <a class="xref" href="DB_MULTIPLE_WRITE_INIT.html" title="DB_MULTIPLE_WRITE_INIT">DB_MULTIPLE_WRITE_INIT</a>.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3977215"></a>recno</h4>
+                <h4 class="title"><a id="idp51296696"></a>recno</h4>
               </div>
             </div>
           </div>
           <p>
-                         The record number to be copied into the bulk buffer.
-                     </p>
+                 The record number to be copied into the bulk buffer.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3977510"></a>data</h4>
+                <h4 class="title"><a id="idp51310584"></a>data</h4>
               </div>
             </div>
           </div>
           <p>
-                         A pointer to the bytes to be copied into the bulk buffer.
-                     </p>
+                 A pointer to the bytes to be copied into the bulk buffer.
+             </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3977518"></a>dlen</h4>
+                <h4 class="title"><a id="idp51328384"></a>dlen</h4>
               </div>
             </div>
           </div>
           <p>
-                         The number of bytes to be copied.
-                     </p>
+                 The number of bytes to be copied.
+             </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3977344"></a>Class</h3>
+              <h3 class="title"><a id="idp51318792"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -162,7 +136,7 @@ DB_MULTIPLE_WRITE_INIT(void *pointer, DBT *data); </pre><p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3976525"></a>See Also</h3>
+              <h3 class="title"><a id="idp51317000"></a>See Also</h3>
             </div>
           </div>
         </div>

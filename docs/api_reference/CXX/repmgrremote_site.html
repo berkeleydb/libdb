@@ -47,6 +47,15 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
          sites in the group.
     </p>
       <p>
+         The database environment's replication subsystem may also be configured using the
+         environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.  The
+         syntax of the entry in that file is a single line with the string "repmgr_add_remote_site",
+         one or more whitespace characters, and the
+	 <span class="bold"><strong>host, port</strong></span> and optional
+	 <span class="bold"><strong>peer</strong></span>
+         parameters specified. For example, "repmgr_add_remote_site example.com 49201 peer".
+    </p>
+      <p>
          The <code class="methodname">DbEnv::repmgr_add_remote_site()</code> method may be called at any time
          during the life of the application.
     </p>
@@ -64,7 +73,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3696847"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54362832"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -72,7 +81,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3696844"></a>host</h4>
+                <h4 class="title"><a id="idp54362680"></a>host</h4>
               </div>
             </div>
           </div>
@@ -84,7 +93,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3696907"></a>port</h4>
+                <h4 class="title"><a id="idp54368536"></a>port</h4>
               </div>
             </div>
           </div>
@@ -96,7 +105,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3696914"></a>eidp</h4>
+                <h4 class="title"><a id="idp54368968"></a>eidp</h4>
               </div>
             </div>
           </div>
@@ -112,7 +121,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3696530"></a>flags</h4>
+                <h4 class="title"><a id="idp54355576"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -147,7 +156,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3696956"></a>Errors</h3>
+              <h3 class="title"><a id="idp54371488"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -166,7 +175,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697107"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp54380416"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -181,7 +190,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3696954"></a>Class</h3>
+              <h3 class="title"><a id="idp54379336"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -193,7 +202,7 @@ DbEnv::repmgr_add_remote_site(const char *host, u_int port, int *eidp,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3697040"></a>See Also</h3>
+              <h3 class="title"><a id="idp54376184"></a>See Also</h3>
             </div>
           </div>
         </div>

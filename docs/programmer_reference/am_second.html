@@ -39,7 +39,7 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="am_second.html#id3642561">Error Handling With Secondary Indexes</a>
+              <a href="am_second.html#idp50703760">Error Handling With Secondary Indexes</a>
             </span>
           </dt>
         </dl>
@@ -62,69 +62,69 @@ able to look up students by last name.  To do this, one would construct
 a secondary index in which the secondary key was this last name.</p>
       <p>In SQL, this would be done by executing something like the following:</p>
       <pre class="programlisting">CREATE TABLE students(student_id CHAR(4) NOT NULL,
-	lastname CHAR(15), firstname CHAR(15), PRIMARY KEY(student_id));
+    lastname CHAR(15), firstname CHAR(15), PRIMARY KEY(student_id));
 CREATE INDEX lname ON students(lastname);</pre>
       <p>In Berkeley DB, this would work as follows (a
 <a class="ulink" href="second.javas" target="_top">Java API example is also available</a>):</p>
       <pre class="programlisting">struct student_record {
-	char student_id[4];
-	char last_name[15];
-	char first_name[15];
+    char student_id[4];
+    char last_name[15];
+    char first_name[15];
 };
 
 void
 second()
 {
-	DB *dbp, *sdbp;
-	int ret;
-	
-	/* Open/create primary */
-	if ((ret = db_create(&amp;dbp, dbenv, 0)) != 0)
-		handle_error(ret);
-	if ((ret = dbp-&gt;open(dbp, NULL,
-	    "students.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
-		handle_error(ret);
-	
-	/*
-	 * Open/create secondary.  Note that it supports duplicate data
-	 * items, since last names might not be unique.
-	 */
-	if ((ret = db_create(&amp;sdbp, dbenv, 0)) != 0)
-		handle_error(ret);
-	if ((ret = sdbp-&gt;set_flags(sdbp, DB_DUP | DB_DUPSORT)) != 0)
-		handle_error(ret);
-	if ((ret = sdbp-&gt;open(sdbp, NULL,
-	    "lastname.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
-		handle_error(ret);
-	
-	/* Associate the secondary with the primary. */
-	if ((ret = dbp-&gt;associate(dbp, NULL, sdbp, getname, 0)) != 0)
-		handle_error(ret);
+    DB *dbp, *sdbp;
+    int ret;
+    
+    /* Open/create primary */
+    if ((ret = db_create(&amp;dbp, dbenv, 0)) != 0)
+        handle_error(ret);
+    if ((ret = dbp-&gt;open(dbp, NULL,
+        "students.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+        handle_error(ret);
+    
+    /*
+     * Open/create secondary.  Note that it supports duplicate data
+     * items, since last names might not be unique.
+     */
+    if ((ret = db_create(&amp;sdbp, dbenv, 0)) != 0)
+        handle_error(ret);
+    if ((ret = sdbp-&gt;set_flags(sdbp, DB_DUP | DB_DUPSORT)) != 0)
+        handle_error(ret);
+    if ((ret = sdbp-&gt;open(sdbp, NULL,
+        "lastname.db", NULL, DB_BTREE, DB_CREATE, 0600)) != 0)
+        handle_error(ret);
+    
+    /* Associate the secondary with the primary. */
+    if ((ret = dbp-&gt;associate(dbp, NULL, sdbp, getname, 0)) != 0)
+        handle_error(ret);
 }
 
 /*
  * getname -- extracts a secondary key (the last name) from a primary
- * 	key/data pair
+ *     key/data pair
  */
 int
 getname(secondary, pkey, pdata, skey)
-	DB *secondary;
-	const DBT *pkey, *pdata;
-	DBT *skey;
+    DB *secondary;
+    const DBT *pkey, *pdata;
+    DBT *skey;
 {
-	/*
-	 * Since the secondary key is a simple structure member of the
-	 * record, we don't have to do anything fancy to return it.  If
-	 * we have composite keys that need to be constructed from the
-	 * record, rather than simply pointing into it, then the user's
-	 * function might need to allocate space and copy data.  In
-	 * this case, the DB_DBT_APPMALLOC flag should be set in the
-	 * secondary key DBT.
-	 */
-	memset(skey, 0, sizeof(DBT));
-	skey-&gt;data = ((struct student_record *)pdata-&gt;data)-&gt;last_name;
-	skey-&gt;size = sizeof((struct student_record *)pdata-&gt;data)-&gt;last_name;
-	return (0);
+    /*
+     * Since the secondary key is a simple structure member of the
+     * record, we don't have to do anything fancy to return it.  If
+     * we have composite keys that need to be constructed from the
+     * record, rather than simply pointing into it, then the user's
+     * function might need to allocate space and copy data.  In
+     * this case, the DB_DBT_APPMALLOC flag should be set in the
+     * secondary key DBT.
+     */
+    memset(skey, 0, sizeof(DBT));
+    skey-&gt;data = ((struct student_record *)pdata-&gt;data)-&gt;last_name;
+    skey-&gt;size = sizeof(((struct student_record *)pdata-&gt;data)-&gt;last_name);
+    return (0);
 }</pre>
       <p>From the application's perspective, putting things into the database
 works exactly as it does without a secondary index;  one can simply
@@ -147,7 +147,7 @@ memcpy(&amp;s.first_name, "Winston        ", sizeof(s.first_name));
 data.data = &amp;s;
 data.size = sizeof(s);
 if ((ret = dbp-&gt;put(dbp, txn, &amp;key, &amp;data, 0)) != 0)
-	handle_error(ret);</pre>
+    handle_error(ret);</pre>
       <p>Internally, a record with secondary key "Churchill" is inserted into
 the secondary database (in addition to the insertion of "WC42" into the
 primary, of course).</p>
@@ -160,7 +160,7 @@ memset(&amp;key, 0, sizeof(DBT));
 key.data = "WC42";
 key.size = 4;
 if ((ret = dbp-&gt;del(dbp, txn, &amp;key, 0)) != 0)
-	handle_error(ret);</pre>
+    handle_error(ret);</pre>
       <p>Deletes can also be performed on the secondary index directly; a delete
 done this way will delete the "real" record in the primary as well.  If
 the secondary supports duplicates and there are duplicate occurrences of
@@ -175,7 +175,7 @@ memset(&amp;skey, 0, sizeof(DBT));
 skey.data = "Churchill      ";
 skey.size = 15;
 if ((ret = sdbp-&gt;del(sdbp, txn, &amp;skey, 0)) != 0)
-	handle_error(ret);</pre>
+    handle_error(ret);</pre>
       <p>Gets on a secondary automatically return the primary datum.  If
 <a href="../api_reference/C/dbget.html" class="olink">DB-&gt;pget()</a> or <a href="../api_reference/C/dbcget.html" class="olink">DBC-&gt;pget()</a> is used in lieu of <a href="../api_reference/C/dbget.html" class="olink">DB-&gt;get()</a> or <a href="../api_reference/C/dbcget.html" class="olink">DBC-&gt;get()</a>, the primary key is returned as well.  Thus, the
 equivalent of:</p>
@@ -189,7 +189,7 @@ memset(&amp;data, 0, sizeof(DBT));
 skey.data = "Churchill      ";
 skey.size = 15;
 if ((ret = sdbp-&gt;pget(sdbp, txn, &amp;skey, &amp;pkey, &amp;data, 0)) != 0)
-	handle_error(ret);
+    handle_error(ret);
 /*
  * Now pkey contains "WC42" and data contains Winston's record.
  */</pre>
@@ -243,7 +243,7 @@ secondary database handles associated with it.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3642561"></a>Error Handling With Secondary Indexes</h3>
+              <h3 class="title"><a id="idp50703760"></a>Error Handling With Secondary Indexes</h3>
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ DB_KEYEXIST
           </ul>
         </div>
         <p>
-In the case of any other error return during a secondary update in CDS or DS, delete the secondary indices, recreate them and set the <code class="literal">DB_CREATE flag</code> to the <code class="literal">DB-&gt;associate</code> method.  Some examples of non-error returns that need to be handled this way are:</p>
+In the case of any other error return during a secondary update in CDS or DS, delete the secondary indices, recreate them and set the <code class="literal">DB_CREATE flag</code> to the <code class="literal">DB-&gt;associate</code> method.  Some examples of error returns that need to be handled this way are:</p>
         <div class="itemizedlist">
           <ul type="disc">
             <li>ENOMEM - indicating there is insufficient memory to return the requested item</li>

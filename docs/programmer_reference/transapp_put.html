@@ -64,83 +64,83 @@ items as arguments and then attempts to store them into the database.</p>
       <pre class="programlisting">int
 main(int argc, char *argv)
 {
-	extern int optind;
-	DB *db_cats, *db_color, *db_fruit;
-	DB_ENV *dbenv;
-	int ch;
+    extern int optind;
+    DB *db_cats, *db_color, *db_fruit;
+    DB_ENV *dbenv;
+    int ch;
 
-	while ((ch = getopt(argc, argv, "")) != EOF)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+    while ((ch = getopt(argc, argv, "")) != EOF)
+        switch (ch) {
+        case '?':
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
 
-	env_dir_create();
-	env_open(&amp;dbenv);
+    env_dir_create();
+    env_open(&amp;dbenv);
 
-	/* Open database: Key is fruit class; Data is specific type. */
-	db_open(dbenv, &amp;db_fruit, "fruit", 0);
+    /* Open database: Key is fruit class; Data is specific type. */
+    db_open(dbenv, &amp;db_fruit, "fruit", 0);
 
-	/* Open database: Key is a color; Data is an integer. */
-	db_open(dbenv, &amp;db_color, "color", 0);
+    /* Open database: Key is a color; Data is an integer. */
+    db_open(dbenv, &amp;db_color, "color", 0);
 
-	/*
-	 * Open database:
-	 *	Key is a name; Data is: company name, cat breeds.
-	 */
-	db_open(dbenv, &amp;db_cats, "cats", 1);
+    /*
+     * Open database:
+     *    Key is a name; Data is: company name, cat breeds.
+     */
+    db_open(dbenv, &amp;db_cats, "cats", 1);
 
-<span class="bold"><strong>	add_fruit(dbenv, db_fruit, "apple", "yellow delicious");</strong></span>
+<span class="bold"><strong>    add_fruit(dbenv, db_fruit, "apple", "yellow delicious");</strong></span>
 
-	return (0);
+    return (0);
 }
 
 <span class="bold"><strong>int
 add_fruit(DB_ENV *dbenv, DB *db, char *fruit, char *name)
 {
-	DBT key, data;
-	DB_TXN *tid;
-	int fail, ret, t_ret;
+    DBT key, data;
+    DB_TXN *tid;
+    int fail, ret, t_ret;
 
-	/* Initialization. */
-	memset(&amp;key, 0, sizeof(key));
-	memset(&amp;data, 0, sizeof(data));
-	key.data = fruit;
-	key.size = strlen(fruit);
-	data.data = name;
-	data.size = strlen(name);
+    /* Initialization. */
+    memset(&amp;key, 0, sizeof(key));
+    memset(&amp;data, 0, sizeof(data));
+    key.data = fruit;
+    key.size = strlen(fruit);
+    data.data = name;
+    data.size = strlen(name);
 
-	for (fail = 0;;) {
-		/* Begin the transaction. */
-		if ((ret = dbenv-&gt;txn_begin(dbenv, NULL, &amp;tid, 0)) != 0) {
-			dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;txn_begin");
-			exit (1);
-		}
+    for (fail = 0;;) {
+        /* Begin the transaction. */
+        if ((ret = dbenv-&gt;txn_begin(dbenv, NULL, &amp;tid, 0)) != 0) {
+            dbenv-&gt;err(dbenv, ret, "DB_ENV-&gt;txn_begin");
+            exit (1);
+        }
 
-		/* Store the value. */
-		switch (ret = db-&gt;put(db, tid, &amp;key, &amp;data, 0)) {
-		case 0:
-			/* Success: commit the change. */
-			if ((ret = tid-&gt;commit(tid, 0)) != 0) {
-				dbenv-&gt;err(dbenv, ret, "DB_TXN-&gt;commit");
-				exit (1);
-			}
-			return (0);
-		case DB_LOCK_DEADLOCK:
-		default:
-			/* Retry the operation. */
-			if ((t_ret = tid-&gt;abort(tid)) != 0) {
-				dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
-				exit (1);
-			}
-			if (fail++ == MAXIMUM_RETRY)
-				return (ret);
-			break;
-		}
-	}
+        /* Store the value. */
+        switch (ret = db-&gt;put(db, tid, &amp;key, &amp;data, 0)) {
+        case 0:
+            /* Success: commit the change. */
+            if ((ret = tid-&gt;commit(tid, 0)) != 0) {
+                dbenv-&gt;err(dbenv, ret, "DB_TXN-&gt;commit");
+                exit (1);
+            }
+            return (0);
+        case DB_LOCK_DEADLOCK:
+        default:
+            /* Retry the operation. */
+            if ((t_ret = tid-&gt;abort(tid)) != 0) {
+                dbenv-&gt;err(dbenv, t_ret, "DB_TXN-&gt;abort");
+                exit (1);
+            }
+            if (fail++ == MAXIMUM_RETRY)
+                return (ret);
+            break;
+        }
+    }
 }</strong></span></pre>
       <p>Berkeley DB also uses transactions to recover from deadlock.  Database
 operations (that is, any call to a function underlying the handles
@@ -209,10 +209,10 @@ protected.  For example, in a transactional database, the above code
 could be more simply written as:</p>
       <pre class="programlisting">
         <span class="bold">
-          <strong>	for (fail = 0; fail++ &lt;= MAXIMUM_RETRY &amp;&amp;
-	    (ret = db-&gt;put(db, NULL, &amp;key, &amp;data, 0)) == DB_LOCK_DEADLOCK;)
-		;
-	return (ret == 0 ? 0 : 1);</strong>
+          <strong>    for (fail = 0; fail++ &lt;= MAXIMUM_RETRY &amp;&amp;
+        (ret = db-&gt;put(db, NULL, &amp;key, &amp;data, 0)) == DB_LOCK_DEADLOCK;)
+        ;
+    return (ret == 0 ? 0 : 1);</strong>
         </span>
       </pre>
       <p>and the underlying transaction would be automatically handled by Berkeley DB.</p>

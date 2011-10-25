@@ -1,0 +1,49 @@
+--- src/test_demovfs.c
++++ src/test_demovfs.c
+@@ -126,6 +126,7 @@
+ #include <sys/file.h>
+ #include <sys/param.h>
+ #include <unistd.h>
++#include <fcntl.h>
+ #include <time.h>
+ 
+ /*
+@@ -135,6 +136,10 @@
+ # define SQLITE_DEMOVFS_BUFFERSZ 8192
+ #endif
+ 
++#ifndef SQLITE_DEMOVFS_MAXPATH
++# define SQLITE_DEMOVFS_MAXPATH 512
++#endif
++
+ /*
+ ** When using this VFS, the sqlite3_file* handles that SQLite uses are
+ ** actually pointers to instances of type DemoFile.
+@@ -451,7 +456,8 @@
+   if( rc==0 && dirSync ){
+     int dfd;                      /* File descriptor open on directory */
+     int i;                        /* Iterator variable */
+-    char zDir[pVfs->mxPathname+1];/* Name of directory containing file zPath */
++    char zDir[SQLITE_DEMOVFS_MAXPATH+1];
++                                 /* Name of directory containing file zPath */ 
+ 
+     /* Figure out the directory name from the path of the file deleted. */
+     sqlite3_snprintf(pVfs->mxPathname, zDir, "%s", zPath);
+@@ -524,7 +530,7 @@
+   int nPathOut,                   /* Size of output buffer in bytes */
+   char *zPathOut                  /* Pointer to output buffer */
+ ){
+-  char zDir[pVfs->mxPathname+1];
++  char zDir[SQLITE_DEMOVFS_MAXPATH+1];
+   if( zPath[0]=='/' ){
+     zDir[0] = '\0';
+   }else{
+@@ -609,7 +615,7 @@
+   static sqlite3_vfs demovfs = {
+     1,                            /* iVersion */
+     sizeof(DemoFile),             /* szOsFile */
+-    512,                          /* mxPathname */
++    SQLITE_DEMOVFS_MAXPATH,       /* mxPathname */
+     0,                            /* pNext */
+     "demo",                       /* zName */
+     0,                            /* pAppData */

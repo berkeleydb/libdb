@@ -72,20 +72,20 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;WIN32;_UNICODE;UNICODE;DIAGNOSTIC;CONFIG_TEST;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -105,11 +105,11 @@
       <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb51d.lib</ImportLibrary>
       <ModuleDefinitionFile>..\build_windows\libdb.def</ModuleDefinitionFile>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
@@ -119,7 +119,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;WIN32;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -139,11 +139,11 @@
       <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb51.lib</ImportLibrary>
       <ModuleDefinitionFile>..\build_windows\libdb.def</ModuleDefinitionFile>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
@@ -152,7 +152,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;WIN32;_UNICODE;UNICODE;DIAGNOSTIC;CONFIG_TEST;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -172,11 +172,11 @@
       <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb51d.lib</ImportLibrary>
       <ModuleDefinitionFile>..\build_windows\libdb.def</ModuleDefinitionFile>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
@@ -186,7 +186,7 @@
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;WIN32;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -206,264 +206,264 @@
       <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb51.lib</ImportLibrary>
       <ModuleDefinitionFile>..\build_windows\libdb.def</ModuleDefinitionFile>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\crypto\aes_method.c" />
-    <ClCompile Include="..\btree\bt_compact.c" />
-    <ClCompile Include="..\btree\bt_compare.c" />
-    <ClCompile Include="..\btree\bt_compress.c" />
-    <ClCompile Include="..\btree\bt_conv.c" />
-    <ClCompile Include="..\btree\bt_curadj.c" />
-    <ClCompile Include="..\btree\bt_cursor.c" />
-    <ClCompile Include="..\btree\bt_delete.c" />
-    <ClCompile Include="..\btree\bt_method.c" />
-    <ClCompile Include="..\btree\bt_open.c" />
-    <ClCompile Include="..\btree\bt_put.c" />
-    <ClCompile Include="..\btree\bt_rec.c" />
-    <ClCompile Include="..\btree\bt_reclaim.c" />
-    <ClCompile Include="..\btree\bt_recno.c" />
-    <ClCompile Include="..\btree\bt_rsearch.c" />
-    <ClCompile Include="..\btree\bt_search.c" />
-    <ClCompile Include="..\btree\bt_split.c" />
-    <ClCompile Include="..\btree\bt_stat.c" />
-    <ClCompile Include="..\btree\bt_upgrade.c" />
-    <ClCompile Include="..\btree\bt_verify.c" />
-    <ClCompile Include="..\btree\btree_auto.c" />
-    <ClCompile Include="..\db\crdel_auto.c" />
-    <ClCompile Include="..\db\crdel_rec.c" />
-    <ClCompile Include="..\crypto\crypto.c" />
-    <ClCompile Include="..\cxx\cxx_db.cpp" />
-    <ClCompile Include="..\cxx\cxx_dbc.cpp" />
-    <ClCompile Include="..\cxx\cxx_dbt.cpp" />
-    <ClCompile Include="..\cxx\cxx_env.cpp" />
-    <ClCompile Include="..\cxx\cxx_except.cpp" />
-    <ClCompile Include="..\cxx\cxx_lock.cpp" />
-    <ClCompile Include="..\cxx\cxx_logc.cpp" />
-    <ClCompile Include="..\cxx\cxx_mpool.cpp" />
-    <ClCompile Include="..\cxx\cxx_multi.cpp" />
-    <ClCompile Include="..\cxx\cxx_seq.cpp" />
-    <ClCompile Include="..\cxx\cxx_txn.cpp" />
-    <ClCompile Include="..\db\db.c" />
-    <ClCompile Include="..\db\db_am.c" />
-    <ClCompile Include="..\db\db_auto.c" />
-    <ClCompile Include="..\common\clock.c" />
-    <ClCompile Include="..\common\db_byteorder.c" />
-    <ClCompile Include="..\db\db_cam.c" />
-    <ClCompile Include="..\db\db_cds.c" />
-    <ClCompile Include="..\db\db_compact.c" />
-    <ClCompile Include="..\db\db_conv.c" />
-    <ClCompile Include="..\db\db_dispatch.c" />
-    <ClCompile Include="..\db\db_dup.c" />
-    <ClCompile Include="..\common\db_err.c" />
-    <ClCompile Include="..\common\db_getlong.c" />
-    <ClCompile Include="..\common\db_idspace.c" />
-    <ClCompile Include="..\common\db_compint.c" />
-    <ClCompile Include="..\db\db_iface.c" />
-    <ClCompile Include="..\db\db_join.c" />
-    <ClCompile Include="..\common\db_log2.c" />
-    <ClCompile Include="..\db\db_meta.c" />
-    <ClCompile Include="..\db\db_method.c" />
-    <ClCompile Include="..\db\db_open.c" />
-    <ClCompile Include="..\db\db_overflow.c" />
-    <ClCompile Include="..\db\db_ovfl_vrfy.c" />
-    <ClCompile Include="..\db\db_pr.c" />
-    <ClCompile Include="..\db\db_rec.c" />
-    <ClCompile Include="..\db\db_reclaim.c" />
-    <ClCompile Include="..\db\db_remove.c" />
-    <ClCompile Include="..\db\db_rename.c" />
-    <ClCompile Include="..\db\db_ret.c" />
-    <ClCompile Include="..\db\db_setid.c" />
-    <ClCompile Include="..\db\db_setlsn.c" />
-    <ClCompile Include="..\common\db_shash.c" />
-    <ClCompile Include="..\db\db_sort_multiple.c" />
-    <ClCompile Include="..\db\db_stati.c" />
-    <ClCompile Include="..\db\db_truncate.c" />
-    <ClCompile Include="..\db\db_upg.c" />
-    <ClCompile Include="..\db\db_upg_opd.c" />
-    <ClCompile Include="..\db\db_vrfy.c" />
-    <ClCompile Include="..\db\db_vrfyutil.c" />
-    <ClCompile Include="..\db\partition.c" />
-    <ClCompile Include="..\dbm\dbm.c" />
-    <ClCompile Include="..\dbreg\dbreg.c" />
-    <ClCompile Include="..\dbreg\dbreg_auto.c" />
-    <ClCompile Include="..\dbreg\dbreg_rec.c" />
-    <ClCompile Include="..\dbreg\dbreg_stat.c" />
-    <ClCompile Include="..\dbreg\dbreg_util.c" />
-    <ClCompile Include="..\common\dbt.c" />
-    <ClCompile Include="..\env\env_alloc.c" />
-    <ClCompile Include="..\env\env_config.c" />
-    <ClCompile Include="..\env\env_failchk.c" />
-    <ClCompile Include="..\env\env_file.c" />
-    <ClCompile Include="..\env\env_globals.c" />
-    <ClCompile Include="..\env\env_method.c" />
-    <ClCompile Include="..\env\env_name.c" />
-    <ClCompile Include="..\env\env_open.c" />
-    <ClCompile Include="..\env\env_recover.c" />
-    <ClCompile Include="..\env\env_region.c" />
-    <ClCompile Include="..\env\env_register.c" />
-    <ClCompile Include="..\env\env_sig.c" />
-    <ClCompile Include="..\env\env_stat.c" />
-    <ClCompile Include="..\fileops\fileops_auto.c" />
-    <ClCompile Include="..\fileops\fop_basic.c" />
-    <ClCompile Include="..\fileops\fop_rec.c" />
-    <ClCompile Include="..\fileops\fop_util.c" />
-    <ClCompile Include="..\hash\hash.c" />
-    <ClCompile Include="..\hash\hash_auto.c" />
-    <ClCompile Include="..\hash\hash_compact.c" />
-    <ClCompile Include="..\hash\hash_conv.c" />
-    <ClCompile Include="..\hash\hash_dup.c" />
-    <ClCompile Include="..\hash\hash_func.c" />
-    <ClCompile Include="..\hash\hash_meta.c" />
-    <ClCompile Include="..\hash\hash_method.c" />
-    <ClCompile Include="..\hash\hash_open.c" />
-    <ClCompile Include="..\hash\hash_page.c" />
-    <ClCompile Include="..\hash\hash_rec.c" />
-    <ClCompile Include="..\hash\hash_reclaim.c" />
-    <ClCompile Include="..\hash\hash_stat.c" />
-    <ClCompile Include="..\hash\hash_upgrade.c" />
-    <ClCompile Include="..\hash\hash_verify.c" />
-    <ClCompile Include="..\hmac\hmac.c" />
-    <ClCompile Include="..\hsearch\hsearch.c" />
-    <ClCompile Include="..\clib\isalpha.c" />
-    <ClCompile Include="..\lock\lock.c" />
-    <ClCompile Include="..\lock\lock_deadlock.c" />
-    <ClCompile Include="..\lock\lock_failchk.c" />
-    <ClCompile Include="..\lock\lock_id.c" />
-    <ClCompile Include="..\lock\lock_list.c" />
-    <ClCompile Include="..\lock\lock_method.c" />
-    <ClCompile Include="..\lock\lock_region.c" />
-    <ClCompile Include="..\lock\lock_stat.c" />
-    <ClCompile Include="..\lock\lock_timer.c" />
-    <ClCompile Include="..\lock\lock_util.c" />
-    <ClCompile Include="..\log\log.c" />
-    <ClCompile Include="..\log\log_archive.c" />
-    <ClCompile Include="..\log\log_compare.c" />
-    <ClCompile Include="..\log\log_debug.c" />
-    <ClCompile Include="..\log\log_get.c" />
-    <ClCompile Include="..\log\log_method.c" />
-    <ClCompile Include="..\log\log_print.c" />
-    <ClCompile Include="..\log\log_put.c" />
-    <ClCompile Include="..\log\log_stat.c" />
-    <ClCompile Include="..\log\log_verify.c" />
-    <ClCompile Include="..\log\log_verify_util.c" />
-    <ClCompile Include="..\log\log_verify_auto.c" />
-    <ClCompile Include="..\log\log_verify_int.c" />
-    <ClCompile Include="..\common\mkpath.c" />
-    <ClCompile Include="..\mp\mp_alloc.c" />
-    <ClCompile Include="..\mp\mp_bh.c" />
-    <ClCompile Include="..\mp\mp_fget.c" />
-    <ClCompile Include="..\mp\mp_fmethod.c" />
-    <ClCompile Include="..\mp\mp_fopen.c" />
-    <ClCompile Include="..\mp\mp_fput.c" />
-    <ClCompile Include="..\mp\mp_fset.c" />
-    <ClCompile Include="..\mp\mp_method.c" />
-    <ClCompile Include="..\mp\mp_mvcc.c" />
-    <ClCompile Include="..\mp\mp_region.c" />
-    <ClCompile Include="..\mp\mp_register.c" />
-    <ClCompile Include="..\mp\mp_resize.c" />
-    <ClCompile Include="..\mp\mp_stat.c" />
-    <ClCompile Include="..\mp\mp_sync.c" />
-    <ClCompile Include="..\mp\mp_trickle.c" />
-    <ClCompile Include="..\crypto\mersenne\mt19937db.c" />
-    <ClCompile Include="..\mutex\mut_alloc.c" />
-    <ClCompile Include="..\mutex\mut_failchk.c" />
-    <ClCompile Include="..\mutex\mut_method.c" />
-    <ClCompile Include="..\mutex\mut_region.c" />
-    <ClCompile Include="..\mutex\mut_stat.c" />
-    <ClCompile Include="..\mutex\mut_win32.c" />
-    <ClCompile Include="..\common\openflags.c" />
-    <ClCompile Include="..\os\os_abort.c" />
-    <ClCompile Include="..\os\os_addrinfo.c" />
-    <ClCompile Include="..\os_windows\os_abs.c" />
-    <ClCompile Include="..\os\os_alloc.c" />
-    <ClCompile Include="..\os_windows\os_clock.c" />
-    <ClCompile Include="..\os_windows\os_config.c" />
-    <ClCompile Include="..\os_windows\os_cpu.c" />
-    <ClCompile Include="..\os\os_ctime.c" />
-    <ClCompile Include="..\os_windows\os_dir.c" />
-    <ClCompile Include="..\os_windows\os_errno.c" />
-    <ClCompile Include="..\os_windows\os_fid.c" />
-    <ClCompile Include="..\os_windows\os_flock.c" />
-    <ClCompile Include="..\os_windows\os_fsync.c" />
-    <ClCompile Include="..\os_windows\os_getenv.c" />
-    <ClCompile Include="..\os_windows\os_handle.c" />
-    <ClCompile Include="..\os_windows\os_map.c" />
-    <ClCompile Include="..\os_windows\os_mkdir.c" />
-    <ClCompile Include="..\os_windows\os_open.c" />
-    <ClCompile Include="..\os\os_pid.c" />
-    <ClCompile Include="..\os_windows\os_rename.c" />
-    <ClCompile Include="..\os\os_root.c" />
-    <ClCompile Include="..\os\os_rpath.c" />
-    <ClCompile Include="..\os_windows\os_rw.c" />
-    <ClCompile Include="..\os_windows\os_seek.c" />
-    <ClCompile Include="..\os\os_stack.c" />
-    <ClCompile Include="..\os_windows\os_stat.c" />
-    <ClCompile Include="..\os\os_tmpdir.c" />
-    <ClCompile Include="..\os_windows\os_truncate.c" />
-    <ClCompile Include="..\os\os_uid.c" />
-    <ClCompile Include="..\os_windows\os_unlink.c" />
-    <ClCompile Include="..\os_windows\os_yield.c" />
-    <ClCompile Include="..\qam\qam.c" />
-    <ClCompile Include="..\qam\qam_auto.c" />
-    <ClCompile Include="..\qam\qam_conv.c" />
-    <ClCompile Include="..\qam\qam_files.c" />
-    <ClCompile Include="..\qam\qam_method.c" />
-    <ClCompile Include="..\qam\qam_open.c" />
-    <ClCompile Include="..\qam\qam_rec.c" />
-    <ClCompile Include="..\qam\qam_stat.c" />
-    <ClCompile Include="..\qam\qam_upgrade.c" />
-    <ClCompile Include="..\qam\qam_verify.c" />
-    <ClCompile Include="..\rep\rep_auto.c" />
-    <ClCompile Include="..\rep\rep_backup.c" />
-    <ClCompile Include="..\rep\rep_elect.c" />
-    <ClCompile Include="..\rep\rep_lease.c" />
-    <ClCompile Include="..\rep\rep_log.c" />
-    <ClCompile Include="..\rep\rep_method.c" />
-    <ClCompile Include="..\rep\rep_record.c" />
-    <ClCompile Include="..\rep\rep_region.c" />
-    <ClCompile Include="..\rep\rep_stat.c" />
-    <ClCompile Include="..\rep\rep_util.c" />
-    <ClCompile Include="..\rep\rep_verify.c" />
-    <ClCompile Include="..\repmgr\repmgr_auto.c" />
-    <ClCompile Include="..\repmgr\repmgr_elect.c" />
-    <ClCompile Include="..\repmgr\repmgr_method.c" />
-    <ClCompile Include="..\repmgr\repmgr_msg.c" />
-    <ClCompile Include="..\repmgr\repmgr_net.c" />
-    <ClCompile Include="..\repmgr\repmgr_queue.c" />
-    <ClCompile Include="..\repmgr\repmgr_rereq.c" />
-    <ClCompile Include="..\repmgr\repmgr_sel.c" />
-    <ClCompile Include="..\repmgr\repmgr_stat.c" />
-    <ClCompile Include="..\repmgr\repmgr_util.c" />
-    <ClCompile Include="..\repmgr\repmgr_windows.c" />
-    <ClCompile Include="..\crypto\rijndael\rijndael-alg-fst.c" />
-    <ClCompile Include="..\crypto\rijndael\rijndael-api-fst.c" />
-    <ClCompile Include="..\sequence\seq_stat.c" />
-    <ClCompile Include="..\sequence\sequence.c" />
-    <ClCompile Include="..\hmac\sha1.c" />
-    <ClCompile Include="..\clib\strsep.c" />
-    <ClCompile Include="..\txn\txn.c" />
-    <ClCompile Include="..\txn\txn_auto.c" />
-    <ClCompile Include="..\txn\txn_chkpt.c" />
-    <ClCompile Include="..\txn\txn_failchk.c" />
-    <ClCompile Include="..\txn\txn_method.c" />
-    <ClCompile Include="..\txn\txn_rec.c" />
-    <ClCompile Include="..\txn\txn_recover.c" />
-    <ClCompile Include="..\txn\txn_region.c" />
-    <ClCompile Include="..\txn\txn_stat.c" />
-    <ClCompile Include="..\txn\txn_util.c" />
-    <ClCompile Include="..\common\os_method.c" />
-    <ClCompile Include="..\common\util_cache.c" />
-    <ClCompile Include="..\common\util_log.c" />
-    <ClCompile Include="..\common\util_sig.c" />
-    <ClCompile Include="..\common\zerofill.c" />
+    <ClCompile Include="..\src\crypto\aes_method.c" />
+    <ClCompile Include="..\src\btree\bt_compact.c" />
+    <ClCompile Include="..\src\btree\bt_compare.c" />
+    <ClCompile Include="..\src\btree\bt_compress.c" />
+    <ClCompile Include="..\src\btree\bt_conv.c" />
+    <ClCompile Include="..\src\btree\bt_curadj.c" />
+    <ClCompile Include="..\src\btree\bt_cursor.c" />
+    <ClCompile Include="..\src\btree\bt_delete.c" />
+    <ClCompile Include="..\src\btree\bt_method.c" />
+    <ClCompile Include="..\src\btree\bt_open.c" />
+    <ClCompile Include="..\src\btree\bt_put.c" />
+    <ClCompile Include="..\src\btree\bt_rec.c" />
+    <ClCompile Include="..\src\btree\bt_reclaim.c" />
+    <ClCompile Include="..\src\btree\bt_recno.c" />
+    <ClCompile Include="..\src\btree\bt_rsearch.c" />
+    <ClCompile Include="..\src\btree\bt_search.c" />
+    <ClCompile Include="..\src\btree\bt_split.c" />
+    <ClCompile Include="..\src\btree\bt_stat.c" />
+    <ClCompile Include="..\src\btree\bt_upgrade.c" />
+    <ClCompile Include="..\src\btree\bt_verify.c" />
+    <ClCompile Include="..\src\btree\btree_auto.c" />
+    <ClCompile Include="..\src\db\crdel_auto.c" />
+    <ClCompile Include="..\src\db\crdel_rec.c" />
+    <ClCompile Include="..\src\crypto\crypto.c" />
+    <ClCompile Include="..\lang\cxx\cxx_db.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_dbc.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_dbt.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_env.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_except.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_lock.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_logc.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_mpool.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_multi.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_seq.cpp" />
+    <ClCompile Include="..\lang\cxx\cxx_txn.cpp" />
+    <ClCompile Include="..\src\db\db.c" />
+    <ClCompile Include="..\src\db\db_am.c" />
+    <ClCompile Include="..\src\db\db_auto.c" />
+    <ClCompile Include="..\src\common\clock.c" />
+    <ClCompile Include="..\src\common\db_byteorder.c" />
+    <ClCompile Include="..\src\db\db_cam.c" />
+    <ClCompile Include="..\src\db\db_cds.c" />
+    <ClCompile Include="..\src\db\db_compact.c" />
+    <ClCompile Include="..\src\db\db_conv.c" />
+    <ClCompile Include="..\src\db\db_dispatch.c" />
+    <ClCompile Include="..\src\db\db_dup.c" />
+    <ClCompile Include="..\src\common\db_err.c" />
+    <ClCompile Include="..\src\common\db_getlong.c" />
+    <ClCompile Include="..\src\common\db_idspace.c" />
+    <ClCompile Include="..\src\common\db_compint.c" />
+    <ClCompile Include="..\src\db\db_iface.c" />
+    <ClCompile Include="..\src\db\db_join.c" />
+    <ClCompile Include="..\src\common\db_log2.c" />
+    <ClCompile Include="..\src\db\db_meta.c" />
+    <ClCompile Include="..\src\db\db_method.c" />
+    <ClCompile Include="..\src\db\db_open.c" />
+    <ClCompile Include="..\src\db\db_overflow.c" />
+    <ClCompile Include="..\src\db\db_ovfl_vrfy.c" />
+    <ClCompile Include="..\src\db\db_pr.c" />
+    <ClCompile Include="..\src\db\db_rec.c" />
+    <ClCompile Include="..\src\db\db_reclaim.c" />
+    <ClCompile Include="..\src\db\db_remove.c" />
+    <ClCompile Include="..\src\db\db_rename.c" />
+    <ClCompile Include="..\src\db\db_ret.c" />
+    <ClCompile Include="..\src\db\db_setid.c" />
+    <ClCompile Include="..\src\db\db_setlsn.c" />
+    <ClCompile Include="..\src\common\db_shash.c" />
+    <ClCompile Include="..\src\db\db_sort_multiple.c" />
+    <ClCompile Include="..\src\db\db_stati.c" />
+    <ClCompile Include="..\src\db\db_truncate.c" />
+    <ClCompile Include="..\src\db\db_upg.c" />
+    <ClCompile Include="..\src\db\db_upg_opd.c" />
+    <ClCompile Include="..\src\db\db_vrfy.c" />
+    <ClCompile Include="..\src\db\db_vrfyutil.c" />
+    <ClCompile Include="..\src\db\partition.c" />
+    <ClCompile Include="..\lang\dbm\dbm.c" />
+    <ClCompile Include="..\src\dbreg\dbreg.c" />
+    <ClCompile Include="..\src\dbreg\dbreg_auto.c" />
+    <ClCompile Include="..\src\dbreg\dbreg_rec.c" />
+    <ClCompile Include="..\src\dbreg\dbreg_stat.c" />
+    <ClCompile Include="..\src\dbreg\dbreg_util.c" />
+    <ClCompile Include="..\src\common\dbt.c" />
+    <ClCompile Include="..\src\env\env_alloc.c" />
+    <ClCompile Include="..\src\env\env_config.c" />
+    <ClCompile Include="..\src\env\env_failchk.c" />
+    <ClCompile Include="..\src\env\env_file.c" />
+    <ClCompile Include="..\src\env\env_globals.c" />
+    <ClCompile Include="..\src\env\env_method.c" />
+    <ClCompile Include="..\src\env\env_name.c" />
+    <ClCompile Include="..\src\env\env_open.c" />
+    <ClCompile Include="..\src\env\env_recover.c" />
+    <ClCompile Include="..\src\env\env_region.c" />
+    <ClCompile Include="..\src\env\env_register.c" />
+    <ClCompile Include="..\src\env\env_sig.c" />
+    <ClCompile Include="..\src\env\env_stat.c" />
+    <ClCompile Include="..\src\fileops\fileops_auto.c" />
+    <ClCompile Include="..\src\fileops\fop_basic.c" />
+    <ClCompile Include="..\src\fileops\fop_rec.c" />
+    <ClCompile Include="..\src\fileops\fop_util.c" />
+    <ClCompile Include="..\src\hash\hash.c" />
+    <ClCompile Include="..\src\hash\hash_auto.c" />
+    <ClCompile Include="..\src\hash\hash_compact.c" />
+    <ClCompile Include="..\src\hash\hash_conv.c" />
+    <ClCompile Include="..\src\hash\hash_dup.c" />
+    <ClCompile Include="..\src\hash\hash_func.c" />
+    <ClCompile Include="..\src\hash\hash_meta.c" />
+    <ClCompile Include="..\src\hash\hash_method.c" />
+    <ClCompile Include="..\src\hash\hash_open.c" />
+    <ClCompile Include="..\src\hash\hash_page.c" />
+    <ClCompile Include="..\src\hash\hash_rec.c" />
+    <ClCompile Include="..\src\hash\hash_reclaim.c" />
+    <ClCompile Include="..\src\hash\hash_stat.c" />
+    <ClCompile Include="..\src\hash\hash_upgrade.c" />
+    <ClCompile Include="..\src\hash\hash_verify.c" />
+    <ClCompile Include="..\src\hmac\hmac.c" />
+    <ClCompile Include="..\lang\hsearch\hsearch.c" />
+    <ClCompile Include="..\src\clib\isalpha.c" />
+    <ClCompile Include="..\src\lock\lock.c" />
+    <ClCompile Include="..\src\lock\lock_deadlock.c" />
+    <ClCompile Include="..\src\lock\lock_failchk.c" />
+    <ClCompile Include="..\src\lock\lock_id.c" />
+    <ClCompile Include="..\src\lock\lock_list.c" />
+    <ClCompile Include="..\src\lock\lock_method.c" />
+    <ClCompile Include="..\src\lock\lock_region.c" />
+    <ClCompile Include="..\src\lock\lock_stat.c" />
+    <ClCompile Include="..\src\lock\lock_timer.c" />
+    <ClCompile Include="..\src\lock\lock_util.c" />
+    <ClCompile Include="..\src\log\log.c" />
+    <ClCompile Include="..\src\log\log_archive.c" />
+    <ClCompile Include="..\src\log\log_compare.c" />
+    <ClCompile Include="..\src\log\log_debug.c" />
+    <ClCompile Include="..\src\log\log_get.c" />
+    <ClCompile Include="..\src\log\log_method.c" />
+    <ClCompile Include="..\src\log\log_print.c" />
+    <ClCompile Include="..\src\log\log_put.c" />
+    <ClCompile Include="..\src\log\log_stat.c" />
+    <ClCompile Include="..\src\log\log_verify.c" />
+    <ClCompile Include="..\src\log\log_verify_util.c" />
+    <ClCompile Include="..\src\log\log_verify_auto.c" />
+    <ClCompile Include="..\src\log\log_verify_int.c" />
+    <ClCompile Include="..\src\common\mkpath.c" />
+    <ClCompile Include="..\src\mp\mp_alloc.c" />
+    <ClCompile Include="..\src\mp\mp_bh.c" />
+    <ClCompile Include="..\src\mp\mp_fget.c" />
+    <ClCompile Include="..\src\mp\mp_fmethod.c" />
+    <ClCompile Include="..\src\mp\mp_fopen.c" />
+    <ClCompile Include="..\src\mp\mp_fput.c" />
+    <ClCompile Include="..\src\mp\mp_fset.c" />
+    <ClCompile Include="..\src\mp\mp_method.c" />
+    <ClCompile Include="..\src\mp\mp_mvcc.c" />
+    <ClCompile Include="..\src\mp\mp_region.c" />
+    <ClCompile Include="..\src\mp\mp_register.c" />
+    <ClCompile Include="..\src\mp\mp_resize.c" />
+    <ClCompile Include="..\src\mp\mp_stat.c" />
+    <ClCompile Include="..\src\mp\mp_sync.c" />
+    <ClCompile Include="..\src\mp\mp_trickle.c" />
+    <ClCompile Include="..\src\crypto\mersenne\mt19937db.c" />
+    <ClCompile Include="..\src\mutex\mut_alloc.c" />
+    <ClCompile Include="..\src\mutex\mut_failchk.c" />
+    <ClCompile Include="..\src\mutex\mut_method.c" />
+    <ClCompile Include="..\src\mutex\mut_region.c" />
+    <ClCompile Include="..\src\mutex\mut_stat.c" />
+    <ClCompile Include="..\src\mutex\mut_win32.c" />
+    <ClCompile Include="..\src\common\openflags.c" />
+    <ClCompile Include="..\src\os\os_abort.c" />
+    <ClCompile Include="..\src\os\os_addrinfo.c" />
+    <ClCompile Include="..\src\os_windows\os_abs.c" />
+    <ClCompile Include="..\src\os\os_alloc.c" />
+    <ClCompile Include="..\src\os_windows\os_clock.c" />
+    <ClCompile Include="..\src\os_windows\os_config.c" />
+    <ClCompile Include="..\src\os_windows\os_cpu.c" />
+    <ClCompile Include="..\src\os\os_ctime.c" />
+    <ClCompile Include="..\src\os_windows\os_dir.c" />
+    <ClCompile Include="..\src\os_windows\os_errno.c" />
+    <ClCompile Include="..\src\os_windows\os_fid.c" />
+    <ClCompile Include="..\src\os_windows\os_flock.c" />
+    <ClCompile Include="..\src\os_windows\os_fsync.c" />
+    <ClCompile Include="..\src\os_windows\os_getenv.c" />
+    <ClCompile Include="..\src\os_windows\os_handle.c" />
+    <ClCompile Include="..\src\os_windows\os_map.c" />
+    <ClCompile Include="..\src\os_windows\os_mkdir.c" />
+    <ClCompile Include="..\src\os_windows\os_open.c" />
+    <ClCompile Include="..\src\os\os_pid.c" />
+    <ClCompile Include="..\src\os_windows\os_rename.c" />
+    <ClCompile Include="..\src\os\os_root.c" />
+    <ClCompile Include="..\src\os\os_rpath.c" />
+    <ClCompile Include="..\src\os_windows\os_rw.c" />
+    <ClCompile Include="..\src\os_windows\os_seek.c" />
+    <ClCompile Include="..\src\os\os_stack.c" />
+    <ClCompile Include="..\src\os_windows\os_stat.c" />
+    <ClCompile Include="..\src\os\os_tmpdir.c" />
+    <ClCompile Include="..\src\os_windows\os_truncate.c" />
+    <ClCompile Include="..\src\os\os_uid.c" />
+    <ClCompile Include="..\src\os_windows\os_unlink.c" />
+    <ClCompile Include="..\src\os_windows\os_yield.c" />
+    <ClCompile Include="..\src\qam\qam.c" />
+    <ClCompile Include="..\src\qam\qam_auto.c" />
+    <ClCompile Include="..\src\qam\qam_conv.c" />
+    <ClCompile Include="..\src\qam\qam_files.c" />
+    <ClCompile Include="..\src\qam\qam_method.c" />
+    <ClCompile Include="..\src\qam\qam_open.c" />
+    <ClCompile Include="..\src\qam\qam_rec.c" />
+    <ClCompile Include="..\src\qam\qam_stat.c" />
+    <ClCompile Include="..\src\qam\qam_upgrade.c" />
+    <ClCompile Include="..\src\qam\qam_verify.c" />
+    <ClCompile Include="..\src\rep\rep_auto.c" />
+    <ClCompile Include="..\src\rep\rep_backup.c" />
+    <ClCompile Include="..\src\rep\rep_elect.c" />
+    <ClCompile Include="..\src\rep\rep_lease.c" />
+    <ClCompile Include="..\src\rep\rep_log.c" />
+    <ClCompile Include="..\src\rep\rep_method.c" />
+    <ClCompile Include="..\src\rep\rep_record.c" />
+    <ClCompile Include="..\src\rep\rep_region.c" />
+    <ClCompile Include="..\src\rep\rep_stat.c" />
+    <ClCompile Include="..\src\rep\rep_util.c" />
+    <ClCompile Include="..\src\rep\rep_verify.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_auto.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_elect.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_method.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_msg.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_net.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_queue.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_rereq.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_sel.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_stat.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_util.c" />
+    <ClCompile Include="..\src\repmgr\repmgr_windows.c" />
+    <ClCompile Include="..\src\crypto\rijndael\rijndael-alg-fst.c" />
+    <ClCompile Include="..\src\crypto\rijndael\rijndael-api-fst.c" />
+    <ClCompile Include="..\src\sequence\seq_stat.c" />
+    <ClCompile Include="..\src\sequence\sequence.c" />
+    <ClCompile Include="..\src\hmac\sha1.c" />
+    <ClCompile Include="..\src\clib\strsep.c" />
+    <ClCompile Include="..\src\txn\txn.c" />
+    <ClCompile Include="..\src\txn\txn_auto.c" />
+    <ClCompile Include="..\src\txn\txn_chkpt.c" />
+    <ClCompile Include="..\src\txn\txn_failchk.c" />
+    <ClCompile Include="..\src\txn\txn_method.c" />
+    <ClCompile Include="..\src\txn\txn_rec.c" />
+    <ClCompile Include="..\src\txn\txn_recover.c" />
+    <ClCompile Include="..\src\txn\txn_region.c" />
+    <ClCompile Include="..\src\txn\txn_stat.c" />
+    <ClCompile Include="..\src\txn\txn_util.c" />
+    <ClCompile Include="..\src\common\os_method.c" />
+    <ClCompile Include="..\src\common\util_cache.c" />
+    <ClCompile Include="..\src\common\util_log.c" />
+    <ClCompile Include="..\src\common\util_sig.c" />
+    <ClCompile Include="..\src\common\zerofill.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libdb.def" />

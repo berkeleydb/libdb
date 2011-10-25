@@ -52,18 +52,51 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
          <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
     </p>
       <p>
-         The <code class="methodname">DB_ENV-&gt;failchk()</code> method is based on the <code class="literal">thread_id</code> and
-         <code class="literal">is_alive</code> functions specified to the 
-         <a class="xref" href="envset_thread_id.html" title="DB_ENV-&gt;set_thread_id()">DB_ENV-&gt;set_thread_id()</a> 
-         and
-         <a class="xref" href="envset_isalive.html" title="DB_ENV-&gt;set_isalive()">DB_ENV-&gt;set_isalive()</a> 
-         methods.  Applications calling the <code class="methodname">DB_ENV-&gt;failchk()</code> method must have
-         already called the <a class="xref" href="envset_isalive.html" title="DB_ENV-&gt;set_isalive()">DB_ENV-&gt;set_isalive()</a> 
-         method, on the same <a class="link" href="env.html" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a>, and must have configured
-         their database environment using the 
-         <a class="xref" href="envset_thread_count.html" title="DB_ENV-&gt;set_thread_count()">DB_ENV-&gt;set_thread_count()</a> 
-         method.
-    </p>
+         The <code class="methodname">DB_ENV-&gt;failchk()</code> method is 
+         used in conjunction with the 
+         <a class="xref" href="envset_thread_count.html" title="DB_ENV-&gt;set_thread_count()">DB_ENV-&gt;set_thread_count()</a>,
+         <a class="xref" href="envset_isalive.html" title="DB_ENV-&gt;set_isalive()">DB_ENV-&gt;set_isalive()</a> and
+         <a class="xref" href="envset_thread_id.html" title="DB_ENV-&gt;set_thread_id()">DB_ENV-&gt;set_thread_id()</a>
+         methods.  Before calling the <code class="methodname">failchk()</code>method, applications must:
+     </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                 Configure their database using the 
+                <a class="xref" href="envset_thread_count.html" title="DB_ENV-&gt;set_thread_count()">DB_ENV-&gt;set_thread_count()</a>
+                method.
+             </p>
+          </li>
+          <li>
+            <p>
+                 Establish an <code class="literal">is_alive()</code> function and
+                 invoke
+                 <a class="xref" href="envset_isalive.html" title="DB_ENV-&gt;set_isalive()">DB_ENV-&gt;set_isalive()</a> 
+                 with that function as the <code class="literal">is_alive</code> parameter.
+             </p>
+          </li>
+          <li>
+            <p>
+                 Establish a <code class="literal">thread_id</code> function and
+                 invoke
+                <a class="xref" href="envset_thread_id.html" title="DB_ENV-&gt;set_thread_id()">DB_ENV-&gt;set_thread_id()</a>
+                with that function as the <code class="literal">thread_id</code>
+                parameter.
+             </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+         If any of these methods are omitted, a program may be unable to
+         allocate a thread control block. This is true of the standalone
+         Berkeley DB utility programs. To avoid problems when using the
+         standalone Berkeley DB utility programs with environments
+         configured for failure checking, incorporate the utility's
+         functionality directly in the application, or call the
+         <code class="methodname">DB_ENV-&gt;failchk()</code> method along with its 
+         associated methods before running the utility.
+     </p>
       <p>
          If <code class="methodname">DB_ENV-&gt;failchk()</code> determines a thread of control exited while
          holding database read locks, it will release those locks.  If
@@ -118,7 +151,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3979490"></a>Parameters</h3>
+              <h3 class="title"><a id="idp51463528"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -126,7 +159,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3979706"></a>flags</h4>
+                <h4 class="title"><a id="idp51462880"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -140,7 +173,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3978771"></a>Errors</h3>
+              <h3 class="title"><a id="idp51468056"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -156,7 +189,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3979950"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp51364688"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -169,7 +202,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3979932"></a>Class</h3>
+              <h3 class="title"><a id="idp51469136"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -181,7 +214,7 @@ DB_ENV-&gt;failchk(DB_ENV *dbenv, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3979914"></a>See Also</h3>
+              <h3 class="title"><a id="idp51462664"></a>See Also</h3>
             </div>
           </div>
         </div>

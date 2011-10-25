@@ -11,7 +11,7 @@ msgcsharp="/*-
  * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
  */"
 
-f=../csharp/Internal/StatStructs.cs
+f=../lang/csharp/src/Internal/StatStructs.cs
 t=AA_TEST
 #trap 'rm -f $t; exit 0' 0 1 2 3 13 15
 
@@ -20,7 +20,7 @@ t=AA_TEST
 # and finally convert from C to C# types
 csclass()
 {
-    sed -n "/struct $1 {/,/^}/p" < ../dbinc/db.in |
+    sed -n "/struct $1 {/,/^}/p" < ../src/dbinc/db.in |
     sed -e "/$1/d" \
     	-e '/^}/d' \
 	-e "/CONFIG_TEST/,/#endif/d" \
@@ -68,7 +68,7 @@ EOF
 txn_active()
 {
     (echo "internal enum DB_TXN_ACTIVE_STATUS {"
-        sed -n "/struct __db_txn_active {/,/^}/p" < ../dbinc/db.in |
+        sed -n "/struct __db_txn_active {/,/^}/p" < ../src/dbinc/db.in |
 	sed -n "/^#define/p" | awk '{print "        " $2 " = " $3 ","}'
 	echo "}"
 	echo ) >> $t
@@ -78,7 +78,7 @@ txn_active()
     internal struct DB_TXN_ACTIVE {
 EOF
 
-	sed -n "/struct __db_txn_active {/,/^}/p" < ../dbinc/db.in |
+	sed -n "/struct __db_txn_active {/,/^}/p" < ../src/dbinc/db.in |
 	sed -e "/__db_txn_active/d" \
 	    -e '/^}/d' \
 	    -e "/CONFIG_TEST/,/#endif/d" \
@@ -139,6 +139,7 @@ stat_class seq_stat SequenceStatStruct
 stat_class txn_stat TransactionStatStruct
 
 cat >> $t <<EOF
+    [StructLayout(LayoutKind.Sequential)]
     internal struct DB_LSN_STRUCT {
         internal uint file;
         internal uint offset;
@@ -160,4 +161,4 @@ cat >> $t <<EOF
 EOF
 
 cmp $f $t > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 644 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)

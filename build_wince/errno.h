@@ -91,9 +91,7 @@
 #define	EWOULDBLOCK	EAGAIN		/* Operation would block */
 #define	EINPROGRESS	36		/* Operation now in progress */
 
-#ifndef EALREADY			/* BREW already has an EALREADY. */
 #define	EALREADY	37		/* Operation already in progress */
-#endif
 
 /* ipc/network software -- argument errors */
 #define	ENOTSOCK	38		/* Socket operation on non-socket */

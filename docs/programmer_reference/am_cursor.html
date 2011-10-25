@@ -172,7 +172,7 @@ customize retrieval.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642992"></a>Cursor position flags</h4>
+                <h4 class="title"><a id="idp50735048"></a>Cursor position flags</h4>
               </div>
             </div>
           </div>
@@ -211,7 +211,7 @@ duplicate data item for the current key.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3643003"></a>Retrieving specific key/data pairs</h4>
+                <h4 class="title"><a id="idp50743480"></a>Retrieving specific key/data pairs</h4>
               </div>
             </div>
           </div>
@@ -263,7 +263,7 @@ a large set of duplicate records.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3643114"></a>Retrieving based on record numbers</h4>
+                <h4 class="title"><a id="idp50750240"></a>Retrieving based on record numbers</h4>
               </div>
             </div>
           </div>
@@ -292,7 +292,7 @@ for the record to which the cursor refers.</dd>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3643017"></a>Special-purpose flags</h4>
+                <h4 class="title"><a id="idp50744344"></a>Special-purpose flags</h4>
               </div>
             </div>
           </div>
@@ -322,61 +322,61 @@ database and displaying the records it contains to the standard
 output:</p>
           <pre class="programlisting">int
 display(database)
-	char *database;
+    char *database;
 {
-	DB *dbp;
-	DBC *dbcp;
-	DBT key, data;
-	int close_db, close_dbc, ret;
+    DB *dbp;
+    DBC *dbcp;
+    DBT key, data;
+    int close_db, close_dbc, ret;
 
-	close_db = close_dbc = 0;
+    close_db = close_dbc = 0;
 
-	/* Open the database. */
-	if ((ret = db_create(&amp;dbp, NULL, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: db_create: %s\n", progname, db_strerror(ret));
-		return (1);
-	}
-	close_db = 1;
+    /* Open the database. */
+    if ((ret = db_create(&amp;dbp, NULL, 0)) != 0) {
+        fprintf(stderr,
+            "%s: db_create: %s\n", progname, db_strerror(ret));
+        return (1);
+    }
+    close_db = 1;
 
-	/* Turn on additional error output. */
-	dbp-&gt;set_errfile(dbp, stderr);
-	dbp-&gt;set_errpfx(dbp, progname);
+    /* Turn on additional error output. */
+    dbp-&gt;set_errfile(dbp, stderr);
+    dbp-&gt;set_errpfx(dbp, progname);
 
-	/* Open the database. */
-	if ((ret = dbp-&gt;open(dbp, NULL, database, NULL, 
+    /* Open the database. */
+    if ((ret = dbp-&gt;open(dbp, NULL, database, NULL, 
             DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "%s: DB-&gt;open", database);
-		goto err;
-	}
+        dbp-&gt;err(dbp, ret, "%s: DB-&gt;open", database);
+        goto err;
+    }
 
-	/* Acquire a cursor for the database. */
-	if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
-		goto err;
-	}
-	close_dbc = 1;
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+        goto err;
+    }
+    close_dbc = 1;
 
-	/* Initialize the key/data return pair. */
-	memset(&amp;key, 0, sizeof(key));
-	memset(&amp;data, 0, sizeof(data));
+    /* Initialize the key/data return pair. */
+    memset(&amp;key, 0, sizeof(key));
+    memset(&amp;data, 0, sizeof(data));
 
-	/* Walk through the database and print out the key/data pairs. */
-	while ((ret = dbcp-&gt;c_get(dbcp, &amp;key, &amp;data, DB_NEXT)) == 0)
-		printf("%.*s : %.*s\n",
-		    (int)key.size, (char *)key.data,
-		    (int)data.size, (char *)data.data);
-	if (ret != DB_NOTFOUND) {
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;get");
-		goto err;
-	}
+    /* Walk through the database and print out the key/data pairs. */
+    while ((ret = dbcp-&gt;get(dbcp, &amp;key, &amp;data, DB_NEXT)) == 0)
+        printf("%.*s : %.*s\n",
+            (int)key.size, (char *)key.data,
+            (int)data.size, (char *)data.data);
+    if (ret != DB_NOTFOUND) {
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;get");
+        goto err;
+    }
 
-err:	if (close_dbc &amp;&amp; (ret = dbcp-&gt;c_close(dbcp)) != 0)
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
-	if (close_db &amp;&amp; (ret = dbp-&gt;close(dbp, 0)) != 0)
-		fprintf(stderr,
-		    "%s: DB-&gt;close: %s\n", progname, db_strerror(ret));
-	return (0);
+err:    if (close_dbc &amp;&amp; (ret = dbcp-&gt;close(dbcp)) != 0)
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
+    if (close_db &amp;&amp; (ret = dbp-&gt;close(dbp, 0)) != 0)
+        fprintf(stderr,
+            "%s: DB-&gt;close: %s\n", progname, db_strerror(ret));
+    return (0);
 }</pre>
         </div>
       </div>
@@ -436,51 +436,51 @@ to point to the newly inserted key/data pair in the database.</p>
 in a database that supports duplicate data items:</p>
         <pre class="programlisting">int
 store(dbp)
-	DB *dbp;
+    DB *dbp;
 {
-	DBC *dbcp;
-	DBT key, data;
-	int ret;
+    DBC *dbcp;
+    DBT key, data;
+    int ret;
 
-	/*
-	 * The DB handle for a Btree database supporting duplicate data
-	 * items is the argument; acquire a cursor for the database.
-	 */
-	if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
-		goto err;
-	}
+    /*
+     * The DB handle for a Btree database supporting duplicate data
+     * items is the argument; acquire a cursor for the database.
+     */
+    if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+        goto err;
+    }
 
-	/* Initialize the key. */
-	memset(&amp;key, 0, sizeof(key));
-	key.data = "new key";
-	key.size = strlen(key.data) + 1;
+    /* Initialize the key. */
+    memset(&amp;key, 0, sizeof(key));
+    key.data = "new key";
+    key.size = strlen(key.data) + 1;
 
-	/* Initialize the data to be the first of two duplicate records. */
-	memset(&amp;data, 0, sizeof(data));
-	data.data = "new key's data: entry #1";
-	data.size = strlen(data.data) + 1;
+    /* Initialize the data to be the first of two duplicate records. */
+    memset(&amp;data, 0, sizeof(data));
+    data.data = "new key's data: entry #1";
+    data.size = strlen(data.data) + 1;
 
-	/* Store the first of the two duplicate records. */
-	if ((ret = dbcp-&gt;c_put(dbcp, &amp;key, &amp;data, DB_KEYFIRST)) != 0)
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+    /* Store the first of the two duplicate records. */
+    if ((ret = dbcp-&gt;put(dbcp, &amp;key, &amp;data, DB_KEYFIRST)) != 0)
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
 
-	/* Initialize the data to be the second of two duplicate records. */
-	data.data = "new key's data: entry #2";
-	data.size = strlen(data.data) + 1;
+    /* Initialize the data to be the second of two duplicate records. */
+    data.data = "new key's data: entry #2";
+    data.size = strlen(data.data) + 1;
 
-	/*
-	 * Store the second of the two duplicate records.  No duplicate
-	 * record sort function has been specified, so we explicitly
-	 * store the record as the last of the duplicate set.
-	 */
-	if ((ret = dbcp-&gt;c_put(dbcp, &amp;key, &amp;data, DB_KEYLAST)) != 0)
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+    /*
+     * Store the second of the two duplicate records.  No duplicate
+     * record sort function has been specified, so we explicitly
+     * store the record as the last of the duplicate set.
+     */
+    if ((ret = dbcp-&gt;put(dbcp, &amp;key, &amp;data, DB_KEYLAST)) != 0)
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
 
-err:	if ((ret = dbcp-&gt;c_close(dbcp)) != 0)
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
+err:    if ((ret = dbcp-&gt;close(dbcp)) != 0)
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
 
-	return (0);
+    return (0);
 }</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -706,7 +706,7 @@ then return the store where expensive, red fruit could be purchased.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3643493"></a>Example</h4>
+                <h4 class="title"><a id="idp50800168"></a>Example</h4>
               </div>
             </div>
           </div>
@@ -769,20 +769,20 @@ memset(&amp;data, 0, sizeof(data));
 
 if ((ret =
     name_db-&gt;cursor(name_db, txn, &amp;name_curs, 0)) != 0)
-	goto err;
+    goto err;
 key.data = "smith";
 key.size = sizeof("smith");
 if ((ret =
-    name_curs-&gt;c_get(name_curs, &amp;key, &amp;data, DB_SET)) != 0)
-	goto err;
+    name_curs-&gt;get(name_curs, &amp;key, &amp;data, DB_SET)) != 0)
+    goto err;
 
 if ((ret = job_db-&gt;cursor(job_db, txn, &amp;job_curs, 0)) != 0)
-	goto err;
+    goto err;
 key.data = "manager";
 key.size = sizeof("manager");
 if ((ret =
-    job_curs-&gt;c_get(job_curs, &amp;key, &amp;data, DB_SET)) != 0)
-	goto err;
+    job_curs-&gt;get(job_curs, &amp;key, &amp;data, DB_SET)) != 0)
+    goto err;
 
 carray[0] = name_curs;
 carray[1] = job_curs;
@@ -790,10 +790,10 @@ carray[2] = NULL;
 
 if ((ret =
     pers_db-&gt;join(pers_db, carray, &amp;join_curs, 0)) != 0)
-	goto err;
+    goto err;
 while ((ret =
-    join_curs-&gt;c_get(join_curs, &amp;key, &amp;data, 0)) == 0) {
-	/* Process record returned in key/data. */
+    join_curs-&gt;get(join_curs, &amp;key, &amp;data, 0)) == 0) {
+    /* Process record returned in key/data. */
 }
 
 /*
@@ -801,18 +801,18 @@ while ((ret =
  * then it has completed successfully.
  */
 if (ret == DB_NOTFOUND)
-	ret = 0;
+    ret = 0;
 
 err:
 if (join_curs != NULL &amp;&amp;
-    (tret = join_curs-&gt;c_close(join_curs)) != 0 &amp;&amp; ret == 0)
-	ret = tret;
+    (tret = join_curs-&gt;close(join_curs)) != 0 &amp;&amp; ret == 0)
+    ret = tret;
 if (name_curs != NULL &amp;&amp;
-    (tret = name_curs-&gt;c_close(name_curs)) != 0 &amp;&amp; ret == 0)
-	ret = tret;
+    (tret = name_curs-&gt;close(name_curs)) != 0 &amp;&amp; ret == 0)
+    ret = tret;
 if (job_curs != NULL &amp;&amp;
-    (tret = job_curs-&gt;c_close(job_curs)) != 0 &amp;&amp; ret == 0)
-	ret = tret;
+    (tret = job_curs-&gt;close(job_curs)) != 0 &amp;&amp; ret == 0)
+    ret = tret;
 
 return (ret);
 </pre>

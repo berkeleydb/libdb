@@ -51,17 +51,22 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="build_win.html#id3745667">Visual C++ .NET 2008</a>
+                  <a href="build_win.html#idp50286856">Visual C++ .NET 2010</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win.html#id3746778">Visual C++ .NET 2005</a>
+                  <a href="build_win.html#idp50408472">Visual C++ .NET 2008</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win.html#id3746431">Build results</a>
+                  <a href="build_win.html#idp50387832">Visual C++ .NET 2005</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_win.html#idp50413704">Build results</a>
                 </span>
               </dt>
             </dl>
@@ -75,7 +80,7 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="win_build64.html#id3746897">x64 build with Visual Studio 2005 or newer</a>
+                  <a href="win_build64.html#idp50419672">x64 build with Visual Studio 2005 or newer</a>
                 </span>
               </dt>
             </dl>
@@ -114,22 +119,39 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_sql.html#id3747347">Binary Compatibility With SQLite</a>
+                  <a href="build_win_sql.html#idp50449688">Binary Compatibility With SQLite</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_sql.html#id3747352">Enabling Extensions</a>
+                  <a href="build_win_sql.html#idp50427488">Setting Preprocessor Flags
+   </a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_sql.html#id3746992">Building the JDBC Driver</a>
+                  <a href="build_win_sql.html#idp50447848">Enabling Extensions</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_sql.html#id3747123">Building the ODBC Driver</a>
+                  <a href="build_win_sql.html#build_jdbc">Building the JDBC Driver</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_win_sql.html#idp50458920">Using the JDBC Driver</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_win_sql.html#idp50482120">Building the ODBC Driver</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="build_win_sql.html#idp50455320"> Using the ADO.NET Driver
+    </a>
                 </span>
               </dt>
             </dl>
@@ -158,12 +180,12 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_test.html#id3748145">Building the software needed by the tests</a>
+                  <a href="build_win_test.html#idp50534648">Building the software needed by the tests</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_win_test.html#id3747793">Running the test suite under Windows</a>
+                  <a href="build_win_test.html#idp50524944">Running the test suite under Windows</a>
                 </span>
               </dt>
               <dt>
@@ -215,12 +237,20 @@
               <td align="center">*.vcproj</td>
               <td align="center">Visual Studio 2005 (8.0) projects</td>
             </tr>
+            <tr>
+              <td align="center">Berkeley_DB_vs2010.sln</td>
+              <td align="center">Visual Studio 2010 workspace</td>
+            </tr>
+            <tr>
+              <td align="center">*.vcxproj</td>
+              <td align="center">Visual Studio 2010 projects</td>
+            </tr>
           </tbody>
         </table>
       </div>
       <p>
     These project files can be used to build Berkeley DB for the following platforms: Windows
-    NT/2K/XP/2003/Vista, and 64-bit Windows XP/2003/Vista. 
+    NT/2K/XP/2003/Vista and Windows7; and 64-bit Windows XP/2003/Vista and Windows7. 
 </p>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -234,17 +264,22 @@
           <dl>
             <dt>
               <span class="sect2">
-                <a href="build_win.html#id3745667">Visual C++ .NET 2008</a>
+                <a href="build_win.html#idp50286856">Visual C++ .NET 2010</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_win.html#id3746778">Visual C++ .NET 2005</a>
+                <a href="build_win.html#idp50408472">Visual C++ .NET 2008</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_win.html#id3746431">Build results</a>
+                <a href="build_win.html#idp50387832">Visual C++ .NET 2005</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="build_win.html#idp50413704">Build results</a>
               </span>
             </dt>
           </dl>
@@ -253,7 +288,28 @@
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3745667"></a>Visual C++ .NET 2008</h3>
+                <h3 class="title"><a id="idp50286856"></a>Visual C++ .NET 2010</h3>
+              </div>
+            </div>
+          </div>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>Choose <span class="emphasis"><em>File -&gt; Open -&gt; Project/Solution...</em></span>.
+In the <code class="filename">build_windows</code> directory, select
+<code class="filename">Berkeley_DB_vs2010.sln</code> and click Open.</li>
+              <li>Choose the desired project configuration from the drop-down menu on
+the tool bar (either Debug or Release).</li>
+              <li>Choose the desired platform configuration from the drop-down menu on
+the tool bar (usually Win32 or x64).</li>
+              <li>To build, right-click on the <code class="filename">Berkeley_DB_vs2010</code> solution and select Build Solution.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="idp50408472"></a>Visual C++ .NET 2008</h3>
               </div>
             </div>
           </div>
@@ -278,7 +334,7 @@ Solution.</li>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3746778"></a>Visual C++ .NET 2005</h3>
+                <h3 class="title"><a id="idp50387832"></a>Visual C++ .NET 2005</h3>
               </div>
             </div>
           </div>
@@ -299,7 +355,7 @@ the tool bar (usually Win32 or x64).</li>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3746431"></a>Build results</h3>
+                <h3 class="title"><a id="idp50413704"></a>Build results</h3>
               </div>
             </div>
           </div>
@@ -331,10 +387,10 @@ the tool bar (usually Win32 or x64).</li>
           </table>
           <p>When building your application during development, you should normally
 use compile options "Debug Multithreaded DLL" and link against
-<code class="filename">build_windows\Debug\libdb50d.lib</code>.  You can
+<code class="filename">build_windows\Debug\libdb51d.lib</code>.  You can
 also build using a release version of the Berkeley DB libraries and tools,
 which will be placed in
-<code class="filename">build_windows\Win32\Release\libdb50.lib</code>.  When
+<code class="filename">build_windows\Win32\Release\libdb51.lib</code>.  When
 linking against the release build, you should compile your code with
 the "Release Multithreaded DLL" compile option.  You will also need to
 add the <code class="filename">build_windows</code> directory to the list of include

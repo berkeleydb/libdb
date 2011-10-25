@@ -85,7 +85,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;../lang/sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -102,7 +102,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb_sql51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
@@ -116,9 +116,9 @@
       <Command>
 mkdir "./$(OutDir)jdbc_classes/" 
 echo compiling JDBC classes
-javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\lang\sql\jdbc\SQLite\*java ..\lang\sql\jdbc\SQLite\JDBC2z\*java
 echo Building JNI header files
-javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+javah -o ..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
 echo creating jar file
 jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
 echo JDBC build finished</Command>
@@ -131,7 +131,7 @@ echo JDBC build finished</Command>
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;../lang/sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -148,7 +148,7 @@ echo JDBC build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb_sql51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
@@ -162,9 +162,9 @@ echo JDBC build finished</Command>
       <Command>
 mkdir "./$(OutDir)jdbc_classes/" 
 echo compiling JDBC classes
-javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\lang\sql\jdbc\SQLite\*java ..\lang\sql\jdbc\SQLite\JDBC2z\*java
 echo Building JNI header files
-javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+javah -o ..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
 echo creating jar file
 jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
 echo JDBC build finished</Command>
@@ -176,7 +176,7 @@ echo JDBC build finished</Command>
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;../lang/sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -193,7 +193,7 @@ echo JDBC build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb_sql50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb_sql51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
@@ -207,9 +207,9 @@ echo JDBC build finished</Command>
       <Command>
 mkdir "./$(OutDir)jdbc_classes/" 
 echo compiling JDBC classes
-javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\lang\sql\jdbc\SQLite\*java ..\lang\sql\jdbc\SQLite\JDBC2z\*java
 echo Building JNI header files
-javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+javah -o ..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
 echo creating jar file
 jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
 echo JDBC build finished</Command>
@@ -222,7 +222,7 @@ echo JDBC build finished</Command>
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../sql/generated;../sql/adapter;../sql/sqlite/src;../sql/sqlite/ext/fts3;../sql/sqlite/ext/rtree;../sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../lang/sql/generated;../lang/sql/adapter;../lang/sql/sqlite/src;../lang/sql/sqlite/ext/fts3;../lang/sql/sqlite/ext/rtree;../lang/sql/jdbc/native;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;HAVE_SQLITE3;HAVE_SQLITE3_MALLOC=1;HAVE_SQLITE3_PREPARE_V2=1;HAVE_SQLITE3_PREPARE16_V2=1;HAVE_SQLITE3_BIND_ZEROBLOB=1;HAVE_SQLITE3_CLEAR_BINDINGS=1;HAVE_SQLITE3_BIND_PARAMETER_COUNT=1;HAVE_SQLITE3_BIND_PARAMETER_NAME=1;HAVE_SQLITE3_BIND_PARAMETER_INDEX=1;HAVE_SQLITE3_RESULT_ZEROBLOB=1;HAVE_SQLITE3_INCRBLOBIO=1;HAVE_SQLITE3_SHARED_CACHE=1;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -239,7 +239,7 @@ echo JDBC build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb_sql50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb_sql51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)sqlite_jni.pdb</ProgramDatabaseFile>
@@ -253,9 +253,9 @@ echo JDBC build finished</Command>
       <Command>
 mkdir "./$(OutDir)jdbc_classes/" 
 echo compiling JDBC classes
-javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\sql\jdbc\SQLite\*java ..\sql\jdbc\SQLite\JDBC2z\*java
+javac -g -target 1.5 -d "$(OutDir)jdbc_classes" -classpath "$(OutDir)jdbc_classes" ..\lang\sql\jdbc\SQLite\*java ..\lang\sql\jdbc\SQLite\JDBC2z\*java
 echo Building JNI header files
-javah -o ..\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+javah -o ..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
 echo creating jar file
 jar cf "$(OutDir)jdbc.jar" -C "$(OutDir)jdbc_classes" .
 echo JDBC build finished</Command>
@@ -264,7 +264,7 @@ echo JDBC build finished</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\sql\jdbc\native\sqlite_jni.c" />
+    <ClCompile Include="..\lang\sql\jdbc\native\sqlite_jni.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

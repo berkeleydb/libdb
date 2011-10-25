@@ -605,15 +605,7 @@ int main(void)
                                            flag to configure this support.
                                             </span>
 
-                                           <span>
-                                            Use the
-                                            <code class="methodname">XmlContainerConfig::setMultiversion()</code>
-                                            option to configure this support when you open your
-                                            container. To configure multiversion support when you
-                                            open your environment, use the
-                                            <code class="literal">DB_MULTIVERSION</code> flag on the
-                                            environment open.
-                                           </span>
+                                           
 
                                             
                                    </p>
@@ -685,11 +677,10 @@ int main(void)
                           DB_INIT_LOCK  |  // Initialize locking
                           DB_INIT_LOG   |  // Initialize logging
                           DB_INIT_MPOOL |  // Initialize the cache
-                          DB_INIT_TXN   |  // Initialize transactions
-                          <strong class="userinput"><code>DB_MULTIVERSION; // Support snapshot isolation.</code></strong>
-
+                          DB_INIT_TXN;     // Initialize transactions
+                          
     // Note that no special flags are required here for snapshot isolation.
-    // This is because it is already enabled at the environment level.
+    // This is because it will be enabled at the environment level.
     u_int32_t db_flags = DB_CREATE | DB_AUTO_COMMIT;
     Db *dbp = NULL;
     const char *file_name = "mydb.db";
@@ -700,6 +691,8 @@ int main(void)
     try {
 
         myEnv.open(envHome.c_str(), env_flags, 0);
+        <strong class="userinput"><code>// Support snapshot isolation
+        myEnv.set_flags(DB_MULTIVERSION, 1);</code></strong>
         dbp = new Db(&amp;myEnv, 0);
         dbp-&gt;open(NULL,       // Txn pointer 
                   file_name,  // File name 

@@ -202,7 +202,7 @@ int main(void)
     try {
 
         // Configure max locks
-        myEnv.set_lk_max_locks(envp, 5000);
+        myEnv.set_lk_max_locks(5000);
 
         myEnv.open(envHome.c_str(), env_flags, 0);
 
@@ -396,7 +396,7 @@ int main(void)
         <pre class="programlisting">&gt; /usr/local/db_install/bin/db_deadlock -h /export/dbenv -a y</pre>
         <p>
         For more information, see the
-        <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/db/utility/db_deadlock.html" target="_top">
+        <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/utility/db_deadlock.html" target="_top">
             <code class="literal">db_deadlock</code> reference documentation.
         </a>
     </p>

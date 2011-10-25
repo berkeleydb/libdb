@@ -125,7 +125,8 @@
  * issued by DB. 
  */
 void
-my_error_handler(const char *error_prefix, char *msg)
+my_error_handler(const DB_ENV *dbenv, const char *error_prefix,
+	const char *msg)
 {
   /* 
    * Put your code to handle the error prefix and error

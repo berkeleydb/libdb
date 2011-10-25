@@ -77,13 +77,13 @@ to applications using the Berkeley DB Locking subsystem interfaces directly.</p>
 columns indicate the lock that is requested.  A 1 represents a conflict
 (that is, do not grant the lock if the indicated lock is held), and a
 0 indicates that it is OK to grant the lock.</p>
-      <pre class="programlisting">		Notheld	Read    Write	IWrite	IRead	IRW
-Notheld		0	0	0	0	0	0
-Read*		0	0	1	1	0	1
-Write**		0	1	1	1	1	1
-Intent Write	0	1	1	0	0	0
-Intent Read	0	0	1	0	0	0
-Intent RW	0	1	1	0	0	0</pre>
+      <pre class="programlisting">               Notheld    Read    Write    IWrite    IRead    IRW
+Notheld           0         0       0         0         0      0
+Read*             0         0       1         1         0      1
+Write**           0         1       1         1         1      1
+Intent Write      0         1       1         0         0      0
+Intent Read       0         0       1         0         0      0
+Intent RW         0         1       1         0         0      0</pre>
       <div class="variablelist">
         <dl>
           <dt>

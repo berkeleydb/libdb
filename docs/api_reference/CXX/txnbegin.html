@@ -89,7 +89,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704070"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54812552"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -97,7 +97,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704059"></a>parent</h4>
+                <h4 class="title"><a id="idp54811904"></a>parent</h4>
               </div>
             </div>
           </div>
@@ -115,7 +115,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704058"></a>flags</h4>
+                <h4 class="title"><a id="idp54776352"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -146,6 +146,58 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
                  performed by the transaction may read modified but not yet committed
                  data.  Silently ignored if the <code class="literal">DB_READ_UNCOMMITTED</code> 
                  flag was not specified when the underlying database was opened.
+            </p>
+              </li>
+              <li>
+                <p><a id="txnbegin_DB_TXN_BULK"></a>
+             
+             <code class="literal">DB_TXN_BULK</code>
+            </p>
+                <p>
+	         Enable transactional bulk insert optimization.  When
+	         this flag is set, the transaction avoids
+	         logging the contents of insertions on newly allocated
+	         database pages.  In a transaction that inserts a
+	         large number of new records, the I/O savings of
+	         choosing this option can be significant.  
+	         </p>
+                <p>Users of
+	         this option should be aware of several issues.  When
+	         the optimization is in effect, page allocations that
+	         extend the database file are logged as usual; this
+	         allows transaction aborts to work correctly, both
+	         online and during recovery.  At commit time, the
+	         database's pages are flushed to disk, eliminating the
+	         need to roll-forward the transaction during normal
+	         recovery.  However, there are other recovery
+	         operations that depend on roll-forward, and care must
+	         be taken when <code class="literal">DB_TXN_BULK</code> transactions interact with
+          them.  
+          </p>
+                <p>In particular, <code class="literal">DB_TXN_BULK</code> is incompatible
+	         with replication, and is simply ignored when
+	         replication is enabled.  Also, hot backup procedures
+	         must follow a particular protocol, introduced in
+	         Berkeley DB 11gR2.5.1, which is to set the 
+	         <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> 
+	         flag in the environment before
+	         starting to copy files.  It is important
+	         to note that incremental hot backups can be
+	         invalidated by use of the bulk insert optimization.
+	         For more information, see the
+	          section on Hot Backup in the <span class="emphasis"><em>Getting Started
+	          With Transaction Processing Guide</em></span> and the description of the flag
+	         <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> in
+	         <code class="literal">DB_ENV-&gt;set_flags</code>.
+	     </p>
+                <p>
+	         The bulk insert optimization is effective only for
+	         top-level transactions.  The <code class="literal">DB_TXN_BULK</code> flag is ignored
+	         when <span class="bold"><strong>parent</strong></span> is non-null.
             </p>
               </li>
               <li>
@@ -263,7 +315,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704332"></a>Errors</h3>
+              <h3 class="title"><a id="idp54829296"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -281,7 +333,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3703835"></a><span>DbMemoryException or </span> ENOMEM</h4>
+                <h4 class="title"><a id="idp54826272"></a><span>DbMemoryException or </span> ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -300,7 +352,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704113"></a>Class</h3>
+              <h3 class="title"><a id="idp54815120"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -312,7 +364,7 @@ DbEnv::txn_begin(DbTxn *parent, DbTxn **tid, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3703886"></a>See Also</h3>
+              <h3 class="title"><a id="idp54816320"></a>See Also</h3>
             </div>
           </div>
         </div>

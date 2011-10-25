@@ -8,7 +8,7 @@ trap 'rm -f $t ; exit 0' 0
 trap 'rm -f $t ; exit 1' 1 2 3 13 15
 
 SWIG=swig
-SWIG_DIR=../libdb_java
+SWIG_DIR=../lang/java/libdb_java
 SWIG_FILE=$SWIG_DIR/db.i
 PACKAGE="com.sleepycat.db.internal"
 
@@ -30,7 +30,7 @@ for api in java ; do
 	esac
 
 	$SWIG -Wall -$api $swig_args -I$SWIG_DIR \
-	    -o ../libdb_$api/db_${api}_wrap.c $SWIG_FILE || exit $?
+	    -o ../lang/$api/libdb_$api/db_${api}_wrap.c $SWIG_FILE || exit $?
 done
 
 # Skip Java sources if run with "-n"
@@ -39,8 +39,8 @@ if [ "x$1" = "x-n" ] ; then
 	exit 0
 fi
 
-# Fixups for Java
-JAVA_SRCTOP=../java/src
+# Fixups for Java, relative to libdb_java directory
+JAVA_SRCTOP=../src
 JAVA_PKGDIR=com/sleepycat/db/internal
 JAVA_SRCDIR=$JAVA_SRCTOP/$JAVA_PKGDIR
 
@@ -54,7 +54,7 @@ for f in *.java ; do
 			die "Interface contains unresolved types: $f"
 	esac
 	rm -f $JAVA_SRCDIR/$f
-	perl -p $SWIG_DIR/java-post.pl < $f > $JAVA_SRCDIR/$f || exit $?
+	perl -p java-post.pl < $f > $JAVA_SRCDIR/$f || exit $?
 	rm -f $f
 done
 

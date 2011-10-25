@@ -43,8 +43,8 @@ Berkeley DB-specific return values.</p>
       <p>For example:</p>
       <pre class="programlisting">int ret;
 if ((ret = dbenv-&gt;set_cachesize(dbenv, 0, 32 * 1024, 1)) != 0) {
-	fprintf(stderr, "set_cachesize failed: %s\n", db_strerror(ret));
-	return (1);
+    fprintf(stderr, "set_cachesize failed: %s\n", db_strerror(ret));
+    return (1);
 }</pre>
       <p>There are also two additional error methods: <a href="../api_reference/C/enverr.html" class="olink">DB_ENV-&gt;err()</a> and
 <code class="methodname">DB_ENV-&gt;errx()</code>.  These methods work like the ANSI C printf function,
@@ -60,11 +60,11 @@ dbenv-&gt;set_errpfx(dbenv, program_name);
 if ((ret = dbenv-&gt;open(dbenv, home,
     DB_CREATE | DB_INIT_LOG | DB_INIT_TXN | DB_USE_ENVIRON, 0))
     != 0) {
-	dbenv-&gt;err(dbenv, ret, "open: %s", home);
-	dbenv-&gt;errx(dbenv,
-	    "contact your system administrator: session ID was %d",
-	    session_id);
-	return (1);
+    dbenv-&gt;err(dbenv, ret, "open: %s", home);
+    dbenv-&gt;errx(dbenv,
+        "contact your system administrator: session ID was %d",
+        session_id);
+    return (1);
 }</pre>
       <p>For example, if the program was called "my_app", and it tried to open
 an environment home directory in "/tmp/home" and the open call returned

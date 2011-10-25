@@ -28,8 +28,8 @@ createAndroidMk()
     echo "# DO NOT EDIT: automatically built by dist/s_android."
     rm -f $u
     for file in `cat $androidfilelist` 
-    do
-	echo -e "\t\$(BDB_TOP)/$file \\" >> $u
+    do # NOTE: keep the tab as the first char of the echo below
+	echo "	\$(BDB_TOP)/$file \\" >> $u
     done
     sed -e "/@SOURCE_FILES@/r$u" -e "/@SOURCE_FILES@/d" < $template
     rm -f $u
@@ -46,7 +46,7 @@ createAndroidMk | sed -e "s/@DB_VERSION@/$DB_VERSION/g" \
 
 f=$outdir/Android.mk
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build other required header files usually created by configure
 #    db.h db_config.h, sql/config.h, db_int.h and clib_port.h
@@ -97,9 +97,9 @@ s/@DB_PROTO2@/#define	__P(protos)	protos/
 /@platform_footer@/d
 ENDOFSEDTEXT
 (echo "$msgc" &&
-    sed -f $s ../dbinc/db.in &&
-    cat ../dbinc_auto/api_flags.in &&
-    cat ../dbinc_auto/ext_prot.in) > $t
+    sed -f $s ../src/dbinc/db.in &&
+    cat ../src/dbinc_auto/api_flags.in &&
+    cat ../src/dbinc_auto/ext_prot.in) > $t
 test `egrep '@.*@' $t` && {
 	egrep '@.*@' $t
 	echo 'Unexpanded autoconf variables found in Android db.h.'
@@ -107,14 +107,14 @@ test `egrep '@.*@' $t` && {
 }
 f=$outdir/db.h
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build db_int.h from dbinc/db_int.in
 cat <<ENDOFSEDTEXT > $s
 s/@PATH_SEPARATOR@/\//
 s/@db_int_def@//
 ENDOFSEDTEXT
-(echo "$msgc" && sed -f $s ../dbinc/db_int.in) > $t
+(echo "$msgc" && sed -f $s ../src/dbinc/db_int.in) > $t
 test `egrep '@.*@' $t` && {
 	egrep '@.*@' $t
 	echo 'Unexpanded autoconf variables found in Android db_int.h.'
@@ -122,7 +122,7 @@ test `egrep '@.*@' $t` && {
 }
 f=$outdir/db_int.h
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build clib_port.h from dist/clib_port.in
 cat <<ENDOFSEDTEXT > $s
@@ -137,7 +137,7 @@ test `egrep '@.*@' $t` && {
 }
 f=$outdir/clib_port.h
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build db_config.h from dist/android/android_config.in
 # Don't fail, but complain if the android_config.in file isn't up-to-date.
@@ -156,19 +156,19 @@ check_config android/android_config.in
 f=$outdir/db_config.h
 (echo "$msgc" && sed "s/__EDIT_DB_VERSION__/$DB_VERSION/" android/android_config.in) > $t
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 
 # Build sql/config.h from android/sql_config.in
 f=$outdir/sql/config.h
-sqlitever=`cat ../sql/sqlite/VERSION`
+sqlitever=`cat ../lang/sql/sqlite/VERSION`
 mkdir $outdir/sql >/dev/null 2>&1
 # NOTE: the content of sql_config.in is hard-coded based on configuration
 # on the Android platform
 
 (echo "$msgc" && sed -e "s/@SQLITE_VERSION@/$sqlitever/g" android/sql_config.in) > $t
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 
 #cleanup

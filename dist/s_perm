@@ -1,12 +1,14 @@
 #!/bin/sh -
 #	$Id$
+#
+# This script is designed to be run while packaging up releases, not during
+# other s_all processing.
 
 d=..
-echo 'Updating Berkeley DB source tree permissions...'
+echo 'Updating Berkeley DB source tree permissions for a release package'
 
 run()
 {
-	#echo "	$1 ($2)"
 	if [ -f "$d/$1" ]; then
 		chmod "$2" "$d/$1"
 	else
@@ -15,32 +17,33 @@ run()
 	fi
 }
 
-# There must be a more elegant way to get a directory listing without '..'
-for f in `(cd ../ && ls dist/s_*)`; do
-	run $f 555
-done
+# Ensure all files in the package have consistent permissions.
+find $d -type d | xargs chmod 775
+find $d -type f | xargs chmod 644
 
-run build_windows/include.tcl 664
-run build_windows/Berkeley_DB.sln 664
-run build_windows/Berkeley_DB_examples.sln 664
-run build_windows/BDB_dotNet.sln 664
-run build_windows/BDB_dotNet_examples.sln 664
-run build_wince/Berkeley_DB.sln 664
-run dist/config.guess 555
-run dist/config.sub 555
-run dist/configure 555
-run dist/install-sh 555
-run dist/vx_buildcd 555
-run mod_db4/configure 555
-run perl/BerkeleyDB/dbinfo 555
-run perl/BerkeleyDB/mkpod 555
-run sql/sqlite/configure 555
-run sql/sqlite/src/sqlite.h.in 664
-run sql/sqlite/src/parse.y 664
-run sql/sqlite/src/vdbe.c 664
+# Assign execute permissions where necessary.
+# ODBC and JDBC are only present in release packages.
+if [ -d $d/lang/sql/odbc ]; then
+	chmod 755 $d/lang/sql/odbc/conf*
+fi
+if [ -d $d/lang/sql/jdbc ]; then
+	chmod 755 $d/lang/sql/jdbc/conf*
+fi
+chmod 755 $d/dist/s_*
+
+run dist/config.guess 755
+run dist/config.sub 755
+run dist/configure 755
+run dist/install-sh 755
+run dist/vx_buildcd 755
+run lang/perl/BerkeleyDB/dbinfo 755
+run lang/perl/BerkeleyDB/mkpod 755
+run lang/sql/sqlite/configure 755
 
 for i in `cd $d && find build_vxworks \
     -name '*.wsp' -o -name '*.cdf' -o -name '*.wpj'`; do
-	#echo "	$i (775)"
 	chmod 775 $d/$i
 done
+
+chmod 555 $d/util/dtrace/*.d
+chmod 555 $d/util/systemtap/*.stp

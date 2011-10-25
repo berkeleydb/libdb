@@ -39,22 +39,39 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="build_win_sql.html#id3747347">Binary Compatibility With SQLite</a>
+              <a href="build_win_sql.html#idp50449688">Binary Compatibility With SQLite</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_win_sql.html#id3747352">Enabling Extensions</a>
+              <a href="build_win_sql.html#idp50427488">Setting Preprocessor Flags
+   </a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_win_sql.html#id3746992">Building the JDBC Driver</a>
+              <a href="build_win_sql.html#idp50447848">Enabling Extensions</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_win_sql.html#id3747123">Building the ODBC Driver</a>
+              <a href="build_win_sql.html#build_jdbc">Building the JDBC Driver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#idp50458920">Using the JDBC Driver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#idp50482120">Building the ODBC Driver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="build_win_sql.html#idp50455320"> Using the ADO.NET Driver
+    </a>
             </span>
           </dt>
         </dl>
@@ -64,27 +81,78 @@
         For information on the build instructions, see <a class="xref" href="build_win.html" title="Chapter 4.  Building Berkeley DB for Windows">
 		Building Berkeley DB for Windows
         </a>. 
-        </p>
+    </p>
       <p>
-        The SQL library is built as <code class="literal">libdb_sql50.dll</code> in the Release mode or <code class="literal">libdb_sql50d.dll</code> in the Debug mode.
-        An SQL command line interpreter called <code class="literal">db_sql_shell.exe</code> is also built. 
-        </p>
+        The SQL library is built as <code class="literal">libdb_sql51.dll</code>
+        in the Release mode or <code class="literal">libdb_sql51d.dll</code> in
+        the Debug mode.  An SQL command line interpreter called
+        <code class="literal">dbsql.exe</code> is also built. 
+    </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3747347"></a>Binary Compatibility With SQLite</h3>
+              <h3 class="title"><a id="idp50449688"></a>Binary Compatibility With SQLite</h3>
             </div>
           </div>
         </div>
-        <p>Both <code class="literal">libdb_sql50.dll</code> and <code class="literal">libdb_sql50d.dll</code> are compatible with sqlite3.dll. You can rename <code class="literal">libdb_sql50.dll</code> to <code class="literal">sqlite3.dll</code> and <code class="literal">db_sql_shell.exe</code> to <code class="literal">sqlite3.exe</code>, and use these applications as a replacement for the standard SQLite binaries with same names. 
-    </p>
+        <p>
+            <code class="literal">libdb_sql51.dll</code> is compatible with
+            <code class="literal">sqlite3.dll</code>. You can copy
+            <code class="literal">libdb_sql51.dll</code> to
+            <code class="literal">sqlite3.dll</code> and
+            <code class="literal">dbsql.exe</code> to
+            <code class="literal">sqlite3.exe</code>, and use these applications
+            as a replacement for the standard SQLite binaries with the same
+            names. However, if you want to do this, then any legacy data in use by
+            those tools must be migrated from the standard SQLite database
+            to a Berkeley DB SQL database <span class="emphasis"><em>before</em></span> you
+            replace the standard SQLite dll and executable with the
+            Berkeley DB equivalent. For information on migrating data from
+            standard SQLite databases to a Berkeley DB SQL database, see
+            the <em class="citetitle">Berkeley DB Getting Started with the SQL APIs</em> guide.
+        </p>
+        <div class="warning" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Warning</h3>
+          <p>
+                Rename your dlls and executables to the standard SQLite
+                names with <span class="emphasis"><em>extreme</em></span> care. Doing this
+                will cause all existing tools to break that currently
+                have data stored in a standard SQLite database.
+            </p>
+          <p>
+                <span class="emphasis"><em>
+                    For best results, rename your dlls and command
+                    line tool to use the standard SQLite names only if you
+                    know there are no other tools on your production
+                    platform that rely on standard SQLite.
+                </em></span>
+            </p>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3747352"></a>Enabling Extensions</h3>
+              <h3 class="title"><a id="idp50427488"></a>Setting Preprocessor Flags
+   </h3>
+            </div>
+          </div>
+        </div>
+        <p>By default, Berkeley DB SQL generates each table as a subdatabase in a single file. To generate each table in a separate file, specify <span class="emphasis"><em>BDBSQL_FILE_PER_TABLE</em></span> in <span class="emphasis"><em>Preprocessor Definitions </em></span>of the <code class="literal">db_sql</code> project. </p>
+        <p>When this option is enabled, the SQL database name is used as a directory name.
+This directory contains one file for the metadata and one file each for every table created
+by the SQL API. Do not add or delete files from the database directory. Adding or deleting
+files may corrupt the database. To backup just the metadata (schema), make a copy of the
+<code class="literal">metadata</code> and <code class="literal">table00001</code> files from the database directory. Make a new copy whenever the
+schema is changed.
+   </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="idp50447848"></a>Enabling Extensions</h3>
             </div>
           </div>
         </div>
@@ -96,10 +164,10 @@
 Open the Berkeley DB solution in Visual Studio.
 </li>
             <li>
-Specify <code class="literal">SQLITE_ENABLE_FTS3</code> or <code class="literal">SQLITE_ENABLE_RTREE</code> in <span class="emphasis"><em>Preprocessor Definitions</em></span> of the <span class="emphasis"><em>db_sql</em></span> project.
+Specify <span class="emphasis"><em>SQLITE_ENABLE_FTS3</em></span> or <span class="emphasis"><em>SQLITE_ENABLE_RTREE</em></span> in <span class="emphasis"><em>Preprocessor Definitions</em></span> of the <code class="literal">db_sql</code> project.
 </li>
             <li>
-Re-build the <span class="emphasis"><em>db_sql</em></span> project.
+Re-build the <code class="literal">db_sql</code> project.
 </li>
           </ol>
         </div>
@@ -109,7 +177,7 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3746992"></a>Building the JDBC Driver</h3>
+              <h3 class="title"><a id="build_jdbc"></a>Building the JDBC Driver</h3>
             </div>
           </div>
         </div>
@@ -126,14 +194,14 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
             <li>Open Visual Studio.
     </li>
             <li>
-     Select <code class="literal">File</code>-&gt;<code class="literal">Add</code>-&gt;<code class="literal">Existing Project</code>.
+     Select <span class="emphasis"><em>File</em></span> -&gt; <span class="emphasis"><em>Add</em></span> -&gt; <span class="emphasis"><em>Existing Project</em></span>.
      </li>
             <li>
-      Select <code class="literal">build_windows/db_sql_jdbc.vcproj</code> and add it to the Berkeley_DB solution.
-     This adds the <span class="emphasis"><em>db_sql_jdbc</em></span> Visual Studio project to the Berkeley_DB solution file.
+      Select <code class="filename">build_windows/db_sql_jdbc.vcproj</code> and add it to the Berkeley_DB solution.
+     This adds the <code class="filename">db_sql_jdbc</code> Visual Studio project to the Berkeley_DB solution file.
     </li>
             <li>
-    Build the <code class="literal">db_sql_jdbc</code> project in Visual Studio.
+    Build the <code class="filename">db_sql_jdbc</code> project in Visual Studio.
     </li>
           </ol>
         </div>
@@ -150,12 +218,102 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
         </table>
         <p>
     </p>
+        <p>
+    When building the JDBC driver, if you may see an error message: "SQLite.JDBC2x.JDBCConnection is not abstract and does not override abstract method in java.sql.Connection".
+    </p>
+        <p>This means that your Java environment requires <code class="literal">JDBC2z.*</code> instead of <code class="literal">JDBC2x.*</code>. To resolve this problem, do the following:
+    </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+    In the Solution Explorer, right-click the <code class="literal">db_sql_jdbc</code> project and select <span class="emphasis"><em>properties</em></span>.
+    </li>
+            <li>
+    In the <span class="emphasis"><em>Configuration Properties -&gt; Build Events -&gt; Pre-Build Event</em></span> section, alter the command to refer to <code class="literal">JDBC2z</code> instead of <code class="literal">JDBC2x</code>.
+    </li>
+          </ul>
+        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3747123"></a>Building the ODBC Driver</h3>
+              <h3 class="title"><a id="idp50458920"></a>Using the JDBC Driver</h3>
+            </div>
+          </div>
+        </div>
+        <p>This section describes the steps to download, build, and run sample programs using the built JDBC driver.</p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp50454376"></a>Downloading JDBC Sample Code</h4>
+              </div>
+            </div>
+          </div>
+          <p>The download link for JDBC sample code is available on the <a class="ulink" href="http://java.sun.com/products/jdbc/reference/codesamples/index.html" target="_top">Oracle Sun Developer Network (SDN)</a>. You can identify the link by the "JDBC programming examples from all three editions (ZIP format)" text beside it.
+     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp50462240"></a>Modifying Sample Code</h4>
+              </div>
+            </div>
+          </div>
+          <p>Before running the sample code, do the following:</p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>Unzip the file containing the sample code to a new directory (for example, jdbc_ex).</li>
+              <li>Substitute <code class="literal">jdbc:sqlite:/&lt;db-file-name&gt;</code> for the generic JDBC URL that appears in the code. That is, put <code class="literal">jdbc:sqlite:/&lt;db-file-name&gt;</code>  between the quotation marks in the line:
+    <p><code class="literal"> String url = "jdbc:mySubprotocol:myDataSource";</code></p><p> Note: The &lt;db-file-name&gt; can either be an absolute path name like <code class="literal">"D:\\jdbc_ex_db\\myDataSource"</code>, or a relative path-file-name like <code class="literal">"..\\jdbc_ex_db\myDataSource"</code>, or a file name, like <code class="literal">"myDataSource"</code>, in which the database file will be stored at the current directory.</p></li>
+              <li>Substitute <code class="literal">SQLite.JDBCDriver</code> for <code class="literal">myDriver.ClassName</code> in the line: <code class="literal">Class.forName("myDriver.ClassName");</code></li>
+              <li>Substitute the username and password you use for your database in the following: <code class="literal">"myLogin", "myPassword"</code>. <p>This is optional.</p></li>
+              <li>If your JDK version is above 1.5, change the variable name <code class="literal">enum</code> in <code class="literal">OutputApplet.java</code> to some other variable name because, as of JDK release 5 <code class="literal">enum</code> is a keyword and can not be used as an identifier.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp50468544"></a>Building and Running the JDBC Sample code</h4>
+              </div>
+            </div>
+          </div>
+          <p>See <a class="xref" href="build_win_sql.html#build_jdbc" title="Building the JDBC Driver">Building the JDBC Driver</a> for instructions about building JDBC driver.</p>
+          <p>To build and run the JDBC examples do the following:</p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>In the <code class="literal">db\build_windows\Win32\Debug</code> directory, run following commands: 
+    <pre class="programlisting">
+    $ javac -classpath ".;jdbc.jar" -d . \path\to\jdbc_ex\*.java
+    $ java  -classpath ".;jdbc.jar" &lt;ClassName, eg. CreateCoffees&gt;
+    </pre></li>
+              <li>After you run the CreateCoffees example, use the <code class="literal">dbsql</code> executable to open the <code class="literal">myDataSource</code> database file and check if the table <code class="literal">COFFEES</code> has been successfully created in the database. 
+    <pre class="programlisting">
+    $ dbsql myDataSourcedbsql&gt; .tables
+    COFFEES
+    dbsql&gt; .dump
+    PRAGMA foreign_keys=OFF;
+    BEGIN TRANSACTION;
+    CREATE TABLE COFFEES (COF_NAME varchar(32),/
+    SUP_ID int, PRICE float, SALES int, TOTAL int);
+    COMMIT;
+    dbsql&gt;
+    </pre></li>
+              <li>Repeat step 2 to run other examples. 
+    <p>Note: Some examples like AutoGenKeys are not yet supported by BDB JDBC driver. The <code class="literal">SQLFeatureNotSupportedException</code> is displayed for those unsupported examples.</p></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="idp50482120"></a>Building the ODBC Driver</h3>
             </div>
           </div>
         </div>
@@ -165,7 +323,7 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3747130"></a>Configuring Your System</h4>
+                <h4 class="title"><a id="idp50479984"></a>Configuring Your System</h4>
               </div>
             </div>
           </div>
@@ -187,7 +345,7 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3747499"></a>Building the Library</h4>
+                <h4 class="title"><a id="idp50493096"></a>Building the Library</h4>
               </div>
             </div>
           </div>
@@ -201,22 +359,22 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
               <li>Set the build target to <span class="emphasis"><em>Release</em></span></li>
               <li>Build the solution.</li>
               <li>
-     Select <code class="literal">File</code>-&gt;<code class="literal">Add</code>-&gt;<code class="literal">Existing Project</code>.
+     Select <span class="emphasis"><em>File</em></span> -&gt; <span class="emphasis"><em>Add</em></span> -&gt; <span class="emphasis"><em>Existing Project</em></span>.
      </li>
               <li>
-      Select <code class="literal">build_windows/db_sql_odbc.vcproj</code> and add it to the Berkeley_DB solution.
-     This adds the <span class="emphasis"><em>db_sql_odbc</em></span> Visual Studio project to the Berkeley_DB solution file.
+      Select <code class="filename">build_windows/db_sql_odbc.vcproj</code> and add it to the Berkeley_DB solution.
+     This adds the <code class="filename">db_sql_odbc</code> Visual Studio project to the Berkeley_DB solution file.
     </li>
-              <li>Build the <code class="literal">db_sql_odbc</code> project. This can be done by right-clicking the <code class="literal">db_sql_odbc</code> project in the project explorer panel, and selecting <code class="literal">build</code>.</li>
+              <li>Build the <code class="filename">db_sql_odbc</code> project. This can be done by right-clicking the <code class="filename">db_sql_odbc</code> project in the project explorer panel, and selecting <code class="literal">build</code>.</li>
             </ol>
           </div>
-          <p>The <code class="literal">sqlite3odbc.dll</code>, <code class="literal">libdb_sql50.dll</code> and <code class="literal">libdb50.dll</code> files are now built.</p>
+          <p>The <code class="literal">sqlite3odbc.dll</code>, <code class="literal">libdb_sql51.dll</code> and <code class="literal">libdb51.dll</code> files are now built.</p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3747572"></a>Installing the Library</h4>
+                <h4 class="title"><a id="idp50472752"></a>Installing the Library</h4>
               </div>
             </div>
           </div>
@@ -227,21 +385,73 @@ Re-build the <span class="emphasis"><em>db_sql</em></span> project.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3747590"></a>Testing the ODBC Install</h4>
+                <h4 class="title"><a id="idp50471912"></a>Testing the ODBC Install</h4>
               </div>
             </div>
           </div>
           <p>The steps to verify that the installed driver works are as follows:</p>
           <div class="orderedlist">
             <ol type="1">
-              <li>Open the Unicode ODBCTest application. On Windows XP: <code class="literal">Windows start</code>-&gt;<code class="literal">Microsoft Data Access SDK 2.8</code>-&gt;<code class="literal">ODBCTest (Unicode, x86).</code></li>
-              <li>Select the <code class="literal">Conn</code>-&gt;<code class="literal">Full Connect...</code> menu item.</li>
+              <li>Open the Unicode ODBCTest application. On Windows XP: <span class="emphasis"><em>Windows start</em></span> -&gt; <span class="emphasis"><em>Microsoft Data Access SDK 2.8</em></span> -&gt; <span class="emphasis"><em>ODBCTest (Unicode, x86).</em></span></li>
+              <li>Select the <span class="emphasis"><em>Conn</em></span> -&gt; <span class="emphasis"><em>Full Connect...</em></span> menu item.</li>
               <li>Select <code class="literal">SQLite3 Datasource</code> and click <code class="literal">OK</code>.</li>
-              <li>Select the <code class="literal">Stmt</code>-&gt;<code class="literal">SQLExecDirect...</code> menu item.</li>
+              <li>Select the <span class="emphasis"><em>Stmt</em></span> -&gt; <span class="emphasis"><em>SQLExecDirect...</em></span> menu item.</li>
               <li>Enter <code class="literal">CREATE TABLE t1(x);</code> in the <code class="literal">Statement</code> text box and click <code class="literal">OK</code>.</li>
               <li>Verify that no error messages were output to the error window.</li>
             </ol>
           </div>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="idp50455320"></a> Using the ADO.NET Driver
+    </h3>
+            </div>
+          </div>
+        </div>
+        <p>This section describes the steps to use the ADO.NET driver made by <a class="ulink" href="http://sqlite.phxsoftware.com" target="_top">phxsoftware</a>.
+     The Berkeley DB development team has tested version 1.0.66.0 of the ADO.NET driver.
+     </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>Download and unzip <code class="literal">SQLite-1.0.66.0-binaries.zip</code>.
+     The .NET binary, <code class="literal">System.Data.SQLite.dll</code>, is located in the <code class="literal">ManagedOnly</code> directory.
+     </li>
+            <li>Build the Berkeley DB SQL API. For more information, see <a class="xref" href="build_win_sql.html" title="Building the SQL API">Building the SQL API</a>.  
+     If you have installed the Windows binaries, you can ignore this step.</li>
+            <li>Copy <code class="literal">System.Data.SQLite.dll and libdb51.dll </code>into a directory.
+     If you have installed the Windows binaries, copy <code class="literal">System.Data.SQLite.dll</code> into the <code class="literal">bin</code> directory of the installation.</li>
+            <li> Copy <code class="literal">libdb_sql51.dll</code> to <code class="literal">sqlite3.dll</code>. 
+     Place <code class="literal">sqlite3.dll</code> in the same directory as <code class="literal">System.Data.SQLite.dll</code>.</li>
+            <li>Add this directory to the environment variable PATH. Alternatively, you can copy the dlls into the directory from which the applications is run.
+     If you have installed binaries, the environment variable PATH is already set to include the installation's <code class="literal">bin</code> directory.
+	</li>
+          </ol>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp50479640"></a>Running the ADO.NET Test Suite
+	</h4>
+              </div>
+            </div>
+          </div>
+          <p>This section describes how to run the test suite made by phxsoftware.</p>
+          <div class="orderedlist">
+            <ol type="1">
+              <li>	Download the driver and build Berkeley DB as described above.</li>
+              <li>Unzip and copy <code class="literal">libdb_sql51.dll</code> and <code class="literal">libdb51.dll</code> into the <code class="literal">ManagedOnly</code> directory.</li>
+              <li>Copy <code class="literal">libdb_sql51.dll</code> to <code class="literal">sqlite3.dll</code>.</li>
+              <li>Run <code class="literal">test.exe</code> from the <code class="literal">ManagedOnly</code> directory.</li>
+            </ol>
+          </div>
+          <p>When running the test suite, exclude <code class="literal">LockTest</code> and <code class="literal">MultithreadingTest</code> due to differences between SQLite locking and Berkeley DB locking. 
+For more information, see the <a href="../bdb-sql/lockingnotes.html" class="olink">Berkeley DB SQL Guide</a>. You should also exclude <code class="literal">FunctionWithCollation</code> and 
+<code class="literal">FunctionWithCollation2</code> tests because they use extension functions which are not a part of the default SQLite distribution. For more information,
+see <a class="ulink" href="http://www.sqlite.org/contrib" target="_top">http://www.sqlite.org/contrib.</a></p>
         </div>
       </div>
     </div>

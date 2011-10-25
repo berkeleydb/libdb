@@ -19,6 +19,6 @@ cc api_flags.c -o $b || {
 (echo "$msgc"
  $b < api_flags) > $t
 
-f=../dbinc_auto/api_flags.in
+f=../src/dbinc_auto/api_flags.in
 cmp $f $t > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)

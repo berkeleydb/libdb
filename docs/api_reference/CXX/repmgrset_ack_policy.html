@@ -9,7 +9,7 @@
     <link rel="start" href="index.html" title="Berkeley DB C++ API Reference" />
     <link rel="up" href="rep.html" title="Chapter 11.  Replication Methods" />
     <link rel="prev" href="repmgrget_ack_policy.html" title="DbEnv::repmgr_get_ack_policy()" />
-    <link rel="next" href="repmgrlocal_site.html" title="DbEnv::repmgr_set_local_site()" />
+    <link rel="next" href="repmgrget_local_site.html" title="DbEnv::repmgr_get_local_site()" />
   </head>
   <body>
     <div class="navheader">
@@ -22,7 +22,7 @@
           <th width="60%" align="center">Chapter 11. 
                 Replication Methods
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="repmgrlocal_site.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="repmgrget_local_site.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -59,6 +59,13 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
         Waiting for client acknowledgements is always limited by the
         <a class="link" href="repset_timeout.html#set_timeout_DB_REP_ACK_TIMEOUT">DB_REP_ACK_TIMEOUT</a>
         specified by the <a class="xref" href="repset_timeout.html" title="DbEnv::rep_set_timeout()">DbEnv::rep_set_timeout()</a> method.
+	If an insufficient number of client acknowledgements have been
+	received, then the master will invoke the event callback
+	function, if set, with the
+	<a class="link" href="envevent_notify.html#event_notify_DB_EVENT_REP_PERM_FAILED">DB_EVENT_REP_PERM_FAILED</a>
+	value.
+	(See the <a href="../../programmer_reference/rep_mgr_ack.html" class="olink"> 
+	Choosing a Replication Manager Ack Policy </a>section in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> for more information.)
     </p>
       <p>
          The <code class="methodname">DbEnv::repmgr_set_ack_policy()</code> method configures a database
@@ -83,7 +90,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3697173"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54384808"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -91,7 +98,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697162"></a>ack_policy</h4>
+                <h4 class="title"><a id="idp54384160"></a>ack_policy</h4>
               </div>
             </div>
           </div>
@@ -111,6 +118,19 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
                 <p>
                                 The master should wait until all replication clients have acknowledged
                                 each permanent replication message.
+                             </p>
+              </li>
+              <li>
+                <p><a id="ackspolicy_DB_REPMGR_ACKS_ALL_AVAILABLE"></a>
+                                 <span class="bold"><strong>DB_REPMGR_ACKS_ALL_AVAILABLE</strong></span>
+                             </p>
+                <p>
+                                The master should wait until all currently connected replication clients have acknowledged
+                                each permanent replication message.
+				This policy will then invoke the 
+	<a class="link" href="envevent_notify.html#event_notify_DB_EVENT_REP_PERM_FAILED">DB_EVENT_REP_PERM_FAILED</a> event if fewer than
+				a quorum of clients acknowledged
+				during that time.
                              </p>
               </li>
               <li>
@@ -168,7 +188,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3697463"></a>Errors</h3>
+              <h3 class="title"><a id="idp54404640"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -187,7 +207,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697596"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp54413016"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -202,7 +222,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3697557"></a>Class</h3>
+              <h3 class="title"><a id="idp54411848"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -214,7 +234,7 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3697619"></a>See Also</h3>
+              <h3 class="title"><a id="idp54358192"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -231,14 +251,14 @@ DbEnv::repmgr_set_ack_policy(int ack_policy); </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="rep.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="repmgrlocal_site.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="repmgrget_local_site.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DbEnv::repmgr_get_ack_policy() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DbEnv::repmgr_set_local_site()</td>
+          <td width="40%" align="right" valign="top"> DbEnv::repmgr_get_local_site()</td>
         </tr>
       </table>
     </div>

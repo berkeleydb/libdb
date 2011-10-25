@@ -39,12 +39,12 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="build_win_test.html#id3748145">Building the software needed by the tests</a>
+              <a href="build_win_test.html#idp50534648">Building the software needed by the tests</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_win_test.html#id3747793">Running the test suite under Windows</a>
+              <a href="build_win_test.html#idp50524944">Running the test suite under Windows</a>
             </span>
           </dt>
           <dt>
@@ -57,14 +57,14 @@
       <p>To build the test suite on Windows platforms, you will need to configure
 Tcl support.  You will also need sufficient main memory (at least 64MB),
 and disk (around 250MB of disk will be sufficient).</p>
-      <div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id3748145"></a>Building the software needed by the tests</h3></div></div></div>
+      <div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="idp50534648"></a>Building the software needed by the tests</h3></div></div></div>
 The test suite must be run against a Debug version of
 Berkeley DB, so you will need a Debug version of the Tcl
 libraries.  This involves building Tcl from its source.  See the Tcl
 sources for more information.
 Then build the Tcl API - see
 <a class="xref" href="build_win_tcl.html" title="Building the Tcl API">Building the Tcl API</a> for details.
-<div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id3748167"></a>Visual Studio 2005 or newer</h4></div></div></div><p>To build for testing, perform the following steps:</p><p>
+<div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="idp50535992"></a>Visual Studio 2005 or newer</h4></div></div></div><p>To build for testing, perform the following steps:</p><p>
 </p><div class="orderedlist"><ol type="1"><li>Open the Berkeley DB solution.</li><li>Ensure that the target configuration is Debug</li><li>Right click the <span class="emphasis"><em>db_tcl</em></span> project in the Solution Explorer, and select <span class="emphasis"><em>Build</em></span>.</li><li>Right click the <span class="emphasis"><em>db_test</em></span> project in the Solution Explorer, and select <span class="emphasis"><em>Build</em></span>.</li></ol></div><p>
 
 </p></div></div>
@@ -72,7 +72,7 @@ Then build the Tcl API - see
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3747793"></a>Running the test suite under Windows</h3>
+              <h3 class="title"><a id="idp50524944"></a>Running the test suite under Windows</h3>
             </div>
           </div>
         </div>
@@ -83,9 +83,9 @@ that reads:</p>
         <p>You will want to use the location of the <code class="filename">tclsh</code> program (be
 sure to include the name of the executable).  For example, if Tcl is
 installed in <code class="filename">d:\tcl</code>, this line should be the following:</p>
-        <pre class="programlisting">set tclsh_path d:\tcl\bin\tclsh84g.exe</pre>
+        <pre class="programlisting">set tclsh_path d:\tcl\bin\tclsh85g.exe</pre>
         <p>If your path includes spaces be sure to enclose it in quotes:</p>
-        <pre class="programlisting">set tclsh_path "c:\Program Files\tcl\bin\tclsh84g.exe"</pre>
+        <pre class="programlisting">set tclsh_path "c:\Program Files\tcl\bin\tclsh85g.exe"</pre>
         <p>Make sure that the path to Berkeley DB's tcl library is in your
 current path.  On Windows NT/2000/XP, edit your PATH using the My
 Computer -&gt; Properties -&gt; Advanced -&gt; Environment
@@ -96,10 +96,10 @@ convenient to add a line to c:\AUTOEXEC.BAT:</p>
         <div class="orderedlist">
           <ol type="1">
             <li>cd build_windows</li>
-            <li>run <code class="filename">d:\tcl\bin\tclsh84g.exe</code>, or the equivalent name of
+            <li>run <code class="filename">d:\tcl\bin\tclsh85g.exe</code>, or the equivalent name of
 the Tcl shell for your system.
 <p>You should get a "%" prompt.</p></li>
-            <li>% source ../test/test.tcl
+            <li>% source ../test/tcl/test.tcl
 <p>If no errors occur, you should get a "%" prompt.</p></li>
           </ol>
         </div>
@@ -118,7 +118,7 @@ information.</p>
         <p> The SQL test suite must be run against a Debug version of Berkeley DB, so you need a Debug version of the Tcl libraries. This involves building Tcl from its source. See the Tcl sources for more information. Then build the Tcl API - see <a class="xref" href="build_win_tcl.html" title="Building the Tcl API">Building the Tcl API</a> for details.
   </p>
         <p>Before building for SQL tests, build the db_tcl and db_sql_testfixture projects. This requires Tcl 8.4 or above.  If you are using a later version of Tcl, edit the Tcl library that db_tcl  and db_sql_testfixture link to. </p>
-        <p>To do this right click the <span class="emphasis"><em>db_tcl</em></span><code class="literal">/</code><span class="emphasis"><em>db_sql_testfixture</em></span> project, select <span class="emphasis"><em>Properties-&gt;Configuration Properties-&gt;Linker-&gt;Input-&gt;Additional Dependencies</em></span> and edit the Tcl library, <span class="emphasis"><em>tcl84g.lib</em></span>, to match the version you are using. 
+        <p>To do this right click the <span class="emphasis"><em>db_tcl</em></span><code class="literal">/</code><span class="emphasis"><em>db_sql_testfixture</em></span> project, select <span class="emphasis"><em>Properties-&gt;Configuration Properties-&gt;Linker-&gt;Input-&gt;Additional Dependencies</em></span> and edit the Tcl library, <span class="emphasis"><em>tcl85g.lib</em></span>, to match the version you are using. 
   </p>
         <p>Building the  db_sql_testfixture project builds the testfixture.exe program in <code class="literal">../build_windows/Win32/Debug</code>. It also builds the projects db and db_sql, on which it depends.
   </p>
@@ -126,7 +126,7 @@ information.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3748464"></a>Visual Studio 2005 or newer</h4>
+                <h4 class="title"><a id="idp50553904"></a>Visual Studio 2005 or newer</h4>
               </div>
             </div>
           </div>

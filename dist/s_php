@@ -19,5 +19,5 @@ process()
     rm -f $tdest
 }
 
-process ../php_db4/config.m4
-process ../php_db4/config.w32
+process ../lang/php_db4/config.m4
+process ../lang/php_db4/config.w32

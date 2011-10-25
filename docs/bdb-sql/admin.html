@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 4. Administrating Berkeley DB SQL</title>
+    <title>Chapter 4. Administrating Berkeley DB SQL Databases</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
@@ -15,7 +15,7 @@
     <div class="navheader">
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Chapter 4. Administrating Berkeley DB SQL</th>
+          <th colspan="3" align="center">Chapter 4. Administrating Berkeley DB SQL Databases</th>
         </tr>
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="admin-locking.html">Prev</a> </td>
@@ -29,7 +29,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title"><a id="admin"></a>Chapter 4. Administrating Berkeley DB SQL</h2>
+            <h2 class="title"><a id="admin"></a>Chapter 4. Administrating Berkeley DB SQL Databases</h2>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
         <dl>
           <dt>
             <span class="sect1">
-              <a href="admin.html#backup">Backing up</a>
+              <a href="admin.html#backup">Backing Up Berkeley DB SQL Databases</a>
             </span>
           </dt>
           <dd>
@@ -124,6 +124,25 @@
               </dt>
             </dl>
           </dd>
+          <dt>
+            <span class="sect1">
+              <a href="dbsql_replicate.html">Replicating Berkeley DB SQL Databases</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="dbsql_replicate.html#prep_rep">Preparing to use Replication with the Berkeley DB SQL API</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="dbsql_replicate.html#use_rep">Using Replication with the Berkeley DB SQL API</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
         </dl>
       </div>
       <p>
@@ -134,7 +153,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h2 class="title" style="clear: both"><a id="backup"></a>Backing up</h2>
+              <h2 class="title" style="clear: both"><a id="backup"></a>Backing Up Berkeley DB SQL Databases</h2>
             </div>
           </div>
         </div>
@@ -164,18 +183,25 @@
         </div>
         <p>
                 You can use the standard SQLite <code class="literal">.dump</code>
-                command to backup the data managed in by the  BDB SQL interface.
+                command to backup the data managed by the  BDB SQL interface.
                 You can also use the standard Berkeley DB backup
-                mechanisms on the database. This section describes
+                mechanisms on the database. 
+                </p>
+        <p>
+                The BDB SQL interface supports the standard SQLite Online Backup API. 
+                However, there is a small difference between the two interfaces.
+                In the BDB SQL interface, the value returned by the <code class="literal">sqlite3_backup_remaining</code> method 
+                and the number of pages passed to the <code class="literal">sqlite3_backup_step</code> method, 
+                are estimates of the number of pages to be copied and not exact values.
+                To be certain that the backup process is complete,
+                check if the <code class="literal">sqlite3_backup_step</code> method has returned <code class="literal">SQLITE_DONE</code>.
+                To learn how to use SQLite Online Backup API, see the official <a class="ulink" href="http://www.sqlite.org/backup.html" target="_top">SQLite
+                Documentation Page.</a>
+            </p>
+        <p>
+                This section describes
                 the mechanisms that can be performed from the command line.
             </p>
-        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
-          <h3 class="title">Note</h3>
-          <p>
-                    The standard SQLite online backup API is not
-                    supported by the BDB SQL interface.
-                </p>
-        </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>

@@ -77,65 +77,65 @@ input and stores them into a Recno database.  The function then uses a
 cursor to step through the database and display the stored records.</p>
       <pre class="programlisting">int
 recno_build(dbp)
-	DB *dbp;
+    DB *dbp;
 {
-	DBC *dbcp;
-	DBT key, data;
-	db_recno_t recno;
-	u_int32_t len;
-	int ret;
-	char buf[1024];
+    DBC *dbcp;
+    DBT key, data;
+    db_recno_t recno;
+    u_int32_t len;
+    int ret;
+    char buf[1024];
 
-	/* Insert records into the database. */
-	memset(&amp;key, 0, sizeof(DBT));
-	memset(&amp;data, 0, sizeof(DBT));
-	for (recno = 1;; ++recno) {
-		printf("record #%lu&gt; ", (u_long)recno);
-		fflush(stdout);
-		if (fgets(buf, sizeof(buf), stdin) == NULL)
-			break;
-		if ((len = strlen(buf)) &lt;= 1)
-			continue;
+    /* Insert records into the database. */
+    memset(&amp;key, 0, sizeof(DBT));
+    memset(&amp;data, 0, sizeof(DBT));
+    for (recno = 1;; ++recno) {
+        printf("record #%lu&gt; ", (u_long)recno);
+        fflush(stdout);
+        if (fgets(buf, sizeof(buf), stdin) == NULL)
+            break;
+        if ((len = strlen(buf)) &lt;= 1)
+            continue;
 
-		key.data = &amp;recno;
-		key.size = sizeof(recno);
-		data.data = buf;
-		data.size = len - 1;
+        key.data = &amp;recno;
+        key.size = sizeof(recno);
+        data.data = buf;
+        data.size = len - 1;
 
-		switch (ret = dbp-&gt;put(dbp, NULL, &amp;key, &amp;data, 0)) {
-		case 0:
-			break;
-		default:
-			dbp-&gt;err(dbp, ret, "DB-&gt;put");
-			break;
-		}
-	}
-	printf("\n");
+        switch (ret = dbp-&gt;put(dbp, NULL, &amp;key, &amp;data, 0)) {
+        case 0:
+            break;
+        default:
+            dbp-&gt;err(dbp, ret, "DB-&gt;put");
+            break;
+        }
+    }
+    printf("\n");
 
-	/* Acquire a cursor for the database. */
-	if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
-		dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
-		return (1);
-	}
+    /* Acquire a cursor for the database. */
+    if ((ret = dbp-&gt;cursor(dbp, NULL, &amp;dbcp, 0)) != 0) {
+        dbp-&gt;err(dbp, ret, "DB-&gt;cursor");
+        return (1);
+    }
 
-	/* Re-initialize the key/data pair. */
-	memset(&amp;key, 0, sizeof(key));
-	memset(&amp;data, 0, sizeof(data));
+    /* Re-initialize the key/data pair. */
+    memset(&amp;key, 0, sizeof(key));
+    memset(&amp;data, 0, sizeof(data));
 
-	/* Walk through the database and print out the key/data pairs. */
-	while ((ret = dbcp-&gt;c_get(dbcp, &amp;key, &amp;data, DB_NEXT)) == 0)
-		printf("%lu : %.*s\n",
+    /* Walk through the database and print out the key/data pairs. */
+    while ((ret = dbcp-&gt;get(dbcp, &amp;key, &amp;data, DB_NEXT)) == 0)
+        printf("%lu : %.*s\n",
                *(u_long *)key.data, (int)data.size, 
                (char *)data.data);
-	if (ret != DB_NOTFOUND)
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;get");
+    if (ret != DB_NOTFOUND)
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;get");
 
-	/* Close the cursor. */
-	if ((ret = dbcp-&gt;c_close(dbcp)) != 0) {
-		dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
-		return (1);
-	}
-	return (0);
+    /* Close the cursor. */
+    if ((ret = dbcp-&gt;close(dbcp)) != 0) {
+        dbp-&gt;err(dbp, ret, "DBcursor-&gt;close");
+        return (1);
+    }
+    return (0);
 }</pre>
     </div>
     <div class="navfooter">

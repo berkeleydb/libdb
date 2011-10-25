@@ -1,0 +1,29 @@
+--- test/incrvacuum.test
++++ test/incrvacuum.test
+@@ -444,6 +444,8 @@ while 1 {
+     list [expr {[file size test.db] / 1024}]
+   } {20}
+ 
++  if {$::nRow < $::iWrite} break
++
+   do_test incrvacuum-7.${::iWrite}.3 {
+     execsql {
+       SELECT * FROM tbl1;
+@@ -736,8 +736,8 @@
+     catchsql {
+       PRAGMA incremental_vacuum(10);
+     } db3
++    db3 close
+   } {1 {file is encrypted or is not a database}}
+-  db3 close
+ }
+ 
+ do_test incrvacuum-15.1 {
+--- test/vacuum4.test
++++ test/vacuum4.test
+@@ -65,3 +65,5 @@ do_test vacuum4-1.1 {
+     VACUUM;
+   }
+ } {}
++
++finish_test

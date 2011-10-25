@@ -681,15 +681,7 @@ main(void)
                                            flag to configure this support.
                                             </span>
 
-                                           <span>
-                                            Use the
-                                            <code class="methodname">XmlContainerConfig::setMultiversion()</code>
-                                            option to configure this support when you open your
-                                            container. To configure multiversion support when you
-                                            open your environment, use the
-                                            <code class="literal">DB_MULTIVERSION</code> flag on the
-                                            environment open.
-                                           </span>
+                                           
 
                                             
                                    </p>
@@ -775,14 +767,15 @@ main(void)
             db_strerror(ret));
         return (EXIT_FAILURE);
     }
-
+    <strong class="userinput"><code>/* Support snapshot isolation */
+    envp-&gt;set_flags(envp, DB_MULTIVERSION, 1);</code></strong>
     env_flags = DB_CREATE |    /* Create the environment if it does 
                                 * not already exist. */
-                DB_INIT_TXN  | /* Initialize transactions */
+                
                 DB_INIT_LOCK | /* Initialize locking. */
                 DB_INIT_LOG  | /* Initialize logging */
                 DB_INIT_MPOOL| /* Initialize the in-memory cache. */
-                <strong class="userinput"><code>DB_MULTIVERSION; /* Support snapshot isolation */</code></strong>
+                DB_INIT_TXN;   /* Initialize transactions */
 
     ret = envp-&gt;open(envp, db_home_dir, env_flags, 0);
     if (ret != 0) {

@@ -1,6 +1,5 @@
 db_env_create
 	DB_CXX_NO_EXCEPTIONS		# C++: return error values
-	DB_RPCCLIENT			# An RPC client environment
 
 DbEnv.close
 	# Sync database when automatically closing its db handles.
@@ -8,10 +7,13 @@ DbEnv.close
 
 DbEnv.dbremove
 	DB_AUTO_COMMIT			# Implied transaction
-	DB_TXN_NOT_DURABLE		# Don't log the remove
+	DB_LOG_NO_DATA			# UNDOC: Don't log the data.
+	DB_NOSYNC			# UNDOC: Don't sync for a subdb remove
+	DB_TXN_NOT_DURABLE		# UNDOC: Don't log the remove
 
 DbEnv.dbrename
 	DB_AUTO_COMMIT			# Implied transaction
+	DB_NOSYNC			# Don't sync for a subdb rename
 
 DbEnv.fileid_reset
 	DB_ENCRYPT			# File contains encrypted databases
@@ -39,6 +41,7 @@ DbEnv.open
 	DB_INIT_REP			# Initialize replication
 	DB_INIT_TXN			# Initialize transactions
 	DB_LOCKDOWN			# Lock memory into physical core
+	DB_NO_CHECKPOINT		# UNDOC: Recover but do not checkpoint
 	DB_PRIVATE			# DB_ENV is process local
 	DB_RECOVER			# Run normal recovery
 	DB_RECOVER_FATAL		# Run catastrophic recovery
@@ -61,6 +64,7 @@ DbEnv.lock_stat_print
 	DB_STAT_SUBSYSTEM		# Print subsystems
 
 DbEnv.lock_vec
+	DB_LOCK_CHECK			# UNDOC: check for a lock
 	DB_LOCK_NOWAIT			# Don't wait for an unavailable lock
 	DB_LOCK_RECORD			# UNDOC: record lock
 	DB_LOCK_SET_TIMEOUT		# UNDOC: set lock timeout
@@ -183,12 +187,15 @@ DbEnv.set_feedback.op
 DbEnv.set_flags
 	DB_AUTO_COMMIT			# Implied transaction
 	DB_CDB_ALLDB			# Set CDB locking per environment
+	DB_DATABASE_LOCKING		# UNDOC: try database-level locking
 	DB_DIRECT_DB			# Don't buffer databases in the OS
 	DB_DSYNC_DB			# Set O_DSYNC on the databases
+	DB_HOTBACKUP_IN_PROGRESS	# Inhibit bulk loading optimization
 	DB_MULTIVERSION			# Multiversion concurrency control
 	DB_NOLOCKING			# Set locking/mutex behavior
 	DB_NOMMAP			# Don't mmap the underlying file
 	DB_NOPANIC			# Set panic state per environment
+	DB_NOFLUSH			# UNDOC: don't flush cache on close
 	DB_OVERWRITE			# Overwrite unlinked region files
 	DB_PANIC_ENVIRONMENT		# Set panic state per environment
 	DB_REGION_INIT			# Page-fault regions on open
@@ -247,6 +254,7 @@ DbEnv.txn_begin
 	DB_TXN_SYNC			# Always sync log on commit
 	DB_TXN_WAIT			# Always wait for locks in this txn
 	DB_TXN_WRITE_NOSYNC		# Write the log but don't sync
+	DB_TXN_BULK			# Enable transactional bulk loading 
 
 DbEnv.txn_checkpoint
 	DB_CKP_INTERNAL			# UNDOC: internally generated checkpoint
@@ -343,7 +351,7 @@ Db.associate_foreign
 	DB_FOREIGN_NULLIFY		# If foreign key exists, nullify it
 
 Db.close
-	__MASK=0xff			# Berkeley DB operation codes.
+	DB_NOSYNC			# Berkeley DB operation codes.
 
 Db.compact
 	DB_FREELIST_ONLY		# Just sort and truncate
@@ -354,6 +362,7 @@ Db.cursor
 	DB_CURSOR_TRANSIENT		# UNDOC: Single-use cursor
 	DB_READ_COMMITTED		# Degree 2 isolation
 	DB_READ_UNCOMMITTED		# Degree 1 isolation
+	DB_RECOVER			# Called from recovery (internal)
 	DB_WRITECURSOR			# Cursor can update (CDB)
 	DB_WRITELOCK			# Cursor should get write locks
 	DB_TXN_SNAPSHOT			# Snapshot isolation

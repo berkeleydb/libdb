@@ -37,7 +37,7 @@
       </div>
       <p>This class is the combination of std::multimap and hash_multimap. </p>
       <p>By setting database handles as DB_BTREE or DB_HASH type respectively, you will be using an equivalent of std::multimap or hash_multimap respectively. Database(dbp) and environment(penv) handle requirement: The dbp handle must meet the following requirement: 1. Database type should be DB_BTREE or DB_HASH. 2. Either DB_DUP or DB_DUPSORT flag must be set. Note that so far Berkeley DB does not allow DB_DUPSORT be set and the database is storing identical key/data pairs, i.e. we can't store two (1, 2), (1, 2) pairs into a database D with DB_DUPSORT flag set, but only can do so with DB_DUP flag set; But we can store a (1, 2) pair and a (1, 3) pair into D with DB_DUPSORT flag set. So if your data set allows DB_DUPSORT flag, you should set it to gain a lot of performance promotion. 3. No DB_RECNUM flag set. 4. No DB_TRUNCATE specified in database open flags. 5. DB_THREAD must be set if you are sharing the database handle across multiple threads directly, or indirectly by sharing the container object across multiple threads. </p>
-      <h4><a id="id3492488"></a>
+      <h4><a id="idp50596784"></a>
 See Also
 </h4>
       <p> </p>
@@ -48,7 +48,7 @@ See Also
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3489903"></a>
+              <h3 class="title"><a id="idp50640768"></a>
 Class Template Parameters</h3>
             </div>
           </div>
@@ -57,7 +57,7 @@ Class Template Parameters</h3>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3489992"></a>
+                <h4 class="title"><a id="idp49900336"></a>
 kdt</h4>
               </div>
             </div>
@@ -68,7 +68,7 @@ kdt</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3489971"></a>
+                <h4 class="title"><a id="idp50467768"></a>
 ddt</h4>
               </div>
             </div>
@@ -80,7 +80,7 @@ ddt</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3483806"></a>
+                <h4 class="title"><a id="idp50669752"></a>
 value_type_sub</h4>
               </div>
             </div>
@@ -91,7 +91,7 @@ value_type_sub</h4>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3493123"></a>
+                <h4 class="title"><a id="idp50661400"></a>
 iterator_t</h4>
               </div>
             </div>
@@ -99,7 +99,7 @@ iterator_t</h4>
           <p>Never specify anything to this type parameter. It is only used internally. </p>
         </div>
       </div>
-      <h4><a id="id3493024"></a> Public Members </h4>
+      <h4><a id="idp50655432"></a> Public Members </h4>
       <div class="informaltable">
         <table border="1" width="80%">
           <colgroup>
@@ -200,7 +200,7 @@ iterator_t</h4>
           </tbody>
         </table>
       </div>
-      <h4><a id="id3490037"></a>
+      <h4><a id="idp50670672"></a>
 Group</h4>
       <p>
 <a class="xref" href="dbstl_containers.html" title="Chapter 2.  Dbstl Container Classes">
@@ -234,7 +234,7 @@ void insert(InputIterator first,
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3489929"></a>Parameters</h4>
+                  <h4 class="title"><a id="idp50674296"></a>Parameters</h4>
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@ void insert(InputIterator first,
               <div class="titlepage">
                 <div>
                   <div>
-                    <h5 class="title"><a id="id3493759"></a>last</h5>
+                    <h5 class="title"><a id="idp50699848"></a>last</h5>
                   </div>
                 </div>
               </div>
@@ -252,7 +252,7 @@ void insert(InputIterator first,
               <div class="titlepage">
                 <div>
                   <div>
-                    <h5 class="title"><a id="id3493791"></a>first</h5>
+                    <h5 class="title"><a id="idp50701728"></a>first</h5>
                   </div>
                 </div>
               </div>
@@ -269,7 +269,7 @@ void insert(const_iterator &amp;first,
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3493798"></a>Parameters</h4>
+                  <h4 class="title"><a id="idp50702192"></a>Parameters</h4>
                 </div>
               </div>
             </div>
@@ -277,7 +277,7 @@ void insert(const_iterator &amp;first,
               <div class="titlepage">
                 <div>
                   <div>
-                    <h5 class="title"><a id="id3493802"></a>last</h5>
+                    <h5 class="title"><a id="idp50702384"></a>last</h5>
                   </div>
                 </div>
               </div>
@@ -287,7 +287,7 @@ void insert(const_iterator &amp;first,
               <div class="titlepage">
                 <div>
                   <div>
-                    <h5 class="title"><a id="id3493816"></a>first</h5>
+                    <h5 class="title"><a id="idp50703224"></a>first</h5>
                   </div>
                 </div>
               </div>
@@ -302,7 +302,7 @@ iterator insert(const value_type &amp;x)
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3493741"></a>Parameters</h4>
+                  <h4 class="title"><a id="idp50698432"></a>Parameters</h4>
                 </div>
               </div>
             </div>
@@ -310,7 +310,7 @@ iterator insert(const value_type &amp;x)
               <div class="titlepage">
                 <div>
                   <div>
-                    <h5 class="title"><a id="id3493823"></a>x</h5>
+                    <h5 class="title"><a id="idp50703672"></a>x</h5>
                   </div>
                 </div>
               </div>
@@ -321,7 +321,7 @@ iterator insert(const value_type &amp;x)
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3490606"></a>Return Value</h4>
+                  <h4 class="title"><a id="idp50468440"></a>Return Value</h4>
                 </div>
               </div>
             </div>
@@ -332,7 +332,7 @@ iterator insert(const value_type &amp;x)
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3489909"></a>Group: Insert Functions</h3>
+                <h3 class="title"><a id="idp50475176"></a>Group: Insert Functions</h3>
               </div>
             </div>
           </div>
@@ -347,7 +347,7 @@ iterator insert(const value_type &amp;x)
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3493755"></a>Class</h3>
+                <h3 class="title"><a id="idp50674616"></a>Class</h3>
               </div>
             </div>
           </div>

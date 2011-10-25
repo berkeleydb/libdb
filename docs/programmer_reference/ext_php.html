@@ -40,6 +40,11 @@ distribution package.  It can either either link directly against the
 installed Berkeley DB library (which is necessary for running in a
 non-Apache/mod_php4 environment), or against mod_db4, which provides
 additional safety when running under Apache/mod_php4.</p>
+      <p>
+    For installation instructions, see the <code class="filename">INSTALL</code> file that
+    resides in the <code class="literal">lang/php_db4</code> directory in your
+    Berkeley DB distribution.
+</p>
       <p>The PHP extension provides the following classes, which mirror the
 standard Berkeley DB C++ API.</p>
       <pre class="programlisting">class Db4Env {
@@ -66,8 +71,9 @@ class Db4 {
     function del($key, $txn = null) {}
     function get($key, $txn = null, $flags = 0) {}
     function pget($key, &amp;$pkey, $txn = null, $flags = 0) {}
-    function get_type() {}	// returns the stringified database type name
-    function stat($txn = null, $flags = 0) {} // returns statistics as 
+    function get_type() {} // returns the stringified 
+                           // database type name
+    function stat($txn = null, $flags = 0) {} // returns statistics as
                                               // an as
     function join($cursor_list, $flags = 0) {}
     function sync() {}
@@ -102,26 +108,6 @@ resources are closed in the correct order.</li>
           <li>Supplying default values for flags.</li>
         </ol>
       </div>
-      <p>To install this PHP module linked against the mod_db4 framework, perform
-the following steps:</p>
-      <pre class="programlisting">% phpize
-% ./configure --with-db4=[Berkeley DB library installation directory] \
-	--with-mod_db4=$APACHE_INCLUDEDIR
-% make
-% make install</pre>
-      <p>Then, in your php.ini file add the following:</p>
-      <pre class="programlisting">extension=db4.so</pre>
-      <p>This extension will now only run in a SAPI linked into Apache httpd
-(mod_php4, most likely), and will take advantage of all of its
-auto-recovery and handle-caching facilities.</p>
-      <p>To install this php module linked against the Berkeley DB library and not the
-mod_db4 framework, perform the following steps:</p>
-      <pre class="programlisting">% phpize
-% ./configure --with-db4=[Berkeley DB library installation directory]
-% make
-% make install</pre>
-      <p>Then in your php.ini file add:</p>
-      <pre class="programlisting">extension=db4.so</pre>
     </div>
     <div class="navfooter">
       <hr />

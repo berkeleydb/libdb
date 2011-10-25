@@ -88,7 +88,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4029275"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54479992"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4029278"></a>parent</h4>
+                <h4 class="title"><a id="idp54480264"></a>parent</h4>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4028752"></a>flags</h4>
+                <h4 class="title"><a id="idp54468904"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -145,6 +145,58 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
                  performed by the transaction may read modified but not yet committed
                  data.  Silently ignored if the <code class="literal">DB_READ_UNCOMMITTED</code> 
                  flag was not specified when the underlying database was opened.
+            </p>
+              </li>
+              <li>
+                <p><a id="txnbegin_DB_TXN_BULK"></a>
+             
+             <code class="literal">DB_TXN_BULK</code>
+            </p>
+                <p>
+	         Enable transactional bulk insert optimization.  When
+	         this flag is set, the transaction avoids
+	         logging the contents of insertions on newly allocated
+	         database pages.  In a transaction that inserts a
+	         large number of new records, the I/O savings of
+	         choosing this option can be significant.  
+	         </p>
+                <p>Users of
+	         this option should be aware of several issues.  When
+	         the optimization is in effect, page allocations that
+	         extend the database file are logged as usual; this
+	         allows transaction aborts to work correctly, both
+	         online and during recovery.  At commit time, the
+	         database's pages are flushed to disk, eliminating the
+	         need to roll-forward the transaction during normal
+	         recovery.  However, there are other recovery
+	         operations that depend on roll-forward, and care must
+	         be taken when <code class="literal">DB_TXN_BULK</code> transactions interact with
+          them.  
+          </p>
+                <p>In particular, <code class="literal">DB_TXN_BULK</code> is incompatible
+	         with replication, and is simply ignored when
+	         replication is enabled.  Also, hot backup procedures
+	         must follow a particular protocol, introduced in
+	         Berkeley DB 11gR2.5.1, which is to set the 
+	         <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> 
+	         flag in the environment before
+	         starting to copy files.  It is important
+	         to note that incremental hot backups can be
+	         invalidated by use of the bulk insert optimization.
+	         For more information, see the
+	          section on Hot Backup in the <span class="emphasis"><em>Getting Started
+	          With Transaction Processing Guide</em></span> and the description of the flag
+	         <a class="xref" href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS">
+                  <code class="literal">DB_HOTBACKUP_IN_PROGRESS</code>
+             </a> in
+	         <code class="literal">DB_ENV-&gt;set_flags</code>.
+	     </p>
+                <p>
+	         The bulk insert optimization is effective only for
+	         top-level transactions.  The <code class="literal">DB_TXN_BULK</code> flag is ignored
+	         when <span class="bold"><strong>parent</strong></span> is non-null.
             </p>
               </li>
               <li>
@@ -262,7 +314,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4029548"></a>Errors</h3>
+              <h3 class="title"><a id="idp54497624"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -278,7 +330,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id4029440"></a> ENOMEM</h4>
+                <h4 class="title"><a id="idp54483448"></a> ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -292,7 +344,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4029388"></a>Class</h3>
+              <h3 class="title"><a id="idp54484864"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -304,7 +356,7 @@ DB_ENV-&gt;txn_begin(DB_ENV *env,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id4029459"></a>See Also</h3>
+              <h3 class="title"><a id="idp54492312"></a>See Also</h3>
             </div>
           </div>
         </div>

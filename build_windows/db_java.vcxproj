@@ -72,20 +72,20 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\build_windows\$(Platform)\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./$(OutDir)db_java\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_java50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libdb_java51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_java50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libdb_java51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_java50d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libdb_java51d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_java50</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libdb_java51</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -102,26 +102,27 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_java50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_java51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_java50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_java51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
     <CustomBuildStep>
       <Command>
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)classes/" 
-javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
+javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\lang\java\src\com\sleepycat\db\*.java ..\lang\java\src\com\sleepycat\db\internal\*.java ..\lang\java\src\com\sleepycat\asm\*.java ..\lang\java\src\com\sleepycat\bind\*.java ..\lang\java\src\com\sleepycat\bind\serial\*.java ..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\lang\java\src\com\sleepycat\collections\*.java ..\lang\java\src\com\sleepycat\compat\*.java ..\lang\java\src\com\sleepycat\persist\*.java ..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\lang\java\src\com\sleepycat\persist\impl\*.java ..\lang\java\src\com\sleepycat\persist\model\*.java ..\lang\java\src\com\sleepycat\persist\raw\*.java ..\lang\java\src\com\sleepycat\util\*.java ..\lang\java\src\com\sleepycat\util\keyrange\*.java
+java -classpath $(OutDir)classes com.sleepycat.persist.model.ClassEnhancer $(OutDir)classes
 echo compiling examples
 mkdir "$(OutDir)classes.ex"
-javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
 echo creating jar files
-jar cf "$(OutDir)db.jar" -C "$(OutDir)classes" .
+jar cfm "$(OutDir)db.jar" ../lang/java/jarManifestEntries -C "$(OutDir)classes" .
 jar cf "$(OutDir)dbexamples.jar" -C "$(OutDir)classes.ex" .
 echo Java build finished</Command>
       <Outputs>force_compilation.txt;%(Outputs)</Outputs>
@@ -132,7 +133,7 @@ echo Java build finished</Command>
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -149,26 +150,27 @@ echo Java build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_java50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_java51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_java50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_java51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
     <CustomBuildStep>
       <Command>
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)classes/" 
-javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
+javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\lang\java\src\com\sleepycat\db\*.java ..\lang\java\src\com\sleepycat\db\internal\*.java ..\lang\java\src\com\sleepycat\asm\*.java ..\lang\java\src\com\sleepycat\bind\*.java ..\lang\java\src\com\sleepycat\bind\serial\*.java ..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\lang\java\src\com\sleepycat\collections\*.java ..\lang\java\src\com\sleepycat\compat\*.java ..\lang\java\src\com\sleepycat\persist\*.java ..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\lang\java\src\com\sleepycat\persist\impl\*.java ..\lang\java\src\com\sleepycat\persist\model\*.java ..\lang\java\src\com\sleepycat\persist\raw\*.java ..\lang\java\src\com\sleepycat\util\*.java ..\lang\java\src\com\sleepycat\util\keyrange\*.java
+java -classpath $(OutDir)classes com.sleepycat.persist.model.ClassEnhancer $(OutDir)classes
 echo compiling examples
 mkdir "$(OutDir)classes.ex"
-javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
 echo creating jar files
-jar cf "$(OutDir)db.jar" -C "$(OutDir)classes" .
+jar cfm "$(OutDir)db.jar" ../lang/java/jarManifestEntries -C "$(OutDir)classes" .
 jar cf "$(OutDir)dbexamples.jar" -C "$(OutDir)classes.ex" .
 echo Java build finished</Command>
       <Outputs>force_compilation.txt;%(Outputs)</Outputs>
@@ -178,7 +180,7 @@ echo Java build finished</Command>
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_DEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -195,26 +197,27 @@ echo Java build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_java50d.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_java51d.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_java50d.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_java51d.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
     <CustomBuildStep>
       <Command>
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)classes/" 
-javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
+javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\lang\java\src\com\sleepycat\db\*.java ..\lang\java\src\com\sleepycat\db\internal\*.java ..\lang\java\src\com\sleepycat\asm\*.java ..\lang\java\src\com\sleepycat\bind\*.java ..\lang\java\src\com\sleepycat\bind\serial\*.java ..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\lang\java\src\com\sleepycat\collections\*.java ..\lang\java\src\com\sleepycat\compat\*.java ..\lang\java\src\com\sleepycat\persist\*.java ..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\lang\java\src\com\sleepycat\persist\impl\*.java ..\lang\java\src\com\sleepycat\persist\model\*.java ..\lang\java\src\com\sleepycat\persist\raw\*.java ..\lang\java\src\com\sleepycat\util\*.java ..\lang\java\src\com\sleepycat\util\keyrange\*.java
+java -classpath $(OutDir)classes com.sleepycat.persist.model.ClassEnhancer $(OutDir)classes
 echo compiling examples
 mkdir "$(OutDir)classes.ex"
-javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
 echo creating jar files
-jar cf "$(OutDir)db.jar" -C "$(OutDir)classes" .
+jar cfm "$(OutDir)db.jar" ../lang/java/jarManifestEntries -C "$(OutDir)classes" .
 jar cf "$(OutDir)dbexamples.jar" -C "$(OutDir)classes.ex" .
 echo Java build finished</Command>
       <Outputs>force_compilation.txt;%(Outputs)</Outputs>
@@ -225,7 +228,7 @@ echo Java build finished</Command>
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>true</MinimalRebuild>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>../build_windows;../;../dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;DB_CREATE_DLL;_UNICODE;UNICODE;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -242,33 +245,34 @@ echo Java build finished</Command>
     </ClCompile>
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libdb50.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libdb51.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 	<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(OutDir)libdb_java50.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)libdb_java51.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OptimizeReferences>true</OptimizeReferences>
-      <ImportLibrary>$(OutDir)libdb_java50.lib</ImportLibrary>
+      <ImportLibrary>$(OutDir)libdb_java51.lib</ImportLibrary>
       <TargetMachine>NotSet</TargetMachine>
     </Link>
     <CustomBuildStep>
       <Command>
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)classes/" 
-javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\java\src\com\sleepycat\db\*.java ..\java\src\com\sleepycat\db\internal\*.java ..\java\src\com\sleepycat\asm\*.java ..\java\src\com\sleepycat\bind\*.java ..\java\src\com\sleepycat\bind\serial\*.java ..\java\src\com\sleepycat\bind\tuple\*.java ..\java\src\com\sleepycat\collections\*.java ..\java\src\com\sleepycat\compat\*.java ..\java\src\com\sleepycat\persist\*.java ..\java\src\com\sleepycat\persist\evolve\*.java ..\java\src\com\sleepycat\persist\impl\*.java ..\java\src\com\sleepycat\persist\model\*.java ..\java\src\com\sleepycat\persist\raw\*.java ..\java\src\com\sleepycat\util\*.java ..\java\src\com\sleepycat\util\keyrange\*.java 
+javac -g -target 1.5 -d "$(OutDir)classes" -classpath "$(OutDir)classes" ..\lang\java\src\com\sleepycat\db\*.java ..\lang\java\src\com\sleepycat\db\internal\*.java ..\lang\java\src\com\sleepycat\asm\*.java ..\lang\java\src\com\sleepycat\bind\*.java ..\lang\java\src\com\sleepycat\bind\serial\*.java ..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\lang\java\src\com\sleepycat\collections\*.java ..\lang\java\src\com\sleepycat\compat\*.java ..\lang\java\src\com\sleepycat\persist\*.java ..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\lang\java\src\com\sleepycat\persist\impl\*.java ..\lang\java\src\com\sleepycat\persist\model\*.java ..\lang\java\src\com\sleepycat\persist\raw\*.java ..\lang\java\src\com\sleepycat\util\*.java ..\lang\java\src\com\sleepycat\util\keyrange\*.java
+java -classpath $(OutDir)classes com.sleepycat.persist.model.ClassEnhancer $(OutDir)classes
 echo compiling examples
 mkdir "$(OutDir)classes.ex"
-javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples_java\src\db\*.java ..\examples_java\src\db\GettingStarted\*.java ..\examples_java\src\db\repquote\*.java ..\examples_java\src\collections\access\*.java ..\examples_java\src\collections\hello\*.java ..\examples_java\src\collections\ship\basic\*.java ..\examples_java\src\collections\ship\entity\*.java ..\examples_java\src\collections\ship\tuple\*.java ..\examples_java\src\collections\ship\sentity\*.java ..\examples_java\src\collections\ship\marshal\*.java ..\examples_java\src\collections\ship\factory\*.java ..\examples_java\src\persist\*.java ..\examples_java\src\persist\gettingStarted\*.java ..\examples_java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)classes.ex" -classpath "$(OutDir)classes%3b$(OutDir)classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
 echo creating jar files
-jar cf "$(OutDir)db.jar" -C "$(OutDir)classes" .
+jar cfm "$(OutDir)db.jar" ../lang/java/jarManifestEntries -C "$(OutDir)classes" .
 jar cf "$(OutDir)dbexamples.jar" -C "$(OutDir)classes.ex" .
 echo Java build finished</Command>
       <Outputs>force_compilation.txt;%(Outputs)</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\libdb_java\db_java_wrap.c" />
+    <ClCompile Include="..\lang\java\libdb_java\db_java_wrap.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="db.vcxproj">

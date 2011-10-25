@@ -648,7 +648,7 @@ count_records(DB *dbp, DB_TXN *txn)
             case DB_NOTFOUND:
                 break;
             default:
-                dbp-&gt;err(envp, ret, "Count records unspecified error");
+                dbp-&gt;err(dbp, ret, "Count records unspecified error");
                 goto cursor_err;
         }
     } while (ret == 0);

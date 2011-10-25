@@ -29,13 +29,11 @@ files=`echo ../dbinc/*.h \
 	../qam/*.[ch] \
 	../rep/*.[ch] \
 	../repmgr/*.[ch] \
-	../rpc_client/*.[ch] \
-	../rpc_server/c/*.[ch] \
 	../sequence/*.[ch] \
-	../tcl/*.[ch] \
+	../lang/tcl/*.[ch] \
 	../txn/*.[ch] \
-	../cxx/*.cpp \
-	../libdb_java/*.[ch] | sed 's/[^ ]*stub.c//g'`
+	../lang/cxx/*.cpp \
+	../lang/java/libdb_java/*.[ch] | sed 's/[^ ]*stub.c//g'`
 
 f=tags
 echo "Building $f"
@@ -54,7 +52,6 @@ if ctags -w ../db/db.c 2>/dev/null; then
 fi
 
 ctags $flags $files 2>/dev/null
-chmod 444 $f
 
 for i in test_perf test_repmgr test_server; do
 	test -d ../$i || continue
@@ -62,5 +59,4 @@ for i in test_perf test_repmgr test_server; do
 	f=../$i/tags
 	echo "Building $f"
 	(cd ../$i && ctags $flags *.[ch] 2>/dev/null)
-	chmod 444 $f
 done

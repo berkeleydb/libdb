@@ -16,12 +16,8 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
  echo "set tclsh_path @TCL_TCLSH@"		&& \
  echo "set tcllib .libs/libdb_tcl-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@@LIBTSO_MODSUFFIX@" && \
  echo ""					&& \
- echo "set rpc_server localhost"	 	&& \
- echo "set rpc_path ."			 	&& \
- echo "set rpc_testdir \$rpc_path/TESTDIR"	&& \
- echo ""					&& \
  echo "set src_root @srcdir@/.."		&& \
- echo "set test_path @srcdir@/../test"		&& \
+ echo "set test_path @srcdir@/../test/tcl"	&& \
  echo "set je_root @srcdir@/../../je"		&& \
  echo ""					&& \
  echo "global testdir"				&& \
@@ -44,9 +40,9 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
  echo ""					&& \
  echo "set KILL \"@KILL@\"") > $t
 
-f=../test/include.tcl
+f=../test/tcl/include.tcl
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 (echo "$msg1"					&& \
  echo ""					&& \
@@ -55,7 +51,7 @@ cmp $t $f > /dev/null 2>&1 ||
  echo "set tcllib libdb_tcl${DB_VERSION_MAJOR}${DB_VERSION_MINOR}d.dll" && \
  echo ""					&& \
  echo "set src_root .."				&& \
- echo "set test_path ../test"			&& \
+ echo "set test_path ../test/tcl"		&& \
  echo "set je_root ../../je"			&& \
  echo ""					&& \
  echo "global testdir"				&& \
@@ -80,11 +76,11 @@ cmp $t $f > /dev/null 2>&1 ||
 
 f=../build_windows/include.tcl
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build the test directory TESTS file.
 (echo $msg2;
-cat `egrep -l '^#[	 ][	 ]*TEST' ../test/*.tcl` |
+cat `egrep -l '^#[	 ][	 ]*TEST' ../test/tcl/*.tcl` |
 sed -e '/^#[	 ][	 ]*TEST/!{' \
     -e 's/.*//' \
     -e '}' |
@@ -106,6 +102,6 @@ sed -e 's/__LINEBREAK__/\
 	/g' |
 sed -e 's/^[	 ][	 ]*$//') > $t
 
-f=../test/TESTS
+f=../test/tcl/TESTS
 cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $t $f)

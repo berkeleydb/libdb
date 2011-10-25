@@ -111,6 +111,7 @@
 	__db_dispatch
 	__db_dl
 	__db_dumptree
+	__db_encrypt_and_checksum_pg
 	__db_err
 	__db_errx
 	__db_getlong
@@ -178,6 +179,7 @@
 	__ham_replace_desc
 	__ham_splitdata_desc
 	__lock_list_print
+	__log_current_lsn
 	__log_print_record
 	__log_stat_pp
 	__log_verify_pp
@@ -210,6 +212,7 @@
 	__qam_add_desc
 	__qam_del_desc
 	__qam_delext_desc
+	__qam_fprobe
 	__qam_incfirst_desc
 	__qam_mvptr_desc
 	__qam_pgin_out

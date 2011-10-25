@@ -14,7 +14,7 @@ else
     DBDIR=$2
 fi
 
-if [ ! -d "$DBDIR/dbinc" -o ! -f "$JEDIR/build.xml" ] ; then
+if [ ! -d "$DBDIR/src/dbinc" -o ! -f "$JEDIR/build.xml" ] ; then
 	echo >&2 "Usage $0 /path/to/je [ /path/to/db ]"
 	exit 1
 fi
@@ -25,9 +25,9 @@ DBDIR=$(cd "$DBDIR" ; /bin/pwd)
 JESRC="$JEDIR/src"
 JETEST="$JEDIR/test"
 JEEXAMPLES="$JEDIR/examples"
-DBSRC="$DBDIR/java/src"
-DBTEST="$DBDIR/test/scr024/src"
-DBEXAMPLES="$DBDIR/examples_java/src"
+DBSRC="$DBDIR/lang/java/src"
+DBTEST="$DBDIR/test/java/compat/src"
+DBEXAMPLES="$DBDIR/examples/java/src"
 DIRMATCH="com/sleepycat/\(\(asm\)\|\(bind\)\|\(collections\)\|\(persist\)\|\(util\)\)"
 EXAMPLESMATCH="^\./\(\(collections\)\|\(persist\)\)"
 
@@ -49,19 +49,20 @@ if [ $COPY_EXAMPLES -eq 1 ] ; then
     done
 fi
 
-E1='s/com\.sleepycat\.je/com.sleepycat.db/g'
-E2='/<!-- begin JE only -->/,/<!-- end JE only -->/d'
-E3='s/LockConflictException/DeadlockException/g'
-E4='s/$Id:.*\$/$Id$/'
-E5='s/TransactionGettingStarted/gsg_txn\/JAVA/'
-EXCLUDESRC="\(\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
-#EXCLUDESRC="\(\(ClassEnhancerTask\)\|\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
+E1='s/com\.sleepycat\.je\.utilint\.IdentityHashMap/java.util.IdentityHashMap/g'
+E2='s/com\.sleepycat\.je/com.sleepycat.db/g'
+E3='/<!-- begin JE only -->/,/<!-- end JE only -->/d'
+E4='s/LockConflictException/DeadlockException/g'
+E5='s/$Id:.*\$/$Id$/'
+E6='s/TransactionGettingStarted/gsg_txn\/JAVA/'
+E7='s/OperationFailureException/DatabaseException/g'
+EXCLUDESRC="\(\(ClassEnhancerTask\)\|\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
 EXCLUDETESTS="\(\(ConvertAndAddTest\)\|\(DevolutionTest\)\|\(TestVersionCompatibility\)\|\(XACollectionTest\)\)"
 
 cd "$JESRC"
 for f in `find . -name '*.java' -o -name "package.html" | grep $DIRMATCH | grep -v $EXCLUDESRC` ; do
     #echo $DBSRC/$f
-    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" -e "$E6" -e "$E7" < $f \
         > $DBSRC/$f.sed.out
     diff -q -I "\$\Id:" $DBSRC/$f $DBSRC/$f.sed.out || \
         mv -f $DBSRC/$f.sed.out $DBSRC/$f
@@ -72,7 +73,7 @@ cd "$JETEST"
 for f in `find . -name '*.java' -o -name "*.java.original" | grep $DIRMATCH | grep -v $EXCLUDETESTS` \
         ; do
     #echo $DBTEST/$f
-    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+    sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" -e "$E6" -e "$E7" < $f \
         > $DBTEST/$f.sed.out
     diff -q -I "\$\Id:" $DBTEST/$f $DBTEST/$f.sed.out || \
         mv -f $DBTEST/$f.sed.out $DBTEST/$f
@@ -83,7 +84,7 @@ if [ $COPY_EXAMPLES -eq 1 ] ; then
     cd "$JEEXAMPLES"
     for f in `find . -name '*.java' | grep $EXAMPLESMATCH` ; do
         #echo $DBEXAMPLES/$f
-        sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" < $f \
+        sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" -e "$E6" -e "$E7" < $f \
             > $DBEXAMPLES/$f.sed.out
         diff -q -I "\$\Id:" $DBEXAMPLES/$f $DBEXAMPLES/$f.sed.out || \
             mv -f $DBEXAMPLES/$f.sed.out $DBEXAMPLES/$f

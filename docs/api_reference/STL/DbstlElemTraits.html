@@ -45,7 +45,7 @@
       <p>The callbacks need not be set to every type explicitly. . dbstl will check if a needed callback function of this type is provided. If one is available, dbstl will use the registered callback. If the appropriate callback is not provided, dbstl will use reasonable defaults to do the job.</p>
       <p>For returning the size of an object, the default behavior is to use the sizeof() operator; For marshalling and unmarshalling, dbstl uses memcpy, so the default behavior is sufficient for simple types whose data reside in a contiguous chunk of memory; Dbstl uses uses &gt;, == and &lt; for comparison operations; For char* and wchar_t * strings, dbstl already provides the appropriate callbacks, so you do not need to register them. In general, if the default behavior is adequate, you don't need to register the corresponding callback.</p>
       <p>If you have registered proper callbacks, the DbstlElemTraits&lt;T&gt; can also be used as the char_traits&lt;T&gt; class for std::basic_string&lt;T, char_traits&lt;T&gt; &gt;, and you can enable your class T to form a basic_string&lt;T, DbstlElemTraits&lt;T&gt;&gt;, and use basic_string's functionality and the algorithms to manipulate it. </p>
-      <h4><a id="id3510436"></a> Public Members </h4>
+      <h4><a id="idp51678936"></a> Public Members </h4>
       <div class="informaltable">
         <table border="1" width="80%">
           <colgroup>
@@ -300,7 +300,7 @@
           </tbody>
         </table>
       </div>
-      <h4><a id="id3510315"></a>
+      <h4><a id="idp51694440"></a>
 Group</h4>
       <p>
 <a class="xref" href="dbstl_helper_classes.html" title="Chapter 21.  Dbstl Helper Classes">
@@ -339,7 +339,7 @@ static T* assign(T *seq, size_t cnt,
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3510558"></a>Group: Interface compatible with std::string's char_traits.</h3>
+                <h3 class="title"><a id="idp51705704"></a>Group: Interface compatible with std::string's char_traits.</h3>
               </div>
             </div>
           </div>
@@ -349,7 +349,7 @@ static T* assign(T *seq, size_t cnt,
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3510568"></a>Class</h3>
+                <h3 class="title"><a id="idp51707032"></a>Class</h3>
               </div>
             </div>
           </div>

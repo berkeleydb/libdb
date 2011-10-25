@@ -139,11 +139,12 @@
                     file to be re-read.
                 </p>
         <p>
-                    The DB_CONFIG file is described in 
-                    <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>.
+                    The DB_CONFIG file is described in <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>.
                     The <code class="literal">set_lg_max</code> parameter is
-                    described in 
-                    <a class="xref" href="set_lg_max_parameter.html" title="set_lg_max">set_lg_max</a>.
+                    described in the
+                    <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/api_reference/C/BDB-C_APIReference.pdf" target="_top">
+                        Berkeley DB C API
+                    </a>.
                 </p>
         <p>
                     For a description of how, when and why you should
@@ -170,13 +171,14 @@
                 You can set the size of your logging region by using the
                 <code class="literal">set_lg_regionmax</code> DB_CONFIG parameter.  Note that 
                 to manage this value you must set it before you create your
-                environment, or you must re-create your environment.  See  
-                <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>
+                environment, or you must re-create your environment.  See <a class="xref" href="using_dbconfig.html" title="The DB_CONFIG File">The DB_CONFIG File</a>
                 for more information.
             </p>
         <p>
-                The <code class="literal">set_lg_regionmax</code> parameter is described in
-                <a class="xref" href="set_lg_regionmax_parameter.html" title="set_lg_regionmax">set_lg_regionmax</a>.
+                The <code class="literal">set_lg_regionmax</code> parameter is described in the
+                <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/api_reference/C/BDB-C_APIReference.pdf" target="_top">
+                        Berkeley DB C API
+                    </a>.
             </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -202,7 +204,10 @@
             </p>
         <p>
                 You can increase your log buffer space by using the
-                <code class="literal">set_lg_bsize</code> DB_CONFIG parameter.  Note that this
+                <code class="literal">set_lg_bsize</code> DB_CONFIG parameter. 
+                For the BDB SQL interface, when the logging subsystem is configured for on-disk logging, the
+				default size of the in-memory log buffer is approximately 64KB.
+				Note that this
                 method can only be called before the environment
                 is first opened, so you will have to set this by creating
                 your <code class="literal">-journal</code> directory, and then
@@ -212,7 +217,9 @@
             </p>
         <p>
                 The <code class="literal">set_lg_bsize</code> parameter is described
-                in <a class="xref" href="set_lg_bsize_parameter.html" title="set_lg_bsize">set_lg_bsize</a>.
+                in the <a class="ulink" href="http://download.oracle.com/docs/cd/E17076_02/html/api_reference/C/BDB-C_APIReference.pdf" target="_top">
+                        Berkeley DB C API
+                    </a>.
             </p>
         <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
           <h3 class="title">Note</h3>

@@ -42,9 +42,9 @@ ways to store structures and objects.</p>
       <p>First, you can do some form of run-length encoding and copy your
 structure into another piece of memory before storing it:</p>
       <pre class="programlisting">struct {
-	char *data1;
-	u_int32_t data2;
-	...
+    char *data1;
+    u_int32_t data2;
+    ...
 } info;
 size_t len;
 u_int8_t *p, data_buffer[1024];
@@ -64,9 +64,9 @@ routines (for example, btree/btree_auto.c:__bam_split_log()).  This
 technique is generally known as "marshalling".  If you use this
 technique, you must then un-marshall the data when you read it back:</p>
       <pre class="programlisting">struct {
-	char *data1;
-	u_int32_t data2;
-	...
+    char *data1;
+    u_int32_t data2;
+    ...
 } info;
 size_t len;
 u_int8_t *p;
@@ -85,8 +85,8 @@ p += sizeof(info.data2);
 variable length field in the structure.  In that case, you can declare
 the structure as follows:</p>
       <pre class="programlisting">struct {
-	int a, b, c;
-	u_int8_t buf[1];
+    int a, b, c;
+    u_int8_t buf[1];
 } info;</pre>
       <p>Then, let's say you have a string you want to store in this structure.
 When you allocate the structure, you allocate it as:</p>

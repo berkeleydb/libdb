@@ -321,8 +321,8 @@ CreateLinks() {
     mkdir links
     cd links
     MakeLink oracletn.bdbsc http://forums.oracle.com/forums/forum.jspa?forumID=271
-    MakeLink oracleon.bdbsc http://www.oracle.com/technology/documentation/berkeley-db/db/index.html
-    MakeLink oraclefa.bdbsc http://www.oracle.com/technology/products/berkeley-db/faq/db_faq.html
+    MakeLink oracleon.bdbsc http://www.oracle.com/technetwork/database/berkeleydb/documentation/index.html
+    MakeLink oraclefa.bdbsc http://www.oracle.com/technetwork/database/berkeleydb/db-faq-095848.html
     MakeLink oraclewb.bdbsc http://www.oracle.com
     cp ${DIST_DIR}/winmsi/webicon.ico .
     cd ..
@@ -333,16 +333,29 @@ CreateLinks() {
 createCSharpExamples() {
     local here=`pwd`
     cd dist/winmsi
-    projects="ex_access ex_btrec ex_env ex_lock ex_txn ex_repquote ex_sequence"
-    for i in $projects; do
-	f=../../stage/examples_csharp/$i/$i.csproj
-        mkdir -p ../../stage/examples_csharp/$i
-	cp -f ../../examples_csharp/$i/$i.csproj ../../stage/examples_csharp/$i
+    for i in `ls ../../examples/csharp`; do
+	f=../../stage/examples/csharp/$i/$i.csproj
+        mkdir -p ../../stage/examples/csharp/$i
 	xqilla.exe -u -v "inFile" $f -v "libname" libdb_dotnet$DB_VERSION_MAJOR$DB_VERSION_MINOR -v "libversion" $DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH.0 fixupCsharp.xq
 	# Visual studio doesn't like XML version 1.1...
 	sed -e's!version="1.1"!version="1.0"!g' $f > $f.tmp
 	cp -f $f.tmp $f
 	rm -rf $f.tmp
+    done
+    cd $here
+}
+
+# VS2010 examples need to remove the dependencies on db*.vcxproj
+# projects that do not get bundled with binaries
+fixup2010examples () {
+    local here=`pwd`
+    cd dist/winmsi
+    for i in `ls ../../stage/build_windows/*.vcxproj`; do
+	xqilla.exe -u -v "inFile" $i fixup2010.xq
+	# Visual studio doesn't like XML version 1.1...
+	sed -e's!version="1.1"!version="1.0"!g' $i > $i.tmp
+	cp -f $i.tmp $i
+	rm -rf $i.tmp
     done
     cd $here
 }
@@ -359,36 +372,37 @@ createCSharpExamples() {
 StageSourceComponents() {
     local here=`pwd`
     Progress "Staging source files -- examples and projects..."
-    examples="examples_c examples_cxx examples_csharp examples_java examples_stl"
+
     cd "${PRODUCT_BLDDIR}"
     # start with a clean slate
     rm -rf stage
     mkdir stage
     mkdir stage/build_windows
     mkdir stage/sql
-    mkdir stage/clib
+    mkdir stage/src
+    mkdir stage/src/clib
     mkdir stage/include
 
     #
     # Examples
     #
-    for ex in $examples; do
-	cp -r $ex stage
-    done
+    cp -r examples stage
 
-    # SQL examples are in a different place
-    cp -r sql/examples stage/sql
     # many examples rely on getopt.c
-    cp clib/getopt.c stage/clib
+    cp src/clib/getopt.c stage/src/clib
     # example solution and project files
     cp build_windows/Berkeley_DB_examples.sln stage/build_windows
     cp build_windows/BDB_dotNet_examples.sln stage/build_windows
+    cp build_windows/Berkeley_DB_examples_vs2010.sln stage/build_windows
+    cp build_windows/BDB_dotNet_examples_vs2010.sln stage/build_windows
     # NOTE: this assumes ALL example projects start with "ex"
     cp build_windows/ex*.vcproj stage/build_windows
+    # VS2010 projects too
+    cp build_windows/ex*.vcxproj stage/build_windows
 
     # note files in example group file, starting at stage
     cd stage
-    find $examples sql clib build_windows -type f > $group_ex
+    find examples src build_windows -type f > $group_ex
     cd ..
 
     #
@@ -411,11 +425,11 @@ StageSourceComponents() {
     # dbinc/queue.h is required by rep_net.c for the LIST* macros, put it
     # under include.  It has no external dependencies.
     mkdir stage/include/dbinc
-    cp dbinc/queue.h stage/include/dbinc
+    cp src/dbinc/queue.h stage/include/dbinc
     echo "include/dbinc/queue.h" >> stage/$group_ex
-
+ 
     # STL has a lot of header files that are external
-    cp stl/*.h stage/include
+    cp lang/cxx/stl/*.h stage/include
     cd stage
     find include -name "dbstl*.h" >> $group_cxx
     cd ..
@@ -461,7 +475,7 @@ StageRuntimeComponents() {
     # copy library .pdb files by hand
     cp build_windows/Win32/Release/libdb*.pdb stage/bin
     # SQLite header, library .pdb files
-    cp sql/generated/sqlite3.h stage/include
+    cp lang/sql/generated/sqlite3.h stage/include
     cp build_windows/Win32/Release/sqlite3odbc.pdb stage/bin
     cp build_windows/Win32/Release/sqlite_jni.pdb stage/bin
 
@@ -473,8 +487,11 @@ StageRuntimeComponents() {
     cp build_windows/AnyCPU/Release/libdb_dotnet$DB_VERSION_MAJOR$DB_VERSION_MINOR.XML stage/bin
     cp build_windows/AnyCPU/Release/libdb_dotnet$DB_VERSION_MAJOR$DB_VERSION_MINOR.pdb stage/bin
 
-    # copy/modify C# example project files
+    # modify C# example project files
     createCSharpExamples
+
+    # modify VS2010 example project files
+    fixup2010examples
 
     cp README stage
     cp LICENSE stage

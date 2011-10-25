@@ -241,6 +241,18 @@
             
             
     </p>
+        <div class="warning" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Warning</h3>
+          <p>
+            Using environments with some journaling filesystems might
+            result in log file corruption. This can occur if the operating  
+            system experiences an unclean shutdown when a log file is being
+            created.  Please see  
+            <a href="../../programmer_reference/transapp_journal.html" class="olink">Using
+                Recovery on Journaling Filesystems</a>
+            in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em> for more information.
+        </p>
+        </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
@@ -666,7 +678,12 @@
                     <code class="methodname">EnvironmentConfig.setPrivate()</code>
                     method.
                 </span>
-
+        </p>
+            <p>
+            Note that you can also set this flag by using the
+            <code class="literal">set_open_flags</code> parameter in the 
+            <code class="literal">DB_CONFIG</code> file. See the 
+            <em class="citetitle">Berkeley DB C API Reference Guide</em> for more information.
         </p>
             <p>
             (For an example of an entirely in-memory transactional

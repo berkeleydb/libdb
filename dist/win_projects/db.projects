@@ -13,6 +13,7 @@ db_log_verify
 db_perf
 db_printlog
 db_recover
+db_replicate
 db_repsite
 db_small_static
 db_sql
@@ -30,6 +31,7 @@ db_upgrade
 db_verify
 ex_access
 ex_btrec
+ex_bulk
 ex_csvcode
 ex_csvload
 ex_csvquery

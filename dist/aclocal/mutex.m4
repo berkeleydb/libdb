@@ -3,6 +3,7 @@
 # POSIX pthreads tests: inter-process safe and intra-process only.
 AC_DEFUN(AM_PTHREADS_SHARED, [
 AC_TRY_RUN([
+#include <stdlib.h>
 #include <pthread.h>
 main() {
 	pthread_cond_t cond;
@@ -24,6 +25,7 @@ main() {
 	pthread_mutexattr_destroy(&mutexattr));
 }], [db_cv_mutex="$1"],,
 AC_TRY_LINK([
+#include <stdlib.h>
 #include <pthread.h>],[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
@@ -45,6 +47,7 @@ AC_TRY_LINK([
 ], [db_cv_mutex="$1"]))])
 AC_DEFUN(AM_PTHREADS_PRIVATE, [
 AC_TRY_RUN([
+#include <stdlib.h>
 #include <pthread.h>
 main() {
 	pthread_cond_t cond;
@@ -64,6 +67,7 @@ main() {
 	pthread_mutexattr_destroy(&mutexattr));
 }], [db_cv_mutex="$1"],,
 AC_TRY_LINK([
+#include <stdlib.h>
 #include <pthread.h>],[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
@@ -81,6 +85,48 @@ AC_TRY_LINK([
 	pthread_condattr_destroy(&condattr) ||
 	pthread_mutexattr_destroy(&mutexattr));
 ], [db_cv_mutex="$1"]))])
+AC_DEFUN(AM_PTHREADS_CONDVAR_DUPINITCHK, [
+AC_TRY_RUN([
+#include <stdlib.h>
+#include <pthread.h>
+main() {
+	pthread_cond_t cond;
+	pthread_condattr_t condattr;
+	exit(pthread_condattr_init(&condattr) ||
+	pthread_cond_init(&cond, &condattr) ||
+	pthread_cond_init(&cond, &condattr));
+}], [db_cv_pthread_condinit_dupgood="yes"], 
+[db_cv_pthread_condinit_dupgood="no"],
+AC_TRY_LINK([
+#include <stdlib.h>
+#include <pthread.h>], [
+	pthread_cond_t cond;
+	pthread_condattr_t condattr;
+	exit(pthread_condattr_init(&condattr) ||
+	pthread_cond_init(&cond, &condattr));
+], [db_cv_pthread_condinit_dupgood="yes"], 
+[db_cv_pthread_condinit_dupgood="no"]))])
+AC_DEFUN(AM_PTHREADS_RWLOCKVAR_DUPINITCHK, [
+AC_TRY_RUN([
+#include <stdlib.h>
+#include <pthread.h>
+main() {
+	pthread_rwlock_t rwlock;
+	pthread_rwlockattr_t rwlockattr;
+	exit(pthread_rwlockattr_init(&rwlockattr) ||
+	pthread_rwlock_init(&rwlock, &rwlockattr) ||
+	pthread_rwlock_init(&rwlock, &rwlockattr));
+}], [db_cv_pthread_rwlockinit_dupgood="yes"], 
+[db_cv_pthread_rwlockinit_dupgood="no"],
+AC_TRY_LINK([
+#include <stdlib.h>
+#include <pthread.h>], [
+	pthread_rwlock_t rwlock;
+	pthread_rwlockattr_t rwlockattr;
+	exit(pthread_rwlockattr_init(&rwlockattr) ||
+	pthread_rwlock_init(&rwlock, &rwlockattr));
+], [db_cv_pthread_rwlockinit_dupgood="yes"], 
+[db_cv_pthread_rwlockinit_dupgood="no"]))])
 
 # Figure out mutexes for this compiler/architecture.
 #
@@ -138,17 +184,25 @@ if test "$db_cv_mutex" = no; then
 	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
 		LIBS="$LIBS -lpthread"
 		AM_PTHREADS_SHARED(POSIX/pthreads/library)
+		AM_PTHREADS_CONDVAR_DUPINITCHK
+		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
 		LIBS="$orig_libs"
 	fi
 	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
 		AM_PTHREADS_SHARED(POSIX/pthreads)
+		AM_PTHREADS_CONDVAR_DUPINITCHK
+		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
 	fi
 	if test "$db_cv_mutex" = posix_only; then
 		AM_PTHREADS_PRIVATE(POSIX/pthreads/private)
+		AM_PTHREADS_CONDVAR_DUPINITCHK
+		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
 	fi
 	if test "$db_cv_mutex" = posix_only; then
 		LIBS="$LIBS -lpthread"
 		AM_PTHREADS_PRIVATE(POSIX/pthreads/library/private)
+		AM_PTHREADS_CONDVAR_DUPINITCHK
+		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
 		LIBS="$orig_libs"
 	fi
 	if test "$db_cv_mutex" = posix_only; then
@@ -521,32 +575,60 @@ fi
 # Configure a pthreads-style mutex implementation.
 hybrid=pthread
 case "$db_cv_mutex" in
-POSIX/pthreads*)	ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
-			AC_DEFINE(HAVE_MUTEX_PTHREADS)
-			AH_TEMPLATE(HAVE_MUTEX_PTHREADS,
-			    [Define to 1 to use POSIX 1003.1 pthread_XXX mutexes.]);;
 POSIX/pthreads/private*)ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_PTHREADS)
+			if test "$db_cv_pthread_condinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_COND_REINIT_OKAY)
+			fi
+			if test "$db_cv_pthread_rwlockinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_RWLOCK_REINIT_OKAY)
+			fi
 			AC_DEFINE(HAVE_MUTEX_THREAD_ONLY)
 			AH_TEMPLATE(HAVE_MUTEX_THREAD_ONLY,
 			    [Define to 1 to configure mutexes intra-process only.]);;
-POSIX/pthreads/library*)ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
-			AC_DEFINE(HAVE_MUTEX_PTHREADS);;
 POSIX/pthreads/library/private*)
 			ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_PTHREADS)
+			if test "$db_cv_pthread_condinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_COND_REINIT_OKAY)
+			fi
+			if test "$db_cv_pthread_rwlockinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_RWLOCK_REINIT_OKAY)
+			fi
 			AC_DEFINE(HAVE_MUTEX_THREAD_ONLY);;
+POSIX/pthreads/library*)ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_PTHREADS)
+			if test "$db_cv_pthread_condinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_COND_REINIT_OKAY)
+			fi
+			if test "$db_cv_pthread_rwlockinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_RWLOCK_REINIT_OKAY)
+			fi;;
+POSIX/pthreads*)	ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_PTHREADS)
+			AH_TEMPLATE(HAVE_MUTEX_PTHREADS,
+			    [Define to 1 to use POSIX 1003.1 pthread_XXX mutexes.])
+			if test "$db_cv_pthread_condinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_COND_REINIT_OKAY)
+			fi
+			if test "$db_cv_pthread_rwlockinit_dupgood" = "yes"; then
+				AC_DEFINE(HAVE_PTHREAD_RWLOCK_REINIT_OKAY)
+			fi
+			AH_TEMPLATE(HAVE_PTHREAD_COND_REINIT_OKAY,
+			    [Define to 1 if it is OK to initialize an already initialized pthread_cond_t.])
+			AH_TEMPLATE(HAVE_PTHREAD_RWLOCK_REINIT_OKAY,
+			    [Define to 1 if it is OK to initialize an already initialized pthread_rwlock_t.]);;
 Solaris/lwp*)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_SOLARIS_LWP)
 			AH_TEMPLATE(HAVE_MUTEX_SOLARIS_LWP,
 			    [Define to 1 to use the Solaris lwp threads mutexes.]);;
+UI/threads/library*)	ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_UI_THREADS);;
+*)			hybrid=no;;
 UI/threads*)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_UI_THREADS)
 			AH_TEMPLATE(HAVE_MUTEX_UI_THREADS,
 			    [Define to 1 to use the UNIX International mutexes.]);;
-UI/threads/library*)	ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
-			AC_DEFINE(HAVE_MUTEX_UI_THREADS);;
-*)			hybrid=no;;
 esac
 
 # Configure a test-and-set mutex implementation.

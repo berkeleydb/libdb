@@ -47,6 +47,22 @@ environment because the environment pool size will override any pool
 size specified for a single database.  For information on tuning the
 Berkeley DB cache size, see 
 <a class="xref" href="general_am_conf.html#am_conf_cachesize" title="Selecting a cache size">Selecting a cache size</a>.</p>
+      <p>
+    Note the memory pool defaults to assuming that the average page size is
+    4k.  This factor is used to determine the size of the hash table used
+    to locate pages in the memory pool. The size of the hash table is
+    calculated to so that on average 2.5 pages will be in each hash table
+    entry.  Each page requires a mutex be allocated to it and the average
+    page size is used to determine the number of mutexes to allocate to the
+    memory pool.
+</p>
+      <p>
+    Normally you should see good results by using the default values for
+    the page size, but in some cases you may be able to achieve better
+    performance by manually configuring the page size.  The expected page
+    size, hash table size and mutex count can be set via the methods:
+    <a href="../api_reference/C/envset_mp_pagesize.html" class="olink">DB_ENV-&gt;set_mp_pagesize()</a>, <a href="../api_reference/C/envset_mp_tablesize.html" class="olink">DB_ENV-&gt;set_mp_tablesize()</a>, and <a href="../api_reference/C/envset_mp_mtxcount.html" class="olink">DB_ENV-&gt;set_mp_mtxcount()</a>. 
+</p>
       <p>The second memory pool configuration issue is the maximum size an
 underlying file can be and still be mapped into the process address
 space (instead of reading the file's pages into the cache).  Mapping

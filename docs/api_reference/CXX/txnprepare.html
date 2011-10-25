@@ -38,7 +38,7 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
  
 int
-DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
+DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
       <p>
          The <code class="methodname">DbTxn::prepare()</code> method initiates the beginning of a two-phase
          commit.
@@ -81,7 +81,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3706504"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+              <h4 class="title"><a id="idp54971200"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
             </div>
           </div>
         </div>
@@ -99,7 +99,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3706561"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+              <h4 class="title"><a id="idp54967776"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3706683"></a>EINVAL</h4>
+              <h4 class="title"><a id="idp54946912"></a>EINVAL</h4>
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3706984"></a>Parameters</h3>
+              <h3 class="title"><a id="idp54968272"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3706987"></a>gid</h4>
+                <h4 class="title"><a id="idp54993200"></a>gid</h4>
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3706867"></a>Class</h3>
+              <h3 class="title"><a id="idp54985872"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ DbTxn::prepare(u_int8_t gid[DB_XIDDATASIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3706887"></a>See Also</h3>
+              <h3 class="title"><a id="idp54987096"></a>See Also</h3>
             </div>
           </div>
         </div>

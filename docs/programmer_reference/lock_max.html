@@ -120,43 +120,71 @@ simultaneously active non-transactional cursors and open database
 handles to the number of simultaneous non-cursor operations.</li>
         </ul>
       </div>
-      <p>The maximum number of lock objects needed for a single database
-operation can be estimated as follows:</p>
+      <p>The maximum number of lock objects needed for a transaction
+can be estimated as follows:</p>
       <div class="itemizedlist">
         <ul type="disc">
-          <li>For Btree and Recno access methods, you will need one lock object per
-level of the database tree, at a minimum.  (Unless keys are quite large
-with respect to the page size, neither Recno nor Btree database trees
-should ever be deeper than five levels.)  Then, you will need one lock
-object for each leaf page of the database tree that will be
-simultaneously accessed.</li>
-          <li>For the Queue access method, you will need one lock object per record
-that is simultaneously accessed.  To this, add one lock object per page
-that will be simultaneously accessed.  (Because the Queue access method
-uses fixed-length records and the database page size is known, it is
-possible to calculate the number of pages -- and, therefore, the lock
-objects -- required.)  Deleted records skipped by a <a href="../api_reference/C/dbcget.html#dbcget_DB_NEXT" class="olink">DB_NEXT</a> or
-<a href="../api_reference/C/dbcget.html#dbcget_DB_PREV" class="olink">DB_PREV</a> operation do not require a separate lock object.
-Further, if your application is using transactions, no database
-operation will ever use more than three lock objects at any time.</li>
-          <li>For the Hash access method, you only need a single lock object.</li>
+          <li>
+            <p>
+            For each access to a non-Queue database, one lock object is
+            needed for each page that is read or updated.
+        </p>
+          </li>
+          <li>
+            <p>
+            For the Queue access method  you will need one lock object per
+            record that is read or updated. Deleted records skipped by a
+            DB_NEXT or DB_PREV operation do not require a separate lock
+            object. 
+        </p>
+          </li>
+          <li>
+            <p>
+            For Btree and Recno databases additional lock objects may be
+            needed for each node in the btree that has to be split due to
+            an update.
+        </p>
+          </li>
+          <li>
+            <p>
+            For Hash and Queue databases, every access must obtain a lock on
+            the metadata page for the duration of the access.  This is not
+            held to the end of the transaction.
+        </p>
+          </li>
+          <li>
+            <p>
+            If the transaction performs an update that needs to allocate a page
+            to the database then a lock object for the metadata page will
+            be needed to the end of the transaction.
+        </p>
+          </li>
         </ul>
       </div>
-      <p>For all access methods, you should then add an additional lock object
-per database for the database's metadata page.</p>
-      <p>Note that transactions accumulate locks over the transaction lifetime,
-and the lock objects required by a single transaction is the total lock
-objects required by all of the database operations in the transaction.
-However, a database page (or record, in the case of the Queue access
-method), that is accessed multiple times within a transaction only
-requires a single lock object for the entire transaction.</p>
-      <p>The maximum number of locks required by an application cannot be easily
-estimated.  It is possible to calculate a maximum number of locks by
-multiplying the maximum number of lockers, times the maximum number of
-lock objects, times two (two for the two possible lock modes for each
-object, read and write).  However, this is a pessimal value, and real
-applications are unlikely to actually need that many locks.  Reviewing
-the Lock subsystem statistics is the best way to determine this value.</p>
+      <p>
+    Note that transactions accumulate locks over the transaction lifetime,
+    and the lock objects required by a single transaction is the total lock
+    objects required by all of the database operations in the transaction.
+    However, a database page (or record, in the case of the Queue access
+    method), that is accessed multiple times within a transaction only
+    requires a single lock object for the entire transaction. So if a
+    transaction in your application typically accesses 10 records, that
+    transaction will require about 10 lock objects (it may be a few more if
+    it splits btree nodes). If you have up to 10 concurrent threads in your
+    application, then you need to configure your system to have about 100
+    lock objects. It is always better to configure more than you need so
+    that you don't run out of lock objects. The memory overhead of
+    over-allocating lock objects is minimal as they are small structures.
+</p>
+      <p>
+    The maximum number of locks required by an application cannot be easily
+    estimated.  It is possible to calculate a maximum number of locks by
+    multiplying the maximum number of lockers, times the maximum number of
+    lock objects, times two (two for the two possible lock modes for each
+    object, read and write). However, this is a pessimal value, and real
+    applications are unlikely to actually need that many locks.  Reviewing
+    the Lock subsystem statistics is the best way to determine this value.
+</p>
     </div>
     <div class="navfooter">
       <hr />

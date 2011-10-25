@@ -37,7 +37,7 @@
       </div>
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
 int
-DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config); 
+DbEnv::log_verify(DB_ENV *dbenv, const DB_LOG_VERIFY_CONFIG *config); 
     </pre>
       <p>
          The <code class="methodname">DbEnv::log_verify()</code> method verifies the integrity 
@@ -70,7 +70,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654342"></a>Parameters</h3>
+              <h3 class="title"><a id="idp51750216"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -78,7 +78,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654503"></a>config </h4>
+                <h4 class="title"><a id="idp51796912"></a>config </h4>
               </div>
             </div>
           </div>
@@ -92,27 +92,49 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654372"></a>DB_LOG_VERIFY_CONFIG members</h3>
+              <h3 class="title"><a id="idp51762824"></a>DB_LOG_VERIFY_CONFIG members</h3>
             </div>
           </div>
         </div>
+        <pre class="programlisting">
+struct __db_logvrfy_config {
+int continue_after_fail, verbose;
+u_int32_t cachesize;
+const char *temp_envhome;
+const char *dbfile, *dbname;
+DB_LSN start_lsn, end_lsn;
+time_t start_time, end_time;
+};
+</pre>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654518"></a> temp_envhome</h4>
+                <h4 class="title"><a id="idp51756928"></a>continue_after_fail</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>temp_envhome</strong></span> parameter is the home directory of the temporary database environment that is used internally during the verification. It can be NULL, meaning the environment and all databases are in-memory.
+                          The <span class="bold"><strong>continue_after_fail</strong></span> parameter specifies whether or not continue the verification process when an error in the log is detected. 
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654271"></a>cachesize</h4>
+                <h4 class="title"><a id="idp51776168"></a>verbose</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>verbose</strong></span> parameter specifies whether or not to display verbose output during the verification process.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp51725840"></a>cachesize</h4>
               </div>
             </div>
           </div>
@@ -124,7 +146,19 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3653650"></a>dbfile</h4>
+                <h4 class="title"><a id="idp51777912"></a> temp_envhome</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                          The <span class="bold"><strong>temp_envhome</strong></span> parameter is the home directory of the temporary database environment that is used internally during the verification. It can be NULL, meaning the environment and all databases are in-memory.
+                     </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp51795488"></a>dbfile</h4>
               </div>
             </div>
           </div>
@@ -136,7 +170,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3653599"></a>dbname</h4>
+                <h4 class="title"><a id="idp51790704"></a>dbname</h4>
               </div>
             </div>
           </div>
@@ -148,7 +182,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3653808"></a>start_lsn and end_lsn </h4>
+                <h4 class="title"><a id="idp51770736"></a>start_lsn and end_lsn </h4>
               </div>
             </div>
           </div>
@@ -161,7 +195,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654504"></a>start_time and end_time </h4>
+                <h4 class="title"><a id="idp51802984"></a>start_time and end_time </h4>
               </div>
             </div>
           </div>
@@ -177,36 +211,12 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
                     You can specify either an lsn range or a time range. You can neither specify both nor specify an lsn and a time as a range.
                      </p>
         </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id3654519"></a>continue_after_fail</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>continue_after_fail</strong></span> parameter specifies whether or not continue the verification process when an error in the log is detected. 
-                     </p>
-        </div>
-        <div class="sect3" lang="en" xml:lang="en">
-          <div class="titlepage">
-            <div>
-              <div>
-                <h4 class="title"><a id="id3654545"></a>verbose</h4>
-              </div>
-            </div>
-          </div>
-          <p>
-                          The <span class="bold"><strong>verbose</strong></span> parameter specifies whether or not to display verbose output during the verification process.
-                     </p>
-        </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654130"></a>Environment Variables</h3>
+              <h3 class="title"><a id="idp51804264"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -220,7 +230,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654066"></a>Errors</h3>
+              <h3 class="title"><a id="idp51805176"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -240,7 +250,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654697"></a>Class</h3>
+              <h3 class="title"><a id="idp51810672"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -252,7 +262,7 @@ DbEnv::log_verify(const DB_LOG_VERIFY_CONFIG *config);
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654005"></a>See Also</h3>
+              <h3 class="title"><a id="idp51773520"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -80,21 +80,20 @@ head defonly _DB_INT_DEF_IN_ > $i_dfile
 # Process the standard directories, creating per-directory prototype
 # files and adding to the external prototype and #define files.
 for i in db btree clib common crypto dbreg env fileops hash hmac \
-    lock log mp mutex os qam rep repmgr rpc_client rpc_server \
-    sequence tcl txn; do
+    lock log mp mutex os qam rep repmgr sequence tcl txn; do
 	head "_${i}_ext_h_" > $i_pfile
 
 	if [ $i = os ] ; then
-		f=`ls ../$i/*.c \
-	    ../os_brew/*.c ../os_qnx/*.c ../os_vxworks/*.c ../os_windows/*.c`
-	elif [ $i = rpc_server ] ; then
-		f=`ls ../$i/c/*.c`
+		f=`ls ../src/$i/*.c \
+	    ../src/os_qnx/*.c ../src/os_vxworks/*.c ../src/os_windows/*.c`
 	elif [ $i = crypto ] ; then
-		f=`ls ../$i/*.c ../$i/*/*.c`
+		f=`ls ../src/$i/*.c ../src/$i/*/*.c`
 	elif [ $i = env ] ; then
-		f=`ls ../$i/*.c ../repmgr/repmgr_stub.c`
+		f=`ls ../src/$i/*.c ../src/repmgr/repmgr_stub.c`
+	elif [ $i = tcl ] ; then
+		f=`ls ../lang/$i/*.c`
 	else
-		f=`ls ../$i/*.c`
+		f=`ls ../src/$i/*.c`
 	fi
 	$AWK -f gen_inc.awk \
 	    -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
@@ -105,15 +104,15 @@ for i in db btree clib common crypto dbreg env fileops hash hmac \
 
 	tail "_${i}_ext_h_" >> $i_pfile
 
-	f=../dbinc_auto/${i}_ext.h
+	f=../src/dbinc_auto/${i}_ext.h
 	cmp $i_pfile $f > /dev/null 2>&1 ||
-	    (echo "Building $f" && rm -f $f && cp $i_pfile $f && chmod 444 $f)
+	    (echo "Building $f" && rm -f $f && cp $i_pfile $f)
 done
 
 # Process directories which only add to the external prototype and #define
 # files.
 for i in dbm hsearch; do
-	f=`ls ../$i/*.c`
+	f=`ls ../lang/$i/*.c`
 	$AWK -f gen_inc.awk \
 	    -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
 	    -v e_dfile=$e_dfile \
@@ -129,25 +128,25 @@ done
 
 # Wrap up the external #defines/prototypes, and internal #defines.
 tail defonly _DB_EXT_DEF_IN_ >> $e_dfile
-f=../dbinc_auto/ext_def.in
+f=../src/dbinc_auto/ext_def.in
 cmp $e_dfile $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $e_dfile $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $e_dfile $f)
 
 tail _DB_EXT_PROT_IN_ >> $e_pfile
-f=../dbinc_auto/ext_prot.in
+f=../src/dbinc_auto/ext_prot.in
 cmp $e_pfile $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $e_pfile $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $e_pfile $f)
 
 tail defonly _DB_INT_DEF_IN_ >> $i_dfile
-f=../dbinc_auto/int_def.in
+f=../src/dbinc_auto/int_def.in
 cmp $i_dfile $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $i_dfile $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $i_dfile $f)
 
 # DB185 compatibility support.
 head space defonly _DB_EXT_185_DEF_IN_ > $e_dfile
 head space _DB_EXT_185_PROT_IN_ > $e_pfile
 
-f=`ls ../db185/*.c`
+f=`ls ../lang/db185/*.c`
 $AWK -f gen_inc.awk \
     -v db_version_unique_name=$DB_VERSION_UNIQUE_NAME \
     -v e_dfile=$e_dfile \
@@ -156,14 +155,14 @@ $AWK -f gen_inc.awk \
     -v i_pfile="" $f
 
 tail defonly _DB_EXT_185_DEF_IN_ >> $e_dfile
-f=../dbinc_auto/ext_185_def.in
+f=../src/dbinc_auto/ext_185_def.in
 cmp $e_dfile $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $e_dfile $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $e_dfile $f)
 
 tail _DB_EXT_185_PROT_IN_ >> $e_pfile
-f=../dbinc_auto/ext_185_prot.in
+f=../src/dbinc_auto/ext_185_prot.in
 cmp $e_pfile $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $e_pfile $f && chmod 444 $f)
+    (echo "Building $f" && rm -f $f && cp $e_pfile $f)
 
 # Make the DTrace provider description file from events.in
 rm -f db_provider.d

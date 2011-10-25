@@ -80,7 +80,7 @@
 	Name='Installed' Type='integer' Value='1' KeyPath='yes'/>
       </Component>
       <!-- separate component for on-disk doc shortcuts if not installed -->
-      <Component Guid='9d10e2de-375d-11df-83b8-00262db1b537'
+      <Component Guid='fd666f0f-aa18-11df-af5b-00262db1b537'
           Id='ondisk_doc'
           Location='either'>
         <Shortcut
@@ -96,7 +96,7 @@
           Target='[INSTALLDIR]\docs\installation\changelog_@PRODUCT_MAJOR@_@PRODUCT_MINOR@.html'
          />
 	<RemoveFolder Id='ondisk_doc' On='uninstall'/>
-	<RegistryValue Root="HKCU" Key='SOFTWARE\Oracle\@REG_KEY_NAME@\@REG_KEY_VERSION@'
+	<RegistryValue Root="HKCU" Key='SOFTWARE\Oracle\@REG_KEY_NAME@\@REG_KEY_VERSION@\doc'
 	Name='Installed' Type='integer' Value='1' KeyPath='yes'/>
       </Component>
     </DirectoryRef>

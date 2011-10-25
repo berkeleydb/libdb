@@ -213,11 +213,8 @@ AC_ARG_ENABLE(pthread_api,,
 
 AC_MSG_CHECKING(if --enable-rpc option specified)
 AC_ARG_ENABLE(rpc,,
-	[if test "x$DB_FORCE_RPC" = x ; then
-		AC_MSG_ERROR([RPC support has been removed from Berkeley DB.  Please check the release notes]);
-	 else
-		db_cv_rpc="$enable_rpc";
-	 fi], [db_cv_rpc="no"])
+	[AC_MSG_ERROR([RPC support has been removed from Berkeley DB.])]
+	 , [db_cv_rpc="no"])
 AC_MSG_RESULT($db_cv_rpc)
 
 AC_MSG_CHECKING(if --enable-sql option specified)
@@ -233,6 +230,23 @@ AC_ARG_ENABLE(sql_compat,
 			[Build a drop-in replacement sqlite3 library.])],
 	[db_cv_sql_compat="$enable_sql_compat"], [db_cv_sql_compat="no"])
 AC_MSG_RESULT($db_cv_sql_compat)
+
+AC_MSG_CHECKING(if --enable-jdbc option specified)
+AC_ARG_ENABLE(jdbc,
+	[AC_HELP_STRING([--enable-jdbc],
+			[Build BDB SQL JDBC library.])],
+	[db_cv_jdbc="$enable_jdbc"], [db_cv_jdbc="no"])
+AC_MSG_RESULT($db_cv_jdbc)
+
+AC_MSG_CHECKING([if --with-jdbc=DIR option specified])
+AC_ARG_WITH(jdbc,
+       [AC_HELP_STRING([--with-jdbc=DIR],
+                       [Specify source directory of JDBC.])],
+       [with_jdbc="$withval"], [with_jdbc="no"])
+AC_MSG_RESULT($with_jdbc)
+if test "$with_jdbc" != "no"; then
+	db_cv_jdbc="yes"
+fi
 
 AC_MSG_CHECKING(if --enable-amalgamation option specified)
 AC_ARG_ENABLE(amalgamation,
@@ -283,16 +297,23 @@ AC_MSG_RESULT($db_cv_dbm)
 AC_MSG_CHECKING(if --enable-dtrace option specified)
 AC_ARG_ENABLE(dtrace,
 	[AC_HELP_STRING([--enable-dtrace],
-			[Configure to build in dtrace static probes under bdb])],
+			[Configure to build in dtrace static probes])],
 	[db_cv_dtrace="$enable_dtrace"], [db_cv_dtrace="no"])
 AC_MSG_RESULT($db_cv_dtrace)
 
 AC_MSG_CHECKING(if --enable-systemtap option specified)
 AC_ARG_ENABLE(systemtap,
 	[AC_HELP_STRING([--enable-systemtap],
-			[Configure to build in systemtap userspace probes under bdb])],
+			[Configure to use systemtap to emulate dtrace static probes])],
 	[db_cv_systemtap="$enable_systemtap"], [db_cv_systemtap="no"])
 AC_MSG_RESULT($db_cv_systemtap)
+
+AC_MSG_CHECKING(if --enable-perfmon-statistics option specified)
+AC_ARG_ENABLE(perfmon_statistics,
+	[AC_HELP_STRING([--enable-perfmon-statistics],
+			[Configure to build in performance monitoring of statistics values  @<:@default=no@:>@.])],
+	[db_cv_perfmon_statistics="$enable_perfmon_statistics"], [db_cv_perfmon_statistics="no"])
+AC_MSG_RESULT($db_cv_perfmon_statistics)
 
 AC_MSG_CHECKING(if --enable-uimutexes option specified)
 AC_ARG_ENABLE(uimutexes,
@@ -393,6 +414,11 @@ AC_ARG_ENABLE(readline, [], [with_readline=$enableval], [with_readline=no])
 # --enable-sql_compat implies --enable-sql
 if test "$db_cv_sql_compat" = "yes" -a "$db_cv_sql" = "no"; then
 	db_cv_sql=$db_cv_sql_compat
+fi
+
+# --enable-jdbc implies --enable-sql
+if test "$db_cv_jdbc" = "yes" -a "$db_cv_sql" = "no"; then
+	db_cv_sql=$db_cv_jdbc
 fi
 
 # Testing requires Tcl.
