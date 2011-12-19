@@ -1,0 +1,59 @@
+Legal Notices:
+
+Information related to copyright, licensing, patents and trademarks.  The
+author of this file is not a lawyer and the opinions herein are not legal
+council.  If you have legal questions, contact a lawyer.
+
+Copyright:
+
+The body of work that comprises the `libdb database library` has multiple
+copyright holders including, but not limited to:
+
+* Oracle Corporation
+* The President and Fellows of Harvard University
+* The Regents of the University of California
+* Free Software Foundation
+* X Consortium
+* INRIA, France Telecom
+* Gary V. Vaughan
+* Makoto Matsumoto
+* Takuji Nishimura
+* Asim Jalis
+* Keith Bostic
+* Margo Seltzer
+* Gregory Burd
+
+Licensing:
+
+Oracle Corporation licenses their copyrighted portions under the terms of the
+Sleepyat License (docs/legal/SPL.txt
+http://www.opensource.org/licenses/Sleepycat).  The Sleepyat License's first
+two conditions are identical to that of the BSD 3-Clause license.  Only the
+third condition differs by adding a copyleft-like requirement.  Oracle can be
+contacted at berkeleydb-info_us@oracle.com.
+
+The President and Fellows of Harvard University licenses their copyrighted
+portions under the terms of a BSD 3-Clause license (docs/legal/HARVARD.txt
+http://www.opensource.org/licenses/BSD-3-Clause).
+
+The Regents of the University of California licenses their copyrighted portions
+under the terms of a BSD 3-Clause license (docs/legal/BSD.txt
+http://www.opensource.org/licenses/BSD-3-Clause).
+
+INRIA, France Telecom licenses their copyrighted portions under the terms of a
+BSD 3-Clause license (docs/legal/ASM.txt
+http://www.opensource.org/licenses/BSD-3-Clause).
+
+Gregory Burd licenses his contributions to this combined work under the terms
+of the Common Development and Distribution License version 1.0
+(docs/legal/CDDL.txt http://www.opensource.org/licenses/cddl1.php).
+
+
+Patents:
+
+There are no known patent infringements at this time.
+
+
+Trademarks:
+
+There are no known trademarks infringements at this time.
