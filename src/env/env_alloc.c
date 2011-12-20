@@ -630,6 +630,8 @@ __env_region_extend(env, infop)
 		rp->alloc = rp->max - rp->size;
 	rp->size += rp->alloc;
 	rp->size = (size_t)ALIGNP_INC(rp->size, sizeof(size_t));
+	if (rp->max - rp->size <= SHALLOC_FRAGMENT)
+		rp->size = rp->max;
 	if (infop->fhp &&
 	    (ret = __db_file_extend(env, infop->fhp, rp->size)) != 0)
 		return (ret);

@@ -389,6 +389,7 @@ typedef struct __rep { /* SHARED */
 	u_int		site_max;	/* Total array slots allocated. */
 	int		self_eid;	/* Where to find the local site. */
 	u_int		siteinfo_seq;	/* Number of updates to this info. */
+	u_int32_t	min_log_file;	/* Earliest log needed by repgroup. */
 
 	pid_t		listener;
 

@@ -1194,36 +1194,21 @@ __repmgr_stable_lsn(env, stable_lsn)
 	ENV *env;
 	DB_LSN *stable_lsn;
 {
-	DB_LSN min_lsn;
 	DB_REP *db_rep;
 	REP *rep;
-	REPMGR_SITE *site;
-	u_int eid;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 
-	ZERO_LSN(min_lsn);
-	LOCK_MUTEX(db_rep->mutex);
-	FOR_EACH_REMOTE_SITE_INDEX(eid) {
-		site = SITE_FROM_EID(eid);
-		/*
-		 * Record the smallest ack'ed LSN from all connected sites.
-		 * If we're a client, ignore the master because the master
-		 * does not maintain nor send out its repmgr perm LSN in
-		 * this way.
+	if (rep->min_log_file != 0 && rep->min_log_file < stable_lsn->file) {
+		/* 
+		 * Returning an LSN to be consistent with the rest of the
+		 * log archiving processing.  Construct LSN of format
+		 * [filenum][0].
 		 */
-		if ((int)eid == rep->master_id)
-			continue;
-		if (IS_SITE_AVAILABLE(site) &&
-		    !IS_ZERO_LSN(site->max_ack) &&
-		    (IS_ZERO_LSN(min_lsn) ||
-		    LOG_COMPARE(&site->max_ack, &min_lsn) < 0))
-			min_lsn = site->max_ack;
+		stable_lsn->file = rep->min_log_file;
+		stable_lsn->offset = 0;
 	}
-	UNLOCK_MUTEX(db_rep->mutex);
-	if (!IS_ZERO_LSN(min_lsn) && LOG_COMPARE(&min_lsn, stable_lsn) < 0)
-		*stable_lsn = min_lsn;
 	RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 	    "Repmgr_stable_lsn: Returning stable_lsn[%lu][%lu]",
 	    (u_long)stable_lsn->file, (u_long)stable_lsn->offset));

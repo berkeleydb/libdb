@@ -14,22 +14,23 @@ typedef int (*HEARTBEAT_ACTION) __P((ENV *));
 
 static int accept_handshake __P((ENV *, REPMGR_CONNECTION *, char *));
 static int accept_v1_handshake __P((ENV *, REPMGR_CONNECTION *, char *));
-static int __repmgr_call_election __P((ENV *));
-static int __repmgr_connector_main __P((ENV *, REPMGR_RUNNABLE *));
-static void *__repmgr_connector_thread __P((void *));
+static void check_min_log_file __P((ENV *));
 static int dispatch_msgin __P((ENV *, REPMGR_CONNECTION *));
-static int __repmgr_next_timeout __P((ENV *,
-    db_timespec *, HEARTBEAT_ACTION *));
 static int prepare_input __P((ENV *, REPMGR_CONNECTION *));
 static int process_own_msg __P((ENV *, REPMGR_CONNECTION *));
 static int process_parameters __P((ENV *,
     REPMGR_CONNECTION *, char *, u_int, u_int32_t, int, u_int32_t));
 static int read_version_response __P((ENV *, REPMGR_CONNECTION *));
 static int record_permlsn __P((ENV *, REPMGR_CONNECTION *));
+static int __repmgr_call_election __P((ENV *));
+static int __repmgr_connector_main __P((ENV *, REPMGR_RUNNABLE *));
+static void *__repmgr_connector_thread __P((void *));
+static int __repmgr_next_timeout __P((ENV *,
+    db_timespec *, HEARTBEAT_ACTION *));
 static int __repmgr_retry_connections __P((ENV *));
 static int __repmgr_send_heartbeat __P((ENV *));
-static int send_version_response __P((ENV *, REPMGR_CONNECTION *));
 static int __repmgr_try_one __P((ENV *, u_int));
+static int send_version_response __P((ENV *, REPMGR_CONNECTION *));
 
 #define	ONLY_HANDSHAKE(env, conn) do {				     \
 	if (conn->msg_type != REPMGR_HANDSHAKE) {		     \
@@ -1865,8 +1866,10 @@ record_permlsn(env, conn)
 	SITE_STRING_BUFFER location;
 	u_int32_t gen;
 	int ret;
+	u_int do_log_check;
 
 	db_rep = env->rep_handle;
+	do_log_check = 0;
 
 	DB_ASSERT(env, conn->version > 0 &&
 	    IS_READY_STATE(conn->state) && IS_VALID_EID(conn->eid));
@@ -1907,12 +1910,65 @@ record_permlsn(env, conn)
 
 	if (ackp->generation == gen &&
 	    LOG_COMPARE(&ackp->lsn, &site->max_ack) == 1) {
+		/*
+		 * If file number for this site changed, check lowest log
+		 * file needed after recording new permlsn for this site.
+		 */
+		if (ackp->lsn.file > site->max_ack.file)
+			do_log_check = 1;
 		memcpy(&site->max_ack, &ackp->lsn, sizeof(DB_LSN));
+		if (do_log_check)
+			check_min_log_file(env);
 		if ((ret = __repmgr_wake_waiters(env,
 		    &db_rep->ack_waiters)) != 0)
 			return (ret);
 	}
 	return (0);
+}
+
+/*
+ * Maintains lowest log file still needed by the repgroup.  This is stored
+ * in shared rep region so that it is accessible to repmgr subordinate
+ * processes that may not themselves have connections to other sites
+ * (e.g. a separate db_archive process.)
+ */
+static void
+check_min_log_file(env)
+	ENV *env;
+{
+	DB_REP *db_rep;
+	REP *rep;
+	REPMGR_SITE *site;
+	u_int32_t min_log;
+	u_int eid;
+
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	min_log = 0;
+
+	/*
+	 * Record the lowest log file number from all connected sites.  If this
+	 * is a client, ignore the master because the master does not maintain
+	 * nor send out its repmgr perm LSN in this way.  Consider connections
+	 * so that we don't allow a site that has been down a long time to
+	 * indefinitely prevent log archiving.
+	 */
+	FOR_EACH_REMOTE_SITE_INDEX(eid) {
+		if ((int)eid == rep->master_id)
+			continue;
+		site = SITE_FROM_EID(eid);
+		if (IS_SITE_AVAILABLE(site) &&
+		    !IS_ZERO_LSN(site->max_ack) &&
+		    (min_log == 0 || site->max_ack.file < min_log))
+			min_log = site->max_ack.file;
+	}
+	/*
+	 * During normal operation min_log should increase over time, but it
+	 * is possible if a site returns after being diconnected for a while
+	 * that min_log could decrease.
+	 */
+	if (min_log != 0 && min_log != rep->min_log_file)
+		rep->min_log_file = min_log;
 }
 
 /*

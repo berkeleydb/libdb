@@ -1416,16 +1416,13 @@ err:	/*
 	REP_SYSTEM_UNLOCK(env);
 	/*
 	 * If we've processed beyond the needed LSN for a pending
-	 * start sync, start it now.  We can compare >= here
-	 * because ready_lsn is the next record we expect.
-	 * Since ckp_lsn can point to the last commit record itself,
-	 * but if it does and ready_lsn == commit (i.e. we haven't
-	 * written the commit yet), we can still start to sync
-	 * because we're guaranteed no additional buffers can
-	 * be dirtied.
+	 * start sync, start it now.  We must compare > here
+	 * because ready_lsn is the next record we expect and if
+	 * the last record is a commit, that will dirty pages on
+	 * a client as that txn is applied.
 	 */
 	if (!IS_ZERO_LSN(rep->ckp_lsn) &&
-	    LOG_COMPARE(&lp->ready_lsn, &rep->ckp_lsn) >= 0) {
+	    LOG_COMPARE(&lp->ready_lsn, &rep->ckp_lsn) > 0) {
 		save_lsn = rep->ckp_lsn;
 		ZERO_LSN(rep->ckp_lsn);
 	} else

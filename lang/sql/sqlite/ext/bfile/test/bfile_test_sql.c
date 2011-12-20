@@ -19,6 +19,8 @@
 #include <sqlite3.h>
 #include <bfile.h>
 
+typedef sqlite3_int64 bfile_handle;
+
 #define CHECK_ERR						\
 	if (rc != SQLITE_OK) {					\
 		printf("  SQL error: %s\n", zErrMsg);		\
@@ -163,7 +165,8 @@ static void test_BfileSize(sqlite3* db) {
 }
 
 static void test_BfileOpenReadClose(sqlite3* db) {
-	int rc, rc2, rc3, len, row, bHdl;
+	int rc, rc2, rc3, len, row;
+	bfile_handle bHdl;
 	sqlite3_stmt *pStmt, *pBfileStmt;
 	off_t amount, offset;
 	char *sql[] =  {"SELECT BFILE_OPEN(photo) FROM address_book",
@@ -191,7 +194,7 @@ static void test_BfileOpenReadClose(sqlite3* db) {
 		row++;
 		printf("-----------------row %d--------------------", row);
 
-		bHdl = sqlite3_column_int(pStmt, 0);
+		bHdl = sqlite3_column_int64(pStmt, 0);
 		if ((void*)bHdl == NULL) {
 			printf("\t[OK]\n");
 			continue;
@@ -208,7 +211,7 @@ static void test_BfileOpenReadClose(sqlite3* db) {
 		}
 
 		while (1) {
-			rc2 = sqlite3_bind_int(pBfileStmt, 1, bHdl);
+			rc2 = sqlite3_bind_int64(pBfileStmt, 1, bHdl);
                 	if (rc2) {
 				printf("\t[Failed]\tBFILE_READ: bind error\n");
 				break;
@@ -262,7 +265,7 @@ static void test_BfileOpenReadClose(sqlite3* db) {
 			continue;
 		}
 
-		rc2 = sqlite3_bind_int(pBfileStmt, 1, bHdl);
+		rc2 = sqlite3_bind_int64(pBfileStmt, 1, bHdl);
                	if (rc2)
 			printf("\t[Failed]\tBFILE_CLOSE: bind error\n");
 		else {

@@ -196,16 +196,16 @@ __heap_pg_alloc_recover(env, dbtp, lsnp, op, info)
 		    argp->pgno, PGNO_INVALID, PGNO_INVALID, 0, argp->ptype);
 		LSN(pagep) = *lsnp;
 	} else if ((cmp_n == 0 || IS_ZERO_LSN(LSN(pagep))) && DB_UNDO(op)) {
-		if (argp->pgno > meta->dbmeta.last_pgno) {
-			if (argp->pgno == file_dbp->mpf->mfp->last_pgno)
-				trunc = 1;
-		} else if (!IS_ZERO_LSN(LSN(pagep))){
+		if (argp->pgno == file_dbp->mpf->mfp->last_pgno)
+			trunc = 1;
+		else if (!IS_ZERO_LSN(LSN(pagep))) {
 			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 			memset(pagep, 0, file_dbp->pgsize);
 		}
 	}
 	/* If the page is newly allocated and aborted, give it back. */
-	if (pagep != NULL && trunc == 1) {
+	if (pagep != NULL && (trunc == 1 ||
+	    (IS_ZERO_LSN(LSN(pagep)) && TYPE(pagep) != P_IHEAP))) {
 		if ((ret = __memp_fput(mpf,
 		    ip, pagep, file_dbp->priority)) != 0)
 			goto out;
@@ -213,6 +213,18 @@ __heap_pg_alloc_recover(env, dbtp, lsnp, op, info)
 		if ((ret = __memp_fget(mpf,
 		    &argp->pgno, ip, NULL, DB_MPOOL_FREE, &pagep)) != 0)
 			goto out;
+	    	if (trunc == 0 && argp->pgno <= mpf->mfp->last_flushed_pgno) {
+			/*
+			 * If this page is on disk we need to zero it.
+			 * This is safe since we never free pages other
+			 * than backing out an allocation, so there can
+			 * not be a previous allocate and free of this 
+			 * page that is reflected on disk.
+			 */
+			if ((ret = __db_zero_extend(env, mpf->fhp,
+			    argp->pgno, argp->pgno, file_dbp->pgsize)) != 0)
+				goto out;
+		}
 	}
 	/*
 	 * Keep the region high_pgno up to date	This not logged so we

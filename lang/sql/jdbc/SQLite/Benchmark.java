@@ -10,7 +10,6 @@
 package SQLite;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,7 +17,7 @@ import java.sql.Statement;
 import java.util.Enumeration;
 import java.util.Vector;
 
-public class Benchmark {
+public abstract class Benchmark {
 
     /* the tps scaling factor: here it is 1 */
     public static int tps = 1;
@@ -56,8 +55,8 @@ public class Benchmark {
      *  runs one TPC BM B transaction
      */
 
-    public static void main(String[] args) {
-	String DriverName = "SQLite.JDBCDriver";
+    public void run(String[] args) {
+        String DriverName = "";
 	String DBUrl = "";
 	String DBUser = "";
 	String DBPassword = "";
@@ -138,15 +137,14 @@ public class Benchmark {
 	System.out.println();
 
 	try {
-	    Class.forName(DriverName);
-	    new Benchmark(DBUrl, DBUser, DBPassword, initialize_dataset);
+	    benchmark(DBUrl, DBUser, DBPassword, initialize_dataset);
 	} catch (java.lang.Exception e) {
 	    System.out.println(e.getMessage());
 	    e.printStackTrace();
 	}
     }
 
-    public Benchmark(String url, String user, String password, boolean init) {
+    public void benchmark(String url, String user, String password, boolean init) {
 	Vector vClient = new Vector();
 	Thread Client = null;
 	Enumeration en = null;
@@ -561,18 +559,8 @@ public class Benchmark {
 	return (getRandomInt(min, max));
     }
 
-    public static Connection connect(String DBUrl, String DBUser,
-				     String DBPassword) {
-	try {
-	    Connection conn =
-		DriverManager.getConnection(DBUrl, DBUser, DBPassword);
-	    return conn;
-	} catch (java.lang.Exception e) {
-	    System.out.println(e.getMessage());
-	    e.printStackTrace();
-	}
-	return null;
-    }
+    public abstract Connection connect(String DBUrl, String DBUser,
+				     String DBPassword);
 
     public static void connectClose(Connection c) {
 	if (c == null) {
@@ -604,7 +592,7 @@ class BenchmarkThread extends Thread {
 			   Benchmark b) {
 	bench = b;
 	ntrans = number_of_txns;
-	Conn = Benchmark.connect(url, user, password);
+	Conn = b.connect(url, user, password);
 	if (Conn == null) {
 	    return;
 	}

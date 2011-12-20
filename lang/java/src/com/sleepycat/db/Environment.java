@@ -1867,5 +1867,5 @@ The release patch number.
     {@link com.sleepycat.db.Environment#openChannel Environment.openChannel}
     to create channel to send messages only to the master site.
     */
-    int EID_MASTER = DbConstants.DB_EID_MASTER;
+    public static final int EID_MASTER = DbConstants.DB_EID_MASTER;
 }

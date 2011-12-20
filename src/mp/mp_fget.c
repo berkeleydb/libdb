@@ -483,9 +483,7 @@ freebuf:		MUTEX_LOCK(env, hp->mtx_hash);
 			}
 			goto done;
 		} else if (F_ISSET(bhp, BH_FREED | BH_TRASH)) {
-revive:			DB_ASSERT(env, F_ISSET(bhp, BH_TRASH) ||
-			    flags == DB_MPOOL_CREATE || flags == DB_MPOOL_NEW);
-			if (F_ISSET(bhp, BH_FREED))
+revive:		 	if (F_ISSET(bhp, BH_FREED))
 				makecopy = makecopy ||
 				    (mvcc && !BH_OWNED_BY(env, bhp, txn)) ||
 				    F_ISSET(bhp, BH_FROZEN);
@@ -494,6 +492,16 @@ revive:			DB_ASSERT(env, F_ISSET(bhp, BH_TRASH) ||
 				if (*pgnoaddr > mfp->last_pgno)
 					mfp->last_pgno = *pgnoaddr;
 				MUTEX_UNLOCK(env, mfp->mutex);
+			}
+			/* We can race with a thread trying to free this. */
+			if (F_ISSET(bhp, BH_TRASH) &&
+			    *pgnoaddr <= mfp->last_pgno)
+				break;
+
+			/* Otherwise this page does not currently exist. */
+			if (flags != DB_MPOOL_CREATE && flags != DB_MPOOL_NEW) {
+				ret = DB_PAGE_NOTFOUND;
+				goto done;
 			}
 		}
 		if (mvcc) {

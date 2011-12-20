@@ -2670,6 +2670,7 @@ retry:	/* Step 1. */
 	F_SET(pdbc, DBC_TRANSIENT);
 	SET_RET_MEM(pdbc, dbc);
 	ret = __dbc_get(pdbc, pkey, data, DB_SET);
+	DB_ASSERT(pdbp->env, ret != DB_PAGE_NOTFOUND);
 
 	/*
 	 * If the item wasn't found in the primary, this is a bug; our

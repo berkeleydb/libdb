@@ -36,7 +36,8 @@ else
 	PKG_ROOT=../..
 fi
 
-DB_ADDONS_REPO=$PKG_ROOT/db_addons
+#DB_ADDONS_REPO=$PKG_ROOT/db_addons
+DB_ADDONS_REPO=$PKG_ROOT/db_addons-5.2
 update_repo()
 {
 	if [ ! -d $DB_ADDONS_REPO ]; then
@@ -390,6 +391,35 @@ do
 
 	sed -e 's/tempProjectFileVersion/_ProjectFileVersion/g' ${f}.tmp > $f
 	rm ${f}.tmp
+done
+
+#
+# Don't build Designer and Linq by default -- users can build them
+# as needed.
+for sln in `ls *.sln`
+do
+	# Dos to unix
+	sed 's/$\r//' $sln > ${sln}.tmp
+
+	# Remove the projects from default building list
+	for project_name in "SQLite.Designer" "System.Data.SQLite.Linq"
+	do
+		project_id=`cat ${sln}.tmp | grep $project_name | head -n 1 | \
+			awk -F '[{}]' '{print $4}'`
+		if [ "$project_id" != "" ]; then
+			sed -e "/{$project_id}\./d" ${sln}.tmp > ${sln}
+			cp ${sln} ${sln}.tmp
+		fi
+	done
+
+	# Unix to dos
+	if [ "$is_cygwin" = "true" ]; then
+		# Unix to Dos for cygwin for sed behavior difference on cygwin
+		sed -e "s/$/\r/" ${sln}.tmp > $sln
+	else
+		cat ${sln}.tmp > $sln
+	fi
+	rm ${sln}.tmp
 done
 
 #

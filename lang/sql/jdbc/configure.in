@@ -4,7 +4,10 @@ AM_PROG_LIBTOOL
 AC_PROG_INSTALL
 CC=${CC:-cc}
 AC_SUBST(CC)
+HOSTCC=${HOSTCC:-cc}
+AC_SUBST(HOSTCC)
 AC_SUBST(CFLAGS)
+AC_SUBST(HOST_CFLAGS)
 AC_CANONICAL_TARGET
 
 ##########
@@ -482,13 +485,21 @@ if test ! -d "$JAVA_HOME" ; then
 fi
 
 if test -n "$JAVA_HOME" ; then
-  JAVA_RUN=$JAVA_HOME/bin/java
+  if test "x$JAVA_RUN" = "x"; then
+    JAVA_RUN=$JAVA_HOME/bin/java
+  else
+    AC_MSG_WARN([Overriding JAVA command with: $JAVA_RUN])
+  fi
   JAVAC=$JAVA_HOME/bin/javac
   JAVAH="$JAVA_HOME/bin/javah -jni"
   JAR=$JAVA_HOME/bin/jar
   JAVADOC=$JAVA_HOME/bin/javadoc
 else
-  JAVA_RUN=`which java`
+  if test "x$JAVA_RUN" = "x"; then
+    JAVA_RUN=`which java`
+  else
+    AC_MSG_WARN([Overriding JAVA command with: $JAVA_RUN])
+  fi
   JAVAC=`which javac`
   JAVAH="`which javah` -jni"
   JAR=`which jar`
@@ -522,11 +533,16 @@ esac
 AC_MSG_RESULT([setting JNI include file directives: $JNIINCLUDE])
 
 # Figure out JDK version
-JDBCVER=JDBC2
-$JAVA_RUN -version 2>&1 | grep 'version "1.1' >/dev/null && JDBCVER=JDBC1
-$JAVA_RUN -version 2>&1 | grep 'version "1.4' >/dev/null && JDBCVER=JDBC2x
-$JAVA_RUN -version 2>&1 | grep 'version "1.5' >/dev/null && JDBCVER=JDBC2y
-$JAVA_RUN -version 2>&1 | grep 'version "1.[[67]]' >/dev/null && JDBCVER=JDBC2z
+if test "x$JDBCVER"  = "x" ; then
+  JDBCVER=JDBC2
+  $JAVA_RUN -version 2>&1 | grep 'version "1.1' >/dev/null && JDBCVER=JDBC1
+  $JAVA_RUN -version 2>&1 | grep 'version "1.4' >/dev/null && JDBCVER=JDBC2x
+  $JAVA_RUN -version 2>&1 | grep 'version "1.5' >/dev/null && JDBCVER=JDBC2y
+  $JAVA_RUN -version 2>&1 | grep 'version "1.[[67]]' >/dev/null && JDBCVER=JDBC2z
+  $JAVA_RUN -version 2>&1 | grep 'JSR169' >/dev/null && JDBCVER=JDBC0
+else
+  AC_MSG_WARN([overriding JDBC driver: $JDBCVER])
+fi
 AC_MSG_RESULT([using JDBC driver from $JDBCVER directory])
 
 if test "$JDBCVER" = "JDBC2y" ; then

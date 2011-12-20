@@ -39,16 +39,16 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 {
 	BH *bhp, *current_bhp, *mvcc_bhp, *oldest_bhp;
 	BH_FROZEN_PAGE *frozen_bhp;
-	DB_LSN vlsn;
+	DB_LSN oldest_reader, vlsn;
 	DB_MPOOL_HASH *dbht, *hp, *hp_end, *hp_saved, *hp_tmp;
 	ENV *env;
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
 	size_t freed_space;
 	u_int32_t buckets, bucket_priority, buffers, cache_reduction;
-	u_int32_t high_priority, priority;
+	u_int32_t dirty_eviction, high_priority, priority;
 	u_int32_t priority_saved, put_counter, lru_generation, total_buckets;
-	int aggressive, alloc_freeze, b_lock, giveup, got_oldest;
+	int aggressive, alloc_freeze, b_lock, giveup;
 	int h_locked, need_free, obsolete, ret, write_error;
 	u_int8_t *endp;
 	void *p;
@@ -62,7 +62,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	write_error = 0;
 
 	buckets = buffers = put_counter = total_buckets = 0;
-	aggressive = alloc_freeze = giveup = got_oldest = h_locked = 0;
+	aggressive = alloc_freeze = giveup = h_locked = 0;
 
 	/*
 	 * If we're allocating a buffer, and the one we're discarding is the
@@ -158,6 +158,7 @@ search:
 	lru_generation = c_mp->lru_generation;
 
 	ret = 0;
+	MAX_LSN(oldest_reader);
 
 	/*
 	 * We re-attempt the allocation every time we've freed 3 times what
@@ -348,29 +349,34 @@ retry_search:	bhp = NULL;
 			/*
 			 * oldest_bhp is the last buffer on the MVCC chain, and
 			 * an obsolete buffer at the end of the MVCC chain gets
-			 * used without further search.
-			 *
-			 * If the buffer isn't obsolete with respect to the
-			 * cached old reader LSN, recalculate the oldest reader
-			 * LSN and check again.
+			 * used without further search. Before checking for 
+			 * obsolescence, update the cached oldest reader LSN in
+			 * the bucket if it is older than oldest_reader.
 			 */
 			if (BH_REFCOUNT(oldest_bhp) != 0)
 				continue;
 
-retry_obsolete:		if (BH_OBSOLETE(oldest_bhp, hp->old_reader, vlsn)) {
+			if (LOG_COMPARE(&oldest_reader, &hp->old_reader) > 0) {
+				if (IS_MAX_LSN(oldest_reader) &&
+				   (ret = __txn_oldest_reader(
+				    env, &oldest_reader)) != 0) {
+					MUTEX_UNLOCK(env, hp->mtx_hash);
+					if (bhp != NULL)
+						atomic_dec(env, &bhp->ref);
+					return (ret);
+				}
+				if (LOG_COMPARE(&oldest_reader,
+				    &hp->old_reader) > 0)
+					hp->old_reader = oldest_reader;
+			}
+
+			if (BH_OBSOLETE(oldest_bhp, hp->old_reader, vlsn)) {
 				obsolete = 1;
 				if (bhp != NULL)
 					atomic_dec(env, &bhp->ref);
 				bhp = oldest_bhp;
 				atomic_inc(env, &bhp->ref);
 				goto this_buffer;
-			}
-			if (!got_oldest) {
-				if ((ret = __txn_oldest_reader(
-				    env, &hp->old_reader)) != 0)
-					return (ret);
-				got_oldest = 1;
-				goto retry_obsolete;
 			}
 		}
 
@@ -481,6 +487,7 @@ this_buffer:	buffers++;
 
 		/* If the page is dirty, write it. */
 		ret = 0;
+		dirty_eviction = 0;
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			DB_ASSERT(env, atomic_read(&hp->hash_page_dirty) > 0);
 			ret = __memp_bhwrite(dbmp, hp, bh_mfp, bhp, 0);
@@ -507,13 +514,8 @@ this_buffer:	buffers++;
 				goto next_hb;
 			}
 
-			STAT_INC(env, mpool,
-			    dirty_eviction, c_mp->stat.st_rw_evict, infop->id);
-
+			dirty_eviction = 1;
 		}
-		else
-			STAT_INC(env, mpool,
-			    clean_eviction, c_mp->stat.st_ro_evict, infop->id);
 
 		/*
 		 * Freeze this buffer, if necessary.  That is, if the buffer is
@@ -592,6 +594,13 @@ this_buffer:	buffers++;
 			goto retry_search;
 		}
 
+		/* We are certainly freeing this buf; now update statistic. */
+		if (dirty_eviction)
+			STAT_INC(env, mpool,
+			    dirty_eviction, c_mp->stat.st_rw_evict, infop->id);
+		else
+			STAT_INC(env, mpool,
+			    clean_eviction, c_mp->stat.st_ro_evict, infop->id);
 		/*
 		 * If we need some empty buffer headers for freezing, turn the
 		 * buffer we've found into frozen headers and put them on the

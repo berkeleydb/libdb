@@ -583,16 +583,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 5.2.28"
+#define PACKAGE_STRING "Berkeley DB 5.2.36"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-5.2.28"
+#define PACKAGE_TARNAME "db-5.2.36"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.2.28"
+#define PACKAGE_VERSION "5.2.36"
 
 /* The size of a `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */

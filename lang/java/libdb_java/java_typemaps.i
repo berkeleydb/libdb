@@ -582,29 +582,33 @@ JAVA_TYPEMAP(DB_PREPLIST *, com.sleepycat.db.PreparedTransaction[],
 %typemap(out) DB_PREPLIST * {
 	int i, len;
 
-	len = 0;
-	while ($1[len].txn != NULL)
-		len++;
-	$result = (*jenv)->NewObjectArray(jenv, (jsize)len, dbpreplist_class,
-	    NULL);
-	if ($result == NULL)
-		return $null; /* an exception is pending */
-	for (i = 0; i < len; i++) {
-		jobject jtxn = (*jenv)->NewObject(jenv, dbtxn_class,
-		    dbtxn_construct, $1[i].txn, JNI_FALSE);
-		jobject bytearr = (*jenv)->NewByteArray(jenv,
-		    (jsize)sizeof($1[i].gid));
-		jobject obj = (*jenv)->NewObject(jenv, dbpreplist_class,
-		    dbpreplist_construct, jtxn, bytearr);
+	if ($1 == NULL)
+		$result = NULL;
+	else {
+		len = 0;
+		while ($1[len].txn != NULL)
+			len++;
+		$result = (*jenv)->NewObjectArray(jenv, (jsize)len, dbpreplist_class,
+		    NULL);
+		if ($result == NULL)
+			return $null; /* an exception is pending */
+		for (i = 0; i < len; i++) {
+			jobject jtxn = (*jenv)->NewObject(jenv, dbtxn_class,
+			    dbtxn_construct, $1[i].txn, JNI_FALSE);
+			jobject bytearr = (*jenv)->NewByteArray(jenv,
+			    (jsize)sizeof($1[i].gid));
+			jobject obj = (*jenv)->NewObject(jenv, dbpreplist_class,
+			    dbpreplist_construct, jtxn, bytearr);
+	
+			if (jtxn == NULL || bytearr == NULL || obj == NULL)
+				return $null; /* An exception is pending */
 
-		if (jtxn == NULL || bytearr == NULL || obj == NULL)
-			return $null; /* An exception is pending */
-
-		(*jenv)->SetByteArrayRegion(jenv, bytearr, 0,
-		    (jsize)sizeof($1[i].gid), (jbyte *)$1[i].gid);
-		(*jenv)->SetObjectArrayElement(jenv, $result, i, obj);
+			(*jenv)->SetByteArrayRegion(jenv, bytearr, 0,
+			    (jsize)sizeof($1[i].gid), (jbyte *)$1[i].gid);
+			(*jenv)->SetObjectArrayElement(jenv, $result, i, obj);
+		}
+		__os_ufree(NULL, $1);
 	}
-	__os_ufree(NULL, $1);
 }
 
 JAVA_TYPEMAP(DB_LOCKREQ *, com.sleepycat.db.LockRequest[], jobjectArray)

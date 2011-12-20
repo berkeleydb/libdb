@@ -8638,10 +8638,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1loc
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, lock_stat_class, lock_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_lock_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, lock_stat_class, lock_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_lock_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -9436,10 +9440,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1log
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, log_stat_class, log_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_log_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, log_stat_class, log_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_log_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -9923,10 +9931,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1mem
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, mpool_stat_class, mpool_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_mpool_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, mpool_stat_class, mpool_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_mpool_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -9958,26 +9970,30 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv
   {
     int i, len;
     
-    len = 0;
-    while (result[len] != NULL)
-    len++;
-    jresult = (*jenv)->NewObjectArray(jenv, (jsize)len,
-      mpool_fstat_class, 0);
-    if (jresult == NULL) {
-      __os_ufree(NULL, result);
-      return 0;
-    }
-    for (i = 0; i < len; i++) {
-      jobject obj = (*jenv)->NewObject(jenv, mpool_fstat_class,
-        mpool_fstat_construct);
-      if (obj == NULL) {
+    if (result == NULL)
+    jresult = NULL;
+    else {
+      len = 0;
+      while (result[len] != NULL)
+      len++;
+      jresult = (*jenv)->NewObjectArray(jenv, (jsize)len,
+        mpool_fstat_class, 0);
+      if (jresult == NULL) {
         __os_ufree(NULL, result);
-        return 0; /* an exception is pending */
+        return 0;
       }
-      (*jenv)->SetObjectArrayElement(jenv, jresult, i, obj);
-      __dbj_fill_mpool_fstat(jenv, obj, result[i]);
+      for (i = 0; i < len; i++) {
+        jobject obj = (*jenv)->NewObject(jenv, mpool_fstat_class,
+          mpool_fstat_construct);
+        if (obj == NULL) {
+          __os_ufree(NULL, result);
+          return 0; /* an exception is pending */
+        }
+        (*jenv)->SetObjectArrayElement(jenv, jresult, i, obj);
+        __dbj_fill_mpool_fstat(jenv, obj, result[i]);
+      }
+      __os_ufree(NULL, result);
     }
-    __os_ufree(NULL, result);
   }
   return jresult;
 }
@@ -10328,10 +10344,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1mut
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, mutex_stat_class, mutex_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_mutex_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, mutex_stat_class, mutex_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_mutex_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -10549,29 +10569,33 @@ SWIGEXPORT jobjectArray JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv
   {
     int i, len;
     
-    len = 0;
-    while (result[len].txn != NULL)
-    len++;
-    jresult = (*jenv)->NewObjectArray(jenv, (jsize)len, dbpreplist_class,
-      NULL);
-    if (jresult == NULL)
-    return 0; /* an exception is pending */
-    for (i = 0; i < len; i++) {
-      jobject jtxn = (*jenv)->NewObject(jenv, dbtxn_class,
-        dbtxn_construct, result[i].txn, JNI_FALSE);
-      jobject bytearr = (*jenv)->NewByteArray(jenv,
-        (jsize)sizeof(result[i].gid));
-      jobject obj = (*jenv)->NewObject(jenv, dbpreplist_class,
-        dbpreplist_construct, jtxn, bytearr);
-      
-      if (jtxn == NULL || bytearr == NULL || obj == NULL)
-      return 0; /* An exception is pending */
-      
-      (*jenv)->SetByteArrayRegion(jenv, bytearr, 0,
-        (jsize)sizeof(result[i].gid), (jbyte *)result[i].gid);
-      (*jenv)->SetObjectArrayElement(jenv, jresult, i, obj);
+    if (result == NULL)
+    jresult = NULL;
+    else {
+      len = 0;
+      while (result[len].txn != NULL)
+      len++;
+      jresult = (*jenv)->NewObjectArray(jenv, (jsize)len, dbpreplist_class,
+        NULL);
+      if (jresult == NULL)
+      return 0; /* an exception is pending */
+      for (i = 0; i < len; i++) {
+        jobject jtxn = (*jenv)->NewObject(jenv, dbtxn_class,
+          dbtxn_construct, result[i].txn, JNI_FALSE);
+        jobject bytearr = (*jenv)->NewByteArray(jenv,
+          (jsize)sizeof(result[i].gid));
+        jobject obj = (*jenv)->NewObject(jenv, dbpreplist_class,
+          dbpreplist_construct, jtxn, bytearr);
+        
+        if (jtxn == NULL || bytearr == NULL || obj == NULL)
+        return 0; /* An exception is pending */
+        
+        (*jenv)->SetByteArrayRegion(jenv, bytearr, 0,
+          (jsize)sizeof(result[i].gid), (jbyte *)result[i].gid);
+        (*jenv)->SetObjectArrayElement(jenv, jresult, i, obj);
+      }
+      __os_ufree(NULL, result);
     }
-    __os_ufree(NULL, result);
   }
   return jresult;
 }
@@ -10603,29 +10627,34 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1txn
   {
     unsigned int i;
     jobjectArray actives;
-    jresult = (*jenv)->NewObject(jenv, txn_stat_class, txn_stat_construct);
-    if (jresult != NULL)
-    __dbj_fill_txn_stat(jenv, jresult, result);
     
-    actives = (*jenv)->NewObjectArray(jenv, (jsize)result->st_nactive,
-      txn_active_class, 0);
-    if (actives == NULL) {
-      __os_ufree(NULL, result);
-      return 0;
-    }
-    (*jenv)->SetObjectField(jenv, jresult,
-      txn_stat_st_txnarray_fid, actives);
-    for (i = 0; i < result->st_nactive; i++) {
-      jobject obj = (*jenv)->NewObject(jenv, txn_active_class,
-        txn_active_construct);
-      if (obj == NULL) {
+    if (result == NULL)
+    jresult = NULL;
+    else {
+      jresult = (*jenv)->NewObject(jenv, txn_stat_class, txn_stat_construct);
+      if (jresult != NULL)
+      __dbj_fill_txn_stat(jenv, jresult, result);
+      
+      actives = (*jenv)->NewObjectArray(jenv, (jsize)result->st_nactive,
+        txn_active_class, 0);
+      if (actives == NULL) {
         __os_ufree(NULL, result);
-        return 0; /* an exception is pending */
+        return 0;
       }
-      (*jenv)->SetObjectArrayElement(jenv, actives, (jsize)i, obj);
-      __dbj_fill_txn_active(jenv, obj, &result->st_txnarray[i]);
+      (*jenv)->SetObjectField(jenv, jresult,
+        txn_stat_st_txnarray_fid, actives);
+      for (i = 0; i < result->st_nactive; i++) {
+        jobject obj = (*jenv)->NewObject(jenv, txn_active_class,
+          txn_active_construct);
+        if (obj == NULL) {
+          __os_ufree(NULL, result);
+          return 0; /* an exception is pending */
+        }
+        (*jenv)->SetObjectArrayElement(jenv, actives, (jsize)i, obj);
+        __dbj_fill_txn_active(jenv, obj, &result->st_txnarray[i]);
+      }
+      __os_ufree(NULL, result);
     }
-    __os_ufree(NULL, result);
   }
   return jresult;
 }
@@ -10984,10 +11013,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1rep
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, rep_stat_class, rep_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_rep_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, rep_stat_class, rep_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_rep_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -11583,10 +11616,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbEnv_1rep
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, repmgr_stat_class, repmgr_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_repmgr_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, repmgr_stat_class, repmgr_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_repmgr_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }
@@ -12390,10 +12427,14 @@ SWIGEXPORT jobject JNICALL Java_com_sleepycat_db_internal_db_1javaJNI_DbSequence
   }
   
   
-  jresult = (*jenv)->NewObject(jenv, seq_stat_class, seq_stat_construct);
-  if (jresult != NULL)
-  __dbj_fill_seq_stat(jenv, jresult, result);
-  __os_ufree(NULL, result);
+  if (result == NULL)
+  jresult = NULL;
+  else {
+    jresult = (*jenv)->NewObject(jenv, seq_stat_class, seq_stat_construct);
+    if (jresult != NULL)
+    __dbj_fill_seq_stat(jenv, jresult, result);
+    __os_ufree(NULL, result);
+  }
   
   return jresult;
 }

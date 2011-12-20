@@ -914,9 +914,12 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
 	BTREE *bt;
+	DB_MPOOLFILE *mpf;
 	DBC *dbc;
 	DBT dbta, dbtb, dup_1, dup_2, *p1, *p2, *tmp;
 	ENV *env;
+	PAGE *child;
+	db_pgno_t cpgno;
 	VRFY_PAGEINFO *pip;
 	db_indx_t i, *inp;
 	int adj, cmp, freedup_1, freedup_2, isbad, ret, t_ret;
@@ -957,7 +960,38 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 		func = __bam_defcmp;
 		if (dbp->bt_internal != NULL) {
 			bt = (BTREE *)dbp->bt_internal;
-			if (bt->bt_compare != NULL)
+			if (TYPE(h) == P_IBTREE && (bt->bt_compare != NULL ||
+			    dupfunc != __bam_defcmp)) {
+				/*
+				 * The problem here is that we cannot
+				 * tell the difference between an off
+				 * page duplicate internal page and
+				 * a main database internal page.
+				 * Walk down the tree to figure it out.
+				 */
+				mpf = dbp->mpf;
+				child = h;
+				while (TYPE(child) == P_IBTREE) {
+					bi = GET_BINTERNAL(dbp, child, 0);
+					cpgno = bi->pgno;
+					if (child != h &&
+					    (ret = __memp_fput(mpf,
+					    vdp->thread_info, child,
+					    DB_PRIORITY_UNCHANGED)) != 0)
+						goto err;
+					if ((ret = __memp_fget(mpf,
+					    &cpgno, vdp->thread_info,
+					    NULL, 0, &child)) != 0)
+						goto err;
+				}
+				if (TYPE(child) == P_LDUP)
+					func = dupfunc;
+				else if (bt->bt_compare != NULL)
+					func = bt->bt_compare;
+				if ((ret = __memp_fput(mpf, vdp->thread_info,
+				    child, DB_PRIORITY_UNCHANGED)) != 0)
+					goto err;
+			} else if (bt->bt_compare != NULL)
 				func = bt->bt_compare;
 		}
 	}

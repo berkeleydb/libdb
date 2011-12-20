@@ -2,6 +2,13 @@
 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Cold-boot a 4-site group.  The first two sites start quickly and
+	initiate an election.  The other two sites don't join the election until
+	the middle of the long full election timeout period.  It's important that
+	the number of sites that start immediately be a sub-majority, because
+	that's the case that used to have a bug in it [#18456].
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 backup
 	Test of hotbackup functionality. 
 
@@ -34,11 +41,8 @@ bigfile002
 	with 1K pages.  Dirty page 6000000.  Sync.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-Cold-boot a 4-site group.  The first two sites start quickly and
-	initiate an election.  The other two sites don't join the election until
-	the middle of the long full election timeout period.  It's important that
-	the number of sites that start immediately be a sub-majority, because
-	that's the case that used to have a bug in it [#18456].
+db_reptest
+	Wrapper to configure and run the db_reptest program.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dbm
@@ -47,10 +51,6 @@ dbm
 	After all are entered, retrieve all; compare output to original.
 	Then reopen the file, re-retrieve everything.  Finally, delete
 	everything.
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-db_reptest
-	Wrapper to configure and run the db_reptest program.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 dead001

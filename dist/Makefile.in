@@ -1,6 +1,7 @@
 # $Id$
 
 topdir=		@topdir@
+abs_topdir=	@abs_topdir@
 srcdir=		$(topdir)/src
 langdir=	$(topdir)/lang
 exampledir=	$(topdir)/examples
@@ -155,7 +156,7 @@ JAVA_EXCLASSTOP=./classes.ex
 JAVA_SRCDIR=	$(langdir)/java/src
 JAVA_EXDIR=	$(exampledir)/java/src
 JAVA_SLEEPYCAT=	$(langdir)/java/src/com/sleepycat
-JAVA_MANIFEST=	$(langdir)/java/jarManifestEntries
+JAVA_MANIFEST=	$(abs_topdir)/lang/java/jarManifestEntries
 
 libj_jarfile=	db.jar
 libj_exjarfile=	dbexamples.jar
@@ -967,7 +968,7 @@ $(libj_jarfile): $(JAVA_DBSRCS)
 	$(JAVA) -classpath $(JAVA_CLASSTOP) \
 	    com.sleepycat.persist.model.ClassEnhancer $(JAVA_CLASSTOP)
 	cd $(JAVA_CLASSTOP) && \
-	     $(JAR) cfm ../$(libj_jarfile) ../$(JAVA_MANIFEST) ./com/sleepycat
+	     $(JAR) cfm ../$(libj_jarfile) $(JAVA_MANIFEST) ./com/sleepycat
 
 $(libj_exjarfile): $(libj_jarfile) $(JAVA_EXSRCS)
 	@test -d $(JAVA_EXCLASSTOP) || \

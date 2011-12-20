@@ -158,7 +158,7 @@ do_test bdb_pragma-3.1 {
     execsql {
     PRAGMA bdbsql_error_file;
   }
-} {Default}
+} {stderr}
 
 # Test set bdbql_error_file pragma before opening env.
 # Create a sqequence to generate error.

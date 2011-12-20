@@ -693,55 +693,44 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 	 * current setting.
 	 */
 	} else if (sqlite3StrNICmp(zLeft, "bdbsql_error_file", 17) == 0) {
-		DB_ENV *dbenv;
-		char *errfile_name;
+		char filename[BT_MAX_PATH];
+		char *err_file;
 
 		btreeUpdateBtShared(pDb->pBt, 1);
-		dbenv = pDb->pBt->pBt->dbenv;
-		errfile_name = NULL;
+		err_file = NULL;
 
 		if (zRight) {
-			FILE *errfile, *old_errfile;
-
-			errfile = fopen(zRight, "a+");
-			old_errfile = NULL;
-
-			if (errfile == NULL)
+			FILE *tmpfile;
+			tmpfile = fopen(zRight, "a");
+			if (tmpfile == NULL)
 				sqlite3ErrorMsg(pParse,
-				"Can't open error file %s", zRight);
+				    "Can't open error file %s", zRight);
 			else {
+				fclose(tmpfile);
 				sqlite3_mutex_enter(pBt->pBt->mutex);
-				old_errfile = pBt->pBt->errfile;
-				pBt->pBt->errfile = errfile;
-				dbenv->set_errfile(dbenv, errfile);
-				sqlite3_free(pBt->pBt->errfile_name);
-				pBt->pBt->errfile_name =
-				    sqlite3DbStrDup(0, zRight);
+				sqlite3_free(pBt->pBt->err_file);
+				pBt->pBt->err_file =
+				    sqlite3_mprintf("%s", zRight);
 				sqlite3_mutex_leave(pBt->pBt->mutex);
-
-				if (old_errfile)
-					fclose(old_errfile);
-				errfile_name = zRight;
+				err_file = zRight;
 			}
 		}
 
-		if (errfile_name == NULL) {
-			sqlite3_mutex_enter(pBt->pBt->mutex);
-			errfile_name =
-			    sqlite3DbStrDup(0, pBt->pBt->errfile_name);
-			sqlite3_mutex_leave(pBt->pBt->mutex);
-			if (!errfile_name)
-				errfile_name = sqlite3DbStrDup(0, "Default");
+		if (err_file == NULL) {
+			err_file = filename;
+			if (btreeGetErrorFile(pDb->pBt->pBt, err_file) != 0)
+				err_file = "stderr";
 		}
-
 		sqlite3VdbeSetNumCols(pParse->pVdbe, 1);
 		sqlite3VdbeSetColName(pParse->pVdbe, 0, COLNAME_NAME,
 		    zLeft, SQLITE_STATIC);
-		sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
-			errfile_name, 0);
+		if (err_file)
+			sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
+			    err_file, 0);
+		else 
+			sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
+			    "NULL", 0);
 		sqlite3VdbeAddOp2(pParse->pVdbe, OP_ResultRow, 1, 1);
-		if (errfile_name != zRight)
-			sqlite3_free(errfile_name);
 		parsed = 1;
 	}
 	/* Return semantics to match strcmp. */

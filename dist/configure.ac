@@ -29,6 +29,18 @@ fi
 AC_MSG_RESULT(no)
 
 topdir=`echo "$srcdir/.." | sed 's,/dist/\.\.,,'`
+# abs_srcdir: for relative building, jdbc configure-ing, 
+# use --with-sqlite3=$abs_srcdir/../lang/sql/generated
+# rather than --with-sqlite3=../../lang/sql/generated which is correct only for in-place
+# --with-sqlite3=$srcdir/../lang/sql/generated does not work for relative $srcdir
+ac_pwd=`pwd`; cd $srcdir;  abs_srcdir=`pwd`; cd $ac_pwd
+
+# abs_topdir: use it for JAVA_MANIFEST in Makefile; 
+# that's because $topdir could be either absolute or relative path, and
+# - ../$(JAVA_MANIFEST) is wrong for absolute path $topdir 
+# - while for relative $topdir, one level back ../$(JAVA_MANIFEST) would needed 
+abs_topdir=`echo "$abs_srcdir/.." | sed 's,/dist/\.\.,,'`
+
 # Substitution variables. BDB additions need to be documented.
 AC_SUBST(ADDITIONAL_INCS)
 AC_SUBST(ADDITIONAL_LANG)
@@ -90,6 +102,7 @@ AC_SUBST(db_int_def)
 AC_SUBST(o)
 AC_SUBST(subdir_cmd)
 AC_SUBST(topdir)
+AC_SUBST(abs_topdir)
 
 # The Windows public header has two extra symbols we need to remove.
 AC_SUBST(platform_header)

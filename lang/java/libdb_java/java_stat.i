@@ -38,10 +38,14 @@
 %define JAVA_STAT_CLASS(_ctype, _jtype, _name)
 JAVA_TYPEMAP(_ctype, _jtype, jobject)
 %typemap(out) _ctype %{
-	$result = (*jenv)->NewObject(jenv, _name##_class, _name##_construct);
-	if ($result != NULL)
-		__dbj_fill_##_name(jenv, $result, $1);
-	__os_ufree(NULL, $1);
+	if ($1 == NULL)
+		$result = NULL;
+	else {
+		$result = (*jenv)->NewObject(jenv, _name##_class, _name##_construct);
+		if ($result != NULL)
+			__dbj_fill_##_name(jenv, $result, $1);
+		__os_ufree(NULL, $1);
+	}
 %}
 %enddef
 
@@ -66,26 +70,30 @@ JAVA_TYPEMAP(DB_MPOOL_FSTAT **, com.sleepycat.db.CacheFileStats[], jobjectArray)
 %typemap(out) DB_MPOOL_FSTAT ** {
 	int i, len;
 
-	len = 0;
-	while ($1[len] != NULL)
-		len++;
-	$result = (*jenv)->NewObjectArray(jenv, (jsize)len,
-	    mpool_fstat_class, 0);
-	if ($result == NULL) {
-		__os_ufree(NULL, $1);
-		return $null;
-	}
-	for (i = 0; i < len; i++) {
-		jobject obj = (*jenv)->NewObject(jenv, mpool_fstat_class,
-		    mpool_fstat_construct);
-		if (obj == NULL) {
+	if ($1 == NULL)
+		$result = NULL;
+	else {
+		len = 0;
+		while ($1[len] != NULL)
+			len++;
+		$result = (*jenv)->NewObjectArray(jenv, (jsize)len,
+		    mpool_fstat_class, 0);
+		if ($result == NULL) {
 			__os_ufree(NULL, $1);
-			return $null; /* an exception is pending */
+			return $null;
 		}
-		(*jenv)->SetObjectArrayElement(jenv, $result, i, obj);
-		__dbj_fill_mpool_fstat(jenv, obj, $1[i]);
+		for (i = 0; i < len; i++) {
+			jobject obj = (*jenv)->NewObject(jenv, mpool_fstat_class,
+			    mpool_fstat_construct);
+			if (obj == NULL) {
+				__os_ufree(NULL, $1);
+				return $null; /* an exception is pending */
+			}
+			(*jenv)->SetObjectArrayElement(jenv, $result, i, obj);
+			__dbj_fill_mpool_fstat(jenv, obj, $1[i]);
+		}
+		__os_ufree(NULL, $1);
 	}
-	__os_ufree(NULL, $1);
 }
 
 JAVA_STAT_CLASS(DB_MUTEX_STAT *, com.sleepycat.db.MutexStats, mutex_stat)
@@ -96,29 +104,34 @@ JAVA_TYPEMAP(DB_TXN_STAT *, com.sleepycat.db.TransactionStats, jobject)
 %typemap(out) DB_TXN_STAT * {
 	unsigned int i;
 	jobjectArray actives;
-	$result = (*jenv)->NewObject(jenv, txn_stat_class, txn_stat_construct);
-	if ($result != NULL)
-		__dbj_fill_txn_stat(jenv, $result, $1);
+	
+	if ($1 == NULL)
+		$result = NULL;
+	else {
+		$result = (*jenv)->NewObject(jenv, txn_stat_class, txn_stat_construct);
+		if ($result != NULL)
+			__dbj_fill_txn_stat(jenv, $result, $1);
 
-	actives = (*jenv)->NewObjectArray(jenv, (jsize)$1->st_nactive,
-	    txn_active_class, 0);
-	if (actives == NULL) {
-		__os_ufree(NULL, $1);
-		return $null;
-	}
-	(*jenv)->SetObjectField(jenv, $result,
-	    txn_stat_st_txnarray_fid, actives);
-	for (i = 0; i < $1->st_nactive; i++) {
-		jobject obj = (*jenv)->NewObject(jenv, txn_active_class,
-		    txn_active_construct);
-		if (obj == NULL) {
+		actives = (*jenv)->NewObjectArray(jenv, (jsize)$1->st_nactive,
+		    txn_active_class, 0);
+		if (actives == NULL) {
 			__os_ufree(NULL, $1);
-			return $null; /* an exception is pending */
+			return $null;
 		}
-		(*jenv)->SetObjectArrayElement(jenv, actives, (jsize)i, obj);
-		__dbj_fill_txn_active(jenv, obj, &$1->st_txnarray[i]);
+		(*jenv)->SetObjectField(jenv, $result,
+		    txn_stat_st_txnarray_fid, actives);
+		for (i = 0; i < $1->st_nactive; i++) {
+			jobject obj = (*jenv)->NewObject(jenv, txn_active_class,
+			    txn_active_construct);
+			if (obj == NULL) {
+				__os_ufree(NULL, $1);
+				return $null; /* an exception is pending */
+			}
+			(*jenv)->SetObjectArrayElement(jenv, actives, (jsize)i, obj);
+			__dbj_fill_txn_active(jenv, obj, &$1->st_txnarray[i]);
+		}
+		__os_ufree(NULL, $1);
 	}
-	__os_ufree(NULL, $1);
 }
 
 /* Db.stat return - special case */

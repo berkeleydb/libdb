@@ -78,13 +78,13 @@ public class JDBCDatabaseMetaData implements DatabaseMetaData {
 
     @Override
     public String getDriverVersion() throws SQLException {
-	return "" + SQLite.JDBCDriver.MAJORVERSION + "." +
+	return "" + SQLite.JDBC.MAJORVERSION + "." +
 	    SQLite.Constants.drv_minor;
     }
 
     @Override
     public int getDriverMajorVersion() {
-	return SQLite.JDBCDriver.MAJORVERSION;
+	return SQLite.JDBC.MAJORVERSION;
     }
 
     @Override
@@ -1790,7 +1790,7 @@ public class JDBCDatabaseMetaData implements DatabaseMetaData {
 
     @Override
     public int getDatabaseMajorVersion() {
-	return SQLite.JDBCDriver.MAJORVERSION;
+	return SQLite.JDBC.MAJORVERSION;
     }
 
     @Override

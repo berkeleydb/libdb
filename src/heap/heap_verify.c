@@ -249,7 +249,8 @@ __heap_vrfy_structure(dbp, vdp, flags)
 
 	/*
 	 * Not much structure to verify.  Just make sure region pages are where
-	 * they're supposed to be.
+	 * they're supposed to be.  If we don't have FTRUNCATE, there could be
+	 * a zero'd out page where the region page is supposed to be.
 	 */
 	next_region = FIRST_HEAP_RPAGE;
 	high_pgno = 0;
@@ -267,7 +268,11 @@ __heap_vrfy_structure(dbp, vdp, flags)
 			   "Page %lu: heap database page of incorrect type %lu",
 			    "%lu %lu"), (u_long)i, (u_long)pip->type));
 			isbad = 1;
-		} else if (i == next_region && pip->type != P_IHEAP) {
+		} else if (i == next_region && pip->type != P_IHEAP
+#ifndef HAVE_FTRUNCATE
+		    && pip->type != P_INVALID
+#endif
+		) {
 			EPRINT((dbp->env, DB_STR_A("1164",
 		  "Page %lu: heap database missing region page (page type %lu)",
 			    "%lu %lu"), (u_long)i, (u_long)pip->type));

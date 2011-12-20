@@ -259,6 +259,8 @@ err:	if (p != 0) {
 			sqlite3_free(p->destName);
 		if (p->fullName != 0)
 			sqlite3_free(p->fullName);
+		if (p->tables != 0)
+			sqlite3_free(p->tables);
 		sqlite3_free(p);
 		p = NULL;
 	}
@@ -502,10 +504,13 @@ static int backupCleanup(sqlite3_backup *p)
 			    SQLITE_DEFAULT_CACHE_SIZE | SQLITE_OPEN_MAIN_DB,
 			    p->pDestDb->openFlags);
 			p->pDestDb->aDb[p->iDb].pBt = p->pDest;
-			p->pDestDb->aDb[p->iDb].pSchema =
-			    sqlite3SchemaGet(p->pDestDb, p->pDest);
-			if (!p->pDestDb->aDb[p->iDb].pSchema)
-				p->rc = SQLITE_NOMEM;
+			if (rc == SQLITE_OK) {
+				p->pDestDb->aDb[p->iDb].pSchema =
+				    sqlite3SchemaGet(p->pDestDb, p->pDest);
+				if (!p->pDestDb->aDb[p->iDb].pSchema)
+					p->rc = SQLITE_NOMEM;
+			} else
+				p->pDestDb->aDb[p->iDb].pSchema = NULL;
 			if (rc == SQLITE_OK)
 				p->pDest->pBt->db_oflags |= DB_CREATE;
 			/*

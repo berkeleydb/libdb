@@ -716,7 +716,7 @@ static void BFileOpenFunc(
 	memset(pHdl, 0, sizeof(BfileHdl));
 	pHdl->full_path = full_path;
 	pHdl->fd = fd;
-	sqlite3_result_int(context, (int)pHdl);
+	sqlite3_result_int64(context, (sqlite3_int64)pHdl);
 	return;
 
 err:
@@ -747,7 +747,7 @@ static void BFileCloseFunc(
 
 	assert(context != NULL && argc == 1 && argv != NULL);
 
-	pHdl = (BfileHdl*)sqlite3_value_int(argv[0]);
+	pHdl = (BfileHdl*)sqlite3_value_int64(argv[0]);
 	if (pHdl != NULL) {
 		if (pHdl->fd >= 0)
 			close(pHdl->fd);
@@ -797,7 +797,7 @@ static void BFileReadFunc(
 
 	assert(context != NULL && argc == 3 && argv != NULL);
 
-	pHdl = (BfileHdl*)sqlite3_value_int(argv[0]);
+	pHdl = (BfileHdl*)sqlite3_value_int64(argv[0]);
 	if (pHdl == NULL || pHdl->full_path == NULL || pHdl->fd < 0) {
 		sqlite3_result_error(context, "invalid bfile handle", -1);
 		return;
@@ -855,7 +855,8 @@ static void BFileSizeFunc(
 {
 	int rc;
 	sqlite3 *db;
-	int loc_size, size;
+	int loc_size;
+	off_t size;
 	char *pLoc, *full_path;
 
 	assert(context != NULL && argc == 1 && argv != NULL);
@@ -883,7 +884,7 @@ static void BFileSizeFunc(
 	/* check existence, if not exits at at set size as -1 */
 	if (access(full_path, F_OK))
 		sqlite3_result_int(context, -1);
-	else if (__bfile_get_size(full_path, (off_t*)&size) == SQLITE_OK)
+	else if (__bfile_get_size(full_path, &size) == SQLITE_OK)
 		sqlite3_result_int(context, size);
 	else
 		sqlite3_result_error(context, "internal error", -1);

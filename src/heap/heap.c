@@ -264,7 +264,8 @@ start:	if (STD_LOCKING(dbc) && (ret = __db_lget(dbc,
 		    cp->pgno - region_pgno - 1, spacebits);
 	}
 
-err:	if (rpage != NULL && (t_ret = __memp_fput(mpf,
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (rpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, rpage, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	rpage = NULL;
@@ -801,6 +802,7 @@ err:	if (ret == 0 ) {
 		if (LOCK_ISSET(cp->lock))
 			 (void)__LPUT(dbc, cp->lock);
 	}
+	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
 	return (ret);
 }
 
@@ -1158,7 +1160,8 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		DISCARD(dbc, cp->page, cp->lock, 1, ret);
 	}
 
-err:	if (buf != NULL)
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (buf != NULL)
 		__os_free(dbp->env, buf);
 	return (ret);
 }
@@ -1379,7 +1382,8 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		DISCARD(dbc, cp->page, cp->lock, 1, ret);
 	}
 
-err:	return (ret);
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	return (ret);
 }
 
 /*
@@ -1421,6 +1425,7 @@ __heapc_put(dbc, key, data, flags, pgnop)
 		ret = __heapc_get(dbc, key, data, DB_SET, pgnop);
 		F_CLR(key, DB_DBT_ISSET);
 		dbc->flags = old_flags;
+		DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
 		if (ret != 0)
 			return (ret);
 		else if (flags == DB_NOOVERWRITE)
@@ -1580,7 +1585,8 @@ __heapc_put(dbc, key, data, flags, pgnop)
 		HEAP_SETSPACE(dbp, rpage, cp->pgno - region_pgno - 1, space);
 	}
 
-err:	if (rpage != NULL && (t_ret = __memp_fput(mpf,
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (rpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, rpage, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	if (F_ISSET(data, DB_DBT_PARTIAL))
@@ -1795,23 +1801,50 @@ next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 		meta_pgno = PGNO_BASE_MD;
 		if ((ret = __db_lget(dbc, LCK_ALWAYS, meta_pgno,
 		    DB_LOCK_WRITE, DB_LOCK_NOWAIT, &meta_lock)) != 0) {
-		    	if (ret != DB_LOCK_NOTGRANTED)
-				goto err;
 			/*
 			 * We don't want to block while having latched
 			 * a page off the end of file.  This could
 			 * get truncated by another thread and we
 			 * will deadlock.
 			 */
-			DISCARD(dbc, cp->page, cp->lock, 0, ret);
-			if (ret != 0)
-				goto err;
+			p = cp->page != NULL;
+			DISCARD(dbc, cp->page, cp->lock, 0, t_ret);
+			if (t_ret != 0 ||
+		    	     (ret != DB_LOCK_NOTGRANTED &&
+			     ret != DB_LOCK_DEADLOCK))
+				goto pg_err;
 			if ((ret = __db_lget(dbc, LCK_ALWAYS, meta_pgno,
 			    DB_LOCK_WRITE, 0, &meta_lock)) != 0)
-			    	goto err;
-			ACQUIRE_CUR(dbc, DB_LOCK_WRITE, data_pgno, 0, 0, ret);
-			if (ret != 0)
+			    	goto pg_err;
+			ACQUIRE_CUR(dbc, DB_LOCK_WRITE,
+			    data_pgno, 0, DB_MPOOL_CREATE, ret);
+			/*
+			 * We can race, having read this page when it was
+			 * less than last_pgno but now an aborted
+			 * allocation can make this page beyond last_pgno
+			 * so we must free it. If we can't get the 
+			 * lock on the page again, then some other
+			 * thread will handle the issue.
+			 */
+			if (ret != 0) {
+pg_err:				if (p != 0) {
+					ACQUIRE_CUR(dbc, DB_LOCK_WRITE,
+					    data_pgno, 0, 0, t_ret);
+					if (t_ret == 0 &&
+					     PGNO(cp->page) == PGNO_INVALID) {
+					     	(void)__memp_fput(mpf,
+						     dbc->thread_info,
+						     cp->page, dbc->priority);
+						(void)__memp_fget(mpf,
+						     &data_pgno, 
+						     dbc->thread_info, dbc->txn,
+						     DB_MPOOL_FREE, &cp->page);
+					}
+					(void)__LPUT(dbc, cp->lock);
+				}
+				(void)__LPUT(dbc, meta_lock);
 				goto err;
+			}
 			/* Check if we lost a race. */
 			if (PGNO(cp->page) != PGNO_INVALID) {
 				if ((ret = __LPUT(dbc, meta_lock)) != 0)
@@ -1845,7 +1878,7 @@ next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 			ret = t_ret;
 		meta = NULL;
 		if (ret != 0)
-			goto err;
+			goto meta_unlock;
 
 		/* If the page doesn't actually exist we need to create it. */
 		if (cp->pgno == PGNO_INVALID) {
@@ -1853,13 +1886,13 @@ next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 			if ((ret = __memp_fget(mpf, &cp->pgno,
 			    dbc->thread_info, dbc->txn,
 			    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &cp->page)) != 0)
-				goto err;
+				goto meta_unlock;
 			DB_ASSERT(dbp->env, cp->pgno == data_pgno);
 		} else if ((ret = __memp_dirty(mpf, &cp->page,
 		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0) {
 			/* Did not read the page, so we can release the lock. */
 			DISCARD(dbc, cp->page, cp->lock, 0, t_ret);
-			goto err;
+			goto meta_unlock;
 		}
 
 		/* Now that we have the page we initialize it and we're done. */
@@ -1867,7 +1900,7 @@ next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 		    dbp->pgsize, cp->pgno, P_INVALID, P_INVALID, 0, P_HEAP);
 		LSN(cp->page) = meta_lsn;
 
-		if ((t_ret = __TLPUT(dbc, meta_lock)) != 0 && ret == 0)
+meta_unlock:	if ((t_ret = __TLPUT(dbc, meta_lock)) != 0 && ret == 0)
 			ret = t_ret;
 		if (ret != 0)
 			goto err;
@@ -1893,7 +1926,8 @@ check:		if (size + sizeof(db_indx_t) > HEAP_FREESPACE(dbp, cp->page)) {
 	}
 
 	h->curpgindx = data_pgno - region_pgno - 1;
-err:	if (rpage != NULL && (t_ret = __memp_fput(mpf,
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (rpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, rpage, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -1985,7 +2019,8 @@ __heap_append(dbc, key, data)
 		HEAP_SETSPACE(dbp, rpage, cp->pgno - region_pgno - 1, space);
 	}
 
-err:	if (rpage != NULL && (t_ret = __memp_fput(mpf,
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (rpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, rpage, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 
@@ -2199,6 +2234,7 @@ err:	if (rpage != NULL && (t_ret = __memp_fput(mpf,
 	if (ret == 0 && key != NULL)
 		ret = __db_retcopy(dbp->env, key,
 		    &rid, DB_HEAP_RID_SZ, &dbc->rkey->data, &dbc->rkey->ulen);
+	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
 	return (ret);
 }
 
@@ -2494,13 +2530,18 @@ skip_alloc:
 			if (F_ISSET((HEAPHDR *)hdr, HEAP_RECLAST) &&
 			    !F_ISSET(dbt, DB_DBT_PARTIAL) &&
 			    (hdr->std_hdr.size != needed)) {
+				__db_errx(env, DB_STR_A("1168",
+			     "Incorrect record size in header: %s: rid %lu.%lu",
+				    "%s %lu %lu"), dbc->dbp->fname,
+				    (u_long)(cp->pgno), (u_long)(cp->indx));
 				ret = __env_panic(env, DB_RUNRECOVERY);
 				goto err;
 			}
 		}
 	}
 
-err: if (putpage && dpage != NULL && (t_ret = __memp_fput(mpf,
+err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
+	if (putpage && dpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, dpage, dbp->priority)) != 0 && ret == 0)
 	    	ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, data_lock)) != 0 && ret == 0)

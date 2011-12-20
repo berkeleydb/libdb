@@ -20,10 +20,9 @@ SQLite.Database</A> class.
 Since June, 2002, it includes a small <A HREF="#jdbc_driver">JDBC driver</A>,
 which allows the most basic things to be carried out using the
 <TT>java.sql</TT> package.
-Since September, 2004, SQLite3 (minimum 3.0.7) is supported which
-is rather experimental. The JNI part can be generated to include support
-for both SQLite 2.x and 3.x and detects at runtime the type of the
-database.
+Since September, 2004, SQLite3 (minimum 3.0.7) is supported. The JNI part can
+be generated to include support for both SQLite 2.x and 3.x and detects at
+runtime the type of the database.
 <P>
 The current source tarball can be downloaded from
 <A HREF="http://www.ch-werner.de/javasqlite/javasqlite-20110430.tar.gz">
@@ -167,9 +166,13 @@ databases with JDK >= 1.3 and the
 tool.
 <P>
 A JDBC based benchmark program is built into <TT>sqlite.jar</TT>.
-It can be invoked by
+If using a non OJEC version of Java it can be invoked by
 <PRE>
-   $ java -cp sqlite.jar SQLite.Benchmark ...
+   $ java -cp sqlite.jar SQLite.BenchmarkDriver ...
+</PRE>
+If using an OJEC version of Java it can be invoked by
+<PRE>
+   $ java -cp sqlite.jar SQLite.BenchmarkDataSource ...
 </PRE>
 For further details see the usage information when invoked without
 arguments and consult the source code.

@@ -195,6 +195,14 @@ proc repmgr024_sub { method niter tnum largs } {
 		}
 	}
 
+	#
+	# Make sure neither log_archive in same process nor db_archive
+	# in a different process show any files to archive.
+	#
+	error_check_good no_files_log_archive [llength [$enva log_archive]] 0
+	set dbarchres [eval exec $util_path/db_archive -h $dira]
+	error_check_good no_files_db_archive [llength $dbarchres] 0
+
 	puts "\tRepmgr$tnum.j: Try to archive. Verify it didn't."
 	set res [$enva log_archive -arch_remove]
 	set res [eval exec $util_path/db_archive -l -h $dira]

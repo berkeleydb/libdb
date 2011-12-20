@@ -13,6 +13,8 @@
 #include <sqlite3.h>
 #include <bfile.h>
 
+typedef sqlite3_int64 bfile_handle;
+
 int exec(sqlite3 *db, char *sql)
 {
 	int rc;
@@ -63,7 +65,8 @@ static int query_bfile(sqlite3* db) {
 	sqlite3_stmt *pStmt, *pBfileStmt;
 	char *photo;
 	off_t offset;
-	int row, id, bHdl, len, i;
+	int row, id, len, i;
+	bfile_handle bHdl;
 	const char *sql_bfile_open =
 		"SELECT id, BFILE_OPEN(photo) FROM test_bfile;";
 	const char *sql_bfile_read = "SELECT BFILE_READ(?, ?, ?);";
@@ -85,7 +88,7 @@ static int query_bfile(sqlite3* db) {
 		printf("-------------row%d------------\n", ++row);
 
 		id = sqlite3_column_int(pStmt, 0);
-		bHdl = sqlite3_column_int(pStmt, 1);
+		bHdl = sqlite3_column_int64(pStmt, 1);
 
 		printf("id:\n%d\nphoto:\n", id);
 
@@ -101,7 +104,7 @@ static int query_bfile(sqlite3* db) {
 		cleanup_if_error(rc2, cleanup_read);
 
 		while (1) {
-			rc2 = sqlite3_bind_int(pBfileStmt, 1, bHdl);
+			rc2 = sqlite3_bind_int64(pBfileStmt, 1, bHdl);
 			cleanup_if_error(rc2, cleanup_read);
 
 			rc2 = sqlite3_bind_int(pBfileStmt, 2, amount);
@@ -145,7 +148,7 @@ cleanup_read:
 		rc2 = sqlite3_prepare(db, sql_bfile_close, -1, &pBfileStmt, 0);
 		cleanup_if_error(rc2, cleanup_close);
 
-		rc2 = sqlite3_bind_int(pBfileStmt, 1, bHdl);
+		rc2 = sqlite3_bind_int64(pBfileStmt, 1, bHdl);
 		cleanup_if_error(rc2, cleanup_close);
 
 		rc2 = sqlite3_step(pBfileStmt);

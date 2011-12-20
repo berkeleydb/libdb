@@ -60,12 +60,12 @@ public class JDBCDatabaseMetaData implements DatabaseMetaData {
     }
 
     public String getDriverVersion() throws SQLException {
-	return "" + SQLite.JDBCDriver.MAJORVERSION + "." +
+	return "" + SQLite.JDBC.MAJORVERSION + "." +
 	    SQLite.Constants.drv_minor;
     }
 
     public int getDriverMajorVersion() {
-	return SQLite.JDBCDriver.MAJORVERSION;
+	return SQLite.JDBC.MAJORVERSION;
     }
 
     public int getDriverMinorVersion() {

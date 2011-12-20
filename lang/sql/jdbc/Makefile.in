@@ -2,6 +2,7 @@
 
 prefix =	@prefix@
 CC =		@CC@
+HOSTCC =	@HOSTCC@
 LIBTOOL =	./libtool
 SQLITE_INC =	@SQLITE_INC@
 SQLITE_LIB =	@SQLITE_LIB@
@@ -12,6 +13,7 @@ SQLITE3_A10N_O =	@SQLITE3_A10N_O@
 JAVAH =		@JAVAH@
 JAVA_RUN =	@JAVA_RUN@
 JAVAC =		@JAVAC@
+JAVAC_FLAGS =	@JAVAC_FLAGS@
 JAVADOC =	@JAVADOC@
 JAVADOCLINK =	http://java.sun.com/javase/6/docs/api
 JAR =		@JAR@
@@ -87,11 +89,11 @@ CLASSES = \
 	SQLite/SQLRestore.class \
 	SQLite/Profile.class
 
-PRIVATE_CLASSES = \
+COMMON_CLASSES = \
 	SQLite/Benchmark.class \
 	SQLite/BenchmarkThread.class \
 	SQLite/DBDump.class \
-	SQLite/JDBCDriver.class \
+	SQLite/JDBC.class \
 	SQLite/@JDBCVER@/JDBCConnection.class \
 	SQLite/@JDBCVER@/JDBCStatement.class \
 	SQLite/@JDBCVER@/JDBCResultSet.class \
@@ -101,6 +103,23 @@ PRIVATE_CLASSES = \
 	SQLite/@JDBCVER@/BatchArg.class \
 	SQLite/@JDBCVER@/TableResultX.class \
 	SQLite/@JDBCVER@/DatabaseX.class
+
+JDBC_DATA_SOURCE_CLASSES = \
+	SQLite/JDBCDataSource.class \
+	SQLite/BenchmarkDataSource.class
+
+JDBC_DRIVER_CLASSES = \
+	SQLite/JDBCDriver.class \
+	SQLite/BenchmarkDriver.class
+
+JDBC0_CLASSES = $(JDBC_DATA_SOURCE_CLASSES)
+JDBC1_CLASSES = $(JDBC_DRIVER_CLASSES)
+JDBC2_CLASSES = $(JDBC_DRIVER_CLASSES)
+JDBC2x_CLASSES = $(JDBC_DRIVER_CLASSES)
+JDBC2y_CLASSES = $(JDBC_DRIVER_CLASSES)
+JDBC2z_CLASSES = $(JDBC_DRIVER_CLASSES)
+
+PRIVATE_CLASSES = $(COMMON_CLASSES) $(@JDBCVER@_CLASSES)
 
 DOCSRCS = \
 	SQLite/Authorizer.java \
@@ -161,9 +180,9 @@ libsqlite_jni.la:	sqlite_jni.lo $(SQLITE3_A10N_O)
 	    -module -avoid-version $(LIBS)
 
 native/mkconst:	native/mkconst.c
-	$(LIBTOOL) --mode=link $(CC) @CFLAGS@ $(SQLITE_INC) $(SQLITE3_INC) \
-	    -DHAVE_SQLITE2=@HAVE_SQLITE2@ -DHAVE_SQLITE3=@HAVE_SQLITE3@ \
-	    -o native/mkconst native/mkconst.c $(LIBS)
+	$(LIBTOOL) --mode=link $(HOSTCC) @HOST_CFLAGS@ $(SQLITE_INC) \
+	    $(SQLITE3_INC) -DHAVE_SQLITE2=@HAVE_SQLITE2@ \
+	    -DHAVE_SQLITE3=@HAVE_SQLITE3@ -o native/mkconst native/mkconst.c
 
 Makefile:	Makefile.in configure config.status
 	./config.status

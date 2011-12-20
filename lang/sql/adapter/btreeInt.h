@@ -157,6 +157,7 @@ typedef enum { NO_LSN_RESET, LSN_RESET_FILE } lsn_reset_t;
 
 /* Declarations for functions that are shared by adapter source files. */
 void *btreeCreateIndexKey(BtCursor *pCur);
+int btreeGetErrorFile(const BtShared *pBt, char *fname);
 Index *btreeGetIndex(Btree *p, int iTable);
 int btreeGetPageCount(Btree *p, int **tables, u32 *pageCount, DB_TXN *txn);
 int btreeGetUserTable(Btree *p, DB_TXN *pTxn, DB **pDb, int iTable);
@@ -226,10 +227,9 @@ struct BtShared {
 	char *full_name;
 	char *short_name; /* A pointer into orig_name memory. */
 	char *orig_name;
-	char *errfile_name;
+	char *err_file;
 	u_int8_t fileid[DB_FILE_ID_LEN];
 	char *encrypt_pwd;
-	FILE *errfile;
 	lsn_reset_t lsn_reset;
 	storage_mode_t dbStorage;
 	u_int32_t env_oflags;
@@ -281,6 +281,7 @@ struct BtShared {
 	/* Fields used to maintain the linked list of shared objects. */
 	BtShared *pNextDb;
 	BtShared *pPrevDb;
+	Btree *btrees; /* A linked list of btrees that have been opened in this BtShared. */
 	int nRef;
 	int readonly;
 	int repStartMaster; /* Start replication site as initial master? */

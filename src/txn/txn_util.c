@@ -452,25 +452,40 @@ __txn_dref_fname(env, txn)
 	ptd = txn->parent != NULL ? txn->parent->td : NULL;
 
 	np = R_ADDR(&mgr->reginfo, td->log_dbs);
-	np += td->nlog_dbs - 1;
-	for (i = 0; i < td->nlog_dbs; i++, np--) {
-		fname = R_ADDR(&dblp->reginfo, *np);
-		MUTEX_LOCK(env, fname->mutex);
-		if (ptd != NULL) {
+	/* 
+	 * The order in which FNAMEs are cleaned up matters.  Cleaning up
+	 * in the wrong order can result in database handles leaking.  If
+	 * we are passing the FNAMEs to the parent transaction make sure 
+	 * they are passed in order.  If we are cleaning up the FNAMEs, 
+	 * make sure that is done in reverse order.
+	 */
+	if (ptd != NULL) {
+		for (i = 0; i < td->nlog_dbs; i++, np++) {
+			fname = R_ADDR(&dblp->reginfo, *np);
+			MUTEX_LOCK(env, fname->mutex);
 			ret = __txn_record_fname(env, txn->parent, fname);
 			fname->txn_ref--;
 			MUTEX_UNLOCK(env, fname->mutex);
-		} else if (fname->txn_ref == 1) {
-			MUTEX_UNLOCK(env, fname->mutex);
-			DB_ASSERT(env, fname->txn_ref != 0);
-			ret = __dbreg_close_id_int(
-			    env, fname, DBREG_CLOSE, 0);
-		} else {
-			fname->txn_ref--;
-			MUTEX_UNLOCK(env, fname->mutex);
+			if (ret != 0)
+				break;
 		}
-		if (ret != 0 && ret != EIO)
-			break;
+	} else {
+		np += td->nlog_dbs - 1;
+		for (i = 0; i < td->nlog_dbs; i++, np--) {
+			fname = R_ADDR(&dblp->reginfo, *np);
+			MUTEX_LOCK(env, fname->mutex);
+			if (fname->txn_ref == 1) {
+				MUTEX_UNLOCK(env, fname->mutex);
+				DB_ASSERT(env, fname->txn_ref != 0);
+				ret = __dbreg_close_id_int(
+				    env, fname, DBREG_CLOSE, 0);
+			} else {
+				fname->txn_ref--;
+				MUTEX_UNLOCK(env, fname->mutex);
+			}
+			if (ret != 0 && ret != EIO)
+				break;
+		}
 	}
 
 	return (ret);

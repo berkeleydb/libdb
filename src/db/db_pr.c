@@ -765,7 +765,7 @@ __db_prpage_int(env, mbp, dbp, lead, h, pagesize, data, flags)
 	case P_HEAPMETA:
 		return (__db_heapmeta(env, dbp, (HEAPMETA *)h, flags));
 	case P_IHEAP:
-		if (!LF_ISSET(DB_PR_PAGE))
+		if (!LF_ISSET(DB_PR_PAGE) || dbp == NULL)
 			return (0);
 		return (__db_heapint(dbp, (HEAPPG *)h, flags));
 	default:
