@@ -79,7 +79,7 @@ readers accessing data or a single writer modifying data.  The
 application is entirely unaware of which is happening, and Berkeley DB
 implements the necessary locking and blocking to ensure this behavior.</p>
         <p>To create Berkeley DB Concurrent Data Store applications, you must first initialize an environment
-by calling <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a>. You must specify the <a href="../api_reference/C/envopen.html#envopen_DB_INIT_CDB" class="olink">DB_INIT_CDB</a> and <a href="../api_reference/C/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a> flags
+by calling <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a>. You must specify the <a href="../api_reference/C/envopen.html#envopen_DB_INIT_CDB" class="olink">DB_INIT_CDB</a> and <a href="../api_reference/C/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a> 
 flags to that method.  It is an error to
 specify any of the other <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> subsystem or recovery
 configuration flags, for example, <a href="../api_reference/C/envopen.html#envopen_DB_INIT_LOCK" class="olink">DB_INIT_LOCK</a>, <a href="../api_reference/C/envopen.html#envopen_DB_INIT_TXN" class="olink">DB_INIT_TXN</a> or <a href="../api_reference/C/envopen.html#envopen_DB_RECOVER" class="olink">DB_RECOVER</a>

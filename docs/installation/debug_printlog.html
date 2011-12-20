@@ -42,68 +42,93 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3364251">Augmenting the Log for Debugging</a>
+              <a href="debug_printlog.html#id3635427">Augmenting the Log for Debugging</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3364777">Extracting Committed Transactions and Transaction Status</a>
+              <a href="debug_printlog.html#id3635584">Extracting Committed Transactions and Transaction Status</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3364742">Extracting Transaction Histories</a>
+              <a href="debug_printlog.html#id3635586">Extracting Transaction Histories</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3364729">Extracting File Histories</a>
+              <a href="debug_printlog.html#id3636190">Extracting File Histories</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3365288">Extracting Page Histories</a>
+              <a href="debug_printlog.html#id3636218">Extracting Page Histories</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="debug_printlog.html#id3365303">Other log processing tools</a>
+              <a href="debug_printlog.html#id3635928">Other log processing tools</a>
             </span>
           </dt>
         </dl>
       </div>
-      <p>If you are running with transactions and logging, the <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility can be a useful debugging aid.  The <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will display the contents of your log files in a human readable (and machine-readable) format.</p>
-      <p>The <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will attempt to display any and all log files present in a designated db_home directory.  For each log record, the <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will display a line of the form:</p>
+      <p>
+    If you are running with transactions and logging, the <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility can
+    be a useful debugging aid.  The <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will display the contents
+    of your log files in a human readable (and machine-readable) format.
+</p>
+      <p>
+    The <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will attempt to display any and all log files present
+    in a designated db_home directory.  For each log record, the
+    <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility will display a line of the form:
+</p>
       <pre class="programlisting">
 [22][28]db_big: rec: 43 txnid 80000963 prevlsn [21][10483281]
 </pre>
-      <p>The opening numbers in square brackets are the <span class="emphasis"><em>log sequence
-number</em></span> (<span class="emphasis"><em>LSN</em></span>) of the log record being displayed.  The first
-number indicates the log file in which the record appears, and the
-second number indicates the offset in that file of the record.</p>
-      <p>The first character string identifies the particular log operation being
-reported.  The log records corresponding to particular operations are
-described following.  The rest of the line consists of name/value pairs.</p>
-      <p>The rec field indicates the record type (this is used to dispatch records
-in the log to appropriate recovery functions).</p>
-      <p>The txnid field identifies the transaction for which this record was
-written.  A txnid of 0 means that the record was written outside the
-context of any transaction.  You will see these most frequently for
-checkpoints.</p>
-      <p>Finally, the prevlsn contains the LSN of the last record for this
-transaction.  By following prevlsn fields, you can accumulate all the
-updates for a particular transaction.  During normal abort processing,
-this field is used to quickly access all the records for a particular
-transaction.</p>
-      <p>After the initial line identifying the record type, each field of the log
-record is displayed, one item per line.  There are several fields that
-appear in many different records and a few fields that appear only in
-some records.</p>
-      <p>The following table presents each currently written log record type with
-a brief description of the operation it describes.  Any of these
-record types may have the string "_debug" appended if they
-were written because <a href="../api_reference/C/dbset_flags.html#dbset_flags_DB_TXN_NOT_DURABLE" class="olink">DB_TXN_NOT_DURABLE</a> was specified and the
-system was configured with <a class="link" href="build_unix_conf.html#build_unix_conf.--enable-diagnostic">--enable-diagnostic</a>.</p>
+      <p>
+    The opening numbers in square brackets are the <span class="emphasis"><em>log sequence
+        number</em></span> (<span class="emphasis"><em>LSN</em></span>) of the log record
+    being displayed.  The first number indicates the log file in which the
+    record appears, and the second number indicates the offset in that file
+    of the record.
+</p>
+      <p>
+    The first character string identifies the particular log operation
+    being reported.  The log records corresponding to particular operations
+    are described following.  The rest of the line consists of name/value
+    pairs.
+</p>
+      <p>
+    The rec field indicates the record type (this is used to dispatch
+    records in the log to appropriate recovery functions).
+</p>
+      <p>
+    The txnid field identifies the transaction for which this record was
+    written.  A txnid of 0 means that the record was written outside the
+    context of any transaction.  You will see these most frequently for
+    checkpoints.
+</p>
+      <p>
+    Finally, the prevlsn contains the LSN of the last record for this
+    transaction.  By following prevlsn fields, you can accumulate all the
+    updates for a particular transaction.  During normal abort processing,
+    this field is used to quickly access all the records for a particular
+    transaction.
+</p>
+      <p>
+    After the initial line identifying the record type, each field of the
+    log record is displayed, one item per line.  There are several fields
+    that appear in many different records and a few fields that appear only
+    in some records.
+</p>
+      <p>
+    The following table presents each currently written log record type
+    with a brief description of the operation it describes.  Any of these
+    record types may have the string "_debug" appended if they were written
+    because <a href="../api_reference/C/dbset_flags.html#dbset_flags_DB_TXN_NOT_DURABLE" class="olink">DB_TXN_NOT_DURABLE</a> was specified and the
+    system was configured with 
+    <a class="link" href="build_unix_conf.html#build_unix_conf.--enable-diagnostic">--enable-diagnostic</a>.
+</p>
       <div class="informaltable">
         <table border="1" width="80%">
           <colgroup>
@@ -286,6 +311,24 @@ system was configured with <a class="link" href="build_unix_conf.html#build_unix
               <td>Record the page data for a split.</td>
             </tr>
             <tr>
+              <td>heap_addrem</td>
+              <td>Add or remove an entry from a Heap database.</td>
+            </tr>
+            <tr>
+              <td>heap_pg_alloc</td>
+              <td>Indicates we allocated a page to a Heap database.</td>
+            </tr>
+            <tr>
+              <td>heap_trunc_meta</td>
+              <td>Records the truncation of the meta page in a Heap
+                    database.</td>
+            </tr>
+            <tr>
+              <td>heap_trunc_page</td>
+              <td>Records the truncation of a data page in a Heap
+                    database.</td>
+            </tr>
+            <tr>
               <td>qam_add</td>
               <td>Describes the actual addition of a new record to a Queue.</td>
             </tr>
@@ -332,91 +375,126 @@ system was configured with <a class="link" href="build_unix_conf.html#build_unix
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3364251"></a>Augmenting the Log for Debugging</h3>
+              <h3 class="title"><a id="id3635427"></a>Augmenting the Log for Debugging</h3>
             </div>
           </div>
         </div>
-        <p>When debugging applications, it is sometimes useful to log not only the
-actual operations that modify pages, but also the underlying Berkeley DB
-functions being executed.  This form of logging can add significant bulk
-to your log, but can permit debugging application errors that are almost
-impossible to find any other way.  To turn on these log messages, specify
-the --enable-debug_rop and --enable-debug_wop configuration options when
-configuring Berkeley DB.  See <a class="xref" href="build_unix_conf.html" title="Configuring Berkeley DB">Configuring Berkeley DB</a> for more information.</p>
+        <p>
+        When debugging applications, it is sometimes useful to log not only
+        the actual operations that modify pages, but also the underlying
+        Berkeley DB functions being executed.  This form of logging can add
+        significant bulk to your log, but can permit debugging application
+        errors that are almost impossible to find any other way.  To turn
+        on these log messages, specify the --enable-debug_rop and
+        --enable-debug_wop configuration options when
+        configuring Berkeley DB.  See 
+        <a class="xref" href="build_unix_conf.html" title="Configuring Berkeley DB">Configuring Berkeley DB</a> for more information.
+    </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3364777"></a>Extracting Committed Transactions and Transaction Status</h3>
+              <h3 class="title"><a id="id3635584"></a>Extracting Committed Transactions and Transaction Status</h3>
             </div>
           </div>
         </div>
-        <p>Sometimes, it is helpful to use the human-readable log output to
-determine which transactions committed and aborted.  The awk script,
-commit.awk, (found in the db_printlog directory of the Berkeley DB
-distribution) allows you to do just that.  The following command,
-where log_output is the output of db_printlog, will display a list of
-the transaction IDs of all committed transactions found in the log:</p>
+        <p>
+        Sometimes, it is helpful to use the human-readable log output to
+        determine which transactions committed and aborted.  The awk
+        script, commit.awk, (found in the db_printlog directory of the
+        Berkeley DB distribution) allows you to do just that.  The
+        following command, where log_output is the output of db_printlog,
+        will display a list of the transaction IDs of all committed
+        transactions found in the log:
+    </p>
         <pre class="programlisting">awk -f commit.awk log_output</pre>
-        <p>If you need a complete list of both committed and aborted transactions,
-then the script status.awk will produce it.  The syntax is as follows:</p>
+        <p>
+        If you need a complete list of both committed and aborted transactions,
+        then the script status.awk will produce it.  The syntax is as
+        follows:
+    </p>
         <pre class="programlisting">awk -f status.awk log_output</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3364742"></a>Extracting Transaction Histories</h3>
+              <h3 class="title"><a id="id3635586"></a>Extracting Transaction Histories</h3>
             </div>
           </div>
         </div>
-        <p>Another useful debugging aid is to print out the complete history of a transaction.  The awk script txn.awk allows you to do that.  The following command line, where log_output is the output of the <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility and txnlist is a comma-separated list of transaction IDs, will display all log records associated with the designated transaction ids:</p>
+        <p>
+        Another useful debugging aid is to print out the complete history
+        of a transaction.  The awk script txn.awk allows you to do that.
+        The following command line, where log_output is the output of the
+        <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility and txnlist is a comma-separated list of transaction
+        IDs, will display all log records associated with the designated
+        transaction ids:
+    </p>
         <pre class="programlisting">awk -f txn.awk TXN=txnlist log_output</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3364729"></a>Extracting File Histories</h3>
+              <h3 class="title"><a id="id3636190"></a>Extracting File Histories</h3>
             </div>
           </div>
         </div>
-        <p>The awk script fileid.awk allows you to extract all log records that
-refer to a designated file.  The syntax for the fileid.awk script is
-the following, where log_output is the output of db_printlog and fids
-is a comma-separated list of fileids:</p>
+        <p>
+        The awk script fileid.awk allows you to extract all log records
+        that refer to a designated file.  The syntax for the fileid.awk
+        script is the following, where log_output is the output of
+        db_printlog and fids is a comma-separated list of fileids:
+    </p>
         <pre class="programlisting">awk -f fileid.awk PGNO=fids log_output</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3365288"></a>Extracting Page Histories</h3>
+              <h3 class="title"><a id="id3636218"></a>Extracting Page Histories</h3>
             </div>
           </div>
         </div>
-        <p>The awk script pgno.awk allows you to extract all log records that refer
-to designated page numbers.  However, because this script will extract
-records with the designated page numbers for all files, it is most
-useful in conjunction with the fileid script.  The syntax for the
-pgno.awk script is the following, where log_output is the output of
-db_printlog and pgnolist is a comma-separated list of page numbers:</p>
+        <p>
+        The awk script pgno.awk allows you to extract all log records that
+        refer to designated page numbers.  However, because this script
+        will extract records with the designated page numbers for all
+        files, it is most useful in conjunction with the fileid script.
+        The syntax for the pgno.awk script is the following, where
+        log_output is the output of db_printlog and pgnolist is a
+        comma-separated list of page numbers:
+    </p>
         <pre class="programlisting">awk -f pgno.awk PGNO=pgnolist log_output</pre>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3365303"></a>Other log processing tools</h3>
+              <h3 class="title"><a id="id3635928"></a>Other log processing tools</h3>
             </div>
           </div>
         </div>
-        <p>The awk script count.awk prints out the number of log records
-encountered that belonged to some transaction (that is, the number of
-log records excluding those for checkpoints and
-non-transaction-protected operations).</p>
-        <p>The script range.awk will extract a subset of a log.  This is useful when the output of <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility is too large to be reasonably manipulated with an editor or other tool.  The syntax for range.awk is the following, where <span class="bold"><strong>sf</strong></span> and <span class="bold"><strong>so</strong></span> represent the LSN of the beginning of the sublog you want to extract, and <span class="bold"><strong>ef</strong></span> and <span class="bold"><strong>eo</strong></span> represent the LSN of the end of the sublog you want to extract:</p>
+        <p>
+        The awk script count.awk prints out the number of log records
+        encountered that belonged to some transaction (that is, the number
+        of log records excluding those for checkpoints and
+        non-transaction-protected operations).
+    </p>
+        <p>
+        The script range.awk will extract a subset of a log.  This is
+        useful when the output of <a href="../api_reference/C/db_printlog.html" class="olink">db_printlog</a> utility is too large to be
+        reasonably manipulated with an editor or other tool.  The syntax
+        for range.awk is the following, where 
+        <span class="bold"><strong>sf</strong></span> and 
+        <span class="bold"><strong>so</strong></span> represent the LSN of the
+        beginning of the sublog you want to extract, and 
+        <span class="bold"><strong>ef</strong></span> and 
+        <span class="bold"><strong>eo</strong></span> represent the LSN of the end of
+        the sublog you want to extract:
+    </p>
         <pre class="programlisting">    awk -f range.awk START_FILE=sf START_OFFSET=so END_FILE=ef \
     END_OFFSET=eo log_output </pre>
       </div>

@@ -42,7 +42,7 @@
 
 int
 DB-&gt;set_heapsize(DB *db,
-    u_int32_t gbytes, u_int32_t bytes);  </pre>
+    u_int32_t gbytes, u_int32_t bytes, u_int32_t flags);  </pre>
       <p>
         Sets the maximum on-disk database file size used by a database
         configured to use the Heap access method. If this method is never
@@ -80,7 +80,7 @@ DB-&gt;set_heapsize(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3870304"></a>Parameters</h3>
+              <h3 class="title"><a id="id3690193"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ DB-&gt;set_heapsize(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3870465"></a>gbytes</h4>
+                <h4 class="title"><a id="id3690352"></a>gbytes</h4>
               </div>
             </div>
           </div>
@@ -100,12 +100,25 @@ DB-&gt;set_heapsize(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3868445"></a>bytes</h4>
+                <h4 class="title"><a id="id3689934"></a>bytes</h4>
               </div>
             </div>
           </div>
           <p>
                   The size of the heap is set to <span class="bold"><strong>gbytes</strong></span> gigabytes plus <span class="bold"><strong>bytes</strong></span>.
+             </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="id3690133"></a>flags</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The <span class="bold"><strong>flags</strong></span> parameter is currently
+                unused, and must be set to 0.
              </p>
         </div>
       </div>
@@ -113,7 +126,7 @@ DB-&gt;set_heapsize(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3870208"></a>Errors</h3>
+              <h3 class="title"><a id="id3690400"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -129,7 +142,7 @@ DB-&gt;set_heapsize(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3870466"></a>EINVAL</h4>
+                <h4 class="title"><a id="id3690480"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -144,7 +157,7 @@ DB-&gt;set_heapsize(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3870602"></a>Class</h3>
+              <h3 class="title"><a id="id3690502"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -156,7 +169,7 @@ DB-&gt;set_heapsize(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3870533"></a>See Also</h3>
+              <h3 class="title"><a id="id3690412"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -42,112 +42,117 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376390">Database or Log File On-Disk Format Changes</a>
+              <a href="changelog_5_2.html#id3647664">Changes between 11.2.5.2.28 and 11.2.5.2.36</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376540">New Features</a>
+              <a href="changelog_5_2.html#id3647826">Database or Log File On-Disk Format Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376499">Database Environment Changes</a>
+              <a href="changelog_5_2.html#id3647998">New Features</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376785">Concurrent Data Store Changes</a>
+              <a href="changelog_5_2.html#id3647766">Database Environment Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376807">Access Method Changes</a>
+              <a href="changelog_5_2.html#id3648192">Concurrent Data Store Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376676">SQL API Changes</a>
+              <a href="changelog_5_2.html#id3648216">Access Method Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376382">C API Changes</a>
+              <a href="changelog_5_2.html#id3647656">SQL API Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376930">Tcl-specific API Changes</a>
+              <a href="changelog_5_2.html#id3648016">C API Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376891">C#-specific API Changes</a>
+              <a href="changelog_5_2.html#id3648204">Tcl-specific API Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377138">Replication Changes</a>
+              <a href="changelog_5_2.html#id3648459">C#-specific API Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376802">Locking Subsystem Changes</a>
+              <a href="changelog_5_2.html#id3648320">Replication Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377194">Logging Subsystem Changes</a>
+              <a href="changelog_5_2.html#id3648594">Locking Subsystem Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376739">Memory Pool Subsystem Changes</a>
+              <a href="changelog_5_2.html#id3648610">Logging Subsystem Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377355">Mutex Subsystem Changes</a>
+              <a href="changelog_5_2.html#id3648545">Memory Pool Subsystem Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377390">Transaction Subsystem Changes</a>
+              <a href="changelog_5_2.html#id3648767">Mutex Subsystem Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3376904">Test Suite Changes</a>
+              <a href="changelog_5_2.html#id3648802">Transaction Subsystem Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377172">Utility Changes</a>
+              <a href="changelog_5_2.html#id3648831">Test Suite Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377036">Configuration, Documentation, Sample Apps, Portability and Build Changes</a>
+              <a href="changelog_5_2.html#id3648847">Utility Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377501">Example Changes</a>
+              <a href="changelog_5_2.html#id3648880">Configuration, Documentation, Sample Apps, Portability and Build Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377514">Miscellaneous Bug Fixes</a>
+              <a href="changelog_5_2.html#id3648825">Example Changes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377549">Deprecated Features</a>
+              <a href="changelog_5_2.html#id3648926">Miscellaneous Bug Fixes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="changelog_5_2.html#id3377496">Known Bugs</a>
+              <a href="changelog_5_2.html#id3648455">Deprecated Features</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="changelog_5_2.html#id3649000">Known Bugs</a>
             </span>
           </dt>
         </dl>
@@ -161,7 +166,125 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376390"></a>Database or Log File On-Disk Format Changes</h3>
+              <h3 class="title"><a id="id3647664"></a>Changes between 11.2.5.2.28 and 11.2.5.2.36</h3>
+            </div>
+          </div>
+        </div>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+ Updated the JDBC version shipped with Berkeley DB to support Oracle Java Embedded Client. [#19814]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed several memory leaks in the Online Backup API. [#19850]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fix a bug in the SQL API when using a blob field with a lot of content and multiple concurrent connections to the database. [#19945]
+            </p>
+            </li>
+            <li>
+              <p>
+ Update EID_MASTER to be public static final so that it will be exposed in Java docs. [#20184]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where BFile module crashes when using BFile handle for SQL expressions interface on 64 bit platforms. [#20193]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where, on systems without FTRUNCATE, db_verify will return an error for truncated heap databases. [#20195]
+            </p>
+            </li>
+            <li>
+              <p>
+ Let ADO.NET solution building skip SQLite Designer and Linq by default. [#20218]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug that could cause BDB to run out of avaliable mutexes when renaming many databases. [#20228]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where the metadata page in hash databases would not be flushed to disk.  [#20265]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where printlog would fail on in-memory heap databases.  [#20269]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug that would cause verify to call the wrong compare function if there are user defined compare functions used and the database has multilevel off page sorted duplicate trees. [#20284]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where two processes accessing the same table and one of those drops the table and recreates, the second process can crash.  [#20319]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where it was possible to panic a heap database without an error message being printed. [#20320]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where it would fail to put records with overflow keys into hash duplicate database. [#20329]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug where multiple Replication Manager processes would sometimes not all conform to replication-group-aware log archiving. [#20342]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fixed a bug in the Java API where getting a Stat object could cause a segfault. [#20377]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fix a bug where cache page eviction statistics could be inaccurate. [#20410]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fix a bug where extending an almost-full region could cause a seg fault. [#20414]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fix a bug where multiple long running transactions across checkpoints could cause Log Sequence errors on client systems. [#20421]
+            </p>
+            </li>
+            <li>
+              <p>
+ Fix a bug where aborting an exclusive transaction followed by an auto-commit read operation could cause an assert failure. [#20567]
+            </p>
+            </li>
+            <li>
+              <p>
+ Detect obsolete MVCC buffers earlier by refreshing stale old_reader LSNs. [#20570]
+            </p>
+            </li>
+          </ol>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="id3647826"></a>Database or Log File On-Disk Format Changes</h3>
             </div>
           </div>
         </div>
@@ -184,7 +307,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376540"></a>New Features</h3>
+              <h3 class="title"><a id="id3647998"></a>New Features</h3>
             </div>
           </div>
         </div>
@@ -262,7 +385,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376499"></a>Database Environment Changes</h3>
+              <h3 class="title"><a id="id3647766"></a>Database Environment Changes</h3>
             </div>
           </div>
         </div>
@@ -280,7 +403,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376785"></a>Concurrent Data Store Changes</h3>
+              <h3 class="title"><a id="id3648192"></a>Concurrent Data Store Changes</h3>
             </div>
           </div>
         </div>
@@ -298,7 +421,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376807"></a>Access Method Changes</h3>
+              <h3 class="title"><a id="id3648216"></a>Access Method Changes</h3>
             </div>
           </div>
         </div>
@@ -389,6 +512,11 @@
  Fixed a bug that caused the first directory specified in the create of a partitioned database to get too many partitions. [#20041]
             </p>
             </li>
+            <li>
+              <p>
+ Fixed a bug that could leave deleted pages from a HEAP database in the buffer cache. [#20309]
+            </p>
+            </li>
           </ol>
         </div>
       </div>
@@ -396,7 +524,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376676"></a>SQL API Changes</h3>
+              <h3 class="title"><a id="id3647656"></a>SQL API Changes</h3>
             </div>
           </div>
         </div>
@@ -484,7 +612,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376382"></a>C API Changes</h3>
+              <h3 class="title"><a id="id3648016"></a>C API Changes</h3>
             </div>
           </div>
         </div>
@@ -527,7 +655,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376930"></a>Tcl-specific API Changes</h3>
+              <h3 class="title"><a id="id3648204"></a>Tcl-specific API Changes</h3>
             </div>
           </div>
         </div>
@@ -545,7 +673,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376891"></a>C#-specific API Changes</h3>
+              <h3 class="title"><a id="id3648459"></a>C#-specific API Changes</h3>
             </div>
           </div>
         </div>
@@ -568,7 +696,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377138"></a>Replication Changes</h3>
+              <h3 class="title"><a id="id3648320"></a>Replication Changes</h3>
             </div>
           </div>
         </div>
@@ -691,7 +819,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376802"></a>Locking Subsystem Changes</h3>
+              <h3 class="title"><a id="id3648594"></a>Locking Subsystem Changes</h3>
             </div>
           </div>
         </div>
@@ -724,7 +852,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377194"></a>Logging Subsystem Changes</h3>
+              <h3 class="title"><a id="id3648610"></a>Logging Subsystem Changes</h3>
             </div>
           </div>
         </div>
@@ -752,7 +880,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376739"></a>Memory Pool Subsystem Changes</h3>
+              <h3 class="title"><a id="id3648545"></a>Memory Pool Subsystem Changes</h3>
             </div>
           </div>
         </div>
@@ -770,7 +898,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377355"></a>Mutex Subsystem Changes</h3>
+              <h3 class="title"><a id="id3648767"></a>Mutex Subsystem Changes</h3>
             </div>
           </div>
         </div>
@@ -798,7 +926,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377390"></a>Transaction Subsystem Changes</h3>
+              <h3 class="title"><a id="id3648802"></a>Transaction Subsystem Changes</h3>
             </div>
           </div>
         </div>
@@ -831,7 +959,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3376904"></a>Test Suite Changes</h3>
+              <h3 class="title"><a id="id3648831"></a>Test Suite Changes</h3>
             </div>
           </div>
         </div>
@@ -849,7 +977,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377172"></a>Utility Changes</h3>
+              <h3 class="title"><a id="id3648847"></a>Utility Changes</h3>
             </div>
           </div>
         </div>
@@ -882,7 +1010,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377036"></a>Configuration, Documentation, Sample Apps, Portability and Build Changes</h3>
+              <h3 class="title"><a id="id3648880"></a>Configuration, Documentation, Sample Apps, Portability and Build Changes</h3>
             </div>
           </div>
         </div>
@@ -925,7 +1053,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377501"></a>Example Changes</h3>
+              <h3 class="title"><a id="id3648825"></a>Example Changes</h3>
             </div>
           </div>
         </div>
@@ -948,7 +1076,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377514"></a>Miscellaneous Bug Fixes</h3>
+              <h3 class="title"><a id="id3648926"></a>Miscellaneous Bug Fixes</h3>
             </div>
           </div>
         </div>
@@ -966,7 +1094,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377549"></a>Deprecated Features</h3>
+              <h3 class="title"><a id="id3648455"></a>Deprecated Features</h3>
             </div>
           </div>
         </div>
@@ -984,17 +1112,12 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3377496"></a>Known Bugs</h3>
+              <h3 class="title"><a id="id3649000"></a>Known Bugs</h3>
             </div>
           </div>
         </div>
         <div class="orderedlist">
           <ol type="1">
-            <li>
-              <p>
- The SQL API has a known issue when using a blob field with a lot of content and multiple concurrent connections to the database. [#19945]
-            </p>
-            </li>
             <li>
               <p>
  Rollback of a dropped table in the SQL layer contains a mutex leak, which can consume all mutex resources if enough rollbacks of table drops are performed. [#20077]
@@ -1003,11 +1126,6 @@
             <li>
               <p>
  The DB_CONFIG configuration parameters which specify path names currently do not support names containing any whitespace characters. [#20158]
-            </p>
-            </li>
-            <li>
-              <p>
- The BFile module has a known crash issue when using BFile handle for SQL expressions interface on 64bit platforms. [#20193]
             </p>
             </li>
             <li>

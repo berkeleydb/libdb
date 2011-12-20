@@ -60,7 +60,17 @@
     wrappers (such as <code class="classname">ElementHolder</code>) do not support it.
 </p>
       <p>
-    These issues do not exist for any function available with the Microsoft Visual C++ STL library.
+    These issues do not exist for any function available with the Microsoft
+    Visual C++ 8 STL library. There are two algorithm functions of Microsoft
+    Visual C++ 10 STL library that do have an issue:
+    <code class="function">partial_sort()</code> and
+    <code class="function">partial_sort_copy()</code>.  These are not compatible because they
+    require the dbstl <code class="literal">vector</code> iterator to create a new
+    element when updating the current element. Dbstl
+    <code class="literal">vector</code> iterator can copy the new content to the
+    current element, but it cannot create a new one. This requirement is
+    not a part of the C++ STL standard specification, and so dbstl's
+    <code class="literal">vector</code> iterator does not support it.
 </p>
     </div>
     <div class="navfooter">
